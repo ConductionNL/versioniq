@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
 import { t } from '@nextcloud/l10n'
+import { computed, onMounted, ref } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
-import { ocsGet, ocsWrite } from '../ocs'
+import { ocsGet, ocsWrite } from '../ocs.ts'
 
 type CacheApp = { appId: string, versions: string[], sizeBytes: number }
 type CacheSummary = { apps: CacheApp[], totalSizeBytes: number, keep: number }
@@ -18,7 +18,11 @@ const error = ref('')
 
 const hasEntries = computed(() => summary.value.apps.length > 0)
 
-const formatSize = (bytes: number): string => {
+/**
+ *
+ * @param bytes
+ */
+function formatSize (bytes: number): string {
 	if (bytes <= 0) {
 		return '0 B'
 	}
@@ -32,7 +36,10 @@ const formatSize = (bytes: number): string => {
 	return `${value.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`
 }
 
-const loadSummary = async (): Promise<void> => {
+/**
+ *
+ */
+async function loadSummary (): Promise<void> {
 	loading.value = true
 	error.value = ''
 	try {
@@ -49,7 +56,11 @@ const loadSummary = async (): Promise<void> => {
 	}
 }
 
-const clearCache = async (appId?: string): Promise<void> => {
+/**
+ *
+ * @param appId
+ */
+async function clearCache (appId?: string): Promise<void> {
 	error.value = ''
 	clearing.value = appId ?? '*'
 	try {
@@ -100,7 +111,7 @@ onMounted(loadSummary)
 							{{ t('versioniq', '{count} cached — {size}', { count: app.versions.length, size: formatSize(app.sizeBytes) }) }}
 						</span>
 					</div>
-					<NcButton type="tertiary" :disabled="clearing !== null" @click="clearCache(app.appId)">
+					<NcButton variant="tertiary" :disabled="clearing !== null" @click="clearCache(app.appId)">
 						{{ clearing === app.appId ? t('versioniq', 'Clearing…') : t('versioniq', 'Clear') }}
 					</NcButton>
 				</li>
@@ -110,7 +121,7 @@ onMounted(loadSummary)
 			</ul>
 
 			<NcButton data-testid="cache-clear-all"
-				type="secondary"
+				variant="secondary"
 				:disabled="!hasEntries || clearing !== null"
 				@click="clearCache()">
 				{{ clearing === '*' ? t('versioniq', 'Clearing…') : t('versioniq', 'Clear entire cache') }}
@@ -121,11 +132,18 @@ onMounted(loadSummary)
 
 <style module>
 .panel { display: flex; flex-direction: column; gap: 12px; }
+
 .hint { color: var(--color-text-maxcontrast); font-size: 13px; margin: 0; }
+
 .total { font-weight: 600; margin: 0; }
+
 .list { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+
 .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--color-border); }
+
 .rowInfo { display: flex; flex-direction: column; gap: 2px; }
+
 .rowMeta { color: var(--color-text-maxcontrast); font-size: 12px; }
+
 .empty { color: var(--color-text-maxcontrast); font-style: italic; }
 </style>

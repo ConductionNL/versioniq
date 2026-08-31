@@ -23,7 +23,11 @@ const emit = defineEmits<{
 	resolve: [choice: 'repin' | 'unpin' | 'cancel']
 }>()
 
-const choose = (choice: 'repin' | 'unpin' | 'cancel'): void => {
+/**
+ *
+ * @param choice
+ */
+function choose (choice: 'repin' | 'unpin' | 'cancel'): void {
 	emit('update:open', false)
 	emit('resolve', choice)
 }

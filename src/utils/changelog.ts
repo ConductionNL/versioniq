@@ -2,7 +2,7 @@
 // changelog on target selection" (add-changelog-visibility).
 //
 // @spec openspec/specs/changelog-visibility/spec.md
-import { compareVersions } from './versionCompare'
+import { compareVersions } from './versionCompare.ts'
 
 export type ChangelogSource = {
 	version: string
@@ -30,6 +30,10 @@ export type ChangelogRangeEntry = {
  * Returns an empty list when either endpoint is missing or they are equal
  * (no range to show). Reuses the already-fetched `versions` list — this
  * function issues zero requests.
+ *
+ * @param installedVersion
+ * @param targetVersion
+ * @param versions
  */
 export function buildChangelogRange(
 	installedVersion: string,

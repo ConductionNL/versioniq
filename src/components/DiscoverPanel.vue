@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { t } from '@nextcloud/l10n'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
-import { ocsGet } from '../ocs'
+import { ocsGet } from '../ocs.ts'
 
 type DiscoverySourceBinding = {
 	kind?: string
@@ -55,17 +55,17 @@ export type PrefillBindPayload = {
 	assetPattern: string
 }
 
-const DISCOVER = '/ocs/v2.php/apps/versioniq/api/discover'
-
-const MIN_QUERY_LENGTH = 2
-const MAX_QUERY_LENGTH = 100
-const DEBOUNCE_MS = 400
-
 const emit = defineEmits<{
 	(e: 'openApp', appId: string): void
 	(e: 'prefillBind', payload: PrefillBindPayload): void
 	(e: 'openTrusted'): void
 }>()
+
+const DISCOVER = '/ocs/v2.php/apps/versioniq/api/discover'
+
+const MIN_QUERY_LENGTH = 2
+const MAX_QUERY_LENGTH = 100
+const DEBOUNCE_MS = 400
 
 const query = ref('')
 const sourceFilter = ref<string[]>([])
@@ -104,13 +104,21 @@ const validationHint = computed(() => {
 
 const providerLabel = (providerId: string): string => providers.value.find((provider) => provider.id === providerId)?.label ?? providerId
 
-const dismissProviderError = (providerId: string): void => {
+/**
+ *
+ * @param providerId
+ */
+function dismissProviderError (providerId: string): void {
 	dismissedProviderIds.value = new Set([...dismissedProviderIds.value, providerId])
 }
 
 const bestInstallableCandidate = (hit: DiscoveryHit): DiscoveryCandidate | null => hit.sourceCandidates.find((candidate) => candidate.installable) ?? null
 
-const notInstallableReason = (hit: DiscoveryHit): string => {
+/**
+ *
+ * @param hit
+ */
+function notInstallableReason (hit: DiscoveryHit): string {
 	return hit.sourceCandidates[0]?.installableReason
 		?? t('versioniq', 'No installable source was found for this app.')
 }
@@ -121,7 +129,7 @@ const notInstallableReason = (hit: DiscoveryHit): string => {
  *
  * @spec openspec/specs/app-discovery/spec.md
  */
-const resetToIdle = (): void => {
+function resetToIdle (): void {
 	if (debounceTimer) {
 		clearTimeout(debounceTimer)
 		debounceTimer = null
@@ -143,7 +151,7 @@ const resetToIdle = (): void => {
  * @param trimmedQuery
  * @spec openspec/specs/app-discovery/spec.md
  */
-const runSearch = async (trimmedQuery: string): Promise<void> => {
+async function runSearch (trimmedQuery: string): Promise<void> {
 	abortController?.abort()
 	const controller = new AbortController()
 	abortController = controller
@@ -188,7 +196,10 @@ const runSearch = async (trimmedQuery: string): Promise<void> => {
 	}
 }
 
-const scheduleSearch = (): void => {
+/**
+ *
+ */
+function scheduleSearch (): void {
 	if (debounceTimer) {
 		clearTimeout(debounceTimer)
 		debounceTimer = null
@@ -227,11 +238,19 @@ onBeforeUnmount(() => {
 	abortController?.abort()
 })
 
-const handleOpen = (appId: string): void => {
+/**
+ *
+ * @param appId
+ */
+function handleOpen (appId: string): void {
 	emit('openApp', appId)
 }
 
-const handleInstall = (hit: DiscoveryHit): void => {
+/**
+ *
+ * @param hit
+ */
+function handleInstall (hit: DiscoveryHit): void {
 	const candidate = bestInstallableCandidate(hit)
 	if (!candidate) {
 		return
@@ -246,7 +265,10 @@ const handleInstall = (hit: DiscoveryHit): void => {
 	})
 }
 
-const handleOpenTrusted = (): void => {
+/**
+ *
+ */
+function handleOpenTrusted (): void {
 	emit('openTrusted')
 }
 </script>
@@ -270,7 +292,7 @@ const handleOpenTrusted = (): void => {
 
 			<NcSelect
 				v-model="sourceFilter"
-				:input-label="t('versioniq', 'Sources')"
+				:inputLabel="t('versioniq', 'Sources')"
 				:options="providerOptions"
 				:reduce="(option) => option.id"
 				label="label"
@@ -348,20 +370,20 @@ const handleOpenTrusted = (): void => {
 
 					<div :class="$style.hitActions">
 						<NcButton v-if="hit.installedVersion"
-							type="primary"
+							variant="primary"
 							data-testid="discover-open-app"
 							@click="handleOpen(hit.appId)">
 							{{ t('versioniq', 'Open version picker') }}
 						</NcButton>
 						<NcButton v-else-if="bestInstallableCandidate(hit)"
-							type="primary"
+							variant="primary"
 							data-testid="discover-install"
 							@click="handleInstall(hit)">
 							{{ t('versioniq', 'Install…') }}
 						</NcButton>
 						<div v-else :class="$style.notInstallable" data-testid="discover-not-installable">
 							<p>{{ notInstallableReason(hit) }}</p>
-							<NcButton type="tertiary" data-testid="discover-open-trusted" @click="handleOpenTrusted">
+							<NcButton variant="tertiary" data-testid="discover-open-trusted" @click="handleOpenTrusted">
 								{{ t('versioniq', 'Go to Trusted sources') }}
 							</NcButton>
 						</div>
@@ -377,11 +399,17 @@ const handleOpenTrusted = (): void => {
 
 <style module>
 .panel { display: flex; flex-direction: column; gap: 12px; }
+
 .hint { color: var(--color-text-maxcontrast); font-size: 13px; margin: 0; }
+
 .controls { display: flex; flex-direction: column; gap: 8px; max-width: 480px; }
+
 .validationHint { margin: 0; font-size: 12px; color: var(--color-text-maxcontrast); }
+
 .status { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 13px; color: var(--color-text-maxcontrast); }
+
 .providerErrorRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
 .dismissButton {
 	appearance: none;
 	-webkit-appearance: none;
@@ -394,7 +422,9 @@ const handleOpenTrusted = (): void => {
 	cursor: pointer;
 	flex-shrink: 0;
 }
+
 .results { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+
 .hitCard {
 	display: flex;
 	flex-direction: column;
@@ -404,18 +434,26 @@ const handleOpenTrusted = (): void => {
 	border-radius: 8px;
 	background: var(--color-main-background);
 }
+
 .hitHeader { display: flex; align-items: center; gap: 10px; }
+
 .hitIcon { width: 32px; height: 32px; border-radius: 6px; object-fit: contain; }
+
 .hitTitleBlock { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
 .hitName { margin: 0; font-weight: 700; }
+
 .hitAppId {
 	margin: 0;
 	font-size: 12px;
 	color: var(--color-text-maxcontrast);
 	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
+
 .hitSummary { margin: 0; font-size: 13px; color: var(--color-text-maxcontrast); }
+
 .badges { display: flex; flex-wrap: wrap; gap: 6px; }
+
 .sourceBadge {
 	display: inline-flex;
 	align-items: center;
@@ -426,9 +464,14 @@ const handleOpenTrusted = (): void => {
 	font-size: 11px;
 	font-weight: 600;
 }
+
 .sourceBadgeInstallable { background: var(--color-success, #46ba61); color: var(--color-primary-text, #fff); }
+
 .installedBadge { margin: 0; font-size: 12px; font-weight: 600; color: var(--color-text-maxcontrast); }
+
 .hitActions { display: flex; align-items: center; gap: 8px; }
+
 .notInstallable { display: flex; flex-direction: column; gap: 6px; }
+
 .notInstallable p { margin: 0; font-size: 12px; color: var(--color-error-text, var(--color-error)); }
 </style>

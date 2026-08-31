@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
-import { computed } from 'vue'
 import { t } from '@nextcloud/l10n'
+import { computed } from 'vue'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 
 export type PolicyLevel = 'none' | 'patch' | 'minor' | 'all'
@@ -43,7 +43,7 @@ const isActive = computed(() => props.level !== 'none')
 		<NcSelect
 			v-model="selected"
 			data-testid="policy-select"
-			:input-label="t('versioniq', 'Auto-update policy')"
+			:inputLabel="t('versioniq', 'Auto-update policy')"
 			:options="options"
 			:clearable="false"
 			:disabled="disabled"
@@ -64,10 +64,12 @@ const isActive = computed(() => props.level !== 'none')
 	gap: 4px;
 	margin-top: 8px;
 }
+
 .badge {
 	font-size: 12px;
 	color: var(--color-text-maxcontrast);
 }
+
 .disabledHint {
 	font-size: 12px;
 	color: var(--color-warning-text, #a94b0a);

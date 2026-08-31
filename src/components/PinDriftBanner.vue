@@ -9,12 +9,13 @@ pin-record writes). Never reinstalls anything itself.
 @spec openspec/specs/version-pinning/spec.md
 -->
 <script setup lang="ts">
-import { ref } from 'vue'
+import type { PinRecord } from '../dialogs/PinDialog.vue'
+
 import { t } from '@nextcloud/l10n'
+import { ref } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
-import { ocsWrite } from '../ocs'
-import type { PinRecord } from '../dialogs/PinDialog.vue'
+import { ocsWrite } from '../ocs.ts'
 
 const props = defineProps<{
 	appId: string
@@ -29,11 +30,17 @@ const emit = defineEmits<{
 const busy = ref(false)
 const error = ref('')
 
-const requestRepin = (): void => {
+/**
+ *
+ */
+function requestRepin (): void {
 	emit('repinRequested', props.appId, props.pin.version)
 }
 
-const acceptMove = async (): Promise<void> => {
+/**
+ *
+ */
+async function acceptMove (): Promise<void> {
 	if (!props.pin.driftedTo) {
 		return
 	}
@@ -57,7 +64,10 @@ const acceptMove = async (): Promise<void> => {
 	}
 }
 
-const acceptRemove = async (): Promise<void> => {
+/**
+ *
+ */
+async function acceptRemove (): Promise<void> {
 	busy.value = true
 	error.value = ''
 	try {
@@ -84,13 +94,13 @@ const acceptRemove = async (): Promise<void> => {
 			{{ t('versioniq', '{appId} is pinned to {pinnedVersion} but is now running {observedVersion} — something other than Versioniq changed it.', { appId, pinnedVersion: pin.version, observedVersion: pin.driftedTo ?? '' }) }}
 		</p>
 		<div :class="$style.actions">
-			<NcButton type="primary" :disabled="busy" @click="requestRepin">
+			<NcButton variant="primary" :disabled="busy" @click="requestRepin">
 				{{ t('versioniq', 'Re-pin {version}', { version: pin.version }) }}
 			</NcButton>
-			<NcButton type="secondary" :disabled="busy" @click="acceptMove">
+			<NcButton variant="secondary" :disabled="busy" @click="acceptMove">
 				{{ t('versioniq', 'Accept: move pin to {version}', { version: pin.driftedTo ?? '' }) }}
 			</NcButton>
-			<NcButton type="tertiary" :disabled="busy" @click="acceptRemove">
+			<NcButton variant="tertiary" :disabled="busy" @click="acceptRemove">
 				{{ t('versioniq', 'Accept: remove pin') }}
 			</NcButton>
 		</div>

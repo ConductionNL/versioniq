@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { ChangelogRangeEntry } from '../utils/changelog.ts'
+
 // Aggregate "changes between installed → target" panel — "Aggregate range
 // changelog on target selection" (add-changelog-visibility). Receives the
 // already-computed range (see utils/changelog.ts) — issues no requests of
@@ -6,7 +8,6 @@
 //
 // @spec openspec/specs/changelog-visibility/spec.md
 import { t } from '@nextcloud/l10n'
-import type { ChangelogRangeEntry } from '../utils/changelog'
 
 defineProps<{
 	entries: ChangelogRangeEntry[]

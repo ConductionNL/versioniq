@@ -1,9 +1,9 @@
+import { shallowMount } from '@vue/test-utils'
 // SPDX-License-Identifier: EUPL-1.2
 // Covers "Per-app update policy" and "Global kill switch and window"
 // ("Kill switch inert-but-stored"):
 // @spec openspec/specs/auto-update-policies/spec.md
-import { describe, it, expect, vi } from 'vitest'
-import { shallowMount } from '@vue/test-utils'
+import { describe, expect, it, vi } from 'vitest'
 import PolicySelector from './PolicySelector.vue'
 
 vi.mock('@nextcloud/l10n', () => ({

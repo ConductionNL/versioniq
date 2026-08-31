@@ -1,27 +1,31 @@
 <script setup lang="ts">
+import type {PrefillBindPayload} from './components/DiscoverPanel.vue';
+import type {PolicyLevel} from './components/PolicySelector.vue';
+import type { PinRecord } from './dialogs/PinDialog.vue'
+import type {LkgRecord} from './utils/migrationSafety.ts';
+
+import { t } from '@nextcloud/l10n'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { t } from '@nextcloud/l10n'
 import CachePanel from './components/CachePanel.vue'
 import ChangelogRangePanel from './components/ChangelogRangePanel.vue'
-import DiscoverPanel, { type PrefillBindPayload } from './components/DiscoverPanel.vue'
+import DiscoverPanel from './components/DiscoverPanel.vue'
 import HistoryPanel from './components/HistoryPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
-import PolicySelector, { type PolicyLevel } from './components/PolicySelector.vue'
+import PolicySelector from './components/PolicySelector.vue'
 import SourcesPanel from './components/SourcesPanel.vue'
 import TokensPanel from './components/TokensPanel.vue'
 import TrustedSourcesPanel from './components/TrustedSourcesPanel.vue'
 import VersionChangelog from './components/VersionChangelog.vue'
 import DowngradeConfirmDialog from './dialogs/DowngradeConfirmDialog.vue'
 import PinDialog from './dialogs/PinDialog.vue'
-import type { PinRecord } from './dialogs/PinDialog.vue'
 import PinOverrideDialog from './dialogs/PinOverrideDialog.vue'
 import ShaMismatchDialog from './dialogs/ShaMismatchDialog.vue'
-import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow'
-import { buildChangelogRange } from './utils/changelog'
-import { shouldOfferLkgRollback, type LkgRecord } from './utils/migrationSafety'
-import { compareVersions, parseVersionCore } from './utils/versionCompare'
+import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow.ts'
+import { buildChangelogRange } from './utils/changelog.ts'
+import { shouldOfferLkgRollback } from './utils/migrationSafety.ts'
+import { compareVersions, parseVersionCore } from './utils/versionCompare.ts'
 
 type AppOption = {
 	id: string
@@ -164,9 +168,10 @@ const legacyStorageKeys: Record<string, string> = {
 /**
  * Read one persisted UI flag, preferring the current key and falling back to
  * the pre-rename one. Returns null when neither is set.
+ *
  * @param key The current (post-rename) localStorage key.
  */
-const readStoredFlag = (key: string): string | null => {
+function readStoredFlag (key: string): string | null {
 	const current = window?.localStorage?.getItem(key) ?? null
 	if (current !== null) {
 		return current
@@ -233,7 +238,12 @@ const currentTab = ref('apps')
 const tablistEl = ref<HTMLElement | null>(null)
 
 // Literal strings (not interpolated) so they remain extractable for translation.
-const tabLabel = (id: string): string => ({
+/**
+ *
+ * @param id
+ */
+function tabLabel (id: string): string {
+  return {
 	apps: t('versioniq', 'Apps'),
 	history: t('versioniq', 'History'),
 	sources: t('versioniq', 'Sources'),
@@ -241,7 +251,8 @@ const tabLabel = (id: string): string => ({
 	trusted: t('versioniq', 'Trusted sources'),
 	discover: t('versioniq', 'Discover'),
 	cache: t('versioniq', 'Artifact cache'),
-}[id] ?? id)
+}[id] ?? id
+}
 
 // Prefill applied to the Sources bind form when a Discover hit's install
 // action is activated; see "Hits route into existing flows".
@@ -252,9 +263,10 @@ const sourcesPrefill = ref<PrefillBindPayload | null>(null)
  * expanded; see "Hits route into existing flows" ("Installed hit opens the
  * picker").
  *
+ * @param appId
  * @spec openspec/specs/app-discovery/spec.md
  */
-const onDiscoverOpenApp = async (appId: string): Promise<void> => {
+async function onDiscoverOpenApp (appId: string): Promise<void> {
 	currentTab.value = 'apps'
 	appFilter.value = appId
 	await onPickApp(appId)
@@ -265,9 +277,10 @@ const onDiscoverOpenApp = async (appId: string): Promise<void> => {
  * Sources bind flow, prefilled; see "Hits route into existing flows"
  * ("Installable candidate prefills bind").
  *
+ * @param payload
  * @spec openspec/specs/app-discovery/spec.md
  */
-const onDiscoverPrefillBind = (payload: PrefillBindPayload): void => {
+function onDiscoverPrefillBind (payload: PrefillBindPayload): void {
 	sourcesPrefill.value = payload
 	currentTab.value = 'sources'
 }
@@ -278,7 +291,7 @@ const onDiscoverPrefillBind = (payload: PrefillBindPayload): void => {
  *
  * @spec openspec/specs/app-discovery/spec.md
  */
-const onDiscoverOpenTrusted = (): void => {
+function onDiscoverOpenTrusted (): void {
 	currentTab.value = 'trusted'
 }
 
@@ -288,7 +301,11 @@ const appDetailTab = ref<'versions' | 'history'>('versions')
 
 // WAI-ARIA tablist keyboard support: Left/Right (and Home/End) move between
 // tabs and move focus to the newly selected tab, per the tabs pattern.
-const onTabKeydown = async (event: KeyboardEvent): Promise<void> => {
+/**
+ *
+ * @param event
+ */
+async function onTabKeydown (event: KeyboardEvent): Promise<void> {
 	const keys = ['ArrowRight', 'ArrowLeft', 'Home', 'End']
 	if (!keys.includes(event.key)) {
 		return
@@ -349,7 +366,11 @@ const isSafeMode = computed(() => safeModeEnabled.value)
 const includeDebug = computed(() => debugModeEnabled.value)
 const dryRunRequested = computed(() => dryRunEnabled.value)
 
-const apiUrl = (path: string): string => {
+/**
+ *
+ * @param path
+ */
+function apiUrl (path: string): string {
 	const oc = window.OC as unknown as {
 		webroot?: string
 	}
@@ -359,7 +380,12 @@ const apiUrl = (path: string): string => {
 
 const ocsHeaders: HeadersInit = { 'OCS-APIRequest': 'true' }
 
-const withOcsJson = (path: string, query: Record<string, string | number | boolean> = {}): string => {
+/**
+ *
+ * @param path
+ * @param query
+ */
+function withOcsJson (path: string, query: Record<string, string | number | boolean> = {}): string {
 	const separator = path.includes('?') ? '&' : '?'
 	const params = new URLSearchParams()
 	Object.entries(query).forEach(([key, value]) => {
@@ -370,7 +396,11 @@ const withOcsJson = (path: string, query: Record<string, string | number | boole
 	return `${path}${separator}${params.toString()}`
 }
 
-const unwrapOcsResponse = async <T, >(response: Response): Promise<T> => {
+/**
+ *
+ * @param response
+ */
+async function unwrapOcsResponse <T, >(response: Response): Promise<T> {
 	if (!response.ok) {
 		// Keep payload-based failures parseable for callers that return useful data with 4xx.
 	}
@@ -400,7 +430,11 @@ type OcsWrapped<T> = {
 	data?: T
 }
 
-const unwrapOcsResponseWithMeta = async <T, >(response: Response): Promise<{ payload: T, metaMessage?: string }> => {
+/**
+ *
+ * @param response
+ */
+async function unwrapOcsResponseWithMeta <T, >(response: Response): Promise<{ payload: T, metaMessage?: string }> {
 	const raw = (await response.json()) as OcsWrapped<T>
 	if (typeof raw !== 'object' || raw === null) {
 		throw new Error('Unexpected response format')
@@ -418,7 +452,24 @@ const unwrapOcsResponseWithMeta = async <T, >(response: Response): Promise<{ pay
 	return { payload: data }
 }
 
-const normalizeInstallResult = (payload: {
+/**
+ *
+ * @param payload
+ * @param payload.appId
+ * @param payload.fromVersion
+ * @param payload.toVersion
+ * @param payload.installedVersion
+ * @param payload.updateType
+ * @param payload.message
+ * @param payload.dryRun
+ * @param payload.installStatus
+ * @param payload.stage
+ * @param payload.category
+ * @param payload.hint
+ * @param payload.debug
+ * @param payload.recordedShaMatched
+ */
+function normalizeInstallResult (payload: {
 	appId?: string
 	fromVersion?: string | null
 	toVersion?: string
@@ -432,7 +483,7 @@ const normalizeInstallResult = (payload: {
 	hint?: string | null
 	debug?: unknown
 	recordedShaMatched?: boolean
-}): InstallResult => {
+}): InstallResult {
 	const normalizedUpdateType = payload.updateType ?? 'none'
 	const normalizedFrom = payload.fromVersion ?? null
 	const normalizedTo = payload.toVersion || ''
@@ -500,7 +551,10 @@ const installStatusLabel = computed(() => {
 	}
 })
 
-const checkUpdateChannel = async (): Promise<void> => {
+/**
+ *
+ */
+async function checkUpdateChannel (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/update-channel')), { headers: { ...ocsHeaders, Accept: 'application/json' } })
 		const payload = await unwrapOcsResponse<{ updateChannel: string }>(response)
@@ -510,7 +564,10 @@ const checkUpdateChannel = async (): Promise<void> => {
 	}
 }
 
-const loadApps = async (): Promise<void> => {
+/**
+ *
+ */
+async function loadApps (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/apps')), { headers: { ...ocsHeaders, Accept: 'application/json' } })
 		const payload = await unwrapOcsResponse<{ apps: AppOption[] }>(response)
@@ -530,7 +587,15 @@ const loadApps = async (): Promise<void> => {
 // found nothing, never swept because cron has not run, or the fetch failed —
 // and without the timestamp all three render as "no advisories", which reads
 // as reassurance the data does not support.
-const loadAdvisories = async (): Promise<void> => {
+/**
+ *
+ */
+// Unix seconds of the last completed sweep; null means none has completed.
+const advisoriesCheckedAt = ref<number | null>(null)
+// True only when the fetch itself failed — never merely because the map is empty.
+const advisoriesUnavailable = ref(false)
+
+async function loadAdvisories (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/advisories')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
 		const payload = await unwrapOcsResponse<{ advisories: Record<string, AdvisoryCorrelation>, checkedAt: number | null }>(response)
@@ -573,7 +638,10 @@ const isAdvisorySettingsDirty = computed((): boolean =>
 	advisoryIntervalInput.value.trim() !== advisorySavedInterval.value
 	|| advisoryDigestEnabled.value !== advisorySavedDigest.value)
 
-const loadAdvisorySettings = async (): Promise<void> => {
+/**
+ *
+ */
+async function loadAdvisorySettings (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/advisory/settings')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
 		const payload = await unwrapOcsResponse<{ intervalHours: number, minIntervalHours: number, maxIntervalHours: number, digestEnabled: boolean }>(response)
@@ -588,7 +656,10 @@ const loadAdvisorySettings = async (): Promise<void> => {
 	}
 }
 
-const saveAdvisorySettings = async (): Promise<void> => {
+/**
+ *
+ */
+async function saveAdvisorySettings (): Promise<void> {
 	isSavingAdvisorySettings.value = true
 	advisorySettingsError.value = ''
 	advisorySettingsNotice.value = ''
@@ -615,11 +686,6 @@ const saveAdvisorySettings = async (): Promise<void> => {
 		isSavingAdvisorySettings.value = false
 	}
 }
-
-// Unix seconds of the last completed sweep; null means none has completed.
-const advisoriesCheckedAt = ref<number | null>(null)
-// True only when the fetch itself failed — never merely because the map is empty.
-const advisoriesUnavailable = ref(false)
 
 /**
  * How the advisory data should describe itself. Deliberately says something
@@ -651,7 +717,11 @@ const advisoryFor = (appId: string): AdvisoryCorrelation | null => advisories.va
 // "Recorded digests are binding-scoped and surfaced". After a reinstall that
 // verified the digest against that same version, the badge is upgraded to
 // reflect the fresh verification instead of just "on record".
-const recordedShaBadgeLabel = (version: string): string => {
+/**
+ *
+ * @param version
+ */
+function recordedShaBadgeLabel (version: string): string {
 	const lastResult = lastInstallResult.value
 	if (lastResult?.recordedShaMatched === true && lastResult.toVersion === version) {
 		return t('versioniq', 'Matches first-install checksum')
@@ -659,7 +729,11 @@ const recordedShaBadgeLabel = (version: string): string => {
 	return t('versioniq', 'Checksum recorded')
 }
 
-const advisoryBadgeLabel = (state: AdvisoryCorrelation['state']): string => {
+/**
+ *
+ * @param state
+ */
+function advisoryBadgeLabel (state: AdvisoryCorrelation['state']): string {
 	if (state === 'pinned-to-vulnerable') {
 		return t('versioniq', 'Vulnerable version')
 	}
@@ -672,7 +746,10 @@ const advisoryBadgeLabel = (state: AdvisoryCorrelation['state']): string => {
 // Pins, like advisories, are fetched separately from the app list and never
 // block it; read-only for badges, writes go through PinDialog / the drift
 // banner / the pin-override dialog. See "Honest pin presentation".
-const loadPins = async (): Promise<void> => {
+/**
+ *
+ */
+async function loadPins (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/pins')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
 		const payload = await unwrapOcsResponse<{ pins: PinRecord[] }>(response)
@@ -694,7 +771,11 @@ const loadPins = async (): Promise<void> => {
 
 const pinFor = (appId: string): PinRecord | null => pins.value[appId] ?? null
 
-const pinTooltip = (pin: PinRecord | null): string => {
+/**
+ *
+ * @param pin
+ */
+function pinTooltip (pin: PinRecord | null): string {
 	if (!pin) {
 		return ''
 	}
@@ -708,7 +789,10 @@ const pinTooltip = (pin: PinRecord | null): string => {
 // Auto-update policies + global settings, fetched once and kept in a
 // per-appId map, same pattern as pins/advisories; read-only badges here,
 // writes go through onPolicyChange()/saveAutoUpdateSettings().
-const loadPolicies = async (): Promise<void> => {
+/**
+ *
+ */
+async function loadPolicies (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/policies')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
 		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string }>(response)
@@ -729,7 +813,12 @@ const loadPolicies = async (): Promise<void> => {
 
 const policyLevelFor = (appId: string): PolicyLevel => policies.value[appId]?.level ?? 'none'
 
-const onPolicyChange = async (appId: string, level: PolicyLevel): Promise<void> => {
+/**
+ *
+ * @param appId
+ * @param level
+ */
+async function onPolicyChange (appId: string, level: PolicyLevel): Promise<void> {
 	if (isSavingPolicy.value) {
 		return
 	}
@@ -768,7 +857,10 @@ const isAutoUpdateSettingsDirty = computed(() => (
 	|| autoUpdateWindowInput.value.trim() !== savedAutoUpdateWindow.value
 ))
 
-const saveAutoUpdateSettings = async (): Promise<void> => {
+/**
+ *
+ */
+async function saveAutoUpdateSettings (): Promise<void> {
 	autoUpdateSettingsError.value = ''
 	autoUpdateSettingsNotice.value = ''
 	if (!isAutoUpdateWindowValid.value) {
@@ -813,17 +905,31 @@ const saveAutoUpdateSettings = async (): Promise<void> => {
 	}
 }
 
-const openPinDialog = (appId: string, version: string): void => {
+/**
+ *
+ * @param appId
+ * @param version
+ */
+function openPinDialog (appId: string, version: string): void {
 	pinDialogAppId.value = appId
 	pinDialogVersion.value = version
 	isPinDialogOpen.value = true
 }
 
-const onPinned = (pin: PinRecord): void => {
+/**
+ *
+ * @param pin
+ */
+function onPinned (pin: PinRecord): void {
 	pins.value = { ...pins.value, [pin.appId]: pin }
 }
 
-const onPinDriftUpdated = (appId: string, pin: PinRecord | null): void => {
+/**
+ *
+ * @param appId
+ * @param pin
+ */
+function onPinDriftUpdated (appId: string, pin: PinRecord | null): void {
 	const next = { ...pins.value }
 	if (pin) {
 		next[appId] = pin
@@ -833,7 +939,11 @@ const onPinDriftUpdated = (appId: string, pin: PinRecord | null): void => {
 	pins.value = next
 }
 
-const unpinApp = async (appId: string): Promise<void> => {
+/**
+ *
+ * @param appId
+ */
+async function unpinApp (appId: string): Promise<void> {
 	try {
 		await ensurePasswordConfirmation()
 		const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/pin`)), {
@@ -849,7 +959,10 @@ const unpinApp = async (appId: string): Promise<void> => {
 	}
 }
 
-const resetSelectedAppState = (): void => {
+/**
+ *
+ */
+function resetSelectedAppState (): void {
 	versions.value = []
 	selectedVersion.value = ''
 	versionFilter.value = ''
@@ -862,7 +975,11 @@ const resetSelectedAppState = (): void => {
 	appDetailTab.value = 'versions'
 }
 
-const checkVersions = async (preserveInstallResult = false): Promise<void> => {
+/**
+ *
+ * @param preserveInstallResult
+ */
+async function checkVersions (preserveInstallResult = false): Promise<void> {
 	const appId = selectedApp.value.trim()
 	versions.value = []
 	selectedVersion.value = ''
@@ -907,14 +1024,21 @@ const checkVersions = async (preserveInstallResult = false): Promise<void> => {
 	}
 }
 
-const isDowngradeBlockedBySafeMode = (version: string): boolean => {
+/**
+ *
+ * @param version
+ */
+function isDowngradeBlockedBySafeMode (version: string): boolean {
 	if (!isSafeMode.value || !installedVersion.value || !version) {
 		return false
 	}
 	return compareVersions(version, installedVersion.value) < 0
 }
 
-const ensurePasswordConfirmation = async (): Promise<void> => {
+/**
+ *
+ */
+async function ensurePasswordConfirmation (): Promise<void> {
 	const windowOC = window as Window & {
 		OC?: {
 			PasswordConfirmation?: {
@@ -942,19 +1066,31 @@ const ensurePasswordConfirmation = async (): Promise<void> => {
 	})
 }
 
-const onSelectApp = (appId: string) => {
+/**
+ *
+ * @param appId
+ */
+function onSelectApp (appId: string) {
 	selectedApp.value = appId
 	resetSelectedAppState()
 }
 
 // A source was (re)bound via the Sources panel; refresh versions if that app is selected.
-const onPanelBound = async (appId: string): Promise<void> => {
+/**
+ *
+ * @param appId
+ */
+async function onPanelBound (appId: string): Promise<void> {
 	if (selectedApp.value === appId) {
 		await checkVersions(true)
 	}
 }
 
-const onPickApp = async (appId: string) => {
+/**
+ *
+ * @param appId
+ */
+async function onPickApp (appId: string) {
 	if (!appId || isCheckingVersions.value || isInstallingVersion.value) {
 		return
 	}
@@ -963,7 +1099,10 @@ const onPickApp = async (appId: string) => {
 	await checkVersions()
 }
 
-const clearSelectedApp = () => {
+/**
+ *
+ */
+function clearSelectedApp () {
 	selectedApp.value = ''
 	errorMessage.value = ''
 	resetSelectedAppState()
@@ -988,11 +1127,19 @@ const selectedAppOption = computed(() => {
 	return apps.value.find((app) => app.id === selectedApp.value) ?? null
 })
 
-const appCardDescription = (app: AppOption): string => {
+/**
+ *
+ * @param app
+ */
+function appCardDescription (app: AppOption): string {
 	return app.summary || app.description || 'No description available.'
 }
 
-const appCardFallback = (app: AppOption): string => {
+/**
+ *
+ * @param app
+ */
+function appCardFallback (app: AppOption): string {
 	const source = (app.label || app.id).trim()
 	if (source === '') {
 		return '?'
@@ -1023,7 +1170,11 @@ const visibleVersions = computed(() => {
 	return filteredVersions.value
 })
 
-const debugValueToString = (value: unknown): string => {
+/**
+ *
+ * @param value
+ */
+function debugValueToString (value: unknown): string {
 	if (value === null) {
 		return 'null'
 	}
@@ -1043,7 +1194,12 @@ const debugValueToString = (value: unknown): string => {
 	return JSON.stringify(value)
 }
 
-const formatDebugLines = (value: unknown, depth = 0): string[] => {
+/**
+ *
+ * @param value
+ * @param depth
+ */
+function formatDebugLines (value: unknown, depth = 0): string[] {
 	const indent = ' '.repeat(depth * 2)
 	const lines: string[] = []
 
@@ -1105,7 +1261,11 @@ const formatDebugLines = (value: unknown, depth = 0): string[] => {
 	return lines
 }
 
-const debugHasData = (value: unknown): boolean => {
+/**
+ *
+ * @param value
+ */
+function debugHasData (value: unknown): boolean {
 	if (value === null || value === undefined) {
 		return false
 	}
@@ -1117,7 +1277,11 @@ const debugHasData = (value: unknown): boolean => {
 	return true
 }
 
-const debugToTextLines = (value: unknown): string[] => {
+/**
+ *
+ * @param value
+ */
+function debugToTextLines (value: unknown): string[] {
 	const lines = formatDebugLines(value)
 	if (lines.length === 0) {
 		return ['—']
@@ -1126,7 +1290,12 @@ const debugToTextLines = (value: unknown): string[] => {
 	return lines
 }
 
-const getVersionRangeSummary = (from: string, to: string): VersionRangeInfo | null => {
+/**
+ *
+ * @param from
+ * @param to
+ */
+function getVersionRangeSummary (from: string, to: string): VersionRangeInfo | null {
 	if (!from || !to || from === to) {
 		return null
 	}
@@ -1195,7 +1364,11 @@ const downgradeVersionRange = computed(() => getVersionRangeSummary(downgradeCon
 // range changelog on target selection".
 const changelogRange = computed(() => buildChangelogRange(installedVersion.value, selectedVersion.value, versions.value))
 
-const versionRangeText = (summary: VersionRangeInfo | null): string => {
+/**
+ *
+ * @param summary
+ */
+function versionRangeText (summary: VersionRangeInfo | null): string {
 	if (!summary) {
 		return ''
 	}
@@ -1214,7 +1387,12 @@ const versionRangeText = (summary: VersionRangeInfo | null): string => {
 // downgrade guard without requiring `allowDowngrade` — see "Server-side
 // downgrade guard". A request failure degrades to `null` (generic warning),
 // consistent with a server-side diff failure — it never blocks the downgrade.
-const fetchDowngradePreview = async (appId: string, version: string): Promise<string[] | null> => {
+/**
+ *
+ * @param appId
+ * @param version
+ */
+async function fetchDowngradePreview (appId: string, version: string): Promise<string[] | null> {
 	try {
 		const { payload } = await requestInstall(appId, version, undefined, false, false, false, true)
 
@@ -1224,7 +1402,13 @@ const fetchDowngradePreview = async (appId: string, version: string): Promise<st
 	}
 }
 
-const confirmDowngrade = async (appId: string, fromVersion: string, toVersion: string): Promise<boolean> => {
+/**
+ *
+ * @param appId
+ * @param fromVersion
+ * @param toVersion
+ */
+async function confirmDowngrade (appId: string, fromVersion: string, toVersion: string): Promise<boolean> {
 	if (downgradeResolve) {
 		downgradeResolve(false)
 		downgradeResolve = null
@@ -1243,13 +1427,21 @@ const confirmDowngrade = async (appId: string, fromVersion: string, toVersion: s
 // The single exit from the confirmation dialog. Cancel, the Downgrade button
 // and dismissing all arrive here, so the awaiting promise is always settled —
 // a dismissed dialog can never leave the install flow hanging.
-const onDowngradeResolved = (accept: boolean): void => {
+/**
+ *
+ * @param accept
+ */
+function onDowngradeResolved (accept: boolean): void {
 	isDowngradeConfirmOpen.value = false
 	downgradeResolve?.(accept)
 	downgradeResolve = null
 }
 
-const onSelectVersion = (version: string): void => {
+/**
+ *
+ * @param version
+ */
+function onSelectVersion (version: string): void {
 	if (isDowngradeBlockedBySafeMode(version)) {
 		errorMessage.value = 'Safe mode is enabled. Disable it to downgrade.'
 		return
@@ -1278,15 +1470,23 @@ type InstallApiPayload = {
 	orphanedMigrations?: string[] | null
 }
 
-const requestInstall = async (
-	appId: string,
+/**
+ *
+ * @param appId
+ * @param version
+ * @param overridePin
+ * @param pinRequested
+ * @param acceptNewSha
+ * @param allowDowngrade
+ * @param forceDryRun
+ */
+async function requestInstall (appId: string,
 	version: string,
 	overridePin?: 'repin' | 'unpin',
 	pinRequested = false,
 	acceptNewSha = false,
 	allowDowngrade = false,
-	forceDryRun = false,
-): Promise<{ payload: InstallApiPayload, metaMessage?: string }> => {
+	forceDryRun = false): Promise<{ payload: InstallApiPayload, metaMessage?: string }> {
 	// dryRun is sent explicitly and independently of debug — see MODIFIED
 	// "Debug Mode". debug now controls diagnostic verbosity only.
 	const query: Record<string, string> = {
@@ -1326,7 +1526,13 @@ const requestInstall = async (
 // Offers Re-pin / Unpin-and-install / Cancel when the install endpoint
 // refuses to overwrite a pin (409); see "Pins are enforced on Versioniq's
 // own install path".
-const confirmPinOverride = (appId: string, pinnedVersion: string, targetVersion: string): Promise<'repin' | 'unpin' | 'cancel'> => {
+/**
+ *
+ * @param appId
+ * @param pinnedVersion
+ * @param targetVersion
+ */
+function confirmPinOverride (appId: string, pinnedVersion: string, targetVersion: string): Promise<'repin' | 'unpin' | 'cancel'> {
 	if (pinOverrideResolve) {
 		pinOverrideResolve('cancel')
 		pinOverrideResolve = null
@@ -1342,7 +1548,11 @@ const confirmPinOverride = (appId: string, pinnedVersion: string, targetVersion:
 	})
 }
 
-const onPinOverrideResolve = (choice: 'repin' | 'unpin' | 'cancel'): void => {
+/**
+ *
+ * @param choice
+ */
+function onPinOverrideResolve (choice: 'repin' | 'unpin' | 'cancel'): void {
 	pinOverrideResolve?.(choice)
 	pinOverrideResolve = null
 }
@@ -1351,7 +1561,14 @@ const onPinOverrideResolve = (choice: 'repin' | 'unpin' | 'cancel'): void => {
 // refuses to reinstall because the downloaded artifact does not match the
 // SHA-256 recorded at first install (422, code "sha_mismatch"); see
 // "Recorded SHA-256 enforced on reinstall".
-const confirmShaMismatch = (appId: string, version: string, expectedSha: string, actualSha: string): Promise<boolean> => {
+/**
+ *
+ * @param appId
+ * @param version
+ * @param expectedSha
+ * @param actualSha
+ */
+function confirmShaMismatch (appId: string, version: string, expectedSha: string, actualSha: string): Promise<boolean> {
 	if (shaMismatchResolve) {
 		shaMismatchResolve(false)
 		shaMismatchResolve = null
@@ -1368,7 +1585,11 @@ const confirmShaMismatch = (appId: string, version: string, expectedSha: string,
 	})
 }
 
-const onShaMismatchResolve = (accept: boolean): void => {
+/**
+ *
+ * @param accept
+ */
+function onShaMismatchResolve (accept: boolean): void {
 	shaMismatchResolve?.(accept)
 	shaMismatchResolve = null
 }
@@ -1377,7 +1598,12 @@ const onShaMismatchResolve = (accept: boolean): void => {
 // same install path (source resolution, allowlist, integrity checks all
 // apply) — see "Re-pin reinstalls the pinned version". No override is
 // needed: the target equals the pin's own version.
-const onRepinRequested = async (appId: string, version: string): Promise<void> => {
+/**
+ *
+ * @param appId
+ * @param version
+ */
+async function onRepinRequested (appId: string, version: string): Promise<void> {
 	if (isInstallingVersion.value) {
 		return
 	}
@@ -1400,7 +1626,10 @@ const onRepinRequested = async (appId: string, version: string): Promise<void> =
 	}
 }
 
-const performInstall = async (): Promise<void> => {
+/**
+ *
+ */
+async function performInstall (): Promise<void> {
 	if (!selectedApp.value || !selectedVersion.value || isInstallingVersion.value) {
 		return
 	}
@@ -1525,7 +1754,12 @@ const performInstall = async (): Promise<void> => {
 // target". The safe-mode auto-clear watcher is suppressed for this
 // programmatic selection since a rollback target is, by construction, an
 // intentional downgrade.
-const rollbackToLastKnownGood = async (appId: string, version: string): Promise<void> => {
+/**
+ *
+ * @param appId
+ * @param version
+ */
+async function rollbackToLastKnownGood (appId: string, version: string): Promise<void> {
 	if (isInstallingVersion.value || isCheckingVersions.value) {
 		return
 	}
@@ -1655,33 +1889,33 @@ watch(dryRunEnabled, () => {
 		<div id="versioniq-main" :class="$style.content">
 			<DowngradeConfirmDialog
 				:open="isDowngradeConfirmOpen"
-				:app-id="downgradeConfirmApp"
-				:from-version="downgradeConfirmFromVersion"
-				:to-version="downgradeConfirmToVersion"
-				:range-text="downgradeVersionRange ? versionRangeText(downgradeVersionRange) : ''"
-				:orphaned-migrations="downgradeOrphanedMigrations"
+				:appId="downgradeConfirmApp"
+				:fromVersion="downgradeConfirmFromVersion"
+				:toVersion="downgradeConfirmToVersion"
+				:rangeText="downgradeVersionRange ? versionRangeText(downgradeVersionRange) : ''"
+				:orphanedMigrations="downgradeOrphanedMigrations"
 				:busy="isInstallingVersion"
 				@update:open="isDowngradeConfirmOpen = $event"
 				@resolve="onDowngradeResolved" />
 			<PinDialog
 				:open="isPinDialogOpen"
-				:app-id="pinDialogAppId"
+				:appId="pinDialogAppId"
 				:version="pinDialogVersion"
 				@update:open="isPinDialogOpen = $event"
 				@pinned="onPinned" />
 			<PinOverrideDialog
 				:open="isPinOverrideDialogOpen"
-				:app-id="pinOverrideAppId"
-				:pinned-version="pinOverridePinnedVersion"
-				:target-version="pinOverrideTargetVersion"
+				:appId="pinOverrideAppId"
+				:pinnedVersion="pinOverridePinnedVersion"
+				:targetVersion="pinOverrideTargetVersion"
 				@update:open="isPinOverrideDialogOpen = $event"
 				@resolve="onPinOverrideResolve" />
 			<ShaMismatchDialog
 				:open="isShaMismatchDialogOpen"
-				:app-id="shaMismatchAppId"
+				:appId="shaMismatchAppId"
 				:version="shaMismatchVersion"
-				:expected-sha="shaMismatchExpectedSha"
-				:actual-sha="shaMismatchActualSha"
+				:expectedSha="shaMismatchExpectedSha"
+				:actualSha="shaMismatchActualSha"
 				@update:open="isShaMismatchDialogOpen = $event"
 				@resolve="onShaMismatchResolve" />
 			<h2>{{ t('versioniq', 'Versioniq') }}</h2>
@@ -1698,7 +1932,7 @@ watch(dryRunEnabled, () => {
 						:aria-selected="currentTab === tab.id ? 'true' : 'false'"
 						:aria-controls="`${tab.id}-panel`"
 						:tabindex="currentTab === tab.id ? 0 : -1"
-						:type="currentTab === tab.id ? 'primary' : 'tertiary'"
+						:variant="currentTab === tab.id ? 'primary' : 'tertiary'"
 						@click="currentTab = tab.id">
 						{{ tabLabel(tab.id) }}
 					</NcButton>
@@ -1779,7 +2013,7 @@ watch(dryRunEnabled, () => {
 									{{ autoUpdateSettingsNotice }}
 								</p>
 								<NcButton
-									type="primary"
+									variant="primary"
 									data-testid="auto-update-settings-save"
 									:disabled="isSavingAutoUpdateSettings || !isAutoUpdateSettingsDirty || !isAutoUpdateWindowValid"
 									@click="saveAutoUpdateSettings">
@@ -1822,7 +2056,7 @@ watch(dryRunEnabled, () => {
 									{{ advisorySettingsNotice }}
 								</p>
 								<NcButton
-									type="primary"
+									variant="primary"
 									data-testid="advisory-settings-save"
 									:disabled="isSavingAdvisorySettings || !isAdvisorySettingsDirty || !isAdvisoryIntervalValid"
 									@click="saveAdvisorySettings">
@@ -1922,9 +2156,9 @@ watch(dryRunEnabled, () => {
 												</p>
 												<PolicySelector
 													v-if="!app.isCore"
-													:app-id="app.id"
+													:appId="app.id"
 													:level="policyLevelFor(app.id)"
-													:auto-update-enabled="autoUpdateEnabled"
+													:autoUpdateEnabled="autoUpdateEnabled"
 													:disabled="isSavingPolicy"
 													@change="onPolicyChange" />
 											</div>
@@ -2011,10 +2245,10 @@ watch(dryRunEnabled, () => {
 										</div>
 										<PinDriftBanner
 											v-if="pinFor(selectedApp)?.driftedTo"
-											:app-id="selectedApp"
+											:appId="selectedApp"
 											:pin="pinFor(selectedApp)!"
 											@update:pin="onPinDriftUpdated"
-											@repin-requested="onRepinRequested" />
+											@repinRequested="onRepinRequested" />
 										<div v-if="selectedVersion" :class="$style.selectedVersion">
 											<span :class="$style.installedLabel">Selected version</span>
 											<span :class="$style.versionTransition">
@@ -2139,7 +2373,7 @@ watch(dryRunEnabled, () => {
 											{{ errorMessage }}
 										</p>
 									</template>
-									<HistoryPanel v-else-if="selectedApp" :key="selectedApp" :app-id="selectedApp" />
+									<HistoryPanel v-else-if="selectedApp" :key="selectedApp" :appId="selectedApp" />
 								</div>
 							</div>
 							<div v-if="hasSplitLayout && appDetailTab === 'versions'" :class="$style.rightColumn">
@@ -2244,9 +2478,9 @@ watch(dryRunEnabled, () => {
 					id="discover-panel"
 					role="tabpanel"
 					aria-labelledby="discover-tab"
-					@open-app="onDiscoverOpenApp"
-					@prefill-bind="onDiscoverPrefillBind"
-					@open-trusted="onDiscoverOpenTrusted" />
+					@openApp="onDiscoverOpenApp"
+					@prefillBind="onDiscoverPrefillBind"
+					@openTrusted="onDiscoverOpenTrusted" />
 				<CachePanel v-show="currentTab === 'cache'"
 					id="cache-panel"
 					role="tabpanel"
@@ -2271,7 +2505,7 @@ watch(dryRunEnabled, () => {
  */
 .skipLink {
 	position: absolute;
-	left: -9999px;
+	inset-inline-start: -9999px;
 	z-index: 100;
 	padding: 8px 16px;
 	border-radius: var(--border-radius);
@@ -2280,7 +2514,7 @@ watch(dryRunEnabled, () => {
 }
 
 .skipLink:focus {
-	left: 8px;
+	inset-inline-start: 8px;
 	top: 8px;
 	outline: 2px solid var(--color-primary-element);
 }
@@ -2470,7 +2704,7 @@ watch(dryRunEnabled, () => {
 .appCardMedia {
 	display: flex;
 	align-items: center;
-	margin-left: auto;
+	margin-inline-start: auto;
 	flex-shrink: 0;
 }
 
@@ -2704,7 +2938,7 @@ watch(dryRunEnabled, () => {
 }
 
 .installed {
-	border-left: 4px solid var(--color-border-dark);
+	border-inline-start: 4px solid var(--color-border-dark);
 	padding: 8px 10px;
 	width: 100%;
 	margin: 0;
@@ -2724,7 +2958,7 @@ watch(dryRunEnabled, () => {
 	pointer-events: none;
 	background: var(--color-main-background);
 	border: 1px solid var(--color-border-dark);
-	border-left-width: 4px;
+	border-inline-start-width: 4px;
 	border-radius: 6px;
 	padding: 10px;
 	display: flex;
@@ -2754,7 +2988,7 @@ watch(dryRunEnabled, () => {
 .installedLabel {
 	font-size: 12px;
 	color: var(--color-text-maxcontrast);
-	margin-right: 6px;
+	margin-inline-end: 6px;
 }
 
 .installedValue {
@@ -2893,7 +3127,7 @@ watch(dryRunEnabled, () => {
 	border-radius: 9999px;
 	padding: 2px 10px;
 	line-height: 1.3;
-	margin-left: auto;
+	margin-inline-start: auto;
 }
 
 .versionActionButton {
@@ -3035,7 +3269,7 @@ watch(dryRunEnabled, () => {
 	border: 2px solid rgba(255, 255, 255, 0.35);
 	border-top-color: currentColor;
 	border-radius: 50%;
-	margin-right: 7px;
+	margin-inline-end: 7px;
 	vertical-align: -1px;
 	animation: spin 0.85s linear infinite;
 }

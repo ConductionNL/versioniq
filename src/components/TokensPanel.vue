@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
 import { t } from '@nextcloud/l10n'
+import { onMounted, ref } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
-import { ocsGet, ocsWrite } from '../ocs'
+import { ocsGet, ocsWrite } from '../ocs.ts'
 
 type ExpiryState = 'ok' | 'expiring' | 'expired' | 'unknown'
 
@@ -40,7 +40,10 @@ const forgeOptions: SelectOption[] = [
 	{ id: 'codeberg', label: 'Codeberg' },
 ]
 
-const loadPats = async (): Promise<void> => {
+/**
+ *
+ */
+async function loadPats (): Promise<void> {
 	try {
 		const { payload } = await ocsGet<{ pats?: Pat[] }>(PATS)
 		pats.value = Array.isArray(payload.pats) ? payload.pats : []
@@ -52,10 +55,11 @@ const loadPats = async (): Promise<void> => {
 /**
  * Badge label for a token's derived expiry state; see "Expiry state in the
  * PAT API and UI" ("Badges reflect state").
+ *
  * @param pat
  * @spec openspec/specs/pat-management/spec.md
  */
-const expiryBadgeLabel = (pat: Pat): string => {
+function expiryBadgeLabel (pat: Pat): string {
 	if (pat.expiryState === 'expiring') {
 		const days = pat.daysRemaining ?? 0
 		return t('versioniq', 'Expires in {days} days', { days })
@@ -69,13 +73,19 @@ const expiryBadgeLabel = (pat: Pat): string => {
 	return ''
 }
 
-const derivedTargetPattern = (): string => {
+/**
+ *
+ */
+function derivedTargetPattern (): string {
 	const o = owner.value.trim()
 	const r = repo.value.trim()
 	return r ? `${o}/${r}` : `${o}/*`
 }
 
-const addToken = async (): Promise<void> => {
+/**
+ *
+ */
+async function addToken (): Promise<void> {
 	error.value = ''
 	notice.value = ''
 	if (!label.value.trim() || !owner.value.trim() || !token.value.trim()) {
@@ -107,7 +117,11 @@ const addToken = async (): Promise<void> => {
 	}
 }
 
-const toggleShare = async (pat: Pat): Promise<void> => {
+/**
+ *
+ * @param pat
+ */
+async function toggleShare (pat: Pat): Promise<void> {
 	error.value = ''
 	loading.value = true
 	try {
@@ -126,7 +140,11 @@ const toggleShare = async (pat: Pat): Promise<void> => {
 	}
 }
 
-const deleteToken = async (pat: Pat): Promise<void> => {
+/**
+ *
+ * @param pat
+ */
+async function deleteToken (pat: Pat): Promise<void> {
 	error.value = ''
 	loading.value = true
 	try {
@@ -143,7 +161,10 @@ const deleteToken = async (pat: Pat): Promise<void> => {
 	}
 }
 
-const fetchDeeplink = async (): Promise<void> => {
+/**
+ *
+ */
+async function fetchDeeplink (): Promise<void> {
 	error.value = ''
 	deeplink.value = null
 	try {
@@ -194,10 +215,10 @@ onMounted(loadPats)
 					<span v-if="pat.tokenHint" :class="$style.hint">…{{ pat.tokenHint }}</span>
 				</span>
 				<span :class="$style.actions">
-					<NcButton type="tertiary" :disabled="loading" @click="toggleShare(pat)">
+					<NcButton variant="tertiary" :disabled="loading" @click="toggleShare(pat)">
 						{{ pat.sharedWithAdmins ? t('versioniq', 'Unshare') : t('versioniq', 'Share with admins') }}
 					</NcButton>
-					<NcButton type="tertiary" :disabled="loading" @click="deleteToken(pat)">{{ t('versioniq', 'Delete') }}</NcButton>
+					<NcButton variant="tertiary" :disabled="loading" @click="deleteToken(pat)">{{ t('versioniq', 'Delete') }}</NcButton>
 				</span>
 			</li>
 			<li v-if="pats.length === 0" :class="$style.empty">
@@ -208,12 +229,12 @@ onMounted(loadPats)
 		<form :class="$style.form" @submit.prevent="addToken">
 			<NcSelect
 				v-model="forge"
-				:input-label="t('versioniq', 'Forge')"
+				:inputLabel="t('versioniq', 'Forge')"
 				:options="forgeOptions"
 				:reduce="(option) => option.id"
 				:clearable="false"
 				label="label" />
-			<NcButton type="secondary" :disabled="loading" @click="fetchDeeplink">
+			<NcButton variant="secondary" :disabled="loading" @click="fetchDeeplink">
 				{{ t('versioniq', 'Create a token on {forge}…', { forge }) }}
 			</NcButton>
 			<NcNoteCard v-if="deeplink" type="info">
@@ -240,12 +261,19 @@ onMounted(loadPats)
 
 <style module>
 .panel { display: flex; flex-direction: column; gap: 12px; }
+
 .hint { color: var(--color-text-maxcontrast); font-size: 13px; margin: 0; }
+
 .list { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+
 .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--color-border); }
+
 .actions { display: flex; gap: 4px; }
+
 .empty { color: var(--color-text-maxcontrast); font-style: italic; }
+
 .form { display: flex; flex-direction: column; gap: 8px; max-width: 480px; margin-top: 8px; }
+
 .expiryBadge {
 	display: inline-flex;
 	align-items: center;
@@ -256,12 +284,14 @@ onMounted(loadPats)
 	font-size: 11px;
 	font-weight: 700;
 	letter-spacing: 0.02em;
-	margin-left: 4px;
+	margin-inline-start: 4px;
 }
+
 .expiryBadgeError {
 	background: var(--color-error, #d32f2f);
 	color: var(--color-primary-text, #fff);
 }
+
 .expiryBadgeNeutral {
 	background: var(--color-background-darker, #ededed);
 	color: var(--color-text-maxcontrast);

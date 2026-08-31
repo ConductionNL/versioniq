@@ -1,10 +1,10 @@
+import { mount } from '@vue/test-utils'
 // SPDX-License-Identifier: EUPL-1.2
 // Covers "Drift response — notify and offer re-pin" (Re-pin / Accept):
 // @spec openspec/specs/version-pinning/spec.md
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PinDriftBanner from './PinDriftBanner.vue'
-import { ocsWrite } from '../ocs'
+import { ocsWrite } from '../ocs.ts'
 
 vi.mock('@nextcloud/l10n', () => ({
 	t: (_app: string, text: string, vars: Record<string, unknown> = {}) =>

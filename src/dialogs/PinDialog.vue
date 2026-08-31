@@ -7,12 +7,12 @@ version" and "Honest pin presentation".
 @spec openspec/specs/version-pinning/spec.md
 -->
 <script setup lang="ts">
-import { ref, watch } from 'vue'
 import { t } from '@nextcloud/l10n'
+import { ref, watch } from 'vue'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
-import { ocsWrite } from '../ocs'
+import { ocsWrite } from '../ocs.ts'
 
 export type PinRecord = {
 	appId: string
@@ -47,7 +47,10 @@ watch(() => props.open, (isOpen) => {
 	}
 })
 
-const confirmPin = async (): Promise<void> => {
+/**
+ *
+ */
+async function confirmPin (): Promise<void> {
 	saving.value = true
 	error.value = ''
 	try {
@@ -98,11 +101,11 @@ const buttons = [
 				{{ t('versioniq', 'Pins are enforced inside Versioniq and monitored elsewhere — Nextcloud\'s own updater can still update this app. If that happens you will be notified and offered a one-click re-pin.') }}
 			</NcNoteCard>
 			<NcTextField
-				:model-value="reason"
+				:modelValue="reason"
 				:label="t('versioniq', 'Reason (optional)')"
 				:placeholder="t('versioniq', 'e.g. 2.5.0 breaks LDAP sync')"
 				:disabled="saving"
-				@update:model-value="(value: string) => (reason = value)" />
+				@update:modelValue="(value: string) => (reason = value)" />
 			<p v-if="error" :class="$style.error">
 				{{ error }}
 			</p>

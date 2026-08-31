@@ -1,9 +1,9 @@
+import { mount } from '@vue/test-utils'
 // SPDX-License-Identifier: EUPL-1.2
 // Covers "Per-version changelog display" ("Expand a version row", "Markdown
 // is not an XSS vector"):
 // @spec openspec/specs/changelog-visibility/spec.md
-import { describe, it, expect, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { describe, expect, it, vi } from 'vitest'
 import VersionChangelog from './VersionChangelog.vue'
 
 vi.mock('@nextcloud/l10n', () => ({

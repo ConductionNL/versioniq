@@ -1,11 +1,11 @@
+import { flushPromises, mount } from '@vue/test-utils'
 // SPDX-License-Identifier: EUPL-1.2
 // Covers "Discover tab surfaces multi-source search" and "Hits route into
 // existing flows":
 // @spec openspec/specs/app-discovery/spec.md
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import DiscoverPanel from './DiscoverPanel.vue'
-import { ocsGet } from '../ocs'
+import { ocsGet } from '../ocs.ts'
 
 vi.mock('@nextcloud/l10n', () => ({
 	t: (_app: string, text: string, vars: Record<string, unknown> = {}) =>
@@ -51,7 +51,7 @@ vi.mock('../ocs', () => ({
 
 const mockedOcsGet = vi.mocked(ocsGet)
 
-const typeQuery = async (wrapper: ReturnType<typeof mount>, value: string) => {
+async function typeQuery (wrapper: ReturnType<typeof mount>, value: string) {
 	await wrapper.get('[data-testid="discover-search-input"]').setValue(value)
 }
 

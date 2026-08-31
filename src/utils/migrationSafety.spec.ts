@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: EUPL-1.2
 // Covers "Migration diff on downgrade" and "Last-known-good version record":
 // @spec openspec/specs/migration-safety/spec.md
-import { describe, it, expect, vi } from 'vitest'
-import { orphanedMigrationsSummary, shouldOfferLkgRollback } from './migrationSafety'
+import { describe, expect, it, vi } from 'vitest'
+import { orphanedMigrationsSummary, shouldOfferLkgRollback } from './migrationSafety.ts'
 
-const substitute = (text: string, vars: Record<string, unknown> = {}) =>
-	text.replace(/\{(\w+)\}/g, (_match: string, key: string) => String(vars[key] ?? ''))
+function substitute (text: string, vars: Record<string, unknown> = {}) {
+  return text.replace(/\{(\w+)\}/g, (_match: string, key: string) => String(vars[key] ?? ''))
+}
 
 vi.mock('@nextcloud/l10n', () => ({
 	t: (_app: string, text: string, vars: Record<string, unknown> = {}) => substitute(text, vars),

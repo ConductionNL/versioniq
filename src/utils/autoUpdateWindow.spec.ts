@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: EUPL-1.2
 // Covers "Global kill switch and window" client-side format validation:
 // @spec openspec/specs/auto-update-policies/spec.md
-import { describe, it, expect } from 'vitest'
-import { isValidAutoUpdateWindow, AUTO_UPDATE_WINDOW_DEFAULT } from './autoUpdateWindow'
+import { describe, expect, it } from 'vitest'
+import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './autoUpdateWindow.ts'
 
 describe('isValidAutoUpdateWindow', () => {
 	it('accepts the default window', () => {

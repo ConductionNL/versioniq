@@ -2,8 +2,8 @@
 // Regression coverage for the version-comparison logic extracted from
 // App.vue (add-changelog-visibility) so utils/changelog.ts's range builder
 // has a single, independently-tested source of truth.
-import { describe, it, expect } from 'vitest'
-import { compareVersions } from './versionCompare'
+import { describe, expect, it } from 'vitest'
+import { compareVersions } from './versionCompare.ts'
 
 describe('compareVersions', () => {
 	it('orders by major/minor/patch', () => {

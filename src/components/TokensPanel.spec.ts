@@ -1,10 +1,10 @@
+import { flushPromises, shallowMount } from '@vue/test-utils'
 // SPDX-License-Identifier: EUPL-1.2
 // Covers "Expiry state in the PAT API and UI" ("Badges reflect state"):
 // @spec openspec/specs/pat-management/spec.md
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { shallowMount, flushPromises } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TokensPanel from './TokensPanel.vue'
-import { ocsGet } from '../ocs'
+import { ocsGet } from '../ocs.ts'
 
 vi.mock('@nextcloud/l10n', () => ({
 	t: (_app: string, text: string, vars: Record<string, unknown> = {}) =>
@@ -35,7 +35,7 @@ type MockPat = {
 	daysRemaining: number | null
 }
 
-const renderWithPat = async (pat: MockPat) => {
+async function renderWithPat (pat: MockPat) {
 	mockedOcsGet.mockResolvedValue({ payload: { pats: [pat] } })
 	const wrapper = shallowMount(TokensPanel)
 	await flushPromises()

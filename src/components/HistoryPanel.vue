@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
 import { t } from '@nextcloud/l10n'
+import { computed, ref, watch } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
-import { ocsGet } from '../ocs'
+import { ocsGet } from '../ocs.ts'
 
 type AuditEntry = {
 	id: number
@@ -35,14 +35,22 @@ const isLoadingMore = ref(false)
 const error = ref('')
 const hasLoadedOnce = ref(false)
 
-const formatWhen = (createdAt: string): string => {
+/**
+ *
+ * @param createdAt
+ */
+function formatWhen (createdAt: string): string {
 	// Stored as UTC `Y-m-d H:i:s`; make it parseable cross-browser as ISO.
 	const isoLike = createdAt.includes('T') ? createdAt : `${createdAt.replace(' ', 'T')}Z`
 	const parsed = new Date(isoLike)
 	return Number.isNaN(parsed.getTime()) ? createdAt : parsed.toLocaleString()
 }
 
-const versionTransition = (entry: AuditEntry): string => {
+/**
+ *
+ * @param entry
+ */
+function versionTransition (entry: AuditEntry): string {
 	const from = entry.fromVersion || '—'
 	const to = entry.toVersion || '—'
 	return `${from} → ${to}`
@@ -50,7 +58,11 @@ const versionTransition = (entry: AuditEntry): string => {
 
 const isFailure = (entry: AuditEntry): boolean => entry.status !== 'success'
 
-const load = async (reset: boolean): Promise<void> => {
+/**
+ *
+ * @param reset
+ */
+async function load (reset: boolean): Promise<void> {
 	if (reset) {
 		isLoading.value = true
 		offset.value = 0
@@ -85,7 +97,10 @@ const load = async (reset: boolean): Promise<void> => {
 	}
 }
 
-const loadMore = (): void => {
+/**
+ *
+ */
+function loadMore (): void {
 	void load(false)
 }
 
@@ -175,7 +190,7 @@ const isEmpty = computed(() => hasLoadedOnce.value && !isLoading.value && entrie
 			</table>
 
 			<NcButton v-if="hasMore"
-				type="tertiary"
+				variant="tertiary"
 				:disabled="isLoadingMore"
 				@click="loadMore">
 				{{ isLoadingMore ? t('versioniq', 'Loading…') : t('versioniq', 'Load more') }}
@@ -186,17 +201,30 @@ const isEmpty = computed(() => hasLoadedOnce.value && !isLoading.value && entrie
 
 <style module>
 .panel { display: flex; flex-direction: column; gap: 12px; }
+
 .hint { color: var(--color-text-maxcontrast); font-size: 13px; margin: 0; }
+
 .loading { display: flex; align-items: center; gap: 8px; color: var(--color-text-maxcontrast); }
+
 .empty { color: var(--color-text-maxcontrast); font-style: italic; }
+
 .tableWrapper { overflow-x: auto; }
+
 .table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.table th { text-align: left; padding: 6px 10px; border-bottom: 2px solid var(--color-border-dark); color: var(--color-text-maxcontrast); font-weight: 600; white-space: nowrap; }
+
+.table th { text-align: start; padding: 6px 10px; border-bottom: 2px solid var(--color-border-dark); color: var(--color-text-maxcontrast); font-weight: 600; white-space: nowrap; }
+
 .table td { padding: 6px 10px; border-bottom: 1px solid var(--color-border); vertical-align: top; }
+
 .row:hover { background: var(--color-background-hover); }
+
 .rowFailure { background: color-mix(in srgb, var(--color-error, #d32f2f) 8%, transparent); }
+
 .versions { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space: nowrap; }
+
 .statusBadge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 9999px; background: var(--color-success, #2d7d46); color: var(--color-primary-text, #fff); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+
 .statusBadgeFailure { background: var(--color-error, #d32f2f); }
+
 .message { margin: 4px 0 0; color: var(--color-text-maxcontrast); font-size: 12px; }
 </style>

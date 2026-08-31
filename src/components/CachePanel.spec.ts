@@ -1,10 +1,10 @@
+import { flushPromises, mount } from '@vue/test-utils'
 // SPDX-License-Identifier: EUPL-1.2
 // Covers "Cache visibility and management" ("Offline badge", "Clear cache"):
 // @spec openspec/specs/artifact-cache/spec.md
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CachePanel from './CachePanel.vue'
-import { ocsGet, ocsWrite } from '../ocs'
+import { ocsGet, ocsWrite } from '../ocs.ts'
 
 vi.mock('@nextcloud/l10n', () => ({
 	t: (_app: string, text: string, vars: Record<string, unknown> = {}) =>

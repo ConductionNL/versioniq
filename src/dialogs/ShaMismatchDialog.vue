@@ -26,7 +26,11 @@ const emit = defineEmits<{
 	resolve: [accept: boolean]
 }>()
 
-const choose = (accept: boolean): void => {
+/**
+ *
+ * @param accept
+ */
+function choose (accept: boolean): void {
 	emit('update:open', false)
 	emit('resolve', accept)
 }

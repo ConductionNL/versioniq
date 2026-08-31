@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '@nextcloud/l10n'
 // Expandable per-version release-notes disclosure — "Per-version changelog
 // display" (add-changelog-visibility). Renders notes as a plain text node
 // only (mustache interpolation, never v-html), so a release body containing
@@ -6,7 +7,6 @@
 //
 // @spec openspec/specs/changelog-visibility/spec.md
 import { computed, ref } from 'vue'
-import { t } from '@nextcloud/l10n'
 
 const props = defineProps<{
 	version: string
@@ -17,7 +17,10 @@ const expanded = ref(false)
 
 const hasChangelog = computed(() => Boolean(props.changelog && props.changelog.trim() !== ''))
 
-const toggle = (): void => {
+/**
+ *
+ */
+function toggle (): void {
 	expanded.value = !expanded.value
 }
 </script>

@@ -1,9 +1,9 @@
+import { mount } from '@vue/test-utils'
 // SPDX-License-Identifier: EUPL-1.2
 // Covers "Aggregate range changelog on target selection" (rendering side —
 // ordering itself is covered by utils/changelog.spec.ts):
 // @spec openspec/specs/changelog-visibility/spec.md
-import { describe, it, expect, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { describe, expect, it, vi } from 'vitest'
 import ChangelogRangePanel from './ChangelogRangePanel.vue'
 
 vi.mock('@nextcloud/l10n', () => ({

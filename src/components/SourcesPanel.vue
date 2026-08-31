@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
 import { t } from '@nextcloud/l10n'
+import { computed, ref, watch } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
-import { ocsGet, ocsWrite } from '../ocs'
+import { ocsGet, ocsWrite } from '../ocs.ts'
 
 type AppOption = { id: string, label: string }
 type SelectOption = { id: string, label: string }
@@ -67,7 +67,11 @@ const forgeOptions: SelectOption[] = [
 	{ id: 'codeberg', label: 'Codeberg' },
 ]
 
-const loadBinding = async (appId: string): Promise<void> => {
+/**
+ *
+ * @param appId
+ */
+async function loadBinding (appId: string): Promise<void> {
 	currentBinding.value = null
 	if (!appId) {
 		return
@@ -88,7 +92,10 @@ watch(selectedAppId, (appId) => {
 	void loadBinding(appId)
 })
 
-const bind = async (): Promise<void> => {
+/**
+ *
+ */
+async function bind (): Promise<void> {
 	error.value = ''
 	notice.value = ''
 	if (!selectedAppId.value) {
@@ -144,7 +151,7 @@ const bind = async (): Promise<void> => {
 		<form :class="$style.form" @submit.prevent="bind">
 			<NcSelect
 				v-model="selectedAppId"
-				:input-label="t('versioniq', 'App')"
+				:inputLabel="t('versioniq', 'App')"
 				:options="appOptions"
 				:reduce="(option) => option.id"
 				:placeholder="t('versioniq', 'Choose an app')"
@@ -156,7 +163,7 @@ const bind = async (): Promise<void> => {
 
 			<NcSelect
 				v-model="forge"
-				:input-label="t('versioniq', 'Forge')"
+				:inputLabel="t('versioniq', 'Forge')"
 				:options="forgeOptions"
 				:reduce="(option) => option.id"
 				:clearable="false"
@@ -173,6 +180,8 @@ const bind = async (): Promise<void> => {
 
 <style module>
 .panel { display: flex; flex-direction: column; gap: 12px; }
+
 .hint { color: var(--color-text-maxcontrast); font-size: 13px; margin: 0; }
+
 .form { display: flex; flex-direction: column; gap: 8px; max-width: 480px; }
 </style>

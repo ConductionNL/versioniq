@@ -2,8 +2,8 @@
 // Covers "Aggregate range changelog on target selection" ("Upgrade range
 // aggregation", "Downgrade shows what is being undone"):
 // @spec openspec/specs/changelog-visibility/spec.md
-import { describe, it, expect } from 'vitest'
-import { buildChangelogRange } from './changelog'
+import { describe, expect, it } from 'vitest'
+import { buildChangelogRange } from './changelog.ts'
 
 const versions = [
 	{ version: '2.6.0', changelog: 'Notes 2.6.0' },

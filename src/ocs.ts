@@ -7,13 +7,22 @@
 
 export const ocsHeaders: HeadersInit = { 'OCS-APIRequest': 'true' }
 
-export const apiUrl = (path: string): string => {
+/**
+ *
+ * @param path
+ */
+export function apiUrl (path: string): string {
 	const oc = window.OC as unknown as { webroot?: string }
 	const webroot = (typeof oc?.webroot === 'string' ? oc.webroot : '').replace(/\/$/, '')
 	return `${window.location.origin}${webroot}${path}`
 }
 
-export const withOcsJson = (path: string, query: Record<string, string | number | boolean> = {}): string => {
+/**
+ *
+ * @param path
+ * @param query
+ */
+export function withOcsJson (path: string, query: Record<string, string | number | boolean> = {}): string {
 	const separator = path.includes('?') ? '&' : '?'
 	const params = new URLSearchParams()
 	Object.entries(query).forEach(([key, value]) => {
@@ -37,7 +46,11 @@ type OcsWrapped<T> = {
  */
 export type OcsResult<T> = { payload: T, error?: string }
 
-const unwrap = async <T>(response: Response): Promise<OcsResult<T>> => {
+/**
+ *
+ * @param response
+ */
+async function unwrap <T>(response: Response): Promise<OcsResult<T>> {
 	const raw = (await response.json()) as OcsWrapped<T>
 	if (typeof raw !== 'object' || raw === null) {
 		throw new Error('Unexpected response format')
@@ -54,7 +67,7 @@ const unwrap = async <T>(response: Response): Promise<OcsResult<T>> => {
  * Prompts for password re-confirmation when Nextcloud requires it (mirrors the
  * server-side PasswordConfirmationRequired attribute on the write endpoints).
  */
-export const ensurePasswordConfirmation = async (): Promise<void> => {
+export async function ensurePasswordConfirmation (): Promise<void> {
 	const windowOC = window as Window & {
 		OC?: {
 			PasswordConfirmation?: {
@@ -85,11 +98,12 @@ export const ensurePasswordConfirmation = async (): Promise<void> => {
  * debounced search superseded by newer input) without special-casing every
  * caller — a request cancelled via `signal` rejects with the fetch
  * implementation's standard AbortError.
+ *
  * @param path
  * @param query
  * @param signal
  */
-export const ocsGet = async <T>(path: string, query: Record<string, string | number | boolean> = {}, signal?: AbortSignal): Promise<OcsResult<T>> => {
+export async function ocsGet <T>(path: string, query: Record<string, string | number | boolean> = {}, signal?: AbortSignal): Promise<OcsResult<T>> {
 	const response = await fetch(apiUrl(withOcsJson(path, query)), {
 		headers: { ...ocsHeaders, Accept: 'application/json' },
 		signal,
@@ -100,15 +114,14 @@ export const ocsGet = async <T>(path: string, query: Record<string, string | num
 /**
  * Send a write (POST/PATCH/DELETE) to an OCS endpoint after password
  * confirmation, with a JSON body. Returns the unwrapped payload (+ error).
+ *
  * @param method
  * @param path
  * @param body
  */
-export const ocsWrite = async <T>(
-	method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+export async function ocsWrite <T>(method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
 	path: string,
-	body: Record<string, unknown> = {},
-): Promise<OcsResult<T>> => {
+	body: Record<string, unknown> = {}): Promise<OcsResult<T>> {
 	await ensurePasswordConfirmation()
 	const response = await fetch(apiUrl(withOcsJson(path)), {
 		method,

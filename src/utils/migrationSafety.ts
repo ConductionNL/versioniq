@@ -21,6 +21,8 @@ export type AppLkgInfo = {
  * this app; see "Last-known-good version record" — Scenario "One-click
  * rollback target". Requires both a recorded last-known-good version and a
  * known installed version that differ from it.
+ *
+ * @param app
  */
 export function shouldOfferLkgRollback(app: AppLkgInfo): boolean {
 	const lkg = app.lkg
@@ -41,6 +43,7 @@ export function shouldOfferLkgRollback(app: AppLkgInfo): boolean {
  * - `[]` — no schema steps differ between the versions.
  * - non-empty — the target version lacks these migration steps.
  *
+ * @param orphanedMigrations
  * @spec openspec/specs/migration-safety/spec.md
  */
 export function orphanedMigrationsSummary(orphanedMigrations: string[] | null): string {
