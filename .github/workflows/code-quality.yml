@@ -46,6 +46,7 @@ on:
 
 jobs:
   quality:
+    if: (github.event_name != 'pull_request' || github.head_ref != 'development')
     uses: ConductionNL/.github/.github/workflows/quality.yml@main
     with:
       # MUST equal <id>versioniq</id> in appinfo/info.xml, character for

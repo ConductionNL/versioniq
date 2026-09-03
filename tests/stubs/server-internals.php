@@ -158,6 +158,29 @@ namespace Doctrine\DBAL\Schema {
 		 */
 		public function addUniqueIndex(array $columns, ?string $name = null): void {
 		}
+
+		/**
+		 * Reads back a column that already exists on the table.
+		 *
+		 * Migrations use this to adjust a column they are not creating, e.g.
+		 * giving `shared_with_admins` a default. Without it here, Psalm reports
+		 * `UndefinedMethod` against the real DBAL API, and the only way to keep
+		 * the run green is to baseline a finding that describes the STUB rather
+		 * than the code.
+		 */
+		public function getColumn(string $name): Column {
+		}
+	}
+
+	class Column {
+		/**
+		 * Returns $this in the real API, so a migration can chain.
+		 */
+		public function setDefault(mixed $default): self {
+		}
+
+		public function setNotnull(bool $notnull): self {
+		}
 	}
 }
 

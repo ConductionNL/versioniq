@@ -1,22 +1,24 @@
-import { execFile } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { promisify } from 'node:util'
-import { expect, type Page } from '@playwright/test'
+import type { Page } from "@playwright/test";
 
-const execFileAsync = promisify(execFile)
+import { expect } from "@playwright/test";
+import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { promisify } from "node:util";
 
-export const SETTINGS_URL = '/index.php/settings/admin/versioniq'
+const execFileAsync = promisify(execFile);
+
+export const SETTINGS_URL = "/index.php/settings/admin/versioniq";
 
 /** Tab labels as rendered in the Versioniq settings tablist. */
 export type TabName =
-	| 'Apps'
-	| 'History'
-	| 'Sources'
-	| 'Tokens'
-	| 'Trusted sources'
-	| 'Discover'
-	| 'Artifact cache'
+	| "Apps"
+	| "History"
+	| "Sources"
+	| "Tokens"
+	| "Trusted sources"
+	| "Discover"
+	| "Artifact cache";
 
 /**
  * Opens the admin settings page and waits for the app shell to be interactive.
@@ -36,19 +38,24 @@ export type TabName =
  * real readiness signal, and they are what the callers actually depend on.
  */
 export async function openSettings(page: Page): Promise<void> {
-	await page.goto(SETTINGS_URL, { waitUntil: 'domcontentloaded' })
-	await expect(page.getByRole('heading', { name: 'Versioniq', level: 2 })).toBeVisible()
-	await expect(page.getByRole('tablist', { name: 'Versioniq sections' })).toBeVisible()
+	await page.goto(SETTINGS_URL, { waitUntil: "domcontentloaded" });
+	await expect(
+		page.getByRole("heading", { name: "Versioniq", level: 2 }),
+	).toBeVisible();
+	await expect(
+		page.getByRole("tablist", { name: "Versioniq sections" }),
+	).toBeVisible();
 }
 
 /** Switches to a top-level tab and returns its panel locator. */
 export async function openTab(page: Page, tab: TabName) {
-	await page.getByRole('tablist', { name: 'Versioniq sections' })
-		.getByRole('tab', { name: tab, exact: true })
-		.click()
-	const panel = page.getByRole('tabpanel', { name: tab })
-	await expect(panel).toBeVisible()
-	return panel
+	await page
+		.getByRole("tablist", { name: "Versioniq sections" })
+		.getByRole("tab", { name: tab, exact: true })
+		.click();
+	const panel = page.getByRole("tabpanel", { name: tab });
+	await expect(panel).toBeVisible();
+	return panel;
 }
 
 /**
@@ -56,11 +63,16 @@ export async function openTab(page: Page, tab: TabName) {
  * Returns once the app-detail header shows the selected app.
  */
 export async function chooseApp(page: Page, appId: string): Promise<void> {
-	await openTab(page, 'Apps')
-	const card = page.locator('article').filter({ has: page.getByText(appId, { exact: true }) }).first()
-	await card.getByRole('button', { name: 'Choose app' }).click()
-	await expect(page.getByText('Selected app')).toBeVisible()
-	await expect(page.getByRole('button', { name: 'Choose another app' })).toBeVisible()
+	await openTab(page, "Apps");
+	const card = page
+		.locator("article")
+		.filter({ has: page.getByText(appId, { exact: true }) })
+		.first();
+	await card.getByRole("button", { name: "Choose app" }).click();
+	await expect(page.getByText("Selected app")).toBeVisible();
+	await expect(
+		page.getByRole("button", { name: "Choose another app" }),
+	).toBeVisible();
 }
 
 /**
@@ -82,13 +94,15 @@ export async function chooseApp(page: Page, appId: string): Promise<void> {
  * visibly, rather than inheriting a number that silently cannot apply.
  */
 export async function versionsLoaded(page: Page): Promise<boolean> {
-	const loading = page.getByText('Fetching available versions from the source')
+	const loading = page.getByText(
+		"Fetching available versions from the source",
+	);
 	await expect(
 		loading,
-		'the version list never finished loading — the source did not answer',
-	).toBeHidden({ timeout: 45_000 })
-	const rows = page.getByTestId('changelog-toggle')
-	return (await rows.count()) > 0
+		"the version list never finished loading — the source did not answer",
+	).toBeHidden({ timeout: 45_000 });
+	const rows = page.getByTestId("changelog-toggle");
+	return (await rows.count()) > 0;
 }
 
 /**
@@ -132,40 +146,56 @@ export async function versionsLoaded(page: Page): Promise<boolean> {
  * the server was mid-install for 200ms. 4xx is NOT retried — an auth or
  * permission failure is a real answer and repeating it only hides it.
  */
-const CONFIG_READ_ATTEMPTS = 4
+const CONFIG_READ_ATTEMPTS = 4;
 
-export async function appConfigValue(page: Page, key: string): Promise<string | null> {
-	const url = `/ocs/v2.php/apps/provisioning_api/api/v1/config/apps/versioniq/${key}?format=json`
-	let res = await page.request.get(url, { headers: { 'OCS-APIRequest': 'true' } })
-	for (let attempt = 2; attempt <= CONFIG_READ_ATTEMPTS && res.status() >= 500; attempt++) {
-		await page.waitForTimeout(250 * (attempt - 1))
-		res = await page.request.get(url, { headers: { 'OCS-APIRequest': 'true' } })
+export async function appConfigValue(
+	page: Page,
+	key: string,
+): Promise<string | null> {
+	const url = `/ocs/v2.php/apps/provisioning_api/api/v1/config/apps/versioniq/${key}?format=json`;
+	let res = await page.request.get(url, {
+		headers: { "OCS-APIRequest": "true" },
+	});
+	for (
+		let attempt = 2;
+		attempt <= CONFIG_READ_ATTEMPTS && res.status() >= 500;
+		attempt++
+	) {
+		await page.waitForTimeout(250 * (attempt - 1));
+		res = await page.request.get(url, {
+			headers: { "OCS-APIRequest": "true" },
+		});
 	}
 	if (!res.ok()) {
-		const transient = res.status() >= 500
+		const transient = res.status() >= 500;
 		throw new Error(
-			`appConfigValue(${key}): the config READ failed with HTTP ${res.status()}`
-			+ (transient ? ` after ${CONFIG_READ_ATTEMPTS} attempts` : '')
-			+ '. The value was never retrieved, so nothing can be concluded about whether '
-			+ 'the app persisted it. This is a broken fixture, not a failing assertion — '
-			+ (transient
-				? 'a 5xx that survives four attempts is an unhealthy server, not a race — '
-				+ 'check the instance came up and is not stuck in maintenance mode. '
-				: 'check that provisioning_api is enabled and that the request is authenticated. ')
-			+ `URL: ${url}`,
-		)
+			`appConfigValue(${key}): the config READ failed with HTTP ${res.status()}` +
+				(transient ? ` after ${CONFIG_READ_ATTEMPTS} attempts` : "") +
+				". The value was never retrieved, so nothing can be concluded about whether " +
+				"the app persisted it. This is a broken fixture, not a failing assertion — " +
+				(transient
+					? "a 5xx that survives four attempts is an unhealthy server, not a race — " +
+						"check the instance came up and is not stuck in maintenance mode. "
+					: "check that provisioning_api is enabled and that the request is authenticated. ") +
+				`URL: ${url}`,
+		);
 	}
-	const body = await res.json()
-	const status = body?.ocs?.meta?.statuscode
+	const body = await res.json();
+	const status = body?.ocs?.meta?.statuscode;
 	// 404 here means the key is genuinely unset, which is a real answer.
-	if (status !== undefined && status !== 100 && status !== 200 && status !== 404) {
+	if (
+		status !== undefined &&
+		status !== 100 &&
+		status !== 200 &&
+		status !== 404
+	) {
 		throw new Error(
-			`appConfigValue(${key}): OCS returned statuscode ${status} `
-			+ `(${body?.ocs?.meta?.message ?? 'no message'}). The read did not succeed.`,
-		)
+			`appConfigValue(${key}): OCS returned statuscode ${status} ` +
+				`(${body?.ocs?.meta?.message ?? "no message"}). The read did not succeed.`,
+		);
 	}
-	const data = body?.ocs?.data?.data
-	return typeof data === 'string' && data !== '' ? data : null
+	const data = body?.ocs?.data?.data;
+	return typeof data === "string" && data !== "" ? data : null;
 }
 
 // --- Forge fixture ---------------------------------------------------------
@@ -174,32 +204,41 @@ export async function appConfigValue(page: Page, key: string): Promise<string | 
 // helpers drive its control plane and the app's install API.
 
 /** Base URL of the fixture forge's control plane, as reachable from the host. */
-export const FIXTURE_URL = process.env.FORGE_FIXTURE_URL ?? 'http://localhost:9099'
+export const FIXTURE_URL =
+	process.env.FORGE_FIXTURE_URL ?? "http://localhost:9099";
 
 /** The app installed from the fixture forge, and the source it is bound to. */
-export const FIXTURE_APP = 'fixtureapp'
-export const FIXTURE_SOURCE = 'codeberg:fixtureowner/fixtureapp'
+export const FIXTURE_APP = "fixtureapp";
+export const FIXTURE_SOURCE = "codeberg:fixtureowner/fixtureapp";
 
 /** Whether the fixture forge is reachable — forge specs skip when it is not. */
 export async function fixtureAvailable(page: Page): Promise<boolean> {
 	try {
-		const res = await page.request.get(`${FIXTURE_URL}/health`, { timeout: 5_000 })
-		return res.ok()
+		const res = await page.request.get(`${FIXTURE_URL}/health`, {
+			timeout: 5_000,
+		});
+		return res.ok();
 	} catch {
-		return false
+		return false;
 	}
 }
 
 /** Resets the fixture forge to its default release set and clears overrides. */
 export async function resetFixture(page: Page): Promise<void> {
-	await page.request.post(`${FIXTURE_URL}/control/reset`)
+	await page.request.post(`${FIXTURE_URL}/control/reset`);
 }
 
 /** Posts a control command to the fixture forge. */
-export async function fixtureControl(page: Page, path: string, body: unknown): Promise<void> {
-	const res = await page.request.post(`${FIXTURE_URL}/control/${path}`, { data: body as object })
+export async function fixtureControl(
+	page: Page,
+	path: string,
+	body: unknown,
+): Promise<void> {
+	const res = await page.request.post(`${FIXTURE_URL}/control/${path}`, {
+		data: body as object,
+	});
 	if (!res.ok()) {
-		throw new Error(`fixture control ${path} failed: ${res.status()}`)
+		throw new Error(`fixture control ${path} failed: ${res.status()}`);
 	}
 }
 
@@ -222,31 +261,30 @@ export async function fixtureControl(page: Page, path: string, body: unknown): P
  * An explicit `NC_CONTAINER` or `NC_SERVER_ROOT` overrides the detection.
  */
 type Instance =
-	| { mode: 'docker'; container: string }
-	| { mode: 'local'; root: string }
+	{ mode: "docker"; container: string } | { mode: "local"; root: string };
 
 function resolveInstance(): Instance {
 	if (process.env.NC_CONTAINER) {
-		return { mode: 'docker', container: process.env.NC_CONTAINER }
+		return { mode: "docker", container: process.env.NC_CONTAINER };
 	}
 	if (process.env.NC_SERVER_ROOT) {
-		return { mode: 'local', root: process.env.NC_SERVER_ROOT }
+		return { mode: "local", root: process.env.NC_SERVER_ROOT };
 	}
 
-	let dir = process.cwd()
+	let dir = process.cwd();
 	for (let i = 0; i < 6; i++) {
-		if (existsSync(join(dir, 'occ'))) {
-			return { mode: 'local', root: dir }
+		if (existsSync(join(dir, "occ"))) {
+			return { mode: "local", root: dir };
 		}
-		const up = dirname(dir)
-		if (up === dir) break
-		dir = up
+		const up = dirname(dir);
+		if (up === dir) break;
+		dir = up;
 	}
 
-	return { mode: 'docker', container: 'av-e2e' }
+	return { mode: "docker", container: "av-e2e" };
 }
 
-export const INSTANCE = resolveInstance()
+export const INSTANCE = resolveInstance();
 
 /**
  * Runs a command against the instance, wherever it lives.
@@ -261,36 +299,54 @@ export async function execInInstance(
 	argv: string[],
 	opts: { asRoot?: boolean; env?: Record<string, string> } = {},
 ): Promise<{ code: number; stdout: string; stderr: string }> {
-	let cmd: string
-	let args: string[]
-	let spawnOpts: Record<string, unknown>
+	let cmd: string;
+	let args: string[];
+	let spawnOpts: Record<string, unknown>;
 
-	if (INSTANCE.mode === 'docker') {
-		const envArgs = Object.entries(opts.env ?? {}).flatMap(([k, v]) => ['-e', `${k}=${v}`])
-		cmd = 'docker'
-		args = ['exec', ...envArgs, '-u', opts.asRoot ? 'root' : 'www-data', INSTANCE.container, ...argv]
-		spawnOpts = {}
+	if (INSTANCE.mode === "docker") {
+		const envArgs = Object.entries(opts.env ?? {}).flatMap(([k, v]) => [
+			"-e",
+			`${k}=${v}`,
+		]);
+		cmd = "docker";
+		args = [
+			"exec",
+			...envArgs,
+			"-u",
+			opts.asRoot ? "root" : "www-data",
+			INSTANCE.container,
+			...argv,
+		];
+		spawnOpts = {};
 	} else {
 		// On a runner the tests own the tree, so `asRoot` has nothing to grant
 		// and is deliberately a no-op rather than a sudo escalation.
-		cmd = argv[0]
-		args = argv.slice(1)
-		spawnOpts = { cwd: INSTANCE.root, env: { ...process.env, ...(opts.env ?? {}) } }
+		cmd = argv[0];
+		args = argv.slice(1);
+		spawnOpts = {
+			cwd: INSTANCE.root,
+			env: { ...process.env, ...(opts.env ?? {}) },
+		};
 	}
 
 	try {
 		const { stdout, stderr } = await execFileAsync(cmd, args, {
 			maxBuffer: 8 * 1024 * 1024,
 			...spawnOpts,
-		})
-		return { code: 0, stdout, stderr }
+		});
+		return { code: 0, stdout, stderr };
 	} catch (err) {
-		const e = err as { code?: number; stdout?: string; stderr?: string; message?: string }
+		const e = err as {
+			code?: number;
+			stdout?: string;
+			stderr?: string;
+			message?: string;
+		};
 		return {
-			code: typeof e.code === 'number' ? e.code : 1,
-			stdout: e.stdout ?? '',
-			stderr: e.stderr ?? e.message ?? '',
-		}
+			code: typeof e.code === "number" ? e.code : 1,
+			stdout: e.stdout ?? "",
+			stderr: e.stderr ?? e.message ?? "",
+		};
 	}
 }
 
@@ -319,8 +375,8 @@ function dbPrelude(): string {
 		'if($t==="sqlite3"){$dsn="sqlite:".($c["datadirectory"]??"data")."/".($c["dbname"]??"owncloud").".db";$u=null;$w=null;}',
 		'elseif($t==="pgsql"){$dsn="pgsql:host=".$hraw.($hp!==""?";port=".$hp:"").";dbname=".$c["dbname"];$u=$c["dbuser"];$w=$c["dbpassword"];}',
 		'else{$dsn="mysql:".($hs!==""?"unix_socket=".$hs:"host=".$hraw.($hp!==""?";port=".$hp:"")).";dbname=".$c["dbname"];$u=$c["dbuser"];$w=$c["dbpassword"];}',
-		'$p=new PDO($dsn,$u,$w,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);',
-	].join('')
+		"$p=new PDO($dsn,$u,$w,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);",
+	].join("");
 }
 
 /**
@@ -340,16 +396,23 @@ export async function installFixture(
 	version: string,
 	opts: { allowDowngrade?: boolean; acceptNewSha?: boolean } = {},
 ): Promise<{ status: number; body: any }> {
-	void page
-	const args = ['php', 'occ', 'versioniq:install',
-		FIXTURE_APP, version, `--source=${FIXTURE_SOURCE}`, '--json']
-	if (opts.allowDowngrade) args.push('--allow-downgrade')
-	if (opts.acceptNewSha) args.push('--accept-new-sha')
+	void page;
+	const args = [
+		"php",
+		"occ",
+		"versioniq:install",
+		FIXTURE_APP,
+		version,
+		`--source=${FIXTURE_SOURCE}`,
+		"--json",
+	];
+	if (opts.allowDowngrade) args.push("--allow-downgrade");
+	if (opts.acceptNewSha) args.push("--accept-new-sha");
 
 	// A non-zero exit (guard refused, integrity failure, …) still emits the
 	// structured outcome on stdout — surface it with the exit code.
-	const { code, stdout } = await execInInstance(args)
-	const body = parseLastJson(stdout)
+	const { code, stdout } = await execInInstance(args);
+	const body = parseLastJson(stdout);
 
 	// A SUCCESSFUL install that did not land is the failure mode this helper
 	// has to catch, because every caller downstream reads the result as fact.
@@ -384,37 +447,45 @@ export async function installFixture(
 	// to exit 0 while reporting a failure, keying off `code` would turn a
 	// passing test into a thrown error here. A deliberate failure (tamper,
 	// wrong id, a refused guard) is left exactly as it was.
-	const landed = () => body?.installedVersion === version || body?.updateType === 'none'
-	const claimsInstalled = code === 0 && body?.installStatus === 'installed'
+	const landed = () =>
+		body?.installedVersion === version || body?.updateType === "none";
+	const claimsInstalled = code === 0 && body?.installStatus === "installed";
 
 	if (claimsInstalled && !landed()) {
 		// Clear the stuck flag before retrying — this is the state that makes
 		// the second attempt a no-op too.
-		await occ('maintenance:mode', '--off')
-		const retry = await execInInstance(args)
-		const retryBody = parseLastJson(retry.stdout)
-		if (retry.code === 0
-			&& (retryBody?.installedVersion === version || retryBody?.updateType === 'none')) {
-			return { status: retry.code, body: retryBody }
+		await occ("maintenance:mode", "--off");
+		const retry = await execInInstance(args);
+		const retryBody = parseLastJson(retry.stdout);
+		if (
+			retry.code === 0 &&
+			(retryBody?.installedVersion === version ||
+				retryBody?.updateType === "none")
+		) {
+			return { status: retry.code, body: retryBody };
 		}
 
 		throw new Error(
-			`installFixture(${version}): occ reported success but the app is at `
-			+ `${retryBody?.installedVersion ?? body?.installedVersion ?? 'an unknown version'} `
-			+ 'after a retry. The install is a no-op, NOT a failing assertion in whatever '
-			+ 'runs next — check whether the instance was left in maintenance mode by an '
-			+ 'earlier install that died before its finally block.',
-		)
+			`installFixture(${version}): occ reported success but the app is at ` +
+				`${retryBody?.installedVersion ?? body?.installedVersion ?? "an unknown version"} ` +
+				"after a retry. The install is a no-op, NOT a failing assertion in whatever " +
+				"runs next — check whether the instance was left in maintenance mode by an " +
+				"earlier install that died before its finally block.",
+		);
 	}
 
-	return { status: code, body }
+	return { status: code, body };
 }
 
 /** Extracts the last JSON object printed by an occ command (ignores warnings). */
 function parseLastJson(out: string): any {
-	const match = out.match(/\{[\s\S]*\}\s*$/)
-	if (!match) return {}
-	try { return JSON.parse(match[0]) } catch { return {} }
+	const match = out.match(/\{[\s\S]*\}\s*$/);
+	if (!match) return {};
+	try {
+		return JSON.parse(match[0]);
+	} catch {
+		return {};
+	}
 }
 
 /**
@@ -429,7 +500,10 @@ function parseLastJson(out: string): any {
  * @param days Offset in days; negative for the past.
  */
 export function tsOffset(days = 0): string {
-	return new Date(Date.now() + (days * 86_400_000)).toISOString().slice(0, 19).replace('T', ' ')
+	return new Date(Date.now() + days * 86_400_000)
+		.toISOString()
+		.slice(0, 19)
+		.replace("T", " ");
 }
 
 /**
@@ -449,46 +523,56 @@ export function tsOffset(days = 0): string {
  * @param page The Playwright page (used for its request context).
  * @param query The search term.
  */
-export async function discoverDiagnostics(page: Page, query: string): Promise<string> {
+export async function discoverDiagnostics(
+	page: Page,
+	query: string,
+): Promise<string> {
 	try {
 		const res = await page.request.get(
 			`/ocs/v2.php/apps/versioniq/api/discover?q=${encodeURIComponent(query)}&format=json`,
-			{ headers: { 'OCS-APIRequest': 'true' } },
-		)
-		const data = (await res.json())?.ocs?.data ?? {}
-		const errors = data.errors ?? []
-		const providers = (data.providers ?? []).map((p: { id: string, enabled: boolean }) => `${p.id}=${p.enabled ? 'on' : 'off'}`)
-		return `discover(${query}) -> ${(data.results ?? []).length} result(s); `
-			+ `providers: ${providers.join(', ') || 'none'}; `
-			+ `errors: ${errors.length > 0 ? JSON.stringify(errors) : 'none'}`
+			{ headers: { "OCS-APIRequest": "true" } },
+		);
+		const data = (await res.json())?.ocs?.data ?? {};
+		const errors = data.errors ?? [];
+		const providers = (data.providers ?? []).map(
+			(p: { id: string; enabled: boolean }) =>
+				`${p.id}=${p.enabled ? "on" : "off"}`,
+		);
+		return (
+			`discover(${query}) -> ${(data.results ?? []).length} result(s); ` +
+			`providers: ${providers.join(", ") || "none"}; ` +
+			`errors: ${errors.length > 0 ? JSON.stringify(errors) : "none"}`
+		);
 	} catch (err) {
-		return `discover(${query}) -> the diagnostic request itself failed: ${String(err)}`
+		return `discover(${query}) -> the diagnostic request itself failed: ${String(err)}`;
 	}
 }
 
 /** Runs an occ command against the instance, returning stdout. */
 export async function occ(...args: string[]): Promise<string> {
-	const { stdout } = await execInInstance(['php', 'occ', ...args])
-	return stdout
+	const { stdout } = await execInInstance(["php", "occ", ...args]);
+	return stdout;
 }
 
 /** Runs a query against the instance's own database, returning stdout rows. */
 export async function sql(query: string): Promise<string> {
 	const { code, stdout, stderr } = await execInInstance([
-		'php', '-r',
+		"php",
+		"-r",
 		`${dbPrelude()}$s=$p->query(${JSON.stringify(query)});foreach($s->fetchAll(PDO::FETCH_NUM) as $r){echo implode("\\t",array_map(fn($v)=>$v??"",$r)),"\\n";}`,
-	])
-	reportDbFailure('sql', query, code, stderr)
-	return stdout.trim()
+	]);
+	reportDbFailure("sql", query, code, stderr);
+	return stdout.trim();
 }
 
 /** Runs a mutating SQL statement against the instance's own database. */
 export async function sqlExec(stmt: string): Promise<void> {
 	const { code, stderr } = await execInInstance([
-		'php', '-r',
+		"php",
+		"-r",
 		`${dbPrelude()}$p->exec(${JSON.stringify(stmt)});`,
-	])
-	reportDbFailure('sqlExec', stmt, code, stderr)
+	]);
+	reportDbFailure("sqlExec", stmt, code, stderr);
 }
 
 /**
@@ -510,16 +594,21 @@ export async function sqlExec(stmt: string): Promise<void> {
  * @param code The exit code from the instance.
  * @param stderr Whatever PHP said about it.
  */
-function reportDbFailure(helper: string, statement: string, code: number, stderr: string): void {
+function reportDbFailure(
+	helper: string,
+	statement: string,
+	code: number,
+	stderr: string,
+): void {
 	if (code === 0) {
-		return
+		return;
 	}
 
 	console.error(
-		`[e2e] ${helper}() exited ${code} — the result below is NOT "zero rows", it is a failed query.\n`
-		+ `      statement: ${statement}\n`
-		+ `      stderr:    ${stderr.trim() || '(none)'}`,
-	)
+		`[e2e] ${helper}() exited ${code} — the result below is NOT "zero rows", it is a failed query.\n` +
+			`      statement: ${statement}\n` +
+			`      stderr:    ${stderr.trim() || "(none)"}`,
+	);
 }
 
 /**
@@ -564,66 +653,84 @@ export async function runJob(classSubstring: string): Promise<void> {
 	// Anchoring on `OCA\Versioniq\` cut the match from 2 rows to 1 on that
 	// instance. `%\\%` still allows either sub-namespace (BackgroundJob today,
 	// Cron before #231), so a future move within the app keeps working.
-	const rows = (await sql(
-		`SELECT id, class FROM oc_jobs WHERE class LIKE 'OCA\\\\Versioniq\\\\%${classSubstring}%'`,
-	))
-		.split('\n')
+	const rows = (
+		await sql(
+			`SELECT id, class FROM oc_jobs WHERE class LIKE 'OCA\\\\Versioniq\\\\%${classSubstring}%'`,
+		)
+	)
+		.split("\n")
 		.map((line) => line.trim())
-		.filter((line) => line.length > 0)
+		.filter((line) => line.length > 0);
 
 	if (rows.length === 0) {
 		throw new Error(
-			`runJob(${classSubstring}): no oc_jobs row matches OCA\\Versioniq\\…${classSubstring}. `
-			+ 'The job was NOT executed. This is a broken fixture, not a failing assertion — '
-			+ 'check that the app is enabled and that the class is still the one registered in '
-			+ 'appinfo/info.xml. (A row under a PRE-RENAME namespace is deliberately not '
-			+ 'matched: executing it would do nothing and report success.)',
-		)
+			`runJob(${classSubstring}): no oc_jobs row matches OCA\\Versioniq\\…${classSubstring}. ` +
+				"The job was NOT executed. This is a broken fixture, not a failing assertion — " +
+				"check that the app is enabled and that the class is still the one registered in " +
+				"appinfo/info.xml. (A row under a PRE-RENAME namespace is deliberately not " +
+				"matched: executing it would do nothing and report success.)",
+		);
 	}
 	if (rows.length > 1) {
 		throw new Error(
-			`runJob(${classSubstring}): ${rows.length} oc_jobs rows match, so which one runs `
-			+ `is arbitrary. Rows: ${rows.join(' | ')}. An orphaned row from a class rename `
-			+ 'must be removed before this can mean anything.',
-		)
+			`runJob(${classSubstring}): ${rows.length} oc_jobs rows match, so which one runs ` +
+				`is arbitrary. Rows: ${rows.join(" | ")}. An orphaned row from a class rename ` +
+				"must be removed before this can mean anything.",
+		);
 	}
 
-	const id = rows[0].split('\t')[0].trim()
-	await occ('background-job:execute', id, '--force-execute')
+	const id = rows[0].split("\t")[0].trim();
+	await occ("background-job:execute", id, "--force-execute");
 }
 
 /** The fixture app's clean source binding, with no recorded digests. */
 const CLEAN_FIXTURE_BINDING = JSON.stringify({
-	kind: 'github-release',
-	forge: 'codeberg',
-	owner: 'fixtureowner',
-	repo: 'fixtureapp',
-	assetPattern: '*.tar.gz',
-})
+	kind: "github-release",
+	forge: "codeberg",
+	owner: "fixtureowner",
+	repo: "fixtureapp",
+	assetPattern: "*.tar.gz",
+});
 
 /** Resets the fixture app to its 1.0.0 baseline via the real install path. */
 export async function resetFixtureApp(page: Page): Promise<void> {
 	// Restore the fixture forge's default release set + clear asset overrides
 	// first, so the baseline install below can always fetch a genuine 1.0.0.
-	await resetFixture(page)
+	await resetFixture(page);
 	// Clear any pin and — crucially — the recorded SHA-256 map, which lives in
 	// the binding config and would otherwise leak across tests (a test that
 	// records a rewritten digest would make the next test's tamper "match").
-	await page.request.delete(`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/pin?format=json`, {
-		headers: { 'OCS-APIRequest': 'true' },
-	}).catch(() => undefined)
-	await occ('config:app:set', 'versioniq', `source.${FIXTURE_APP}`, '--value', CLEAN_FIXTURE_BINDING)
+	await page.request
+		.delete(
+			`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/pin?format=json`,
+			{
+				headers: { "OCS-APIRequest": "true" },
+			},
+		)
+		.catch(() => undefined);
+	await occ(
+		"config:app:set",
+		"versioniq",
+		`source.${FIXTURE_APP}`,
+		"--value",
+		CLEAN_FIXTURE_BINDING,
+	);
 	// Clear the artifact cache too: a genuine copy cached by a prior test would
 	// otherwise be served as a download fallback and mask a tampered forge.
-	await page.request.delete('/ocs/v2.php/apps/versioniq/api/cache?format=json', {
-		headers: { 'OCS-APIRequest': 'true' },
-	}).catch(() => undefined)
+	await page.request
+		.delete("/ocs/v2.php/apps/versioniq/api/cache?format=json", {
+			headers: { "OCS-APIRequest": "true" },
+		})
+		.catch(() => undefined);
 
 	// Install the baseline, retrying once: rapid sequential installs each toggle
 	// maintenance mode, and an occasional overlap can make one attempt a no-op.
 	for (let attempt = 0; attempt < 2; attempt++) {
-		const { body } = await installFixture(page, '1.0.0', { allowDowngrade: true })
-		await occ('maintenance:mode', '--off')
-		if (body.installedVersion === '1.0.0' || body.updateType === 'none') break
+		const { body } = await installFixture(page, "1.0.0", {
+			allowDowngrade: true,
+		});
+		await occ("maintenance:mode", "--off");
+		if (body.installedVersion === "1.0.0" || body.updateType === "none")
+			break;
 	}
 }

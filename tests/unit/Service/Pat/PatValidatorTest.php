@@ -32,7 +32,7 @@ final class PatValidatorTest extends TestCase {
 
 		$logger = $this->createMock(LoggerInterface::class);
 
-		return new PatValidator($clientService, $logger, new ForgeRegistry($this->createMock(\OCP\IConfig::class)), $this->createMock(\OCP\IConfig::class));
+		return new PatValidator($clientService, $logger, new ForgeRegistry($this->createMock(\OCP\IAppConfig::class)), $this->createMock(\OCP\IConfig::class));
 	}
 
 	private function buildValidatorWithException(Exception $error): PatValidator {
@@ -42,7 +42,7 @@ final class PatValidatorTest extends TestCase {
 		$clientService = $this->createMock(IClientService::class);
 		$clientService->method('newClient')->willReturn($client);
 
-		return new PatValidator($clientService, $this->createMock(LoggerInterface::class), new ForgeRegistry($this->createMock(\OCP\IConfig::class)), $this->createMock(\OCP\IConfig::class));
+		return new PatValidator($clientService, $this->createMock(LoggerInterface::class), new ForgeRegistry($this->createMock(\OCP\IAppConfig::class)), $this->createMock(\OCP\IConfig::class));
 	}
 
 	public function testDetectKindClassic(): void {

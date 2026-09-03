@@ -9,6 +9,7 @@ use OCA\Versioniq\Service\Source\SourceBinding;
 use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
 use OCP\Http\Client\IResponse;
+use OCP\IAppConfig;
 use OCP\IConfig;
 use OCP\L10N\IFactory;
 use PHPUnit\Framework\TestCase;
@@ -34,11 +35,12 @@ final class AppStoreSourceTest extends TestCase {
 
 		$config = $this->createMock(IConfig::class);
 		$config->method('getSystemValueString')->willReturn('28.0.0');
+		$appConfig = $this->createMock(IAppConfig::class);
 
 		$l10nFactory = $this->createMock(IFactory::class);
 		$l10nFactory->method('findLanguage')->willReturn($language);
 
-		return new AppStoreSource($clientService, $config, $l10nFactory);
+		return new AppStoreSource($clientService, $config, $appConfig, $l10nFactory);
 	}
 
 	private function binding(): SourceBinding {
@@ -166,12 +168,15 @@ final class AppStoreSourceTest extends TestCase {
 		$store = [];
 		$config = $this->createMock(IConfig::class);
 		$config->method('getSystemValueString')->willReturn('28.0.0');
-		$config->method('setAppValue')->willReturnCallback(
-			function (string $app, string $key, string $value) use (&$store): void {
+		$appConfig = $this->createMock(IAppConfig::class);
+		$appConfig->method('setValueString')->willReturnCallback(
+			function (string $app, string $key, string $value) use (&$store): bool {
 				$store[$key] = $value;
+
+				return true;
 			},
 		);
-		$config->method('getAppValue')->willReturnCallback(
+		$appConfig->method('getValueString')->willReturnCallback(
 			function (string $app, string $key, string $default = '') use (&$store): string {
 				return $store[$key] ?? $default;
 			},
@@ -180,7 +185,7 @@ final class AppStoreSourceTest extends TestCase {
 		$l10nFactory = $this->createMock(IFactory::class);
 		$l10nFactory->method('findLanguage')->willReturn('en');
 
-		$source = new AppStoreSource($clientService, $config, $l10nFactory);
+		$source = new AppStoreSource($clientService, $config, $appConfig, $l10nFactory);
 
 		$first = $source->listVersions('openregister', $this->binding());
 		$second = $source->listVersions('openregister', $this->binding());
@@ -206,7 +211,8 @@ final class AppStoreSourceTest extends TestCase {
 
 		$config = $this->createMock(IConfig::class);
 		$config->method('getSystemValueString')->willReturn('28.0.0');
-		$config->method('getAppValue')->willReturnCallback(
+		$appConfig = $this->createMock(IAppConfig::class);
+		$appConfig->method('getValueString')->willReturnCallback(
 			function (string $app, string $key, string $default = '') use ($body): string {
 				// Payload present but cached long ago.
 				if (str_starts_with($key, 'appstore.payload_ts.')) {
@@ -222,7 +228,7 @@ final class AppStoreSourceTest extends TestCase {
 		$l10nFactory = $this->createMock(IFactory::class);
 		$l10nFactory->method('findLanguage')->willReturn('en');
 
-		$source = new AppStoreSource($clientService, $config, $l10nFactory);
+		$source = new AppStoreSource($clientService, $config, $appConfig, $l10nFactory);
 		$source->listVersions('openregister', $this->binding());
 		$source->listVersions('openregister', $this->binding());
 	}
@@ -257,7 +263,8 @@ final class AppStoreSourceTest extends TestCase {
 
 		$config = $this->createMock(IConfig::class);
 		$config->method('getSystemValueString')->willReturn('28.0.0');
-		$config->method('getAppValue')->willReturnCallback(
+		$appConfig = $this->createMock(IAppConfig::class);
+		$appConfig->method('getValueString')->willReturnCallback(
 			function (string $app, string $key, string $default = '') use ($body): string {
 				if (str_starts_with($key, 'appstore.payload_ts.')) {
 					return '1'; // cached at epoch 1 ⇒ TTL long lapsed
@@ -272,7 +279,7 @@ final class AppStoreSourceTest extends TestCase {
 		$l10nFactory = $this->createMock(IFactory::class);
 		$l10nFactory->method('findLanguage')->willReturn('en');
 
-		$source = new AppStoreSource($clientService, $config, $l10nFactory);
+		$source = new AppStoreSource($clientService, $config, $appConfig, $l10nFactory);
 		$result = $source->listVersions('openregister', $this->binding());
 
 		$this->assertSame('2.3.0', $result['versions'][0]['version'], 'stale cache must serve during an upstream outage');
@@ -312,12 +319,15 @@ final class AppStoreSourceTest extends TestCase {
 		$store = [];
 		$config = $this->createMock(IConfig::class);
 		$config->method('getSystemValueString')->willReturn('28.0.0');
-		$config->method('setAppValue')->willReturnCallback(
-			static function (string $app, string $key, string $value) use (&$store): void {
+		$appConfig = $this->createMock(IAppConfig::class);
+		$appConfig->method('setValueString')->willReturnCallback(
+			static function (string $app, string $key, string $value) use (&$store): bool {
 				$store[$key] = $value;
+
+				return true;
 			},
 		);
-		$config->method('getAppValue')->willReturnCallback(
+		$appConfig->method('getValueString')->willReturnCallback(
 			static function (string $app, string $key, string $default = '') use (&$store): string {
 				return $store[$key] ?? $default;
 			},
@@ -326,7 +336,7 @@ final class AppStoreSourceTest extends TestCase {
 		$l10nFactory = $this->createMock(IFactory::class);
 		$l10nFactory->method('findLanguage')->willReturn('en');
 
-		$source = new AppStoreSource($clientService, $config, $l10nFactory);
+		$source = new AppStoreSource($clientService, $config, $appConfig, $l10nFactory);
 
 		$first = $source->listVersions('notes', $this->binding());
 		$second = $source->listVersions('calendar', $this->binding());

@@ -16,6 +16,7 @@ use Exception;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
 use OCP\Http\Client\IClientService;
+use OCP\IAppConfig;
 use OCP\IConfig;
 use OCP\L10N\IFactory;
 use Throwable;
@@ -60,6 +61,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	public function __construct(
 		private IClientService $clientService,
 		private IConfig $config,
+		private IAppConfig $appConfig,
 		private IFactory $l10nFactory,
 	) {
 	}
@@ -243,7 +245,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 */
 	private function readCachedPayload(string $appId, bool $ignoreTtl): ?array {
 		if (!$ignoreTtl) {
-			$cachedAt = (int)$this->config->getAppValue(
+			$cachedAt = (int)$this->appConfig->getValueString(
 				Application::APP_ID,
 				self::PAYLOAD_CACHE_TS_PREFIX . $appId,
 				'0',
@@ -253,7 +255,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 			}
 		}
 
-		$raw = $this->config->getAppValue(Application::APP_ID, self::PAYLOAD_CACHE_PREFIX . $appId, '');
+		$raw = $this->appConfig->getValueString(Application::APP_ID, self::PAYLOAD_CACHE_PREFIX . $appId, '');
 		if ($raw === '') {
 			return null;
 		}
@@ -276,12 +278,12 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 */
 	private function writeCachedPayload(string $appId, array $payload): void {
 		try {
-			$this->config->setAppValue(
+			$this->appConfig->setValueString(
 				Application::APP_ID,
 				self::PAYLOAD_CACHE_PREFIX . $appId,
 				json_encode($payload, JSON_THROW_ON_ERROR),
 			);
-			$this->config->setAppValue(
+			$this->appConfig->setValueString(
 				Application::APP_ID,
 				self::PAYLOAD_CACHE_TS_PREFIX . $appId,
 				(string)time(),
@@ -302,7 +304,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 */
 	private function apiBase(): string {
 		/** @var string|null $raw */
-		$raw = $this->config->getAppValue(Application::APP_ID, 'appstore.api_base', '');
+		$raw = $this->appConfig->getValueString(Application::APP_ID, 'appstore.api_base', '');
 		$override = trim((string)$raw);
 
 		return rtrim($override !== '' ? $override : self::DEFAULT_API_BASE, '/');

@@ -34,7 +34,7 @@ final class ForgeReleaseSourceTest extends TestCase {
 		$userSession = $this->createMock(IUserSession::class);
 		$userSession->method('getUser')->willReturn(null);
 
-		return new ForgeReleaseSource($clientService, $logger, $patResolver, $patManager, $userSession, new ForgeRegistry($this->createMock(\OCP\IConfig::class)), $this->createMock(\OCP\IConfig::class));
+		return new ForgeReleaseSource($clientService, $logger, $patResolver, $patManager, $userSession, new ForgeRegistry($this->createMock(\OCP\IAppConfig::class)), $this->createMock(\OCP\IConfig::class));
 	}
 
 	private function mockResponse(int $status, string $body): IResponse {

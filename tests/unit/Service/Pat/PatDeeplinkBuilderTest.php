@@ -16,7 +16,7 @@ final class PatDeeplinkBuilderTest extends TestCase {
 		$request = $this->createMock(IRequest::class);
 		$request->method('getServerHost')->willReturn($host);
 
-		return new PatDeeplinkBuilder($request, new ForgeRegistry($this->createMock(\OCP\IConfig::class)));
+		return new PatDeeplinkBuilder($request, new ForgeRegistry($this->createMock(\OCP\IAppConfig::class)));
 	}
 
 	public function testClassicDeeplinkContainsScopeAndDescription(): void {

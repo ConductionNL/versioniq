@@ -14,7 +14,7 @@ namespace OCA\Versioniq\Service\Source;
 
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
-use OCP\IConfig;
+use OCP\IAppConfig;
 
 /**
  * Holds the known git forges. Adding a forge is a config entry here, not a new
@@ -55,17 +55,17 @@ class ForgeRegistry {
 	private array $forges;
 
 	public function __construct(
-		private IConfig $config,
+		private IAppConfig $appConfig,
 	) {
 		$this->forges = [];
 		foreach (self::DEFAULTS as $id => $d) {
 			$this->forges[$id] = new Forge(
 				$id,
-				$this->baseUrl($id, 'api_base', (string)$d['api']),
-				$this->baseUrl($id, 'web_base', (string)$d['web']),
-				(string)$d['scheme'],
-				(bool)$d['exposesScopeHeader'],
-				(string)$d['tokenCreateUrl'],
+				$this->baseUrl($id, 'api_base', $d['api']),
+				$this->baseUrl($id, 'web_base', $d['web']),
+				$d['scheme'],
+				$d['exposesScopeHeader'],
+				$d['tokenCreateUrl'],
 			);
 		}
 	}
@@ -77,7 +77,7 @@ class ForgeRegistry {
 	 */
 	private function baseUrl(string $forgeId, string $key, string $default): string {
 		/** @var string|null $raw */
-		$raw = $this->config->getAppValue(Application::APP_ID, 'forge.' . $forgeId . '.' . $key, '');
+		$raw = $this->appConfig->getValueString(Application::APP_ID, 'forge.' . $forgeId . '.' . $key, '');
 		$override = trim((string)$raw);
 
 		return rtrim($override !== '' ? $override : $default, '/');

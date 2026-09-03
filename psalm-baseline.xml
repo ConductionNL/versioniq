@@ -1,57 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  Psalm baseline — created 2026-08-02 alongside the new `composer check:strict`.
-
-  WHY IT EXISTS: `composer psalm` reports 108 errors on this tree (measured in
-  nextcloud:32-apache, PHP 8.3.32, psalm 5.26.1). That is not new breakage — the
-  shared CI workflow has been running `composer psalm` and FAILING on every run
-  for months. Fixing 108 type findings is a real piece of work; it must not be
-  the toll gate on making `check:strict` exist at all. The baseline freezes the
-  known set so any NEW finding fails the gate.
-
-  WHAT IS IN HERE, and why each family is debt rather than a defect:
-
-  * MixedAssignment x33, MixedArgument x11, MixedMethodCall x2,
-    MixedArrayOffset x1 — psalm.xml runs at errorLevel="1" (the strictest
-    setting), where every value psalm cannot narrow is an error. These come
-    almost entirely from `array<string, mixed>` payload envelopes
-    (InstallerService::getAppVersions and friends). Behaviour is correct; the
-    annotations are simply looser than errorLevel 1 demands.
-
-  * RedundantConditionGivenDocblockType x16, RedundantCast x6,
-    RedundantCastGivenDocblockType x5, RedundantFunctionCall x3,
-    RedundantCondition x3, UnnecessaryVarAnnotation x2,
-    DocblockTypeContradiction x2, TypeDoesNotContainType x1 — defensive
-    `is_string()` / `(string)` guards that psalm can prove unnecessary. Removing
-    them is safe only if the docblock is right; they are deliberately kept.
-
-  * DeprecatedMethod x6 — `OCP\IConfig::getAppValue`/`setAppValue`. Real
-    upstream deprecations, real migration work (to `IAppConfig`), out of scope
-    for a CI-plumbing change. Tracked in the follow-up issue.
-
-  * InvalidReturnStatement x5, InvalidReturnType x1, InvalidArgument x2,
-    LessSpecificReturnStatement x1, MoreSpecificReturnType x1,
-    NullableReturnStatement x1, InvalidNullableReturnType x1,
-    ArgumentTypeCoercion x1 — a genuine shape drift: `InstallerService`'s
-    declared return type says each version entry carries `cachedOffline`, but
-    `errorEnvelope()` builds entries without it (same drift in
-    ForgeReleaseSource::dedupeAndSort for `version`). Unreachable today because
-    the error envelopes carry EMPTY lists, so nothing iterates them — but it is
-    a real inconsistency and is called out in the follow-up issue rather than
-    quietly buried.
-
-  * UndefinedMethod x1 — `Doctrine\DBAL\Schema\Table::getColumn` in
-    Version1004Date20260725120000.php. NOT a defect: the method exists in DBAL;
-    this app does not require doctrine/dbal, so psalm has no declaration to
-    resolve against. A stub gap.
-
-  * PossiblyUndefinedArrayOffset x1, PossiblyNullIterator x1, UnusedVariable x1
-    — low-severity local cleanups.
-
-  psalm.xml sets findUnusedBaselineEntry="true", so an entry that stops applying
-  becomes an error: the baseline cannot silently rot. Do NOT regenerate this
-  file to silence a new finding — fix the finding.
--->
 <files psalm-version="5.26.1@d747f6500b38ac4f7dfc5edbcae6e4b637d7add0">
   <file src="lib/BackgroundJob/AutoUpdateJob.php">
     <MixedArgument>
@@ -114,17 +61,6 @@
     <TypeDoesNotContainType>
       <code><![CDATA[!is_string($raw)]]></code>
     </TypeDoesNotContainType>
-  </file>
-  <file src="lib/Migration/Version1004Date20260725120000.php">
-    <MixedAssignment>
-      <code><![CDATA[$column]]></code>
-    </MixedAssignment>
-    <MixedMethodCall>
-      <code><![CDATA[setDefault]]></code>
-    </MixedMethodCall>
-    <UndefinedMethod>
-      <code><![CDATA[getColumn]]></code>
-    </UndefinedMethod>
   </file>
   <file src="lib/Notification/Notifier.php">
     <MixedArgument>
@@ -252,29 +188,10 @@
     </MixedAssignment>
   </file>
   <file src="lib/Service/Source/AppStoreSource.php">
-    <DeprecatedMethod>
-      <code><![CDATA[getAppValue]]></code>
-      <code><![CDATA[getAppValue]]></code>
-      <code><![CDATA[getAppValue]]></code>
-      <code><![CDATA[setAppValue]]></code>
-      <code><![CDATA[setAppValue]]></code>
-    </DeprecatedMethod>
     <MixedAssignment>
       <code><![CDATA[$severity]]></code>
       <code><![CDATA[$summary]]></code>
     </MixedAssignment>
-  </file>
-  <file src="lib/Service/Source/ForgeRegistry.php">
-    <DeprecatedMethod>
-      <code><![CDATA[getAppValue]]></code>
-    </DeprecatedMethod>
-    <RedundantCast>
-      <code><![CDATA[(bool)$d['exposesScopeHeader']]]></code>
-      <code><![CDATA[(string)$d['api']]]></code>
-      <code><![CDATA[(string)$d['scheme']]]></code>
-      <code><![CDATA[(string)$d['tokenCreateUrl']]]></code>
-      <code><![CDATA[(string)$d['web']]]></code>
-    </RedundantCast>
   </file>
   <file src="lib/Service/Source/ForgeReleaseSource.php">
     <InvalidArgument>
@@ -296,12 +213,6 @@
     <MixedAssignment>
       <code><![CDATA[$patched]]></code>
     </MixedAssignment>
-    <PossiblyNullIterator>
-      <code><![CDATA[$result['releases']]]></code>
-    </PossiblyNullIterator>
-    <PossiblyUndefinedArrayOffset>
-      <code><![CDATA[$result['releases']]]></code>
-    </PossiblyUndefinedArrayOffset>
   </file>
   <file src="lib/Service/Source/SourceBinding.php">
     <RedundantConditionGivenDocblockType>

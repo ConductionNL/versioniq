@@ -7,7 +7,7 @@ namespace OCA\Versioniq\Tests\Unit\Service\Source;
 use InvalidArgumentException;
 use OCA\Versioniq\Service\Source\Forge;
 use OCA\Versioniq\Service\Source\ForgeRegistry;
-use OCP\IConfig;
+use OCP\IAppConfig;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -19,12 +19,12 @@ final class ForgeRegistryTest extends TestCase {
 	 *                                         (e.g. `forge.github.api_base`)
 	 */
 	private function registry(array $overrides = []): ForgeRegistry {
-		$config = $this->createMock(IConfig::class);
-		$config->method('getAppValue')->willReturnCallback(
-			static fn (string $app, string $key, string $default = ''): string => $overrides[$key] ?? $default,
+		$appConfig = $this->createMock(IAppConfig::class);
+		$appConfig->method('getValueString')->willReturnCallback(
+			static fn (string $app, string $key, string $default = '', bool $lazy = false): string => $overrides[$key] ?? $default,
 		);
 
-		return new ForgeRegistry($config);
+		return new ForgeRegistry($appConfig);
 	}
 
 	public function testGithubConfig(): void {

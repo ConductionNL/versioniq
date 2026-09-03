@@ -176,8 +176,15 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		}
 
 		$advisories = [];
+		// `releases` is present on every ok:true branch of performFetch, but the
+		// union narrows to optional keys through useToken's generic, so Psalm
+		// sees `releases?:` and a possible null. Reading it defensively is
+		// cheaper than a baseline entry and is correct either way: a body that
+		// arrives without the key yields no advisories rather than a
+		// foreach-over-null warning.
+		$releases = ($result['releases'] ?? []);
 		/** @var mixed $entry */
-		foreach ($result['releases'] as $entry) {
+		foreach ($releases as $entry) {
 			if (!is_array($entry)) {
 				continue;
 			}
