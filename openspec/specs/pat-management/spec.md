@@ -216,13 +216,13 @@ When a Nextcloud user is deleted, all PATs owned by that uid MUST be deleted.
 
 ### Requirement: Forge attribution on PATs [MVP]
 
-Each stored PAT MUST carry a `forge` attribute (`github` | `codeberg`, default `github`) so a token is matched only to bindings on the same forge. The `app_versions_pats` table MUST gain a `forge` column via an additive, idempotent migration with a `github` default, so existing rows remain valid without a data migration.
+Each stored PAT MUST carry a `forge` attribute (`github` | `codeberg`, default `github`) so a token is matched only to bindings on the same forge. The `versioniq_pats` table MUST gain a `forge` column via an additive, idempotent migration with a `github` default, so existing rows remain valid without a data migration.
 
 #### Scenario: Migration adds forge column with github default
 
 @e2e exclude a DB-migration assertion, verified in migration unit coverage.
 
-- **GIVEN** an existing `app_versions_pats` table with rows that predate this change
+- **GIVEN** an existing `versioniq_pats` table with rows that predate this change
 - **WHEN** the `forge`-column migration runs
 - **THEN** the column MUST be added as a non-null string with default `github`
 - **AND** existing rows MUST read back `forge = github`

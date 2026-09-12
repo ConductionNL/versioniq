@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { APIResponse, Page } from "@playwright/test";
 
 import { expect } from "@playwright/test";
 import { execFile } from "node:child_process";
@@ -106,6 +106,100 @@ export async function versionsLoaded(page: Page): Promise<boolean> {
 }
 
 /**
+ * How long an OCS call waits for a 503 to clear before reporting it.
+ *
+ * 🔑 EVERY FAILURE IN RUN 34214407296 THAT WAS NOT AN ASSERTION WAS AN OCS 503.
+ * All seven of them: forge.spec.ts:143, faults.spec.ts:45 and :91,
+ * install-effects.spec.ts:113, version-management.spec.ts:69, :119 and :171.
+ * Nextcloud answers 503 with `"data": []` while an app install is in flight,
+ * and this app's specs install constantly, including from `resetFixtureApp` in
+ * a `beforeEach`.
+ *
+ * A spec that reads `(await res.json())?.ocs?.data` without looking at the
+ * status then gets `[]`, and the very next line reports the app as broken:
+ *
+ *     TypeError: Cannot read properties of undefined (reading 'versions')
+ *     TypeError: Cannot read properties of undefined (reading 'find')
+ *     Error: an error should be reported, not silent zero versions
+ *     expect(received).toBe(expected)  Expected: "downgrade_guard"  Received: undefined
+ *
+ * Not one of those names the 503. `installFixture` already carries a long note
+ * about installs leaving the instance unavailable, and about the HTTP install
+ * path resetting the opcache. What was missing is the other half: the READS
+ * have to wait that window out rather than consume it as an answer.
+ *
+ * 1.5 seconds, which is what the config read allowed, is far too short for an
+ * install. 30 seconds fits inside the 60 second test budget and leaves room for
+ * the assertions that follow. A 503 that survives it still throws, and says so.
+ *
+ * Only 503 is waited on. A 4xx is a real answer and repeating it hides it.
+ */
+const OCS_UNAVAILABLE_WAIT_MS = 30_000;
+
+/** Milliseconds between attempts while the instance answers 503. */
+const OCS_RETRY_INTERVAL_MS = 500;
+
+type OcsMethod = "get" | "post" | "put" | "delete";
+
+/**
+ * Makes an OCS request, waiting out a 503 rather than returning it as data.
+ *
+ * Returns the response so a caller can assert on its status. Use {@see ocsData}
+ * when the caller wants `ocs.data` and a 503 should fail loudly instead of
+ * arriving as an empty array.
+ */
+export async function ocsRequest(
+	page: Page,
+	method: OcsMethod,
+	url: string,
+	options: { data?: unknown } = {},
+): Promise<APIResponse> {
+	const request = {
+		headers: {
+			"OCS-APIRequest": "true",
+			...(options.data === undefined
+				? {}
+				: { "Content-Type": "application/json" }),
+		},
+		...(options.data === undefined ? {} : { data: options.data as object }),
+	};
+
+	const deadline = Date.now() + OCS_UNAVAILABLE_WAIT_MS;
+	let res = await page.request[method](url, request);
+	while (res.status() === 503 && Date.now() < deadline) {
+		await page.waitForTimeout(OCS_RETRY_INTERVAL_MS);
+		res = await page.request[method](url, request);
+	}
+	return res;
+}
+
+/**
+ * The `ocs.data` payload of an OCS call, with a 503 reported as a 503.
+ *
+ * @throws when the instance was still unavailable after
+ *         {@see OCS_UNAVAILABLE_WAIT_MS}, naming the cause rather than letting
+ *         the next assertion blame the app for an empty body.
+ */
+export async function ocsData(
+	page: Page,
+	method: OcsMethod,
+	url: string,
+	options: { data?: unknown } = {},
+): Promise<any> {
+	const res = await ocsRequest(page, method, url, options);
+	if (res.status() === 503) {
+		throw new Error(
+			`${method.toUpperCase()} ${url}: the instance answered 503 for ` +
+				`${OCS_UNAVAILABLE_WAIT_MS / 1000}s. Nothing can be concluded about the ` +
+				"app from this run of the test. Nextcloud answers 503 while an app " +
+				"install holds maintenance mode, and the HTTP install path also resets " +
+				"the opcache; check whether an earlier install died before clearing it.",
+		);
+	}
+	return (await res.json())?.ocs?.data;
+}
+
+/**
  * Reads an app config value straight from the server, to assert persistence.
  *
  * ⚠️ THROWS when the READ itself fails, and it must. This previously did
@@ -131,8 +225,7 @@ export async function versionsLoaded(page: Page): Promise<boolean> {
  *
  * A genuinely unset key is not an error: OCS answers 200 with an ocs.meta
  * statuscode of 404, and that still returns null.
- */
-/**
+ *
  * 5xx from this endpoint is TRANSIENT, and treating it as fatal is its own kind
  * of wrong answer.
  *
@@ -141,42 +234,35 @@ export async function versionsLoaded(page: Page): Promise<boolean> {
  * single run, all of them this same read. Nextcloud answers 503 while an app
  * install or upgrade is in flight, which is exactly when these fixtures run.
  *
- * So retry the 5xx band, briefly and boundedly. A persistent outage still
- * throws with the same words; what stops is a spec being marked flaky because
- * the server was mid-install for 200ms. 4xx is NOT retried — an auth or
- * permission failure is a real answer and repeating it only hides it.
+ * So retry the 5xx band, boundedly. A persistent outage still throws with the
+ * same words; what stops is a spec being marked flaky because the server was
+ * mid-install. 4xx is NOT retried, because an auth or permission failure is a
+ * real answer and repeating it only hides it.
+ *
+ * That retry now lives in {@see ocsRequest}, so every OCS call in the suite
+ * gets it and not just this one. Four attempts over 1.5 seconds was never
+ * enough for an install anyway: see {@see OCS_UNAVAILABLE_WAIT_MS}.
  */
-const CONFIG_READ_ATTEMPTS = 4;
-
 export async function appConfigValue(
 	page: Page,
 	key: string,
 ): Promise<string | null> {
 	const url = `/ocs/v2.php/apps/provisioning_api/api/v1/config/apps/versioniq/${key}?format=json`;
-	let res = await page.request.get(url, {
-		headers: { "OCS-APIRequest": "true" },
-	});
-	for (
-		let attempt = 2;
-		attempt <= CONFIG_READ_ATTEMPTS && res.status() >= 500;
-		attempt++
-	) {
-		await page.waitForTimeout(250 * (attempt - 1));
-		res = await page.request.get(url, {
-			headers: { "OCS-APIRequest": "true" },
-		});
-	}
+	const res = await ocsRequest(page, "get", url);
 	if (!res.ok()) {
-		const transient = res.status() >= 500;
+		// Only 503 was waited on, so only 503 may claim to have been.
+		const waited = res.status() === 503;
 		throw new Error(
 			`appConfigValue(${key}): the config READ failed with HTTP ${res.status()}` +
-				(transient ? ` after ${CONFIG_READ_ATTEMPTS} attempts` : "") +
+				(waited
+					? ` after waiting ${OCS_UNAVAILABLE_WAIT_MS / 1000}s`
+					: "") +
 				". The value was never retrieved, so nothing can be concluded about whether " +
-				"the app persisted it. This is a broken fixture, not a failing assertion — " +
-				(transient
-					? "a 5xx that survives four attempts is an unhealthy server, not a race — " +
-						"check the instance came up and is not stuck in maintenance mode. "
-					: "check that provisioning_api is enabled and that the request is authenticated. ") +
+				"the app persisted it. This is a broken fixture, not a failing assertion. " +
+				(waited
+					? "A 503 that outlasts the wait is an unhealthy server rather than a race, " +
+						"so check the instance came up and is not stuck in maintenance mode. "
+					: "Check that provisioning_api is enabled and that the request is authenticated. ") +
 				`URL: ${url}`,
 		);
 	}
@@ -196,6 +282,47 @@ export async function appConfigValue(
 	}
 	const data = body?.ocs?.data?.data;
 	return typeof data === "string" && data !== "" ? data : null;
+}
+
+/**
+ * The auto-update state as the app itself reports it.
+ *
+ * Reads the app's own endpoint rather than the provisioning API. Two reasons,
+ * and the second is the one that matters.
+ *
+ * The provisioning API is an out-of-band probe of storage. It answers an unset
+ * key and a key it cannot see with the same empty string, so a read through it
+ * cannot distinguish "the app never saved this" from "the probe cannot see what
+ * the app saved". Measured on CI: the app's own PUT returned
+ * `autoUpdateEnabled: true` while 21 provisioning reads over 19 seconds all
+ * returned "", against an app whose code is byte-identical to one where the
+ * same sequence works.
+ *
+ * This is a separate HTTP request, so it loads app config fresh. That makes it
+ * a real persistence check, not a softer one: a value that never reached the
+ * database still fails here, and it fails naming what the app itself believes.
+ */
+export async function autoUpdateState(page: Page): Promise<{
+	autoUpdateEnabled: boolean;
+	autoUpdateWindow: string;
+	policies: Array<Record<string, unknown>>;
+}> {
+	const res = await page.request.get(
+		"/ocs/v2.php/apps/versioniq/api/policies?format=json",
+		{ headers: { "OCS-APIRequest": "true" } },
+	);
+	if (!res.ok()) {
+		throw new Error(
+			`autoUpdateState: the app's own policies endpoint failed with HTTP ${res.status()}. ` +
+				"Nothing can be concluded about what the app persisted.",
+		);
+	}
+	const data = (await res.json())?.ocs?.data ?? {};
+	return {
+		autoUpdateEnabled: Boolean(data.autoUpdateEnabled),
+		autoUpdateWindow: String(data.autoUpdateWindow ?? ""),
+		policies: Array.isArray(data.policies) ? data.policies : [],
+	};
 }
 
 // --- Forge fixture ---------------------------------------------------------

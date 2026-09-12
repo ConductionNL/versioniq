@@ -36,7 +36,8 @@ use OCP\IConfig;
 use OCP\ITempManager;
 use OCP\IUserSession;
 use OCP\L10N\IFactory;
-use OCP\Server;
+use OCP\ServerVersion;
+use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -89,6 +90,14 @@ class ExternalReleaseInstallerService {
 		private AuditLogger $auditLogger,
 		private MigrationDiffer $migrationDiffer,
 		private ArtifactCache $artifactCache,
+		private IFactory $l10nFactory,
+		private ServerVersion $serverVersion,
+		/**
+		 * The app container, used only for OC\Files\FilenameValidator. That
+		 * class is private core API with no OCP interface, so it is resolved at
+		 * call time rather than type-hinted here.
+		 */
+		private ContainerInterface $container,
 	) {
 	}
 
@@ -573,7 +582,7 @@ class ExternalReleaseInstallerService {
 			));
 		}
 
-		$l = Server::get(IFactory::class)->get('core');
+		$l = $this->l10nFactory->get('core');
 		$info = $this->appManager->getAppInfoByPath($infoXml, $l->getLanguageCode());
 		if (!is_array($info) || ($info['id'] ?? null) !== $expectedAppId) {
 			throw new Exception('appinfo/info.xml could not be loaded by app manager.');
@@ -582,7 +591,7 @@ class ExternalReleaseInstallerService {
 
 		$ignoreMaxApps = (array)$this->config->getSystemValue('app_install_overwrite', []);
 		$ignoreMax = in_array($expectedAppId, $ignoreMaxApps, true);
-		$serverVersion = Server::get(\OCP\ServerVersion::class)->getVersionString();
+		$serverVersion = $this->serverVersion->getVersionString();
 		// \OC_App, not $this->appManager. IAppManager has no isAppCompatible()
 		// on Nextcloud 31, so calling it there is a fatal:
 		//   Call to undefined method OC\App\AppManager::isAppCompatible()
@@ -635,7 +644,8 @@ class ExternalReleaseInstallerService {
 			throw new Exception('Could not read extracted folder contents.');
 		}
 
-		$filenameValidator = Server::get(FilenameValidator::class);
+		/** @var FilenameValidator $filenameValidator */
+		$filenameValidator = $this->container->get(FilenameValidator::class);
 		foreach ($items as $item) {
 			if ($item === '.' || $item === '..') {
 				continue;

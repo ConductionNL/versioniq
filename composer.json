@@ -24,7 +24,7 @@
     "lint": "find . -name \\*.php -not -path './vendor/*' -not -path './vendor-bin/*' -not -path './build/*' -print0 | xargs -0 -n1 php -l",
     "cs:check": "./vendor/bin/php-cs-fixer fix --dry-run --diff",
     "cs:fix": "./vendor/bin/php-cs-fixer fix",
-    "psalm": "./vendor/bin/psalm --threads=1 --no-cache",
+    "psalm": "./vendor/bin/psalm --threads=1 --no-cache --memory-limit=2G",
     "test:unit": "./vendor/bin/phpunit -c phpunit.xml --colors=always --fail-on-warning --fail-on-risky",
     "test:unit-only": "./vendor/bin/phpunit -c tests/phpunit-unit-only.xml --colors=always",
     "openapi": "./vendor/bin/generate-spec",

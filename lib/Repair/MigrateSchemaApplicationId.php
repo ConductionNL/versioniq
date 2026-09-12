@@ -24,7 +24,7 @@
  * the hyphen this step would match nothing and report success forever.
  *
  * THIS APP DOES NOT SHIP A REGISTER OF ITS OWN TODAY: its versions, PATs and
- * audit trail live in `app_versions_*` tables it owns directly. So on a clean
+ * audit trail live in `versioniq_*` tables it owns directly. So on a clean
  * instance there is nothing under `app_versions` in OpenRegister and this step
  * reports "nothing to do" and writes nothing. It ships as the guard for an
  * instance that DOES carry such rows, because there the failure is silent.

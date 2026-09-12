@@ -25,7 +25,7 @@ use OCP\BackgroundJob\IJobList;
 use OCP\IAppConfig;
 use OCP\IConfig;
 use OCP\Migration\IOutput;
-use OCP\Server;
+use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -55,6 +55,16 @@ class InstallFinalizer {
 		private LoggerInterface $logger,
 		private LkgStore $lkgStore,
 		private ITimeFactory $timeFactory,
+		/**
+		 * The app container, used to resolve the two private core classes this
+		 * finalizer needs at call time: the bootstrap Coordinator and the raw
+		 * DB Connection the MigrationService takes. Neither can be a plain
+		 * constructor type-hint here: the Coordinator is what registers app
+		 * services in the first place, so depending on it eagerly invites the
+		 * bootstrap cycle. Resolving through the injected container keeps the
+		 * lookup lazy and lets a test hand in its own.
+		 */
+		private ContainerInterface $container,
 	) {
 	}
 
@@ -76,13 +86,16 @@ class InstallFinalizer {
 
 		// Lazy registration must run before autoload + migrations so app-registered
 		// event listeners are wired up when migrations dispatch events.
-		$coordinator = Server::get(Coordinator::class);
+		/** @var Coordinator $coordinator */
+		$coordinator = $this->container->get(Coordinator::class);
 		$coordinator->runLazyRegistration($appId);
 
 		\OC_App::registerAutoloading($appId, $appPath);
 
 		$previousVersion = $this->appConfig->getValueString($appId, 'installed_version', '');
-		$migrationService = new MigrationService($appId, Server::get(Connection::class));
+		/** @var Connection $connection */
+		$connection = $this->container->get(Connection::class);
+		$migrationService = new MigrationService($appId, $connection);
 		if ($output instanceof IOutput) {
 			$migrationService->setOutput($output);
 		}

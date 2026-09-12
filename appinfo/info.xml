@@ -7,7 +7,7 @@
 	<description>> ⚠️ **Active development — not for production use yet.** This app is under active development. Although it may carry a stable release status, **please do not use it in production environments before 12 June 2026.** See [conduction.nl/apps](https://conduction.nl/apps) for release planning and what this app does.
 
 Versioniq gives Nextcloud administrators the ability to roll back apps to previous versions or install specific newer versions. Essential for debugging, testing compatibility, and recovering from broken updates.</description>
-	<version>1.5.0</version>
+	<version>1.6.1-unstable.20260910105247</version>
 	<licence>EUPL-1.2</licence>
 	<author mail="info@conduction.nl" homepage="https://conduction.nl">Conduction B.V.</author>
 	<namespace>Versioniq</namespace>
@@ -45,12 +45,14 @@ Versioniq gives Nextcloud administrators the ability to roll back apps to previo
 		     must run after the copy, or the never-overwrite guard in the copy
 		     sees the fresh value and silently discards the admin's stored one.
 
+		     MIGRATED BY THE SCHEMA MIGRATION, not by these steps: the two
+		     tables moved from `app_versions_*` to `versioniq_*` on 2026-09-08.
+		     Table names are not keyed by the app id, so the id rename did not
+		     move them on its own. Version1100Date20260908000000 renames them in
+		     place before the schema comparison runs, which keeps every stored
+		     PAT and audit row.
+
 		     NOT MIGRATED, deliberately:
-		       - the `app_versions_pats` and `app_versions_audit` TABLES keep
-		         their old prefix — see the comment on their TABLE_NAME
-		         constants in lib/Db/. Table names are not keyed by app id, so
-		         the rename does not touch them and renaming them by hand would
-		         be a destructive migration for no gain.
 		       - oc_activity / oc_notifications rows written under the old app
 		         id: Nextcloud owns those tables and offers no supported way to
 		         re-key them. Historic entries simply stop being listed. -->
@@ -76,7 +78,7 @@ Versioniq gives Nextcloud administrators the ability to roll back apps to previo
 				`app_versions`, not `app-versions`: the hyphen is the GitHub
 				repository name, the underscore is the app id this column holds.
 
-				This app keeps its own data in the `app_versions_*` tables rather
+				This app keeps its own data in the `versioniq_*` tables rather
 				than in OpenRegister, so on a clean instance the step finds
 				nothing and says "nothing to do". It is registered as the guard
 				for an instance that DOES carry such rows, where the failure is

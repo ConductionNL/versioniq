@@ -115,7 +115,7 @@ final class RemoveRetiredCronJobsTest extends TestCase {
 		);
 
 		$output = $this->createMock(IOutput::class);
-		$step   = new RemoveRetiredCronJobs($jobList, $this->createMock(LoggerInterface::class));
+		$step = new RemoveRetiredCronJobs($jobList, $this->createMock(LoggerInterface::class));
 
 		$step->run($output);
 

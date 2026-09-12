@@ -31,8 +31,9 @@ use OCP\IConfig;
 use OCP\ITempManager;
 use OCP\IUserSession;
 use OCP\L10N\IFactory;
-use OCP\Server;
+use OCP\ServerVersion;
 use phpseclib\File\X509;
+use Psr\Container\ContainerInterface;
 
 /**
  * @psalm-api
@@ -62,6 +63,19 @@ class SelectedReleaseInstallerService {
 		private IUserSession $userSession,
 		private MigrationDiffer $migrationDiffer,
 		private ArtifactCache $artifactCache,
+		private IFactory $l10nFactory,
+		private IAppManager $appManager,
+		private IConfig $config,
+		private IAppConfig $appConfig,
+		private ITempManager $tempManager,
+		private IClientService $clientService,
+		private ServerVersion $serverVersion,
+		/**
+		 * The app container, used only for OC\Files\FilenameValidator. That
+		 * class is private core API with no OCP interface, so it is resolved at
+		 * call time rather than type-hinted here.
+		 */
+		private ContainerInterface $container,
 	) {
 	}
 
@@ -219,7 +233,7 @@ class SelectedReleaseInstallerService {
 	 * @return IFactory
 	 */
 	private function getL10n(): IFactory {
-		return Server::get(IFactory::class);
+		return $this->l10nFactory;
 	}
 
 	/**
@@ -228,7 +242,7 @@ class SelectedReleaseInstallerService {
 	 * @return IAppManager
 	 */
 	private function getAppManager(): IAppManager {
-		return Server::get(IAppManager::class);
+		return $this->appManager;
 	}
 
 	/**
@@ -237,7 +251,7 @@ class SelectedReleaseInstallerService {
 	 * @return IConfig
 	 */
 	private function getConfig(): IConfig {
-		return Server::get(IConfig::class);
+		return $this->config;
 	}
 
 	/**
@@ -246,7 +260,7 @@ class SelectedReleaseInstallerService {
 	 * @return IAppConfig
 	 */
 	private function getAppConfig(): IAppConfig {
-		return Server::get(IAppConfig::class);
+		return $this->appConfig;
 	}
 
 	/**
@@ -255,7 +269,7 @@ class SelectedReleaseInstallerService {
 	 * @return ITempManager
 	 */
 	private function getTempManager(): ITempManager {
-		return Server::get(ITempManager::class);
+		return $this->tempManager;
 	}
 
 	/**
@@ -273,7 +287,7 @@ class SelectedReleaseInstallerService {
 	 * @return IClientService
 	 */
 	private function getClientService(): IClientService {
-		return Server::get(IClientService::class);
+		return $this->clientService;
 	}
 
 	/**
@@ -333,7 +347,7 @@ class SelectedReleaseInstallerService {
 
 					$ignoreMaxApps = (array)$config->getSystemValue('app_install_overwrite', []);
 					$ignoreMax = in_array($appId, $ignoreMaxApps, true);
-					$serverVersion = Server::get(\OCP\ServerVersion::class)->getVersionString();
+					$serverVersion = $this->serverVersion->getVersionString();
 					if (!$appManager->isAppCompatible($serverVersion, $info, $ignoreMax)) {
 						$appName = isset($info['name']) && is_string($info['name']) ? $info['name'] : $appId;
 						throw new Exception(
@@ -764,7 +778,8 @@ class SelectedReleaseInstallerService {
 			throw new Exception('Could not read extracted folder contents.');
 		}
 
-		$filenameValidator = Server::get(FilenameValidator::class);
+		/** @var FilenameValidator $filenameValidator */
+		$filenameValidator = $this->container->get(FilenameValidator::class);
 		foreach ($items as $item) {
 			if ($item === '.' || $item === '..') {
 				continue;

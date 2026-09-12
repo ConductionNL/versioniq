@@ -91,7 +91,7 @@ test.describe("PAT validation & lifecycle", () => {
 		});
 		const exp = (
 			await sql(
-				"SELECT expires_at FROM oc_app_versions_pats WHERE label='expiring-token'",
+				"SELECT expires_at FROM oc_versioniq_pats WHERE label='expiring-token'",
 			)
 		).trim();
 		expect(exp, "expiry parsed and stored").toMatch(/2026-08-15/);
@@ -107,7 +107,7 @@ test.describe("PAT validation & lifecycle", () => {
 		});
 		const enc = (
 			await sql(
-				"SELECT encrypted_token FROM oc_app_versions_pats WHERE label='enc'",
+				"SELECT encrypted_token FROM oc_versioniq_pats WHERE label='enc'",
 			)
 		).trim();
 		expect(enc.length, "a value is stored").toBeGreaterThan(0);
@@ -166,7 +166,7 @@ test.describe("PAT validation & lifecycle", () => {
 			token: "codeberg-expired-token-000",
 		});
 		await sqlExec(
-			`UPDATE oc_app_versions_pats SET expires_at = '${tsOffset(-1)}' WHERE label='expired'`,
+			`UPDATE oc_versioniq_pats SET expires_at = '${tsOffset(-1)}' WHERE label='expired'`,
 		);
 
 		// The expired PAT must not be attached → the private repo 404s → no versions.
@@ -192,12 +192,10 @@ test.describe("PAT validation & lifecycle", () => {
 		// string, which the NEXT statement interpolated into `WHERE id=` — one
 		// type mismatch showing up as a syntax error two queries later.
 		await sqlExec(
-			`INSERT INTO oc_app_versions_pats (owner_uid, label, target_pattern, kind, forge, encrypted_token, token_hint, shared_with_admins, warned_thresholds, created_at) VALUES ('otheradmin','theirs','x/*','forge-token','codeberg','enc','abcd...wxyz',false,'[]', '${tsOffset()}')`,
+			`INSERT INTO oc_versioniq_pats (owner_uid, label, target_pattern, kind, forge, encrypted_token, token_hint, shared_with_admins, warned_thresholds, created_at) VALUES ('otheradmin','theirs','x/*','forge-token','codeberg','enc','abcd...wxyz',false,'[]', '${tsOffset()}')`,
 		);
 		const id = (
-			await sql(
-				"SELECT id FROM oc_app_versions_pats WHERE label='theirs'",
-			)
+			await sql("SELECT id FROM oc_versioniq_pats WHERE label='theirs'")
 		).trim();
 
 		// admin does not see a non-shared PAT owned by someone else.
@@ -224,13 +222,13 @@ test.describe("PAT validation & lifecycle", () => {
 		expect(
 			Number(
 				await sql(
-					`SELECT count(*) FROM oc_app_versions_pats WHERE id=${id}`,
+					`SELECT count(*) FROM oc_versioniq_pats WHERE id=${id}`,
 				),
 			),
 			"still present",
 		).toBe(1);
 
-		await sqlExec(`DELETE FROM oc_app_versions_pats WHERE id=${id}`);
+		await sqlExec(`DELETE FROM oc_versioniq_pats WHERE id=${id}`);
 	});
 
 	test("deleting a user sweeps their PATs", async () => {
@@ -249,12 +247,12 @@ test.describe("PAT validation & lifecycle", () => {
 		await occ("user:delete", "pat-sweep-user"); // clean any prior run
 		await userAdd();
 		await sqlExec(
-			`INSERT INTO oc_app_versions_pats (owner_uid, label, target_pattern, kind, forge, encrypted_token, token_hint, shared_with_admins, warned_thresholds, created_at) VALUES ('pat-sweep-user','swept','x/*','forge-token','codeberg','enc','abcd...wxyz',false,'[]', '${tsOffset()}')`,
+			`INSERT INTO oc_versioniq_pats (owner_uid, label, target_pattern, kind, forge, encrypted_token, token_hint, shared_with_admins, warned_thresholds, created_at) VALUES ('pat-sweep-user','swept','x/*','forge-token','codeberg','enc','abcd...wxyz',false,'[]', '${tsOffset()}')`,
 		);
 		expect(
 			Number(
 				await sql(
-					"SELECT count(*) FROM oc_app_versions_pats WHERE owner_uid='pat-sweep-user'",
+					"SELECT count(*) FROM oc_versioniq_pats WHERE owner_uid='pat-sweep-user'",
 				),
 			),
 		).toBe(1);
@@ -263,7 +261,7 @@ test.describe("PAT validation & lifecycle", () => {
 		expect(
 			Number(
 				await sql(
-					"SELECT count(*) FROM oc_app_versions_pats WHERE owner_uid='pat-sweep-user'",
+					"SELECT count(*) FROM oc_versioniq_pats WHERE owner_uid='pat-sweep-user'",
 				),
 			),
 			"PATs swept on user deletion",

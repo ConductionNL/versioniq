@@ -9,6 +9,7 @@ import {
 	fixtureControl,
 	installFixture,
 	occ,
+	ocsData,
 	resetFixtureApp,
 } from "./helpers.ts";
 
@@ -28,17 +29,12 @@ test.describe("faults, diffs and cache integrity", () => {
 	});
 
 	async function dryRunDowngrade(page: Page, version: string) {
-		const res = await page.request.post(
+		return await ocsData(
+			page,
+			"post",
 			`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/versions/${version}/install?dryRun=1&allowDowngrade=1&format=json`,
-			{
-				headers: {
-					"OCS-APIRequest": "true",
-					"Content-Type": "application/json",
-				},
-				data: { source: FIXTURE_SOURCE },
-			},
+			{ data: { source: FIXTURE_SOURCE } },
 		);
-		return (await res.json())?.ocs?.data;
 	}
 
 	// --- migration-safety: diff -------------------------------------------
@@ -121,13 +117,12 @@ test.describe("faults, diffs and cache integrity", () => {
 			"--json",
 		);
 
-		const summary = await (
-			await page.request.get(
-				"/ocs/v2.php/apps/versioniq/api/cache?format=json",
-				{ headers: { "OCS-APIRequest": "true" } },
-			)
-		).json();
-		const app = (summary?.ocs?.data?.apps ?? []).find(
+		const summary = await ocsData(
+			page,
+			"get",
+			"/ocs/v2.php/apps/versioniq/api/cache?format=json",
+		);
+		const app = (summary?.apps ?? []).find(
 			(a: any) => a.appId === FIXTURE_APP,
 		);
 		expect(
@@ -230,13 +225,11 @@ test.describe("faults, diffs and cache integrity", () => {
 			"versioniq",
 			"appstore.payload_ts.activity",
 		);
-		const res = await page.request.get(
+		const data = await ocsData(
+			page,
+			"get",
 			"/ocs/v2.php/apps/versioniq/api/app/activity/versions?format=json",
-			{
-				headers: { "OCS-APIRequest": "true" },
-			},
 		);
-		const data = (await res.json())?.ocs?.data;
 		expect(data.error ?? "", "an error is surfaced").not.toBe("");
 		expect(data.availableVersions ?? []).toHaveLength(0);
 		await occ("config:app:delete", "versioniq", "appstore.api_base");

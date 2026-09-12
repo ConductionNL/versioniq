@@ -59,7 +59,7 @@ The system MUST search the Nextcloud App Store catalog by case-insensitive subst
 
 ### Requirement: GitHub private discovery [MVP]
 
-When the current admin has at least one PAT in `app_versions_pats`, the system MUST use it to search private GitHub repos for `appinfo/info.xml` matching the query.
+When the current admin has at least one PAT in `versioniq_pats`, the system MUST use it to search private GitHub repos for `appinfo/info.xml` matching the query.
 
 #### Scenario: With PAT and matching private repo
 

@@ -54,7 +54,7 @@ use Throwable;
  *     admin-chosen operational settings with the same silent-revert shape.
  *
  * WHAT THIS STEP DOES NOT TOUCH.
- *   - The `app_versions_pats` and `app_versions_audit` TABLES. Table names are
+ *   - The `versioniq_pats` and `versioniq_audit` TABLES. Table names are
  *     not keyed by app id, so the rename never reached them; see the comments
  *     on {@see \OCA\Versioniq\Db\PatMapper::TABLE_NAME} and
  *     {@see \OCA\Versioniq\Db\AuditEntryMapper::TABLE_NAME}. Every stored PAT
