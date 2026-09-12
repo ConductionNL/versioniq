@@ -2,7 +2,7 @@
     "openapi": "3.0.3",
     "info": {
         "title": "versioniq",
-        "version": "1.6.1-unstable.20260910105247",
+        "version": "1.6.2-unstable.20260912140216",
         "description": "Install any earlier or newer version of already installed Nextcloud apps",
         "license": {
             "name": "EUPL-1.2"
