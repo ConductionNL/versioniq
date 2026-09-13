@@ -219,7 +219,7 @@ The system MUST write audit entries for pin operations: `pin` (on pin creation, 
 
 ## Acceptance Criteria
 
-- [ ] `app_versions_audit` table created by migration; indexed on (`app_id`, `created_at`) and `created_at`
+- [ ] `versioniq_audit` table created by migration; indexed on (`app_id`, `created_at`) and `created_at`
 - [ ] Both installers (App Store + external) write entries on success and failure
 - [ ] Bind/rebind writes `bind_source` entries (explicit endpoint and implicit install binding)
 - [ ] Audit insert failure never fails an install; it is logged

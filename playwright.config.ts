@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { BASE_URL } from './tests/e2e/base-url.ts'
 
 /**
  * Playwright end-to-end configuration for Versioniq.
@@ -11,10 +12,15 @@ import { defineConfig, devices } from '@playwright/test'
  * Base URL and credentials come from the environment so the same suite runs
  * against a throwaway container locally and against CI's instance later:
  *   NC_BASE_URL   (default http://localhost:8099)
+ *
+ * The target itself is resolved in tests/e2e/base-url.ts, which refuses the
+ * shared development instance on localhost:8080 unless the run names it in
+ * VERSIONIQ_E2E_ALLOW_SHARED_INSTANCE. Port 8099 is a rig of this suite's own
+ * and needs no flag.
  *   NC_ADMIN_USER (default admin)
  *   NC_ADMIN_PASS (default adminadmin123)
  */
-export const NC_BASE_URL = process.env.NC_BASE_URL ?? 'http://localhost:8099'
+export const NC_BASE_URL = BASE_URL
 export const NC_ADMIN_USER = process.env.NC_ADMIN_USER ?? 'admin'
 export const NC_ADMIN_PASS = process.env.NC_ADMIN_PASS ?? 'adminadmin123'
 
@@ -23,6 +29,14 @@ export const AUTH_FILE = 'tests/e2e/.auth/admin.json'
 
 export default defineConfig({
 	testDir: './tests/e2e',
+	// Playwright's default testMatch takes `*.test.ts` as well as `*.spec.ts`,
+	// and `tests/e2e/shared-instance.test.ts` is a vitest spec that happens to
+	// live in this directory. Collected by playwright it throws at import and
+	// takes the WHOLE listing down with it: measured here, the suite reported
+	// `Total: 0 tests in 0 files` rather than any error a reader would connect
+	// to that file. Every e2e spec in this app is `*.spec.ts`, so ignoring
+	// `*.test.ts` states the split rather than naming one file.
+	testIgnore: ['**/*.test.ts'],
 	// The admin settings page is a single shared surface and several specs mutate
 	// server-side state (pins, policies, cache). Serial execution keeps them from
 	// racing each other on the same instance.

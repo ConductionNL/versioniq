@@ -141,6 +141,15 @@ namespace Doctrine\DBAL\Schema {
 		public function addColumn(string $name, string $type, array $options = []): void {
 		}
 
+		public function hasColumn(string $name): bool {
+		}
+
+		public function hasPrimaryKey(): bool {
+		}
+
+		public function hasIndex(string $name): bool {
+		}
+
 		/**
 		 * @param list<string> $columns
 		 */

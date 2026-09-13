@@ -23,18 +23,18 @@ use OCP\IDBConnection;
  */
 class AuditEntryMapper extends QBMapper {
 	/**
-	 * FROZEN ON THE OLD APP ID — deliberately still `app_versions_audit`.
+	 * Renamed from the pre-rename table name on 2026-09-08.
 	 *
-	 * Same reason as {@see PatMapper::TABLE_NAME}: table names are not keyed
-	 * by app id, so the `app_versions` -> `versioniq` rename leaves this table
-	 * exactly where it is, with the whole audit history in it. The audit trail
-	 * is append-only and is the record of who installed what — orphaning it
-	 * behind a renamed constant would destroy evidence, silently, while every
-	 * new write went to an empty table.
+	 * Database table names are not keyed by the Nextcloud app id, so the
+	 * `app_versions` -> `versioniq` rename did not move this table on its own.
+	 * The consolidated migration Version1100Date20260908000000 renames it in
+	 * place before the schema comparison runs, so every audit row survives the move.
+	 * This constant and the literals in that migration are the same identifier
+	 * on both sides and move together.
 	 *
 	 * @var string
 	 */
-	public const TABLE_NAME = 'app_versions_audit';
+	public const TABLE_NAME = 'versioniq_audit';
 
 	public function __construct(IDBConnection $db) {
 		parent::__construct($db, self::TABLE_NAME, AuditEntry::class);

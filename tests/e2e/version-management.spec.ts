@@ -8,6 +8,8 @@ import {
 	fixtureAvailable,
 	installFixture,
 	occ,
+	ocsData,
+	ocsRequest,
 	openSettings,
 	openTab,
 	resetFixtureApp,
@@ -25,11 +27,11 @@ test.describe("version management", () => {
 		const q = source
 			? `?source=${encodeURIComponent(source)}&format=json`
 			: "?format=json";
-		const res = await page.request.get(
+		return await ocsData(
+			page,
+			"get",
 			`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/versions${q}`,
-			{ headers: { "OCS-APIRequest": "true" } },
 		);
-		return (await res.json())?.ocs?.data;
 	}
 
 	test.describe("with the fixture forge", () => {
@@ -70,13 +72,11 @@ test.describe("version management", () => {
 			// Bind to a different (allowlisted) repo, then back — the stored
 			// binding reflects the most recent bind, not an accumulation.
 			const bind = (repo: string) =>
-				page.request.post(
+				ocsRequest(
+					page,
+					"post",
 					`/ocs/v2.php/apps/versioniq/api/source/${FIXTURE_APP}/bind?format=json`,
 					{
-						headers: {
-							"OCS-APIRequest": "true",
-							"Content-Type": "application/json",
-						},
 						data: {
 							kind: "github-release",
 							forge: "codeberg",
@@ -104,13 +104,14 @@ test.describe("version management", () => {
 		test("a manageable app reports manageable with no blocking warning", async ({
 			page,
 		}) => {
-			const res = await page.request.get(
-				"/ocs/v2.php/apps/versioniq/api/apps?format=json",
-				{
-					headers: { "OCS-APIRequest": "true" },
-				},
-			);
-			const apps = (await res.json())?.ocs?.data?.apps ?? [];
+			const apps =
+				(
+					await ocsData(
+						page,
+						"get",
+						"/ocs/v2.php/apps/versioniq/api/apps?format=json",
+					)
+				)?.apps ?? [];
 			const app = apps.find((a: any) => a.id === FIXTURE_APP);
 			expect(app?.manageable).toBe(true);
 			expect(app?.isCore).toBe(false);
@@ -131,17 +132,12 @@ test.describe("version management", () => {
 			const before = (
 				await occ("config:app:get", FIXTURE_APP, "installed_version")
 			).trim();
-			const res = await page.request.post(
+			const data = await ocsData(
+				page,
+				"post",
 				`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/versions/1.1.0/install?dryRun=1&format=json`,
-				{
-					headers: {
-						"OCS-APIRequest": "true",
-						"Content-Type": "application/json",
-					},
-					data: { source: FIXTURE_SOURCE },
-				},
+				{ data: { source: FIXTURE_SOURCE } },
 			);
-			const data = (await res.json())?.ocs?.data;
 			expect(data.dryRun).toBe(true);
 			expect(data.updateType).toBe("dry-run");
 			const after = (
@@ -177,23 +173,20 @@ test.describe("version management", () => {
 			);
 			await resetFixtureApp(page);
 			await installFixture(page, "1.1.0");
-			const res = await page.request.post(
+			const res = await ocsRequest(
+				page,
+				"post",
 				`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/versions/1.0.0/install?format=json`,
-				{
-					headers: {
-						"OCS-APIRequest": "true",
-						"Content-Type": "application/json",
-					},
-					data: { source: FIXTURE_SOURCE },
-				},
+				{ data: { source: FIXTURE_SOURCE } },
 			);
-			const data = (await res.json())?.ocs?.data;
-			expect(data.category).toBe("downgrade_guard");
-			// The OCS meta carries the category-derived status, never a blanket 500.
-			const meta =
-				(await res.json())?.ocs?.meta ??
-				((await res.request?.()) as never);
-			void meta;
+			const body = await res.json();
+			expect(body?.ocs?.data?.category).toBe("downgrade_guard");
+			// The OCS meta carries the category-derived status, never a blanket
+			// 500. This used to read the meta into a `void`ed local and assert
+			// nothing at all, so the half of the test its own title names (409)
+			// was never checked.
+			expect(body?.ocs?.meta?.statuscode).toBe(409);
+			expect(res.status()).toBe(409);
 		});
 
 		test("a core/shipped app is flagged and not installable on its card", async ({

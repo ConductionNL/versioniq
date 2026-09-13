@@ -8,6 +8,8 @@ import {
 	fixtureAvailable,
 	fixtureControl,
 	installFixture,
+	ocsData,
+	ocsRequest,
 	resetFixtureApp,
 } from "./helpers.ts";
 
@@ -30,21 +32,19 @@ test.describe("install effects", () => {
 	});
 
 	async function versions(page: Page) {
-		const res = await page.request.get(
+		return await ocsData(
+			page,
+			"get",
 			`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/versions?source=${encodeURIComponent(FIXTURE_SOURCE)}&format=json`,
-			{ headers: { "OCS-APIRequest": "true" } },
 		);
-		return (await res.json())?.ocs?.data;
 	}
 
 	async function cache(page: Page) {
-		const res = await page.request.get(
+		return await ocsData(
+			page,
+			"get",
 			"/ocs/v2.php/apps/versioniq/api/cache?format=json",
-			{
-				headers: { "OCS-APIRequest": "true" },
-			},
 		);
-		return (await res.json())?.ocs?.data;
 	}
 
 	// --- migration-safety: last-known-good ---------------------------------
@@ -99,11 +99,10 @@ test.describe("install effects", () => {
 	test("the cache can be cleared", async ({ page }) => {
 		await installFixture(page, "1.0.1");
 		expect((await cache(page)).apps ?? []).not.toHaveLength(0);
-		const del = await page.request.delete(
+		const del = await ocsRequest(
+			page,
+			"delete",
 			"/ocs/v2.php/apps/versioniq/api/cache?format=json",
-			{
-				headers: { "OCS-APIRequest": "true" },
-			},
 		);
 		expect(del.ok()).toBeTruthy();
 		expect((await cache(page)).apps ?? []).toHaveLength(0);
@@ -124,15 +123,11 @@ test.describe("install effects", () => {
 
 	// --- auto-update-policies ----------------------------------------------
 	test("an invalid policy level is rejected", async ({ page }) => {
-		const res = await page.request.put(
+		const res = await ocsRequest(
+			page,
+			"put",
 			`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/policy?format=json`,
-			{
-				headers: {
-					"OCS-APIRequest": "true",
-					"Content-Type": "application/json",
-				},
-				data: { level: "not-a-level" },
-			},
+			{ data: { level: "not-a-level" } },
 		);
 		expect(res.status()).toBe(400);
 		expect(await appConfigValue(page, `policy.${FIXTURE_APP}`)).toBeNull();

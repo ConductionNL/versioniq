@@ -96,8 +96,8 @@ class RemoveRetiredCronJobs implements IRepairStep {
 	];
 
 	/**
-	 * @param IJobList        $jobList The background job list.
-	 * @param LoggerInterface $logger  The logger.
+	 * @param IJobList $jobList The background job list.
+	 * @param LoggerInterface $logger The logger.
 	 */
 	public function __construct(
 		private IJobList $jobList,

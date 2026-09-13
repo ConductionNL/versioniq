@@ -219,17 +219,17 @@ test.describe("background jobs", () => {
 		);
 		const id = (
 			await sql(
-				"SELECT id FROM oc_app_versions_pats WHERE label='expiring' LIMIT 1",
+				"SELECT id FROM oc_versioniq_pats WHERE label='expiring' LIMIT 1",
 			)
 		).split("\t")[0];
 		await sqlExec(
-			`UPDATE oc_app_versions_pats SET expires_at = '${tsOffset(10)}', warned_thresholds='[]' WHERE id=${id}`,
+			`UPDATE oc_versioniq_pats SET expires_at = '${tsOffset(10)}', warned_thresholds='[]' WHERE id=${id}`,
 		);
 
 		await runJob("PatExpiryWarningJob");
 		const warned = (
 			await sql(
-				`SELECT warned_thresholds FROM oc_app_versions_pats WHERE id=${id}`,
+				`SELECT warned_thresholds FROM oc_versioniq_pats WHERE id=${id}`,
 			)
 		).trim();
 		expect(warned, "a threshold was recorded as warned").toMatch(
@@ -242,7 +242,7 @@ test.describe("background jobs", () => {
 		expect(
 			(
 				await sql(
-					`SELECT warned_thresholds FROM oc_app_versions_pats WHERE id=${id}`,
+					`SELECT warned_thresholds FROM oc_versioniq_pats WHERE id=${id}`,
 				)
 			).trim(),
 		).toBe(before);
@@ -275,18 +275,18 @@ test.describe("background jobs", () => {
 		);
 		const id = (
 			await sql(
-				"SELECT id FROM oc_app_versions_pats WHERE label='noexpiry' LIMIT 1",
+				"SELECT id FROM oc_versioniq_pats WHERE label='noexpiry' LIMIT 1",
 			)
 		).split("\t")[0];
 		await sqlExec(
-			`UPDATE oc_app_versions_pats SET expires_at=NULL, warned_thresholds='[]' WHERE id=${id}`,
+			`UPDATE oc_versioniq_pats SET expires_at=NULL, warned_thresholds='[]' WHERE id=${id}`,
 		);
 
 		await runJob("PatExpiryWarningJob");
 		expect(
 			(
 				await sql(
-					`SELECT warned_thresholds FROM oc_app_versions_pats WHERE id=${id}`,
+					`SELECT warned_thresholds FROM oc_versioniq_pats WHERE id=${id}`,
 				)
 			).trim(),
 		).toBe("[]");
@@ -302,10 +302,10 @@ test.describe("background jobs", () => {
 	test("the prune job removes entries older than the retention window", async () => {
 		// Seed one clearly-old audit row and one recent row.
 		await sqlExec(
-			`INSERT INTO oc_app_versions_audit (actor_uid, app_id, operation, status, created_at) VALUES ('system','prunetest','install','success', '${tsOffset(-400)}')`,
+			`INSERT INTO oc_versioniq_audit (actor_uid, app_id, operation, status, created_at) VALUES ('system','prunetest','install','success', '${tsOffset(-400)}')`,
 		);
 		await sqlExec(
-			`INSERT INTO oc_app_versions_audit (actor_uid, app_id, operation, status, created_at) VALUES ('system','prunetest','install','success', '${tsOffset()}')`,
+			`INSERT INTO oc_versioniq_audit (actor_uid, app_id, operation, status, created_at) VALUES ('system','prunetest','install','success', '${tsOffset()}')`,
 		);
 		await occ(
 			"config:app:set",
@@ -316,7 +316,7 @@ test.describe("background jobs", () => {
 		);
 
 		const oldBefore = await sql(
-			`SELECT count(*) FROM oc_app_versions_audit WHERE app_id='prunetest' AND created_at < '${tsOffset(-365)}'`,
+			`SELECT count(*) FROM oc_versioniq_audit WHERE app_id='prunetest' AND created_at < '${tsOffset(-365)}'`,
 		);
 		expect(Number(oldBefore)).toBeGreaterThan(0);
 
@@ -324,7 +324,7 @@ test.describe("background jobs", () => {
 		expect(
 			Number(
 				await sql(
-					`SELECT count(*) FROM oc_app_versions_audit WHERE app_id='prunetest' AND created_at < '${tsOffset(-365)}'`,
+					`SELECT count(*) FROM oc_versioniq_audit WHERE app_id='prunetest' AND created_at < '${tsOffset(-365)}'`,
 				),
 			),
 		).toBe(0);
@@ -332,13 +332,13 @@ test.describe("background jobs", () => {
 		expect(
 			Number(
 				await sql(
-					"SELECT count(*) FROM oc_app_versions_audit WHERE app_id='prunetest'",
+					"SELECT count(*) FROM oc_versioniq_audit WHERE app_id='prunetest'",
 				),
 			),
 		).toBeGreaterThan(0);
 
 		await sqlExec(
-			"DELETE FROM oc_app_versions_audit WHERE app_id='prunetest'",
+			"DELETE FROM oc_versioniq_audit WHERE app_id='prunetest'",
 		);
 		await occ("config:app:delete", "versioniq", "audit_retention_days");
 	});

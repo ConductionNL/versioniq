@@ -32,7 +32,7 @@ use Throwable;
  *
  * WHY IT IS HERE EVEN THOUGH TODAY'S CODE WRITES NO USER VALUE. Grepping this
  * app at the time of the rename finds no user-config write: the per-user state
- * it does keep — PATs — lives in the `app_versions_pats` table, which the
+ * it does keep — PATs — lives in the `versioniq_pats` table, which the
  * rename does not touch, and PAT ownership is a `uid` column rather than a
  * preference. That is an argument for the step being CHEAP, not for it being
  * absent:
@@ -83,7 +83,7 @@ use Throwable;
  *     step runs under `<install>`, where a throw means the app never enables.
  *
  * NO TOKEN MATERIAL PASSES THROUGH HERE. Personal access tokens are stored
- * encrypted in the `app_versions_pats` table, not in `oc_preferences`, and the
+ * encrypted in the `versioniq_pats` table, not in `oc_preferences`, and the
  * rename does not touch that table.
  *
  * Registered under BOTH `<install>` and `<post-migration>` in
@@ -126,7 +126,7 @@ class MigrateUserPreferences implements IRepairStep {
 	 *       moves oc_preferences rows between namespaces and adds no behaviour
 	 *       of its own. This app's per-user state that the rename DOES have to
 	 *       preserve is PAT ownership, which lives in the frozen
-	 *       app_versions_pats table and is specified in
+	 *       versioniq_pats table and is specified in
 	 *       openspec/specs/pat-management/spec.md.
 	 */
 	public function run(IOutput $output): void {

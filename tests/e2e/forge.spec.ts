@@ -6,6 +6,7 @@ import {
 	fixtureAvailable,
 	fixtureControl,
 	installFixture,
+	ocsData,
 	openSettings,
 	resetFixtureApp,
 } from "./helpers.ts";
@@ -147,11 +148,11 @@ test.describe("forge installs (fixture-backed)", () => {
 			repo: "fixtureowner/fixtureapp",
 			status: 429,
 		});
-		const res = await page.request.get(
+		const data = await ocsData(
+			page,
+			"get",
 			`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/versions?source=${encodeURIComponent(FIXTURE_SOURCE)}&format=json`,
-			{ headers: { "OCS-APIRequest": "true" } },
 		);
-		const data = (await res.json())?.ocs?.data;
 		expect(
 			data.error ?? "",
 			"an error should be reported, not silent zero versions",
