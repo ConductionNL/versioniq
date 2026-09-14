@@ -34,3 +34,16 @@ spl_autoload_register(static function (string $class): void {
 		}
 	}
 });
+
+// Integriq's connection-registry events (adopt-connection-registry).
+// ConnectionReportService sends them by string class name behind class_exists
+// (ADR-041), so Versioniq stays installable without integriq. The stubs mirror
+// hydra connection-registry design D6 and integriq's own classes, and load only
+// when the real classes are absent.
+foreach (['ConnectionStatusReportedEvent', 'ConnectionRefreshRequestedEvent'] as $integriqStubEvent) {
+	if (!class_exists('\\OCA\\Integriq\\Event\\' . $integriqStubEvent)) {
+		require_once __DIR__ . '/stubs/Integriq/Event/' . $integriqStubEvent . '.php';
+	}
+}
+
+unset($integriqStubEvent);
