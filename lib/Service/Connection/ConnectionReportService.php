@@ -18,6 +18,7 @@ use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventDispatcher;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
+use ReflectionClass;
 use Throwable;
 
 /**
@@ -257,18 +258,17 @@ class ConnectionReportService {
 	/**
 	 * The event class to instantiate, or null when integriq does not ship it.
 	 *
-	 * @param string $eventClass The fully qualified class name, without a leading backslash.
-	 * @return string|null The class name to instantiate, or null when absent.
+	 * @param string $eventClass The fully qualified class name.
+	 * @return class-string|null The class name to instantiate, or null when absent.
 	 *
 	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
 	 */
 	protected function resolveEventClass(string $eventClass): ?string {
-		$qualified = '\\' . $eventClass;
-		if (!class_exists($qualified)) {
+		if (!class_exists($eventClass)) {
 			return null;
 		}
 
-		return $qualified;
+		return $eventClass;
 	}
 
 	/**
@@ -280,7 +280,7 @@ class ConnectionReportService {
 			return false;
 		}
 
-		$sent = $this->send($key, static fn (): object => new $eventClass(app: Application::APP_ID, key: $key));
+		$sent = $this->send($key, $eventClass, ['app' => Application::APP_ID, 'key' => $key]);
 		if ($sent) {
 			$this->forget($key);
 		}
@@ -325,7 +325,8 @@ class ConnectionReportService {
 
 		$sent = $this->send(
 			$key,
-			static fn (): object => new $eventClass(app: Application::APP_ID, key: $key, status: $status, message: $message)
+			$eventClass,
+			['app' => Application::APP_ID, 'key' => $key, 'status' => $status, 'message' => $message],
 		);
 		if ($sent) {
 			$this->remember($key, $status);
@@ -388,11 +389,15 @@ class ConnectionReportService {
 	/**
 	 * Build and dispatch one event, swallowing anything a listener throws.
 	 *
-	 * @param callable(): object $build Builds the event.
+	 * The event is built by reflection with named arguments, because its class
+	 * is only known by name (ADR-041).
+	 *
+	 * @param class-string $eventClass The event class, known to exist.
+	 * @param array<string, string> $arguments The constructor arguments, by name.
 	 */
-	private function send(string $key, callable $build): bool {
+	private function send(string $key, string $eventClass, array $arguments): bool {
 		try {
-			$event = $build();
+			$event = (new ReflectionClass($eventClass))->newInstanceArgs($arguments);
 			if (!$event instanceof Event) {
 				return false;
 			}

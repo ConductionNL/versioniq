@@ -274,7 +274,7 @@ final class ConnectionReportServiceTest extends TestCase {
 		$service = $this->service();
 
 		self::assertNull($method->invoke($service, 'OCA\\Nobody\\Event\\ShipsThisEvent'));
-		self::assertSame('\\' . ConnectionReportService::STATUS_EVENT, $method->invoke($service, ConnectionReportService::STATUS_EVENT));
+		self::assertSame(ConnectionReportService::STATUS_EVENT, $method->invoke($service, ConnectionReportService::STATUS_EVENT));
 	}
 
 	public function testTheEventNamesAreTheContractNames(): void {
