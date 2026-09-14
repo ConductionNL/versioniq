@@ -136,7 +136,7 @@ async function bind (): Promise<void> {
 
 <template>
 	<div :class="$style.panel">
-		<h3>{{ t('versioniq', 'App sources') }}</h3>
+		<h3 id="section-sources">{{ t('versioniq', 'App sources') }}</h3>
 		<p :class="$style.hint">
 			{{ t('versioniq', 'Bind an installed app to a GitHub or Codeberg repository so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.') }}
 		</p>

@@ -183,7 +183,27 @@ OC.L10N.register(
         "e.g. 2.5.0 breaks LDAP sync": "bijv. 2.5.0 breekt LDAP-synchronisatie",
         "e.g. openregister": "bijv. openregister",
         "safe version: {version}": "veilige versie: {version}",
-        "{count} cached — {size}": "{count} in cache, {size}"
+        "{count} cached — {size}": "{count} in cache, {size}",
+        "Integrations": "Koppelingen",
+        "Add integration": "Integratie toevoegen",
+        "Connection": "Verbinding",
+        "Status message": "Statusbericht",
+        "Last checked": "Laatst gecontroleerd",
+        "Settings": "Instellingen",
+        "Open settings": "Instellingen openen",
+        "Open settings for {connection}": "Instellingen openen voor {connection}",
+        "Never": "Nooit",
+        "Loading connections…": "Verbindingen laden…",
+        "Could not load the connections.": "De verbindingen konden niet worden geladen.",
+        "Integriq has no connection registry on this instance yet.": "Integriq heeft op deze omgeving nog geen verbindingenregister.",
+        "Integriq has not listed the connections of Versioniq yet.": "Integriq heeft de verbindingen van Versioniq nog niet opgenomen.",
+        "The outside systems Versioniq reads from. Integriq checks each one and shows its status here.": "De externe systemen waar Versioniq uit leest. Integriq controleert elk systeem en toont hier de status.",
+        "Configured": "Ingericht",
+        "Limited": "Beperkt",
+        "Not configured": "Niet geconfigureerd",
+        "Simulated": "Gesimuleerd",
+        "Not available": "Niet beschikbaar",
+        "Error": "Fout"
     },
     "nplurals=2; plural=(n != 1);"
 )

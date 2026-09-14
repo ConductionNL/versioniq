@@ -156,7 +156,27 @@ OC.L10N.register(
         "e.g. 2.5.0 breaks LDAP sync": "e.g. 2.5.0 breaks LDAP sync",
         "e.g. openregister": "e.g. openregister",
         "safe version: {version}": "safe version: {version}",
-        "{count} cached — {size}": "{count} cached — {size}"
+        "{count} cached — {size}": "{count} cached — {size}",
+        "Integrations": "Integrations",
+        "Add integration": "Add integration",
+        "Connection": "Connection",
+        "Status message": "Status message",
+        "Last checked": "Last checked",
+        "Settings": "Settings",
+        "Open settings": "Open settings",
+        "Open settings for {connection}": "Open settings for {connection}",
+        "Never": "Never",
+        "Loading connections…": "Loading connections…",
+        "Could not load the connections.": "Could not load the connections.",
+        "Integriq has no connection registry on this instance yet.": "Integriq has no connection registry on this instance yet.",
+        "Integriq has not listed the connections of Versioniq yet.": "Integriq has not listed the connections of Versioniq yet.",
+        "The outside systems Versioniq reads from. Integriq checks each one and shows its status here.": "The outside systems Versioniq reads from. Integriq checks each one and shows its status here.",
+        "Configured": "Configured",
+        "Limited": "Limited",
+        "Not configured": "Not configured",
+        "Simulated": "Simulated",
+        "Not available": "Not available",
+        "Error": "Error"
     },
     "nplurals=2; plural=(n != 1);"
 )
