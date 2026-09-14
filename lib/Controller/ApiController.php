@@ -21,6 +21,7 @@ use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
+use OCA\Versioniq\Service\Connection\ConnectionReportService;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pat\PatDeeplinkBuilder;
@@ -50,6 +51,9 @@ use OCP\ServerVersion;
  * @psalm-suppress UnusedClass
  */
 class ApiController extends OCSController {
+	/**
+	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
+	 */
 	public function __construct(
 		string $appName,
 		IRequest $request,
@@ -72,6 +76,10 @@ class ApiController extends OCSController {
 		private PolicyStore $policyStore,
 		private AutoUpdateSettingsStore $autoUpdateSettingsStore,
 		private ArtifactCache $artifactCache,
+		// Asks integriq to look again after a token save or removal
+		// (adopt-connection-registry). Optional and last, so every existing
+		// caller and test keeps working.
+		private ?ConnectionReportService $connectionReports = null,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -952,7 +960,12 @@ class ApiController extends OCSController {
 	 * 400: The token failed validation against its forge
 	 * 403: Caller is not an administrator
 	 *
+	 * After a GitHub token is stored, integriq is asked to look at the GitHub
+	 * connection again, and told the token check reached GitHub. That never
+	 * throws and never changes the response.
+	 *
 	 * @spec openspec/specs/pat-management/spec.md
+	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'POST', url: '/api/pats')]
@@ -998,6 +1011,7 @@ class ApiController extends OCSController {
 			$result->expiresAt,
 			$forge,
 		);
+		$this->connectionReports?->forgeTokenSaved($forge);
 
 		return new DataResponse(['pat' => $this->serializePat($pat), 'warnings' => $result->warnings]);
 	}
@@ -1065,7 +1079,11 @@ class ApiController extends OCSController {
 	 * 403: Caller is not an administrator, or is not the PAT's owner
 	 * 404: No PAT with that id
 	 *
+	 * After a GitHub token is removed, integriq is asked to look at the GitHub
+	 * connection again.
+	 *
 	 * @spec openspec/specs/pat-management/spec.md
+	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'DELETE', url: '/api/pats/{id}')]
@@ -1090,6 +1108,7 @@ class ApiController extends OCSController {
 		}
 
 		$this->patManager->delete($pat);
+		$this->connectionReports?->forgeTokenRemoved($pat->getForge());
 
 		return new DataResponse(['deleted' => $id]);
 	}
