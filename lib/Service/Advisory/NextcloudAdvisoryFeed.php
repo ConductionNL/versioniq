@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Advisory;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Connection\ConnectionReportService;
 use OCP\Http\Client\IClientService;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
@@ -58,11 +59,18 @@ class NextcloudAdvisoryFeed {
 	private const PER_PAGE = 100;
 	private const FETCH_TIMEOUT_SECONDS = 30;
 
+	/**
+	 * @spec openspec/specs/security-advisory-correlation/spec.md
+	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
+	 */
 	public function __construct(
 		private IClientService $clientService,
 		private IAppConfig $config,
 		private AdvisoryPackageMap $packageMap,
 		private LoggerInterface $logger,
+		// Tells integriq how much of the feed a check read. Optional and last,
+		// so every existing caller and test keeps working.
+		private ?ConnectionReportService $connectionReports = null,
 	) {
 	}
 
@@ -74,7 +82,12 @@ class NextcloudAdvisoryFeed {
 	 * Errors are reported, never thrown: a sweep that cannot reach the feed
 	 * must degrade to "could not check", not abort the whole correlation.
 	 *
+	 * Every outcome is also told to integriq's connection registry
+	 * (adopt-connection-registry). The only caller is the advisory sweep, a
+	 * scheduled job, so this is never on a page request.
+	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
+	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
 	 * @return array{advisories: array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}>>, error: ?string}
 	 */
 	public function fetchAll(): array {
@@ -93,21 +106,21 @@ class NextcloudAdvisoryFeed {
 					'headers' => ['Accept' => 'application/vnd.github+json'],
 				]);
 			} catch (Throwable $error) {
-				return $this->partial($byTarget, 'Could not read the Nextcloud advisory feed: ' . $error->getMessage());
+				return $this->partial($byTarget, count($seen), 'Could not read the Nextcloud advisory feed: ' . $error->getMessage());
 			}
 
 			if ($response->getStatusCode() !== 200) {
-				return $this->partial($byTarget, 'The Nextcloud advisory feed returned HTTP ' . $response->getStatusCode() . '.');
+				return $this->partial($byTarget, count($seen), 'The Nextcloud advisory feed returned HTTP ' . $response->getStatusCode() . '.');
 			}
 
 			try {
 				/** @var mixed $decoded */
 				$decoded = json_decode((string)$response->getBody(), true, 512, JSON_THROW_ON_ERROR);
 			} catch (\JsonException $error) {
-				return $this->partial($byTarget, 'The Nextcloud advisory feed returned invalid JSON: ' . $error->getMessage());
+				return $this->partial($byTarget, count($seen), 'The Nextcloud advisory feed returned invalid JSON: ' . $error->getMessage());
 			}
 			if (!is_array($decoded)) {
-				return $this->partial($byTarget, 'The Nextcloud advisory feed returned an unexpected payload shape.');
+				return $this->partial($byTarget, count($seen), 'The Nextcloud advisory feed returned an unexpected payload shape.');
 			}
 
 			$fresh = 0;
@@ -134,6 +147,8 @@ class NextcloudAdvisoryFeed {
 			// spinning until MAX_PAGES.
 			$url = ($fresh > 0) ? $next : null;
 		}
+
+		$this->connectionReports?->advisoryFeedRead(count($seen), null);
 
 		return ['advisories' => $byTarget, 'error' => null];
 	}
@@ -257,11 +272,14 @@ class NextcloudAdvisoryFeed {
 	 * into "no advisories", which is the exact absence-reads-as-reassurance
 	 * failure this whole feature keeps hitting.
 	 *
+	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
 	 * @param array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}>> $collected
+	 * @param int $read How many advisories were read before the failure.
 	 * @return array{advisories: array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}>>, error: string}
 	 */
-	private function partial(array $collected, string $error): array {
+	private function partial(array $collected, int $read, string $error): array {
 		$this->logger->warning('NextcloudAdvisoryFeed: ' . $error, ['collected' => count($collected)]);
+		$this->connectionReports?->advisoryFeedRead($read, $error);
 
 		return ['advisories' => $collected, 'error' => $error];
 	}

@@ -241,6 +241,18 @@ final class ConnectionReportServiceTest extends TestCase {
 		);
 	}
 
+	public function testAFailureReasonNamesAHostAndNeverAPath(): void {
+		$service = $this->service();
+		$reason = 'Could not read the Nextcloud advisory feed: cURL error 28 for https://token:s3cret@mirror.example/repos/nextcloud/security-advisories?per_page=100&after=abc';
+
+		foreach ([$service->describeAdvisoryRead(0, $reason)[1], $service->describeAppStoreFetch(false, $reason)[1]] as $message) {
+			self::assertStringContainsString('for mirror.example', $message);
+			foreach (['s3cret', 'token', '/repos', 'nextcloud/security-advisories', 'after=abc'] as $leak) {
+				self::assertStringNotContainsString($leak, $message);
+			}
+		}
+	}
+
 	public function testWithoutIntegriqNothingIsSentStoredOrLogged(): void {
 		$this->dispatcher->expects($this->never())->method('dispatchTyped');
 		$this->appConfig->expects($this->never())->method('getValueString');

@@ -367,10 +367,17 @@ class ConnectionReportService {
 	}
 
 	/**
-	 * A reason cut to REASON_LIMIT characters.
+	 * A reason with every URL cut down to its host, then cut to REASON_LIMIT characters.
+	 *
+	 * An HTTP client's exception text carries the full request URL, and a
+	 * feed or catalogue override can carry a path or credentials.
 	 */
 	private function shorten(string $text): string {
-		$text = trim($text);
+		$text = trim((string)preg_replace_callback(
+			'~\b[a-z][a-z0-9+.-]*://[^\s<>"\']+~i',
+			fn (array $match): string => $this->hostOf($match[0], 'a URL'),
+			$text,
+		));
 		if (mb_strlen($text) <= self::REASON_LIMIT) {
 			return $text;
 		}
