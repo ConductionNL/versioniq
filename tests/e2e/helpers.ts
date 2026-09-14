@@ -18,7 +18,8 @@ export type TabName =
 	| "Tokens"
 	| "Trusted sources"
 	| "Discover"
-	| "Artifact cache";
+	| "Artifact cache"
+	| "Integrations";
 
 /**
  * Opens the admin settings page and waits for the app shell to be interactive.

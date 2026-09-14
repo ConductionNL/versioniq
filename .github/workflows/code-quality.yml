@@ -143,7 +143,15 @@ jobs:
       # It was added so versions.spec had an installed App Store app to walk.
       # `dashboard` serves that purpose with no compatibility floor at all,
       # because Nextcloud bundles it — see the note at the top of that spec.
-      additional-apps: '[{"repo":"nextcloud/notifications","app":"notifications","ref":"stable34"}]'
+      #
+      # openregister and integriq are here because the Integrations tab reads
+      # integriq's `app_connection` rows (adopt-connection-registry). Without
+      # them the tab does not render and tests/e2e/integrations.spec.ts fails
+      # on every run. integriq depends on openregister, so openregister comes
+      # first. Both declare min-version 32, the floor of this matrix. The app
+      # ids were verified in each repo's appinfo/info.xml on `development` on
+      # 2026-09-14.
+      additional-apps: '[{"repo":"nextcloud/notifications","app":"notifications","ref":"stable34"},{"repo":"ConductionNL/openregister","app":"openregister","ref":"development"},{"repo":"ConductionNL/integriq","app":"integriq","ref":"development"}]'
 
       enable-sbom: true
 
