@@ -4,14 +4,16 @@ import type {PolicyLevel} from './components/PolicySelector.vue';
 import type { PinRecord } from './dialogs/PinDialog.vue'
 import type {LkgRecord} from './utils/migrationSafety.ts';
 
+import { loadState } from '@nextcloud/initial-state'
 import { t } from '@nextcloud/l10n'
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import CachePanel from './components/CachePanel.vue'
 import ChangelogRangePanel from './components/ChangelogRangePanel.vue'
 import DiscoverPanel from './components/DiscoverPanel.vue'
 import HistoryPanel from './components/HistoryPanel.vue'
+import IntegrationsPanel from './components/IntegrationsPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
 import SourcesPanel from './components/SourcesPanel.vue'
@@ -24,6 +26,7 @@ import PinOverrideDialog from './dialogs/PinOverrideDialog.vue'
 import ShaMismatchDialog from './dialogs/ShaMismatchDialog.vue'
 import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow.ts'
 import { buildChangelogRange } from './utils/changelog.ts'
+import { tabForHash } from './utils/connectionRegistry.ts'
 import { shouldOfferLkgRollback } from './utils/migrationSafety.ts'
 import { compareVersions, parseVersionCore } from './utils/versionCompare.ts'
 
@@ -222,9 +225,15 @@ const isSavingAutoUpdateSettings = ref(false)
 const autoUpdateSettingsError = ref('')
 const autoUpdateSettingsNotice = ref('')
 
+// Whether integriq is installed, from Admin::getForm(). The Integrations tab
+// lists integriq's connection rows, so without integriq there is no tab and
+// no request to its register (adopt-connection-registry).
+const integriqInstalled = loadState<boolean>('versioniq', 'integriq-installed', false) === true
+
 // Admin-settings tabs: the existing apps→versions→install view plus the
 // source / token / trusted-source management panels, and the Discover tab
 // (multi-source search over the previously-unreachable discovery backend).
+// Integrations comes last, and only with integriq.
 const tabs = [
 	{ id: 'apps' },
 	{ id: 'history' },
@@ -233,6 +242,7 @@ const tabs = [
 	{ id: 'trusted' },
 	{ id: 'discover' },
 	{ id: 'cache' },
+	...(integriqInstalled ? [{ id: 'integrations' }] : []),
 ]
 const currentTab = ref('apps')
 const tablistEl = ref<HTMLElement | null>(null)
@@ -251,7 +261,26 @@ function tabLabel (id: string): string {
 	trusted: t('versioniq', 'Trusted sources'),
 	discover: t('versioniq', 'Discover'),
 	cache: t('versioniq', 'Artifact cache'),
+	integrations: t('versioniq', 'Integrations'),
 }[id] ?? id
+}
+
+/**
+ * Selects the tab that holds the anchor in the location hash, then scrolls to
+ * it. The Integrations rows link to `#section-sources` and
+ * `#section-advisories`, and a hidden tab's anchor scrolls nowhere.
+ *
+ * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-003-an-admin-reads-the-connections-on-an-integrations-tab
+ */
+function openSectionFromHash (): void {
+	const target = tabForHash(window.location.hash)
+	if (target === null || !tabs.some((tab) => tab.id === target.tab)) {
+		return
+	}
+	currentTab.value = target.tab
+	void nextTick(() => {
+		document.getElementById(target.anchor)?.scrollIntoView()
+	})
 }
 
 // Prefill applied to the Sources bind form when a Discover hit's install
@@ -1777,7 +1806,15 @@ async function rollbackToLastKnownGood (appId: string, version: string): Promise
 	}
 }
 
+onBeforeUnmount(() => {
+	window.removeEventListener('hashchange', openSectionFromHash)
+})
+
 onMounted(async () => {
+	// Before the first await, so a settings link lands on its tab at once.
+	openSectionFromHash()
+	window.addEventListener('hashchange', openSectionFromHash)
+
 	const storedSafeMode = readStoredFlag(safeModeStorageKey)
 	if (storedSafeMode !== null) {
 		safeModeEnabled.value = storedSafeMode !== 'false'
@@ -2020,7 +2057,7 @@ watch(dryRunEnabled, () => {
 									{{ t('versioniq', 'Save') }}
 								</NcButton>
 
-								<h3 :class="$style.advisorySettingsHeading">{{ t('versioniq', 'Security advisory checks') }}</h3>
+								<h3 id="section-advisories" :class="$style.advisorySettingsHeading">{{ t('versioniq', 'Security advisory checks') }}</h3>
 								<p :class="$style.hint">
 									{{ t('versioniq', 'Versioniq checks published Nextcloud security advisories against your installed versions and notifies administrators immediately when an installed version is affected.') }}
 								</p>
@@ -2485,6 +2522,10 @@ watch(dryRunEnabled, () => {
 					id="cache-panel"
 					role="tabpanel"
 					aria-labelledby="cache-tab" />
+				<IntegrationsPanel v-if="integriqInstalled && currentTab === 'integrations'"
+					id="integrations-panel"
+					role="tabpanel"
+					aria-labelledby="integrations-tab" />
 			</div>
 		</div>
 	</div>

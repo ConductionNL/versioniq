@@ -14,6 +14,7 @@ namespace OCA\Versioniq\Service\Source;
 
 use Exception;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
+use OCA\Versioniq\Service\Connection\ConnectionReportService;
 use OCA\Versioniq\Service\Pat\PatManager;
 use OCA\Versioniq\Service\Pat\PatResolver;
 use OCP\Http\Client\IClientService;
@@ -39,6 +40,10 @@ use UnexpectedValueException;
 class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	private const USER_AGENT = 'Nextcloud-Versioniq';
 
+	/**
+	 * @spec openspec/specs/external-sources/spec.md
+	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
+	 */
 	public function __construct(
 		private IClientService $clientService,
 		private LoggerInterface $logger,
@@ -47,6 +52,9 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		private IUserSession $userSession,
 		private ForgeRegistry $forgeRegistry,
 		private IConfig $config,
+		// Tells integriq what a GitHub request met (adopt-connection-registry).
+		// Optional and last, so every existing caller and test keeps working.
+		private ?ConnectionReportService $connectionReports = null,
 	) {
 	}
 
@@ -287,6 +295,9 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	}
 
 	/**
+	 * Performs one forge request, and tells integriq what GitHub answered.
+	 *
+	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
 	 * @return array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string}
 	 */
 	private function performFetch(Forge $forge, string $endpoint, ?string $token): array {
@@ -321,11 +332,16 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 				'message' => $error->getMessage(),
 			]);
 
+			$this->connectionReports?->forgeAnswered($forge->id, $forge->apiBaseUrl, null);
+
 			return ['ok' => false, 'error' => $this->humanizeError($forge, $error->getMessage())];
 		}
 
 		$status = $response->getStatusCode();
 		$name = $this->forgeName($forge);
+		if ($status !== 200) {
+			$this->connectionReports?->forgeAnswered($forge->id, $forge->apiBaseUrl, $status);
+		}
 		if ($status === 404) {
 			return ['ok' => false, 'error' => $name . ' repository not found.'];
 		}
@@ -342,12 +358,18 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		try {
 			$decoded = json_decode((string)$response->getBody(), true, 32, JSON_THROW_ON_ERROR);
 		} catch (\JsonException) {
+			$this->connectionReports?->forgeAnswered($forge->id, $forge->apiBaseUrl, $status, false);
+
 			return ['ok' => false, 'error' => $name . ' API returned malformed JSON.'];
 		}
 
 		if (!is_array($decoded) || !array_is_list($decoded)) {
+			$this->connectionReports?->forgeAnswered($forge->id, $forge->apiBaseUrl, $status, false);
+
 			return ['ok' => false, 'error' => $name . ' API returned an unexpected payload shape.'];
 		}
+
+		$this->connectionReports?->forgeAnswered($forge->id, $forge->apiBaseUrl, $status);
 
 		return ['ok' => true, 'releases' => $decoded];
 	}

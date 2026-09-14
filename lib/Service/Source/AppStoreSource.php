@@ -15,6 +15,7 @@ namespace OCA\Versioniq\Service\Source;
 use Exception;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
+use OCA\Versioniq\Service\Connection\ConnectionReportService;
 use OCP\Http\Client\IClientService;
 use OCP\IAppConfig;
 use OCP\IConfig;
@@ -58,11 +59,26 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	private const PAYLOAD_CACHE_PREFIX = 'appstore.payload.';
 	private const PAYLOAD_CACHE_TS_PREFIX = 'appstore.payload_ts.';
 
+	/**
+	 * What the current uncached fetch met, for the connection report
+	 * (adopt-connection-registry). Reset at the start of every fetch.
+	 *
+	 * @var array{answered: bool, failure: string}
+	 */
+	private array $catalogueOutcome = ['answered' => false, 'failure' => ''];
+
+	/**
+	 * @spec openspec/specs/version-management/spec.md
+	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
+	 */
 	public function __construct(
 		private IClientService $clientService,
 		private IConfig $config,
 		private IAppConfig $appConfig,
 		private IFactory $l10nFactory,
+		// Tells integriq whether the App Store answered. Optional and last, so
+		// every existing caller and test keeps working.
+		private ?ConnectionReportService $connectionReports = null,
 	) {
 	}
 
@@ -220,7 +236,11 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 			return $cached;
 		}
 
+		$this->catalogueOutcome = ['answered' => false, 'failure' => ''];
 		$payload = $this->fetchAppPayloadUncached($appId);
+		// Only an uncached fetch reaches this line, so a cache hit reports
+		// nothing and a report follows a real catalogue request.
+		$this->connectionReports?->appStoreFetched($this->catalogueOutcome['answered'], $this->catalogueOutcome['failure']);
 		if ($payload !== null) {
 			$this->writeCachedPayload($appId, $payload);
 
@@ -318,17 +338,21 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 			try {
 				$response = $client->get($endpoint, ['timeout' => self::FETCH_TIMEOUT_SECONDS]);
 				if ($response->getStatusCode() !== 200) {
+					$this->noteCatalogueFailure('HTTP ' . $response->getStatusCode());
 					continue;
 				}
 				$body = trim((string)$response->getBody());
 				if ($body === '') {
+					$this->noteCatalogueFailure('an empty body');
 					return null;
 				}
 				/** @var mixed $decoded */
 				$decoded = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
 				if (!is_array($decoded)) {
+					$this->noteCatalogueFailure('an unexpected payload');
 					return null;
 				}
+				$this->catalogueOutcome['answered'] = true;
 				// The whole catalogue arrived regardless of the filter; keep it.
 				$this->cacheCatalogueEntries($decoded);
 				$appPayload = $this->extractAppPayload($decoded, $appId);
@@ -339,6 +363,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 					break;
 				}
 			} catch (Exception) {
+				$this->noteCatalogueFailure('no readable answer');
 				continue;
 			}
 		}
@@ -351,17 +376,21 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 			try {
 				$response = $client->get($endpoint, ['timeout' => self::FETCH_TIMEOUT_SECONDS]);
 				if ($response->getStatusCode() !== 200) {
+					$this->noteCatalogueFailure('HTTP ' . $response->getStatusCode());
 					continue;
 				}
 				$body = trim((string)$response->getBody());
 				if ($body === '') {
+					$this->noteCatalogueFailure('an empty body');
 					continue;
 				}
 				/** @var mixed $decoded */
 				$decoded = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
 				if (!is_array($decoded)) {
+					$this->noteCatalogueFailure('an unexpected payload');
 					continue;
 				}
+				$this->catalogueOutcome['answered'] = true;
 				// Same reasoning as the filtered endpoint above: this response
 				// is the whole platform catalogue, so index all of it.
 				$this->cacheCatalogueEntries($decoded);
@@ -373,11 +402,24 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 					break;
 				}
 			} catch (Exception) {
+				$this->noteCatalogueFailure('no readable answer');
 				continue;
 			}
 		}
 
 		return null;
+	}
+
+	/**
+	 * Records why a catalogue request failed, for the connection report.
+	 *
+	 * The reason names only what came back, never the endpoint: the message
+	 * lands on a row every admin reads.
+	 *
+	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
+	 */
+	private function noteCatalogueFailure(string $reason): void {
+		$this->catalogueOutcome['failure'] = 'the last attempt got ' . $reason . '.';
 	}
 
 	/**

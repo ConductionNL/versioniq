@@ -1,0 +1,31 @@
+{
+    "app": "versioniq",
+    "connections": [
+        {
+            "key": "appstore",
+            "title": "Nextcloud App Store",
+            "description": "Lists the versions and release notes of apps installed from the App Store.",
+            "order": 10,
+            "reportedOnly": true,
+            "unconfiguredMessage": "Not checked yet. Versioniq reports here after it next reads the App Store catalogue."
+        },
+        {
+            "key": "github",
+            "title": "GitHub releases",
+            "description": "Reads releases and repository advisories for apps you bound to a GitHub repository.",
+            "order": 20,
+            "settingsUrl": "/settings/admin/versioniq#section-sources",
+            "reportedOnly": true,
+            "unconfiguredMessage": "Not checked yet. Versioniq reports here after it next reads releases from GitHub."
+        },
+        {
+            "key": "advisories",
+            "title": "Nextcloud security advisories",
+            "description": "Reads the security advisories Nextcloud publishes, and matches them to your installed versions.",
+            "order": 30,
+            "settingsUrl": "/settings/admin/versioniq#section-advisories",
+            "reportedOnly": true,
+            "unconfiguredMessage": "Not checked yet. Versioniq reports here after its next advisory check."
+        }
+    ]
+}
