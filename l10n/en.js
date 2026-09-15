@@ -175,6 +175,7 @@ OC.L10N.register(
         "Limited": "Limited",
         "Not configured": "Not configured",
         "Simulated": "Simulated",
+        "Switched off": "Switched off",
         "Not available": "Not available",
         "Error": "Error"
     },

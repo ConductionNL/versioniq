@@ -28,14 +28,15 @@ const read = (...parts: string[]): string => readFileSync(resolve(ROOT, ...parts
 const translate = (source: string): string => `t:${source}`
 
 describe('connection formatters', () => {
-	it('labels all six statuses, limited included', () => {
+	it('labels all seven statuses, limited and disabled included', () => {
 		expect(Object.keys(CONNECTION_STATUS_LABELS).sort()).toEqual(
-			['configured', 'error', 'limited', 'simulated', 'unavailable', 'unconfigured'],
+			['configured', 'disabled', 'error', 'limited', 'simulated', 'unavailable', 'unconfigured'],
 		)
 		expect(connectionStatus('configured', translate)).toBe('t:Configured')
 		expect(connectionStatus('limited', translate)).toBe('t:Limited')
 		expect(connectionStatus('unconfigured', translate)).toBe('t:Not configured')
 		expect(connectionStatus('simulated', translate)).toBe('t:Simulated')
+		expect(connectionStatus('disabled', translate)).toBe('t:Switched off')
 		expect(connectionStatus('unavailable', translate)).toBe('t:Not available')
 		expect(connectionStatus('error', translate)).toBe('t:Error')
 	})
@@ -74,8 +75,10 @@ describe('connection formatters', () => {
 			expect(nl[label], `nl: ${label}`).toBeTruthy()
 		}
 		expect(nl.Limited).toBe('Beperkt')
+		expect(nl['Switched off']).toBe('Uitgeschakeld')
 		// The browser reads the .js catalogue, never the .json one.
 		expect(read('l10n', 'nl.js')).toContain('"Limited": "Beperkt"')
+		expect(read('l10n', 'nl.js')).toContain('"Switched off": "Uitgeschakeld"')
 	})
 })
 
