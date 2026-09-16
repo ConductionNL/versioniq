@@ -31,14 +31,16 @@ export const CONNECTIONS_PATH = `/index.php/apps/openregister/api/objects/integr
 export const INTEGRIQ_CONNECTIONS_PATH = `/index.php/apps/integriq/connections?app=${CONNECTION_APP_ID}&link=1`
 
 /**
- * The English label for each of the six registry statuses (design D3).
- * `limited` came with hydra#673: the connection works in part.
+ * The English label for each of the seven registry statuses (design D3).
+ * `limited` came with hydra#673: the connection works in part. `disabled`
+ * came with D12 item 9: an admin switched the feature off.
  */
 export const CONNECTION_STATUS_LABELS: Readonly<Record<string, string>> = Object.freeze({
 	configured: 'Configured',
 	limited: 'Limited',
 	unconfigured: 'Not configured',
 	simulated: 'Simulated',
+	disabled: 'Switched off',
 	unavailable: 'Not available',
 	error: 'Error',
 })

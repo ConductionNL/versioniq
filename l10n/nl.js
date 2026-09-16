@@ -202,6 +202,7 @@ OC.L10N.register(
         "Limited": "Beperkt",
         "Not configured": "Niet geconfigureerd",
         "Simulated": "Gesimuleerd",
+        "Switched off": "Uitgeschakeld",
         "Not available": "Niet beschikbaar",
         "Error": "Fout"
     },
