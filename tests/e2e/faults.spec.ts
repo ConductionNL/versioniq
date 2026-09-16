@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 
 import { expect, test } from "@playwright/test";
 import {
+	awaitWebInstanceSettled,
 	execInInstance,
 	FIXTURE_APP,
 	FIXTURE_SOURCE,
@@ -120,6 +121,9 @@ test.describe("faults, diffs and cache integrity", () => {
 			`--source=${FIXTURE_SOURCE}`,
 			"--json",
 		);
+		// The occ installs above leave the web process's cached installed_version
+		// stale for a few seconds; read the cache only once the web agrees.
+		await awaitWebInstanceSettled(page);
 
 		const summary = await (
 			await page.request.get(

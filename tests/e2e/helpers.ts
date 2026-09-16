@@ -381,6 +381,49 @@ function dbPrelude(): string {
 }
 
 /**
+ * Waits until the WEB instance agrees that no upgrade is pending.
+ *
+ * An `occ` install writes the new `installed_version` to the database and new
+ * app files to disk, but it clears only its OWN process's APCu. The web
+ * server's AppConfig keeps the old `installed_version` in its APCu local
+ * cache for up to three seconds (`OC\AppConfig::LOCAL_CACHE_TTL`), so during
+ * that window the web process sees an info.xml version that differs from the
+ * installed one, `Util::needUpgrade()` is true, and `ocs/v1.php` answers every
+ * OCS call with `503` and `X-Nextcloud-Maintenance-Mode: 1`. CI run 35062654519
+ * shows exactly that: four tests hit 503s in windows of 1.6 to 2.3 seconds,
+ * each directly after an occ install, with `maintenance` already switched off.
+ *
+ * `status.php` reports the same two conditions without authentication, so it
+ * is the probe. A state that does not settle within the bound is a real
+ * problem and is reported as one, not waited out.
+ */
+export async function awaitWebInstanceSettled(page: Page): Promise<void> {
+	const deadline = Date.now() + 10_000;
+	let last = "no answer";
+	while (Date.now() < deadline) {
+		const res = await page.request
+			.get("/status.php")
+			.catch(() => undefined);
+		if (res?.ok()) {
+			const status = await res.json().catch(() => ({}));
+			if (status.maintenance === false && status.needsDbUpgrade === false) {
+				return;
+			}
+			last = `maintenance=${status.maintenance}, needsDbUpgrade=${status.needsDbUpgrade}`;
+		} else if (res) {
+			last = `HTTP ${res.status()}`;
+		}
+		await page.waitForTimeout(250);
+	}
+	throw new Error(
+		`awaitWebInstanceSettled: the web instance still reports ${last} 10 s after an ` +
+			"occ install. The app files and the recorded installed_version disagree, or " +
+			"maintenance mode was left on. This is a broken fixture state, not a failing " +
+			"assertion in the test that runs next.",
+	);
+}
+
+/**
  * Installs a version of the fixture app and returns the structured outcome.
  *
  * Installs are driven through `occ versioniq:install` rather than the HTTP
@@ -397,7 +440,6 @@ export async function installFixture(
 	version: string,
 	opts: { allowDowngrade?: boolean; acceptNewSha?: boolean } = {},
 ): Promise<{ status: number; body: any }> {
-	void page;
 	const args = [
 		"php",
 		"occ",
@@ -414,6 +456,7 @@ export async function installFixture(
 	// structured outcome on stdout — surface it with the exit code.
 	const { code, stdout } = await execInInstance(args);
 	const body = parseLastJson(stdout);
+	await awaitWebInstanceSettled(page);
 
 	// A SUCCESSFUL install that did not land is the failure mode this helper
 	// has to catch, because every caller downstream reads the result as fact.
@@ -458,6 +501,7 @@ export async function installFixture(
 		await occ("maintenance:mode", "--off");
 		const retry = await execInInstance(args);
 		const retryBody = parseLastJson(retry.stdout);
+		await awaitWebInstanceSettled(page);
 		if (
 			retry.code === 0 &&
 			(retryBody?.installedVersion === version ||
@@ -734,4 +778,5 @@ export async function resetFixtureApp(page: Page): Promise<void> {
 		if (body.installedVersion === "1.0.0" || body.updateType === "none")
 			break;
 	}
+	await awaitWebInstanceSettled(page);
 }
