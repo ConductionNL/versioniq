@@ -91,7 +91,12 @@ final class ConnectionsDeclarationTest extends TestCase {
 	public function testTheFileNamesThisApp(): void {
 		// Integriq refuses a file whose `app` differs from the app it was read from.
 		$declaration = $this->declaration();
-		$infoXml = simplexml_load_file($this->root() . '/appinfo/info.xml');
+		// Parse the bytes, not the path. Nextcloud's lib/base.php nulls libxml's
+		// external entity loader, and that resolver also handles the primary
+		// document, so simplexml_load_file() returns false for a valid file
+		// under the Nextcloud bootstrap: every CI cell failed here while the
+		// test passed locally. OC\App\InfoParser reads the bytes for this reason.
+		$infoXml = simplexml_load_string((string)file_get_contents($this->root() . '/appinfo/info.xml'));
 
 		self::assertNotFalse($infoXml);
 		self::assertSame((string)$infoXml->id, $declaration['app']);
