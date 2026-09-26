@@ -127,7 +127,43 @@
 			"readOn": "2026-09-26",
 			"columnAddedOn": "2026-09-26",
 			"evidenceGrade": "docs-only",
-			"unknownReason": "partial pack: rows past the reader's last write were not read"
+			"version": "v0.397.0",
+			"sourceRead": "https://github.com/dependabot/dependabot-core at v0.397.0",
+			"gradeNote": "source read at v0.397.0 (commit 33eeba3d2ab2dae168b6d55011a4cfd674829520), not driven. Only the update engine is open (dependabot-core, MIT); the scheduler, alert matching, alert UI, dependabot.yml handling, auto-triage and advisory UI are closed and were read from docs.github.com on 2026-09-26. Each cell says which half it rests on: 'Core' cites dependabot-core paths at the tag, 'Closed service' cites a docs URL. Advisory data is open at https://github.com/github/advisory-database. Rows map an app to a dependency in a repository manifest and an instance to a repository.",
+			"unknownReason": "Unknown cells are mostly Nextcloud-host concepts (enabled state, maintenance mode, migrations, local package cache, safe mode) with no counterpart in a pull-request-based dependency updater, plus token and audit details the docs read today did not settle.",
+			"sources": {
+				"docs": "https://docs.github.com/en/code-security",
+				"sourceRepo": "https://github.com/dependabot/dependabot-core",
+				"featurePage": "https://github.com/features/security/software-supply-chain",
+				"featureRequests": {
+					"url": "https://github.com/dependabot/dependabot-core/issues",
+					"featureLabel": "T: feature-request"
+				},
+				"issueTracker": "https://github.com/dependabot/dependabot-core/issues",
+				"roadmap": "https://github.com/github/roadmap",
+				"changelog": "https://github.blog/changelog/label/dependabot/",
+				"apiReference": "https://docs.github.com/en/rest/dependabot",
+				"marketplace": "https://github.com/marketplace?type=actions&query=dependabot",
+				"pricing": "https://github.com/pricing",
+				"accessibilityStatement": "https://accessibility.github.com",
+				"securityDocs": "https://github.com/security",
+				"demoInstance": null,
+				"community": "https://github.com/orgs/community/discussions/categories/code-security",
+				"reviews": null,
+				"videos": null,
+				"caseStudies": null,
+				"partnerDirectory": "https://github.com/partners",
+				"trainingCurriculum": "https://resources.github.com/learn/certifications/",
+				"jobPostings": "https://github.com/about/careers",
+				"tenders": null,
+				"nullReasons": {
+					"demoInstance": "Dependabot is a hosted service enabled per repository; no demo instance exists.",
+					"reviews": "not checked",
+					"videos": "not checked: only GitHub's general channel was found, no Dependabot-specific playlist verified",
+					"caseStudies": "not checked: GitHub customer stories were not searched for Dependabot-specific cases",
+					"tenders": "intelligence database 2026-09-26: no tender or requirement names Dependabot"
+				}
+			}
 		},
 		{
 			"key": "osv-scanner",
@@ -991,7 +1027,7 @@
 			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "partial",
-			"dependabot": "unknown",
+			"dependabot": "yes",
 			"osv-scanner": "partial",
 			"easy-updates-manager": "unknown",
 			"built": {
@@ -1006,8 +1042,38 @@
 			"note": "Versions are listed live from the store catalogue or forge release list, so a deleted release drops out; there is no explicit handling of a withdrawn or retracted flag, and a cached package can still be reinstalled.",
 			"evidence": {
 				"renovate": "ignoreDeprecated (lib/config/options/index.ts:1925) skips deprecated npm versions and rollbackPrs handles removed versions, but open request 13012 asks for Go retracted versions to be ignored.",
+				"dependabot": "Core: yanked releases are dropped before a target is chosen (common/lib/dependabot/package/package_latest_version_finder.rb:145, :160) and Go module retractions are handled (go_modules/lib/dependabot/go_modules/update_checker/latest_version_finder.rb:38).",
 				"osv-scanner": "The experimental deprecation flag reports installed versions that were yanked from the registry (docs/package-deprecation.md:147-156); whether fix skips yanked versions when choosing a target is decided inside osv-scalibr and was not settled.",
 				"nextcloud": "not checked: row added after this column was read on 2026-09-26"
+			}
+		},
+		{
+			"id": "rel-lts-only",
+			"area": "releases",
+			"name": "Offer only long-term support releases as update targets.",
+			"origin": "featureRequest",
+			"originUrl": "https://github.com/dependabot/dependabot-core/issues/2247",
+			"versioniq": "no",
+			"nextcloud": "unknown",
+			"renovate": "unknown",
+			"dependabot": "no",
+			"osv-scanner": "unknown",
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "no LTS concept in lib/Service/Source/AppStoreSource.php:100 or src/App.vue version filter",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "medium",
+			"note": "Versions are filtered by direction and pre-release only; there is no long-term support filter.",
+			"evidence": {
+				"dependabot": "Open feature request ({FR}2247, state OPEN on 2026-09-26); the options reference has no LTS filter (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).",
+				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
+				"renovate": "not checked: row added after this column was read on 2026-09-26",
+				"osv-scanner": "not checked: row added after this column was read on 2026-09-26"
 			}
 		},
 		{
@@ -1539,6 +1605,7 @@
 			"note": "Versioniq changes versions of one app id; it cannot move an install to a renamed or successor app, which its own app_versions to versioniq rename had to do with repair steps.",
 			"evidence": {
 				"renovate": "replacementName and replacementVersion (lib/config/options/index.ts:1732-1763) raise a replacement PR, with replacement presets maintained in lib/config/presets/internal/replacements.preset.ts (PR 45371 added one on 2026-09-18).",
+				"dependabot": "not checked: no feature was found that swaps a deprecated or renamed dependency for its successor.",
 				"osv-scanner": "Deprecation is reported as a boolean only, with no successor named (docs/package-deprecation.md:147-152), and remediation only changes versions of existing packages (docs/guided-remediation.md:27-35).",
 				"nextcloud": "not checked: row added after this column was read on 2026-09-26"
 			}
@@ -2047,6 +2114,34 @@
 				"renovate": "not checked: no analog for verifying installed files against a publisher signature in a dependency bot.",
 				"dependabot": "not checked: no check that installed files still match what the publisher signed was found; Dependabot does not inspect an installed tree.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way."
+			}
+		},
+		{
+			"id": "saf-publisher-change",
+			"area": "safety",
+			"name": "Get warned when a new version was published by a different maintainer than the installed one.",
+			"rowSource": "competitor",
+			"versioniq": "no",
+			"nextcloud": "unknown",
+			"renovate": "unknown",
+			"dependabot": "partial",
+			"osv-scanner": "unknown",
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "no maintainer or publisher field is read in lib/Service/Source/AppStoreSource.php:100 or lib/Service/Source/ForgeReleaseSource.php:89",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "external-sources",
+			"featureConfidence": "medium",
+			"note": "Versioniq checks checksums and signatures, not whether the publisher of a release changed.",
+			"evidence": {
+				"dependabot": "dependabot-core v0.397.0: the pull request message carries a maintainer changes section for npm and bun (common/lib/dependabot/pull_request_creator/message_builder/metadata_presenter.rb:177, npm_and_yarn/lib/dependabot/npm_and_yarn/metadata_finder.rb:41); a warning in the proposed change, not a block, and only for some ecosystems.",
+				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
+				"renovate": "not checked: row added after this column was read on 2026-09-26",
+				"osv-scanner": "not checked: row added after this column was read on 2026-09-26"
 			}
 		},
 		{
@@ -2898,7 +2993,7 @@
 			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "partial",
-			"dependabot": "unknown",
+			"dependabot": "partial",
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "unknown",
 			"built": {
@@ -2913,6 +3008,7 @@
 			"note": "Each app is updated on its own policy; nothing keeps related apps on matching versions.",
 			"evidence": {
 				"renovate": "groupName (lib/config/options/index.ts:2669) batches related updates in one PR, but open request 9739 (Sync versions within a group) shows members are not held on one version.",
+				"dependabot": "Service config and core: groups by name pattern update related dependencies together in one pull request (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference groups; updater/lib/dependabot/dependency_group_engine.rb); matching versions across the group are not enforced.",
 				"osv-scanner": "not checked: relax relocks the whole graph together (docs/guided-remediation.md:673-676), but no way to declare a group that must move in step was found; absence not documented.",
 				"nextcloud": "not checked: row added after this column was read on 2026-09-26"
 			}
@@ -2926,7 +3022,7 @@
 			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "yes",
-			"dependabot": "unknown",
+			"dependabot": "partial",
 			"osv-scanner": "no",
 			"easy-updates-manager": "unknown",
 			"built": {
@@ -2941,8 +3037,38 @@
 			"note": "The nightly job applies each app's candidate through the installer; there is no queue that tests each update on top of the previous ones.",
 			"evidence": {
 				"renovate": "Merged 2026-09-09: GitHub merge queues without automerge (PR 45721), and GitLab merge trains through the merge queue API (PR 45722, 2026-09-09).",
+				"dependabot": "The merge queue is a GitHub platform feature that auto-merged Dependabot pull requests can enter (https://docs.github.com/en/code-security/tutorials/secure-your-dependencies/automate-dependabot-with-actions); core recognises a queued pull request (common/lib/dependabot/pull_request_updater/github.rb:244) but Dependabot does not queue updates itself.",
 				"osv-scanner": "Lane downgrade from partial: only a documented sample script does this, not the tool. The documented sample script applies patches progressively, each on top of the previous ones, and keeps them only while npm test passes (scripts/examples/auto_guided_remediation.py:4, :95-112, docs/guided-remediation.md:618-622); a sample, not a built-in queue.",
 				"nextcloud": "not checked: row added after this column was read on 2026-09-26"
+			}
+		},
+		{
+			"id": "aut-schedule-per-type",
+			"area": "autoupdate",
+			"name": "Use a different schedule for each kind of update to the same app, for example patches daily and majors monthly.",
+			"origin": "featureRequest",
+			"originUrl": "https://github.com/dependabot/dependabot-core/issues/1778",
+			"versioniq": "no",
+			"nextcloud": "unknown",
+			"renovate": "unknown",
+			"dependabot": "no",
+			"osv-scanner": "unknown",
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:54 runs one daily job for every policy level",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "medium",
+			"note": "One schedule and one window apply to all policies; there is no schedule per update type.",
+			"evidence": {
+				"dependabot": "Open feature request for several schedule and update-type combinations on one ecosystem and directory (https://github.com/dependabot/dependabot-core/issues/1778, OPEN on 2026-09-26); schedule is one per updates entry (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).",
+				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
+				"renovate": "not checked: row added after this column was read on 2026-09-26",
+				"osv-scanner": "not checked: row added after this column was read on 2026-09-26"
 			}
 		},
 		{
@@ -3632,7 +3758,7 @@
 			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "no",
-			"dependabot": "unknown",
+			"dependabot": "partial",
 			"osv-scanner": "partial",
 			"easy-updates-manager": "unknown",
 			"built": {
@@ -3647,6 +3773,7 @@
 			"note": "Version listings carry version, date and notes; no licence is read or compared between versions.",
 			"evidence": {
 				"renovate": "Open feature request 8614 (Warn in PRs if a change in license has been detected); the option schema at lib/config/options/index.ts has no licence option.",
+				"dependabot": "Closed service: the dependency review action on a pull request shows licence information and fails on licences outside an allow or deny list (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependency-review); a change warning is a separate action, not Dependabot.",
 				"osv-scanner": "A rescan with ,licenses flags a package whose new version falls outside the allowlist (docs/license-scanning.md:23-36), but there is no comparison of old and new licence and fix does not check licences (docs/guided-remediation.md:701-776).",
 				"nextcloud": "not checked: row added after this column was read on 2026-09-26"
 			}
@@ -3674,6 +3801,7 @@
 			"featureConfidence": "medium",
 			"note": "Versioniq has no advisory exceptions to go stale, see adv-dismiss.",
 			"evidence": {
+				"dependabot": "not checked: auto-dismissed alerts reopen when alert metadata changes (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-auto-triage-rules), but no warning that a dismissal or ignore rule no longer matches anything was found.",
 				"osv-scanner": "v2.2.4 (2025-10-29) warns about ignore entries not found during a scan (CHANGELOG.md:232, internal/config/manager.go:71-90, pkg/osvscanner/osvscanner.go:314).",
 				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
 				"renovate": "not checked: row added after this column was read on 2026-09-26"
@@ -3702,6 +3830,7 @@
 			"featureConfidence": "medium",
 			"note": "A matching advisory counts immediately; urgency split is urgent versus digest, not a grace period.",
 			"evidence": {
+				"dependabot": "not checked: auto-triage rules act on severity (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-auto-triage-rules) but I found no grace period before an alert counts as failing.",
 				"osv-scanner": "Ignores take a per-advisory ignoreUntil date (docs/configuration.md:25-41), but a grace period per severity is the open request itself.",
 				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
 				"renovate": "not checked: row added after this column was read on 2026-09-26"
@@ -3716,7 +3845,7 @@
 			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
-			"dependabot": "unknown",
+			"dependabot": "yes",
 			"osv-scanner": "partial",
 			"easy-updates-manager": "unknown",
 			"built": {
@@ -3730,6 +3859,7 @@
 			"featureConfidence": "medium",
 			"note": "When no published version resolves the advisory, recommendedVersion stays null and no safe version is shown; the reason (no fix yet, blocked by server compatibility) is not explained.",
 			"evidence": {
+				"dependabot": "Core: when no security update is possible the job records security_update_not_possible with the latest allowed version, the lowest fixed version and the conflicting dependencies that block it, or all_versions_ignored when ignores block it (updater/lib/dependabot/updater/security_update_helpers.rb:47, :73, :84-106); closed service: each case is explained in https://docs.github.com/en/code-security/reference/supply-chain-security/troubleshoot-dependabot/dependabot-errors.",
 				"osv-scanner": "fix reports unfixable counts and marks vulnerabilities unactionable (docs/guided-remediation.md:125-126, :229), but the reason is the open request.",
 				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
 				"renovate": "not checked: row added after this column was read on 2026-09-26"
@@ -3744,7 +3874,7 @@
 			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
-			"dependabot": "unknown",
+			"dependabot": "partial",
 			"osv-scanner": "no",
 			"easy-updates-manager": "unknown",
 			"built": {
@@ -3758,9 +3888,68 @@
 			"featureConfidence": "medium",
 			"note": "Bundled libraries are not inspected, so there is no path from an app to a vulnerable library.",
 			"evidence": {
+				"dependabot": "Closed service: the dependency graph and SBOM carry transitive paths (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/establish-provenance-and-integrity/export-dependencies-as-sbom) and alerts cover transitive dependencies (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alerts); I did not confirm that the alert page names the direct dependency that pulled the vulnerable one in.",
 				"osv-scanner": "Findings show the package and its source file (docs/output.md:22-30); showing the dependency path for transitive findings is an open request.",
 				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
 				"renovate": "not checked: row added after this column was read on 2026-09-26"
+			}
+		},
+		{
+			"id": "adv-malicious-package",
+			"area": "advisories",
+			"name": "Get alerted when an installed component is a known malicious package.",
+			"origin": "changelog",
+			"originUrl": "https://github.blog/changelog/2026-07-28-dependabot-alerts-on-malicious-packages-across-more-ecosystems/",
+			"versioniq": "no",
+			"nextcloud": "unknown",
+			"renovate": "unknown",
+			"dependabot": "yes",
+			"osv-scanner": "unknown",
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/Advisory/AdvisoryPackageMap.php:86 matches security advisories only; no malware feed is read",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "medium",
+			"note": "Only the Nextcloud and GitHub security advisory feeds are read; no malicious-package feed.",
+			"evidence": {
+				"dependabot": "Closed service: Dependabot malware alerts flag dependencies matched to malware advisories, now fed from the OpenSSF malicious-packages repository across npm, PyPI and more (https://docs.github.com/en/code-security/concepts/supply-chain-security/malware-alerts).",
+				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
+				"renovate": "not checked: row added after this column was read on 2026-09-26",
+				"osv-scanner": "not checked: row added after this column was read on 2026-09-26"
+			}
+		},
+		{
+			"id": "adv-assign-owner",
+			"area": "advisories",
+			"name": "Assign an advisory to a person or team who is responsible for fixing it.",
+			"origin": "changelog",
+			"originUrl": "https://github.blog/changelog/2026-04-07-dependabot-alerts-are-now-assignable-to-ai-agents-for-remediation/",
+			"versioniq": "no",
+			"nextcloud": "unknown",
+			"renovate": "unknown",
+			"dependabot": "yes",
+			"osv-scanner": "unknown",
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "no assignee field in lib/Service/Advisory/AdvisoryResultStore.php",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "medium",
+			"note": "Advisories go to every admin; they cannot be assigned.",
+			"evidence": {
+				"dependabot": "Closed service: alerts take assignees (users, teams or AI agents) from the alert page (https://docs.github.com/en/code-security/how-tos/manage-security-alerts/manage-dependabot-alerts/view-dependabot-alerts), with repository_vulnerability_alert.assign audit events (https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/audit-log-events-for-your-organization).",
+				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
+				"renovate": "not checked: row added after this column was read on 2026-09-26",
+				"osv-scanner": "not checked: row added after this column was read on 2026-09-26"
 			}
 		},
 		{
@@ -5110,7 +5299,7 @@
 			"evidence": {
 				"nextcloud": "The appsallowlist filter needs a valid subscription (lib/private/App/AppStore/Fetcher/AppFetcher.php:165) and the enterprise channel is customer-only (apps/updatenotification/src/components/UpdateNotification.vue:298-303); everything else is free.",
 				"renovate": "The OSS CLI and Mend Community Cloud are free; Merge Confidence Workflows and support need Enterprise or the OSS plan, and Enterprise adds hourly scheduling (docs/usage/mend-hosted/overview.md:60-70).",
-				"dependabot": "Dependabot alerts and updates are free on github.com (https://github.com/pricing); custom auto-triage rules on private repositories and licence policies need GitHub Code Security (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-auto-triage-rules, https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configure-license-policies).",
+				"dependabot": "The Free plan includes Dependabot alerts, security updates and version updates (https://github.com/pricing); custom auto-triage rules on private repositories and licence policies need GitHub Code Security (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-auto-triage-rules, https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configure-license-policies).",
 				"osv-scanner": "Apache-2.0 open source with no paid edition in the repo or docs (LICENSE:2-3, docs/installation.md:7-90)."
 			}
 		},
@@ -5152,7 +5341,7 @@
 			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
-			"dependabot": "unknown",
+			"dependabot": "yes",
 			"osv-scanner": "yes",
 			"easy-updates-manager": "unknown",
 			"built": {
@@ -5166,6 +5355,7 @@
 			"featureConfidence": "medium",
 			"note": "No AI assistant or MCP surface.",
 			"evidence": {
+				"dependabot": "The official GitHub MCP server has a dependabot toolset with list_dependabot_alerts and get_dependabot_alert (https://github.com/github/github-mcp-server), and alerts can be assigned to AI agents that propose a fix (https://github.blog/changelog/2026-04-07-dependabot-alerts-are-now-assignable-to-ai-agents-for-remediation/).",
 				"osv-scanner": "Experimental osv-scanner experimental-mcp since v2.2.4 (2025-10-29) exposes scan_vulnerable_dependencies, get_vulnerability_details and ignore_vulnerability tools (cmd/osv-scanner/mcp/command.go:60-86, CHANGELOG.md:230).",
 				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
 				"renovate": "not checked: row added after this column was read on 2026-09-26"
