@@ -19,7 +19,53 @@
 			"vendor": "Nextcloud GmbH",
 			"readOn": "2026-09-26",
 			"columnAddedOn": "2026-09-26",
-			"evidenceGrade": "not-read"
+			"evidenceGrade": "docs-only",
+			"version": "v34.0.4",
+			"sourceRead": "https://github.com/nextcloud/server at v34.0.4",
+			"gradeNote": "source read at nextcloud/server v34.0.4 (commit 77c7284fed1f5c7b4bce1a94299e229f3281b606), plus nextcloud/updater v34.0.4 (e12898af3e45ec1f8805152cc25e778c27316552), nextcloud/notifications v34.0.4 and nextcloud/activity v34.0.4 for single cells; v35.0.1 diffed for apps/appstore, Installer, core/Command/App, updatenotification and AppStore fetchers; not driven",
+			"unknownReason": "No cell is unknown; the column is rated at v34.0.4, and v35.0.1 was diffed and changes no rating (it only adds clearer app:update errors when the store is disabled or offline).",
+			"sources": {
+				"docs": "https://docs.nextcloud.com/server/latest/admin_manual/apps_management.html",
+				"sourceRepo": [
+					"https://github.com/nextcloud/server",
+					"https://github.com/nextcloud/updater"
+				],
+				"featurePage": "https://nextcloud.com/hub/",
+				"featureRequests": {
+					"url": "https://github.com/nextcloud/server/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement",
+					"featureLabel": "enhancement"
+				},
+				"issueTracker": "https://github.com/nextcloud/server/issues",
+				"roadmap": "https://github.com/orgs/nextcloud/projects",
+				"changelog": "https://nextcloud.com/changelog/",
+				"apiReference": "https://docs.nextcloud.com/server/latest/developer_manual/_static/openapi.html",
+				"marketplace": "https://apps.nextcloud.com/",
+				"pricing": "https://nextcloud.com/pricing/",
+				"accessibilityStatement": null,
+				"securityDocs": [
+					"https://github.com/nextcloud/security-advisories/security/advisories",
+					"https://hackerone.com/nextcloud"
+				],
+				"demoInstance": "https://try.nextcloud.com/",
+				"community": "https://help.nextcloud.com/",
+				"reviews": null,
+				"videos": "https://www.youtube.com/@Nextcloud",
+				"caseStudies": "https://nextcloud.com/customers/",
+				"partnerDirectory": "https://nextcloud.com/partners/",
+				"trainingCurriculum": "https://nextcloud.com/training/",
+				"jobPostings": "https://nextcloud.com/jobs/",
+				"tenders": {
+					"note": "intelligence database 2026-09-26: 2 tenders buy Nextcloud subscriptions or licences, 1 requirement names Nextcloud as the municipal cloud platform; none asks for app version management",
+					"tenders": [
+						"https://opentender.eu/at/tender/ocds-70d2nz-e3a2e012-3572-3e76-abe8-62471096b8de",
+						"https://opentender.eu/at/tender/ocds-70d2nz-6ff0aa94-6e12-3651-b25e-efe4f4e7cd2e"
+					]
+				},
+				"nullReasons": {
+					"accessibilityStatement": "nextcloud.com/accessibility/ and /accessibility-statement/ and the docs accessibility page all returned 404 on 2026-09-26",
+					"reviews": "G2, Capterra and TrustRadius review pages returned 403 to a scripted check, so not verified"
+				}
+			}
 		},
 		{
 			"key": "renovate",
@@ -125,7 +171,7 @@
 			"name": "See every installed app with its installed version in one list.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -139,7 +185,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "The Apps tab lists every enabled app as a card, but the card shows name, id and description only; the installed version the API already returns (installedVersion) appears only after 'Choose app' opens the detail. No single list of apps with their versions."
+			"note": "The Apps tab lists every enabled app as a card, but the card shows name, id and description only; the installed version the API already returns (installedVersion) appears only after 'Choose app' opens the detail. No single list of apps with their versions.",
+			"evidence": {
+				"nextcloud": "apps/appstore/src/views/AppstoreManage.vue:33 (Installed category) with the version column at apps/appstore/src/components/AppTable/AppTableRow.vue:79; CLI core/Command/App/ListApps.php:64 prints installed versions."
+			}
 		},
 		{
 			"id": "inv-update-available",
@@ -147,7 +196,7 @@
 			"name": "See at a glance which installed apps have a newer version available.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -161,7 +210,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Nothing marks which apps have a newer release; an admin must open each app's version list. The nightly AutoUpdateJob computes candidates per policy but never displays them."
+			"note": "Nothing marks which apps have a newer release; an admin must open each app's version list. The nightly AutoUpdateJob computes candidates per policy but never displays them.",
+			"evidence": {
+				"nextcloud": "apps/appstore/src/views/AppstoreManage.vue:39 lists apps with a pending update under the Updates category; counter from apps/appstore/lib/Controller/PageController.php:84 via Installer::isUpdateAvailable (lib/private/Installer.php:361)."
+			}
 		},
 		{
 			"id": "inv-source-shown",
@@ -169,7 +221,7 @@
 			"name": "See where each installed app came from: the app store, a Git forge or a manual upload.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -183,7 +235,10 @@
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "Shows the bound source (appstore, github:owner/repo, codeberg:owner/repo) per app after opening it or selecting it on the Sources tab. It is the binding, not provenance: an unbound app reads 'appstore' even if it was installed by hand or from git, manual upload is not a source kind, and boundSourceId in the list payload is not rendered."
+			"note": "Shows the bound source (appstore, github:owner/repo, codeberg:owner/repo) per app after opening it or selecting it on the Sources tab. It is the binding, not provenance: an unbound app reads 'appstore' even if it was installed by hand or from git, manual upload is not a source kind, and boundSourceId in the list payload is not rendered.",
+			"evidence": {
+				"nextcloud": "The table row shows name, version, level and groups only (apps/appstore/src/components/AppTable/AppTableRow.vue:62-110); the store/git distinction exists internally (apps/appstore/lib/Controller/ApiController.php:341, lib/private/Installer.php:407) but is never shown. Nextcloud has only one install source, the app store."
+			}
 		},
 		{
 			"id": "inv-compat-server",
@@ -191,7 +246,7 @@
 			"name": "See whether an app version is compatible with the running server version before choosing it.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -205,7 +260,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Server compatibility is only checked after download and file swap during a real install, which then reverts; the version list carries no compatibility field and a dry run skips the check. The CLI 'Compatibility' column only says newer/older than installed."
+			"note": "Server compatibility is only checked after download and file swap during a real install, which then reverts; the version list carries no compatibility field and a dry run skips the check. The CLI 'Compatibility' column only says newer/older than installed.",
+			"evidence": {
+				"nextcloud": "apps/appstore/lib/Controller/ApiController.php:133-135 computes missingDependencies and isCompatible; shown in apps/appstore/src/components/AppstoreSidebar/AppDetailsTab.vue:137 and filterable via 'Show incompatible' (apps/appstore/src/components/AppToolbar.vue:105). Applies to the single latest release only."
+			}
 		},
 		{
 			"id": "inv-search-filter",
@@ -213,7 +271,7 @@
 			"name": "Search or filter the installed app list by name.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -227,7 +285,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Text filter over app label and id, plus a show/hide core apps filter."
+			"note": "Text filter over app label and id, plus a show/hide core apps filter.",
+			"evidence": {
+				"nextcloud": "apps/appstore/src/composables/useFilteredApps.ts:22-33 filters by name, id and summary from the navigation search (apps/appstore/src/views/AppstoreNavigation.vue:93)."
+			}
 		},
 		{
 			"id": "inv-disabled-apps",
@@ -235,7 +296,7 @@
 			"name": "Manage the versions of disabled apps as well as enabled ones.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -249,7 +310,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "The app list is built from IAppManager::getEnabledApps(), so disabled apps never appear and cannot be picked in the UI. The CLI install path could still target one by id (not checked live)."
+			"note": "The app list is built from IAppManager::getEnabledApps(), so disabled apps never appear and cannot be picked in the UI. The CLI install path could still target one by id (not checked live).",
+			"evidence": {
+				"nextcloud": "The Disabled category lists disabled apps (apps/appstore/src/views/AppstoreManage.vue:37), but the Updates view only offers updates for active apps (same file :39); occ app:update ,all covers disabled apps too (core/Command/App/Update.php:82)."
+			}
 		},
 		{
 			"id": "inv-shipped-apps",
@@ -257,7 +321,7 @@
 			"name": "Tell apps shipped with the server apart from apps installed separately.",
 			"rowSource": "competitor",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -271,7 +335,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "medium",
-			"note": "Always-enabled apps get a CORE flag and can be hidden; shipped apps get an explanatory error when their versions are requested. isShipped is returned per app but not rendered, so a shipped-but-not-always-enabled app looks like any other."
+			"note": "Always-enabled apps get a CORE flag and can be hidden; shipped apps get an explanatory error when their versions are requested. isShipped is returned per app but not rendered, so a shipped-but-not-always-enabled app looks like any other.",
+			"evidence": {
+				"nextcloud": "occ app:list ,shipped=true|false (core/Command/App/ListApps.php:31); the API marks shipped and internal apps (apps/appstore/lib/Controller/ApiController.php:136,465)."
+			}
 		},
 		{
 			"id": "inv-server-upgrade-readiness",
@@ -279,7 +346,7 @@
 			"name": "Before a server upgrade, see which installed apps have no compatible release for the next major version.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -293,7 +360,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "No check of installed apps against the next server major."
+			"note": "No check of installed apps against the next server major.",
+			"evidence": {
+				"nextcloud": "apps/updatenotification/lib/Controller/APIController.php:71-131 fetches the app store for the next server version and returns missing vs available apps, shown as 'Apps missing compatible version' (apps/updatenotification/src/components/UpdateNotification.vue:23)."
+			}
 		},
 		{
 			"id": "inv-multi-instance",
@@ -301,7 +371,7 @@
 			"name": "Manage versions across several instances, sites or repositories from one place.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -315,7 +385,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Manages only the instance it runs on."
+			"note": "Manages only the instance it runs on.",
+			"evidence": {
+				"nextcloud": "Every check reads the local instance's config and apps folders (lib/private/App/AppStore/Fetcher/Fetcher.php:130-204, lib/private/Installer.php:135); there is no remote-instance concept in the apps management or updatenotification code."
+			}
 		},
 		{
 			"id": "inv-export-inventory",
@@ -323,7 +396,7 @@
 			"name": "Export the list of installed components and their versions, for example as an SBOM.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -337,7 +410,10 @@
 			"providerHow": "read-from-code",
 			"feature": "cli-commands",
 			"featureConfidence": "high",
-			"note": "No inventory or SBOM export; the only JSON output is the per-app version list from occ versioniq:versions ,json."
+			"note": "No inventory or SBOM export; the only JSON output is the per-app version list from occ versioniq:versions ,json.",
+			"evidence": {
+				"nextcloud": "occ app:list ,output=json|json_pretty (core/Command/Base.php:37, core/Command/App/ListApps.php:64) exports app ids and versions; no SBOM format."
+			}
 		},
 		{
 			"id": "inv-deprecated-apps",
@@ -345,7 +421,7 @@
 			"name": "Get told when an installed component is deprecated, abandoned or replaced by another.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -359,7 +435,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "No deprecation or abandonment signal is read or shown."
+			"note": "No deprecation or abandonment signal is read or shown.",
+			"evidence": {
+				"nextcloud": "The app store fetch response carries no deprecation field (lib/private/App/AppStore/Fetcher/ResponseDefinitions.php); the only related logic is a hardcoded list of store apps now shipped with the server, used to hide them from the upgrade check (apps/updatenotification/lib/Controller/APIController.php:37-46), not shown as a warning."
+			}
 		},
 		{
 			"id": "inv-app-metadata",
@@ -367,7 +446,7 @@
 			"name": "See an app's description, author, licence and links next to its versions.",
 			"rowSource": "competitor",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -381,7 +460,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "medium",
-			"note": "Cards show icon, name, summary or description. Author, licence and links are not shown; Discover hits carry homepageUrl but the template does not render it."
+			"note": "Cards show icon, name, summary or description. Author, licence and links are not shown; Discover hits carry homepageUrl but the template does not render it.",
+			"evidence": {
+				"nextcloud": "apps/appstore/src/components/AppstoreSidebar/AppDetailsTab.vue:171-205 shows author, categories, website and docs links; licence and description come from apps/appstore/lib/Controller/ApiController.php:460-463."
+			}
 		},
 		{
 			"id": "inv-dev-checkout-warning",
@@ -389,7 +471,7 @@
 			"name": "Get warned when an app folder is a developer checkout or not writable, before trying to change it.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -403,7 +485,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "medium",
-			"note": "EnvironmentCheck::inspect feeds a per-card warning before any install is attempted. Proposed by reader own-a."
+			"note": "EnvironmentCheck::inspect feeds a per-card warning before any install is attempted. Proposed by reader own-a.",
+			"evidence": {
+				"nextcloud": "An app folder with .git is silently skipped for updates (lib/private/Installer.php:375-377) and from the upgrade compatibility check (apps/updatenotification/lib/Controller/APIController.php:110-117) without telling the admin; an unwritable apps folder raises an error with a fix hint (lib/private/Installer.php:139-144) and a setup check flags app folders with a different owner (apps/settings/lib/SetupChecks/AppDirsWithDifferentOwner.php)."
+			}
 		},
 		{
 			"id": "rel-list-all-versions",
@@ -411,7 +496,7 @@
 			"name": "List every published version of an installed app, older and newer than the installed one.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -425,7 +510,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Lists every published release from the App Store or the bound forge, older and newer. The 'Safe mode' toggle is on by default (src/App.vue:107) and hides every older version until switched off (src/App.vue:1182)."
+			"note": "Lists every published release from the App Store or the bound forge, older and newer. The 'Safe mode' toggle is on by default (src/App.vue:107) and hides every older version until switched off (src/App.vue:1182).",
+			"evidence": {
+				"nextcloud": "AppFetcher keeps only the highest compatible release per app (lib/private/App/AppStore/Fetcher/AppFetcher.php:123-140, docblock :53 'Only returns the latest compatible app release'), so no version list exists anywhere in the UI or CLI."
+			}
 		},
 		{
 			"id": "rel-release-notes",
@@ -433,7 +521,7 @@
 			"name": "Read the release notes of any single version before installing it.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -447,7 +535,10 @@
 			"providerHow": "read-from-code",
 			"feature": "changelog-visibility",
 			"featureConfidence": "high",
-			"note": "Each version row has an expandable release-notes disclosure from the App Store translation or the forge release body, capped at 8 KB server side."
+			"note": "Each version row has an expandable release-notes disclosure from the App Store translation or the forge release body, capped at 8 KB server side.",
+			"evidence": {
+				"nextcloud": "The Changelog sidebar tab and the Update all dialog show the changelog of the single latest release (apps/appstore/src/components/AppstoreSidebar/AppReleasesTab.vue:18-51, apps/appstore/src/components/UpdateAllDialog.vue:40); the installed version's CHANGELOG.md is served by apps/updatenotification/lib/Controller/APIController.php:167. Not any chosen version."
+			}
 		},
 		{
 			"id": "rel-range-changelog",
@@ -455,7 +546,7 @@
 			"name": "Read the combined changelog between the installed version and a chosen target version.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -469,7 +560,10 @@
 			"providerHow": "read-from-code",
 			"feature": "changelog-visibility",
 			"featureConfidence": "high",
-			"note": "Selecting a target shows 'Changes in this range' with every version's notes between installed and target, both directions, from data already fetched."
+			"note": "Selecting a target shows 'Changes in this range' with every version's notes between installed and target, both directions, from data already fetched.",
+			"evidence": {
+				"nextcloud": "Only one release is kept (lib/private/App/AppStore/Fetcher/AppFetcher.php:136) and the installed-version changelog endpoint returns one entry (apps/updatenotification/lib/Manager.php:37); open request 'Changelog based on installed version' https://github.com/nextcloud/server/issues/49935."
+			}
 		},
 		{
 			"id": "rel-prerelease",
@@ -477,7 +571,7 @@
 			"name": "Show or hide pre-release versions such as betas and release candidates when choosing a version.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -491,7 +585,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "No show/hide control for pre-releases; whatever the source lists is shown. src/utils/versionCompare.ts only orders prerelease suffixes."
+			"note": "No show/hide control for pre-releases; whatever the source lists is shown. src/utils/versionCompare.ts only orders prerelease suffixes.",
+			"evidence": {
+				"nextcloud": "Pre-releases are included only via the beta/daily channel or ,allow-unstable on occ app:install/app:update (lib/private/App/AppStore/Fetcher/AppFetcher.php:66-77, core/Command/App/Update.php:59); no per-choice toggle in the UI."
+			}
 		},
 		{
 			"id": "rel-channel",
@@ -499,7 +596,7 @@
 			"name": "Choose a release channel, such as stable or beta, for the instance or per app.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -513,7 +610,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "The server's update channel is displayed read-only; there is no channel choice for the instance or per app, and nothing filters versions by channel despite the safe-mode label claiming it does."
+			"note": "The server's update channel is displayed read-only; there is no channel choice for the instance or per app, and nothing filters versions by channel despite the safe-mode label claiming it does.",
+			"evidence": {
+				"nextcloud": "Admin UI channel selector stable/beta/enterprise (apps/updatenotification/lib/Controller/AdminController.php:46, apps/updatenotification/src/components/UpdateNotification.vue:111-113) which also governs app pre-releases (AppFetcher.php:66). Instance-wide only, not per app."
+			}
 		},
 		{
 			"id": "rel-filter-versions",
@@ -521,7 +621,7 @@
 			"name": "Filter a long list of versions by text.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -535,7 +635,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Text filter over the version list."
+			"note": "Text filter over the version list.",
+			"evidence": {
+				"nextcloud": "There is no version list to filter; one release per app (lib/private/App/AppStore/Fetcher/AppFetcher.php:136)."
+			}
 		},
 		{
 			"id": "rel-release-date",
@@ -543,7 +646,7 @@
 			"name": "See the release date of each version.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -557,7 +660,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Release dates are not read from either source and not shown."
+			"note": "Release dates are not read from either source and not shown.",
+			"evidence": {
+				"nextcloud": "'Latest updated' date of the newest release only (apps/appstore/src/components/AppstoreSidebar/AppDetailsTab.vue:29-33,164-168)."
+			}
 		},
 		{
 			"id": "rel-min-age",
@@ -565,7 +671,7 @@
 			"name": "Hold back an update until the release has been public for a set number of days.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -579,7 +685,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "No cooldown: the nightly auto-update picks the newest in-policy version regardless of its age."
+			"note": "No cooldown: the nightly auto-update picks the newest in-policy version regardless of its age.",
+			"evidence": {
+				"nextcloud": "The release filter considers only nightly/pre-release flags and server/PHP compatibility (lib/private/App/AppStore/Fetcher/AppFetcher.php:74-108); no age criterion. The server core has a vendor-side staged rollout the admin cannot configure (apps/updatenotification/src/components/UpdateNotification.vue:260)."
+			}
 		},
 		{
 			"id": "rel-adoption",
@@ -587,7 +696,7 @@
 			"name": "See how widely a new version has been adopted, or how often updating to it succeeded elsewhere.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -601,7 +710,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "No adoption or success-rate data."
+			"note": "No adoption or success-rate data.",
+			"evidence": {
+				"nextcloud": "Only a user rating is exposed (ratingOverall, apps/appstore/lib/Controller/ApiController.php:482; BadgeAppScore.vue); no adoption or update success data in the fetch response."
+			}
 		},
 		{
 			"id": "rel-breaking-flag",
@@ -609,7 +721,7 @@
 			"name": "See when a target version is a major version or is flagged as breaking.",
 			"rowSource": "competitor",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -623,7 +735,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "medium",
-			"note": "On selecting a target the page says how many major and minor steps the move crosses, which surfaces a major jump. No breaking flag is read from release metadata."
+			"note": "On selecting a target the page says how many major and minor steps the move crosses, which surfaces a major jump. No breaking flag is read from release metadata.",
+			"evidence": {
+				"nextcloud": "Update entries carry only the new version string (apps/appstore/lib/Controller/ApiController.php:114-117, UpdateAllDialog.vue:73); no major or breaking marker."
+			}
 		},
 		{
 			"id": "rel-new-release-notify",
@@ -631,7 +746,7 @@
 			"name": "Get notified when a new version of an installed app is released.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -645,7 +760,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "No notification when a new version appears; notifications exist only for advisories, token expiry, pin drift and completed or failed auto-updates."
+			"note": "No notification when a new version appears; notifications exist only for advisories, token expiry, pin drift and completed or failed auto-updates.",
+			"evidence": {
+				"nextcloud": "Daily background job notifies members of configurable groups of app and server updates (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:48,146-196,206)."
+			}
 		},
 		{
 			"id": "rel-subscribe-feed",
@@ -653,7 +771,7 @@
 			"name": "Subscribe to new releases by e-mail, RSS or webhook without installing anything.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -667,7 +785,36 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "No e-mail, RSS or webhook subscription."
+			"note": "No e-mail, RSS or webhook subscription.",
+			"evidence": {
+				"nextcloud": "The app store publishes a global RSS/Atom feed of all new releases (https://apps.nextcloud.com/feeds/releases.rss, read 2026-09-26), not scoped to installed apps; no e-mail or webhook subscription in the server."
+			}
+		},
+		{
+			"id": "rel-user-whats-new",
+			"area": "releases",
+			"name": "Tell the people who use an app what changed after it was updated.",
+			"origin": "featureRequest",
+			"originUrl": "https://github.com/nextcloud/server/issues/49935",
+			"versioniq": "no",
+			"nextcloud": "yes",
+			"renovate": "unknown",
+			"dependabot": "unknown",
+			"osv-scanner": "unknown",
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "notifications go to admins only (lib/Service/Advisory/AdvisoryDigestNotifier.php:114, lib/Service/Pin/PinDriftHandler.php:90); no user-facing changelog notice",
+				"reachedOn": "nothing in versioniq; whether the platform's app_updated notice fires after a versioniq install was not checked"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "changelog-visibility",
+			"featureConfidence": "low",
+			"note": "Versioniq shows changelogs to the admin only. Whether its installer dispatches the platform's AppUpdateEvent, which drives the users' what's new notice, was not checked.",
+			"evidence": {
+				"nextcloud": "After an app update, users for whom the app is enabled get an app_updated notification linking to the CHANGELOG entry (apps/updatenotification/lib/Listener/AppUpdateEventListener.php, apps/updatenotification/lib/BackgroundJob/AppUpdatedNotifications.php:44-100, apps/updatenotification/lib/Controller/ChangelogController.php:40)."
+			}
 		},
 		{
 			"id": "ins-install-version",
@@ -675,7 +822,7 @@
 			"name": "Install a specific older or newer version of an installed app with one action.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -689,7 +836,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Pick an installed app, select any listed version and press Update or Degrade; password confirmation, pin and downgrade guards apply. Core (always-enabled) apps and Versioniq itself are refused."
+			"note": "Pick an installed app, select any listed version and press Update or Degrade; password confirmation, pin and downgrade guards apply. Core (always-enabled) apps and Versioniq itself are refused.",
+			"evidence": {
+				"nextcloud": "downloadApp always takes releases[0], the latest compatible (lib/private/Installer.php:239) and throws on a lower version (lib/private/Installer.php:307-319); occ app:install has no version argument (core/Command/App/Install.php:31-57). Open request for choosing versions: https://github.com/nextcloud/server/issues/57633 (last comment asks to install a specific version)."
+			}
 		},
 		{
 			"id": "ins-upgrade-latest",
@@ -697,7 +847,7 @@
 			"name": "Update an app to its latest version with one action.",
 			"rowSource": "competitor",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -711,7 +861,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "medium",
-			"note": "Updating to latest takes choosing the app, selecting the top version and pressing Update; there is no one-click 'update to latest'. A per-app 'All' auto-update policy does it unattended at night."
+			"note": "Updating to latest takes choosing the app, selecting the top version and pressing Update; there is no one-click 'update to latest'. A per-app 'All' auto-update policy does it unattended at night.",
+			"evidence": {
+				"nextcloud": "Update action per app (apps/appstore/src/actions/actionUpdate.ts, POST /api/v1/apps/update in apps/appstore/lib/Controller/ApiController.php:253-271); occ app:update <id> (core/Command/App/Update.php:33)."
+			}
 		},
 		{
 			"id": "ins-update-all",
@@ -719,7 +872,7 @@
 			"name": "Update all apps with pending updates at once.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -733,7 +886,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "No 'update all' action. The nightly AutoUpdateJob updates every app whose policy allows it, which is scheduled automation rather than an admin action."
+			"note": "No 'update all' action. The nightly AutoUpdateJob updates every app whose policy allows it, which is scheduled automation rather than an admin action.",
+			"evidence": {
+				"nextcloud": "'Update all applications' button and dialog (apps/appstore/src/views/AppstoreManage.vue:58-66, apps/appstore/src/components/UpdateAllDialog.vue:48-60); occ app:update ,all (core/Command/App/Update.php:41). Known v34 papercut: password asked per app, https://github.com/nextcloud/server/issues/61703."
+			}
 		},
 		{
 			"id": "ins-rollback",
@@ -741,7 +897,7 @@
 			"name": "Roll back an app to the version that ran before the last update.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -755,7 +911,10 @@
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "medium",
-			"note": "The one-click rollback targets the last version Versioniq finalized, and that record is overwritten with the new version on every successful Versioniq install; so after an update through Versioniq there is no one-click way back to the previous version, only picking it by hand. It covers the case where something outside Versioniq changed the version."
+			"note": "The one-click rollback targets the last version Versioniq finalized, and that record is overwritten with the new version on every successful Versioniq install; so after an update through Versioniq there is no one-click way back to the previous version, only picking it by hand. It covers the case where something outside Versioniq changed the version.",
+			"evidence": {
+				"nextcloud": "Downgrades are refused (lib/private/Installer.php:310 'tried to update to lower version') and the old app folder is deleted before the new one is copied (lib/private/Installer.php:323), so no previous version is kept."
+			}
 		},
 		{
 			"id": "ins-rollback-lkg",
@@ -763,7 +922,7 @@
 			"name": "Roll back an app to the last version that installed and finalised cleanly.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -777,7 +936,10 @@
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "high",
-			"note": "The last version that finalized cleanly is recorded only on success; when the installed version differs, the card offers 'Roll back to {version}', which runs the normal install with downgrade confirmation."
+			"note": "The last version that finalized cleanly is recorded only on success; when the installed version differs, the card offers 'Roll back to {version}', which runs the normal install with downgrade confirmation.",
+			"evidence": {
+				"nextcloud": "No record of prior versions and downgrade is refused (lib/private/Installer.php:307-319)."
+			}
 		},
 		{
 			"id": "ins-downgrade-confirm",
@@ -785,7 +947,7 @@
 			"name": "Confirm a downgrade explicitly, with a warning about what can break.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -799,7 +961,10 @@
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "high",
-			"note": "A downgrade opens a confirmation dialog naming the transition, the range and the migrations the target lacks; an inline warning also shows. The server refuses without allowDowngrade."
+			"note": "A downgrade opens a confirmation dialog naming the transition, the range and the migrations the target lacks; an inline warning also shows. The server refuses without allowDowngrade.",
+			"evidence": {
+				"nextcloud": "A downgrade is a hard error with no override path (lib/private/Installer.php:310-318)."
+			}
 		},
 		{
 			"id": "ins-cli-list",
@@ -807,7 +972,7 @@
 			"name": "List an app's available versions from the command line.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -821,7 +986,10 @@
 			"providerHow": "read-from-code",
 			"feature": "cli-commands",
 			"featureConfidence": "high",
-			"note": "occ versioniq:versions <appId> [,source] [,json] lists available versions with an installed/newer/older marker and any recorded SHA-256."
+			"note": "occ versioniq:versions <appId> [,source] [,json] lists available versions with an installed/newer/older marker and any recorded SHA-256.",
+			"evidence": {
+				"nextcloud": "occ app:update ,showonly ,showcurrent prints the current and the newest available version only (core/Command/App/Update.php:70-97); not the full version list."
+			}
 		},
 		{
 			"id": "ins-cli-install",
@@ -829,7 +997,7 @@
 			"name": "Install a specific app version from the command line, for scripts and automation.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -843,7 +1011,10 @@
 			"providerHow": "read-from-code",
 			"feature": "cli-commands",
 			"featureConfidence": "high",
-			"note": "occ versioniq:install <appId> <version> with ,source, ,dry-run, ,allow-downgrade, ,accept-new-sha and ,json, and documented exit codes. A pinned app is refused with no override option and exits 1 (unknown), since the 409 'pinned' category is not mapped."
+			"note": "occ versioniq:install <appId> <version> with ,source, ,dry-run, ,allow-downgrade, ,accept-new-sha and ,json, and documented exit codes. A pinned app is refused with no override option and exits 1 (unknown), since the 409 'pinned' category is not mapped.",
+			"evidence": {
+				"nextcloud": "occ app:install <id> installs the latest compatible release, with ,allow-unstable and ,force (core/Command/App/Install.php:31-57); a specific version cannot be named."
+			}
 		},
 		{
 			"id": "ins-install-uninstalled",
@@ -851,7 +1022,7 @@
 			"name": "Find and install an app that is not installed yet.",
 			"rowSource": "competitor",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -865,7 +1036,10 @@
 			"providerHow": "read-from-code",
 			"feature": "app-discovery",
 			"featureConfidence": "medium",
-			"note": "The Discover tab searches the App Store and GitHub for apps not installed yet, but its 'Install...' only prefills a source binding; the Apps tab lists enabled apps only, so no page then installs the new app. The CLI can install it by id (left disabled)."
+			"note": "The Discover tab searches the App Store and GitHub for apps not installed yet, but its 'Install...' only prefills a source binding; the Apps tab lists enabled apps only, so no page then installs the new app. The CLI can install it by id (left disabled).",
+			"evidence": {
+				"nextcloud": "Discover, category browse and search views with Install actions (apps/appstore/src/router/routes.ts, apps/appstore/src/actions/actionInstall.ts; enableApp downloads when needed at apps/appstore/lib/Controller/ApiController.php:171-176); occ app:install."
+			}
 		},
 		{
 			"id": "ins-server-core-update",
@@ -873,7 +1047,7 @@
 			"name": "Update the server itself, not only its apps.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -887,7 +1061,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Server updates are out of scope; Nextcloud's own updater does that."
+			"note": "Server updates are out of scope; Nextcloud's own updater does that.",
+			"evidence": {
+				"nextcloud": "Admin overview shows the new server version and opens the web updater (apps/updatenotification/src/components/UpdateNotification.vue:58); the standalone updater (nextcloud/updater@v34.0.4 lib/UpdateCommand.php:37-51 steps) and occ upgrade (core/Command/Upgrade.php) run it."
+			}
 		},
 		{
 			"id": "ins-offline-install",
@@ -895,7 +1072,7 @@
 			"name": "Reinstall a version when its source is unreachable, from a local cache of packages.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -909,7 +1086,10 @@
 			"providerHow": "read-from-code",
 			"feature": "artifact-cache",
 			"featureConfidence": "high",
-			"note": "Verified archives are cached after successful installs (3 per app by default); when a download fails the cached copy is used after re-verification, and versions with a cached copy are badged."
+			"note": "Verified archives are cached after successful installs (3 per app by default); when a download fails the cached copy is used after re-verification, and versions with a cached copy are badged.",
+			"evidence": {
+				"nextcloud": "Only the app store metadata JSON is cached (lib/private/App/AppStore/Fetcher/Fetcher.php:192); packages are downloaded to a temp file per install (lib/private/Installer.php:232-239). The only offline route is placing an app folder by hand, which installApp then picks up (lib/private/Installer.php:56-94)."
+			}
 		},
 		{
 			"id": "ins-cache-manage",
@@ -917,7 +1097,7 @@
 			"name": "See the cached packages and clear the cache.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -931,7 +1111,10 @@
 			"providerHow": "read-from-code",
 			"feature": "artifact-cache",
 			"featureConfidence": "high",
-			"note": "Shows cached versions and size per app and total, with per-app and clear-all actions."
+			"note": "Shows cached versions and size per app and total, with per-app and clear-all actions.",
+			"evidence": {
+				"nextcloud": "No command or UI lists or clears the appstore cache; the fetcher silently manages apps.json in appdata (lib/private/App/AppStore/Fetcher/Fetcher.php:140-192)."
+			}
 		},
 		{
 			"id": "ins-manual-upload",
@@ -939,7 +1122,7 @@
 			"name": "Install a version from an uploaded archive file.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -953,7 +1136,10 @@
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "No archive upload; sources are the App Store and GitHub or Codeberg releases."
+			"note": "No archive upload; sources are the App Store and GitHub or Codeberg releases.",
+			"evidence": {
+				"nextcloud": "The appstore OCS API exposes list, enable, disable, uninstall, update and bundle enable only (apps/appstore/src/service/api.ts BASE_URL routes; apps/appstore/lib/Controller/ApiController.php); no archive upload route."
+			}
 		},
 		{
 			"id": "ins-progress",
@@ -961,7 +1147,7 @@
 			"name": "See progress and a clear outcome while an install runs.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -975,7 +1161,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "medium",
-			"note": "A spinner with 'Installing...' runs while the request is open, then a result panel shows status (Done, Dry run, Reverted, Installed but broken, Failed), transition, mode, failure category and stage. No live stage-by-stage progress."
+			"note": "A spinner with 'Installing...' runs while the request is open, then a result panel shows status (Done, Dry run, Reverted, Installed but broken, Failed), transition, mode, failure category and stage. No live stage-by-stage progress.",
+			"evidence": {
+				"nextcloud": "Apps: a loading icon per row and an error toast (apps/appstore/src/components/AppTable/AppTableRow.vue:70, apps/appstore/src/store/updates.ts:56); server core: the standalone updater reports 12 named steps with download progress (nextcloud/updater@v34.0.4 lib/UpdateCommand.php:37-51, lib/Updater.php:803)."
+			}
 		},
 		{
 			"id": "ins-debug",
@@ -983,7 +1172,7 @@
 			"name": "Get detailed diagnostic output when an install fails.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -997,7 +1186,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "With debug on, the result panel shows a step timeline of installer stages with their data; failures carry category, stage and hint."
+			"note": "With debug on, the result panel shows a step timeline of installer stages with their data; failures carry category, stage and hint.",
+			"evidence": {
+				"nextcloud": "occ app:update/app:install print the exception message (core/Command/App/Update.php:103-109, core/Command/App/Install.php:75) and log it; the updater writes updater.log (nextcloud/updater@v34.0.4 lib/Updater.php:1390). v35.0.1 adds explicit messages when the store is disabled or offline in app:update."
+			}
 		},
 		{
 			"id": "ins-bulk-rollback",
@@ -1005,7 +1197,7 @@
 			"name": "Roll back several apps at once to an earlier state or date.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1019,7 +1211,10 @@
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "high",
-			"note": "No multi-app or point-in-time rollback."
+			"note": "No multi-app or point-in-time rollback.",
+			"evidence": {
+				"nextcloud": "No rollback of any kind; downgrade is refused (lib/private/Installer.php:310)."
+			}
 		},
 		{
 			"id": "ins-keep-enabled-state",
@@ -1027,7 +1222,7 @@
 			"name": "Keep an app's enabled or disabled state when its version changes.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1041,7 +1236,36 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "medium",
-			"note": "Both installers carry the previous enabled flag into finalize. Proposed by reader own-a."
+			"note": "Both installers carry the previous enabled flag into finalize. Proposed by reader own-a.",
+			"evidence": {
+				"nextcloud": "An in-place update runs upgradeApp without touching the enabled setting (lib/private/Installer.php:112), and during a server upgrade auto-disabled apps get their previous state back, including group restrictions (lib/private/App/AppManager.php:696-701, lib/private/Updater.php:410-417)."
+			}
+		},
+		{
+			"id": "ins-force-incompatible",
+			"area": "install",
+			"name": "Force-enable an app that is not marked compatible with the running server, with the override lifted at the next major upgrade.",
+			"origin": "changelog",
+			"originUrl": "https://github.com/nextcloud/server/pull/63446",
+			"versioniq": "partial",
+			"nextcloud": "yes",
+			"renovate": "unknown",
+			"dependabot": "unknown",
+			"osv-scanner": "unknown",
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/ExternalReleaseInstallerService.php:583, lib/Service/SelectedReleaseInstallerService.php:334",
+				"reachedOn": "Apps tab install flow honours an existing override; nothing in versioniq sets one"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "medium",
+			"note": "Both installers honour the platform's app_install_overwrite list and otherwise refuse an incompatible version; there is no force option in the UI or occ command.",
+			"evidence": {
+				"nextcloud": "Force enable via the UI and occ app:install ,force records app_install_overwrite (apps/appstore/lib/Controller/ApiController.php:167-169, core/Command/App/Install.php:31-57); since 2026-08 the override is cleared on a major upgrade (lib/private/Updater.php:215-218, backported to stable34 in #63633)."
+			}
 		},
 		{
 			"id": "saf-preflight",
@@ -1049,7 +1273,7 @@
 			"name": "Check the environment, such as disk space and write permissions, before an install starts.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1063,7 +1287,10 @@
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "medium",
-			"note": "Checks that the app folder's parent is writable, warns on the card and refuses early; disk space and other environment checks are not made."
+			"note": "Checks that the app folder's parent is writable, warns on the card and refuses early; disk space and other environment checks are not made.",
+			"evidence": {
+				"nextcloud": "Install checks that the apps folder is writable (lib/private/Installer.php:135-150); the server updater checks expected files and write permissions (nextcloud/updater@v34.0.4 lib/Updater.php:389,410). No disk space check before install; a separate setup check covers temp space (apps/settings/lib/SetupChecks/TempSpaceAvailable.php:73)."
+			}
 		},
 		{
 			"id": "saf-downgrade-guard",
@@ -1071,7 +1298,7 @@
 			"name": "Refuse a downgrade that would reverse database migrations unless the admin explicitly overrides it.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1085,7 +1312,10 @@
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "high",
-			"note": "Any real downgrade is refused with 409 unless allowDowngrade is passed, which the UI sends only after the confirmation dialog. The guard covers every downgrade, not only ones that reverse migrations."
+			"note": "Any real downgrade is refused with 409 unless allowDowngrade is passed, which the UI sends only after the confirmation dialog. The guard covers every downgrade, not only ones that reverse migrations.",
+			"evidence": {
+				"nextcloud": "All app downgrades are refused (lib/private/Installer.php:310) and server downgrades too (lib/private/Updater.php:164-213), but the guard is not migration-aware and has no admin override (only debug mode for core)."
+			}
 		},
 		{
 			"id": "saf-migration-diff",
@@ -1093,7 +1323,7 @@
 			"name": "See which database migrations a downgrade would leave behind.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1107,7 +1337,10 @@
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "high",
-			"note": "Compares lib/Migration file names of the installed and target archives and lists the migrations the target lacks in the downgrade dialog; a diff failure degrades to a generic warning."
+			"note": "Compares lib/Migration file names of the installed and target archives and lists the migrations the target lacks in the downgrade dialog; a diff failure degrades to a generic warning.",
+			"evidence": {
+				"nextcloud": "No comparison of applied vs target migrations for a downgrade; downgrade is simply refused (lib/private/Installer.php:310). occ migrations:preview covers upgrades only (core/Command/Db/Migrations/PreviewCommand.php:38)."
+			}
 		},
 		{
 			"id": "saf-signature",
@@ -1115,7 +1348,7 @@
 			"name": "Verify the code signature of an app package before installing it.",
 			"rowSource": "competitor",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1129,7 +1362,10 @@
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "high",
-			"note": "App Store packages are checked against the Nextcloud code-signing root and CRL, the certificate CN must match the app id, and the archive signature is verified before files are swapped. Forge releases have no signature to verify and rely on SHA-256 instead."
+			"note": "App Store packages are checked against the Nextcloud code-signing root and CRL, the certificate CN must match the app id, and the archive signature is verified before files are swapped. Forge releases have no signature to verify and rely on SHA-256 instead.",
+			"evidence": {
+				"nextcloud": "downloadApp validates the certificate against the Nextcloud code signing root, checks the CRL and the CN against the app id, and verifies the SHA512 signature of the archive (lib/private/Installer.php:172-243,336)."
+			}
 		},
 		{
 			"id": "saf-checksum-first",
@@ -1137,7 +1373,7 @@
 			"name": "Record a checksum of an externally sourced package the first time it is installed.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1151,7 +1387,10 @@
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "After the first successful install of a forge release its SHA-256 is recorded on the binding, and the version list badges it."
+			"note": "After the first successful install of a forge release its SHA-256 is recorded on the binding, and the version list badges it.",
+			"evidence": {
+				"nextcloud": "Integrity rests on publisher signatures (lib/private/Installer.php:243, core/Command/Integrity/CheckApp.php:41), not on a locally recorded first-seen checksum; externally sourced packages are not supported at all."
+			}
 		},
 		{
 			"id": "saf-checksum-enforce",
@@ -1159,7 +1398,7 @@
 			"name": "Refuse a reinstall whose checksum differs from the recorded one, unless the admin explicitly overrides it.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1173,7 +1412,10 @@
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "A reinstall whose digest differs from the recorded one is refused before any file change; the UI offers 'Accept new checksum and install', which is logged and audited."
+			"note": "A reinstall whose digest differs from the recorded one is refused before any file change; the UI offers 'Accept new checksum and install', which is logged and audited.",
+			"evidence": {
+				"nextcloud": "A package whose signature does not match is refused with no override (lib/private/Installer.php:336-342); this is publisher-signature enforcement, not a comparison with a recorded checksum."
+			}
 		},
 		{
 			"id": "saf-failure-classify",
@@ -1181,7 +1423,7 @@
 			"name": "Get a failed install explained in plain terms, with the likely cause and the next step.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1195,7 +1437,10 @@
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "high",
-			"note": "Failures are classified into categories (permission, download, checksum, incompatible, finalize, downgrade guard and more) with a plain-language hint shown first in the result panel."
+			"note": "Failures are classified into categories (permission, download, checksum, incompatible, finalize, downgrade guard and more) with a plain-language hint shown first in the result panel.",
+			"evidence": {
+				"nextcloud": "Errors are specific but raw exception texts ('has invalid signature', 'not compatible', lib/private/Installer.php:81-86,336); a few carry a next step (lib/private/Installer.php:142-144). No classification layer."
+			}
 		},
 		{
 			"id": "saf-finalize-recovery",
@@ -1203,7 +1448,7 @@
 			"name": "Recover an app left half installed when an install fails partway.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1217,7 +1462,10 @@
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "medium",
-			"note": "When migrations or repair steps fail, the previous files are restored from the kept backup and the outcome is reported as installed-but-broken; partially applied migrations stay and the admin is told to check manually."
+			"note": "When migrations or repair steps fail, the previous files are restored from the kept backup and the outcome is reported as installed-but-broken; partially applied migrations stay and the admin is told to check manually.",
+			"evidence": {
+				"nextcloud": "During a server upgrade, apps that were auto-disabled are re-fetched and re-enabled (lib/private/Updater.php:258-263,392-435) and a pending app upgrade is forced through the upgrade page (lib/private/App/AppManager.php isUpgradeRequired); a failed web app update leaves the old folder already deleted (lib/private/Installer.php:323)."
+			}
 		},
 		{
 			"id": "saf-backup-before",
@@ -1225,7 +1473,7 @@
 			"name": "Take a backup or snapshot before an update so it can be restored.",
 			"rowSource": "competitor",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1239,7 +1487,10 @@
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "medium",
-			"note": "The app folder is moved aside before replacement and restored on failure, but deleted once finalize succeeds; no database backup or restorable snapshot is kept. The artifact cache retains old archives for re-installing files only."
+			"note": "The app folder is moved aside before replacement and restored on failure, but deleted once finalize succeeds; no database backup or restorable snapshot is kept. The artifact cache retains old archives for re-installing files only.",
+			"evidence": {
+				"nextcloud": "The standalone server updater backs up the code (not data or database) before replacing it, skippable with ,no-backup (nextcloud/updater@v34.0.4 lib/Updater.php:475-490, lib/UpdateCommand.php:59); app updates take no backup (lib/private/Installer.php:323)."
+			}
 		},
 		{
 			"id": "saf-maintenance-mode",
@@ -1247,7 +1498,7 @@
 			"name": "Put the instance into maintenance mode around an update automatically.",
 			"rowSource": "competitor",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1261,7 +1512,10 @@
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "high",
-			"note": "Maintenance mode is switched on around the install when it was off and switched back in a finally block."
+			"note": "Maintenance mode is switched on around the install when it was off and switched back in a finally block.",
+			"evidence": {
+				"nextcloud": "App update from the UI toggles maintenance mode around the update (apps/appstore/lib/Controller/ApiController.php:258-266); the server upgrade does too (lib/private/Updater.php:81-123; nextcloud/updater step 7)."
+			}
 		},
 		{
 			"id": "saf-safe-mode",
@@ -1269,7 +1523,7 @@
 			"name": "Recover from an update that breaks the admin interface, for example through a safe mode or automatic disable.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1283,7 +1537,10 @@
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "high",
-			"note": "Nothing recovers from an update that breaks the admin interface. The UI toggle named 'Safe mode' only hides and blocks downgrades in the version picker."
+			"note": "Nothing recovers from an update that breaks the admin interface. The UI toggle named 'Safe mode' only hides and blocks downgrades in the version picker.",
+			"evidence": {
+				"nextcloud": "On a server upgrade incompatible third-party apps are disabled automatically (lib/private/Updater.php:361-375); a broken app can be disabled from the CLI with occ app:disable. No safe mode for a web UI broken by an app update."
+			}
 		},
 		{
 			"id": "saf-test-before-apply",
@@ -1291,7 +1548,7 @@
 			"name": "Run tests or checks against an update before it is applied.",
 			"rowSource": "competitor",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1305,7 +1562,10 @@
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "medium",
-			"note": "A dry run downloads and verifies the package (signature or SHA-256, app id, version, migration diff) without swapping files. It runs no tests, and for App Store packages skips the server-compatibility and dependency check that only runs on a real install."
+			"note": "A dry run downloads and verifies the package (signature or SHA-256, app id, version, migration diff) without swapping files. It runs no tests, and for App Store packages skips the server-compatibility and dependency check that only runs on a real install.",
+			"evidence": {
+				"nextcloud": "The update path downloads, verifies the signature and installs (lib/private/Installer.php:102-116); no test or staging step. Code integrity runs after the core upgrade only (lib/private/Updater.php:285-290)."
+			}
 		},
 		{
 			"id": "saf-health-after",
@@ -1313,7 +1573,7 @@
 			"name": "Check that an app still works after an update and roll back automatically if it does not.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1327,7 +1587,10 @@
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "high",
-			"note": "No health check after an update. Automatic restore happens only when finalize itself throws, which is part of the install, not a check that the app works."
+			"note": "No health check after an update. Automatic restore happens only when finalize itself throws, which is part of the install, not a check that the app works.",
+			"evidence": {
+				"nextcloud": "After a server upgrade only the code integrity check runs (lib/private/Updater.php:285-290); no app health probe and no automatic rollback; the updater's post-step-7 rollback is a TODO (nextcloud/updater@v34.0.4 lib/Updater.php:1377-1380)."
+			}
 		},
 		{
 			"id": "saf-trusted-only",
@@ -1335,7 +1598,7 @@
 			"name": "Restrict installs to an allowlist of trusted sources.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1349,7 +1612,10 @@
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "Forge sources must match a forge-qualified owner or owner/repo allowlist pattern before binding, listing or installing; over-broad patterns are refused. The App Store is always trusted."
+			"note": "Forge sources must match a forge-qualified owner or owner/repo allowlist pattern before binding, listing or installing; over-broad patterns are refused. The App Store is always trusted.",
+			"evidence": {
+				"nextcloud": "Installs come only from the one configured store (config/config.sample.php:1400-1414 appstoreurl) and must be signed by the Nextcloud code signing CA (lib/private/Installer.php:201-209); the appsallowlist filter is per app and only honoured with a valid subscription (lib/private/App/AppStore/Fetcher/AppFetcher.php:162-169)."
+			}
 		},
 		{
 			"id": "saf-unverified-warning",
@@ -1357,7 +1623,7 @@
 			"name": "See clearly when an install went ahead without checksum verification.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1371,7 +1637,10 @@
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "medium",
-			"note": "The installer returns an 'install proceeded without verification' warning that reaches the API payload as integrityWarning, but no component renders it; only the audit message keeps it. Proposed by reader own-a."
+			"note": "The installer returns an 'install proceeded without verification' warning that reaches the API payload as integrityWarning, but no component renders it; only the audit message keeps it. Proposed by reader own-a.",
+			"evidence": {
+				"nextcloud": "Store installs cannot proceed unverified (lib/private/Installer.php:245,336-342); an app folder placed by hand is installed with no signature check and no warning at install time (lib/private/Installer.php:56-94), only the separate code integrity check can flag it later (apps/settings/lib/SetupChecks/CodeIntegrity.php:36)."
+			}
 		},
 		{
 			"id": "saf-protect-core",
@@ -1379,7 +1648,7 @@
 			"name": "Protect core apps and the tool itself from version changes.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1393,7 +1662,62 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "medium",
-			"note": "isManageableApp refuses always-enabled apps and Versioniq itself across UI, API, CLI and auto-update. Proposed by reader own-a."
+			"note": "isManageableApp refuses always-enabled apps and Versioniq itself across UI, API, CLI and auto-update. Proposed by reader own-a.",
+			"evidence": {
+				"nextcloud": "Always-enabled apps cannot be disabled (lib/private/App/AppManager.php:692-694), shipped apps cannot be removed (lib/private/Installer.php:449-451) and shipped apps are excluded from store data and updates (apps/appstore/lib/Controller/ApiController.php:334-339); shipped apps only change with the server."
+			}
+		},
+		{
+			"id": "saf-migration-preview",
+			"area": "safety",
+			"name": "Preview the database changes an update will make, and how long they may take, before starting it.",
+			"origin": "roadmap",
+			"originUrl": "https://github.com/nextcloud/server/issues/45943",
+			"versioniq": "partial",
+			"nextcloud": "partial",
+			"renovate": "unknown",
+			"dependabot": "unknown",
+			"osv-scanner": "unknown",
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Installer/MigrationDiffer.php:31, lib/Service/SelectedReleaseInstallerService.php:650, src/utils/migrationSafety.ts:49",
+				"reachedOn": "Apps tab, downgrade confirm dialog (dry run)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "migration-safety",
+			"featureConfidence": "high",
+			"note": "The dry run lists the migrations a downgrade would orphan; there is no preview of the migrations an upgrade will run, and no duration estimate.",
+			"evidence": {
+				"nextcloud": "occ migrations:preview <version> lists server and shipped-app migrations from release metadata (core/Command/Db/Migrations/PreviewCommand.php:38-70) and names apps without metadata; the app store and admin UI parts are still open work packages on the issue."
+			}
+		},
+		{
+			"id": "saf-code-integrity",
+			"area": "safety",
+			"name": "Verify that the files of an installed app still match what its publisher signed.",
+			"origin": "featureRequest",
+			"originUrl": "https://github.com/nextcloud/server/issues/9375",
+			"versioniq": "no",
+			"nextcloud": "yes",
+			"renovate": "unknown",
+			"dependabot": "unknown",
+			"osv-scanner": "unknown",
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "no integrity check of installed files under lib/; checksums are verified on the downloaded archive only (lib/Service/ExternalReleaseInstallerService.php:103)",
+				"reachedOn": "nothing in versioniq; the platform's occ integrity:check-app covers it"
+			},
+			"provider": "nextcloud-server",
+			"providerHow": "read-from-code",
+			"feature": "external-sources",
+			"featureConfidence": "medium",
+			"note": "Versioniq verifies archives before install, never the files of an installed app afterwards; that is the platform's code integrity check.",
+			"evidence": {
+				"nextcloud": "occ integrity:check-app (core/Command/Integrity/CheckApp.php:41), the Code integrity setup check (apps/settings/lib/SetupChecks/CodeIntegrity.php:36) and the post-upgrade instance verification (lib/private/Updater.php:285-290)."
+			}
 		},
 		{
 			"id": "pin-pin",
@@ -1401,7 +1725,7 @@
 			"name": "Pin an app to its current version so it is not updated.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1415,7 +1739,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-pinning",
 			"featureConfidence": "high",
-			"note": "Pins the installed version with an optional reason; only the installed version can be pinned, and the pin is audited."
+			"note": "Pins the installed version with an optional reason; only the installed version can be pinned, and the pin is audited.",
+			"evidence": {
+				"nextcloud": "isUpdateAvailable has no hold check; the only skip is an app folder containing .git (lib/private/Installer.php:375-377), a developer checkout marker, not a pin. Open request to ignore a version: https://github.com/nextcloud/server/issues/57633."
+			}
 		},
 		{
 			"id": "pin-unpin",
@@ -1423,7 +1750,7 @@
 			"name": "Remove a pin.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1437,7 +1764,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-pinning",
 			"featureConfidence": "high",
-			"note": "Unpin button on the app detail, password-confirmed and audited."
+			"note": "Unpin button on the app detail, password-confirmed and audited.",
+			"evidence": {
+				"nextcloud": "No pin exists (lib/private/Installer.php:361-400)."
+			}
 		},
 		{
 			"id": "pin-reason",
@@ -1445,7 +1775,7 @@
 			"name": "See who pinned an app, when, and why.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1459,7 +1789,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-pinning",
 			"featureConfidence": "high",
-			"note": "The pin badge tooltip reads 'Pinned by {user} on {date}' plus the reason; pin and unpin also appear in History."
+			"note": "The pin badge tooltip reads 'Pinned by {user} on {date}' plus the reason; pin and unpin also appear in History.",
+			"evidence": {
+				"nextcloud": "No pin exists (lib/private/Installer.php:361-400)."
+			}
 		},
 		{
 			"id": "pin-enforce-own",
@@ -1467,7 +1800,7 @@
 			"name": "Block updates of a pinned app through the tool itself.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1481,7 +1814,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-pinning",
 			"featureConfidence": "high",
-			"note": "Installing another version of a pinned app returns 409 until the admin chooses re-pin or unpin in the override dialog; the auto-update job skips pinned apps."
+			"note": "Installing another version of a pinned app returns 409 until the admin chooses re-pin or unpin in the override dialog; the auto-update job skips pinned apps.",
+			"evidence": {
+				"nextcloud": "No pin exists; app:update ,all and Update all update every updatable app (core/Command/App/Update.php:81-119)."
+			}
 		},
 		{
 			"id": "pin-enforce-platform",
@@ -1489,7 +1825,7 @@
 			"name": "Block updates of a pinned app through the platform's own updater as well.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1503,7 +1839,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-pinning",
 			"featureConfidence": "high",
-			"note": "Nextcloud's updater is not blocked: the listener on AppUpdateEvent is post-hoc and only detects drift, and the pin dialog says so openly."
+			"note": "Nextcloud's updater is not blocked: the listener on AppUpdateEvent is post-hoc and only detects drift, and the pin dialog says so openly.",
+			"evidence": {
+				"nextcloud": "No pin exists; the server upgrade updates every enabled store app (lib/private/Updater.php:258)."
+			}
 		},
 		{
 			"id": "pin-drift-detect",
@@ -1511,7 +1850,7 @@
 			"name": "Detect that a pinned app was moved to another version outside the tool.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1525,7 +1864,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-pinning",
 			"featureConfidence": "high",
-			"note": "Drift is detected on every AppUpdateEvent and by a daily reconcile job, recorded on the pin, audited, notified to admins once per drifted version, and shown as a banner on the app detail."
+			"note": "Drift is detected on every AppUpdateEvent and by a daily reconcile job, recorded on the pin, audited, notified to admins once per drifted version, and shown as a banner on the app detail.",
+			"evidence": {
+				"nextcloud": "No pinned version is recorded (lib/private/Installer.php:361-400); code integrity checks detect modified files, not version drift."
+			}
 		},
 		{
 			"id": "pin-drift-repin",
@@ -1533,7 +1875,7 @@
 			"name": "Restore the pinned version after drift with one action.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1547,7 +1889,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-pinning",
 			"featureConfidence": "high",
-			"note": "The drift banner offers one-click Re-pin, which reinstalls the pinned version through the normal install path, or accepts the drift. The usual drift is an upward update by Nextcloud's updater, and that re-pin is a downgrade the call does not acknowledge."
+			"note": "The drift banner offers one-click Re-pin, which reinstalls the pinned version through the normal install path, or accepts the drift. The usual drift is an upward update by Nextcloud's updater, and that re-pin is a downgrade the call does not acknowledge.",
+			"evidence": {
+				"nextcloud": "No pin exists, and downgrade is refused (lib/private/Installer.php:310)."
+			}
 		},
 		{
 			"id": "pin-range",
@@ -1555,7 +1900,7 @@
 			"name": "Allow updates only within a version range, for example patch releases only.",
 			"rowSource": "competitor",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1569,7 +1914,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "medium",
-			"note": "A per-app auto-update policy of Patch, Minor or All limits which newer versions the nightly job installs. It restricts only automatic updates; manual installs and Nextcloud's updater are not held to the range, and non-semver versions never qualify."
+			"note": "A per-app auto-update policy of Patch, Minor or All limits which newer versions the nightly job installs. It restricts only automatic updates; manual installs and Nextcloud's updater are not held to the range, and non-semver versions never qualify.",
+			"evidence": {
+				"nextcloud": "Updates always go to the highest compatible release (lib/private/App/AppStore/Fetcher/AppFetcher.php:123-140); no range constraint."
+			}
 		},
 		{
 			"id": "pin-ignore-version",
@@ -1577,7 +1925,7 @@
 			"name": "Skip one specific version while still accepting later ones.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1591,7 +1939,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-pinning",
 			"featureConfidence": "high",
-			"note": "No way to skip one chosen version. The auto-update attempt ledger never retries a version that was already attempted, but that is automatic, not an admin choice."
+			"note": "No way to skip one chosen version. The auto-update attempt ledger never retries a version that was already attempted, but that is automatic, not an admin choice.",
+			"evidence": {
+				"nextcloud": "Not supported; open feature request 'Ability to ignore a specific app update version' https://github.com/nextcloud/server/issues/57633 (opened 2026-01-18)."
+			}
 		},
 		{
 			"id": "pin-expiry",
@@ -1599,7 +1950,7 @@
 			"name": "Give a pin an expiry date after which updates resume.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1613,7 +1964,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-pinning",
 			"featureConfidence": "high",
-			"note": "Pins have no expiry."
+			"note": "Pins have no expiry.",
+			"evidence": {
+				"nextcloud": "No pin exists (lib/private/Installer.php:361-400)."
+			}
 		},
 		{
 			"id": "pin-list",
@@ -1621,7 +1975,7 @@
 			"name": "See all pinned apps in one list.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1635,7 +1989,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-pinning",
 			"featureConfidence": "medium",
-			"note": "All pins are fetched and shown as badges on the app cards, but there is no dedicated list or 'pinned only' filter; the admin scans the full app list."
+			"note": "All pins are fetched and shown as badges on the app cards, but there is no dedicated list or 'pinned only' filter; the admin scans the full app list.",
+			"evidence": {
+				"nextcloud": "No pin exists (lib/private/Installer.php:361-400)."
+			}
 		},
 		{
 			"id": "aut-policy-per-app",
@@ -1643,7 +2000,7 @@
 			"name": "Set an automatic update policy per app.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1657,7 +2014,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "Each non-core app card carries a policy select (Off, Patch, Minor, All) that PUTs /api/app/{appId}/policy; AutoUpdateJob iterates the stored policies."
+			"note": "Each non-core app card carries a policy select (Off, Patch, Minor, All) that PUTs /api/app/{appId}/policy; AutoUpdateJob iterates the stored policies.",
+			"evidence": {
+				"nextcloud": "The only update background job notifies and never installs (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154); users still ask for automatic app updates in June 2026 on https://github.com/nextcloud/server/issues/3182."
+			}
 		},
 		{
 			"id": "aut-policy-levels",
@@ -1665,7 +2025,7 @@
 			"name": "Limit automatic updates to patch releases or to minor releases.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1679,7 +2039,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "Levels patch (same major.minor) and minor (same major) bound the candidate; pre-release or non-semver versions never qualify for patch or minor."
+			"note": "Levels patch (same major.minor) and minor (same major) bound the candidate; pre-release or non-semver versions never qualify for patch or minor.",
+			"evidence": {
+				"nextcloud": "No automatic updates exist (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154)."
+			}
 		},
 		{
 			"id": "aut-global-default",
@@ -1687,7 +2050,7 @@
 			"name": "Set one default automatic update policy for every app.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1701,7 +2064,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "There is no instance-wide default level; an app with no stored policy is treated as none, so every app must be set one by one."
+			"note": "There is no instance-wide default level; an app with no stored policy is treated as none, so every app must be set one by one.",
+			"evidence": {
+				"nextcloud": "No automatic updates exist (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154)."
+			}
 		},
 		{
 			"id": "aut-kill-switch",
@@ -1709,7 +2075,7 @@
 			"name": "Turn all automatic updates off at once with one switch.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1723,7 +2089,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "A global enabled flag (default off) is saved through PUT /api/auto-update/settings; the job returns before any source query when it is off, and per-app policies stay stored."
+			"note": "A global enabled flag (default off) is saved through PUT /api/auto-update/settings; the job returns before any source query when it is off, and per-app policies stay stored.",
+			"evidence": {
+				"nextcloud": "No automatic updates to switch off; 'updatechecker' only disables the server update check (config/config.sample.php:972)."
+			}
 		},
 		{
 			"id": "aut-window",
@@ -1731,7 +2100,7 @@
 			"name": "Restrict automatic updates to a maintenance time window.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1745,7 +2114,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "An HH:MM-HH:MM window (default 01:00-05:00, midnight crossing supported) is saved and checked, but the job is a 24 hour TimedJob that silently returns outside the window, so a first run outside it can keep missing the window."
+			"note": "An HH:MM-HH:MM window (default 01:00-05:00, midnight crossing supported) is saved and checked, but the job is a 24 hour TimedJob that silently returns outside the window, so a first run outside it can keep missing the window.",
+			"evidence": {
+				"nextcloud": "maintenance_window_start delays time-insensitive jobs such as the update check (config/config.sample.php:1703-1715, UpdateAvailableNotifications.php:49), but nothing installs updates automatically."
+			}
 		},
 		{
 			"id": "aut-schedule-days",
@@ -1753,7 +2125,7 @@
 			"name": "Schedule updates on specific weekdays or with a cron-like schedule.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1767,7 +2139,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "Only a daily time-of-day window exists; no weekday selection or cron expression."
+			"note": "Only a daily time-of-day window exists; no weekday selection or cron expression.",
+			"evidence": {
+				"nextcloud": "No automatic updates exist; the check job runs daily (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:48)."
+			}
 		},
 		{
 			"id": "aut-outcome-report",
@@ -1775,7 +2150,7 @@
 			"name": "Get told the outcome of every automatic update, success or failure.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1789,7 +2164,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "Every attempted automatic install raises auto_update_success or auto_update_failure (with the failure hint) to every admin-group member, and the Notifier renders both; the install is also written to the audit trail as actor system."
+			"note": "Every attempted automatic install raises auto_update_success or auto_update_failure (with the failure hint) to every admin-group member, and the Notifier renders both; the install is also written to the audit trail as actor system.",
+			"evidence": {
+				"nextcloud": "No automatic updates exist; only connection-error notifications for the check (UpdateAvailableNotifications.php:88-94)."
+			}
 		},
 		{
 			"id": "aut-failure-backoff",
@@ -1797,7 +2175,7 @@
 			"name": "Stop retrying an automatic update after it has failed repeatedly.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1811,7 +2189,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "A per (app, version) ledger means a failed version is never retried at all (stricter than a backoff); a newer qualifying version is still attempted. The ledger is not shown anywhere in the UI."
+			"note": "A per (app, version) ledger means a failed version is never retried at all (stricter than a backoff); a newer qualifying version is still attempted. The ledger is not shown anywhere in the UI.",
+			"evidence": {
+				"nextcloud": "No automatic updates exist; the store fetcher waits 300 s after a failed connection (lib/private/App/AppStore/Fetcher/Fetcher.php:32,70), which is fetch backoff, not update backoff."
+			}
 		},
 		{
 			"id": "aut-grouping",
@@ -1819,7 +2200,7 @@
 			"name": "Group several updates into one batch or one change.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1833,7 +2214,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "Each app is installed separately in its own try/catch; there is no batch or grouped change."
+			"note": "Each app is installed separately in its own try/catch; there is no batch or grouped change.",
+			"evidence": {
+				"nextcloud": "No automatic updates exist (UpdateAvailableNotifications.php:146-154)."
+			}
 		},
 		{
 			"id": "aut-security-only",
@@ -1841,7 +2225,7 @@
 			"name": "Apply only security fixes automatically.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1855,7 +2239,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "Candidate selection knows only semver levels; advisory correlation is never consulted, so there is no security-fixes-only policy."
+			"note": "Candidate selection knows only semver levels; advisory correlation is never consulted, so there is no security-fixes-only policy.",
+			"evidence": {
+				"nextcloud": "No automatic updates and no security classification of releases (lib/private/App/AppStore/Fetcher/AppFetcher.php:74-108)."
+			}
 		},
 		{
 			"id": "aut-approval",
@@ -1863,7 +2250,7 @@
 			"name": "Require an admin approval before a proposed update is applied.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1877,7 +2264,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "The nightly job installs the candidate directly; there is no proposed-update queue or approval step."
+			"note": "The nightly job installs the candidate directly; there is no proposed-update queue or approval step.",
+			"evidence": {
+				"nextcloud": "No proposal or approval flow; every update is a manual admin action (apps/appstore/lib/Controller/ApiController.php:253)."
+			}
 		},
 		{
 			"id": "aut-automerge",
@@ -1885,7 +2275,7 @@
 			"name": "Apply an update automatically once its checks pass.",
 			"rowSource": "competitor",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1899,7 +2289,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "medium",
-			"note": "Automatic installs go through the standard installer, which verifies signature, integrity and compatibility before swapping files and restores on failure; there is no configurable test or health gate an admin can attach."
+			"note": "Automatic installs go through the standard installer, which verifies signature, integrity and compatibility before swapping files and restores on failure; there is no configurable test or health gate an admin can attach.",
+			"evidence": {
+				"nextcloud": "No automatic updates exist (UpdateAvailableNotifications.php:146-154)."
+			}
 		},
 		{
 			"id": "aut-rate-limit",
@@ -1907,7 +2300,7 @@
 			"name": "Limit how many updates are applied at once or per period.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1921,7 +2314,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "No cap on the number of installs per run or per period."
+			"note": "No cap on the number of installs per run or per period.",
+			"evidence": {
+				"nextcloud": "No automatic updates exist; the web UI queues manual updates one at a time (apps/appstore/src/service/api.ts PQueue concurrency 1), which is a client queue, not a policy."
+			}
 		},
 		{
 			"id": "aut-core-policy",
@@ -1929,7 +2325,7 @@
 			"name": "Set a separate automatic update policy for the server core.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1943,7 +2339,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "Core and always-enabled apps are excluded and the server itself is never updated by Versioniq."
+			"note": "Core and always-enabled apps are excluded and the server itself is never updated by Versioniq.",
+			"evidence": {
+				"nextcloud": "The channel picks which server releases are offered (apps/updatenotification/lib/Controller/AdminController.php:46) but the server never updates itself; the web updater is started by the admin (UpdateNotification.vue:58)."
+			}
 		},
 		{
 			"id": "aut-config-as-code",
@@ -1951,7 +2350,7 @@
 			"name": "Keep update policies in a versioned configuration file.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1965,7 +2364,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "Policies live in oc_appconfig; there is no versioned configuration file import or export."
+			"note": "Policies live in oc_appconfig; there is no versioned configuration file import or export.",
+			"evidence": {
+				"nextcloud": "config.php holds update-related switches (updatechecker, updater.release.channel, appstoreenabled; config/config.sample.php:972-990,1400) but no update policies."
+			}
 		},
 		{
 			"id": "aut-presets",
@@ -1973,7 +2375,7 @@
 			"name": "Share update policy presets across many installations or repositories.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -1987,7 +2389,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "No preset sharing across installations."
+			"note": "No preset sharing across installations.",
+			"evidence": {
+				"nextcloud": "No update policies exist to share (UpdateAvailableNotifications.php:146-154)."
+			}
 		},
 		{
 			"id": "aut-dashboard",
@@ -1995,7 +2400,7 @@
 			"name": "See all pending, scheduled and blocked updates on one dashboard.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2009,7 +2414,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "medium",
-			"note": "App cards show a policy badge and pin badge, but nothing lists pending, scheduled or blocked updates in one view."
+			"note": "App cards show a policy badge and pin badge, but nothing lists pending, scheduled or blocked updates in one view.",
+			"evidence": {
+				"nextcloud": "The Updates category lists pending updates with a counter (apps/appstore/src/views/AppstoreManage.vue:39, apps/appstore/src/store/updates.ts:23); nothing is scheduled or blocked, so only the pending part exists."
+			}
 		},
 		{
 			"id": "aut-unattended-private",
@@ -2017,7 +2425,7 @@
 			"name": "Let scheduled checks and automatic updates reach private sources without a signed-in admin.",
 			"rowSource": "own-code",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2031,7 +2439,10 @@
 			"providerHow": "read-from-code",
 			"feature": "pat-management",
 			"featureConfidence": "medium",
-			"note": "Tokens are resolved from the logged-in user, so background jobs fetch private repositories without a token and their releases and advisories go missing silently. Proposed by reader own-b."
+			"note": "Tokens are resolved from the logged-in user, so background jobs fetch private repositories without a token and their releases and advisories go missing silently. Proposed by reader own-b.",
+			"evidence": {
+				"nextcloud": "No private sources and no automatic updates; the unattended daily job only checks the public store and update server (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:53-71)."
+			}
 		},
 		{
 			"id": "aut-retry-reset",
@@ -2039,7 +2450,7 @@
 			"name": "See which automatic update attempts failed and clear one so it is retried.",
 			"rowSource": "own-code",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2053,7 +2464,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "medium",
-			"note": "The never-retry ledger blocks a failed version for good and no route or page shows or resets it. Proposed by reader own-b."
+			"note": "The never-retry ledger blocks a failed version for good and no route or page shows or resets it. Proposed by reader own-b.",
+			"evidence": {
+				"nextcloud": "No automatic updates exist (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154)."
+			}
 		},
 		{
 			"id": "adv-correlate-installed",
@@ -2061,7 +2475,7 @@
 			"name": "Match installed versions against published security advisories.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2075,7 +2489,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "A scheduled sweep correlates every enabled app (and the server) against the advisories and stores a snapshot; the Apps tab shows Vulnerable version or Advisory badges."
+			"note": "A scheduled sweep correlates every enabled app (and the server) against the advisories and stores a snapshot; the Apps tab shows Vulnerable version or Advisory badges.",
+			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59)."
+			}
 		},
 		{
 			"id": "adv-nextcloud-feed",
@@ -2083,7 +2500,7 @@
 			"name": "Read the Nextcloud security advisory feed.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2097,7 +2514,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "Reads the GHSA records of nextcloud/security-advisories once per sweep (cursor paginated, max 20 pages) and maps packages to installed app ids or the server."
+			"note": "Reads the GHSA records of nextcloud/security-advisories once per sweep (cursor paginated, max 20 pages) and maps packages to installed app ids or the server.",
+			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59). Advisories are published on GitHub (https://github.com/nextcloud/security-advisories/security/advisories) but not read by the product."
+			}
 		},
 		{
 			"id": "adv-github-advisories",
@@ -2105,7 +2525,7 @@
 			"name": "Read GitHub security advisories for components sourced from GitHub.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2119,7 +2539,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "For apps bound to a GitHub repo the forge security-advisories endpoint is read and merged with the central feed. The sweep runs in cron with no user, so no PAT is used and private repositories cannot be read."
+			"note": "For apps bound to a GitHub repo the forge security-advisories endpoint is read and merged with the central feed. The sweep runs in cron with no user, so no PAT is used and private repositories cannot be read.",
+			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59)."
+			}
 		},
 		{
 			"id": "adv-osv-feed",
@@ -2127,7 +2550,7 @@
 			"name": "Read OSV or another public cross-ecosystem vulnerability database.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2141,7 +2564,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "No OSV or other cross-ecosystem database is read."
+			"note": "No OSV or other cross-ecosystem database is read.",
+			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59)."
+			}
 		},
 		{
 			"id": "adv-severity",
@@ -2149,7 +2575,7 @@
 			"name": "See the severity of each advisory, for example as a CVSS score or level.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2163,7 +2589,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "Severity is carried in the snapshot and API payload, but the UI never renders it; the badge shows only a state label and the first summary as a tooltip."
+			"note": "Severity is carried in the snapshot and API payload, but the UI never renders it; the badge shows only a state label and the first summary as a tooltip.",
+			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59)."
+			}
 		},
 		{
 			"id": "adv-safe-version",
@@ -2171,7 +2600,7 @@
 			"name": "See the first version that fixes an advisory.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2185,7 +2614,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "The branch patch (or nearest resolving version) is shown as 'safe version: X' under a vulnerable app card."
+			"note": "The branch patch (or nearest resolving version) is shown as 'safe version: X' under a vulnerable app card.",
+			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59)."
+			}
 		},
 		{
 			"id": "adv-one-click-fix",
@@ -2193,7 +2625,7 @@
 			"name": "Update to the fixed version straight from the advisory with one action.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2207,7 +2639,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "The recommended version is displayed as text; the admin must open the app and select and install that version by hand."
+			"note": "The recommended version is displayed as text; the admin must open the app and select and install that version by hand.",
+			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59)."
+			}
 		},
 		{
 			"id": "adv-notify-urgent",
@@ -2215,7 +2650,7 @@
 			"name": "Get an immediate notification for a critical advisory.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2229,7 +2664,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "When an installed version is newly inside an affected range every admin-group member gets a pinned_to_vulnerable notification, deduplicated per (app, advisory); latency is the sweep interval (1 to 24 hours)."
+			"note": "When an installed version is newly inside an affected range every admin-group member gets a pinned_to_vulnerable notification, deduplicated per (app, advisory); latency is the sweep interval (1 to 24 hours).",
+			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59). The closest is the end-of-life warning for the server version (apps/updatenotification/src/components/UpdateNotification.vue:9-10)."
+			}
 		},
 		{
 			"id": "adv-digest",
@@ -2237,7 +2675,7 @@
 			"name": "Get a periodic digest of non-urgent advisories.",
 			"rowSource": "own-code",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2251,7 +2689,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "The digest is sent with subject advisory_digest, but Notifier::prepare has branches only for pinned_to_vulnerable, pat_expiring, pin_drift, pat_expired, auto_update_success and auto_update_failure (lines 63 to 155), so it throws and the digest never shows. Rated no because the path breaks; lane verified the subject list. Code reading, needs a live check."
+			"note": "The digest is sent with subject advisory_digest, but Notifier::prepare has branches only for pinned_to_vulnerable, pat_expiring, pin_drift, pat_expired, auto_update_success and auto_update_failure (lines 63 to 155), so it throws and the digest never shows. Rated no because the path breaks; lane verified the subject list. Code reading, needs a live check.",
+			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59)."
+			}
 		},
 		{
 			"id": "adv-refresh-interval",
@@ -2259,7 +2700,7 @@
 			"name": "Set how often advisories are checked.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2273,7 +2714,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "Interval is settable in the UI within server-supplied bounds and applied as the TimedJob interval. The freshness line still says the job runs every 6 hours regardless of the setting."
+			"note": "Interval is settable in the UI within server-supplied bounds and applied as the TimedJob interval. The freshness line still says the job runs every 6 hours regardless of the setting.",
+			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59)."
+			}
 		},
 		{
 			"id": "adv-dismiss",
@@ -2281,7 +2725,7 @@
 			"name": "Dismiss or ignore an advisory with a recorded reason.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2295,7 +2739,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "No way to dismiss or ignore an advisory with a reason."
+			"note": "No way to dismiss or ignore an advisory with a reason.",
+			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59)."
+			}
 		},
 		{
 			"id": "adv-branch-aware",
@@ -2303,7 +2750,7 @@
 			"name": "Match advisories correctly on maintained release branches that received backported fixes.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2317,7 +2764,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "Feed records are evaluated per major.minor branch from the patched-version list, so backported fixes on maintained branches are matched correctly."
+			"note": "Feed records are evaluated per major.minor branch from the patched-version list, so backported fixes on maintained branches are matched correctly.",
+			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59)."
+			}
 		},
 		{
 			"id": "adv-dependencies",
@@ -2327,7 +2777,7 @@
 			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/261739",
 			"originNote": "tender Waterschap Vallei en Veluwe, zaaksysteem en DMS, requirement 171617, https://www.tenderned.nl/aankondigingen/overzicht/261739",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2341,7 +2791,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "Only apps and the server are correlated; bundled composer or npm libraries inside an app are never inspected."
+			"note": "Only apps and the server are correlated; bundled composer or npm libraries inside an app are never inspected.",
+			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59)."
+			}
 		},
 		{
 			"id": "adv-reachability",
@@ -2349,7 +2802,7 @@
 			"name": "See whether the vulnerable code is actually called, to cut false alarms.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2363,7 +2816,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "No call-graph or reachability analysis."
+			"note": "No call-graph or reachability analysis.",
+			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59)."
+			}
 		},
 		{
 			"id": "adv-exploit-prob",
@@ -2371,7 +2827,7 @@
 			"name": "See how likely an advisory is to be exploited, for example EPSS or a known-exploited list, to prioritise.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2385,7 +2841,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "No EPSS or known-exploited data."
+			"note": "No EPSS or known-exploited data.",
+			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59)."
+			}
 		},
 		{
 			"id": "adv-offline-db",
@@ -2393,7 +2852,7 @@
 			"name": "Check advisories without internet access, against a local copy of the database.",
 			"rowSource": "competitor",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2407,7 +2866,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "low",
-			"note": "The feed URL can be pointed at an internal mirror through an app-config key (meant for e2e fixtures); there is no bundled or importable local database and no UI for it."
+			"note": "The feed URL can be pointed at an internal mirror through an app-config key (meant for e2e fixtures); there is no bundled or importable local database and no UI for it.",
+			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59)."
+			}
 		},
 		{
 			"id": "adv-last-checked",
@@ -2415,7 +2877,7 @@
 			"name": "See when advisories were last checked and whether that check succeeded.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2429,7 +2891,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "The Apps tab says when the last sweep completed, but not whether it succeeded: a failed or partial feed read and per-app errors are only logged (the Integrations tab shows feed health only when integriq is installed)."
+			"note": "The Apps tab says when the last sweep completed, but not whether it succeeded: a failed or partial feed read and per-app errors are only logged (the Integrations tab shows feed health only when integriq is installed).",
+			"evidence": {
+				"nextcloud": "The overview shows when the server update check last ran (apps/updatenotification/lib/Settings/Admin.php:44-45,74), which is an update check, not an advisory check. The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59)."
+			}
 		},
 		{
 			"id": "adv-export-report",
@@ -2437,7 +2902,7 @@
 			"name": "Export vulnerability findings in a standard format such as SARIF, JSON or VEX.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2451,7 +2916,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "No export in SARIF, VEX or another standard format; only the internal /api/advisories JSON."
+			"note": "No export in SARIF, VEX or another standard format; only the internal /api/advisories JSON.",
+			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59)."
+			}
 		},
 		{
 			"id": "adv-pinned-vuln",
@@ -2459,7 +2927,7 @@
 			"name": "Get warned when a pinned version has a known advisory.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2473,7 +2941,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "Any installed version inside an affected range, pinned or not, is flagged pinned-to-vulnerable with a badge and an admin notification; the pin dialog itself does not warn before pinning."
+			"note": "Any installed version inside an affected range, pinned or not, is flagged pinned-to-vulnerable with a badge and an admin notification; the pin dialog itself does not warn before pinning.",
+			"evidence": {
+				"nextcloud": "No pins and no advisory matching. The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59)."
+			}
 		},
 		{
 			"id": "adv-license",
@@ -2481,7 +2952,7 @@
 			"name": "Check the licences of installed components against a policy.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2495,7 +2966,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "No licence inventory or policy check."
+			"note": "No licence inventory or policy check.",
+			"evidence": {
+				"nextcloud": "The licence is displayed (apps/appstore/lib/Controller/ApiController.php:463) but never checked against a policy."
+			}
 		},
 		{
 			"id": "adv-ncsc",
@@ -2505,7 +2979,7 @@
 			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/406416",
 			"originNote": "tender Gemeente Zuidplas, zaaksysteem, requirement 183111, https://www.tenderned.nl/aankondigingen/overzicht/406416",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2519,7 +2993,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "NCSC advisories are not read."
+			"note": "NCSC advisories are not read.",
+			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59)."
+			}
 		},
 		{
 			"id": "adv-cve-history",
@@ -2529,7 +3006,7 @@
 			"originUrl": "https://canadabuys.canada.ca/en/tender-opportunities/BPM025740/33472",
 			"originNote": "tender Shared Services Canada, Cisco maintenance, requirement 170202, https://canadabuys.canada.ca/en/tender-opportunities/BPM025740/33472",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2543,7 +3020,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "medium",
-			"note": "Apps with a security history get an Advisory badge whose tooltip shows only the first advisory summary; the full per-app advisory list is in the API payload but not listed in the UI, and ids are GHSA rather than CVE."
+			"note": "Apps with a security history get an Advisory badge whose tooltip shows only the first advisory summary; the full per-app advisory list is in the API payload but not listed in the UI, and ids are GHSA rather than CVE.",
+			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59)."
+			}
 		},
 		{
 			"id": "adv-server-advisories",
@@ -2551,7 +3031,7 @@
 			"name": "See the advisories that affect the server itself, not only its apps.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2565,7 +3045,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "medium",
-			"note": "A server advisory row is computed and notified on, but the Apps tab never renders it. Proposed by reader own-b."
+			"note": "A server advisory row is computed and notified on, but the Apps tab never renders it. Proposed by reader own-b.",
+			"evidence": {
+				"nextcloud": "No advisory feed is read for the server either; the overview warns only when the server version is end of life (apps/updatenotification/src/components/UpdateNotification.vue:9-10, versionIsEol from lib/private/Updater/VersionCheck.php)."
+			}
 		},
 		{
 			"id": "adv-coverage-gaps",
@@ -2573,7 +3056,7 @@
 			"name": "See which installed components an advisory check could not cover, and why.",
 			"rowSource": "own-code",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2587,7 +3070,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "medium",
-			"note": "Per-app correlation errors and budget skips are stored and logged, never shown, so a clean badge list cannot be told apart from an incomplete check. Proposed by reader own-b."
+			"note": "Per-app correlation errors and budget skips are stored and logged, never shown, so a clean badge list cannot be told apart from an incomplete check. Proposed by reader own-b.",
+			"evidence": {
+				"nextcloud": "No advisory checking exists (see adv-correlate-installed); the server search for 'advisor' finds no matching code."
+			}
 		},
 		{
 			"id": "src-appstore",
@@ -2595,7 +3081,7 @@
 			"name": "Get versions from the official app store.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2609,7 +3095,10 @@
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "The default source lists App Store versions with release notes for the picked app."
+			"note": "The default source lists App Store versions with release notes for the picked app.",
+			"evidence": {
+				"nextcloud": "lib/private/App/AppStore/Fetcher/Fetcher.php:34 (https://apps.nextcloud.com/api/v1) and lib/private/App/AppStore/Fetcher/AppFetcher.php."
+			}
 		},
 		{
 			"id": "src-github",
@@ -2617,7 +3106,7 @@
 			"name": "Get versions from GitHub releases.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2631,7 +3120,10 @@
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "An app bound to a GitHub repo lists and installs its release assets matching the asset pattern."
+			"note": "An app bound to a GitHub repo lists and installs its release assets matching the asset pattern.",
+			"evidence": {
+				"nextcloud": "The only download source is the store release URL (lib/private/Installer.php:239); apps installed from git are excluded from updates (lib/private/Installer.php:375)."
+			}
 		},
 		{
 			"id": "src-codeberg",
@@ -2639,7 +3131,7 @@
 			"name": "Get versions from Codeberg or another Forgejo or Gitea forge.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2653,7 +3145,10 @@
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "medium",
-			"note": "Codeberg is a bindable forge; another Forgejo or Gitea host works only by overriding forge.codeberg.api_base, which replaces Codeberg. ConnectionReportService calls Codeberg retired while the UI still offers it."
+			"note": "Codeberg is a bindable forge; another Forgejo or Gitea host works only by overriding forge.codeberg.api_base, which replaces Codeberg. ConnectionReportService calls Codeberg retired while the UI still offers it.",
+			"evidence": {
+				"nextcloud": "Single store source only (lib/private/Installer.php:169,239)."
+			}
 		},
 		{
 			"id": "src-gitlab",
@@ -2661,7 +3156,7 @@
 			"name": "Get versions from GitLab releases.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2675,7 +3170,10 @@
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "GitLab is not a known forge."
+			"note": "GitLab is not a known forge.",
+			"evidence": {
+				"nextcloud": "Single store source only (lib/private/Installer.php:169,239)."
+			}
 		},
 		{
 			"id": "src-private-repo",
@@ -2683,7 +3181,7 @@
 			"name": "Get versions from private repositories using an access token.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2697,7 +3195,10 @@
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "A stored PAT matching the repo is used for release listing and download on interactive requests; background jobs run without a user and cannot use it (see adv-github-advisories defect)."
+			"note": "A stored PAT matching the repo is used for release listing and download on interactive requests; background jobs run without a user and cannot use it (see adv-github-advisories defect).",
+			"evidence": {
+				"nextcloud": "Single store source; the only credential sent is the Nextcloud subscription key, to the default store (lib/private/App/AppStore/Fetcher/Fetcher.php:88-95)."
+			}
 		},
 		{
 			"id": "src-bind-per-app",
@@ -2705,7 +3206,7 @@
 			"name": "Bind an installed app to a specific external source.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2719,7 +3220,10 @@
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "An installed app is bound to a forge owner/repo and asset pattern, allowlist checked and audited. Rebinding back to the App Store is API-only."
+			"note": "An installed app is bound to a forge owner/repo and asset pattern, allowlist checked and audited. Rebinding back to the App Store is API-only.",
+			"evidence": {
+				"nextcloud": "One store URL for the whole instance (lib/private/App/AppStore/Fetcher/Fetcher.php:244-246)."
+			}
 		},
 		{
 			"id": "src-override-once",
@@ -2727,7 +3231,7 @@
 			"name": "Override the source for one install without changing the app's binding.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2741,7 +3245,10 @@
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "A one-off source override exists on the install and versions API and the occ install command; the web UI does not expose it."
+			"note": "A one-off source override exists on the install and versions API and the occ install command; the web UI does not expose it.",
+			"evidence": {
+				"nextcloud": "One store URL for the whole instance (lib/private/App/AppStore/Fetcher/Fetcher.php:244-246)."
+			}
 		},
 		{
 			"id": "src-allowlist-manage",
@@ -2749,7 +3256,7 @@
 			"name": "Manage the list of trusted sources from the admin interface.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2763,7 +3270,10 @@
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "Admins add forge-qualified owner or owner/repo patterns and remove them, password confirmed."
+			"note": "Admins add forge-qualified owner or owner/repo patterns and remove them, password confirmed.",
+			"evidence": {
+				"nextcloud": "appstoreurl and appsallowlist live in config.php only (config/config.sample.php:1408-1414); no admin UI."
+			}
 		},
 		{
 			"id": "src-custom-registry",
@@ -2771,7 +3281,7 @@
 			"name": "Point at a self-hosted or mirrored package registry or app store.",
 			"rowSource": "competitor",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2785,7 +3295,10 @@
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "App Store and forge base URLs can be overridden (GitHub Enterprise, self-hosted Forgejo, a store mirror) through app-config keys only; no UI."
+			"note": "App Store and forge base URLs can be overridden (GitHub Enterprise, self-hosted Forgejo, a store mirror) through app-config keys only; no UI.",
+			"evidence": {
+				"nextcloud": "appstoreurl points at a self-hosted store (config/config.sample.php:1402-1408, Fetcher.php:244) and updater.server.url at a custom update server (config/config.sample.php:980, apps/updatenotification/lib/Settings/Admin.php:62-67)."
+			}
 		},
 		{
 			"id": "src-discover-appstore",
@@ -2793,7 +3306,7 @@
 			"name": "Search the app store for apps to install.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2807,7 +3320,10 @@
 			"providerHow": "read-from-code",
 			"feature": "app-discovery",
 			"featureConfidence": "high",
-			"note": "Substring search over the cached App Store catalogue from the Discover tab."
+			"note": "Substring search over the cached App Store catalogue from the Discover tab.",
+			"evidence": {
+				"nextcloud": "Discover, categories and search views (apps/appstore/src/router/routes.ts, apps/appstore/src/views/AppstoreSearch.vue) and the unified search provider apps/appstore/lib/Search/AppSearch.php."
+			}
 		},
 		{
 			"id": "src-discover-github",
@@ -2815,7 +3331,7 @@
 			"name": "Search public GitHub for installable apps.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2829,7 +3345,10 @@
 			"providerHow": "read-from-code",
 			"feature": "app-discovery",
 			"featureConfidence": "high",
-			"note": "Public GitHub search is implemented but off by default and can only be switched on with an app-config key; there is no UI toggle."
+			"note": "Public GitHub search is implemented but off by default and can only be switched on with an app-config key; there is no UI toggle.",
+			"evidence": {
+				"nextcloud": "Discovery reads the store only (apps/appstore/lib/Controller/ApiController.php:380-383, DiscoverController.php)."
+			}
 		},
 		{
 			"id": "src-discover-private",
@@ -2837,7 +3356,7 @@
 			"name": "Search your own private repositories for installable apps.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2851,7 +3370,10 @@
 			"providerHow": "read-from-code",
 			"feature": "app-discovery",
 			"featureConfidence": "high",
-			"note": "Searches private GitHub repos visible to the admin's PATs, flagging repos outside the trusted list as not installable."
+			"note": "Searches private GitHub repos visible to the admin's PATs, flagging repos outside the trusted list as not installable.",
+			"evidence": {
+				"nextcloud": "Discovery reads the store only (apps/appstore/lib/Controller/ApiController.php:380-383)."
+			}
 		},
 		{
 			"id": "src-discover-routes",
@@ -2859,7 +3381,7 @@
 			"name": "Take a search result straight into the install or bind flow.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2873,7 +3395,10 @@
 			"providerHow": "read-from-code",
 			"feature": "app-discovery",
 			"featureConfidence": "high",
-			"note": "Installed hits open the version picker and forge hits prefill the bind form, but an App Store hit for an app that is not installed also routes to the forge bind form with empty owner and repo, a dead end."
+			"note": "Installed hits open the version picker and forge hits prefill the bind form, but an App Store hit for an app that is not installed also routes to the forge bind form with empty owner and repo, a dead end.",
+			"evidence": {
+				"nextcloud": "Search results carry the same Install/Enable actions as any app row (apps/appstore/src/components/AppTable/AppTableRow.vue:53-57, apps/appstore/src/actions/actionInstall.ts)."
+			}
 		},
 		{
 			"id": "src-connection-status",
@@ -2881,7 +3406,7 @@
 			"name": "See whether each upstream source is reachable and when it was last read.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2896,7 +3421,10 @@
 			"providerHow": "read-from-code",
 			"feature": "connection-registry",
 			"featureConfidence": "high",
-			"note": "Reachability and last result for the App Store, GitHub and the advisory feed are shown from integriq's connection registry; without integriq there is no status view, and Codeberg has no row."
+			"note": "Reachability and last result for the App Store, GitHub and the advisory feed are shown from integriq's connection registry; without integriq there is no status view, and Codeberg has no row.",
+			"evidence": {
+				"nextcloud": "Admins get a notification after 3, 7, 14 and 30 days of failed update checks (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:30,88-94), the last check time is shown (Settings/Admin.php:44), and a setup check tests internet connectivity (apps/settings/lib/SetupChecks/InternetConnectivity.php:41). Store fetch failures are only logged (Fetcher.php:100-103)."
+			}
 		},
 		{
 			"id": "tok-store",
@@ -2904,7 +3432,7 @@
 			"name": "Store access tokens for a forge.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2918,7 +3446,10 @@
 			"providerHow": "read-from-code",
 			"feature": "pat-management",
 			"featureConfidence": "high",
-			"note": "Admins add GitHub or Codeberg tokens with a label and target pattern."
+			"note": "Admins add GitHub or Codeberg tokens with a label and target pattern.",
+			"evidence": {
+				"nextcloud": "Nextcloud has no forge sources and stores no forge tokens; the only credential is the subscription key sent to the default store (lib/private/App/AppStore/Fetcher/Fetcher.php:88-95)."
+			}
 		},
 		{
 			"id": "tok-encrypt",
@@ -2926,7 +3457,7 @@
 			"name": "Keep stored tokens encrypted at rest.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2940,7 +3471,10 @@
 			"providerHow": "read-from-code",
 			"feature": "pat-management",
 			"featureConfidence": "high",
-			"note": "Tokens are encrypted with Nextcloud ICrypto before storage and only decrypted inside useToken; the API returns redacted rows."
+			"note": "Tokens are encrypted with Nextcloud ICrypto before storage and only decrypted inside useToken; the API returns redacted rows.",
+			"evidence": {
+				"nextcloud": "Nextcloud has no forge sources and stores no forge tokens; the only credential is the subscription key sent to the default store (lib/private/App/AppStore/Fetcher/Fetcher.php:88-95)."
+			}
 		},
 		{
 			"id": "tok-validate",
@@ -2948,7 +3482,7 @@
 			"name": "Validate a token and its scopes when it is added.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2962,7 +3496,10 @@
 			"providerHow": "read-from-code",
 			"feature": "pat-management",
 			"featureConfidence": "high",
-			"note": "A token is probed against the forge user endpoint; classic GitHub tokens with scopes beyond repo or public_repo are rejected, fine-grained and Codeberg tokens are accepted with an unverifiable-scope warning."
+			"note": "A token is probed against the forge user endpoint; classic GitHub tokens with scopes beyond repo or public_repo are rejected, fine-grained and Codeberg tokens are accepted with an unverifiable-scope warning.",
+			"evidence": {
+				"nextcloud": "Nextcloud has no forge sources and stores no forge tokens; the only credential is the subscription key sent to the default store (lib/private/App/AppStore/Fetcher/Fetcher.php:88-95)."
+			}
 		},
 		{
 			"id": "tok-expiry-warn",
@@ -2970,7 +3507,7 @@
 			"name": "Get warned before a stored token expires.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2984,7 +3521,10 @@
 			"providerHow": "read-from-code",
 			"feature": "pat-management",
 			"featureConfidence": "high",
-			"note": "Owners are notified at 14 days, 3 days and on expiry, and the Tokens tab shows an expiry badge; tokens whose forge does not disclose expiry are never warned about."
+			"note": "Owners are notified at 14 days, 3 days and on expiry, and the Tokens tab shows an expiry badge; tokens whose forge does not disclose expiry are never warned about.",
+			"evidence": {
+				"nextcloud": "Nextcloud has no forge sources and stores no forge tokens; the only credential is the subscription key sent to the default store (lib/private/App/AppStore/Fetcher/Fetcher.php:88-95)."
+			}
 		},
 		{
 			"id": "tok-create-link",
@@ -2992,7 +3532,7 @@
 			"name": "Open the forge's token creation page with the right scopes prefilled.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3006,7 +3546,10 @@
 			"providerHow": "read-from-code",
 			"feature": "pat-management",
 			"featureConfidence": "high",
-			"note": "A classic GitHub link carries scopes=repo prefilled; the fine-grained and Codeberg links open the creation page with written instructions instead of prefilled scopes."
+			"note": "A classic GitHub link carries scopes=repo prefilled; the fine-grained and Codeberg links open the creation page with written instructions instead of prefilled scopes.",
+			"evidence": {
+				"nextcloud": "Nextcloud has no forge sources and stores no forge tokens; the only credential is the subscription key sent to the default store (lib/private/App/AppStore/Fetcher/Fetcher.php:88-95)."
+			}
 		},
 		{
 			"id": "tok-shared",
@@ -3014,7 +3557,7 @@
 			"name": "Share a token with other admins or keep it personal.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3028,7 +3571,10 @@
 			"providerHow": "read-from-code",
 			"feature": "pat-management",
 			"featureConfidence": "high",
-			"note": "Owners toggle sharedWithAdmins; only the owner can change or delete a token."
+			"note": "Owners toggle sharedWithAdmins; only the owner can change or delete a token.",
+			"evidence": {
+				"nextcloud": "Nextcloud has no forge sources and stores no forge tokens; the only credential is the subscription key sent to the default store (lib/private/App/AppStore/Fetcher/Fetcher.php:88-95)."
+			}
 		},
 		{
 			"id": "tok-cleanup",
@@ -3036,7 +3582,7 @@
 			"name": "Remove a user's tokens automatically when the user is deleted.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3050,7 +3596,10 @@
 			"providerHow": "read-from-code",
 			"feature": "pat-management",
 			"featureConfidence": "high",
-			"note": "Deleting a user removes every token they own."
+			"note": "Deleting a user removes every token they own.",
+			"evidence": {
+				"nextcloud": "Nextcloud has no forge sources and stores no forge tokens; the only credential is the subscription key sent to the default store (lib/private/App/AppStore/Fetcher/Fetcher.php:88-95)."
+			}
 		},
 		{
 			"id": "aud-log-ops",
@@ -3058,7 +3607,7 @@
 			"name": "Record every install, rollback, pin and unpin with who, when, and from which version to which.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3072,7 +3621,10 @@
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "high",
-			"note": "Install (including rollbacks and downgrades), pin, unpin and pin drift are recorded with actor, time, from and to version, source and status."
+			"note": "Install (including rollbacks and downgrades), pin, unpin and pin drift are recorded with actor, time, from and to version, source and status.",
+			"evidence": {
+				"nextcloud": "admin_audit logs 'App %s enabled', 'disabled' and 'updated' with the acting user in the log record (apps/admin_audit/lib/Listener/AppManagementEventListener.php:36,56), without the from and to versions; every occ command line is also logged (apps/admin_audit/lib/Listener/ConsoleEventListener.php:38). No pin or rollback events exist to log."
+			}
 		},
 		{
 			"id": "aud-log-source",
@@ -3080,7 +3632,7 @@
 			"name": "Record changes to source bindings and to the trusted-source list.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3094,7 +3646,10 @@
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "high",
-			"note": "Binding changes are audited (with 'Rebound from' text), but adding or removing trusted-source patterns and clearing a binding write no audit entry."
+			"note": "Binding changes are audited (with 'Rebound from' text), but adding or removing trusted-source patterns and clearing a binding write no audit entry.",
+			"evidence": {
+				"nextcloud": "There are no source bindings or trusted-source list to change; store settings live in config.php (config/config.sample.php:1400-1414), changed via occ config:system:set, which only appears as a generic console command line in the audit log (ConsoleEventListener.php:38)."
+			}
 		},
 		{
 			"id": "aud-history-ui",
@@ -3102,7 +3657,7 @@
 			"name": "Browse the version history in the interface, filtered by app.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3116,7 +3671,10 @@
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "high",
-			"note": "A paginated newest-first table; filtering by app is done by opening the app's own History sub-tab, the global tab has no app filter control."
+			"note": "A paginated newest-first table; filtering by app is done by opening the app's own History sub-tab, the global tab has no app filter control.",
+			"evidence": {
+				"nextcloud": "The audit trail is a log file or syslog (apps/admin_audit/lib/AuditLogger.php:24-34); the apps page has no history view (apps/appstore/src/router/routes.ts)."
+			}
 		},
 		{
 			"id": "aud-immutable",
@@ -3124,7 +3682,7 @@
 			"name": "Keep history entries unchangeable once written.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3138,7 +3696,10 @@
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "medium",
-			"note": "The only writer is insert-only and no route updates or deletes entries; immutability is enforced by the app, not by the database, and the prune job deletes old rows."
+			"note": "The only writer is insert-only and no route updates or deletes entries; immutability is enforced by the app, not by the database, and the prune job deletes old rows.",
+			"evidence": {
+				"nextcloud": "audit.log is a plain file in the data directory written by the web server user (apps/admin_audit/lib/AuditLogger.php:28-31) with size rotation (apps/admin_audit/lib/BackgroundJobs/Rotate.php:37); nothing makes entries tamper-evident unless shipped to syslog."
+			}
 		},
 		{
 			"id": "aud-retention",
@@ -3146,7 +3707,7 @@
 			"name": "Prune history automatically after a set retention period.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3160,7 +3721,10 @@
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "high",
-			"note": "Entries older than audit_retention_days (default 365, floor 30) are pruned daily; the value is set only through occ config."
+			"note": "Entries older than audit_retention_days (default 365, floor 30) are pruned daily; the value is set only through occ config.",
+			"evidence": {
+				"nextcloud": "Size-based rotation of audit.log via log_rotate_size (apps/admin_audit/lib/BackgroundJobs/Rotate.php:37); no time-based retention."
+			}
 		},
 		{
 			"id": "aud-export",
@@ -3168,7 +3732,7 @@
 			"name": "Export the update history.",
 			"rowSource": "competitor",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3182,7 +3746,10 @@
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "medium",
-			"note": "History is readable as paginated JSON through the admin API; there is no export button or file format."
+			"note": "History is readable as paginated JSON through the admin API; there is no export button or file format.",
+			"evidence": {
+				"nextcloud": "The audit log is a JSON-lines file or syslog stream that can be copied (apps/admin_audit/lib/AuditLogger.php:24-34); no export action."
+			}
 		},
 		{
 			"id": "aud-activity-stream",
@@ -3190,7 +3757,7 @@
 			"name": "Show version changes in the platform's activity stream.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3204,7 +3771,10 @@
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "high",
-			"note": "Version changes are not published to the Nextcloud activity stream."
+			"note": "Version changes are not published to the Nextcloud activity stream.",
+			"evidence": {
+				"nextcloud": "Only admin_audit and updatenotification listen to AppUpdateEvent (apps/admin_audit/lib/AppInfo/Application.php:124-126, apps/updatenotification/lib/AppInfo/Application.php:44); the activity app at v34.0.4 (github.com/nextcloud/activity) has no listener for app events."
+			}
 		},
 		{
 			"id": "aud-auto-attributed",
@@ -3212,7 +3782,7 @@
 			"name": "Tell automatic updates apart from manual ones in the history.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3226,7 +3796,10 @@
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "medium",
-			"note": "Automatic installs have no session user and are recorded as actor system, but occ installs are recorded as system too, so automatic and CLI changes cannot be told apart."
+			"note": "Automatic installs have no session user and are recorded as actor system, but occ installs are recorded as system too, so automatic and CLI changes cannot be told apart.",
+			"evidence": {
+				"nextcloud": "No automatic updates exist (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154), so there is nothing to attribute."
+			}
 		},
 		{
 			"id": "aud-siem",
@@ -3234,7 +3807,7 @@
 			"name": "Send update events to an external log or SIEM.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3248,7 +3821,10 @@
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "high",
-			"note": "Audit entries go only to the app's own table."
+			"note": "Audit entries go only to the app's own table.",
+			"evidence": {
+				"nextcloud": "log_type_audit supports file, syslog, systemd and errorlog with a separate syslog tag (apps/admin_audit/lib/AuditLogger.php:24-34)."
+			}
 		},
 		{
 			"id": "aud-patch-compliance",
@@ -3258,7 +3834,7 @@
 			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/196310",
 			"originNote": "tender Gemeente Zeist, zaaksysteem, requirement 31492, https://www.tenderned.nl/aankondigingen/overzicht/196310",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3272,7 +3848,10 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "medium",
-			"note": "Each app card says whether its installed version is vulnerable and the page says when that was checked, but there is no overall patch compliance status, and the server's own advisory row is computed but not shown on any card."
+			"note": "Each app card says whether its installed version is vulnerable and the page says when that was checked, but there is no overall patch compliance status, and the server's own advisory row is computed but not shown on any card.",
+			"evidence": {
+				"nextcloud": "The overview says whether the server is up to date and warns when the version is end of life (apps/updatenotification/src/components/UpdateNotification.vue:9-10,95); pending app updates are counted (apps/appstore/lib/Controller/PageController.php:84). No security-patch status because no advisories are read."
+			}
 		},
 		{
 			"id": "aud-patch-policy",
@@ -3282,7 +3861,7 @@
 			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/371718",
 			"originNote": "tender Provincie Utrecht, online energieloket, requirement 75801, https://www.tenderned.nl/aankondigingen/overzicht/371718; also Omgevingsdienst IJsselland requirement 107642",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3296,7 +3875,10 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "medium",
-			"note": "A per-app update level is recorded with who set it and when, but there is no written policy per patch type and no security-first handling."
+			"note": "A per-app update level is recorded with who set it and when, but there is no written policy per patch type and no security-first handling.",
+			"evidence": {
+				"nextcloud": "No policy object exists; the only update configuration is the channel and notify groups (apps/updatenotification/lib/Settings/Admin.php:47-60)."
+			}
 		},
 		{
 			"id": "aud-release-check",
@@ -3306,7 +3888,7 @@
 			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/398950",
 			"originNote": "tender Rijnvicus, ERP-systeem, requirement 73812, https://www.tenderned.nl/aankondigingen/overzicht/398950",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3320,7 +3902,10 @@
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "medium",
-			"note": "A dry run evaluates an install without writing, installs back up and restore on failure, and a last-known-good version is recorded per app with a one-click roll back on the card."
+			"note": "A dry run evaluates an install without writing, installs back up and restore on failure, and a last-known-good version is recorded per app with a one-click roll back on the card.",
+			"evidence": {
+				"nextcloud": "The enterprise channel ships server releases after extra vendor testing (apps/updatenotification/src/components/UpdateNotification.vue:298-303) and the updater keeps a code backup (nextcloud/updater@v34.0.4 lib/Updater.php:475), but there is no automated rollback (lib/Updater.php:1377-1380 TODO) and no app-level release check."
+			}
 		},
 		{
 			"id": "aud-log-tokens",
@@ -3328,7 +3913,7 @@
 			"name": "Record who added, shared or removed an access token.",
 			"rowSource": "own-code",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3342,7 +3927,10 @@
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "medium",
-			"note": "Token lifecycle changes are not audited. Proposed by reader own-b."
+			"note": "Token lifecycle changes are not audited. Proposed by reader own-b.",
+			"evidence": {
+				"nextcloud": "No forge tokens exist to log (lib/private/App/AppStore/Fetcher/Fetcher.php:88-95 is the only credential, the subscription key)."
+			}
 		},
 		{
 			"id": "adm-admin-only",
@@ -3350,7 +3938,7 @@
 			"name": "Restrict version management to administrators.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3364,7 +3952,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Every endpoint checks group admin and the page is an admin settings section."
+			"note": "Every endpoint checks group admin and the page is an admin settings section.",
+			"evidence": {
+				"nextcloud": "The appstore OCS controller carries no NoAdminRequired or delegation attribute, so only admins reach it (apps/appstore/lib/Controller/ApiController.php:39-40); occ needs shell access."
+			}
 		},
 		{
 			"id": "adm-password-confirm",
@@ -3372,7 +3963,7 @@
 			"name": "Ask for the admin password before a risky action.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3386,7 +3977,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Write routes carry PasswordConfirmationRequired and the frontend prompts through Nextcloud's password confirmation."
+			"note": "Write routes carry PasswordConfirmationRequired and the frontend prompts through Nextcloud's password confirmation.",
+			"evidence": {
+				"nextcloud": "Enable, uninstall and update require strict password confirmation, disable a lax one (apps/appstore/lib/Controller/ApiController.php:162,202,225,253)."
+			}
 		},
 		{
 			"id": "adm-delegated",
@@ -3394,7 +3988,7 @@
 			"name": "Delegate update rights to a non-admin role or group.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3408,7 +4002,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Delegation is deliberately not supported; every route requires full admin."
+			"note": "Delegation is deliberately not supported; every route requires full admin.",
+			"evidence": {
+				"nextcloud": "Nextcloud's admin delegation (AuthorizedAdminSetting) is not applied to the appstore controller (apps/appstore/lib/Controller/ApiController.php:39-40); only notification recipients can be widened to groups (UpdateAvailableNotifications.php:206)."
+			}
 		},
 		{
 			"id": "adm-notifications",
@@ -3416,7 +4013,7 @@
 			"name": "Deliver alerts in the platform's notification centre.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3430,7 +4027,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Advisory, pin drift, token expiry and automatic update outcomes go to the notification centre (the advisory digest subject is not rendered, see adv-digest)."
+			"note": "Advisory, pin drift, token expiry and automatic update outcomes go to the notification centre (the advisory digest subject is not rendered, see adv-digest).",
+			"evidence": {
+				"nextcloud": "Update notifications in the notification centre (apps/updatenotification/lib/Notification/Notifier.php, UpdateAvailableNotifications.php:175-190)."
+			}
 		},
 		{
 			"id": "adm-email",
@@ -3438,7 +4038,7 @@
 			"name": "Send alerts by e-mail.",
 			"rowSource": "competitor",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3452,7 +4052,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "medium",
-			"note": "Versioniq sends no e-mail itself; alerts reach e-mail only if the notifications app's own e-mail forwarding of unread notifications is on."
+			"note": "Versioniq sends no e-mail itself; alerts reach e-mail only if the notifications app's own e-mail forwarding of unread notifications is on.",
+			"evidence": {
+				"nextcloud": "The shipped notifications app mails pending notifications in batches (nextcloud/notifications@v34.0.4 lib/MailNotifications.php:63,119), which includes update notifications."
+			}
 		},
 		{
 			"id": "adm-webhook",
@@ -3460,7 +4063,7 @@
 			"name": "Send alerts to a chat channel or a webhook.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3474,7 +4077,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "No chat or webhook delivery."
+			"note": "No chat or webhook delivery.",
+			"evidence": {
+				"nextcloud": "AppUpdateEvent does not implement IWebhookCompatibleEvent (lib/public/App/Events/AppUpdateEvent.php:18), so webhook_listeners cannot forward it; no chat integration in updatenotification."
+			}
 		},
 		{
 			"id": "adm-api",
@@ -3482,7 +4088,7 @@
 			"name": "Drive every action through a documented API.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3496,7 +4102,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Every UI action is an OCS route with typed responses; install and list are also occ commands."
+			"note": "Every UI action is an OCS route with typed responses; install and list are also occ commands.",
+			"evidence": {
+				"nextcloud": "OCS API for list, enable, disable, uninstall, update and bundles (apps/appstore/lib/Controller/ApiController.php:69-299) and updatenotification applist/changelog (apps/updatenotification/appinfo/routes.php); every action also via occ app:*."
+			}
 		},
 		{
 			"id": "adm-openapi",
@@ -3504,7 +4113,7 @@
 			"name": "Publish an OpenAPI description of the API.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3518,7 +4127,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "A generated OpenAPI 3.0.3 description ships with the app."
+			"note": "A generated OpenAPI 3.0.3 description ships with the app.",
+			"evidence": {
+				"nextcloud": "apps/appstore/openapi.json and apps/updatenotification/openapi.json are generated from the controllers; published at https://docs.nextcloud.com/server/latest/developer_manual/_static/openapi.html."
+			}
 		},
 		{
 			"id": "adm-i18n",
@@ -3526,7 +4138,7 @@
 			"name": "Use the interface in Dutch and other languages.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3540,7 +4152,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Strings go through t() and a Dutch translation ships, but a good part of the Apps tab (safe mode, dry run, pick an installed app, result grid, downgrade warning) is hardcoded English."
+			"note": "Strings go through t() and a Dutch translation ships, but a good part of the Apps tab (safe mode, dry run, pick an installed app, result grid, downgrade warning) is hardcoded English.",
+			"evidence": {
+				"nextcloud": "apps/appstore/l10n holds 76 language files including nl.json."
+			}
 		},
 		{
 			"id": "adm-a11y",
@@ -3548,7 +4163,7 @@
 			"name": "Use the interface with a keyboard and a screen reader.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3562,7 +4177,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "medium",
-			"note": "Skip link, a WAI-ARIA tablist with arrow-key support, labelled inputs and scoped table headers are in the code; not verified with a screen reader."
+			"note": "Skip link, a WAI-ARIA tablist with arrow-key support, labelled inputs and scoped table headers are in the code; not verified with a screen reader.",
+			"evidence": {
+				"nextcloud": "Components use aria labels and visually hidden text (30 aria-label uses in apps/appstore/src, e.g. AppTableRow.vue:74-75); not audited here and no accessibility statement URL resolved."
+			}
 		},
 		{
 			"id": "adm-settings-integrated",
@@ -3570,7 +4188,7 @@
 			"name": "Work inside the platform's own admin settings rather than in a separate tool.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3584,7 +4202,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Runs as a Nextcloud admin settings section."
+			"note": "Runs as a Nextcloud admin settings section.",
+			"evidence": {
+				"nextcloud": "It is the platform itself: /settings/apps (apps/appstore/lib/Controller/PageController.php:50-53) and the admin overview section (apps/updatenotification/lib/Settings/Admin.php:137-144)."
+			}
 		},
 		{
 			"id": "adm-self-hosted",
@@ -3592,7 +4213,7 @@
 			"name": "Run fully on premises without a SaaS dependency.",
 			"rowSource": "competitor",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3606,7 +4227,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Runs inside the Nextcloud instance with no SaaS dependency; it does call the public App Store, GitHub and Codeberg APIs unless their base URLs are overridden."
+			"note": "Runs inside the Nextcloud instance with no SaaS dependency; it does call the public App Store, GitHub and Codeberg APIs unless their base URLs are overridden.",
+			"evidence": {
+				"nextcloud": "Runs on the instance; the store and update server URLs can point at self-hosted mirrors (config/config.sample.php:980,1408)."
+			}
 		},
 		{
 			"id": "adm-open-licence",
@@ -3614,7 +4238,7 @@
 			"name": "Use it under an open source licence.",
 			"rowSource": "competitor",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3628,7 +4252,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "EUPL-1.2."
+			"note": "EUPL-1.2.",
+			"evidence": {
+				"nextcloud": "AGPL-3.0 (apps/appstore/appinfo/info.xml licence agpl; SPDX headers AGPL-3.0-or-later)."
+			}
 		},
 		{
 			"id": "adm-free",
@@ -3636,7 +4263,7 @@
 			"name": "Use every feature without a paid plan.",
 			"rowSource": "competitor",
 			"versioniq": "yes",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3650,7 +4277,10 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "No paid tier or licence gate in the code."
+			"note": "No paid tier or licence gate in the code.",
+			"evidence": {
+				"nextcloud": "The appsallowlist filter needs a valid subscription (lib/private/App/AppStore/Fetcher/AppFetcher.php:165) and the enterprise channel is customer-only (apps/updatenotification/src/components/UpdateNotification.vue:298-303); everything else is free."
+			}
 		},
 		{
 			"id": "adm-connections-panel",
@@ -3658,7 +4288,7 @@
 			"name": "See the health of every external integration in one panel.",
 			"rowSource": "own-code",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -3673,7 +4303,10 @@
 			"providerHow": "read-from-code",
 			"feature": "connection-registry",
 			"featureConfidence": "high",
-			"note": "An Integrations tab lists the App Store, GitHub and advisory feed rows from integriq's registry; it is absent without integriq and has no Codeberg row."
+			"note": "An Integrations tab lists the App Store, GitHub and advisory feed rows from integriq's registry; it is absent without integriq and has no Codeberg row.",
+			"evidence": {
+				"nextcloud": "The Security and setup warnings overview runs checks such as internet connectivity, email test and cron (apps/settings/lib/SetupChecks/InternetConnectivity.php, EmailTestSuccessful.php, CronInfo.php); it does not cover the app store or update server health."
+			}
 		}
 	],
 	"pending": []
