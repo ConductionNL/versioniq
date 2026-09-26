@@ -55,7 +55,7 @@
 				"trainingCurriculum": "https://nextcloud.com/training/",
 				"jobPostings": "https://nextcloud.com/jobs/",
 				"tenders": {
-					"note": "intelligence database 2026-09-26: 2 tenders buy Nextcloud subscriptions or licences, 1 requirement names Nextcloud as the municipal cloud platform; none asks for app version management",
+					"note": "intelligence database 2026-09-26: 2 tenders buy Nextcloud subscriptions or licences, 1 requirement names Nextcloud as the municipal cloud platform; none asks for app version management; the category search on 2026-09-26 (applicatiebeheer, software update, dependency management, patchbeheer and related terms, 1,368 requirements in 334 tenders) found no requirement naming Nextcloud together with update, upgrade, version or patch terms",
 					"tenders": [
 						"https://opentender.eu/at/tender/ocds-70d2nz-e3a2e012-3572-3e76-abe8-62471096b8de",
 						"https://opentender.eu/at/tender/ocds-70d2nz-6ff0aa94-6e12-3651-b25e-efe4f4e7cd2e"
@@ -63,7 +63,7 @@
 				},
 				"nullReasons": {
 					"accessibilityStatement": "nextcloud.com/accessibility/ and /accessibility-statement/ and the docs accessibility page all returned 404 on 2026-09-26",
-					"reviews": "G2, Capterra and TrustRadius review pages returned 403 to a scripted check, so not verified"
+					"reviews": "G2 and TrustRadius answer 403 to curl and to WebFetch, the Capterra product URL tried answers 404, and PeerSpot has no Nextcloud product page (it serves a generic directory with status 200); checked 2026-09-26"
 				}
 			}
 		},
@@ -91,7 +91,10 @@
 				"changelog": "https://github.com/renovatebot/renovate/releases",
 				"apiReference": "https://docs.renovatebot.com/configuration-options/",
 				"marketplace": "https://github.com/marketplace/renovate",
-				"pricing": null,
+				"pricing": {
+					"url": "https://www.mend.io/pricing/",
+					"note": "read 2026-09-26: the page prices Mend Renovate Enterprise at up to 250 USD per developer per year and does not list the free Community edition, which is described in the featurePage docs"
+				},
 				"accessibilityStatement": null,
 				"securityDocs": [
 					"https://docs.renovatebot.com/security-and-permissions/",
@@ -100,23 +103,26 @@
 				"demoInstance": null,
 				"community": "https://github.com/renovatebot/renovate/discussions",
 				"reviews": null,
-				"videos": null,
+				"videos": {
+					"url": "https://www.youtube.com/watch?v=ZMQ4UnULfdM",
+					"note": "Mend Renovate Product Family Demo on the vendor channel youtube.com/@Mend_io (author confirmed through YouTube oEmbed)"
+				},
 				"caseStudies": "https://docs.renovatebot.com/user-stories/swissquote/",
 				"partnerDirectory": null,
 				"trainingCurriculum": null,
-				"jobPostings": null,
+				"jobPostings": {
+					"url": "https://jobs.ashbyhq.com/mend-io",
+					"note": "linked from mend.io/careers; 6 open roles on 2026-09-26 (sales, support, office), none names Renovate or dependency management"
+				},
 				"tenders": null,
 				"nullReasons": {
 					"roadmap": "no public roadmap; direction is visible only through labelled issues and discussions",
-					"pricing": "www.mend.io/pricing answered 202 with a bot challenge, not verified; plan differences are in the featurePage docs",
 					"accessibilityStatement": "none found in the repo docs or on docs.renovatebot.com; the UI is the forge's own PR and issue pages",
 					"demoInstance": "no demo instance; the product runs against your own repositories",
-					"reviews": "not checked",
-					"videos": "not checked",
+					"reviews": "G2 (www.g2.com/products/mend-renovate/reviews) answers 403 to curl and to WebFetch; PeerSpot's mend-renovate URL answers 200 but is a generic directory page, not a product page; checked 2026-09-26",
 					"partnerDirectory": "none found; Mend sells directly",
 					"trainingCurriculum": "none found in the docs",
-					"jobPostings": "www.mend.io/careers answered 202 with a bot challenge, not verified",
-					"tenders": "intelligence database 2026-09-26: the 7 tenders matching 'renovate' are building renovation, none names the tool"
+					"tenders": "intelligence database 2026-09-26: the 7 tenders matching 'renovate' are building renovation, none names the tool; the category search on 2026-09-26 (tender names, descriptions and requirement texts for applicatiebeheer, software update, dependency management, patchbeheer and patch management, versiebeheer, SBOM, vulnerability management) found 1,368 requirements in 334 tenders and none names this product"
 				}
 			}
 		},
@@ -149,8 +155,14 @@
 				"securityDocs": "https://github.com/security",
 				"demoInstance": null,
 				"community": "https://github.com/orgs/community/discussions/categories/code-security",
-				"reviews": null,
-				"videos": null,
+				"reviews": {
+					"url": "https://www.peerspot.com/products/github-dependabot-reviews",
+					"note": "product page confirmed 2026-09-26, one review; no G2 product page found"
+				},
+				"videos": {
+					"url": "https://www.youtube.com/watch?v=OGtK2StjFio",
+					"note": "Configure Dependabot security updates, GH-500 episode 3, Microsoft Learn channel (author confirmed through YouTube oEmbed); no Dependabot playlist on the GitHub channel was found"
+				},
 				"caseStudies": null,
 				"partnerDirectory": "https://github.com/partners",
 				"trainingCurriculum": "https://resources.github.com/learn/certifications/",
@@ -158,10 +170,8 @@
 				"tenders": null,
 				"nullReasons": {
 					"demoInstance": "Dependabot is a hosted service enabled per repository; no demo instance exists.",
-					"reviews": "not checked",
-					"videos": "not checked: only GitHub's general channel was found, no Dependabot-specific playlist verified",
-					"caseStudies": "not checked: GitHub customer stories were not searched for Dependabot-specific cases",
-					"tenders": "intelligence database 2026-09-26: no tender or requirement names Dependabot"
+					"caseStudies": "github.com/customer-stories read 2026-09-26: none of the listed stories mentions Dependabot, dependency updates or supply chain security",
+					"tenders": "intelligence database 2026-09-26: no tender or requirement names Dependabot; the category search on 2026-09-26 (tender names, descriptions and requirement texts for applicatiebeheer, software update, dependency management, patchbeheer and patch management, versiebeheer, SBOM, vulnerability management) found 1,368 requirements in 334 tenders and none names this product"
 				}
 			}
 		},
@@ -195,7 +205,10 @@
 				"demoInstance": null,
 				"community": "https://github.com/google/osv-scanner/discussions",
 				"reviews": null,
-				"videos": null,
+				"videos": {
+					"url": "https://www.youtube.com/watch?v=PCAtOp2Qhq8",
+					"note": "third-party walkthrough by Tech Primers (author confirmed through YouTube oEmbed); no Google-published OSV-Scanner video found"
+				},
 				"caseStudies": null,
 				"partnerDirectory": null,
 				"trainingCurriculum": null,
@@ -205,13 +218,12 @@
 					"pricing": "free Apache-2.0 tool with no paid edition, so there is no pricing page",
 					"accessibilityStatement": "none published for the CLI or the HTML report; not found in the repo or docs",
 					"demoInstance": "a command-line tool with no hosted instance",
-					"reviews": "not checked",
-					"videos": "not checked",
-					"caseStudies": "not checked",
+					"reviews": "no product page on G2, Capterra or PeerSpot found by a search on 2026-09-26; a free CLI with no vendor listing",
+					"caseStudies": "no published customer case found on google.github.io/osv-scanner or the Google Open Source blog; third-party blog posts only (search 2026-09-26)",
 					"partnerDirectory": "an open source Google project with no partner programme found",
-					"trainingCurriculum": "not checked",
-					"jobPostings": "not checked",
-					"tenders": "intelligence database 2026-09-26: no tender or requirement names OSV-Scanner"
+					"trainingCurriculum": "none: the docs at google.github.io/osv-scanner are usage pages, no course or certification exists (checked 2026-09-26)",
+					"jobPostings": "Google careers search for OSV on 2026-09-26 returned no role naming OSV or open source vulnerabilities in the readable page",
+					"tenders": "intelligence database 2026-09-26: no tender or requirement names OSV-Scanner; the category search on 2026-09-26 (tender names, descriptions and requirement texts for applicatiebeheer, software update, dependency management, patchbeheer and patch management, versiebeheer, SBOM, vulnerability management) found 1,368 requirements in 334 tenders and none names this product"
 				}
 			}
 		},
@@ -255,11 +267,11 @@
 					"roadmap": "no public roadmap found on easyupdatesmanager.com or wordpress.org; the old GitHub repo github.com/easy-updates-manager/easy-updates-manager is archived since 2018",
 					"apiReference": "the plugin has no REST or CLI API; remote control runs through undocumented UpdraftCentral commands, and the knowledge base documents only a few PHP filters",
 					"accessibilityStatement": "none found on easyupdatesmanager.com",
-					"demoInstance": "not checked",
+					"demoInstance": "none: the wordpress.org plugin API returns an empty preview_link and no Playground blueprint for the slug, and easyupdatesmanager.com offers no demo (checked 2026-09-26)",
 					"caseStudies": "none found on easyupdatesmanager.com",
 					"partnerDirectory": "none found; the vendor sells directly",
 					"trainingCurriculum": "none found beyond the knowledge base",
-					"tenders": "intelligence database 2026-09-26: no tender or requirement names Easy Updates Manager"
+					"tenders": "intelligence database 2026-09-26: no tender or requirement names Easy Updates Manager; the category search on 2026-09-26 (tender names, descriptions and requirement texts for applicatiebeheer, software update, dependency management, patchbeheer and patch management, versiebeheer, SBOM, vulnerability management) found 1,368 requirements in 334 tenders and none names this product"
 				}
 			}
 		}
