@@ -6233,7 +6233,7 @@
 			"note": "The audit trail has no policy or settings operations: turning the auto-update kill switch or advisory digest on or off leaves no trace. A per-app policy keeps only its last setBy and setAt, which GET /api/policies returns and the page loads but never shows, so no page reaches who changed it; there is no history.",
 			"evidence": {
 				"nextcloud": "There are no automatic update switches; occ changes to update settings are logged as 'Console command executed' with the command line (apps/admin_audit/lib/Listener/ConsoleEventListener.php:38), but changing the update channel in the UI (apps/updatenotification/lib/Controller/AdminController.php:46-47) has no admin_audit listener.",
-				"renovate": "The update policy, including vulnerabilityAlerts.enabled (lib/config/options/index.ts:2428), lives in the repository's Renovate config file, so every change is a commit with author and time; self-hosted global config sits wherever the operator keeps it. An instance maps to a repository.",
+				"renovate": "The instance is a repository here, so its git history is the record. The update policy, including vulnerabilityAlerts.enabled (lib/config/options/index.ts:2428), lives in the repository's Renovate config file, so every change is a commit with author and time; self-hosted global config sits wherever the operator keeps it. An instance maps to a repository.",
 				"dependabot": "Closed service: since 2026-02-10 organisation and enterprise audit logs record who enabled or disabled Dependabot security updates on a repository and Dependabot on self-hosted runners, and when (https://github.blog/changelog/2026-02-10-track-additional-dependabot-configuration-changes-in-audit-logs); version update policy changes are commits to dependabot.yml.",
 				"osv-scanner": "Configuration is a file the tool only reads per scanned directory (docs/configuration.md:10-22, internal/config/config.go:26-30) and the CLI keeps no state between runs (cmd/osv-scanner/main.go:16-19); who changed it is only in the repository's version control.",
 				"easy-updates-manager": "insert_log is only called from the update hooks (includes/MPSUM_Logs.php:122, :300, :408); saving the update options writes the options with no log entry (includes/MPSUM_Admin_Ajax.php:483-516), so switching automatic updates or blocks on or off is not recorded."
@@ -6481,10 +6481,289 @@
 			"note": "A version change made outside Versioniq is recorded only for a pinned app, as a pin_drift audit row with the new version; changes to unpinned apps are not recorded, and the trigger (occ, the app store page, another tool) is never captured.",
 			"evidence": {
 				"nextcloud": "Every upgrade path, UI, occ, server upgrade or code replaced by hand and then migrated, goes through upgradeApp, which dispatches AppUpdateEvent (lib/private/App/AppManager.php:1099,1155), logged by admin_audit as 'App updated' (apps/admin_audit/lib/Listener/AppManagementEventListener.php:56-59) next to the occ command line (apps/admin_audit/lib/Listener/ConsoleEventListener.php:38). No from and to versions, and admin_audit must be enabled.",
-				"renovate": "Renovate records nothing itself, but in its model every version change, by the bot or by hand, is a commit to the manifest in the repository's git history with author and message; Renovate only notices manual edits on its own branches (lib/workers/repository/dependency-dashboard.ts:555). An instance maps to a repository.",
-				"dependabot": "Dependabot records nothing itself; every version change, by Dependabot or by hand, is a commit to the manifest in git history, and an ignore lapses when you upgrade yourself (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands). An instance maps to a repository.",
+				"renovate": "The instance is a repository here, so its git history is the record. Renovate records nothing itself, but in its model every version change, by the bot or by hand, is a commit to the manifest in the repository's git history with author and message; Renovate only notices manual edits on its own branches (lib/workers/repository/dependency-dashboard.ts:555). An instance maps to a repository.",
+				"dependabot": "The instance is a repository here, so its git history is the record. Dependabot records nothing itself; every version change, by Dependabot or by hand, is a commit to the manifest in git history, and an ignore lapses when you upgrade yourself (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands). An instance maps to a repository.",
 				"osv-scanner": "The tool keeps no version history at all: each command is a one-shot run (cmd/osv-scanner/main.go:16-19) and even fix output is per run on stdout with nothing persisted (docs/guided-remediation.md:204-206).",
 				"easy-updates-manager": "The log hooks WordPress's upgrader itself (includes/MPSUM_Logs.php:95, :271, :388), so updates run from the core screens, background updates, WP-CLI or another plugin are logged with user, from and to version and a stack trace of the trigger (includes/MPSUM_Logs.php:109-122, :513); readme.txt:146 (9.0.20) keeps WP-CLI updates logged after a fatal error. Files replaced outside the upgrader, such as by FTP, are not seen."
+			}
+		},
+		{
+			"id": "inv-sbom-per-update",
+			"area": "inventory",
+			"name": "Produce a fresh machine-readable SBOM in CycloneDX or SPDX automatically with every update or new version.",
+			"origin": "tender",
+			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/412432",
+			"originNote": "UWV, ICT Werkplekhardware en accessoires, requirement 185427 (also 185121, 185307, 76785), eis: SBOM delivered with each update or new version, machine-readable, CycloneDX or SPDX.",
+			"versioniq": "no",
+			"nextcloud": "no",
+			"renovate": "no",
+			"dependabot": "partial",
+			"osv-scanner": "partial",
+			"easy-updates-manager": "no",
+			"built": {
+				"state": "none",
+				"evidence": "grep sbom, spdx, cyclonedx in lib and src: no hits; looked in lib/Service/Installer/InstallFinalizer.php (no post-install export)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": null,
+			"featureConfidence": "medium",
+			"note": "Close overlap with parent row inv-export-inventory (an on-demand SBOM export), which versioniq rates no; this row adds the per-update trigger and a named standard. No SBOM is produced, on demand or after an update (see inv-export-inventory).",
+			"evidence": {
+				"nextcloud": "No SBOM is produced at all: the only structured inventory is occ app:list with JSON output (core/Command/App/ListApps.php:64, core/Command/Base.php:37), run by hand, and nothing is generated when an app is updated (apps/admin_audit/lib/Listener/AppManagementEventListener.php:56-59 only logs the event).",
+				"renovate": "The experimental report is JSON with packageFiles and libyears (lib/config/options/index.ts:534, lib/instrumentation/reporting.ts:39-63), not CycloneDX or SPDX; grep -rliE 'cyclonedx|spdx' lib/modules/manager finds nothing.",
+				"dependabot": "Closed service: the dependency graph exports an SPDX SBOM of the current state from the UI or REST API at any time, so it is fresh after each merged update (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/establish-provenance-and-integrity/export-dependencies-as-sbom); it is not produced or delivered automatically per update, and CycloneDX is not offered.",
+				"osv-scanner": "Each run can write the package inventory as CycloneDX 1.4 to 1.7 or SPDX 2.3 (internal/reporter/format.go:10, docs/output.md:427-431, :555-559); it regenerates on every change only when the admin wires it into CI, since the documented push, schedule and release workflows run a vulnerability scan, not an SBOM export (docs/github-action.md:23, :113-158).",
+				"easy-updates-manager": "No SBOM output in any form: its inv-export-inventory cell finds only WordPress core Site Health's clipboard copy, and premium exports cover logs and settings only (https://easyupdatesmanager.com/knowledge-base/log-export-premium/, https://easyupdatesmanager.com/knowledge-base/export-import-settings-premium/)."
+			}
+		},
+		{
+			"id": "aud-security-update-report",
+			"area": "audit",
+			"name": "Report which security updates and patches were applied over a period, across all apps and the server.",
+			"origin": "tender",
+			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/418601",
+			"originNote": "GGD GHOR Nederland, Basis ICT/IV Voorzieningen MSP en MSSP, requirement 205044 (also 91441 in tender 411356), eis: overview of executed security updates and patches on systems, software and infrastructure.",
+			"versioniq": "partial",
+			"nextcloud": "no",
+			"renovate": "partial",
+			"dependabot": "yes",
+			"osv-scanner": "no",
+			"easy-updates-manager": "partial",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Controller/ApiController.php:1207, src/components/HistoryPanel.vue:28, src/components/HistoryPanel.vue:54, src/App.vue:2495",
+				"reachedOn": "History tab"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "audit-trail",
+			"featureConfidence": "high",
+			"note": "The History tab lists every install, manual or automatic, with time and from and to version, newest first and filterable by app only. There is no period filter, no mark for installs that fixed an advisory, no export, and server updates are not included.",
+			"evidence": {
+				"nextcloud": "Updates carry no security flag because no advisories are read (a search for 'advisor' in apps, core and lib finds only apps/settings/lib/WellKnown/SecurityTxtHandler.php:28 and core/Notification/CoreNotifier.php:59); admin_audit logs 'App updated' without versions (apps/admin_audit/lib/Listener/AppManagementEventListener.php:56-59) and there is no report.",
+				"renovate": "Fix updates are marked with the [SECURITY] commit suffix and their own branch topic (lib/config/options/index.ts:2438-2439), so merged ones can be listed from the forge's PR search over a period; Renovate itself builds no period report, and the JSON report has no security section (lib/instrumentation/reporting.ts:39-63).",
+				"dependabot": "Closed service: alert metrics count alerts fixed by Dependabot, dismissed and auto-dismissed, with trends over time and across the organisation (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alert-metrics), and the alerts API lists fixed alerts with fixed_at for any period (https://docs.github.com/en/rest/dependabot/alerts). The server maps to the repository itself, so there is no separate server part.",
+				"osv-scanner": "Nothing is kept between runs: fix reports the vulnerabilities each patch fixes only for that run on stdout (docs/guided-remediation.md:204-206), and no command reports what was applied over a period (cmd/osv-scanner/main.go:16-19).",
+				"easy-updates-manager": "The log records every core, plugin, theme and translation update with date, from and to version (includes/MPSUM_Logs.php:513), and premium exports it for a date range to print, CSV or JSON as a client report (https://easyupdatesmanager.com/knowledge-base/log-export-premium/); entries are not marked as security updates, so the report cannot be limited to them."
+			}
+		},
+		{
+			"id": "inv-end-of-support",
+			"area": "inventory",
+			"name": "See the end of support or end of life date of each installed version, and get warned before it passes.",
+			"origin": "tender",
+			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/411198",
+			"originNote": "Compute, Storage en Backup (2026-02-07), requirement 60233, eis: life cycle management such as end of life and end of support is handled proactively; also tender 415623 requirement 175385 (EOL/EOS), eis.",
+			"versioniq": "no",
+			"nextcloud": "partial",
+			"renovate": "partial",
+			"dependabot": "no",
+			"osv-scanner": "no",
+			"easy-updates-manager": "no",
+			"built": {
+				"state": "none",
+				"evidence": "grep end of life, eol, end of support in lib and src: no hits; lib/Notification/Notifier.php:135, lib/Notification/Notifier.php:154 (no support-end subject)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "No end of support or end of life date is read or shown for any app or for the server, and nothing warns before one passes.",
+			"evidence": {
+				"nextcloud": "For the server only: the update server's eol flag (lib/private/Updater/VersionCheck.php:98, apps/updatenotification/lib/UpdateChecker.php:35) shows 'The version you are running is not maintained anymore' (apps/updatenotification/src/components/UpdateNotification.vue:9-10), after the fact and without a date. Apps have no end of support data (lib/private/App/AppStore/Fetcher/ResponseDefinitions.php:48-66).",
+				"renovate": "The endoflife-date datasource marks EOL or discontinued cycles as deprecated (lib/modules/datasource/endoflife-date/schema.ts:32-33) so lookups steer away from them (lib/workers/repository/process/lookup/filter.ts:87-89), for software wired to it with a custom manager (lib/modules/datasource/endoflife-date/readme.md:1-20); no EOL date is shown and no warning comes before it passes.",
+				"dependabot": "Core: grep -rniE 'end.of.life|eol|deprecat' in common/lib and updater/lib finds only the notice that Dependabot itself will stop supporting a package manager or language version (common/lib/dependabot/notices.rb:116-140), not the support end of a dependency version.",
+				"osv-scanner": "A search of cmd/, internal/, pkg/ and docs/ for end of life, end-of-life, endoflife, eol and end of support finds nothing; the nearest signal is the experimental deprecated-package flag (cmd/osv-scanner/internal/helper/flags.go:195), which reports deprecation, not a support end date.",
+				"easy-updates-manager": "No support end dates: the premium checks flag plugins removed from the directory or not updated in a year (https://easyupdatesmanager.com/knowledge-base/check-plugins-premium/, https://easyupdatesmanager.com/knowledge-base/check-for-unmaintained-plugins/), which is inv-deprecated-apps, and the free source outside vendor/ has no end-of-life handling."
+			}
+		},
+		{
+			"id": "aut-advance-notice",
+			"area": "autoupdate",
+			"name": "Announce a planned update to functional administrators a set number of days before it runs, with its release notes and what changes for them.",
+			"origin": "tender",
+			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/416075",
+			"originNote": "Marktconsultatie Contract- en Leveranciersmanagementsysteem, requirement 172745 (also 173072), eis: release notes available at least 4 weeks (or 14 days) before a planned update, describing consequences and changes to integrations.",
+			"versioniq": "no",
+			"nextcloud": "no",
+			"renovate": "partial",
+			"dependabot": "no",
+			"osv-scanner": "no",
+			"easy-updates-manager": "partial",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/AutoUpdate/AutoUpdateNotifier.php:48, lib/Service/AutoUpdate/AutoUpdateNotifier.php:63 (success and failure only, after the install)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "high",
+			"note": "Admins are notified only after the nightly job succeeded or failed; nothing announces an update before it runs, and the next candidate is never shown.",
+			"evidence": {
+				"nextcloud": "No update is ever scheduled: notifications fire when a new version is found (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-196) and every install is a manual action (apps/appstore/lib/Controller/ApiController.php:253-260), so there is no run to announce in advance.",
+				"renovate": "With automergeSchedule (lib/config/options/index.ts:1037) the PR, carrying release notes, opens at once (prCreation, lib/config/options/index.ts:2268) and is merged only in the later window, and 'Awaiting Schedule' lists what is queued (lib/workers/repository/dependency-dashboard.ts:518). The lead time follows the windows, not a set number of days before each update.",
+				"dependabot": "Closed service: Dependabot opens the PR when the update is found and does not schedule its merge; auto-merge through GitHub Actions merges as soon as checks pass (https://docs.github.com/en/code-security/tutorials/secure-your-dependencies/automate-dependabot-with-actions), and the options reference has no lead-time setting.",
+				"osv-scanner": "The tool schedules no updates (cmd/osv-scanner/main.go:16-19; fix flags cmd/osv-scanner/fix/command.go:47-205 have no schedule), so there is nothing to announce ahead.",
+				"easy-updates-manager": "Premium, docs: a weekly or monthly e-mail lists pending updates (https://easyupdatesmanager.com/knowledge-base/email-notification-of-updates-premium/) and a delay holds automatic updates for a set time (https://easyupdatesmanager.com/knowledge-base/delay-automatic-updates-premium/), so admins can hear of an update before it runs; the e-mail is not tied to the scheduled run and the docs mention no release notes in it."
+			}
+		},
+		{
+			"id": "ins-staged-promotion",
+			"area": "install",
+			"name": "Roll a version out through test and acceptance instances first, and promote exactly that tested version to production, with rollback.",
+			"origin": "tender",
+			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/416836",
+			"originNote": "SHN Cliënt- en Casusondersteuning, requirement 89061, eis: controlled rollout of changes through the OTAP chain including rollback; also tender 408309 requirement 133821, eis: releases on a test or acceptance environment two weeks ahead.",
+			"versioniq": "no",
+			"nextcloud": "no",
+			"renovate": "partial",
+			"dependabot": "partial",
+			"osv-scanner": "unknown",
+			"easy-updates-manager": "no",
+			"built": {
+				"state": "none",
+				"evidence": "looked in lib/Service and lib/Controller/ApiController.php (single instance only)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "Versioniq manages only its own instance; an admin can install the exact version tested elsewhere, and roll back, by hand on each instance, but there is no test, acceptance, production chain.",
+			"evidence": {
+				"nextcloud": "Every check and install acts on the local instance only (lib/private/App/AppStore/Fetcher/Fetcher.php:130-204, lib/private/Installer.php:135); there is no remote instance, promotion or rollback in apps management.",
+				"renovate": "baseBranchPatterns (lib/config/options/index.ts:1268) lets updates land on a test or development branch first, and the tested commit reaches production by an ordinary git merge, with git revert as rollback; Renovate does not track or promote the version between stages itself. An environment maps to a branch or repository.",
+				"dependabot": "Closed service: target-branch sends version updates to a chosen branch such as a development branch (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference), and promotion to production is a normal git merge; Dependabot does not promote or roll back between stages.",
+				"osv-scanner": "not checked: the tool installs nothing into test, acceptance or production environments; promotion of a tested version would be the lockfile and CI pipeline's job, and neither the source at v2.6.0 nor the docs settle it.",
+				"easy-updates-manager": "EUM updates only to the version WordPress offers and keeps no version per plugin (blocks are a bare file list, includes/MPSUM_Disable_Updates.php:295-303), so a tested version cannot be promoted; the premium feature list has no staging (https://easyupdatesmanager.com/buy/). An instance maps to one WordPress site."
+			}
+		},
+		{
+			"id": "rel-known-issues",
+			"area": "releases",
+			"name": "See the known problems of a version and their workarounds before installing it or while running it.",
+			"origin": "tender",
+			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/411765",
+			"originNote": "Landelijk - Identity Governance and Administration (IGA), requirement 80142, eis: release notes describe changes against previous versions, known problems with their workarounds, and installation instructions.",
+			"versioniq": "no",
+			"nextcloud": "no",
+			"renovate": "no",
+			"dependabot": "no",
+			"osv-scanner": "no",
+			"easy-updates-manager": "no",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/Source/AppStoreSource.php:578 (version and changelog only), src/components/VersionChangelog.vue:18",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "changelog-visibility",
+			"featureConfidence": "medium",
+			"note": "Each version shows its release notes but no known problems or workarounds found afterwards; security advisories are the only after-the-fact problems shown.",
+			"evidence": {
+				"nextcloud": "A store release carries version, requirements, signature and a changelog translation only (lib/private/App/AppStore/Fetcher/ResponseDefinitions.php:48-66); there is no known-issues field or view.",
+				"renovate": "Release notes are fetched (lib/workers/repository/update/pr/changelog/release-notes.ts) but grep -rniF 'known issue' lib finds nothing; the optional Mend Passing and Confidence badges (lib/config/options/index.ts:3140-3144) show test pass rates, not problems with workarounds.",
+				"dependabot": "Core: the PR quotes release notes and commits between versions (common/lib/dependabot/pull_request_creator/message_builder/metadata_presenter.rb:98) and grep -rniF 'known issue' in common/lib and updater/lib finds nothing; compatibility scores show CI results from other repositories, not known problems.",
+				"osv-scanner": "The output carries vulnerability records only (docs/output.md:22-28) and no command shows a version's bugs or workarounds (cmd/osv-scanner/main.go:16-19).",
+				"easy-updates-manager": "No known-issues data: EUM shows version and author per plugin (includes/MPSUM_Plugins_List_Table.php:620-629) and premium alerts only after an update broke or deactivated a plugin on the site itself (https://easyupdatesmanager.com/knowledge-base/auto-update-protection-premium/)."
+			}
+		},
+		{
+			"id": "rel-notes-language",
+			"area": "releases",
+			"name": "Read release notes in the administrator's own language, for example Dutch, not only in the language the publisher wrote them in.",
+			"origin": "tender",
+			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/408309",
+			"originNote": "Bestuurs- en Raadsinformatiesysteem, requirement 133821, eis: Dutch-language release notes delivered with every release.",
+			"versioniq": "partial",
+			"nextcloud": "partial",
+			"renovate": "no",
+			"dependabot": "no",
+			"osv-scanner": "no",
+			"easy-updates-manager": "partial",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Source/AppStoreSource.php:644, lib/Service/Source/AppStoreSource.php:646, src/components/VersionChangelog.vue:18, src/App.vue:2360",
+				"reachedOn": "Apps tab (app detail, Versions, release notes disclosure)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "changelog-visibility",
+			"featureConfidence": "high",
+			"note": "App Store release notes are shown in the admin's language when the publisher supplied that translation, falling back to English; forge release bodies are shown as written. Nothing translates notes the publisher did not translate.",
+			"evidence": {
+				"nextcloud": "The Changelog tab shows the release changelog in the admin's language when the publisher supplied a translation, falling back to English (apps/appstore/src/components/AppstoreSidebar/AppReleasesTab.vue:30-31, translations per release at lib/private/App/AppStore/Fetcher/ResponseDefinitions.php:40,64); nothing translates notes the publisher wrote in one language.",
+				"renovate": "Release notes are passed through as the publisher wrote them (lib/workers/repository/update/pr/changelog/release-notes.ts); only Renovate's own strings can be overridden through userStrings (lib/config/options/index.ts:3480), and nothing translates the notes.",
+				"dependabot": "Core: release notes are fetched and quoted verbatim in the PR (common/lib/dependabot/metadata_finders/base/release_finder.rb:166, common/lib/dependabot/pull_request_creator/message_builder/metadata_presenter.rb:98); no translation step exists in the message builder.",
+				"osv-scanner": "The tool shows no release notes at all (its rel-release-notes cell: docs/output.md:22-28, cmd/osv-scanner/main.go:16-19), and its own output is English only with no translation catalogue (its adm-i18n cell).",
+				"easy-updates-manager": "WordPress core, not EUM: the plugin details view reads the readme from the WordPress.org plugin API with the admin's locale, which returns community-translated sections, changelog included, where a translation exists (for example https://api.wordpress.org/plugins/info/1.2/?action=plugin_information&request[slug]=wordpress-seo&request[locale]=nl_NL returns a Dutch changelog, read 2026-09-26); untranslated notes, such as EUM's own changelog, stay in English, and there is no machine translation."
+			}
+		},
+		{
+			"id": "inv-version-lag",
+			"area": "inventory",
+			"name": "See how far each app lags behind its latest release, and flag apps outside an agreed policy such as at most one version behind.",
+			"origin": "tender",
+			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/265421",
+			"originNote": "Selectie VTH/Zaaksysteem, requirement 202694, eis: integrations must keep working after updates, on condition of N-1 (newest standard minus one version); also tender 411343 requirement 107642, eis: current and supported versions are guaranteed.",
+			"versioniq": "no",
+			"nextcloud": "no",
+			"renovate": "partial",
+			"dependabot": "no",
+			"osv-scanner": "no",
+			"easy-updates-manager": "no",
+			"built": {
+				"state": "none",
+				"evidence": "looked in src/App.vue:2136-2219 (app cards), lib/Service/InstallerService.php:85-148, lib/Command/ListVersions.php:128 (newer or older marker per version only)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "Nothing measures how far an app is behind or flags apps outside an N-1 style policy; an admin can only open each app's version list, or run occ versioniq:versions, and count the newer versions.",
+			"evidence": {
+				"nextcloud": "The Updates list and update:check show only the newest compatible version next to the installed one (apps/updatenotification/lib/Command/Check.php:53, lib/private/Installer.php:361); no distance in versions is computed and no lag policy exists.",
+				"renovate": "lib/workers/repository/process/libyear.ts:67-95 computes the lag in libyears per dependency plus the outdated count and total for the repository, written to the log and the JSON report (lib/instrumentation/reporting.ts:52-62); lag is measured in time, not versions, and nothing flags a breach of a policy such as N-1.",
+				"dependabot": "Core: a PR states only 'Bumps X from A to B' (common/lib/dependabot/pull_request_creator/message_builder.rb:451-453) and grep -rli 'libyear' in common and updater finds nothing; no lag measure or lag policy was found in the options reference either (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).",
+				"osv-scanner": "No lag measure or policy: output fields list the fixed version only for vulnerable packages (docs/output.md:22-28), there is no outdated-package report, and the hidden update command bumps manifest dependencies without reporting distance (cmd/osv-scanner/update/command.go:27-29).",
+				"easy-updates-manager": "WordPress core's Updates screen only says a newer version exists and EUM adds update counts in the admin bar (includes/MPSUM_Admin_Ajax.php:1096-1140); neither measures how many versions behind a plugin is or checks a lag policy, and the premium list has none (https://easyupdatesmanager.com/buy/)."
+			}
+		},
+		{
+			"id": "aud-remediation-kpi",
+			"area": "audit",
+			"name": "See per severity the share of advisories and patches resolved within their deadline, with trends over time.",
+			"origin": "tender",
+			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/408509",
+			"originNote": "ICT Managed Workplace, requirement 104492, eis: monthly security status report with vulnerabilities per risk level, remediation percentages within deadlines, open exceptions, patch compliance per category and rollout success and failure.",
+			"versioniq": "no",
+			"nextcloud": "no",
+			"renovate": "no",
+			"dependabot": "partial",
+			"osv-scanner": "no",
+			"easy-updates-manager": "no",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/Advisory/AdvisoryResultStore.php:40, lib/Service/Advisory/AdvisoryResultStore.php:60 (one current result set, overwritten each sweep)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "Advisory results are a single current snapshot that each sweep overwrites, so there is no history to compute resolution within deadline or trends; there are no severity deadlines either.",
+			"evidence": {
+				"nextcloud": "No advisories or deadlines exist to measure: a search of apps, core and lib for 'advisor' finds only apps/settings/lib/WellKnown/SecurityTxtHandler.php:28 and core/Notification/CoreNotifier.php:59.",
+				"renovate": "Renovate keeps no remediation deadlines or history: the vulnerability options (lib/config/options/index.ts:2428-2460) shape fix PRs, and the report carries libyears only (lib/instrumentation/reporting.ts:52-62), not resolution times per severity.",
+				"dependabot": "Closed service: alert metrics show fixed, dismissed and auto-dismissed alerts by severity with trends over time (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alert-metrics); the page defines no deadlines, so the share resolved within a deadline is not shown.",
+				"osv-scanner": "No history, deadlines or trends: each run reports the current state and an exit code only (docs/output.md:790-799), and nothing is stored between runs (cmd/osv-scanner/main.go:16-19).",
+				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories; with no advisories there are no deadlines to measure."
 			}
 		}
 	],
