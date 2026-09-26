@@ -5746,7 +5746,7 @@
 		{
 			"id": "inv-compat-php",
 			"area": "inventory",
-			"name": "See whether an app version supports the running PHP version, not only the server version, before installing or upgrading.",
+			"name": "Before a server upgrade, list the installed apps that do not support the PHP version the server will run on.",
 			"origin": "featureRequest",
 			"originUrl": "https://github.com/nextcloud/updater/issues/750",
 			"originNote": "Updater issue 'Check for php version and display non-compatible apps', opened 2026-04-27, open; earlier ask server#12966 (2018, closed) where an app was silently disabled on a PHP mismatch.",
@@ -5765,7 +5765,7 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "The PHP constraint is only enforced after download and file swap during a real install, through the server's \\OC_App::checkAppDependencies, which then reverts; the version list carries only version and changelog, so an admin cannot see beforehand which versions support the running PHP. Same shape as inv-compat-server.",
+			"note": "The PHP constraint is only enforced after download and file swap during a real install, through the server's \\OC_App::checkAppDependencies, which then reverts; the version list carries only version and changelog, so an admin cannot see beforehand which versions support the running PHP. Same shape as inv-compat-server. Reworded 2026-09-27 to the gap updater issue 750 describes (list PHP-incompatible apps before a server upgrade); the old wording was \"See whether an app version supports the running PHP version, not only the server version, before installing or upgrading.\", which read broader than that issue. Ratings and evidence are unchanged.",
 			"evidence": {
 				"nextcloud": "lib/private/App/AppStore/Fetcher/AppFetcher.php:88-106 drops store releases whose PHP spec does not match the running PHP_VERSION, and lib/private/App/DependencyAnalyzer.php:110-127 adds 'PHP %s or higher is required' to missingDependencies, shown in apps/appstore/src/components/AppstoreSidebar/AppDetailsTab.vue:137. The updater does not list PHP-incompatible apps before a server upgrade (updater issue 750 is open).",
 				"renovate": "lib/modules/manager/composer/schema.ts:351-352 extracts the project's php constraint and lib/modules/datasource/packagist/schema.ts:123 records each release's php requirement; with constraintsFiltering strict (lib/config/options/index.ts:499, lib/modules/datasource/common.ts:178) incompatible releases are dropped silently. An app maps to a dependency; the constraint is the declared one, not a running PHP, and no verdict is shown.",
