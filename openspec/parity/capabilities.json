@@ -124,1128 +124,2200 @@
 			"area": "inventory",
 			"name": "See every installed app with its installed version in one list.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/InstallerService.php:85, lib/Service/InstallerService.php:142, src/App.vue:2136, src/App.vue:2258",
+				"reachedOn": "Apps tab"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "The Apps tab lists every enabled app as a card, but the card shows name, id and description only; the installed version the API already returns (installedVersion) appears only after 'Choose app' opens the detail. No single list of apps with their versions."
 		},
 		{
 			"id": "inv-update-available",
 			"area": "inventory",
 			"name": "See at a glance which installed apps have a newer version available.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "looked in src/App.vue:2136-2219 (app cards) and lib/Service/InstallerService.php:85-148 (no newer-version field)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "Nothing marks which apps have a newer release; an admin must open each app's version list. The nightly AutoUpdateJob computes candidates per policy but never displays them."
 		},
 		{
 			"id": "inv-source-shown",
 			"area": "inventory",
 			"name": "See where each installed app came from: the app store, a Git forge or a manual upload.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:2403, src/components/SourcesPanel.vue:160, lib/Service/InstallerService.php:139, lib/Service/InstallerService.php:882",
+				"reachedOn": "Apps tab (app detail) and Sources tab"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "external-sources",
+			"featureConfidence": "high",
+			"note": "Shows the bound source (appstore, github:owner/repo, codeberg:owner/repo) per app after opening it or selecting it on the Sources tab. It is the binding, not provenance: an unbound app reads 'appstore' even if it was installed by hand or from git, manual upload is not a source kind, and boundSourceId in the list payload is not rendered."
 		},
 		{
 			"id": "inv-compat-server",
 			"area": "inventory",
 			"name": "See whether an app version is compatible with the running server version before choosing it.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/SelectedReleaseInstallerService.php:316, lib/Service/SelectedReleaseInstallerService.php:337, lib/Command/ListVersions.php:128, lib/Service/Source/AppStoreSource.php:608",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "Server compatibility is only checked after download and file swap during a real install, which then reverts; the version list carries no compatibility field and a dry run skips the check. The CLI 'Compatibility' column only says newer/older than installed."
 		},
 		{
 			"id": "inv-search-filter",
 			"area": "inventory",
 			"name": "Search or filter the installed app list by name.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:1140, src/App.vue:2125",
+				"reachedOn": "Apps tab"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "Text filter over app label and id, plus a show/hide core apps filter."
 		},
 		{
 			"id": "inv-disabled-apps",
 			"area": "inventory",
 			"name": "Manage the versions of disabled apps as well as enabled ones.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/InstallerService.php:87",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "The app list is built from IAppManager::getEnabledApps(), so disabled apps never appear and cannot be picked in the UI. The CLI install path could still target one by id (not checked live)."
 		},
 		{
 			"id": "inv-shipped-apps",
 			"area": "inventory",
 			"name": "Tell apps shipped with the server apart from apps installed separately.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:2148, src/App.vue:2118, lib/Service/InstallerService.php:137, lib/Service/InstallerService.php:188",
+				"reachedOn": "Apps tab"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "medium",
+			"note": "Always-enabled apps get a CORE flag and can be hidden; shipped apps get an explanatory error when their versions are requested. isShipped is returned per app but not rendered, so a shipped-but-not-always-enabled app looks like any other."
 		},
 		{
 			"id": "inv-server-upgrade-readiness",
 			"area": "inventory",
 			"name": "Before a server upgrade, see which installed apps have no compatible release for the next major version.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "looked in lib/Service/Source/AppStoreSource.php:578-612 (release platform ranges not read) and src/App.vue",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "No check of installed apps against the next server major."
 		},
 		{
 			"id": "inv-multi-instance",
 			"area": "inventory",
 			"name": "Manage versions across several instances, sites or repositories from one place.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "looked in lib/Service, lib/Controller/ApiController.php (single-instance only)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "Manages only the instance it runs on."
 		},
 		{
 			"id": "inv-export-inventory",
 			"area": "inventory",
 			"name": "Export the list of installed components and their versions, for example as an SBOM.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "looked in lib/Controller/ApiController.php routes and lib/Command (only per-app versioniq:versions ,json at lib/Command/ListVersions.php:55)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "cli-commands",
+			"featureConfidence": "high",
+			"note": "No inventory or SBOM export; the only JSON output is the per-app version list from occ versioniq:versions ,json."
 		},
 		{
 			"id": "inv-deprecated-apps",
 			"area": "inventory",
 			"name": "Get told when an installed component is deprecated, abandoned or replaced by another.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "looked in lib/Service/Source/AppStoreSource.php and lib/Notification/Notifier.php:63-154",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "No deprecation or abandonment signal is read or shown."
 		},
 		{
 			"id": "inv-app-metadata",
 			"area": "inventory",
 			"name": "See an app's description, author, licence and links next to its versions.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:2176, src/App.vue:2186, lib/Service/InstallerService.php:108",
+				"reachedOn": "Apps tab"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "medium",
+			"note": "Cards show icon, name, summary or description. Author, licence and links are not shown; Discover hits carry homepageUrl but the template does not render it."
+		},
+		{
+			"id": "inv-dev-checkout-warning",
+			"area": "inventory",
+			"name": "Get warned when an app folder is a developer checkout or not writable, before trying to change it.",
+			"rowSource": "own-code",
+			"versioniq": "yes",
+			"nextcloud": "unknown",
+			"renovate": "unknown",
+			"dependabot": "unknown",
+			"osv-scanner": "unknown",
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Installer/EnvironmentCheck.php:60, src/App.vue:2189",
+				"reachedOn": "Apps tab, per-app card warning"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "medium",
+			"note": "EnvironmentCheck::inspect feeds a per-card warning before any install is attempted. Proposed by reader own-a."
 		},
 		{
 			"id": "rel-list-all-versions",
 			"area": "releases",
 			"name": "List every published version of an installed app, older and newer than the installed one.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Source/AppStoreSource.php:578, lib/Service/Source/ForgeReleaseSource.php:89, lib/Service/InstallerService.php:160, src/App.vue:2330",
+				"reachedOn": "Apps tab (app detail, Versions)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "Lists every published release from the App Store or the bound forge, older and newer. The 'Safe mode' toggle is on by default (src/App.vue:107) and hides every older version until switched off (src/App.vue:1182)."
 		},
 		{
 			"id": "rel-release-notes",
 			"area": "releases",
 			"name": "Read the release notes of any single version before installing it.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/components/VersionChangelog.vue:18, src/App.vue:2360, lib/Service/Source/AppStoreSource.php:634, lib/Service/InstallerService.php:247",
+				"reachedOn": "Apps tab (app detail, Versions)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "changelog-visibility",
+			"featureConfidence": "high",
+			"note": "Each version row has an expandable release-notes disclosure from the App Store translation or the forge release body, capped at 8 KB server side."
 		},
 		{
 			"id": "rel-range-changelog",
 			"area": "releases",
 			"name": "Read the combined changelog between the installed version and a chosen target version.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/utils/changelog.ts:38, src/App.vue:1394, src/App.vue:2307",
+				"reachedOn": "Apps tab (app detail, after selecting a version)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "changelog-visibility",
+			"featureConfidence": "high",
+			"note": "Selecting a target shows 'Changes in this range' with every version's notes between installed and target, both directions, from data already fetched."
 		},
 		{
 			"id": "rel-prerelease",
 			"area": "releases",
 			"name": "Show or hide pre-release versions such as betas and release candidates when choosing a version.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "looked in lib/Service/Source/AppStoreSource.php:578-612, lib/Service/Source/ForgeReleaseSource.php:89-128, src/App.vue:1180-1191",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "No show/hide control for pre-releases; whatever the source lists is shown. src/utils/versionCompare.ts only orders prerelease suffixes."
 		},
 		{
 			"id": "rel-channel",
 			"area": "releases",
 			"name": "Choose a release channel, such as stable or beta, for the instance or per app.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "src/App.vue:586, src/App.vue:1989, src/App.vue:1999, src/App.vue:1180",
+				"reachedOn": "Apps tab (read-only label)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "The server's update channel is displayed read-only; there is no channel choice for the instance or per app, and nothing filters versions by channel despite the safe-mode label claiming it does."
 		},
 		{
 			"id": "rel-filter-versions",
 			"area": "releases",
 			"name": "Filter a long list of versions by text.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:1180, src/App.vue:2317",
+				"reachedOn": "Apps tab (app detail, Versions)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "Text filter over the version list."
 		},
 		{
 			"id": "rel-release-date",
 			"area": "releases",
 			"name": "See the release date of each version.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/Source/AppStoreSource.php:608 (entries carry only version and changelog), src/App.vue:2330-2360",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "Release dates are not read from either source and not shown."
 		},
 		{
 			"id": "rel-min-age",
 			"area": "releases",
 			"name": "Hold back an update until the release has been public for a set number of days.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/AutoUpdate/CandidateSelector.php:46-64 (no age criterion)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "high",
+			"note": "No cooldown: the nightly auto-update picks the newest in-policy version regardless of its age."
 		},
 		{
 			"id": "rel-adoption",
 			"area": "releases",
 			"name": "See how widely a new version has been adopted, or how often updating to it succeeded elsewhere.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "looked in lib/Service/Source and src/App.vue",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "No adoption or success-rate data."
 		},
 		{
 			"id": "rel-breaking-flag",
 			"area": "releases",
 			"name": "See when a target version is a major version or is flagged as breaking.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:1400, src/App.vue:2297, src/dialogs/DowngradeConfirmDialog.vue:76",
+				"reachedOn": "Apps tab (after selecting a version)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "medium",
+			"note": "On selecting a target the page says how many major and minor steps the move crosses, which surfaces a major jump. No breaking flag is read from release metadata."
 		},
 		{
 			"id": "rel-new-release-notify",
 			"area": "releases",
 			"name": "Get notified when a new version of an installed app is released.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Notification/Notifier.php:63-154 (subjects: pinned_to_vulnerable, pat_*, pin_drift, auto_update_*)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "No notification when a new version appears; notifications exist only for advisories, token expiry, pin drift and completed or failed auto-updates."
 		},
 		{
 			"id": "rel-subscribe-feed",
 			"area": "releases",
 			"name": "Subscribe to new releases by e-mail, RSS or webhook without installing anything.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "looked in lib/Controller/ApiController.php routes (no feed or webhook)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "No e-mail, RSS or webhook subscription."
 		},
 		{
 			"id": "ins-install-version",
 			"area": "install",
 			"name": "Install a specific older or newer version of an installed app with one action.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:1661, src/App.vue:2370, lib/Controller/ApiController.php:457, lib/Service/InstallerService.php:333",
+				"reachedOn": "Apps tab (app detail, select version, Update or Degrade)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "Pick an installed app, select any listed version and press Update or Degrade; password confirmation, pin and downgrade guards apply. Core (always-enabled) apps and Versioniq itself are refused."
 		},
 		{
 			"id": "ins-upgrade-latest",
 			"area": "install",
 			"name": "Update an app to its latest version with one action.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:369, src/App.vue:2370, lib/BackgroundJob/AutoUpdateJob.php:141",
+				"reachedOn": "Apps tab (app detail)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "medium",
+			"note": "Updating to latest takes choosing the app, selecting the top version and pressing Update; there is no one-click 'update to latest'. A per-app 'All' auto-update policy does it unattended at night."
 		},
 		{
 			"id": "ins-update-all",
 			"area": "install",
 			"name": "Update all apps with pending updates at once.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "src/App.vue:2136-2219 (no bulk action), lib/BackgroundJob/AutoUpdateJob.php:90",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "high",
+			"note": "No 'update all' action. The nightly AutoUpdateJob updates every app whose policy allows it, which is scheduled automation rather than an admin action."
 		},
 		{
 			"id": "ins-rollback",
 			"area": "install",
 			"name": "Roll back an app to the version that ran before the last update.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:2210, lib/Service/Installer/InstallFinalizer.php:169, src/utils/migrationSafety.ts:27",
+				"reachedOn": "Apps tab (app card 'Roll back to' button, or version picker)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "migration-safety",
+			"featureConfidence": "medium",
+			"note": "The one-click rollback targets the last version Versioniq finalized, and that record is overwritten with the new version on every successful Versioniq install; so after an update through Versioniq there is no one-click way back to the previous version, only picking it by hand. It covers the case where something outside Versioniq changed the version."
 		},
 		{
 			"id": "ins-rollback-lkg",
 			"area": "install",
 			"name": "Roll back an app to the last version that installed and finalised cleanly.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Installer/InstallFinalizer.php:169, src/App.vue:1791, src/App.vue:2210, src/utils/migrationSafety.ts:27",
+				"reachedOn": "Apps tab (app card)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "migration-safety",
+			"featureConfidence": "high",
+			"note": "The last version that finalized cleanly is recorded only on success; when the installed version differs, the card offers 'Roll back to {version}', which runs the normal install with downgrade confirmation."
 		},
 		{
 			"id": "ins-downgrade-confirm",
 			"area": "install",
 			"name": "Confirm a downgrade explicitly, with a warning about what can break.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:1440, src/App.vue:1672, src/dialogs/DowngradeConfirmDialog.vue:63, src/App.vue:2364",
+				"reachedOn": "Apps tab (Degrade button)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "migration-safety",
+			"featureConfidence": "high",
+			"note": "A downgrade opens a confirmation dialog naming the transition, the range and the migrations the target lacks; an inline warning also shows. The server refuses without allowDowngrade."
 		},
 		{
 			"id": "ins-cli-list",
 			"area": "install",
 			"name": "List an app's available versions from the command line.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Command/ListVersions.php:51, lib/Command/ListVersions.php:70, appinfo/info.xml",
+				"reachedOn": "occ versioniq:versions"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "cli-commands",
+			"featureConfidence": "high",
+			"note": "occ versioniq:versions <appId> [,source] [,json] lists available versions with an installed/newer/older marker and any recorded SHA-256."
 		},
 		{
 			"id": "ins-cli-install",
 			"area": "install",
 			"name": "Install a specific app version from the command line, for scripts and automation.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Command/InstallVersion.php:75, lib/Command/InstallVersion.php:118, lib/Command/InstallVersion.php:193",
+				"reachedOn": "occ versioniq:install"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "cli-commands",
+			"featureConfidence": "high",
+			"note": "occ versioniq:install <appId> <version> with ,source, ,dry-run, ,allow-downgrade, ,accept-new-sha and ,json, and documented exit codes. A pinned app is refused with no override option and exits 1 (unknown), since the 409 'pinned' category is not mapped."
 		},
 		{
 			"id": "ins-install-uninstalled",
 			"area": "install",
 			"name": "Find and install an app that is not installed yet.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/components/DiscoverPanel.vue:378, src/components/DiscoverPanel.vue:253, lib/Service/InstallerService.php:87, lib/Command/InstallVersion.php:118",
+				"reachedOn": "Discover tab (find); occ versioniq:install (install)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "app-discovery",
+			"featureConfidence": "medium",
+			"note": "The Discover tab searches the App Store and GitHub for apps not installed yet, but its 'Install...' only prefills a source binding; the Apps tab lists enabled apps only, so no page then installs the new app. The CLI can install it by id (left disabled)."
 		},
 		{
 			"id": "ins-server-core-update",
 			"area": "install",
 			"name": "Update the server itself, not only its apps.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "looked in lib/Service and lib/Command (apps only; core/always-enabled apps refused at lib/Service/InstallerService.php:947)",
+				"reachedOn": "nothing"
+			},
+			"provider": "nextcloud-server",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "Server updates are out of scope; Nextcloud's own updater does that."
 		},
 		{
 			"id": "ins-offline-install",
 			"area": "install",
 			"name": "Reinstall a version when its source is unreachable, from a local cache of packages.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/SelectedReleaseInstallerService.php:515, lib/Service/ExternalReleaseInstallerService.php:168, lib/Service/InstallerService.php:284, src/App.vue:2333",
+				"reachedOn": "Apps tab (version list 'Available offline' badge, install)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "artifact-cache",
+			"featureConfidence": "high",
+			"note": "Verified archives are cached after successful installs (3 per app by default); when a download fails the cached copy is used after re-verification, and versions with a cached copy are badged."
 		},
 		{
 			"id": "ins-cache-manage",
 			"area": "install",
 			"name": "See the cached packages and clear the cache.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/components/CachePanel.vue:46, src/components/CachePanel.vue:103, lib/Controller/ApiController.php:1238, lib/Controller/ApiController.php:1260",
+				"reachedOn": "Artifact cache tab"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "artifact-cache",
+			"featureConfidence": "high",
+			"note": "Shows cached versions and size per app and total, with per-app and clear-all actions."
 		},
 		{
 			"id": "ins-manual-upload",
 			"area": "install",
 			"name": "Install a version from an uploaded archive file.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Controller/ApiController.php (no upload route), lib/Controller/ApiController.php:256 (source kinds appstore and github-release only)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "external-sources",
+			"featureConfidence": "high",
+			"note": "No archive upload; sources are the App Store and GitHub or Codeberg releases."
 		},
 		{
 			"id": "ins-progress",
 			"area": "install",
 			"name": "See progress and a clear outcome while an install runs.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:2377, src/App.vue:2417, src/App.vue:2421",
+				"reachedOn": "Apps tab (install button and result panel)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "medium",
+			"note": "A spinner with 'Installing...' runs while the request is open, then a result panel shows status (Done, Dry run, Reverted, Installed but broken, Failed), transition, mode, failure category and stage. No live stage-by-stage progress."
 		},
 		{
 			"id": "ins-debug",
 			"area": "install",
 			"name": "Get detailed diagnostic output when an install fails.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:2009, src/App.vue:2456, lib/Service/InstallerService.php:602, lib/Command/InstallVersion.php:83",
+				"reachedOn": "Apps tab ('Show install debug output' toggle); occ versioniq:install ,json"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "With debug on, the result panel shows a step timeline of installer stages with their data; failures carry category, stage and hint."
 		},
 		{
 			"id": "ins-bulk-rollback",
 			"area": "install",
 			"name": "Roll back several apps at once to an earlier state or date.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "looked in src/App.vue and lib/Controller/ApiController.php (single-app install only)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "migration-safety",
+			"featureConfidence": "high",
+			"note": "No multi-app or point-in-time rollback."
+		},
+		{
+			"id": "ins-keep-enabled-state",
+			"area": "install",
+			"name": "Keep an app's enabled or disabled state when its version changes.",
+			"rowSource": "own-code",
+			"versioniq": "yes",
+			"nextcloud": "unknown",
+			"renovate": "unknown",
+			"dependabot": "unknown",
+			"osv-scanner": "unknown",
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/SelectedReleaseInstallerService.php:352",
+				"reachedOn": "Apps tab install flow, occ versioniq:install"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "medium",
+			"note": "Both installers carry the previous enabled flag into finalize. Proposed by reader own-a."
 		},
 		{
 			"id": "saf-preflight",
 			"area": "safety",
 			"name": "Check the environment, such as disk space and write permissions, before an install starts.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/InstallerService.php:470, lib/Service/Installer/EnvironmentCheck.php:51, src/App.vue:2189",
+				"reachedOn": "Apps tab (card warning; install refusal)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "migration-safety",
+			"featureConfidence": "medium",
+			"note": "Checks that the app folder's parent is writable, warns on the card and refuses early; disk space and other environment checks are not made."
 		},
 		{
 			"id": "saf-downgrade-guard",
 			"area": "safety",
 			"name": "Refuse a downgrade that would reverse database migrations unless the admin explicitly overrides it.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/InstallerService.php:401, lib/Command/InstallVersion.php:81, src/App.vue:1694",
+				"reachedOn": "Apps tab (Degrade); occ versioniq:install ,allow-downgrade"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "migration-safety",
+			"featureConfidence": "high",
+			"note": "Any real downgrade is refused with 409 unless allowDowngrade is passed, which the UI sends only after the confirmation dialog. The guard covers every downgrade, not only ones that reverse migrations."
 		},
 		{
 			"id": "saf-migration-diff",
 			"area": "safety",
 			"name": "See which database migrations a downgrade would leave behind.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Installer/MigrationDiffer.php:43, lib/Service/SelectedReleaseInstallerService.php:648, lib/Service/ExternalReleaseInstallerService.php:252, src/dialogs/DowngradeConfirmDialog.vue:82",
+				"reachedOn": "Apps tab (downgrade confirmation dialog)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "migration-safety",
+			"featureConfidence": "high",
+			"note": "Compares lib/Migration file names of the installed and target archives and lists the migrations the target lacks in the downgrade dialog; a diff failure degrades to a generic warning."
 		},
 		{
 			"id": "saf-signature",
 			"area": "safety",
 			"name": "Verify the code signature of an app package before installing it.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/SelectedReleaseInstallerService.php:133, lib/Service/SelectedReleaseInstallerService.php:604",
+				"reachedOn": "Apps tab (any App Store install)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "migration-safety",
+			"featureConfidence": "high",
+			"note": "App Store packages are checked against the Nextcloud code-signing root and CRL, the certificate CN must match the app id, and the archive signature is verified before files are swapped. Forge releases have no signature to verify and rely on SHA-256 instead."
 		},
 		{
 			"id": "saf-checksum-first",
 			"area": "safety",
 			"name": "Record a checksum of an externally sourced package the first time it is installed.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/ExternalReleaseInstallerService.php:348, lib/Service/InstallerService.php:264, src/App.vue:2340",
+				"reachedOn": "Apps tab (version list 'Checksum recorded' badge)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "external-sources",
+			"featureConfidence": "high",
+			"note": "After the first successful install of a forge release its SHA-256 is recorded on the binding, and the version list badges it."
 		},
 		{
 			"id": "saf-checksum-enforce",
 			"area": "safety",
 			"name": "Refuse a reinstall whose checksum differs from the recorded one, unless the admin explicitly overrides it.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/ExternalReleaseInstallerService.php:201, src/App.vue:1705, src/dialogs/ShaMismatchDialog.vue:45",
+				"reachedOn": "Apps tab (SHA mismatch dialog); occ versioniq:install ,accept-new-sha"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "external-sources",
+			"featureConfidence": "high",
+			"note": "A reinstall whose digest differs from the recorded one is refused before any file change; the UI offers 'Accept new checksum and install', which is logged and audited."
 		},
 		{
 			"id": "saf-failure-classify",
 			"area": "safety",
 			"name": "Get a failed install explained in plain terms, with the likely cause and the next step.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Installer/FailureClassifier.php:119, lib/Service/Installer/FailureClassifier.php:164, src/App.vue:2427",
+				"reachedOn": "Apps tab (install result panel); occ versioniq:install exit codes"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "migration-safety",
+			"featureConfidence": "high",
+			"note": "Failures are classified into categories (permission, download, checksum, incompatible, finalize, downgrade guard and more) with a plain-language hint shown first in the result panel."
 		},
 		{
 			"id": "saf-finalize-recovery",
 			"area": "safety",
 			"name": "Recover an app left half installed when an install fails partway.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/SelectedReleaseInstallerService.php:361, lib/Service/ExternalReleaseInstallerService.php:316, lib/Service/Installer/FailureClassifier.php:177",
+				"reachedOn": "Apps tab (install result 'Installed but broken')"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "migration-safety",
+			"featureConfidence": "medium",
+			"note": "When migrations or repair steps fail, the previous files are restored from the kept backup and the outcome is reported as installed-but-broken; partially applied migrations stay and the admin is told to check manually."
 		},
 		{
 			"id": "saf-backup-before",
 			"area": "safety",
 			"name": "Take a backup or snapshot before an update so it can be restored.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/SelectedReleaseInstallerService.php:654, lib/Service/SelectedReleaseInstallerService.php:373, lib/Service/ExternalReleaseInstallerService.php:275",
+				"reachedOn": "Apps tab (any install, implicit)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "migration-safety",
+			"featureConfidence": "medium",
+			"note": "The app folder is moved aside before replacement and restored on failure, but deleted once finalize succeeds; no database backup or restorable snapshot is kept. The artifact cache retains old archives for re-installing files only."
 		},
 		{
 			"id": "saf-maintenance-mode",
 			"area": "safety",
 			"name": "Put the instance into maintenance mode around an update automatically.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/InstallerService.php:522, lib/Service/InstallerService.php:716",
+				"reachedOn": "Apps tab (any install); occ versioniq:install; background job AutoUpdateJob"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "migration-safety",
+			"featureConfidence": "high",
+			"note": "Maintenance mode is switched on around the install when it was off and switched back in a finally block."
 		},
 		{
 			"id": "saf-safe-mode",
 			"area": "safety",
 			"name": "Recover from an update that breaks the admin interface, for example through a safe mode or automatic disable.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "src/App.vue:1993-2000, src/App.vue:1060",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "migration-safety",
+			"featureConfidence": "high",
+			"note": "Nothing recovers from an update that breaks the admin interface. The UI toggle named 'Safe mode' only hides and blocks downgrades in the version picker."
 		},
 		{
 			"id": "saf-test-before-apply",
 			"area": "safety",
 			"name": "Run tests or checks against an update before it is applied.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:2001, lib/Service/InstallerService.php:347, lib/Service/SelectedReleaseInstallerService.php:316",
+				"reachedOn": "Apps tab ('Dry run' toggle); occ versioniq:install ,dry-run"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "migration-safety",
+			"featureConfidence": "medium",
+			"note": "A dry run downloads and verifies the package (signature or SHA-256, app id, version, migration diff) without swapping files. It runs no tests, and for App Store packages skips the server-compatibility and dependency check that only runs on a real install."
 		},
 		{
 			"id": "saf-health-after",
 			"area": "safety",
 			"name": "Check that an app still works after an update and roll back automatically if it does not.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/SelectedReleaseInstallerService.php:361-382 (no post-install check)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "migration-safety",
+			"featureConfidence": "high",
+			"note": "No health check after an update. Automatic restore happens only when finalize itself throws, which is part of the install, not a check that the app works."
 		},
 		{
 			"id": "saf-trusted-only",
 			"area": "safety",
 			"name": "Restrict installs to an allowlist of trusted sources.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Source/TrustedSourceList.php:100, lib/Service/InstallerService.php:381, src/components/TrustedSourcesPanel.vue:63",
+				"reachedOn": "Trusted sources tab"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "external-sources",
+			"featureConfidence": "high",
+			"note": "Forge sources must match a forge-qualified owner or owner/repo allowlist pattern before binding, listing or installing; over-broad patterns are refused. The App Store is always trusted."
+		},
+		{
+			"id": "saf-unverified-warning",
+			"area": "safety",
+			"name": "See clearly when an install went ahead without checksum verification.",
+			"rowSource": "own-code",
+			"versioniq": "partial",
+			"nextcloud": "unknown",
+			"renovate": "unknown",
+			"dependabot": "unknown",
+			"osv-scanner": "unknown",
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/ExternalReleaseInstallerService.php:465, lib/Service/InstallerService.php:582",
+				"reachedOn": "History tab (audit message only); no component renders integrityWarning"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "external-sources",
+			"featureConfidence": "medium",
+			"note": "The installer returns an 'install proceeded without verification' warning that reaches the API payload as integrityWarning, but no component renders it; only the audit message keeps it. Proposed by reader own-a."
+		},
+		{
+			"id": "saf-protect-core",
+			"area": "safety",
+			"name": "Protect core apps and the tool itself from version changes.",
+			"rowSource": "own-code",
+			"versioniq": "yes",
+			"nextcloud": "unknown",
+			"renovate": "unknown",
+			"dependabot": "unknown",
+			"osv-scanner": "unknown",
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/InstallerService.php:939",
+				"reachedOn": "every install path: Apps tab, API, occ, auto-update job"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "medium",
+			"note": "isManageableApp refuses always-enabled apps and Versioniq itself across UI, API, CLI and auto-update. Proposed by reader own-a."
 		},
 		{
 			"id": "pin-pin",
 			"area": "pinning",
 			"name": "Pin an app to its current version so it is not updated.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:2275, src/dialogs/PinDialog.vue:53, lib/Controller/ApiController.php:579, lib/Service/Pin/PinStore.php:97",
+				"reachedOn": "Apps tab (app detail 'Pin this version')"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-pinning",
+			"featureConfidence": "high",
+			"note": "Pins the installed version with an optional reason; only the installed version can be pinned, and the pin is audited."
 		},
 		{
 			"id": "pin-unpin",
 			"area": "pinning",
 			"name": "Remove a pin.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:2268, src/App.vue:975, lib/Controller/ApiController.php:642",
+				"reachedOn": "Apps tab (app detail 'Unpin'; drift banner 'Accept: remove pin')"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-pinning",
+			"featureConfidence": "high",
+			"note": "Unpin button on the app detail, password-confirmed and audited."
 		},
 		{
 			"id": "pin-reason",
 			"area": "pinning",
 			"name": "See who pinned an app, when, and why.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:807, src/App.vue:2150, src/dialogs/PinDialog.vue:103, src/components/HistoryPanel.vue:175",
+				"reachedOn": "Apps tab (pin badge tooltip); History tab"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-pinning",
+			"featureConfidence": "high",
+			"note": "The pin badge tooltip reads 'Pinned by {user} on {date}' plus the reason; pin and unpin also appear in History."
 		},
 		{
 			"id": "pin-enforce-own",
 			"area": "pinning",
 			"name": "Block updates of a pinned app through the tool itself.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/InstallerService.php:428, lib/BackgroundJob/AutoUpdateJob.php:109, src/App.vue:1696",
+				"reachedOn": "Apps tab (pin override dialog); background job AutoUpdateJob"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-pinning",
+			"featureConfidence": "high",
+			"note": "Installing another version of a pinned app returns 409 until the admin chooses re-pin or unpin in the override dialog; the auto-update job skips pinned apps."
 		},
 		{
 			"id": "pin-enforce-platform",
 			"area": "pinning",
 			"name": "Block updates of a pinned app through the platform's own updater as well.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Listener/AppUpdatedListener.php:48, src/dialogs/PinDialog.vue:101",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-pinning",
+			"featureConfidence": "high",
+			"note": "Nextcloud's updater is not blocked: the listener on AppUpdateEvent is post-hoc and only detects drift, and the pin dialog says so openly."
 		},
 		{
 			"id": "pin-drift-detect",
 			"area": "pinning",
 			"name": "Detect that a pinned app was moved to another version outside the tool.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Listener/AppUpdatedListener.php:48, lib/BackgroundJob/PinReconcileJob.php:54, lib/Service/Pin/PinDriftHandler.php:54, src/App.vue:2283",
+				"reachedOn": "Apps tab (drift banner); admin notification; background job PinReconcileJob"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-pinning",
+			"featureConfidence": "high",
+			"note": "Drift is detected on every AppUpdateEvent and by a daily reconcile job, recorded on the pin, audited, notified to admins once per drifted version, and shown as a banner on the app detail."
 		},
 		{
 			"id": "pin-drift-repin",
 			"area": "pinning",
 			"name": "Restore the pinned version after drift with one action.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/components/PinDriftBanner.vue:97, src/App.vue:1635, lib/Service/InstallerService.php:445",
+				"reachedOn": "Apps tab (drift banner 'Re-pin {version}')"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-pinning",
+			"featureConfidence": "high",
+			"note": "The drift banner offers one-click Re-pin, which reinstalls the pinned version through the normal install path, or accepts the drift. The usual drift is an upward update by Nextcloud's updater, and that re-pin is a downgrade the call does not acknowledge."
 		},
 		{
 			"id": "pin-range",
 			"area": "pinning",
 			"name": "Allow updates only within a version range, for example patch releases only.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Policy/Policy.php:30, lib/Service/AutoUpdate/CandidateSelector.php:66, src/components/PolicySelector.vue:24, src/App.vue:2194",
+				"reachedOn": "Apps tab (per-app 'Auto-update' selector); background job AutoUpdateJob"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "medium",
+			"note": "A per-app auto-update policy of Patch, Minor or All limits which newer versions the nightly job installs. It restricts only automatic updates; manual installs and Nextcloud's updater are not held to the range, and non-semver versions never qualify."
 		},
 		{
 			"id": "pin-ignore-version",
 			"area": "pinning",
 			"name": "Skip one specific version while still accepting later ones.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/AutoUpdate/AttemptLedger.php:49 (automatic never-retry only), src/App.vue (no skip control)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-pinning",
+			"featureConfidence": "high",
+			"note": "No way to skip one chosen version. The auto-update attempt ledger never retries a version that was already attempted, but that is automatic, not an admin choice."
 		},
 		{
 			"id": "pin-expiry",
 			"area": "pinning",
 			"name": "Give a pin an expiry date after which updates resume.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/Pin/Pin.php:30-37 (no expiry field)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-pinning",
+			"featureConfidence": "high",
+			"note": "Pins have no expiry."
 		},
 		{
 			"id": "pin-list",
 			"area": "pinning",
 			"name": "See all pinned apps in one list.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Controller/ApiController.php:539, src/App.vue:781, src/App.vue:2150",
+				"reachedOn": "Apps tab (pin badges on app cards)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-pinning",
+			"featureConfidence": "medium",
+			"note": "All pins are fetched and shown as badges on the app cards, but there is no dedicated list or 'pinned only' filter; the admin scans the full app list."
 		},
 		{
 			"id": "aut-policy-per-app",
 			"area": "autoupdate",
 			"name": "Set an automatic update policy per app.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:2194, src/components/PolicySelector.vue:43, src/App.vue:850, lib/Controller/ApiController.php:703, lib/BackgroundJob/AutoUpdateJob.php:90",
+				"reachedOn": "Apps tab, policy selector on each app card"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "high",
+			"note": "Each non-core app card carries a policy select (Off, Patch, Minor, All) that PUTs /api/app/{appId}/policy; AutoUpdateJob iterates the stored policies."
 		},
 		{
 			"id": "aut-policy-levels",
 			"area": "autoupdate",
 			"name": "Limit automatic updates to patch releases or to minor releases.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Policy/Policy.php:34, lib/Service/AutoUpdate/CandidateSelector.php:79, src/components/PolicySelector.vue:24",
+				"reachedOn": "Apps tab, policy selector on each app card"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "high",
+			"note": "Levels patch (same major.minor) and minor (same major) bound the candidate; pre-release or non-semver versions never qualify for patch or minor."
 		},
 		{
 			"id": "aut-global-default",
 			"area": "autoupdate",
 			"name": "Set one default automatic update policy for every app.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/Policy/Policy.php:24 (absent policy means none), lib/Service/Policy/PolicyStore.php:42, src/App.vue:2019",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "high",
+			"note": "There is no instance-wide default level; an app with no stored policy is treated as none, so every app must be set one by one."
 		},
 		{
 			"id": "aut-kill-switch",
 			"area": "autoupdate",
 			"name": "Turn all automatic updates off at once with one switch.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:2026, lib/Controller/ApiController.php:773, lib/BackgroundJob/AutoUpdateJob.php:77",
+				"reachedOn": "Apps tab, automatic updates block (Enable automatic updates)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "high",
+			"note": "A global enabled flag (default off) is saved through PUT /api/auto-update/settings; the job returns before any source query when it is off, and per-app policies stay stored."
 		},
 		{
 			"id": "aut-window",
 			"area": "autoupdate",
 			"name": "Restrict automatic updates to a maintenance time window.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:2032, lib/Controller/ApiController.php:794, lib/Service/AutoUpdate/AutoUpdateWindow.php:45, lib/BackgroundJob/AutoUpdateJob.php:84",
+				"reachedOn": "Apps tab, automatic updates block (update window)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "high",
+			"note": "An HH:MM-HH:MM window (default 01:00-05:00, midnight crossing supported) is saved and checked, but the job is a 24 hour TimedJob that silently returns outside the window, so a first run outside it can keep missing the window."
 		},
 		{
 			"id": "aut-schedule-days",
 			"area": "autoupdate",
 			"name": "Schedule updates on specific weekdays or with a cron-like schedule.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/AutoUpdate/AutoUpdateWindow.php:26 (time of day only), lib/Service/AutoUpdate/AutoUpdateSettingsStore.php:27",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "high",
+			"note": "Only a daily time-of-day window exists; no weekday selection or cron expression."
 		},
 		{
 			"id": "aut-outcome-report",
 			"area": "autoupdate",
 			"name": "Get told the outcome of every automatic update, success or failure.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:176, lib/BackgroundJob/AutoUpdateJob.php:184, lib/Service/AutoUpdate/AutoUpdateNotifier.php:48, lib/Notification/Notifier.php:135, lib/Notification/Notifier.php:154",
+				"reachedOn": "background job AutoUpdateJob, Nextcloud notification centre"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "high",
+			"note": "Every attempted automatic install raises auto_update_success or auto_update_failure (with the failure hint) to every admin-group member, and the Notifier renders both; the install is also written to the audit trail as actor system."
 		},
 		{
 			"id": "aut-failure-backoff",
 			"area": "autoupdate",
 			"name": "Stop retrying an automatic update after it has failed repeatedly.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/AutoUpdate/AttemptLedger.php:49, lib/BackgroundJob/AutoUpdateJob.php:146, lib/BackgroundJob/AutoUpdateJob.php:181",
+				"reachedOn": "background job AutoUpdateJob"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "high",
+			"note": "A per (app, version) ledger means a failed version is never retried at all (stricter than a backoff); a newer qualifying version is still attempted. The ledger is not shown anywhere in the UI."
 		},
 		{
 			"id": "aut-grouping",
 			"area": "autoupdate",
 			"name": "Group several updates into one batch or one change.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:90 (one install per app, no batch)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "high",
+			"note": "Each app is installed separately in its own try/catch; there is no batch or grouped change."
 		},
 		{
 			"id": "aut-security-only",
 			"area": "autoupdate",
 			"name": "Apply only security fixes automatically.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/AutoUpdate/CandidateSelector.php:46 (semver bound only, no advisory input), lib/Service/Policy/Policy.php:34",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "high",
+			"note": "Candidate selection knows only semver levels; advisory correlation is never consulted, so there is no security-fixes-only policy."
 		},
 		{
 			"id": "aut-approval",
 			"area": "autoupdate",
 			"name": "Require an admin approval before a proposed update is applied.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "grep approv in lib and src: no hits; lib/BackgroundJob/AutoUpdateJob.php:151 installs directly",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "high",
+			"note": "The nightly job installs the candidate directly; there is no proposed-update queue or approval step."
 		},
 		{
 			"id": "aut-automerge",
 			"area": "autoupdate",
 			"name": "Apply an update automatically once its checks pass.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:155, lib/Service/InstallerService.php:333",
+				"reachedOn": "background job AutoUpdateJob"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "medium",
+			"note": "Automatic installs go through the standard installer, which verifies signature, integrity and compatibility before swapping files and restores on failure; there is no configurable test or health gate an admin can attach."
 		},
 		{
 			"id": "aut-rate-limit",
 			"area": "autoupdate",
 			"name": "Limit how many updates are applied at once or per period.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:90 (every policy app processed each run)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "high",
+			"note": "No cap on the number of installs per run or per period."
 		},
 		{
 			"id": "aut-core-policy",
 			"area": "autoupdate",
 			"name": "Set a separate automatic update policy for the server core.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "src/App.vue:2194 (PolicySelector v-if !app.isCore), lib/Service/InstallerService.php:947",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "high",
+			"note": "Core and always-enabled apps are excluded and the server itself is never updated by Versioniq."
 		},
 		{
 			"id": "aut-config-as-code",
 			"area": "autoupdate",
 			"name": "Keep update policies in a versioned configuration file.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/Policy/PolicyStore.php:42 (policies as app config JSON keys policy.{appId})",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "high",
+			"note": "Policies live in oc_appconfig; there is no versioned configuration file import or export."
 		},
 		{
 			"id": "aut-presets",
 			"area": "autoupdate",
 			"name": "Share update policy presets across many installations or repositories.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/Policy/PolicyStore.php:68 (per-instance only)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "high",
+			"note": "No preset sharing across installations."
 		},
 		{
 			"id": "aut-dashboard",
 			"area": "autoupdate",
 			"name": "See all pending, scheduled and blocked updates on one dashboard.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "src/App.vue:2194 (per-card policy badge only), lib/Service/AutoUpdate/AttemptLedger.php:80 (ledger never exposed by a route)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "medium",
+			"note": "App cards show a policy badge and pin badge, but nothing lists pending, scheduled or blocked updates in one view."
+		},
+		{
+			"id": "aut-unattended-private",
+			"area": "autoupdate",
+			"name": "Let scheduled checks and automatic updates reach private sources without a signed-in admin.",
+			"rowSource": "own-code",
+			"versioniq": "no",
+			"nextcloud": "unknown",
+			"renovate": "unknown",
+			"dependabot": "unknown",
+			"osv-scanner": "unknown",
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/Source/ForgeReleaseSource.php:265, lib/Service/Source/ForgeReleaseSource.php:283",
+				"reachedOn": "nothing: background jobs run without a session user"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "pat-management",
+			"featureConfidence": "medium",
+			"note": "Tokens are resolved from the logged-in user, so background jobs fetch private repositories without a token and their releases and advisories go missing silently. Proposed by reader own-b."
+		},
+		{
+			"id": "aut-retry-reset",
+			"area": "autoupdate",
+			"name": "See which automatic update attempts failed and clear one so it is retried.",
+			"rowSource": "own-code",
+			"versioniq": "no",
+			"nextcloud": "unknown",
+			"renovate": "unknown",
+			"dependabot": "unknown",
+			"osv-scanner": "unknown",
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/AutoUpdate/AttemptLedger.php:29",
+				"reachedOn": "nothing: no route exposes the attempt ledger"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "medium",
+			"note": "The never-retry ledger blocks a failed version for good and no route or page shows or resets it. Proposed by reader own-b."
 		},
 		{
 			"id": "adv-correlate-installed",
 			"area": "advisories",
 			"name": "Match installed versions against published security advisories.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Advisory/AdvisoryService.php:245, lib/BackgroundJob/AdvisoryRefreshJob.php:83, lib/Controller/ApiController.php:147, src/App.vue:2157",
+				"reachedOn": "Apps tab, advisory badge on each app card"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "A scheduled sweep correlates every enabled app (and the server) against the advisories and stores a snapshot; the Apps tab shows Vulnerable version or Advisory badges."
 		},
 		{
 			"id": "adv-nextcloud-feed",
 			"area": "advisories",
 			"name": "Read the Nextcloud security advisory feed.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Advisory/NextcloudAdvisoryFeed.php:44, lib/Service/Advisory/NextcloudAdvisoryFeed.php:93, lib/Service/Advisory/AdvisoryService.php:166",
+				"reachedOn": "background job AdvisoryRefreshJob, Apps tab badges"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "Reads the GHSA records of nextcloud/security-advisories once per sweep (cursor paginated, max 20 pages) and maps packages to installed app ids or the server."
 		},
 		{
 			"id": "adv-github-advisories",
 			"area": "advisories",
 			"name": "Read GitHub security advisories for components sourced from GitHub.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Source/ForgeReleaseSource.php:174, lib/Service/Advisory/AdvisoryService.php:129",
+				"reachedOn": "background job AdvisoryRefreshJob, Apps tab badges"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "For apps bound to a GitHub repo the forge security-advisories endpoint is read and merged with the central feed. The sweep runs in cron with no user, so no PAT is used and private repositories cannot be read."
 		},
 		{
 			"id": "adv-osv-feed",
 			"area": "advisories",
 			"name": "Read OSV or another public cross-ecosystem vulnerability database.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/Advisory/AdvisoryService.php:81 (only NextcloudAdvisoryFeed and source advisories), grep osv: no hits",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "No OSV or other cross-ecosystem database is read."
 		},
 		{
 			"id": "adv-severity",
 			"area": "advisories",
 			"name": "See the severity of each advisory, for example as a CVSS score or level.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Advisory/AdvisoryService.php:343, src/App.vue:55, src/App.vue:2159",
+				"reachedOn": "Apps tab, advisory badge tooltip (summary only)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "Severity is carried in the snapshot and API payload, but the UI never renders it; the badge shows only a state label and the first summary as a tooltip."
 		},
 		{
 			"id": "adv-safe-version",
 			"area": "advisories",
 			"name": "See the first version that fixes an advisory.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Advisory/AdvisoryService.php:304, src/App.vue:2171",
+				"reachedOn": "Apps tab, app card detail line for a vulnerable version"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "The branch patch (or nearest resolving version) is shown as 'safe version: X' under a vulnerable app card."
 		},
 		{
 			"id": "adv-one-click-fix",
 			"area": "advisories",
 			"name": "Update to the fixed version straight from the advisory with one action.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "src/App.vue:2171 (safe version is text only, no action)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "The recommended version is displayed as text; the admin must open the app and select and install that version by hand."
 		},
 		{
 			"id": "adv-notify-urgent",
 			"area": "advisories",
 			"name": "Get an immediate notification for a critical advisory.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/BackgroundJob/AdvisoryRefreshJob.php:105, lib/Service/Advisory/AdvisoryNotifier.php:54, lib/Notification/Notifier.php:63",
+				"reachedOn": "background job AdvisoryRefreshJob, Nextcloud notification centre"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "When an installed version is newly inside an affected range every admin-group member gets a pinned_to_vulnerable notification, deduplicated per (app, advisory); latency is the sweep interval (1 to 24 hours)."
 		},
 		{
 			"id": "adv-digest",
 			"area": "advisories",
 			"name": "Get a periodic digest of non-urgent advisories.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Advisory/AdvisoryDigestNotifier.php:116, lib/Notification/Notifier.php:63",
+				"reachedOn": "Apps tab toggle exists; the digest notification never renders"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "The digest is sent with subject advisory_digest, but Notifier::prepare has branches only for pinned_to_vulnerable, pat_expiring, pin_drift, pat_expired, auto_update_success and auto_update_failure (lines 63 to 155), so it throws and the digest never shows. Rated no because the path breaks; lane verified the subject list. Code reading, needs a live check."
 		},
 		{
 			"id": "adv-refresh-interval",
 			"area": "advisories",
 			"name": "Set how often advisories are checked.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:2066, lib/Controller/ApiController.php:861, lib/BackgroundJob/AdvisoryRefreshJob.php:65",
+				"reachedOn": "Apps tab, security advisory checks (check every N hours)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "Interval is settable in the UI within server-supplied bounds and applied as the TimedJob interval. The freshness line still says the job runs every 6 hours regardless of the setting."
 		},
 		{
 			"id": "adv-dismiss",
 			"area": "advisories",
 			"name": "Dismiss or ignore an advisory with a recorded reason.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "grep dismiss in src: only discover provider errors (src/components/DiscoverPanel.vue:111); lib/Service/Advisory/AdvisoryNotifier.php:36 stores notified keys, not dismissals",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "No way to dismiss or ignore an advisory with a reason."
 		},
 		{
 			"id": "adv-branch-aware",
 			"area": "advisories",
 			"name": "Match advisories correctly on maintained release branches that received backported fixes.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Advisory/BranchAwareRange.php:72, lib/Service/Advisory/AdvisoryService.php:274",
+				"reachedOn": "background job AdvisoryRefreshJob, Apps tab badges"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "Feed records are evaluated per major.minor branch from the patched-version list, so backported fixes on maintained branches are matched correctly."
 		},
 		{
 			"id": "adv-dependencies",
@@ -1254,96 +2326,176 @@
 			"origin": "tender",
 			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/261739",
 			"originNote": "tender Waterschap Vallei en Veluwe, zaaksysteem en DMS, requirement 171617, https://www.tenderned.nl/aankondigingen/overzicht/261739",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/Advisory/AdvisoryPackageMap.php:86 (maps packages to app ids or the server only)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "Only apps and the server are correlated; bundled composer or npm libraries inside an app are never inspected."
 		},
 		{
 			"id": "adv-reachability",
 			"area": "advisories",
 			"name": "See whether the vulnerable code is actually called, to cut false alarms.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/Advisory/AdvisoryService.php:245 (version range only)",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "No call-graph or reachability analysis."
 		},
 		{
 			"id": "adv-exploit-prob",
 			"area": "advisories",
 			"name": "See how likely an advisory is to be exploited, for example EPSS or a known-exploited list, to prioritise.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "grep epss, cisa, kev in lib and src: no hits",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "No EPSS or known-exploited data."
 		},
 		{
 			"id": "adv-offline-db",
 			"area": "advisories",
 			"name": "Check advisories without internet access, against a local copy of the database.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Advisory/NextcloudAdvisoryFeed.php:41 (advisory.feed_base override), lib/Service/Advisory/NextcloudAdvisoryFeed.php:44",
+				"reachedOn": "occ config:app:set versioniq advisory.feed_base"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "low",
+			"note": "The feed URL can be pointed at an internal mirror through an app-config key (meant for e2e fixtures); there is no bundled or importable local database and no UI for it."
 		},
 		{
 			"id": "adv-last-checked",
 			"area": "advisories",
 			"name": "See when advisories were last checked and whether that check succeeded.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Controller/ApiController.php:157, src/App.vue:724, src/App.vue:1980, lib/BackgroundJob/AdvisoryRefreshJob.php:95",
+				"reachedOn": "Apps tab, advisory freshness line"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "The Apps tab says when the last sweep completed, but not whether it succeeded: a failed or partial feed read and per-app errors are only logged (the Integrations tab shows feed health only when integriq is installed)."
 		},
 		{
 			"id": "adv-export-report",
 			"area": "advisories",
 			"name": "Export vulnerability findings in a standard format such as SARIF, JSON or VEX.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "grep sarif, vex in lib and src: no hits; lib/Controller/ApiController.php:147 returns internal JSON only",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "No export in SARIF, VEX or another standard format; only the internal /api/advisories JSON."
 		},
 		{
 			"id": "adv-pinned-vuln",
 			"area": "advisories",
 			"name": "Get warned when a pinned version has a known advisory.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Advisory/AdvisoryService.php:311, lib/Service/Advisory/AdvisoryNotifier.php:61, src/App.vue:2158",
+				"reachedOn": "Apps tab, Vulnerable version badge next to the pin badge; notification centre"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "Any installed version inside an affected range, pinned or not, is flagged pinned-to-vulnerable with a badge and an admin notification; the pin dialog itself does not warn before pinning."
 		},
 		{
 			"id": "adv-license",
 			"area": "advisories",
 			"name": "Check the licences of installed components against a policy.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "grep licence and license policy code in lib: none",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "No licence inventory or policy check."
 		},
 		{
 			"id": "adv-ncsc",
@@ -1352,12 +2504,22 @@
 			"origin": "tender",
 			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/406416",
 			"originNote": "tender Gemeente Zuidplas, zaaksysteem, requirement 183111, https://www.tenderned.nl/aankondigingen/overzicht/406416",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "grep ncsc in lib and src: no hits",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "high",
+			"note": "NCSC advisories are not read."
 		},
 		{
 			"id": "adv-cve-history",
@@ -1366,372 +2528,727 @@
 			"origin": "tender",
 			"originUrl": "https://canadabuys.canada.ca/en/tender-opportunities/BPM025740/33472",
 			"originNote": "tender Shared Services Canada, Cisco maintenance, requirement 170202, https://canadabuys.canada.ca/en/tender-opportunities/BPM025740/33472",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Advisory/AdvisoryService.php:293, src/App.vue:2159",
+				"reachedOn": "Apps tab, Advisory badge tooltip"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "medium",
+			"note": "Apps with a security history get an Advisory badge whose tooltip shows only the first advisory summary; the full per-app advisory list is in the API payload but not listed in the UI, and ids are GHSA rather than CVE."
+		},
+		{
+			"id": "adv-server-advisories",
+			"area": "advisories",
+			"name": "See the advisories that affect the server itself, not only its apps.",
+			"rowSource": "own-code",
+			"versioniq": "partial",
+			"nextcloud": "unknown",
+			"renovate": "unknown",
+			"dependabot": "unknown",
+			"osv-scanner": "unknown",
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Advisory/AdvisoryService.php:218",
+				"reachedOn": "notification only; no app card renders the server row"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "medium",
+			"note": "A server advisory row is computed and notified on, but the Apps tab never renders it. Proposed by reader own-b."
+		},
+		{
+			"id": "adv-coverage-gaps",
+			"area": "advisories",
+			"name": "See which installed components an advisory check could not cover, and why.",
+			"rowSource": "own-code",
+			"versioniq": "no",
+			"nextcloud": "unknown",
+			"renovate": "unknown",
+			"dependabot": "unknown",
+			"osv-scanner": "unknown",
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/BackgroundJob/AdvisoryRefreshJob.php:95",
+				"reachedOn": "nothing: errors and budget skips are only logged"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "medium",
+			"note": "Per-app correlation errors and budget skips are stored and logged, never shown, so a clean badge list cannot be told apart from an incomplete check. Proposed by reader own-b."
 		},
 		{
 			"id": "src-appstore",
 			"area": "sources",
 			"name": "Get versions from the official app store.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Source/AppStoreSource.php:36, src/App.vue:2413",
+				"reachedOn": "Apps tab, version list of a chosen app"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "external-sources",
+			"featureConfidence": "high",
+			"note": "The default source lists App Store versions with release notes for the picked app."
 		},
 		{
 			"id": "src-github",
 			"area": "sources",
 			"name": "Get versions from GitHub releases.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Source/ForgeReleaseSource.php:40, src/components/SourcesPanel.vue:66, lib/Controller/ApiController.php:264",
+				"reachedOn": "Sources tab (bind), Apps tab version list"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "external-sources",
+			"featureConfidence": "high",
+			"note": "An app bound to a GitHub repo lists and installs its release assets matching the asset pattern."
 		},
 		{
 			"id": "src-codeberg",
 			"area": "sources",
 			"name": "Get versions from Codeberg or another Forgejo or Gitea forge.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Source/ForgeRegistry.php:45, src/components/SourcesPanel.vue:67, lib/Controller/ApiController.php:258",
+				"reachedOn": "Sources tab (Codeberg forge option)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "external-sources",
+			"featureConfidence": "medium",
+			"note": "Codeberg is a bindable forge; another Forgejo or Gitea host works only by overriding forge.codeberg.api_base, which replaces Codeberg. ConnectionReportService calls Codeberg retired while the UI still offers it."
 		},
 		{
 			"id": "src-gitlab",
 			"area": "sources",
 			"name": "Get versions from GitLab releases.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/Source/ForgeRegistry.php:37 (github and codeberg only), lib/Service/Source/SourceBinding.php:33",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "external-sources",
+			"featureConfidence": "high",
+			"note": "GitLab is not a known forge."
 		},
 		{
 			"id": "src-private-repo",
 			"area": "sources",
 			"name": "Get versions from private repositories using an access token.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Source/ForgeReleaseSource.php:283, lib/Service/Pat/PatManager.php:88, src/components/TokensPanel.vue:97",
+				"reachedOn": "Tokens tab plus Apps tab version list"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "external-sources",
+			"featureConfidence": "high",
+			"note": "A stored PAT matching the repo is used for release listing and download on interactive requests; background jobs run without a user and cannot use it (see adv-github-advisories defect)."
 		},
 		{
 			"id": "src-bind-per-app",
 			"area": "sources",
 			"name": "Bind an installed app to a specific external source.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/components/SourcesPanel.vue:108, lib/Controller/ApiController.php:247, lib/Service/Source/SourceBindingStore.php:109",
+				"reachedOn": "Sources tab"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "external-sources",
+			"featureConfidence": "high",
+			"note": "An installed app is bound to a forge owner/repo and asset pattern, allowlist checked and audited. Rebinding back to the App Store is API-only."
 		},
 		{
 			"id": "src-override-once",
 			"area": "sources",
 			"name": "Override the source for one install without changing the app's binding.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Command/InstallVersion.php:79, lib/Controller/ApiController.php:461",
+				"reachedOn": "occ versioniq:install ,source="
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "external-sources",
+			"featureConfidence": "high",
+			"note": "A one-off source override exists on the install and versions API and the occ install command; the web UI does not expose it."
 		},
 		{
 			"id": "src-allowlist-manage",
 			"area": "sources",
 			"name": "Manage the list of trusted sources from the admin interface.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/components/TrustedSourcesPanel.vue:63, src/components/TrustedSourcesPanel.vue:91, lib/Controller/ApiController.php:315, lib/Controller/ApiController.php:354",
+				"reachedOn": "Trusted sources tab"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "external-sources",
+			"featureConfidence": "high",
+			"note": "Admins add forge-qualified owner or owner/repo patterns and remove them, password confirmed."
 		},
 		{
 			"id": "src-custom-registry",
 			"area": "sources",
 			"name": "Point at a self-hosted or mirrored package registry or app store.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Source/AppStoreSource.php:327, lib/Service/Source/ForgeRegistry.php:78",
+				"reachedOn": "occ config:app:set versioniq appstore.api_base or forge.{id}.api_base"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "external-sources",
+			"featureConfidence": "high",
+			"note": "App Store and forge base URLs can be overridden (GitHub Enterprise, self-hosted Forgejo, a store mirror) through app-config keys only; no UI."
 		},
 		{
 			"id": "src-discover-appstore",
 			"area": "sources",
 			"name": "Search the app store for apps to install.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/components/DiscoverPanel.vue:64, lib/Service/Discovery/AppStoreDiscovery.php:92, lib/Controller/ApiController.php:1129",
+				"reachedOn": "Discover tab"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "app-discovery",
+			"featureConfidence": "high",
+			"note": "Substring search over the cached App Store catalogue from the Discover tab."
 		},
 		{
 			"id": "src-discover-github",
 			"area": "sources",
 			"name": "Search public GitHub for installable apps.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Discovery/GithubSearchDiscovery.php:55, lib/Service/Discovery/DiscoveryAggregator.php:40",
+				"reachedOn": "Discover tab, only after occ config:app:set versioniq discovery.github_search_enabled true"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "app-discovery",
+			"featureConfidence": "high",
+			"note": "Public GitHub search is implemented but off by default and can only be switched on with an app-config key; there is no UI toggle."
 		},
 		{
 			"id": "src-discover-private",
 			"area": "sources",
 			"name": "Search your own private repositories for installable apps.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Discovery/GithubPrivateDiscovery.php:67, lib/Service/Discovery/DiscoveryAggregator.php:40",
+				"reachedOn": "Discover tab (when the admin has a visible PAT)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "app-discovery",
+			"featureConfidence": "high",
+			"note": "Searches private GitHub repos visible to the admin's PATs, flagging repos outside the trusted list as not installable."
 		},
 		{
 			"id": "src-discover-routes",
 			"area": "sources",
 			"name": "Take a search result straight into the install or bind flow.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/components/DiscoverPanel.vue:245, src/components/DiscoverPanel.vue:253, src/App.vue:312",
+				"reachedOn": "Discover tab to Apps tab (Open version picker) or Sources tab (Install...)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "app-discovery",
+			"featureConfidence": "high",
+			"note": "Installed hits open the version picker and forge hits prefill the bind form, but an App Store hit for an app that is not installed also routes to the forge bind form with empty owner and repo, a dead end."
 		},
 		{
 			"id": "src-connection-status",
 			"area": "sources",
 			"name": "See whether each upstream source is reachable and when it was last read.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/components/IntegrationsPanel.vue:30, src/utils/connectionRegistry.ts:25, lib/Settings/connections.json:4, lib/Settings/Admin.php:53",
+				"owner": "ConductionNL/integriq",
+				"reachedOn": "Integrations tab (only when integriq is enabled)"
+			},
+			"provider": "integriq",
+			"providerHow": "read-from-code",
+			"feature": "connection-registry",
+			"featureConfidence": "high",
+			"note": "Reachability and last result for the App Store, GitHub and the advisory feed are shown from integriq's connection registry; without integriq there is no status view, and Codeberg has no row."
 		},
 		{
 			"id": "tok-store",
 			"area": "sources",
 			"name": "Store access tokens for a forge.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/components/TokensPanel.vue:97, lib/Controller/ApiController.php:971, lib/Service/Pat/PatManager.php:65",
+				"reachedOn": "Tokens tab"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "pat-management",
+			"featureConfidence": "high",
+			"note": "Admins add GitHub or Codeberg tokens with a label and target pattern."
 		},
 		{
 			"id": "tok-encrypt",
 			"area": "sources",
 			"name": "Keep stored tokens encrypted at rest.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Pat/PatManager.php:65, lib/Service/Pat/PatManager.php:88",
+				"reachedOn": "Tokens tab (storage side)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "pat-management",
+			"featureConfidence": "high",
+			"note": "Tokens are encrypted with Nextcloud ICrypto before storage and only decrypted inside useToken; the API returns redacted rows."
 		},
 		{
 			"id": "tok-validate",
 			"area": "sources",
 			"name": "Validate a token and its scopes when it is added.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Pat/PatValidator.php:70, lib/Service/Pat/PatValidator.php:141, lib/Controller/ApiController.php:993",
+				"reachedOn": "Tokens tab (add token)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "pat-management",
+			"featureConfidence": "high",
+			"note": "A token is probed against the forge user endpoint; classic GitHub tokens with scopes beyond repo or public_repo are rejected, fine-grained and Codeberg tokens are accepted with an unverifiable-scope warning."
 		},
 		{
 			"id": "tok-expiry-warn",
 			"area": "sources",
 			"name": "Get warned before a stored token expires.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/BackgroundJob/PatExpiryWarningJob.php:69, lib/Notification/Notifier.php:80, src/components/TokensPanel.vue:206",
+				"reachedOn": "Tokens tab expiry badge; background job PatExpiryWarningJob notifications"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "pat-management",
+			"featureConfidence": "high",
+			"note": "Owners are notified at 14 days, 3 days and on expiry, and the Tokens tab shows an expiry badge; tokens whose forge does not disclose expiry are never warned about."
 		},
 		{
 			"id": "tok-create-link",
 			"area": "sources",
 			"name": "Open the forge's token creation page with the right scopes prefilled.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Pat/PatDeeplinkBuilder.php:75, src/components/TokensPanel.vue:172, lib/Controller/ApiController.php:1175",
+				"reachedOn": "Tokens tab (create token link)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "pat-management",
+			"featureConfidence": "high",
+			"note": "A classic GitHub link carries scopes=repo prefilled; the fine-grained and Codeberg links open the creation page with written instructions instead of prefilled scopes."
 		},
 		{
 			"id": "tok-shared",
 			"area": "sources",
 			"name": "Share a token with other admins or keep it personal.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/components/TokensPanel.vue:129, src/components/TokensPanel.vue:219, lib/Controller/ApiController.php:1035",
+				"reachedOn": "Tokens tab (Share with admins toggle)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "pat-management",
+			"featureConfidence": "high",
+			"note": "Owners toggle sharedWithAdmins; only the owner can change or delete a token."
 		},
 		{
 			"id": "tok-cleanup",
 			"area": "sources",
 			"name": "Remove a user's tokens automatically when the user is deleted.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Listener/UserDeletedListener.php:44, lib/AppInfo/Application.php:44",
+				"reachedOn": "UserDeletedEvent listener"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "pat-management",
+			"featureConfidence": "high",
+			"note": "Deleting a user removes every token they own."
 		},
 		{
 			"id": "aud-log-ops",
 			"area": "audit",
 			"name": "Record every install, rollback, pin and unpin with who, when, and from which version to which.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/SelectedReleaseInstallerService.php:445, lib/Service/ExternalReleaseInstallerService.php:411, lib/Service/Pin/PinStore.php:97, lib/Service/Pin/PinStore.php:125, lib/Service/Pin/PinStore.php:159",
+				"reachedOn": "History tab and per-app History tab"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "audit-trail",
+			"featureConfidence": "high",
+			"note": "Install (including rollbacks and downgrades), pin, unpin and pin drift are recorded with actor, time, from and to version, source and status."
 		},
 		{
 			"id": "aud-log-source",
 			"area": "audit",
 			"name": "Record changes to source bindings and to the trusted-source list.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Source/SourceBindingStore.php:109, lib/Service/Source/TrustedSourceList.php:80",
+				"reachedOn": "History tab"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "audit-trail",
+			"featureConfidence": "high",
+			"note": "Binding changes are audited (with 'Rebound from' text), but adding or removing trusted-source patterns and clearing a binding write no audit entry."
 		},
 		{
 			"id": "aud-history-ui",
 			"area": "audit",
 			"name": "Browse the version history in the interface, filtered by app.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:2495, src/App.vue:2413, src/components/HistoryPanel.vue:79, lib/Db/AuditEntryMapper.php:59",
+				"reachedOn": "History tab (global) and the History sub-tab of a chosen app"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "audit-trail",
+			"featureConfidence": "high",
+			"note": "A paginated newest-first table; filtering by app is done by opening the app's own History sub-tab, the global tab has no app filter control."
 		},
 		{
 			"id": "aud-immutable",
 			"area": "audit",
 			"name": "Keep history entries unchangeable once written.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Audit/AuditLogger.php:88, lib/Db/AuditEntry.php:22, lib/Controller/ApiController.php:1197",
+				"reachedOn": "History tab (read-only)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "audit-trail",
+			"featureConfidence": "medium",
+			"note": "The only writer is insert-only and no route updates or deletes entries; immutability is enforced by the app, not by the database, and the prune job deletes old rows."
 		},
 		{
 			"id": "aud-retention",
 			"area": "audit",
 			"name": "Prune history automatically after a set retention period.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/BackgroundJob/PruneAuditJob.php:62, lib/BackgroundJob/PruneAuditJob.php:95",
+				"reachedOn": "background job PruneAuditJob"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "audit-trail",
+			"featureConfidence": "high",
+			"note": "Entries older than audit_retention_days (default 365, floor 30) are pruned daily; the value is set only through occ config."
 		},
 		{
 			"id": "aud-export",
 			"area": "audit",
 			"name": "Export the update history.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Controller/ApiController.php:1207",
+				"reachedOn": "OCS API GET /api/audit (no export control in the UI)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "audit-trail",
+			"featureConfidence": "medium",
+			"note": "History is readable as paginated JSON through the admin API; there is no export button or file format."
 		},
 		{
 			"id": "aud-activity-stream",
 			"area": "audit",
 			"name": "Show version changes in the platform's activity stream.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "grep OCP Activity in lib: no hits; lib/AppInfo/Application.php:43 registers no activity provider",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "audit-trail",
+			"featureConfidence": "high",
+			"note": "Version changes are not published to the Nextcloud activity stream."
 		},
 		{
 			"id": "aud-auto-attributed",
 			"area": "audit",
 			"name": "Tell automatic updates apart from manual ones in the history.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/SelectedReleaseInstallerService.php:444, lib/Service/ExternalReleaseInstallerService.php:410, src/components/HistoryPanel.vue:11",
+				"reachedOn": "History tab (actor column)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "audit-trail",
+			"featureConfidence": "medium",
+			"note": "Automatic installs have no session user and are recorded as actor system, but occ installs are recorded as system too, so automatic and CLI changes cannot be told apart."
 		},
 		{
 			"id": "aud-siem",
 			"area": "audit",
 			"name": "Send update events to an external log or SIEM.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Service/Audit/AuditLogger.php:88 (database only); no syslog, webhook or admin_audit emission",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "audit-trail",
+			"featureConfidence": "high",
+			"note": "Audit entries go only to the app's own table."
 		},
 		{
 			"id": "aud-patch-compliance",
@@ -1740,12 +3257,22 @@
 			"origin": "tender",
 			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/196310",
 			"originNote": "tender Gemeente Zeist, zaaksysteem, requirement 31492, https://www.tenderned.nl/aankondigingen/overzicht/196310",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:2157, src/App.vue:1980, lib/Service/Advisory/AdvisoryService.php:311",
+				"reachedOn": "Apps tab advisory badges and freshness line"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "security-advisory-correlation",
+			"featureConfidence": "medium",
+			"note": "Each app card says whether its installed version is vulnerable and the page says when that was checked, but there is no overall patch compliance status, and the server's own advisory row is computed but not shown on any card."
 		},
 		{
 			"id": "aud-patch-policy",
@@ -1754,12 +3281,22 @@
 			"origin": "tender",
 			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/371718",
 			"originNote": "tender Provincie Utrecht, online energieloket, requirement 75801, https://www.tenderned.nl/aankondigingen/overzicht/371718; also Omgevingsdienst IJsselland requirement 107642",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Service/Policy/Policy.php:36, src/components/PolicySelector.vue:24",
+				"reachedOn": "Apps tab, policy selector"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "auto-update-policies",
+			"featureConfidence": "medium",
+			"note": "A per-app update level is recorded with who set it and when, but there is no written policy per patch type and no security-first handling."
 		},
 		{
 			"id": "aud-release-check",
@@ -1768,192 +3305,375 @@
 			"origin": "tender",
 			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/398950",
 			"originNote": "tender Rijnvicus, ERP-systeem, requirement 73812, https://www.tenderned.nl/aankondigingen/overzicht/398950",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:2004, src/App.vue:1523, lib/Service/Installer/InstallFinalizer.php:169, src/App.vue:2211, src/App.vue:1791",
+				"reachedOn": "Apps tab (Dry run toggle, Roll back to X button)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "migration-safety",
+			"featureConfidence": "medium",
+			"note": "A dry run evaluates an install without writing, installs back up and restore on failure, and a last-known-good version is recorded per app with a one-click roll back on the card."
+		},
+		{
+			"id": "aud-log-tokens",
+			"area": "audit",
+			"name": "Record who added, shared or removed an access token.",
+			"rowSource": "own-code",
+			"versioniq": "no",
+			"nextcloud": "unknown",
+			"renovate": "unknown",
+			"dependabot": "unknown",
+			"osv-scanner": "unknown",
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Controller/ApiController.php:971, lib/Controller/ApiController.php:1035, lib/Controller/ApiController.php:1089",
+				"reachedOn": "nothing: token create, share and delete write no audit entry"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "audit-trail",
+			"featureConfidence": "medium",
+			"note": "Token lifecycle changes are not audited. Proposed by reader own-b."
 		},
 		{
 			"id": "adm-admin-only",
 			"area": "admin",
 			"name": "Restrict version management to administrators.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Controller/ApiController.php:1336, lib/Settings/Admin.php:51, appinfo/info.xml:122",
+				"reachedOn": "Admin settings, Versioniq section"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "Every endpoint checks group admin and the page is an admin settings section."
 		},
 		{
 			"id": "adm-password-confirm",
 			"area": "admin",
 			"name": "Ask for the admin password before a risky action.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Controller/ApiController.php:246, lib/Controller/ApiController.php:456, src/ocs.ts:70, src/App.vue:1080",
+				"reachedOn": "every write action (bind, install, pin, policy, tokens, cache)"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "Write routes carry PasswordConfirmationRequired and the frontend prompts through Nextcloud's password confirmation."
 		},
 		{
 			"id": "adm-delegated",
 			"area": "admin",
 			"name": "Delegate update rights to a non-admin role or group.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "lib/Controller/ApiController.php:297",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "Delegation is deliberately not supported; every route requires full admin."
 		},
 		{
 			"id": "adm-notifications",
 			"area": "admin",
 			"name": "Deliver alerts in the platform's notification centre.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/AppInfo/Application.php:46, lib/Notification/Notifier.php:56",
+				"reachedOn": "Nextcloud notification centre"
+			},
+			"provider": "nextcloud-server",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "Advisory, pin drift, token expiry and automatic update outcomes go to the notification centre (the advisory digest subject is not rendered, see adv-digest)."
 		},
 		{
 			"id": "adm-email",
 			"area": "admin",
 			"name": "Send alerts by e-mail.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "grep IMailer in lib: no hits; lib/Service/AutoUpdate/AutoUpdateNotifier.php:92 (notifications only)",
+				"reachedOn": "Nextcloud notifications app e-mail setting"
+			},
+			"provider": "nextcloud-server",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "medium",
+			"note": "Versioniq sends no e-mail itself; alerts reach e-mail only if the notifications app's own e-mail forwarding of unread notifications is on."
 		},
 		{
 			"id": "adm-webhook",
 			"area": "admin",
 			"name": "Send alerts to a chat channel or a webhook.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "no",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "none",
+				"evidence": "grep webhook in lib and src: no hits",
+				"reachedOn": "nothing"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "No chat or webhook delivery."
 		},
 		{
 			"id": "adm-api",
 			"area": "admin",
 			"name": "Drive every action through a documented API.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "lib/Controller/ApiController.php:53, openapi.json:1",
+				"reachedOn": "OCS API under /ocs/v2.php/apps/versioniq/api"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "Every UI action is an OCS route with typed responses; install and list are also occ commands."
 		},
 		{
 			"id": "adm-openapi",
 			"area": "admin",
 			"name": "Publish an OpenAPI description of the API.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "openapi.json:1",
+				"reachedOn": "openapi.json in the app package"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "A generated OpenAPI 3.0.3 description ships with the app."
 		},
 		{
 			"id": "adm-i18n",
 			"area": "admin",
 			"name": "Use the interface in Dutch and other languages.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "l10n/nl.json:1, src/App.vue:1999, src/App.vue:2107, src/App.vue:2229",
+				"reachedOn": "whole admin page"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "Strings go through t() and a Dutch translation ships, but a good part of the Apps tab (safe mode, dry run, pick an installed app, result grid, downgrade warning) is hardcoded English."
 		},
 		{
 			"id": "adm-a11y",
 			"area": "admin",
 			"name": "Use the interface with a keyboard and a screen reader.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:1923, src/App.vue:337, src/App.vue:1963, src/components/HistoryPanel.vue:145",
+				"reachedOn": "whole admin page"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "medium",
+			"note": "Skip link, a WAI-ARIA tablist with arrow-key support, labelled inputs and scoped table headers are in the code; not verified with a screen reader."
 		},
 		{
 			"id": "adm-settings-integrated",
 			"area": "admin",
 			"name": "Work inside the platform's own admin settings rather than in a separate tool.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "appinfo/info.xml:122, lib/Settings/Admin.php:51",
+				"reachedOn": "Admin settings, Versioniq section"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "Runs as a Nextcloud admin settings section."
 		},
 		{
 			"id": "adm-self-hosted",
 			"area": "admin",
 			"name": "Run fully on premises without a SaaS dependency.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "appinfo/info.xml:11, lib/Service/Source/ForgeRegistry.php:78",
+				"reachedOn": "whole app"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "Runs inside the Nextcloud instance with no SaaS dependency; it does call the public App Store, GitHub and Codeberg APIs unless their base URLs are overridden."
 		},
 		{
 			"id": "adm-open-licence",
 			"area": "admin",
 			"name": "Use it under an open source licence.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "appinfo/info.xml:11, LICENSE:2",
+				"reachedOn": "appinfo licence"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "EUPL-1.2."
 		},
 		{
 			"id": "adm-free",
 			"area": "admin",
 			"name": "Use every feature without a paid plan.",
 			"rowSource": "competitor",
-			"versioniq": "unknown",
+			"versioniq": "yes",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "appinfo/info.xml:11",
+				"reachedOn": "whole app"
+			},
+			"provider": "versioniq",
+			"providerHow": "read-from-code",
+			"feature": "version-management",
+			"featureConfidence": "high",
+			"note": "No paid tier or licence gate in the code."
 		},
 		{
 			"id": "adm-connections-panel",
 			"area": "admin",
 			"name": "See the health of every external integration in one panel.",
 			"rowSource": "own-code",
-			"versioniq": "unknown",
+			"versioniq": "partial",
 			"nextcloud": "unknown",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
-			"easy-updates-manager": "unknown"
+			"easy-updates-manager": "unknown",
+			"built": {
+				"state": "built",
+				"evidence": "src/App.vue:2525, src/components/IntegrationsPanel.vue:30, lib/Settings/connections.json:4, lib/Settings/Admin.php:53",
+				"owner": "ConductionNL/integriq",
+				"reachedOn": "Integrations tab (only when integriq is enabled)"
+			},
+			"provider": "integriq",
+			"providerHow": "read-from-code",
+			"feature": "connection-registry",
+			"featureConfidence": "high",
+			"note": "An Integrations tab lists the App Store, GitHub and advisory feed rows from integriq's registry; it is absent without integriq and has no Codeberg row."
 		}
 	],
 	"pending": []
