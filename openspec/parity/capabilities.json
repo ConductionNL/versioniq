@@ -2257,7 +2257,7 @@
 			"origin": "changelog",
 			"originUrl": "https://wordpress.org/plugins/stops-core-theme-and-plugin-updates/#developers",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
@@ -2273,11 +2273,11 @@
 			"featureConfidence": "medium",
 			"note": "An install through Versioniq keeps the previous enabled state, so it does not leave an app disabled; an app disabled by another path is neither reported nor re-enabled.",
 			"evidence": {
-				"easy-updates-manager": "Premium, docs: auto-update protection detects plugins deactivated by an update, re-activates them and reports by e-mail (https://easyupdatesmanager.com/knowledge-base/auto-update-protection-premium/); changelog 9.0.18 reactivates in dependency order.",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
-				"renovate": "not checked: row added after this column was read on 2026-09-26",
-				"dependabot": "not checked: row added after this column was read on 2026-09-26",
-				"osv-scanner": "not checked: row added after this column was read on 2026-09-26"
+				"nextcloud": "During a server upgrade, incompatible apps are disabled and reported ('incompatibleAppDisabled' in the occ upgrade output, core/Command/Upgrade.php:161, and logged at lib/private/Updater.php:502-503). Auto-disabled apps are then updated from the store and re-enabled with their previous state, including groups (lib/private/Updater.php:258-263,409-417). An app with no compatible release stays disabled, with only a log line and no notification.",
+				"renovate": "not checked: no analog for an app enabled state in a repository dependency bot.",
+				"dependabot": "not checked: a dependency in a manifest has no enabled or disabled state, so leaving an app disabled has no counterpart in a pull-request-based updater.",
+				"osv-scanner": "not checked: packages have no enabled or disabled state in a lockfile scanner, and fix never installs (docs/guided-remediation.md:76-77); the row has no counterpart and the docs do not say.",
+				"easy-updates-manager": "Premium, docs: auto-update protection detects plugins deactivated by an update, re-activates them and reports by e-mail (https://easyupdatesmanager.com/knowledge-base/auto-update-protection-premium/); changelog 9.0.18 reactivates in dependency order."
 			}
 		},
 		{
@@ -2606,10 +2606,10 @@
 			"origin": "featureRequest",
 			"originUrl": "https://wordpress.org/support/topic/block-auto-update-but-not-the-update-notification-of-avaiable-update/",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
-			"renovate": "unknown",
-			"dependabot": "unknown",
-			"osv-scanner": "unknown",
+			"nextcloud": "no",
+			"renovate": "yes",
+			"dependabot": "no",
+			"osv-scanner": "partial",
 			"easy-updates-manager": "partial",
 			"built": {
 				"state": "built",
@@ -2622,11 +2622,11 @@
 			"featureConfidence": "medium",
 			"note": "A pinned app's version list still shows newer versions when opened, but nothing signals that one exists (see inv-update-available).",
 			"evidence": {
-				"easy-updates-manager": "Blocking removes the update from the transient, so the new version disappears (includes/MPSUM_Disable_Updates.php:295-303); support suggested manual mode with automatic updates off instead, which keeps the notice but does not block a manual update.",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
-				"renovate": "not checked: row added after this column was read on 2026-09-26",
-				"dependabot": "not checked: row added after this column was read on 2026-09-26",
-				"osv-scanner": "not checked: row added after this column was read on 2026-09-26"
+				"nextcloud": "No pin or update block exists; the only update skip is an app folder containing .git (lib/private/Installer.php:375-377), a developer checkout marker. A .git app is excluded from update checks entirely, so no newer version is shown for it (lib/private/Installer.php:375, apps/updatenotification/lib/Controller/APIController.php:110-117).",
+				"renovate": "Instead of ignoreDeps, dependencyDashboardApproval (lib/config/options/index.ts:911) keeps a blocked update listed under \"Pending Approval\" on the dashboard (lib/workers/repository/dependency-dashboard.ts:500-507), and closed-PR ignores are listed under \"PR Closed (Blocked)\" (dependency-dashboard.ts:618-619).",
+				"dependabot": "Core: ignored versions are removed before a target is chosen (common/lib/dependabot/package/package_latest_version_finder.rb:148), and an ignore command closes the pull request and stops further ones (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands); a newer version of an ignored dependency is not surfaced. Security alerts still fire for vulnerable versions (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alerts).",
+				"osv-scanner": ",upgrade-config=<package>:none only limits fix and update (docs/guided-remediation.md:741-756); scan keeps reporting that package's advisories with their Fixed Version (docs/output.md:29), so a newer version stays visible, but only when it fixes an advisory.",
+				"easy-updates-manager": "Blocking removes the update from the transient, so the new version disappears (includes/MPSUM_Disable_Updates.php:295-303); support suggested manual mode with automatic updates off instead, which keeps the notice but does not block a manual update."
 			}
 		},
 		{
@@ -2636,9 +2636,9 @@
 			"origin": "featureRequest",
 			"originUrl": "https://wordpress.org/support/topic/suggestion-and-issues-easy-updates-manager-9-0-19/",
 			"versioniq": "no",
-			"nextcloud": "unknown",
-			"renovate": "unknown",
-			"dependabot": "unknown",
+			"nextcloud": "no",
+			"renovate": "partial",
+			"dependabot": "partial",
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "partial",
 			"built": {
@@ -2652,11 +2652,11 @@
 			"featureConfidence": "medium",
 			"note": "Pins live in Versioniq only; the platform's app list shows no pin and still offers the update.",
 			"evidence": {
-				"easy-updates-manager": "EUM rewrites the core auto-update column (main.php:745-747, 787-900) but a user reported blocked plugins still showing auto-updates enabled on Installed Plugins; support passed it to development (2024-11).",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
-				"renovate": "not checked: row added after this column was read on 2026-09-26",
-				"dependabot": "not checked: row added after this column was read on 2026-09-26",
-				"osv-scanner": "not checked: row added after this column was read on 2026-09-26"
+				"nextcloud": "No pin or update block exists; the only update skip is an app folder containing .git (lib/private/Installer.php:375-377), a developer checkout marker. The app list shows name, version, level and groups only (apps/appstore/src/components/AppTable/AppTableRow.vue:62-110).",
+				"renovate": "Blocked updates show on the dashboard issue inside the forge (\"PR Closed (Blocked)\", \"Pending Approval\", dependency-dashboard.ts:500-619), but the package manifest or registry view itself shows nothing.",
+				"dependabot": "Closed service: ignores live in dependabot.yml or are shown per dependency with \"@dependabot show X ignore conditions\" (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands); the dependency graph list does not mark ignored dependencies in the docs I read (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/explore-dependencies).",
+				"osv-scanner": "not checked: the block is a per-run flag (cmd/osv-scanner/fix/command.go:154-158) and the tool writes nothing to npm or Maven that would show it there; the row has no clear counterpart and the docs do not say.",
+				"easy-updates-manager": "EUM rewrites the core auto-update column (main.php:745-747, 787-900) but a user reported blocked plugins still showing auto-updates enabled on Installed Plugins; support passed it to development (2024-11)."
 			}
 		},
 		{
@@ -3307,10 +3307,10 @@
 			"origin": "featureRequest",
 			"originUrl": "https://wordpress.org/support/topic/enable-email-notifications-only-for-failed-updates/",
 			"versioniq": "no",
-			"nextcloud": "unknown",
-			"renovate": "unknown",
-			"dependabot": "unknown",
-			"osv-scanner": "unknown",
+			"nextcloud": "no",
+			"renovate": "partial",
+			"dependabot": "no",
+			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "none",
@@ -3323,11 +3323,11 @@
 			"featureConfidence": "medium",
 			"note": "Success and failure are both always sent to every admin; there is no failures-only option.",
 			"evidence": {
-				"easy-updates-manager": "Support answered that the plugin does not offer it and logged it as a feature request (2024-11); the e-mail is on or off per core, plugin, theme and translation (includes/MPSUM_Send_Email_Notifications.php:32-50).",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
-				"renovate": "not checked: row added after this column was read on 2026-09-26",
-				"dependabot": "not checked: row added after this column was read on 2026-09-26",
-				"osv-scanner": "not checked: row added after this column was read on 2026-09-26"
+				"nextcloud": "No automatic updates exist; the only update background job notifies and never installs (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154). Manual update failures show an error toast to the admin who ran them (apps/appstore/src/store/updates.ts:56).",
+				"renovate": "With automerge (lib/config/options/index.ts:2376) successful updates merge silently as branch commits (automergeType branch, lib/config/options/index.ts:2383), while a failed branch automerge raises a PR and notification (suppressNotifications branchAutomergeFailure, lib/config/options/index.ts:3186-3189); there is no alert channel beyond the forge.",
+				"dependabot": "Closed service: successful updates arrive as pull requests that notify watchers, and failed jobs only show in the job list and logs (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-job-logs); being notified when a job fails is an open feature request (https://github.com/dependabot/dependabot-core/issues/3509), so there is no failures-only alert.",
+				"osv-scanner": "There are no automatic updates to report on: the CLI surface is scan, fix, update and experimental-mcp (cmd/osv-scanner/main.go:16-19), and the scheduled GitHub workflow only scans (docs/github-action.md:70-72).",
+				"easy-updates-manager": "Support answered that the plugin does not offer it and logged it as a feature request (2024-11); the e-mail is on or off per core, plugin, theme and translation (includes/MPSUM_Send_Email_Notifications.php:32-50)."
 			}
 		},
 		{
@@ -3337,9 +3337,9 @@
 			"origin": "featureRequest",
 			"originUrl": "https://wordpress.org/support/topic/update-order-2/",
 			"versioniq": "no",
-			"nextcloud": "unknown",
-			"renovate": "unknown",
-			"dependabot": "unknown",
+			"nextcloud": "no",
+			"renovate": "partial",
+			"dependabot": "no",
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
@@ -3353,11 +3353,11 @@
 			"featureConfidence": "medium",
 			"note": "No update order between apps.",
 			"evidence": {
-				"easy-updates-manager": "A user asked whether updates can respect an order (a WooCommerce helper before WooCommerce); support asked a question and no feature followed. Core runs updates in one batch (includes/MPSUM_Disable_Updates.php:190-194).",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
-				"renovate": "not checked: row added after this column was read on 2026-09-26",
-				"dependabot": "not checked: row added after this column was read on 2026-09-26",
-				"osv-scanner": "not checked: row added after this column was read on 2026-09-26"
+				"nextcloud": "No automatic updates exist; the only update background job notifies and never installs (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154). A server upgrade updates enabled store apps in list order, with no dependency ordering (lib/private/Updater.php:258-263,392-420).",
+				"renovate": "lib/config/options/index.ts:2308 prPriority orders PR creation per packageRule (higher first), but that orders creation only and does not hold one update until another has merged.",
+				"dependabot": "Core: ungrouped dependencies are processed in random order (updater/lib/dependabot/updater/operations/update_all_versions.rb:93, .shuffle); groups put related dependencies in one pull request (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference) but set no order between them.",
+				"osv-scanner": "not checked: relax relocks the whole dependency graph in one pass (docs/guided-remediation.md:673-676) and patches are ordered by vulnerabilities fixed (docs/guided-remediation.md:684), but no way to set an order between related packages was found; absence not documented.",
+				"easy-updates-manager": "A user asked whether updates can respect an order (a WooCommerce helper before WooCommerce); support asked a question and no feature followed. Core runs updates in one batch (includes/MPSUM_Disable_Updates.php:190-194)."
 			}
 		},
 		{
