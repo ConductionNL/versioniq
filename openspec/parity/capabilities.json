@@ -1025,7 +1025,7 @@
 			"origin": "featureRequest",
 			"originUrl": "https://github.com/renovatebot/renovate/issues/13012",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
+			"nextcloud": "partial",
 			"renovate": "partial",
 			"dependabot": "yes",
 			"osv-scanner": "partial",
@@ -1041,10 +1041,10 @@
 			"featureConfidence": "low",
 			"note": "Versions are listed live from the store catalogue or forge release list, so a deleted release drops out; there is no explicit handling of a withdrawn or retracted flag, and a cached package can still be reinstalled.",
 			"evidence": {
+				"nextcloud": "Only releases present in the store's apps.json are offered (lib/private/App/AppStore/Fetcher/AppFetcher.php:69-140), so a release the publisher deletes stops being offered, and a revoked signing certificate blocks install (lib/private/Installer.php:181-199). There is no explicit withdrawn marker and no notice to the admin.",
 				"renovate": "ignoreDeprecated (lib/config/options/index.ts:1925) skips deprecated npm versions and rollbackPrs handles removed versions, but open request 13012 asks for Go retracted versions to be ignored.",
 				"dependabot": "Core: yanked releases are dropped before a target is chosen (common/lib/dependabot/package/package_latest_version_finder.rb:145, :160) and Go module retractions are handled (go_modules/lib/dependabot/go_modules/update_checker/latest_version_finder.rb:38).",
-				"osv-scanner": "The experimental deprecation flag reports installed versions that were yanked from the registry (docs/package-deprecation.md:147-156); whether fix skips yanked versions when choosing a target is decided inside osv-scalibr and was not settled.",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26"
+				"osv-scanner": "The experimental deprecation flag reports installed versions that were yanked from the registry (docs/package-deprecation.md:147-156); whether fix skips yanked versions when choosing a target is decided inside osv-scalibr and was not settled."
 			}
 		},
 		{
@@ -1054,10 +1054,10 @@
 			"origin": "featureRequest",
 			"originUrl": "https://github.com/dependabot/dependabot-core/issues/2247",
 			"versioniq": "no",
-			"nextcloud": "unknown",
-			"renovate": "unknown",
+			"nextcloud": "partial",
+			"renovate": "partial",
 			"dependabot": "no",
-			"osv-scanner": "unknown",
+			"osv-scanner": "no",
 			"easy-updates-manager": "unknown",
 			"built": {
 				"state": "none",
@@ -1070,10 +1070,10 @@
 			"featureConfidence": "medium",
 			"note": "Versions are filtered by direction and pre-release only; there is no long-term support filter.",
 			"evidence": {
+				"nextcloud": "For the server core, the Enterprise channel offers the latest patch level and delays majors, but it is customer-only (apps/updatenotification/src/components/UpdateNotification.vue:298-303). Apps have no long-term support filter: the fetcher always takes the highest compatible release (lib/private/App/AppStore/Fetcher/AppFetcher.php:123-140).",
+				"renovate": "The node versioning treats a release as stable only once its major line has reached LTS (lib/modules/versioning/node/index.ts:51-75), so with ignoreUnstable (lib/config/options/index.ts:1918) only LTS lines are offered; this holds for node versioning only, not as a general option.",
 				"dependabot": "Open feature request ({FR}2247, state OPEN on 2026-09-26); the options reference has no LTS filter (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
-				"renovate": "not checked: row added after this column was read on 2026-09-26",
-				"osv-scanner": "not checked: row added after this column was read on 2026-09-26"
+				"osv-scanner": "The complete remediation flag list offers upgrade levels (major, minor, patch, none) and advisory filters, with no long-term support filter for target versions (docs/guided-remediation.md:701-776, cmd/osv-scanner/fix/command.go:47-205)."
 			}
 		},
 		{
@@ -1588,7 +1588,7 @@
 			"origin": "changelog",
 			"originUrl": "https://github.com/renovatebot/renovate/pull/45371",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "yes",
 			"dependabot": "unknown",
 			"osv-scanner": "no",
@@ -1604,10 +1604,10 @@
 			"featureConfidence": "medium",
 			"note": "Versioniq changes versions of one app id; it cannot move an install to a renamed or successor app, which its own app_versions to versioniq rename had to do with repair steps.",
 			"evidence": {
+				"nextcloud": "Apps that moved into the server are kept in a hardcoded list only to hide them from the upgrade check (apps/updatenotification/lib/Controller/APIController.php:37-46,86). No successor mapping or replace action exists.",
 				"renovate": "replacementName and replacementVersion (lib/config/options/index.ts:1732-1763) raise a replacement PR, with replacement presets maintained in lib/config/presets/internal/replacements.preset.ts (PR 45371 added one on 2026-09-18).",
 				"dependabot": "not checked: no feature was found that swaps a deprecated or renamed dependency for its successor.",
-				"osv-scanner": "Deprecation is reported as a boolean only, with no successor named (docs/package-deprecation.md:147-152), and remediation only changes versions of existing packages (docs/guided-remediation.md:27-35).",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26"
+				"osv-scanner": "Deprecation is reported as a boolean only, with no successor named (docs/package-deprecation.md:147-152), and remediation only changes versions of existing packages (docs/guided-remediation.md:27-35)."
 			}
 		},
 		{
@@ -2122,8 +2122,8 @@
 			"name": "Get warned when a new version was published by a different maintainer than the installed one.",
 			"rowSource": "competitor",
 			"versioniq": "no",
-			"nextcloud": "unknown",
-			"renovate": "unknown",
+			"nextcloud": "no",
+			"renovate": "partial",
 			"dependabot": "partial",
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "unknown",
@@ -2138,10 +2138,10 @@
 			"featureConfidence": "medium",
 			"note": "Versioniq checks checksums and signatures, not whether the publisher of a release changed.",
 			"evidence": {
-				"dependabot": "dependabot-core v0.397.0: the pull request message carries a maintainer changes section for npm and bun (common/lib/dependabot/pull_request_creator/message_builder/metadata_presenter.rb:177, npm_and_yarn/lib/dependabot/npm_and_yarn/metadata_finder.rb:41); a warning in the proposed change, not a block, and only for some ecosystems.",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
-				"renovate": "not checked: row added after this column was read on 2026-09-26",
-				"osv-scanner": "not checked: row added after this column was read on 2026-09-26"
+				"nextcloud": "The only signer check is that the certificate CN equals the app id and chains to the Nextcloud CA (lib/private/Installer.php:201-229). The signer is not compared with the one of the installed version.",
+				"renovate": "The PR body warns when the current npm release had an attestation and the new one has none, telling the reviewer to verify the release was published by the expected author (lib/workers/repository/update/pr/index.ts:142-156); maintainer identity itself is not compared.",
+				"osv-scanner": "not checked: no maintainer or publisher data appears among the documented output fields (docs/output.md:22-37), and no publisher-change check was found in cmd/, internal/ or pkg/ at v2.6.0; absence not documented.",
+				"dependabot": "dependabot-core v0.397.0: the pull request message carries a maintainer changes section for npm and bun (common/lib/dependabot/pull_request_creator/message_builder/metadata_presenter.rb:177, npm_and_yarn/lib/dependabot/npm_and_yarn/metadata_finder.rb:41); a warning in the proposed change, not a block, and only for some ecosystems."
 			}
 		},
 		{
@@ -2991,7 +2991,7 @@
 			"origin": "featureRequest",
 			"originUrl": "https://github.com/renovatebot/renovate/issues/9739",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "partial",
 			"dependabot": "partial",
 			"osv-scanner": "unknown",
@@ -3007,10 +3007,10 @@
 			"featureConfidence": "medium",
 			"note": "Each app is updated on its own policy; nothing keeps related apps on matching versions.",
 			"evidence": {
+				"nextcloud": "No automatic updates exist; the only update background job notifies and never installs (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154). Bundles install a set of apps together once (lib/private/Installer.php:473-485), but their versions are not kept in step.",
 				"renovate": "groupName (lib/config/options/index.ts:2669) batches related updates in one PR, but open request 9739 (Sync versions within a group) shows members are not held on one version.",
 				"dependabot": "Service config and core: groups by name pattern update related dependencies together in one pull request (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference groups; updater/lib/dependabot/dependency_group_engine.rb); matching versions across the group are not enforced.",
-				"osv-scanner": "not checked: relax relocks the whole graph together (docs/guided-remediation.md:673-676), but no way to declare a group that must move in step was found; absence not documented.",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26"
+				"osv-scanner": "not checked: relax relocks the whole graph together (docs/guided-remediation.md:673-676), but no way to declare a group that must move in step was found; absence not documented."
 			}
 		},
 		{
@@ -3020,7 +3020,7 @@
 			"origin": "changelog",
 			"originUrl": "https://github.com/renovatebot/renovate/pull/45721",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "yes",
 			"dependabot": "partial",
 			"osv-scanner": "no",
@@ -3036,10 +3036,10 @@
 			"featureConfidence": "medium",
 			"note": "The nightly job applies each app's candidate through the installer; there is no queue that tests each update on top of the previous ones.",
 			"evidence": {
+				"nextcloud": "No automatic updates exist; the only update background job notifies and never installs (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154). The web UI's one-at-a-time request queue (apps/appstore/src/service/api.ts, PQueue concurrency 1) does no testing.",
 				"renovate": "Merged 2026-09-09: GitHub merge queues without automerge (PR 45721), and GitLab merge trains through the merge queue API (PR 45722, 2026-09-09).",
 				"dependabot": "The merge queue is a GitHub platform feature that auto-merged Dependabot pull requests can enter (https://docs.github.com/en/code-security/tutorials/secure-your-dependencies/automate-dependabot-with-actions); core recognises a queued pull request (common/lib/dependabot/pull_request_updater/github.rb:244) but Dependabot does not queue updates itself.",
-				"osv-scanner": "Lane downgrade from partial: only a documented sample script does this, not the tool. The documented sample script applies patches progressively, each on top of the previous ones, and keeps them only while npm test passes (scripts/examples/auto_guided_remediation.py:4, :95-112, docs/guided-remediation.md:618-622); a sample, not a built-in queue.",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26"
+				"osv-scanner": "Lane downgrade from partial: only a documented sample script does this, not the tool. The documented sample script applies patches progressively, each on top of the previous ones, and keeps them only while npm test passes (scripts/examples/auto_guided_remediation.py:4, :95-112, docs/guided-remediation.md:618-622); a sample, not a built-in queue."
 			}
 		},
 		{
@@ -3049,10 +3049,10 @@
 			"origin": "featureRequest",
 			"originUrl": "https://github.com/dependabot/dependabot-core/issues/1778",
 			"versioniq": "no",
-			"nextcloud": "unknown",
-			"renovate": "unknown",
+			"nextcloud": "no",
+			"renovate": "yes",
 			"dependabot": "no",
-			"osv-scanner": "unknown",
+			"osv-scanner": "no",
 			"easy-updates-manager": "unknown",
 			"built": {
 				"state": "none",
@@ -3065,10 +3065,10 @@
 			"featureConfidence": "medium",
 			"note": "One schedule and one window apply to all policies; there is no schedule per update type.",
 			"evidence": {
+				"nextcloud": "No automatic updates exist; the only update background job notifies and never installs (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154).",
+				"renovate": "packageRules with matchUpdateTypes (lib/config/options/index.ts:1798) or the major, minor and patch config objects (lib/config/options/index.ts:1999-2017) each take their own schedule (lib/config/options/index.ts:1027), for example patches any time and majors monthly.",
 				"dependabot": "Open feature request for several schedule and update-type combinations on one ecosystem and directory (https://github.com/dependabot/dependabot-core/issues/1778, OPEN on 2026-09-26); schedule is one per updates entry (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
-				"renovate": "not checked: row added after this column was read on 2026-09-26",
-				"osv-scanner": "not checked: row added after this column was read on 2026-09-26"
+				"osv-scanner": "The tool has no update scheduler: the CLI surface is scan, fix, update and experimental-mcp (cmd/osv-scanner/main.go:16-19), and the only scheduling is a user-written GitHub Actions cron that scans (docs/github-action.md:70-99)."
 			}
 		},
 		{
@@ -3756,7 +3756,7 @@
 			"origin": "featureRequest",
 			"originUrl": "https://github.com/renovatebot/renovate/issues/8614",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "no",
 			"dependabot": "partial",
 			"osv-scanner": "partial",
@@ -3772,10 +3772,10 @@
 			"featureConfidence": "low",
 			"note": "Version listings carry version, date and notes; no licence is read or compared between versions.",
 			"evidence": {
+				"nextcloud": "The licence of the latest release is shown (apps/appstore/lib/Controller/ApiController.php:463) but never compared across versions.",
 				"renovate": "Open feature request 8614 (Warn in PRs if a change in license has been detected); the option schema at lib/config/options/index.ts has no licence option.",
 				"dependabot": "Closed service: the dependency review action on a pull request shows licence information and fails on licences outside an allow or deny list (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependency-review); a change warning is a separate action, not Dependabot.",
-				"osv-scanner": "A rescan with ,licenses flags a package whose new version falls outside the allowlist (docs/license-scanning.md:23-36), but there is no comparison of old and new licence and fix does not check licences (docs/guided-remediation.md:701-776).",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26"
+				"osv-scanner": "A rescan with ,licenses flags a package whose new version falls outside the allowlist (docs/license-scanning.md:23-36), but there is no comparison of old and new licence and fix does not check licences (docs/guided-remediation.md:701-776)."
 			}
 		},
 		{
@@ -3785,7 +3785,7 @@
 			"origin": "changelog",
 			"originUrl": "https://github.com/google/osv-scanner/pull/2216",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "yes",
@@ -3801,10 +3801,10 @@
 			"featureConfidence": "medium",
 			"note": "Versioniq has no advisory exceptions to go stale, see adv-dismiss.",
 			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 link (core/Notification/CoreNotifier.php:59).",
+				"renovate": "not checked: no warning for an ignoreDeps entry or packageRule that no longer matches any dependency was found in the options or dashboard code.",
 				"dependabot": "not checked: auto-dismissed alerts reopen when alert metadata changes (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-auto-triage-rules), but no warning that a dismissal or ignore rule no longer matches anything was found.",
-				"osv-scanner": "v2.2.4 (2025-10-29) warns about ignore entries not found during a scan (CHANGELOG.md:232, internal/config/manager.go:71-90, pkg/osvscanner/osvscanner.go:314).",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
-				"renovate": "not checked: row added after this column was read on 2026-09-26"
+				"osv-scanner": "v2.2.4 (2025-10-29) warns about ignore entries not found during a scan (CHANGELOG.md:232, internal/config/manager.go:71-90, pkg/osvscanner/osvscanner.go:314)."
 			}
 		},
 		{
@@ -3814,7 +3814,7 @@
 			"origin": "featureRequest",
 			"originUrl": "https://github.com/google/osv-scanner/issues/1442",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
 			"osv-scanner": "partial",
@@ -3830,10 +3830,10 @@
 			"featureConfidence": "medium",
 			"note": "A matching advisory counts immediately; urgency split is urgent versus digest, not a grace period.",
 			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 link (core/Notification/CoreNotifier.php:59).",
+				"renovate": "not checked: Renovate has no pass or fail state for advisories; severity is available to templates (lib/util/template/index.ts:260) but no severity-based grace option exists in lib/config/options/index.ts.",
 				"dependabot": "not checked: auto-triage rules act on severity (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-auto-triage-rules) but I found no grace period before an alert counts as failing.",
-				"osv-scanner": "Ignores take a per-advisory ignoreUntil date (docs/configuration.md:25-41), but a grace period per severity is the open request itself.",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
-				"renovate": "not checked: row added after this column was read on 2026-09-26"
+				"osv-scanner": "Ignores take a per-advisory ignoreUntil date (docs/configuration.md:25-41), but a grace period per severity is the open request itself."
 			}
 		},
 		{
@@ -3843,8 +3843,8 @@
 			"origin": "featureRequest",
 			"originUrl": "https://github.com/google/osv-scanner/issues/925",
 			"versioniq": "partial",
-			"nextcloud": "unknown",
-			"renovate": "unknown",
+			"nextcloud": "no",
+			"renovate": "partial",
 			"dependabot": "yes",
 			"osv-scanner": "partial",
 			"easy-updates-manager": "unknown",
@@ -3859,10 +3859,10 @@
 			"featureConfidence": "medium",
 			"note": "When no published version resolves the advisory, recommendedVersion stays null and no safe version is shown; the reason (no fix yet, blocked by server compatibility) is not explained.",
 			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 link (core/Notification/CoreNotifier.php:59). The nearest thing is the missing-dependencies list for incompatible releases (apps/appstore/lib/Controller/ApiController.php:133-135), which is unrelated to advisories.",
+				"renovate": "The dashboard OSV summary with value unresolved lists advisories with no fix applied (lib/workers/repository/dependency-dashboard.ts:802-820), and \"No fixed version available\" is logged (lib/workers/repository/process/vulnerabilities.ts:585); a blocking dependency is not explained.",
 				"dependabot": "Core: when no security update is possible the job records security_update_not_possible with the latest allowed version, the lowest fixed version and the conflicting dependencies that block it, or all_versions_ignored when ignores block it (updater/lib/dependabot/updater/security_update_helpers.rb:47, :73, :84-106); closed service: each case is explained in https://docs.github.com/en/code-security/reference/supply-chain-security/troubleshoot-dependabot/dependabot-errors.",
-				"osv-scanner": "fix reports unfixable counts and marks vulnerabilities unactionable (docs/guided-remediation.md:125-126, :229), but the reason is the open request.",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
-				"renovate": "not checked: row added after this column was read on 2026-09-26"
+				"osv-scanner": "fix reports unfixable counts and marks vulnerabilities unactionable (docs/guided-remediation.md:125-126, :229), but the reason is the open request."
 			}
 		},
 		{
@@ -3872,7 +3872,7 @@
 			"origin": "featureRequest",
 			"originUrl": "https://github.com/google/osv-scanner/issues/1208",
 			"versioniq": "no",
-			"nextcloud": "unknown",
+			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "partial",
 			"osv-scanner": "no",
@@ -3888,10 +3888,10 @@
 			"featureConfidence": "medium",
 			"note": "Bundled libraries are not inspected, so there is no path from an app to a vulnerable library.",
 			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 link (core/Notification/CoreNotifier.php:59). Bundled app libraries are not inventoried.",
+				"renovate": "not checked: no dependency-path output for transitive vulnerabilities found in lib/workers/repository/process/vulnerabilities.ts or the dashboard.",
 				"dependabot": "Closed service: the dependency graph and SBOM carry transitive paths (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/establish-provenance-and-integrity/export-dependencies-as-sbom) and alerts cover transitive dependencies (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alerts); I did not confirm that the alert page names the direct dependency that pulled the vulnerable one in.",
-				"osv-scanner": "Findings show the package and its source file (docs/output.md:22-30); showing the dependency path for transitive findings is an open request.",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
-				"renovate": "not checked: row added after this column was read on 2026-09-26"
+				"osv-scanner": "Findings show the package and its source file (docs/output.md:22-30); showing the dependency path for transitive findings is an open request."
 			}
 		},
 		{
@@ -3901,10 +3901,10 @@
 			"origin": "changelog",
 			"originUrl": "https://github.blog/changelog/2026-07-28-dependabot-alerts-on-malicious-packages-across-more-ecosystems/",
 			"versioniq": "no",
-			"nextcloud": "unknown",
-			"renovate": "unknown",
+			"nextcloud": "no",
+			"renovate": "partial",
 			"dependabot": "yes",
-			"osv-scanner": "unknown",
+			"osv-scanner": "yes",
 			"easy-updates-manager": "unknown",
 			"built": {
 				"state": "none",
@@ -3917,10 +3917,10 @@
 			"featureConfidence": "medium",
 			"note": "Only the Nextcloud and GitHub security advisory feeds are read; no malicious-package feed.",
 			"evidence": {
+				"nextcloud": "Nothing alerts on installed apps. Certificate revocation through the code signing CRL only blocks new installs and updates of an app whose certificate was revoked (lib/private/Installer.php:181-199). The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 link (core/Notification/CoreNotifier.php:59).",
+				"renovate": "OSV MAL- advisories mark a dependency as malicious-version-in-use or skip a malicious update (lib/workers/repository/process/vulnerabilities.ts:299-353, extract-update.ts:262-290), but the alert is only a warning log, not a PR or dashboard entry (docs/usage/configuration-options.md:3103-3107).",
 				"dependabot": "Closed service: Dependabot malware alerts flag dependencies matched to malware advisories, now fed from the OpenSSF malicious-packages repository across npm, PyPI and more (https://docs.github.com/en/code-security/concepts/supply-chain-security/malware-alerts).",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
-				"renovate": "not checked: row added after this column was read on 2026-09-26",
-				"osv-scanner": "not checked: row added after this column was read on 2026-09-26"
+				"osv-scanner": "OSV.dev imports the OpenSSF Malicious Packages source (https://google.github.io/osv.dev/data/), and the scanner reports every OSV record matching an installed package (docs/output.md:22-30), so known malicious packages are flagged in the same scan."
 			}
 		},
 		{
@@ -3930,8 +3930,8 @@
 			"origin": "changelog",
 			"originUrl": "https://github.blog/changelog/2026-04-07-dependabot-alerts-are-now-assignable-to-ai-agents-for-remediation/",
 			"versioniq": "no",
-			"nextcloud": "unknown",
-			"renovate": "unknown",
+			"nextcloud": "no",
+			"renovate": "yes",
 			"dependabot": "yes",
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "unknown",
@@ -3946,10 +3946,10 @@
 			"featureConfidence": "medium",
 			"note": "Advisories go to every admin; they cannot be assigned.",
 			"evidence": {
+				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 link (core/Notification/CoreNotifier.php:59).",
+				"renovate": "vulnerabilityAlerts is a mergeable config object (lib/config/options/index.ts:2428) that takes assignees, reviewers and labels for security PRs, and assigneesFromCodeOwners (lib/config/options/index.ts:2731) assigns them from CODEOWNERS.",
 				"dependabot": "Closed service: alerts take assignees (users, teams or AI agents) from the alert page (https://docs.github.com/en/code-security/how-tos/manage-security-alerts/manage-dependabot-alerts/view-dependabot-alerts), with repository_vulnerability_alert.assign audit events (https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/audit-log-events-for-your-organization).",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
-				"renovate": "not checked: row added after this column was read on 2026-09-26",
-				"osv-scanner": "not checked: row added after this column was read on 2026-09-26"
+				"osv-scanner": "not checked: findings are a report, an exit code and SARIF for GitHub code scanning (docs/output.md:790-799, docs/github-action.md:105-110); the tool has no assignment of findings, and any assignment would happen in GitHub, which was not checked."
 			}
 		},
 		{
@@ -5339,8 +5339,8 @@
 			"origin": "changelog",
 			"originUrl": "https://github.com/google/osv-scanner/pull/2256",
 			"versioniq": "no",
-			"nextcloud": "unknown",
-			"renovate": "unknown",
+			"nextcloud": "no",
+			"renovate": "no",
 			"dependabot": "yes",
 			"osv-scanner": "yes",
 			"easy-updates-manager": "unknown",
@@ -5355,10 +5355,10 @@
 			"featureConfidence": "medium",
 			"note": "No AI assistant or MCP surface.",
 			"evidence": {
+				"nextcloud": "Nothing in server v34.0.4's apps management or updatenotification code exposes version or advisory data to an assistant or an MCP server (apps/appstore, apps/updatenotification). Nextcloud's AI apps (assistant, context agent) are separate apps outside this repo, and no advisory data exists for them to explain.",
+				"renovate": "Renovate ships no AI assistant or MCP server; the only MCP server listed is the third-party renovate-config-debugger for config debugging (docs/usage/community-tools.md:63), not advisory checks.",
 				"dependabot": "The official GitHub MCP server has a dependabot toolset with list_dependabot_alerts and get_dependabot_alert (https://github.com/github/github-mcp-server), and alerts can be assigned to AI agents that propose a fix (https://github.blog/changelog/2026-04-07-dependabot-alerts-are-now-assignable-to-ai-agents-for-remediation/).",
-				"osv-scanner": "Experimental osv-scanner experimental-mcp since v2.2.4 (2025-10-29) exposes scan_vulnerable_dependencies, get_vulnerability_details and ignore_vulnerability tools (cmd/osv-scanner/mcp/command.go:60-86, CHANGELOG.md:230).",
-				"nextcloud": "not checked: row added after this column was read on 2026-09-26",
-				"renovate": "not checked: row added after this column was read on 2026-09-26"
+				"osv-scanner": "Experimental osv-scanner experimental-mcp since v2.2.4 (2025-10-29) exposes scan_vulnerable_dependencies, get_vulnerability_details and ignore_vulnerability tools (cmd/osv-scanner/mcp/command.go:60-86, CHANGELOG.md:230)."
 			}
 		}
 	],
