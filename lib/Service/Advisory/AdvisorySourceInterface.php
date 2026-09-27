@@ -37,7 +37,11 @@ interface AdvisorySourceInterface {
 	 *
 	 * Each advisory record has:
 	 *   - `id`: the advisory identifier (e.g. GHSA id or App Store advisory id)
-	 *   - `severity`: one of `low` | `medium` | `high` | `critical` (lower-cased)
+	 *   - `severity`: one of `low` | `medium` | `high` | `critical` | `unknown`
+	 *     (lower-cased). `unknown` means the advisory carries no severity, or
+	 *     one outside the four levels; it is never guessed to a level. Every
+	 *     source maps what it receives through {@see AdvisorySeverity::normalize()}
+	 *     so the same advisory reads the same from any source (issue #443).
 	 *   - `summary`: a short human-readable summary
 	 *   - `affected`: a list of version-range clauses (e.g. `>= 1.0.0`, `< 1.2.3`)
 	 *     that MUST ALL hold for a version to be affected (AND semantics). An

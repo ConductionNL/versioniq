@@ -385,4 +385,27 @@ final class AppStoreSourceTest extends TestCase {
 		$this->assertSame('5.4.0', $second['versions'][0]['version'], 'the second app must be served from cache, with its own payload');
 		$this->assertSame('1.14.0', $third['versions'][0]['version'], 'the third app must be served from cache, with its own payload');
 	}
+
+	/**
+	 * Issue #443: an advisory without a severity reads `unknown` from every
+	 * source, as AdvisorySourceInterface documents, instead of `medium` here
+	 * and `unknown` from the Nextcloud feed.
+	 *
+	 * @spec openspec/specs/security-advisory-correlation/spec.md
+	 */
+	public function testAnAdvisoryWithoutASeverityIsUnknown(): void {
+		$source = $this->buildSource([
+			'id' => 'deck',
+			'releases' => [['version' => '1.0.0']],
+			'securityAdvisories' => [
+				['id' => 'NC-1', 'summary' => 'Unscored'],
+				['id' => 'NC-2', 'summary' => 'Scored', 'severity' => 'HIGH'],
+				['id' => 'NC-3', 'summary' => 'GitHub wording', 'severity' => 'moderate'],
+			],
+		]);
+
+		$result = $source->listAdvisories('deck', $this->binding());
+
+		$this->assertSame(['unknown', 'high', 'medium'], array_column($result['advisories'], 'severity'));
+	}
 }

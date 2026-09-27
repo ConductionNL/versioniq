@@ -195,4 +195,27 @@ final class NextcloudAdvisoryFeedTest extends TestCase {
 		self::assertNotNull($result['error'], 'the failure must be reported');
 		self::assertArrayHasKey('mail', $result['advisories'], 'page one must survive the page-two failure');
 	}
+
+	/**
+	 * Issue #443: the feed lower-cases a present severity and maps GitHub's
+	 * `moderate` to `medium`, like the two Source classes; a missing one is
+	 * `unknown`, the value AdvisorySourceInterface documents.
+	 *
+	 * @spec openspec/specs/security-advisory-correlation/spec.md
+	 */
+	public function testSeverityIsNormalisedToTheDocumentedValues(): void {
+		$unscored = $this->advisory('GHSA-none', [['package' => 'Mail']]);
+		unset($unscored['severity']);
+		$body = json_encode([
+			$unscored,
+			$this->advisory('GHSA-high', [['package' => 'Talk']], 'HIGH'),
+			$this->advisory('GHSA-mod', [['package' => 'Tables']], 'moderate'),
+		], JSON_THROW_ON_ERROR);
+
+		$result = $this->feed([['body' => $body]])->fetchAll();
+
+		self::assertSame('unknown', $result['advisories']['mail'][0]['severity']);
+		self::assertSame('high', $result['advisories']['spreed'][0]['severity']);
+		self::assertSame('medium', $result['advisories']['tables'][0]['severity']);
+	}
 }

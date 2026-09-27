@@ -170,7 +170,7 @@ class NextcloudAdvisoryFeed {
 			return [];
 		}
 
-		$severity = is_string($record['severity'] ?? null) ? (string)$record['severity'] : 'unknown';
+		$severity = AdvisorySeverity::normalize($record['severity'] ?? null);
 		$summary = is_string($record['summary'] ?? null) ? (string)$record['summary'] : '';
 
 		$targets = [];
