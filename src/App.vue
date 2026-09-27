@@ -29,6 +29,7 @@ import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/aut
 import { buildChangelogRange } from './utils/changelog.ts'
 import { tabForHash } from './utils/connectionRegistry.ts'
 import { shouldOfferLkgRollback } from './utils/migrationSafety.ts'
+import { repinApp } from './utils/repin.ts'
 import { isBlockedBySafeMode } from './utils/safeMode.ts'
 import { compareVersions, parseVersionCore } from './utils/versionCompare.ts'
 
@@ -1663,7 +1664,13 @@ async function onRepinRequested (appId: string, version: string): Promise<void> 
 	errorMessage.value = ''
 	try {
 		await ensurePasswordConfirmation()
-		const { metaMessage } = await requestInstall(appId, version)
+		// The drift is usually upward, so re-pin is usually a downgrade: ask
+		// through the same dialog as the version list and send allowDowngrade
+		// once confirmed, or the server refuses it with 409 (#431).
+		const { metaMessage } = await repinApp(appId, version, pinFor(appId)?.driftedTo ?? '', {
+			requestInstall: (id, target, allowDowngrade) => requestInstall(id, target, undefined, false, false, allowDowngrade),
+			confirmDowngrade,
+		})
 		if (metaMessage) {
 			errorMessage.value = metaMessage
 		}

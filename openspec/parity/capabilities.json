@@ -2471,7 +2471,7 @@
 			"area": "pinning",
 			"name": "Restore the pinned version after drift with one action.",
 			"rowSource": "own-code",
-			"versioniq": "partial",
+			"versioniq": "yes",
 			"nextcloud": "no",
 			"renovate": "unknown",
 			"dependabot": "unknown",
@@ -2479,14 +2479,14 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "src/components/PinDriftBanner.vue:97, src/App.vue:1635, lib/Service/InstallerService.php:445",
+				"evidence": "src/components/PinDriftBanner.vue:97, src/App.vue:1670, src/utils/repin.ts:27, lib/Service/InstallerService.php:445",
 				"reachedOn": "Apps tab (drift banner 'Re-pin {version}')"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "version-pinning",
 			"featureConfidence": "high",
-			"note": "The drift banner offers one-click Re-pin, which reinstalls the pinned version through the normal install path, or accepts the drift. The usual drift is an upward update by Nextcloud's updater, and that re-pin is a downgrade the call does not acknowledge.",
+			"note": "The drift banner offers one-click Re-pin, which reinstalls the pinned version through the normal install path, or accepts the drift. When the pinned version is older than the drifted one (the usual case after Nextcloud's updater), Re-pin opens the downgrade confirmation with its migration preview and sends allowDowngrade once confirmed. Fixed in #431.",
 			"evidence": {
 				"nextcloud": "No pin exists, and downgrade is refused (lib/private/Installer.php:310).",
 				"renovate": "not checked: no repin feature found; depends on pin-drift-detect.",
