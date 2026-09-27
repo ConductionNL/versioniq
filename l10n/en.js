@@ -177,7 +177,10 @@ OC.L10N.register(
         "Simulated": "Simulated",
         "Switched off": "Switched off",
         "Not available": "Not available",
-        "Error": "Error"
+        "Error": "Error",
+        "Update channel:": "Update channel:",
+        "Safe mode (block downgrades, and pre-releases on a stable update channel)": "Safe mode (block downgrades, and pre-releases on a stable update channel)",
+        "Safe mode is enabled. Disable it to downgrade or to install a pre-release.": "Safe mode is enabled. Disable it to downgrade or to install a pre-release."
     },
     "nplurals=2; plural=(n != 1);"
 )

@@ -204,7 +204,10 @@ OC.L10N.register(
         "Simulated": "Gesimuleerd",
         "Switched off": "Uitgeschakeld",
         "Not available": "Niet beschikbaar",
-        "Error": "Fout"
+        "Error": "Fout",
+        "Update channel:": "Updatekanaal:",
+        "Safe mode (block downgrades, and pre-releases on a stable update channel)": "Veilige modus (blokkeert downgrades, en pre-releases op een stabiel updatekanaal)",
+        "Safe mode is enabled. Disable it to downgrade or to install a pre-release.": "Veilige modus staat aan. Zet deze uit om te downgraden of een pre-release te installeren."
     },
     "nplurals=2; plural=(n != 1);"
 )

@@ -28,6 +28,7 @@ import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/aut
 import { buildChangelogRange } from './utils/changelog.ts'
 import { tabForHash } from './utils/connectionRegistry.ts'
 import { shouldOfferLkgRollback } from './utils/migrationSafety.ts'
+import { isBlockedBySafeMode } from './utils/safeMode.ts'
 import { compareVersions, parseVersionCore } from './utils/versionCompare.ts'
 
 type AppOption = {
@@ -1054,14 +1055,17 @@ async function checkVersions (preserveInstallResult = false): Promise<void> {
 }
 
 /**
+ * Safe mode blocks a downgrade, and a pre-release while the update channel
+ * admits only stable releases (issue #434).
  *
- * @param version
+ * @param version the version the admin wants to install
  */
-function isDowngradeBlockedBySafeMode (version: string): boolean {
-	if (!isSafeMode.value || !installedVersion.value || !version) {
-		return false
-	}
-	return compareVersions(version, installedVersion.value) < 0
+function isBlockedBySafeModeRule (version: string): boolean {
+	return isBlockedBySafeMode(version, {
+		enabled: isSafeMode.value,
+		installedVersion: installedVersion.value,
+		updateChannel: updateChannel.value,
+	})
 }
 
 /**
@@ -1179,8 +1183,8 @@ function appCardFallback (app: AppOption): string {
 
 const filteredVersions = computed(() => {
 	const filter = versionFilter.value.trim().toLowerCase()
-	const list = isSafeMode.value && installedVersion.value
-		? versions.value.filter((version) => !isDowngradeBlockedBySafeMode(version.version))
+	const list = isSafeMode.value
+		? versions.value.filter((version) => !isBlockedBySafeModeRule(version.version))
 		: versions.value
 
 	if (filter === '') {
@@ -1471,8 +1475,8 @@ function onDowngradeResolved (accept: boolean): void {
  * @param version
  */
 function onSelectVersion (version: string): void {
-	if (isDowngradeBlockedBySafeMode(version)) {
-		errorMessage.value = 'Safe mode is enabled. Disable it to downgrade.'
+	if (isBlockedBySafeModeRule(version)) {
+		errorMessage.value = t('versioniq', 'Safe mode is enabled. Disable it to downgrade or to install a pre-release.')
 		return
 	}
 
@@ -1880,7 +1884,7 @@ watch([safeModeEnabled, installedVersion, selectedVersion], () => {
 		return
 	}
 
-	if (safeModeEnabled.value && isDowngradeBlockedBySafeMode(selectedVersion.value)) {
+	if (safeModeEnabled.value && isBlockedBySafeModeRule(selectedVersion.value)) {
 		selectedVersion.value = ''
 	}
 }, { deep: false })
@@ -1987,7 +1991,7 @@ watch(dryRunEnabled, () => {
 					<main :class="$style.mainContent">
 						<div :class="$style.settingsPanel">
 							<p v-if="updateChannel" :class="$style.updateChannel">
-								Update channel: <strong>{{ updateChannel }}</strong>
+								{{ t('versioniq', 'Update channel:') }} <strong>{{ updateChannel }}</strong>
 							</p>
 							<div :class="$style.settingsToggles">
 								<label :class="$style.safeMode">
@@ -1996,7 +2000,7 @@ watch(dryRunEnabled, () => {
 										type="checkbox"
 										:class="$style.safeModeCheckbox"
 										:disabled="isInstallingVersion">
-									<span>Safe mode (block downgrades and respects update channel)</span>
+									<span>{{ t('versioniq', 'Safe mode (block downgrades, and pre-releases on a stable update channel)') }}</span>
 								</label>
 								<label :class="$style.safeMode">
 									<input
