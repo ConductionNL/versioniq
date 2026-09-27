@@ -3822,14 +3822,14 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/Advisory/NextcloudAdvisoryFeed.php:41 (advisory.feed_base override), lib/Service/Advisory/NextcloudAdvisoryFeed.php:44",
-				"reachedOn": "occ config:app:set versioniq advisory.feed_base"
+				"evidence": "lib/Service/Advisory/NextcloudAdvisoryFeed.php:263, lib/Service/Settings/InstanceSettings.php:105, src/components/InstanceSettingsPanel.vue:178",
+				"reachedOn": "Settings tab (Advisory feed address); occ config:app:set versioniq advisory.feed_base"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "low",
-			"note": "The feed URL can be pointed at an internal mirror through an app-config key (meant for e2e fixtures); there is no bundled or importable local database and no UI for it.",
+			"note": "The advisory feed address can point at an internal mirror from the Settings tab (http or https), so an instance without internet access can check advisories against a mirror it hosts. There is no bundled or importable local database, so this stays partial.",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
 				"renovate": "@renovatebot/osv-offline downloads the whole OSV database and queries it locally (vulnerabilities.ts:54-56), but it fetches the database from the internet.",
@@ -4521,7 +4521,7 @@
 			"area": "sources",
 			"name": "Point at a self-hosted or mirrored package registry or app store.",
 			"rowSource": "competitor",
-			"versioniq": "partial",
+			"versioniq": "yes",
 			"nextcloud": "yes",
 			"renovate": "yes",
 			"dependabot": "yes",
@@ -4529,14 +4529,14 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/Source/AppStoreSource.php:327, lib/Service/Source/ForgeRegistry.php:78",
-				"reachedOn": "occ config:app:set versioniq appstore.api_base or forge.{id}.api_base"
+				"evidence": "lib/Service/Source/AppStoreSource.php:327, lib/Service/Source/ForgeRegistry.php:82, lib/Service/Settings/InstanceSettings.php:105, src/components/InstanceSettingsPanel.vue:148, src/components/InstanceSettingsPanel.vue:158, src/components/SourcesPanel.vue:284",
+				"reachedOn": "Settings tab (App Store and GitHub addresses) and Sources tab (self-hosted Forgejo or Gitea host)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "App Store and forge base URLs can be overridden (GitHub Enterprise, self-hosted Forgejo, a store mirror) through app-config keys only; no UI.",
+			"note": "The App Store API address (a store mirror) and the GitHub API and web addresses (GitHub Enterprise, https only) are set on the Settings tab, validated and audited; a self-hosted Forgejo or Gitea host is set on the Sources tab. Blank uses the public default. Page control added in #438.",
 			"evidence": {
 				"nextcloud": "appstoreurl points at a self-hosted store (config/config.sample.php:1402-1408, Fetcher.php:244) and updater.server.url at a custom update server (config/config.sample.php:980, apps/updatenotification/lib/Settings/Admin.php:62-67).",
 				"renovate": "lib/config/options/index.ts:1436 registryUrls, lib/config/options/index.ts:1414 defaultRegistryUrls and lib/config/options/index.ts:675 customDatasources point at mirrors or self-hosted registries; the nextcloud datasource takes any apps.json URL.",
@@ -5023,14 +5023,14 @@
 			"easy-updates-manager": "yes",
 			"built": {
 				"state": "built",
-				"evidence": "lib/BackgroundJob/PruneAuditJob.php:62, lib/BackgroundJob/PruneAuditJob.php:95",
-				"reachedOn": "background job PruneAuditJob"
+				"evidence": "lib/BackgroundJob/PruneAuditJob.php:62, lib/BackgroundJob/PruneAuditJob.php:95, lib/Service/Settings/InstanceSettings.php:105, lib/Controller/SettingsController.php:91, src/components/InstanceSettingsPanel.vue:124",
+				"reachedOn": "Settings tab (Keep history for); background job PruneAuditJob"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "high",
-			"note": "Entries older than audit_retention_days (default 365, floor 30) are pruned daily; the value is set only through occ config.",
+			"note": "Entries older than audit_retention_days (default 365, floor 30, at most 3650) are pruned daily. The value is set on the Settings tab (PUT /api/instance-settings, password-confirmed and audited) or with occ config. Page control added in #438.",
 			"evidence": {
 				"nextcloud": "Size-based rotation of audit.log via log_rotate_size (apps/admin_audit/lib/BackgroundJobs/Rotate.php:37); no time-based retention.",
 				"renovate": "not checked: retention of PR history and Mend job logs is not described in the repo docs.",

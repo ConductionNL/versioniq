@@ -23,6 +23,7 @@ test.describe("admin settings shell", () => {
 			"Trusted sources",
 			"Discover",
 			"Artifact cache",
+			"Settings",
 		]) {
 			await expect(
 				tablist.getByRole("tab", { name, exact: true }),

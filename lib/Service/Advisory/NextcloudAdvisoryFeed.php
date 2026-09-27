@@ -41,7 +41,7 @@ class NextcloudAdvisoryFeed {
 	 * The advisory feed. Overridable via `advisory.feed_base` app config so an
 	 * e2e run can point at a fixture, mirroring how `appstore.api_base` works.
 	 */
-	private const DEFAULT_FEED_URL = 'https://api.github.com/repos/nextcloud/security-advisories/security-advisories';
+	public const DEFAULT_FEED_URL = 'https://api.github.com/repos/nextcloud/security-advisories/security-advisories';
 
 	/**
 	 * Pages to follow before giving up.

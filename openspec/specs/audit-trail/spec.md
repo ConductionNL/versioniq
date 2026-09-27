@@ -182,6 +182,36 @@ The system MUST prune audit entries older than `versioniq.audit_retention_days` 
 
 ---
 
+### Requirement: Instance settings on a page [MVP]
+
+The admin page MUST let an administrator set, without `occ`, the audit retention
+(`audit_retention_days`, 30 to 3650), the number of cached versions per app
+(`artifact_cache_keep`, 0 to 20) and the base URLs that were app-config only: the App Store
+API (`appstore.api_base`, a store mirror), GitHub (`forge.github.api_base` and `web_base`,
+GitHub Enterprise, https only because tokens are sent there) and the advisory feed
+(`advisory.feed_base`, an internal mirror). `GET /api/instance-settings` returns each override
+next to its default; `PUT /api/instance-settings` (admin-only, password-confirmed) validates
+every field before writing any, writes the keys and types the readers use, clears an override
+on a blank URL, and records a `settings` audit entry.
+
+#### Scenario: An admin sets audit retention from the page
+
+@e2e tests/e2e/panels.spec.ts
+
+- **GIVEN** the admin opens the Settings tab
+- **WHEN** they set history retention to 90 days and save
+- **THEN** `audit_retention_days` MUST be stored as the integer 90, which the prune job reads
+- **AND** a value below 30 MUST be refused with HTTP 400 and nothing stored
+
+#### Scenario: An admin points GitHub at GitHub Enterprise
+
+@e2e exclude a GitHub Enterprise host cannot be reached from CI; covered by tests/unit/Service/Settings/InstanceSettingsTest.php and src/components/InstanceSettingsPanel.spec.ts.
+
+- **GIVEN** the admin enters `https://ghe.example.org/api/v3` as the GitHub API address
+- **WHEN** they save
+- **THEN** `forge.github.api_base` MUST hold that address
+- **AND** an `http://` address MUST be refused, since tokens are sent to it
+
 ### Requirement: Pin lifecycle operations are audited [MVP]
 
 The system MUST write audit entries for pin operations: `pin` (on pin creation, including install-then-pin and `overridePin=repin`), `unpin` (on pin removal, including `overridePin=unpin` and Accept→remove), and `pin_drift` (on newly detected drift, with `actor_uid=system`, `from_version` = pinned version, `to_version` = observed version). All writes follow the audit capability's best-effort rule.

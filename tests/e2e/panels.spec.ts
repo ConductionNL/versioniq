@@ -11,6 +11,21 @@ import { openSettings, openTab } from "./helpers.ts";
  * @spec openspec/specs/external-sources/spec.md
  */
 test.describe("capability panels", () => {
+	test("the Settings tab shows the settings that used to be occ-only", async ({
+		page,
+	}) => {
+		await openSettings(page);
+		await openTab(page, "Settings");
+
+		// #438 item 7: audit retention, cache size and the source and feed
+		// base URLs were settable only with occ config:app:set.
+		await expect(page.getByTestId("setting-audit-retention")).toBeVisible();
+		await expect(page.getByTestId("setting-cache-keep")).toBeVisible();
+		await expect(page.getByTestId("setting-appstore-api-base")).toBeVisible();
+		await expect(page.getByTestId("setting-github-api-base")).toBeVisible();
+		await expect(page.getByTestId("setting-advisory-feed")).toBeVisible();
+	});
+
 	test("history explains itself and lists entries newest-first", async ({
 		page,
 	}) => {

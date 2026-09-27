@@ -35,6 +35,8 @@ class AuditLogger {
 	public const OPERATION_PIN = 'pin';
 	public const OPERATION_UNPIN = 'unpin';
 	public const OPERATION_PIN_DRIFT = 'pin_drift';
+	/** An instance setting changed from the Settings tab (#438). */
+	public const OPERATION_SETTINGS = 'settings';
 
 	private const OPERATION_PATTERN = '/^[a-z_]{1,32}$/';
 	private const MESSAGE_MAX_LENGTH = 4000;

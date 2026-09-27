@@ -46,8 +46,8 @@ use Psr\Log\LoggerInterface;
  */
 class ArtifactCache {
 	private const FOLDER_PREFIX = 'artifact-cache-';
-	private const CONFIG_KEEP = 'artifact_cache_keep';
-	private const DEFAULT_KEEP = 3;
+	public const CONFIG_KEEP = 'artifact_cache_keep';
+	public const DEFAULT_KEEP = 3;
 	private const ARCHIVE_SUFFIX = '.tar.gz';
 	private const META_SUFFIX = '.meta.json';
 
