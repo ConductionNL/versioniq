@@ -209,7 +209,7 @@ The admin SPA MUST provide a Discover tab containing a debounced search input (c
 
 ### Requirement: Hits route into existing flows [MVP]
 
-From a hit, the admin MUST be able to: (a) for an installed app, jump to the Apps tab with that app's version picker opened; (b) for a not-installed app with an installable source candidate, jump to the Sources flow prefilled with that candidate; (c) for a non-installable hit, see the reason (source not in the trusted allowlist) and a link to the Trusted sources tab. Discovery MUST NOT introduce any install path that bypasses binding, allowlist validation, or password confirmation.
+From a hit, the admin MUST be able to: (a) for an installed app, jump to the Apps tab with that app's version picker opened; (b) for a not-installed app with an installable forge candidate, jump to the Sources flow prefilled with that candidate, and for a not-installed app whose installable candidate is the App Store, jump to the Apps tab with that app's version picker opened, since the App Store is the default source and needs no binding; (c) for a non-installable hit, see the reason (source not in the trusted allowlist) and a link to the Trusted sources tab. Discovery MUST NOT introduce any install path that bypasses binding, allowlist validation, or password confirmation.
 
 #### Scenario: Installed hit opens the picker
 
@@ -226,6 +226,15 @@ From a hit, the admin MUST be able to: (a) for an installed app, jump to the App
 - GIVEN a not-installed private app hit with candidate `github:ConductionNL/hermiq` and that pattern allowlisted
 - WHEN the admin activates the hit's install action
 - THEN the Sources bind flow MUST open prefilled with `github:ConductionNL/hermiq`
+
+#### Scenario: App Store candidate opens the picker
+
+@e2e exclude needs an App Store app that is not installed on the test instance and a reachable App Store; the routing is covered by the DiscoverPanel vitest "opens the version picker, not the forge bind form, for a not-installed App Store hit".
+
+- GIVEN a not-installed hit whose installable candidate is the App Store (`{kind: appstore}`, no forge, owner or repository)
+- WHEN the admin activates the hit's install action
+- THEN the Apps tab MUST open with that app's version picker, listing its App Store versions
+- AND the Sources bind form MUST NOT open
 
 #### Scenario: Non-installable explains why
 
