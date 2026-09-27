@@ -1,0 +1,746 @@
+[
+	{
+		"row": "inv-list-installed",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: 5 competitors rated yes (Nextcloud server app management and update notification, Renovate, Dependabot, OSV-Scanner, Easy Updates Manager).",
+		"change": "inventory-pending-updates",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "inv-update-available",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 3 competitors rated yes (Nextcloud server app management and update notification, Renovate, Easy Updates Manager); core area (inventory).",
+		"change": "inventory-pending-updates",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "inv-source-shown",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "partial, built, no demand: no competitor rated yes and no demand row says the missing half matters.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "inv-compat-server",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: 2 competitors rated yes (Nextcloud server app management and update notification, Easy Updates Manager).",
+		"change": "inventory-upgrade-readiness",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "inv-server-upgrade-readiness",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: core area (inventory).",
+		"change": "inventory-upgrade-readiness",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "inv-multi-instance",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: core area (inventory).",
+		"change": "install-multi-instance-promotion",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "inv-export-inventory",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Dependabot, OSV-Scanner); core area (inventory).",
+		"change": "inventory-export-sbom-metrics",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "inv-deprecated-apps",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 3 competitors rated yes (Renovate, OSV-Scanner, Easy Updates Manager); core area (inventory).",
+		"change": "inventory-lifecycle-signals",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "inv-app-metadata",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "partial, built, no demand: one competitor rated yes and no demand row says the missing half matters.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "rel-prerelease",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: core area (releases).",
+		"change": "releases-channel-and-prereleases",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "rel-channel",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Nextcloud server app management and update notification, Renovate); core area (releases).",
+		"change": "releases-channel-and-prereleases",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "rel-release-date",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: core area (releases).",
+		"change": "releases-version-facts",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "rel-min-age",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 3 competitors rated yes (Renovate, Dependabot, Easy Updates Manager); core area (releases).",
+		"change": "releases-minimum-age",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "rel-adoption",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Renovate, Dependabot); core area (releases).",
+		"change": "releases-version-facts",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "rel-breaking-flag",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: 2 competitors rated yes (Renovate, Dependabot).",
+		"change": "releases-version-facts",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "rel-new-release-notify",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 4 competitors rated yes (Nextcloud server app management and update notification, Renovate, Dependabot, Easy Updates Manager); core area (releases).",
+		"change": "releases-new-release-alerts",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "rel-subscribe-feed",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: core area (releases).",
+		"change": "releases-new-release-alerts",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "rel-user-whats-new",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: a feature request as demand plus one competitor rated yes (Nextcloud server app management and update notification); core area (releases).",
+		"change": "releases-notes-reach",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "rel-withdrawn-versions",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: partial and built, and a feature request as demand says the missing half matters.",
+		"change": "safety-withdrawn-and-revoked",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "rel-lts-only",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: core area (releases).",
+		"change": "releases-channel-and-prereleases",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "ins-upgrade-latest",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: 4 competitors rated yes (Nextcloud server app management and update notification, Renovate, Dependabot, Easy Updates Manager).",
+		"change": "install-one-click-updates",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "ins-update-all",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 4 competitors rated yes (Nextcloud server app management and update notification, Renovate, Dependabot, Easy Updates Manager); core area (install).",
+		"change": "install-one-click-updates",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "ins-rollback",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "partial, built, no demand: no competitor rated yes and no demand row says the missing half matters.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "ins-server-core-update",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Platform-provided, owner nextcloud/server: the server itself is updated by the Nextcloud updater (nextcloud/updater and occ upgrade), outside the fleet.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "ins-manual-upload",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: core area (install).",
+		"change": "install-manual-upload",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "ins-progress",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: 2 competitors rated yes (Renovate, Easy Updates Manager).",
+		"change": "install-live-progress",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "ins-replace-successor",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: core area (install).",
+		"change": "inventory-lifecycle-signals",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "saf-preflight",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "partial, built, no demand: no competitor rated yes and no demand row says the missing half matters.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "saf-finalize-recovery",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "partial, built, no demand: one competitor rated yes and no demand row says the missing half matters.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "saf-backup-before",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "partial, built, no demand: no competitor rated yes and no demand row says the missing half matters.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "saf-safe-mode",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: one competitor rated yes (Easy Updates Manager), no demand row, outside the core areas (area safety).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "saf-health-after",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: one competitor rated yes (Easy Updates Manager), no demand row, outside the core areas (area safety). openspec/changes/archive/2026-07-23-add-migration-safety-guard/proposal.md lists post-install health checks as future work.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "saf-code-integrity",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Platform-provided, owner nextcloud/server: occ integrity:check-app and the server's code integrity check verify installed app files; Versioniq verifies the downloaded archive only.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "saf-publisher-change",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, no demand row, outside the core areas (area safety).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "pin-enforce-platform",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "A recorded non-goal covers it: openspec/changes/archive/2026-07-23-add-version-pinning/proposal.md, Out of scope, says blocking or intercepting Nextcloud's own updater is impossible without core changes, and the version-pinning spec states that a pin is monitored, not enforced against the Nextcloud updater.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "pin-expiry",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, no demand row, outside the core areas (area pinning). openspec/changes/archive/2026-07-23-add-version-pinning/proposal.md lists pin expiry as future work, not as a non-goal.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "pin-list",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "partial, built, no demand: one competitor rated yes and no demand row says the missing half matters.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "pin-still-notify",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: partial and built, and a feature request as demand says the missing half matters.",
+		"change": "inventory-pending-updates",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "pin-show-in-platform",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area pinning).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aut-core-policy",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Server core updates are the platform updater's work (row ins-server-core-update in this matrix, owner nextcloud/server, decided-no), and the current specs refuse to manage core and always-enabled apps (cli-commands, requirement CLI trust context, and the isManageableApp guard in version-management), so a core policy has nothing in Versioniq to act on.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aut-presets",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: one competitor rated yes (Renovate), no demand row, outside the core areas (area autoupdate).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aut-dashboard",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "partial, built, no demand: one competitor rated yes and no demand row says the missing half matters. The pending half becomes reachable once openspec/changes/inventory-pending-updates lands.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aut-sync-group-versions",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area autoupdate).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aut-merge-queue",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: one competitor rated yes (Renovate), a competitor changelog as demand, a changelog row alone is not demand under the rule, outside the core areas (area autoupdate).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aut-notify-failures-only",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area autoupdate).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aut-update-order",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area autoupdate).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-one-click-fix",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Renovate, Dependabot).",
+		"change": "install-one-click-updates",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-reachability",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: one competitor rated yes (OSV-Scanner), no demand row, outside the core areas (area advisories). It builds on bundled-library matching, which openspec/changes/advisories-bundled-libraries specifies first.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-exploit-prob",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: one competitor rated yes (Dependabot), no demand row, outside the core areas (area advisories).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-offline-db",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "partial, built, no demand: one competitor rated yes and no demand row says the missing half matters.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-last-checked",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "partial, built, no demand: no competitor rated yes and no demand row says the missing half matters.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-export-report",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: one competitor rated yes (OSV-Scanner), no demand row, outside the core areas (area advisories).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-license",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: one competitor rated yes (OSV-Scanner), no demand row, outside the core areas (area advisories).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-coverage-gaps",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, no demand row, outside the core areas (area advisories).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-license-change",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area advisories).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-stale-exception",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: one competitor rated yes (OSV-Scanner), a competitor changelog as demand, a changelog row alone is not demand under the rule, outside the core areas (area advisories). It needs the dismissal that openspec/changes/advisories-triage specifies first.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-grace-by-severity",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area advisories).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-vulnerable-path",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area advisories). It builds on bundled-library matching, which openspec/changes/advisories-bundled-libraries specifies first.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-malicious-package",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Dependabot, OSV-Scanner).",
+		"change": "safety-withdrawn-and-revoked",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "src-discover-github",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "partial, built, no demand: no competitor rated yes and no demand row says the missing half matters.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aud-log-source",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "partial, built, no demand: one competitor rated yes and no demand row says the missing half matters.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aud-export",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "partial, built, no demand: one competitor rated yes and no demand row says the missing half matters.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aud-log-tokens",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, no demand row, outside the core areas (area audit).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adm-delegated",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "A recorded non-goal covers it: openspec/config.yaml rules say Versioniq is an admin-only utility and every feature requires admin privileges, and every spec in openspec/specs answers a non-admin with 403.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adm-email",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Platform-provided, owner nextcloud/server: the Nextcloud notifications app mails notifications to every user who turns e-mail on, and Versioniq already raises its alerts as Nextcloud notifications (lib/Notification/Notifier.php).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adm-webhook",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Dependabot, Easy Updates Manager).",
+		"change": "releases-new-release-alerts",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "inv-compat-php",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Nextcloud server app management and update notification, Easy Updates Manager); a feature request as demand plus 2 competitors rated yes (Nextcloud server app management and update notification, Easy Updates Manager); core area (inventory).",
+		"change": "inventory-upgrade-readiness",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "saf-predownload-before-maintenance",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area safety). The defect candidate in the row note (maintenance mode switched on for a dry run) does not hold at development 02e1050: lib/Service/InstallerService.php:597-600 skips maintenance mode for a dry run (#427).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "inv-metrics-endpoint",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: core area (inventory).",
+		"change": "inventory-export-sbom-metrics",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "saf-revoked-certificate",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: partial and built, and a competitor changelog as demand says the missing half matters.",
+		"change": "safety-withdrawn-and-revoked",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adm-cli-machine-output",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: partial and built, and a feature request as demand says the missing half matters.",
+		"change": "inventory-pending-updates",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "inv-verified-publisher",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: core area (inventory).",
+		"change": "inventory-verified-publisher",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aut-per-app-cooldown",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area autoupdate).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "rel-held-back-visible",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: core area (releases).",
+		"change": "releases-minimum-age",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "rel-min-age-exception",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: a feature request as demand plus one competitor rated yes (Renovate); core area (releases).",
+		"change": "releases-minimum-age",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aut-change-ticket",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area autoupdate).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "pin-sync-across-instances",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area pinning).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "pin-security-override",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area pinning).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "rel-security-bypass-min-age",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Renovate, Dependabot); a feature request as demand plus 2 competitors rated yes (Renovate, Dependabot); core area (releases).",
+		"change": "releases-minimum-age",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-dismiss-review",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: one competitor rated yes (Dependabot), a competitor changelog as demand, a changelog row alone is not demand under the rule, outside the core areas (area advisories). It needs the dismissal that openspec/changes/advisories-triage specifies first.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-sbom-import",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Outside the product: openspec/config.yaml describes Versioniq as managing the versions of the Nextcloud apps installed on this instance, and openspec/changes/archive/2026-07-07-security-advisory-correlation/proposal.md puts advisory ingestion for arbitrary packages out of scope. Watching an uploaded SBOM of software outside the instance is that general scanner.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-severity-threshold",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area advisories).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adm-outbound-data-preview",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area admin).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-pattern-exception",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: one competitor rated yes (OSV-Scanner), a competitor changelog as demand, a changelog row alone is not demand under the rule, outside the core areas (area advisories). It needs the dismissal that openspec/changes/advisories-triage specifies first.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-suppressed-visible",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area advisories). It needs the dismissal that openspec/changes/advisories-triage specifies first.",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "saf-cluster-consistency",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area safety).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aut-coexist-host-updater",
+		"matrix": "versioniq",
+		"decision": "defer",
+		"reason": "Defer: no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area autoupdate).",
+		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "inv-sbom-per-update",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: a tender demand row; core area (inventory).",
+		"change": "inventory-export-sbom-metrics",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "inv-end-of-support",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: a tender demand row; core area (inventory).",
+		"change": "inventory-lifecycle-signals",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "ins-staged-promotion",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: a tender demand row; core area (install).",
+		"change": "install-multi-instance-promotion",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "rel-known-issues",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: a tender demand row; core area (releases).",
+		"change": "releases-version-facts",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "rel-notes-language",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: partial and built, and a tender as demand says the missing half matters.",
+		"change": "releases-notes-reach",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "inv-version-lag",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: a tender demand row; core area (inventory).",
+		"change": "inventory-pending-updates",
+		"decidedOn": "2026-09-27"
+	}
+]
