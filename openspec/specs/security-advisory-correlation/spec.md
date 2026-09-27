@@ -46,3 +46,29 @@ the administrator decides.
 
 @e2e exclude notify-on-new-advisory covered by the refresh-job unit test; no auto-change asserted (job performs no install/pin mutation).
 
+
+### Requirement: Every stored advisory is reachable from a page, with its severity
+
+The admin page MUST show every advisory the last sweep stored, including the rows about the
+Nextcloud server itself (the `:server` row, which no app card can carry), and MUST render the
+severity of each advisory (`low`, `medium`, `high`, `critical` or `unknown`). The advisory
+badge on an app card MUST carry the highest severity among that app's advisories, so a
+critical and a low advisory do not look the same.
+
+#### Scenario: Server advisories on the Advisories tab
+
+@e2e tests/e2e/advisories.spec.ts
+
+- **GIVEN** the advisory sweep stored a `:server` row
+- **WHEN** the admin opens the Advisories tab
+- **THEN** a "Nextcloud server" section MUST show the installed server version and each server advisory with its id, summary and severity
+- **AND** when that version is affected, the section MUST say so and name the recommended version
+- **AND** when no `:server` row exists, the section MUST say that no published advisory is about this server version
+
+#### Scenario: Severity on the app card badge
+
+@e2e exclude a badge only renders once a sweep has found an advisory for an installed app, which needs a live feed fixture; covered by src/utils/advisories.spec.ts and src/components/AdvisoriesPanel.spec.ts.
+
+- **GIVEN** an app with a low and a critical advisory
+- **WHEN** the Apps tab renders its card
+- **THEN** the advisory badge MUST read the state followed by "Critical"

@@ -13,6 +13,7 @@ export const SETTINGS_URL = "/index.php/settings/admin/versioniq";
 /** Tab labels as rendered in the Versioniq settings tablist. */
 export type TabName =
 	| "Apps"
+	| "Advisories"
 	| "History"
 	| "Sources"
 	| "Tokens"

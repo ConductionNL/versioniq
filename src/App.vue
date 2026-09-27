@@ -2,6 +2,7 @@
 import type {PrefillBindPayload} from './components/DiscoverPanel.vue';
 import type {BlockedVersion, PolicyLevel} from './components/PolicySelector.vue';
 import type { PinRecord } from './dialogs/PinDialog.vue'
+import type {AdvisoryCorrelation} from './utils/advisories.ts';
 import type {LkgRecord} from './utils/migrationSafety.ts';
 
 import { loadState } from '@nextcloud/initial-state'
@@ -9,6 +10,7 @@ import { t } from '@nextcloud/l10n'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
+import AdvisoriesPanel from './components/AdvisoriesPanel.vue'
 import CachePanel from './components/CachePanel.vue'
 import ChangelogRangePanel from './components/ChangelogRangePanel.vue'
 import DiscoverPanel from './components/DiscoverPanel.vue'
@@ -24,6 +26,7 @@ import DowngradeConfirmDialog from './dialogs/DowngradeConfirmDialog.vue'
 import PinDialog from './dialogs/PinDialog.vue'
 import PinOverrideDialog from './dialogs/PinOverrideDialog.vue'
 import ShaMismatchDialog from './dialogs/ShaMismatchDialog.vue'
+import { advisoryBadgeText } from './utils/advisories.ts'
 import { advisoryFreshnessLabel as advisoryFreshnessLabelFor } from './utils/advisoryFreshness.ts'
 import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow.ts'
 import { buildChangelogRange } from './utils/changelog.ts'
@@ -52,21 +55,6 @@ type AppVersion = {
 	changelog?: string | null
 	recordedSha?: string | null
 	cachedOffline?: boolean
-}
-
-type AdvisoryRecord = {
-	id: string
-	severity: string
-	summary: string
-}
-
-type AdvisoryCorrelation = {
-	appId: string
-	installedVersion: string | null
-	state: 'none' | 'advisory-available' | 'pinned-to-vulnerable'
-	advisories: AdvisoryRecord[]
-	recommendedVersion: string | null
-	error: string | null
 }
 
 type InstallDebugEntry = {
@@ -242,6 +230,7 @@ const integriqInstalled = loadState<boolean>('versioniq', 'integriq-installed', 
 // Integrations comes last, and only with integriq.
 const tabs = [
 	{ id: 'apps' },
+	{ id: 'advisories' },
 	{ id: 'history' },
 	{ id: 'sources' },
 	{ id: 'tokens' },
@@ -261,6 +250,7 @@ const tablistEl = ref<HTMLElement | null>(null)
 function tabLabel (id: string): string {
   return {
 	apps: t('versioniq', 'Apps'),
+	advisories: t('versioniq', 'Advisories'),
 	history: t('versioniq', 'History'),
 	sources: t('versioniq', 'Sources'),
 	tokens: t('versioniq', 'Tokens'),
@@ -630,6 +620,9 @@ const advisoriesCheckedAt = ref<number | null>(null)
 // True only when the fetch itself failed — never merely because the map is empty.
 const advisoriesUnavailable = ref(false)
 
+/**
+ *
+ */
 async function loadAdvisories (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/advisories')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
@@ -750,17 +743,14 @@ function recordedShaBadgeLabel (version: string): string {
 }
 
 /**
+ * The advisory badge text for an app card, with the highest severity (#438).
  *
- * @param state
+ * @param appId The app the card is for.
+ * @spec openspec/specs/security-advisory-correlation/spec.md
  */
-function advisoryBadgeLabel (state: AdvisoryCorrelation['state']): string {
-	if (state === 'pinned-to-vulnerable') {
-		return t('versioniq', 'Vulnerable version')
-	}
-	if (state === 'advisory-available') {
-		return t('versioniq', 'Advisory')
-	}
-	return ''
+function advisoryBadgeLabel (appId: string): string {
+	const row = advisoryFor(appId)
+	return row === null || row.state === 'none' ? '' : advisoryBadgeText(row)
 }
 
 // Pins, like advisories, are fetched separately from the app list and never
@@ -2232,7 +2222,7 @@ watch(dryRunEnabled, () => {
 																v-if="advisoryFor(app.id)?.state && advisoryFor(app.id)?.state !== 'none'"
 																:class="[$style.advisoryBadge, { [$style.advisoryBadgeVulnerable]: advisoryFor(app.id)?.state === 'pinned-to-vulnerable' }]"
 																:title="advisoryFor(app.id)?.advisories?.[0]?.summary ?? ''">
-																⚠ {{ advisoryBadgeLabel(advisoryFor(app.id)?.state ?? 'none') }}
+																⚠ {{ advisoryBadgeLabel(app.id) }}
 															</span>
 															<span
 																v-if="advisoryFor(app.id)?.state === 'none' && advisoryFor(app.id)?.error"
@@ -2580,6 +2570,12 @@ watch(dryRunEnabled, () => {
 						</div>
 					</main>
 				</div>
+				<AdvisoriesPanel v-if="currentTab === 'advisories'"
+					id="advisories-panel"
+					role="tabpanel"
+					aria-labelledby="advisories-tab"
+					:advisories="advisories"
+					:freshnessLabel="advisoryFreshnessLabel" />
 				<HistoryPanel v-if="currentTab === 'history'"
 					id="history-panel"
 					role="tabpanel"

@@ -205,6 +205,26 @@
         "Could not clear the failed attempt.": "Could not clear the failed attempt.",
         "Binding removed. {appId} reads its versions from the App Store again.": "Binding removed. {appId} reads its versions from the App Store again.",
         "Could not remove the binding.": "Could not remove the binding.",
-        "Remove binding and use the App Store": "Remove binding and use the App Store"
+        "Remove binding and use the App Store": "Remove binding and use the App Store",
+        "Advisories": "Advisories",
+        "Low": "Low",
+        "Medium": "Medium",
+        "High": "High",
+        "Critical": "Critical",
+        "Unknown severity": "Unknown severity",
+        "{label}, {severity}": "{label}, {severity}",
+        "Security advisories": "Security advisories",
+        "Nextcloud server": "Nextcloud server",
+        "Installed version: {version}": "Installed version: {version}",
+        "This server version is affected by a published advisory.": "This server version is affected by a published advisory.",
+        "Upgrade to {version} or later.": "Upgrade to {version} or later.",
+        "_%n published advisory is about the server; it does not affect this version._::_%n published advisories are about the server; none affect this version._": [
+            "%n published advisory is about the server; it does not affect this version.",
+            "%n published advisories are about the server; none affect this version."
+        ],
+        "Show server advisories": "Show server advisories",
+        "No published advisory is about this server version.": "No published advisory is about this server version.",
+        "No installed app has a published advisory.": "No installed app has a published advisory.",
+        "Affected": "Affected"
     }
 }
