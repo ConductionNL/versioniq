@@ -425,12 +425,9 @@ class ExternalReleaseInstallerService {
 		if ($ownerRepo === null) {
 			return null;
 		}
-		$user = $this->userSession->getUser();
-		if ($user === null) {
-			return null;
-		}
-
-		return $this->patResolver->findFor($binding->getForge(), $ownerRepo, $user->getUID());
+		// No session user means AutoUpdateJob; the resolver then picks from
+		// tokens shared with admins instead of downloading anonymously (#430).
+		return $this->patResolver->findFor($binding->getForge(), $ownerRepo, $this->userSession->getUser()?->getUID());
 	}
 
 	private function authenticatedDownload(string $url, string $sinkPath, ?\OCA\Versioniq\Db\Pat $pat): void {

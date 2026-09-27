@@ -1401,7 +1401,7 @@
 			"easy-updates-manager": "yes",
 			"built": {
 				"state": "built",
-				"evidence": "src/components/DiscoverPanel.vue:259, lib/Service/InstallerService.php:94, lib/Service/Source/SourceBindingStore.php:138, src/App.vue:2473, lib/Command/InstallVersion.php:118",
+				"evidence": "src/components/DiscoverPanel.vue:259, lib/Service/InstallerService.php:94, lib/Service/Source/SourceBindingStore.php:138, src/App.vue:2480, lib/Command/InstallVersion.php:118",
 				"reachedOn": "Discover tab (find; Install... opens the version picker for an App Store hit, or the bind form for a forge hit), then the Apps tab (a bound app is listed as Not installed and installs from its version list); occ versioniq:install"
 			},
 			"provider": "versioniq",
@@ -3169,22 +3169,22 @@
 			"area": "autoupdate",
 			"name": "Let scheduled checks and automatic updates reach private sources without a signed-in admin.",
 			"rowSource": "own-code",
-			"versioniq": "no",
+			"versioniq": "yes",
 			"nextcloud": "no",
 			"renovate": "yes",
 			"dependabot": "yes",
 			"osv-scanner": "partial",
 			"easy-updates-manager": "unknown",
 			"built": {
-				"state": "none",
-				"evidence": "lib/Service/Source/ForgeReleaseSource.php:265, lib/Service/Source/ForgeReleaseSource.php:283",
-				"reachedOn": "nothing: background jobs run without a session user"
+				"state": "built",
+				"evidence": "lib/Service/Pat/PatResolver.php:82, lib/Service/Source/ForgeReleaseSource.php:269, lib/Service/Source/ForgeReleaseSource.php:288, lib/Service/ExternalReleaseInstallerService.php:430, src/components/TokensPanel.vue:193",
+				"reachedOn": "background jobs AdvisoryRefreshJob, AutoUpdateJob and PinReconcileJob, using a token shared with admins on the Tokens tab"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "pat-management",
 			"featureConfidence": "medium",
-			"note": "Tokens are resolved from the logged-in user, so background jobs fetch private repositories without a token and their releases and advisories go missing silently. Proposed by reader own-b.",
+			"note": "With no session user the token lookup picks from tokens an admin shared with all admins, so scheduled advisory checks, automatic updates and pin reconciles read private repositories. A private, unshared token is never used by a job; the Tokens tab says so. Fixed in #430.",
 			"evidence": {
 				"nextcloud": "No private sources and no automatic updates; the unattended daily job only checks the public store and update server (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:53-71).",
 				"renovate": "lib/config/options/index.ts:2887 hostRules and secrets (lib/config/options/index.ts:361) give the bot credentials for private registries, so scheduled runs need no signed-in user.",
@@ -3450,7 +3450,7 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "For apps bound to a GitHub repo the forge security-advisories endpoint is read and merged with the central feed. The sweep runs in cron with no user, so no PAT is used and private repositories cannot be read.",
+			"note": "For apps bound to a GitHub repo the forge security-advisories endpoint is read and merged with the central feed. The sweep runs in cron with no user and authenticates with a token shared with admins, so private repositories are read too (#430); an app whose source could not be reached shows an \"Advisories not checked\" badge instead of reading as clean.",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
 				"renovate": "lib/config/options/index.ts:2428 vulnerabilityAlerts reads the repository's Dependabot alerts (supportedPlatforms github); docs/usage/configuration-options.md:5305 requires the dependency graph and Dependabot alerts.",
@@ -4420,7 +4420,7 @@
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "A stored PAT matching the repo is used for release listing and download on interactive requests; background jobs run without a user and cannot use it (see adv-github-advisories defect).",
+			"note": "A stored PAT matching the repo is used for release listing and download on interactive requests, and a PAT shared with admins is used by background jobs (#430).",
 			"evidence": {
 				"nextcloud": "Single store source; the only credential sent is the Nextcloud subscription key, to the default store (lib/private/App/AppStore/Fetcher/Fetcher.php:88-95).",
 				"renovate": "lib/config/options/index.ts:2887 hostRules with token, username and password per host (lib/config/options/index.ts:1134-1154) authenticate private registries and forges.",
