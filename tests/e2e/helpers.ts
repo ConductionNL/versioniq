@@ -20,6 +20,7 @@ export type TabName =
 	| "Trusted sources"
 	| "Discover"
 	| "Artifact cache"
+	| "Settings"
 	| "Integrations";
 
 /**

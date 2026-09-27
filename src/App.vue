@@ -19,6 +19,7 @@ import ChangelogRangePanel from './components/ChangelogRangePanel.vue'
 import DiscoverPanel from './components/DiscoverPanel.vue'
 import HistoryPanel from './components/HistoryPanel.vue'
 import InstallResultNotices from './components/InstallResultNotices.vue'
+import InstanceSettingsPanel from './components/InstanceSettingsPanel.vue'
 import IntegrationsPanel from './components/IntegrationsPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
@@ -227,6 +228,7 @@ const tabs = [
 	{ id: 'trusted' },
 	{ id: 'discover' },
 	{ id: 'cache' },
+	{ id: 'settings' },
 	...(integriqInstalled ? [{ id: 'integrations' }] : []),
 ]
 const currentTab = ref('apps')
@@ -247,6 +249,7 @@ function tabLabel (id: string): string {
 	trusted: t('versioniq', 'Trusted sources'),
 	discover: t('versioniq', 'Discover'),
 	cache: t('versioniq', 'Artifact cache'),
+	settings: t('versioniq', 'Settings'),
 	integrations: t('versioniq', 'Integrations'),
 }[id] ?? id
 }
@@ -2576,6 +2579,10 @@ watch(dryRunEnabled, () => {
 					id="cache-panel"
 					role="tabpanel"
 					aria-labelledby="cache-tab" />
+				<InstanceSettingsPanel v-if="currentTab === 'settings'"
+					id="settings-panel"
+					role="tabpanel"
+					aria-labelledby="settings-tab" />
 				<IntegrationsPanel v-if="integriqInstalled && currentTab === 'integrations'"
 					id="integrations-panel"
 					role="tabpanel"

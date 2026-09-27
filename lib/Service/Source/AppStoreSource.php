@@ -35,7 +35,7 @@ use UnexpectedValueException;
  * @psalm-api
  */
 class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
-	private const DEFAULT_API_BASE = 'https://garm3.nextcloud.com/api/v1';
+	public const DEFAULT_API_BASE = 'https://garm3.nextcloud.com/api/v1';
 	private const MAX_PAGES = 20;
 
 	/**

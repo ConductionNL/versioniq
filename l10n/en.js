@@ -235,7 +235,20 @@ OC.L10N.register(
         "Automatic updates are off, so nothing below runs until they are enabled.": "Automatic updates are off, so nothing below runs until they are enabled.",
         "Runs in the window {window} ({timeZone}).": "Runs in the window {window} ({timeZone}).",
         "No app has an automatic update policy.": "No app has an automatic update policy.",
-        "policy: {level}": "policy: {level}"
+        "policy: {level}": "policy: {level}",
+        "Could not load the settings.": "Could not load the settings.",
+        "Settings saved.": "Settings saved.",
+        "Could not save the settings.": "Could not save the settings.",
+        "History and cache": "History and cache",
+        "Keep history for (days, {min}-{max})": "Keep history for (days, {min}-{max})",
+        "Cached versions per app (0 turns the cache off, at most {max})": "Cached versions per app (0 turns the cache off, at most {max})",
+        "Sources and mirrors": "Sources and mirrors",
+        "Leave a field empty to use the default shown under it.": "Leave a field empty to use the default shown under it.",
+        "App Store API address (a store mirror)": "App Store API address (a store mirror)",
+        "Default: {url}": "Default: {url}",
+        "GitHub API address (GitHub Enterprise, https only)": "GitHub API address (GitHub Enterprise, https only)",
+        "GitHub web address (GitHub Enterprise, https only)": "GitHub web address (GitHub Enterprise, https only)",
+        "Advisory feed address (an internal mirror)": "Advisory feed address (an internal mirror)"
     },
     "nplurals=2; plural=(n != 1);"
 )

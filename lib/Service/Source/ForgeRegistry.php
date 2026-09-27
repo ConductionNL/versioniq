@@ -46,6 +46,10 @@ class ForgeRegistry {
 	public const FORGE_FORGEJO = 'forgejo';
 	public const FORGE_CODEBERG = 'codeberg';
 
+	/** Public GitHub; overridden by `forge.github.api_base` / `web_base` for GitHub Enterprise. */
+	public const GITHUB_API_DEFAULT = 'https://api.github.com';
+	public const GITHUB_WEB_DEFAULT = 'https://github.com';
+
 	/**
 	 * Forges kept only so stored data keeps working; never offered for new
 	 * bindings, tokens or trusted patterns.
@@ -54,8 +58,8 @@ class ForgeRegistry {
 
 	private const DEFAULTS = [
 		self::FORGE_GITHUB => [
-			'api' => 'https://api.github.com',
-			'web' => 'https://github.com',
+			'api' => self::GITHUB_API_DEFAULT,
+			'web' => self::GITHUB_WEB_DEFAULT,
 			'scheme' => Forge::SCHEME_BEARER,
 			'exposesScopeHeader' => true,
 			'tokenCreateUrl' => 'https://github.com/settings/tokens',

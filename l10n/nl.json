@@ -267,7 +267,20 @@
         "Automatic updates are off, so nothing below runs until they are enabled.": "Automatische updates staan uit, dus niets hieronder draait totdat ze zijn ingeschakeld.",
         "Runs in the window {window} ({timeZone}).": "Draait in het venster {window} ({timeZone}).",
         "No app has an automatic update policy.": "Geen enkele app heeft een beleid voor automatische updates.",
-        "policy: {level}": "beleid: {level}"
+        "policy: {level}": "beleid: {level}",
+        "Could not load the settings.": "De instellingen konden niet worden geladen.",
+        "Settings saved.": "Instellingen opgeslagen.",
+        "Could not save the settings.": "De instellingen konden niet worden opgeslagen.",
+        "History and cache": "Geschiedenis en cache",
+        "Keep history for (days, {min}-{max})": "Geschiedenis bewaren (dagen, {min}-{max})",
+        "Cached versions per app (0 turns the cache off, at most {max})": "Gecachte versies per app (0 zet de cache uit, hoogstens {max})",
+        "Sources and mirrors": "Bronnen en mirrors",
+        "Leave a field empty to use the default shown under it.": "Laat een veld leeg om de standaardwaarde eronder te gebruiken.",
+        "App Store API address (a store mirror)": "App Store API-adres (een mirror van de store)",
+        "Default: {url}": "Standaard: {url}",
+        "GitHub API address (GitHub Enterprise, https only)": "GitHub API-adres (GitHub Enterprise, alleen https)",
+        "GitHub web address (GitHub Enterprise, https only)": "GitHub-webadres (GitHub Enterprise, alleen https)",
+        "Advisory feed address (an internal mirror)": "Adres van de adviezenfeed (een interne mirror)"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }
