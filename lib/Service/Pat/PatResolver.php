@@ -17,6 +17,7 @@ use OCA\Versioniq\Db\PatMapper;
 
 /**
  * Looks up the highest-priority non-expired PAT visible to the current uid
+ * (or, for a background job with no uid, shared with admins)
  * that matches the binding's `owner/repo`. Used by `GithubReleaseSource` to
  * decide whether to authenticate a request.
  *
@@ -35,12 +36,17 @@ class PatResolver {
 	 * Codeberg binding never authenticates with a GitHub token and vice-versa.
 	 * Legacy PAT rows default to forge `github`, so they keep serving GitHub.
 	 *
+	 * With no uid (a background job: advisory refresh, automatic update, pin
+	 * reconcile) only tokens an admin shared with all admins are considered.
+	 * A private token is never used on behalf of nobody, and without this a
+	 * private repository answered every job with 404 and read as clean (#430).
+	 *
 	 * @spec openspec/specs/pat-management/spec.md
 	 */
-	public function findFor(string $forge, string $ownerRepo, string $currentUid): ?Pat {
+	public function findFor(string $forge, string $ownerRepo, ?string $currentUid): ?Pat {
 		$now = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d H:i:s');
 		$candidates = array_values(array_filter(
-			$this->mapper->findVisibleTo($currentUid),
+			$this->candidatesFor($currentUid),
 			static fn (Pat $pat): bool => $pat->getForge() === $forge,
 		));
 
@@ -65,5 +71,22 @@ class PatResolver {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Tokens a lookup may choose from: those visible to the uid, or, with no
+	 * uid, the tokens shared with admins.
+	 *
+	 * @return list<Pat>
+	 */
+	private function candidatesFor(?string $currentUid): array {
+		if ($currentUid !== null) {
+			return $this->mapper->findVisibleTo($currentUid);
+		}
+
+		return array_values(array_filter(
+			$this->mapper->findAll(),
+			static fn (Pat $pat): bool => $pat->getSharedWithAdmins(),
+		));
 	}
 }

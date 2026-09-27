@@ -109,4 +109,33 @@ final class PatResolverTest extends TestCase {
 		$this->assertSame(1, $resolver->findFor('github', 'ConductionNL/openregister', 'admin')?->getId());
 		$this->assertNull($resolver->findFor('codeberg', 'ConductionNL/openregister', 'admin'));
 	}
+
+	/**
+	 * A background job runs without a session user. It must still find a
+	 * token, and only one an admin has shared: a private token is never used
+	 * on behalf of nobody (#430).
+	 */
+	public function testNoUserResolvesSharedTokensOnly(): void {
+		$private = $this->makePat(1, 'alice', 'ConductionNL/private-app');
+		$shared = $this->makePat(2, 'bob', 'ConductionNL/*');
+		$shared->setSharedWithAdmins(true);
+
+		$mapper = $this->createMock(PatMapper::class);
+		$mapper->method('findAll')->willReturn([$private, $shared]);
+		$mapper->expects($this->never())->method('findVisibleTo');
+
+		$found = (new PatResolver($mapper))->findFor('github', 'ConductionNL/private-app', null);
+
+		$this->assertNotNull($found);
+		$this->assertSame(2, $found->getId());
+	}
+
+	public function testNoUserAndOnlyPrivateTokensResolvesNothing(): void {
+		$private = $this->makePat(1, 'alice', 'ConductionNL/*');
+
+		$mapper = $this->createMock(PatMapper::class);
+		$mapper->method('findAll')->willReturn([$private]);
+
+		$this->assertNull((new PatResolver($mapper))->findFor('github', 'ConductionNL/private-app', null));
+	}
 }

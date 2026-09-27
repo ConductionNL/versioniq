@@ -2159,6 +2159,13 @@ watch(dryRunEnabled, () => {
 																:title="advisoryFor(app.id)?.advisories?.[0]?.summary ?? ''">
 																⚠ {{ advisoryBadgeLabel(advisoryFor(app.id)?.state ?? 'none') }}
 															</span>
+															<span
+																v-if="advisoryFor(app.id)?.state === 'none' && advisoryFor(app.id)?.error"
+																:class="$style.advisoryBadge"
+																data-testid="advisory-unchecked-badge"
+																:title="advisoryFor(app.id)?.error ?? ''">
+																{{ t('versioniq', 'Advisories not checked') }}
+															</span>
 														</div>
 														<p :class="$style.appCardMeta">
 															{{ app.id }}

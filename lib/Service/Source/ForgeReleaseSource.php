@@ -33,7 +33,8 @@ use UnexpectedValueException;
  *
  * Falls back to unauthenticated requests when no applicable PAT exists; uses a
  * PAT (resolved via `PatResolver`, scoped to the binding's forge) when one
- * matches and is visible to the current admin.
+ * matches and is visible to the current admin, or, in a background job with no
+ * session user, when one matches and is shared with admins.
  *
  * @psalm-api
  */
@@ -262,9 +263,10 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * @return array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string}
 	 */
 	private function fetchAdvisories(Forge $forge, string $ownerRepo): array {
-		$user = $this->userSession->getUser();
-		$uid = $user?->getUID();
-		$pat = $uid !== null ? $this->patResolver->findFor($forge->id, $ownerRepo, $uid) : null;
+		// No session user means a background job; the resolver then picks from
+		// tokens shared with admins instead of going anonymous (#430).
+		$uid = $this->userSession->getUser()?->getUID();
+		$pat = $this->patResolver->findFor($forge->id, $ownerRepo, $uid);
 
 		$endpoint = $forge->advisoriesEndpoint($ownerRepo);
 
@@ -280,9 +282,10 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * @return array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string}
 	 */
 	private function fetchReleases(Forge $forge, string $ownerRepo): array {
-		$user = $this->userSession->getUser();
-		$uid = $user?->getUID();
-		$pat = $uid !== null ? $this->patResolver->findFor($forge->id, $ownerRepo, $uid) : null;
+		// No session user means a background job; the resolver then picks from
+		// tokens shared with admins instead of going anonymous (#430).
+		$uid = $this->userSession->getUser()?->getUID();
+		$pat = $this->patResolver->findFor($forge->id, $ownerRepo, $uid);
 
 		$endpoint = $forge->releasesEndpoint($ownerRepo);
 

@@ -203,7 +203,9 @@
         "Simulated": "Gesimuleerd",
         "Switched off": "Uitgeschakeld",
         "Not available": "Niet beschikbaar",
-        "Error": "Fout"
+        "Error": "Fout",
+        "Advisories not checked": "Advisories niet gecontroleerd",
+        "Background jobs such as the advisory check and automatic updates run without a signed-in admin, so they only use tokens shared with admins. Share a token to keep private repositories checked and updated.": "Achtergrondtaken zoals de advisorycontrole en automatische updates draaien zonder ingelogde beheerder, dus ze gebruiken alleen tokens die met beheerders gedeeld zijn. Deel een token om privérepositories gecontroleerd en bijgewerkt te houden."
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }
