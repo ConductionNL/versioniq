@@ -572,15 +572,25 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	}
 
 	/**
+	 * Normalises the release list, newest first. Each entry carries
+	 * `serverCompatible`: whether the running server satisfies the release's
+	 * `platformVersionSpec`, or null when the release does not say; see
+	 * "Fetch Available Versions".
+	 *
+	 * @spec openspec/specs/version-management/spec.md
 	 * @param array<mixed> $releases
-	 * @return list<array{version: string, changelog: ?string}>
+	 * @return list<array{version: string, changelog: ?string, serverCompatible: ?bool}>
 	 */
 	private function normalizeVersions(array $releases): array {
 		/** @var array<string, ?string> $changelogsByVersion */
 		$changelogsByVersion = [];
+		/** @var array<string, ?bool> $compatibleByVersion */
+		$compatibleByVersion = [];
+		$serverVersion = $this->getServerVersion();
 		$order = [];
 		/** @var mixed $release */
 		foreach ($releases as $release) {
+			$compatible = null;
 			if (is_string($release)) {
 				$version = $release;
 				$changelog = null;
@@ -591,6 +601,9 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 					continue;
 				}
 				$changelog = $this->extractChangelog($release);
+				/** @var mixed $spec */
+				$spec = $release['platformVersionSpec'] ?? null;
+				$compatible = is_string($spec) ? self::satisfiesPlatformSpec($serverVersion, $spec) : null;
 			} else {
 				continue;
 			}
@@ -598,17 +611,84 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 			if (!array_key_exists($version, $changelogsByVersion)) {
 				$order[] = $version;
 				$changelogsByVersion[$version] = $changelog;
-			} elseif ($changelogsByVersion[$version] === null && $changelog !== null) {
-				$changelogsByVersion[$version] = $changelog;
+				$compatibleByVersion[$version] = $compatible;
+			} else {
+				if ($changelogsByVersion[$version] === null && $changelog !== null) {
+					$changelogsByVersion[$version] = $changelog;
+				}
+				if ($compatibleByVersion[$version] === null && $compatible !== null) {
+					$compatibleByVersion[$version] = $compatible;
+				}
 			}
 		}
 
 		usort($order, static fn (string $a, string $b): int => version_compare($b, $a));
 
 		return array_map(
-			static fn (string $version): array => ['version' => $version, 'changelog' => $changelogsByVersion[$version]],
+			static fn (string $version): array => [
+				'version' => $version,
+				'changelog' => $changelogsByVersion[$version],
+				'serverCompatible' => $compatibleByVersion[$version],
+			],
 			$order
 		);
+	}
+
+	/**
+	 * The running server's version as `major.minor.patch`, or '' when unknown.
+	 */
+	private function getServerVersion(): string {
+		$parts = explode('.', $this->config->getSystemValueString('version'));
+		$core = array_slice($parts, 0, 3);
+		foreach ($core as $part) {
+			if (!ctype_digit($part)) {
+				return '';
+			}
+		}
+
+		return implode('.', $core);
+	}
+
+	/**
+	 * Whether `$serverVersion` satisfies an App Store `platformVersionSpec`
+	 * such as `>=28.0.0 <=31` or `>=26.0.0 <29.0.0`. Each bound compares the
+	 * server version cut to the bound's own precision, so `<=31` admits every
+	 * 31.x server. Returns null when the spec or the server version cannot be
+	 * read, so an unknown never reads as incompatible.
+	 *
+	 * @spec openspec/specs/version-management/spec.md
+	 */
+	public static function satisfiesPlatformSpec(string $serverVersion, string $spec): ?bool {
+		$spec = trim($spec);
+		if ($serverVersion === '' || $spec === '') {
+			return null;
+		}
+		if ($spec === '*') {
+			return true;
+		}
+
+		$serverParts = explode('.', $serverVersion);
+		$satisfied = true;
+		foreach (preg_split('/\s+/', $spec) ?: [] as $constraint) {
+			if (preg_match('/^(>=|<=|>|<|==|=)?(\d+(?:\.\d+)*)$/', $constraint, $match) !== 1) {
+				return null;
+			}
+			$bound = $match[2];
+			$precision = count(explode('.', $bound));
+			$server = implode('.', array_pad(array_slice($serverParts, 0, $precision), $precision, '0'));
+			$holds = match ($match[1]) {
+				'>=' => version_compare($server, $bound, '>='),
+				'<=' => version_compare($server, $bound, '<='),
+				'>' => version_compare($server, $bound, '>'),
+				'<' => version_compare($server, $bound, '<'),
+				default => version_compare($server, $bound, '=='),
+			};
+			if (!$holds) {
+				$satisfied = false;
+			}
+		}
+
+		return $satisfied;
 	}
 
 	/**

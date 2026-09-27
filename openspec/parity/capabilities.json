@@ -433,22 +433,22 @@
 			"area": "inventory",
 			"name": "See whether an app version is compatible with the running server version before choosing it.",
 			"rowSource": "competitor",
-			"versioniq": "no",
+			"versioniq": "partial",
 			"nextcloud": "yes",
 			"renovate": "partial",
 			"dependabot": "partial",
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "none",
-				"evidence": "lib/Service/SelectedReleaseInstallerService.php:316, lib/Service/SelectedReleaseInstallerService.php:337, lib/Command/ListVersions.php:128, lib/Service/Source/AppStoreSource.php:608",
-				"reachedOn": "nothing"
+				"state": "built",
+				"evidence": "lib/Service/Source/AppStoreSource.php:661, lib/Service/Source/AppStoreSource.php:631, lib/Command/ListVersions.php:114, lib/Command/ListVersions.php:120",
+				"reachedOn": "occ versioniq:versions (Runs on this server column); GET /api/app/{appId}/versions (serverCompatible per App Store version)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Server compatibility is only checked after download and file swap during a real install, which then reverts; the version list carries no compatibility field and a dry run skips the check. The CLI 'Compatibility' column only says newer/older than installed.",
+			"note": "Each App Store version now carries serverCompatible, read from the release's platformVersionSpec against the running server, and occ versioniq:versions shows it as a 'Runs on this server' column next to 'Relative to installed'. Forge releases show unknown until their info.xml range is read, and the web version picker does not show the field yet; the full check still runs only during a real install.",
 			"evidence": {
 				"nextcloud": "apps/appstore/lib/Controller/ApiController.php:133-135 computes missingDependencies and isCompatible; shown in apps/appstore/src/components/AppstoreSidebar/AppDetailsTab.vue:137 and filterable via 'Show incompatible' (apps/appstore/src/components/AppToolbar.vue:105). Applies to the single latest release only.",
 				"renovate": "lib/config/options/index.ts:499 constraintsFiltering filters releases by language constraints (engines, PHP), and lib/modules/datasource/nextcloud/readme.md has you point registryUrls at a per-platform apps.json so only releases for that server version are offered; not shown to the user as a compatibility verdict.",
@@ -1343,14 +1343,14 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Command/ListVersions.php:51, lib/Command/ListVersions.php:70, appinfo/info.xml",
+				"evidence": "lib/Command/ListVersions.php:51, lib/Command/ListVersions.php:70, lib/Command/ListVersions.php:120, appinfo/info.xml",
 				"reachedOn": "occ versioniq:versions"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "cli-commands",
 			"featureConfidence": "high",
-			"note": "occ versioniq:versions <appId> [,source] [,json] lists available versions with an installed/newer/older marker and any recorded SHA-256.",
+			"note": "occ versioniq:versions <appId> [,source] [,json] lists available versions with where each stands relative to the installed version, whether it runs on this server (yes, no or unknown), and any recorded SHA-256.",
 			"evidence": {
 				"nextcloud": "occ app:update ,showonly ,showcurrent prints the current and the newest available version only (core/Command/App/Update.php:70-97); not the full version list.",
 				"renovate": "lib/config/options/index.ts:597 dryRun=lookup (allowedValues at lib/config/options/index.ts:602) runs lookups without changes and logs the candidate updates; there is no dedicated list-versions command.",
