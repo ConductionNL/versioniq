@@ -151,6 +151,38 @@ watch(selectedAppId, (appId) => {
 })
 
 /**
+ * Removes the selected app's binding, so it reads from the App Store again
+ * (#438). Recorded checksums on the old binding go with it.
+ *
+ * @spec openspec/specs/external-sources/spec.md
+ */
+async function removeBinding (): Promise<void> {
+	error.value = ''
+	notice.value = ''
+	if (!selectedAppId.value) {
+		return
+	}
+	loading.value = true
+	try {
+		const { payload, error: apiError } = await ocsWrite<{ sourceId?: string }>(
+			'DELETE',
+			`/ocs/v2.php/apps/versioniq/api/source/${encodeURIComponent(selectedAppId.value)}/binding`,
+		)
+		if (apiError) {
+			error.value = apiError
+			return
+		}
+		currentBinding.value = { sourceId: payload.sourceId ?? 'appstore' }
+		notice.value = t('versioniq', 'Binding removed. {appId} reads its versions from the App Store again.', { appId: selectedAppId.value })
+		emit('bound', selectedAppId.value)
+	} catch (e) {
+		error.value = e instanceof Error ? e.message : t('versioniq', 'Could not remove the binding.')
+	} finally {
+		loading.value = false
+	}
+}
+
+/**
  *
  */
 async function bind (): Promise<void> {
@@ -222,6 +254,14 @@ async function bind (): Promise<void> {
 			<p v-if="currentBinding && currentBinding.sourceId" :class="$style.hint">
 				{{ t('versioniq', 'Current source:') }} <code>{{ currentBinding.sourceId }}</code>
 			</p>
+			<NcButton
+				v-if="currentBinding && currentBinding.sourceId && currentBinding.sourceId !== 'appstore'"
+				variant="tertiary"
+				data-testid="remove-binding"
+				:disabled="loading"
+				@click="removeBinding">
+				{{ t('versioniq', 'Remove binding and use the App Store') }}
+			</NcButton>
 			<NcNoteCard v-if="boundToRetiredForge" type="warning" data-testid="retired-source">
 				{{ t('versioniq', 'This app is bound to Codeberg, which is retired as a separate source. The binding keeps working for now; rebind it to GitHub or to a self-hosted Forgejo or Gitea host.') }}
 			</NcNoteCard>

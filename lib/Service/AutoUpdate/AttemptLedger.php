@@ -75,6 +75,53 @@ class AttemptLedger {
 	}
 
 	/**
+	 * Versions whose automatic update failed and are therefore skipped by the
+	 * job, oldest first, for the page to show with a retry action (#438).
+	 *
+	 * @spec openspec/specs/auto-update-policies/spec.md
+	 * @return list<array{version: string, at: string}>
+	 */
+	public function blockedVersions(string $appId): array {
+		$blocked = [];
+		foreach ($this->all($appId) as $version => $entry) {
+			if ($entry['outcome'] === self::OUTCOME_FAILURE) {
+				$blocked[] = ['version' => $version, 'at' => $entry['at']];
+			}
+		}
+		usort($blocked, static fn (array $a, array $b): int => $a['at'] <=> $b['at']);
+
+		return $blocked;
+	}
+
+	/**
+	 * Forgets one attempt so the next run inside the window tries that version
+	 * again. Before this a failed version stayed blocked for good, whatever
+	 * caused the failure (#438).
+	 *
+	 * @spec openspec/specs/auto-update-policies/spec.md
+	 * @return bool Whether an attempt was recorded for that version.
+	 */
+	public function forget(string $appId, string $version): bool {
+		$entries = $this->all($appId);
+		if (!array_key_exists($version, $entries)) {
+			return false;
+		}
+		unset($entries[$version]);
+
+		if ($entries === []) {
+			$this->config->deleteKey(Application::APP_ID, self::KEY_PREFIX . $appId);
+		} else {
+			$this->config->setValueString(
+				Application::APP_ID,
+				self::KEY_PREFIX . $appId,
+				json_encode($entries, JSON_THROW_ON_ERROR)
+			);
+		}
+
+		return true;
+	}
+
+	/**
 	 * @return array<string, array{at:string, outcome:string}>
 	 */
 	private function all(string $appId): array {

@@ -18,6 +18,7 @@ use OCA\Versioniq\Db\Pat;
 use OCA\Versioniq\Db\PatMapper;
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
@@ -80,6 +81,9 @@ class ApiController extends OCSController {
 		// (adopt-connection-registry). Optional and last, so every existing
 		// caller and test keeps working.
 		private ?ConnectionReportService $connectionReports = null,
+		// Lists and clears blocked automatic-update versions (#438). Optional
+		// and last for the same reason as the one above.
+		private ?AttemptLedger $attemptLedger = null,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -228,6 +232,31 @@ class ApiController extends OCSController {
 			'binding' => $binding?->toArray(),
 			'sourceId' => $binding?->getId() ?? 'appstore',
 		]);
+	}
+
+	/**
+	 * Removes an app's source binding so it is read from the App Store again
+	 * (password-confirmed); see "Source binding" (#438)
+	 *
+	 * @param string $appId The app to unbind
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, sourceId: string}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 *
+	 * 200: The binding was removed, or there was none
+	 * 403: Caller is not an administrator
+	 *
+	 * @spec openspec/specs/external-sources/spec.md
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'DELETE', url: '/api/source/{appId}/binding')]
+	public function clearBinding(string $appId): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$this->installerService->clearBinding($appId);
+
+		return new DataResponse(['appId' => $appId, 'sourceId' => 'appstore']);
 	}
 
 	/**
@@ -653,6 +682,36 @@ class ApiController extends OCSController {
 	}
 
 	/**
+	 * Clears a failed automatic-update attempt so the next run inside the
+	 * window tries that version again (password-confirmed); see "Failed
+	 * attempt is not retried" (#438)
+	 *
+	 * @param string $appId The app the attempt belongs to
+	 * @param string $version The version to try again
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, version: string, cleared: bool}, array{}>|DataResponse<Http::STATUS_FORBIDDEN|Http::STATUS_NOT_FOUND, array{message: string}, array{}>
+	 *
+	 * 200: The attempt was cleared
+	 * 403: Caller is not an administrator
+	 * 404: No attempt is recorded for that version
+	 *
+	 * @spec openspec/specs/auto-update-policies/spec.md
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'DELETE', url: '/api/app/{appId}/attempts/{version}')]
+	public function retryAttempt(string $appId, string $version): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		if ($this->attemptLedger?->forget($appId, $version) !== true) {
+			return new DataResponse(['message' => 'No automatic update attempt is recorded for that version.'], Http::STATUS_NOT_FOUND);
+		}
+
+		return new DataResponse(['appId' => $appId, 'version' => $version, 'cleared' => true]);
+	}
+
+	/**
 	 * Lists every persisted per-app auto-update policy plus the global
 	 * kill switch / window; see "Per-app update policy" and "Global kill
 	 * switch and window"
@@ -672,7 +731,12 @@ class ApiController extends OCSController {
 
 		$policies = [];
 		foreach ($this->policyStore->all() as $appId => $policy) {
-			$policies[] = $policy->toArray() + ['appId' => $appId];
+			$policies[] = $policy->toArray() + [
+				'appId' => $appId,
+				// Versions whose automatic update failed and are skipped until
+				// the admin retries them (#438).
+				'blockedVersions' => $this->attemptLedger?->blockedVersions($appId) ?? [],
+			];
 		}
 
 		return new DataResponse([

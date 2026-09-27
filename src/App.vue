@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type {PrefillBindPayload} from './components/DiscoverPanel.vue';
-import type {PolicyLevel} from './components/PolicySelector.vue';
+import type {BlockedVersion, PolicyLevel} from './components/PolicySelector.vue';
 import type { PinRecord } from './dialogs/PinDialog.vue'
 import type {LkgRecord} from './utils/migrationSafety.ts';
 
@@ -218,7 +218,7 @@ let shaMismatchResolve: ((accept: boolean) => void) | null = null
 // execution through the standard installer", "Global kill switch and
 // window"). Policies and the two global settings are fetched together from
 // GET /api/policies, mirroring the `pins`/`advisories` per-appId map pattern.
-type PolicyRecord = { appId: string, level: PolicyLevel, setBy: string, setAt: string }
+type PolicyRecord = { appId: string, level: PolicyLevel, setBy: string, setAt: string, blockedVersions?: BlockedVersion[] }
 const policies = ref<Record<string, PolicyRecord>>({})
 const isSavingPolicy = ref(false)
 const autoUpdateEnabled = ref(false)
@@ -833,6 +833,42 @@ async function loadPolicies (): Promise<void> {
 }
 
 const policyLevelFor = (appId: string): PolicyLevel => policies.value[appId]?.level ?? 'none'
+const blockedVersionsFor = (appId: string): BlockedVersion[] => policies.value[appId]?.blockedVersions ?? []
+
+/**
+ * Clears a failed automatic-update attempt so the next run inside the window
+ * tries that version again (#438).
+ *
+ * @param appId the app the attempt belongs to
+ * @param version the version to try again
+ * @spec openspec/specs/auto-update-policies/spec.md
+ */
+async function onRetryAttempt (appId: string, version: string): Promise<void> {
+	if (isSavingPolicy.value) {
+		return
+	}
+	isSavingPolicy.value = true
+	errorMessage.value = ''
+	try {
+		await ensurePasswordConfirmation()
+		const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/attempts/${encodeURIComponent(version)}`)), {
+			method: 'DELETE',
+			headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
+		})
+		await unwrapOcsResponse(response)
+		const current = policies.value[appId]
+		if (current) {
+			policies.value = {
+				...policies.value,
+				[appId]: { ...current, blockedVersions: (current.blockedVersions ?? []).filter((entry) => entry.version !== version) },
+			}
+		}
+	} catch (e) {
+		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not clear the failed attempt.')
+	} finally {
+		isSavingPolicy.value = false
+	}
+}
 
 /**
  *
@@ -2243,7 +2279,9 @@ watch(dryRunEnabled, () => {
 													:level="policyLevelFor(app.id)"
 													:autoUpdateEnabled="autoUpdateEnabled"
 													:disabled="isSavingPolicy"
-													@change="onPolicyChange" />
+													:blockedVersions="blockedVersionsFor(app.id)"
+													@change="onPolicyChange"
+													@retry="onRetryAttempt" />
 											</div>
 											<button
 												v-if="!app.isCore"

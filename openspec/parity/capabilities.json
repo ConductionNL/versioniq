@@ -2894,7 +2894,7 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "A per (app, version) ledger means a failed version is never retried at all (stricter than a backoff); a newer qualifying version is still attempted. The ledger is not shown anywhere in the UI.",
+			"note": "A per (app, version) ledger means a failed version is not retried automatically (stricter than a backoff); a newer qualifying version is still attempted. The Apps tab lists the blocked versions and the admin can retry one (#438).",
 			"evidence": {
 				"nextcloud": "No automatic updates exist; the store fetcher waits 300 s after a failed connection (lib/private/App/AppStore/Fetcher/Fetcher.php:32,70), which is fetch backoff, not update backoff.",
 				"renovate": "Errored updates are retried every run (dependency-dashboard.ts:542); Mend cloud moves failing repositories to daily or weekly schedules (docs/usage/mend-hosted/job-scheduling.md:8-13); no per-update retry cap.",
@@ -3198,22 +3198,22 @@
 			"area": "autoupdate",
 			"name": "See which automatic update attempts failed and clear one so it is retried.",
 			"rowSource": "own-code",
-			"versioniq": "no",
+			"versioniq": "yes",
 			"nextcloud": "no",
 			"renovate": "yes",
 			"dependabot": "yes",
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "none",
-				"evidence": "lib/Service/AutoUpdate/AttemptLedger.php:29",
-				"reachedOn": "nothing: no route exposes the attempt ledger"
+				"state": "built",
+				"evidence": "lib/Service/AutoUpdate/AttemptLedger.php:84, lib/Service/AutoUpdate/AttemptLedger.php:104, lib/Controller/ApiController.php:738, lib/Controller/ApiController.php:702, src/components/PolicySelector.vue:64",
+				"reachedOn": "Apps tab, auto-update policy on each app card (Retry {version})"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "medium",
-			"note": "The never-retry ledger blocks a failed version for good and no route or page shows or resets it. Proposed by reader own-b.",
+			"note": "Each app card lists the versions an automatic update failed on, which the job skips, with a Retry action that clears that attempt (DELETE /api/app/{appId}/attempts/{version}, password-confirmed) so the next run inside the window tries it again. Fixed in #438.",
 			"evidence": {
 				"nextcloud": "No automatic updates exist (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154).",
 				"renovate": "The \"Errored\" dashboard section lists failed updates with a retry checkbox (lib/workers/repository/dependency-dashboard.ts:541-545).",
@@ -4442,14 +4442,14 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "src/components/SourcesPanel.vue:108, lib/Controller/ApiController.php:247, lib/Service/Source/SourceBindingStore.php:109",
+				"evidence": "src/components/SourcesPanel.vue:108, lib/Controller/ApiController.php:247, lib/Service/Source/SourceBindingStore.php:109, lib/Controller/ApiController.php:252, src/components/SourcesPanel.vue:260, lib/Service/Source/SourceBindingStore.php:128",
 				"reachedOn": "Sources tab"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "An installed app is bound to a forge owner/repo and asset pattern, allowlist checked and audited. Rebinding back to the App Store is API-only.",
+			"note": "An installed app is bound to a forge owner/repo and asset pattern, allowlist checked and audited. The Sources tab also removes a binding, so the app reads from the App Store again (#438).",
 			"evidence": {
 				"nextcloud": "One store URL for the whole instance (lib/private/App/AppStore/Fetcher/Fetcher.php:244-246).",
 				"renovate": "packageRules can set registryUrls (lib/config/options/index.ts:1436) and overrideDatasource (lib/config/options/index.ts:2319) or overridePackageName (lib/config/options/index.ts:2340) for one dependency.",

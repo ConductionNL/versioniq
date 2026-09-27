@@ -11,6 +11,7 @@ vi.mock('@nextcloud/l10n', () => ({
 		text.replace(/\{(\w+)\}/g, (_match: string, key: string) => String(vars[key] ?? '')),
 }))
 
+vi.mock('@nextcloud/vue/components/NcButton', () => ({ default: { name: 'NcButton', emits: ['click'], template: '<button type="button" @click="$emit(\'click\')"><slot /></button>' } }))
 vi.mock('@nextcloud/vue/components/NcSelect', () => ({ default: { name: 'NcSelect', template: '<select><slot /></select>' } }))
 
 describe('PolicySelector', () => {
@@ -53,5 +54,42 @@ describe('PolicySelector', () => {
 		await select.vm.$emit('update:modelValue', { id: 'all', label: 'All' })
 
 		expect(wrapper.emitted('change')).toEqual([['openregister', 'all']])
+	})
+
+	// #438: a failed automatic update blocked that version for good and no
+	// page showed it or offered a way out.
+	it('lists blocked versions with a retry action that names the version', async () => {
+		const wrapper = shallowMount(PolicySelector, {
+			props: {
+				appId: 'openregister',
+				level: 'patch',
+				autoUpdateEnabled: true,
+				blockedVersions: [{ version: '2.3.4', at: '2026-07-22T02:00:00+00:00' }],
+			},
+			global: { stubs: { NcButton: false } },
+		})
+
+		const blocked = wrapper.find('[data-testid="policy-blocked-versions"]')
+		expect(blocked.exists()).toBe(true)
+		expect(blocked.text()).toContain('2.3.4')
+
+		await wrapper.find('[data-testid="policy-retry-2.3.4"]').trigger('click')
+		expect(wrapper.emitted('retry')).toEqual([['openregister', '2.3.4']])
+	})
+
+	it('shows no blocked list when nothing is blocked', () => {
+		const wrapper = shallowMount(PolicySelector, {
+			props: { appId: 'openregister', level: 'patch', autoUpdateEnabled: true },
+		})
+
+		expect(wrapper.find('[data-testid="policy-blocked-versions"]').exists()).toBe(false)
+	})
+
+	it('says automation is disabled without an em-dash', () => {
+		const wrapper = shallowMount(PolicySelector, {
+			props: { appId: 'openregister', level: 'minor', autoUpdateEnabled: false },
+		})
+
+		expect(wrapper.find('[data-testid="policy-disabled-hint"]').text()).not.toContain('\u2014')
 	})
 })

@@ -318,4 +318,34 @@ final class SourceBindingStoreTest extends TestCase {
 		$store = $this->makeStore($config, null, $logger);
 		$store->get('openregister');
 	}
+
+	/**
+	 * clear() had no caller, so a binding could be replaced but never removed
+	 * (#438). Removing one is a source change and goes in the audit trail.
+	 */
+	public function testClearRemovesTheBindingAndAuditsIt(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getValueString')->willReturn(json_encode([
+			'kind' => SourceBinding::KIND_GITHUB_RELEASE,
+			'owner' => 'ConductionNL',
+			'repo' => 'openregister',
+		], JSON_THROW_ON_ERROR));
+		$config->expects($this->once())->method('deleteKey')->with('versioniq', 'source.openregister');
+
+		$auditLogger = $this->createMock(AuditLogger::class);
+		$auditLogger->expects($this->once())
+			->method('record')
+			->with(
+				'alice',
+				'openregister',
+				AuditLogger::OPERATION_BIND_SOURCE,
+				null,
+				null,
+				'appstore',
+				AuditLogger::STATUS_SUCCESS,
+				$this->callback(fn (?string $message): bool => $message !== null && str_contains($message, 'github:ConductionNL/openregister')),
+			);
+
+		$this->makeStore($config, $auditLogger)->clear('openregister');
+	}
 }

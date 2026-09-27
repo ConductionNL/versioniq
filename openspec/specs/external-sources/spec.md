@@ -418,6 +418,15 @@ The admin UI MUST surface source binding so an admin can view an app's current b
 - **WHEN** the admin opens the Sources tab for that app
 - **THEN** the UI MUST display the current binding (forge, owner, repo) from `GET /api/source/{appId}/binding`
 
+#### Scenario: Remove a binding via the UI
+
+@e2e exclude a binding removal needs a trusted forge binding set up first; covered by src/components/SourcesPanel.spec.ts and tests/unit/Controller/ApiTest.php (testClearBindingRemovesTheBinding).
+
+- **GIVEN** an app is bound to a forge source
+- **WHEN** the admin clicks "Remove binding and use the App Store" on the Sources tab
+- **THEN** the UI MUST call `DELETE /api/source/{appId}/binding` (admin-only, password-confirmed)
+- **AND** the binding MUST be removed, audited as a `bind_source` entry naming the removed source, and the app MUST read its versions from the App Store again
+
 #### Scenario: Allowlist surfaced for both forges
 
 @e2e tests/e2e/panels.spec.ts
