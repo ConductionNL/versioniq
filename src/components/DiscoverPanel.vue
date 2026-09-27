@@ -247,8 +247,14 @@ function handleOpen (appId: string): void {
 }
 
 /**
+ * Routes a not-installed hit's installable candidate into the flow that can
+ * install it. An App Store candidate carries no forge binding: the App Store
+ * is the default source, so it opens the version picker, whose install runs
+ * through the normal install path. A forge candidate prefills the Sources
+ * bind form. See "Hits route into existing flows".
  *
  * @param hit
+ * @spec openspec/specs/app-discovery/spec.md
  */
 function handleInstall (hit: DiscoveryHit): void {
 	const candidate = bestInstallableCandidate(hit)
@@ -256,6 +262,10 @@ function handleInstall (hit: DiscoveryHit): void {
 		return
 	}
 	const binding = candidate.sourceBinding ?? {}
+	if (binding.kind === 'appstore') {
+		emit('openApp', hit.appId)
+		return
+	}
 	emit('prefillBind', {
 		appId: hit.appId,
 		forge: binding.forge || 'github',

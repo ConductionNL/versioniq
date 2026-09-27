@@ -1401,14 +1401,14 @@
 			"easy-updates-manager": "yes",
 			"built": {
 				"state": "built",
-				"evidence": "src/components/DiscoverPanel.vue:378, src/components/DiscoverPanel.vue:253, lib/Service/InstallerService.php:87, lib/Command/InstallVersion.php:118",
-				"reachedOn": "Discover tab (find); occ versioniq:install (install)"
+				"evidence": "src/components/DiscoverPanel.vue:259, src/App.vue:298, lib/Service/InstallerService.php:87, lib/Command/InstallVersion.php:118",
+				"reachedOn": "Discover tab (find, and install an App Store app through the version picker); occ versioniq:install (install)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "app-discovery",
 			"featureConfidence": "medium",
-			"note": "The Discover tab searches the App Store and GitHub for apps not installed yet, but its 'Install...' only prefills a source binding; the Apps tab lists enabled apps only, so no page then installs the new app. The CLI can install it by id (left disabled).",
+			"note": "The Discover tab searches the App Store and GitHub for apps not installed yet. An App Store hit's 'Install...' opens the version picker, which installs it. A forge hit's 'Install...' only prefills a source binding, and the Apps tab lists enabled apps only, so no page then installs the new forge app. The CLI can install it by id (left disabled).",
 			"evidence": {
 				"nextcloud": "Discover, category browse and search views with Install actions (apps/appstore/src/router/routes.ts, apps/appstore/src/actions/actionInstall.ts; enableApp downloads when needed at apps/appstore/lib/Controller/ApiController.php:171-176); occ app:install.",
 				"renovate": "Renovate only updates dependencies it extracts from existing package files (docs/usage/key-concepts/how-renovate-works.md); it does not add new dependencies.",
@@ -4637,7 +4637,7 @@
 			"area": "sources",
 			"name": "Take a search result straight into the install or bind flow.",
 			"rowSource": "own-code",
-			"versioniq": "partial",
+			"versioniq": "yes",
 			"nextcloud": "yes",
 			"renovate": "no",
 			"dependabot": "no",
@@ -4645,14 +4645,14 @@
 			"easy-updates-manager": "yes",
 			"built": {
 				"state": "built",
-				"evidence": "src/components/DiscoverPanel.vue:245, src/components/DiscoverPanel.vue:253, src/App.vue:312",
-				"reachedOn": "Discover tab to Apps tab (Open version picker) or Sources tab (Install...)"
+				"evidence": "src/components/DiscoverPanel.vue:246, src/components/DiscoverPanel.vue:259, src/App.vue:298, src/App.vue:312",
+				"reachedOn": "Discover tab to Apps tab (Open version picker, or Install... on an App Store hit) or Sources tab (Install... on a forge hit)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "app-discovery",
 			"featureConfidence": "high",
-			"note": "Installed hits open the version picker and forge hits prefill the bind form, but an App Store hit for an app that is not installed also routes to the forge bind form with empty owner and repo, a dead end.",
+			"note": "Installed hits and not-installed App Store hits open the version picker, where the App Store versions install through the normal install path; forge hits prefill the bind form.",
 			"evidence": {
 				"nextcloud": "Search results carry the same Install/Enable actions as any app row (apps/appstore/src/components/AppTable/AppTableRow.vue:53-57, apps/appstore/src/actions/actionInstall.ts).",
 				"renovate": "There is no search result to route from; Renovate has no discovery flow.",
