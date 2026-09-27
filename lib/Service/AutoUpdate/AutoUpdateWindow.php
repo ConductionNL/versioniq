@@ -62,4 +62,28 @@ final class AutoUpdateWindow {
 		// Crosses midnight (e.g. 23:00-03:00).
 		return $current >= $start || $current < $end;
 	}
+
+	/**
+	 * Identifies the opening of the window `$now` falls in, as
+	 * `<window>@<Y-m-d the window opened>`, so the job sweeps once per window
+	 * even though it wakes every quarter hour (#429). After midnight inside a
+	 * midnight-crossing window the window opened the day before. Changing the
+	 * window changes the key, so a new window is swept on its own terms.
+	 *
+	 * @spec openspec/specs/auto-update-policies/spec.md
+	 */
+	public static function openingKey(string $window, \DateTimeInterface $now): string {
+		$window = trim($window);
+		$openedOn = \DateTimeImmutable::createFromInterface($now);
+		if (preg_match(self::PATTERN, $window, $matches) === 1) {
+			$start = ((int)$matches[1]) * 60 + (int)$matches[2];
+			$end = ((int)$matches[3]) * 60 + (int)$matches[4];
+			$current = ((int)$now->format('H')) * 60 + (int)$now->format('i');
+			if ($start > $end && $current < $end) {
+				$openedOn = $openedOn->modify('-1 day');
+			}
+		}
+
+		return $window . '@' . $openedOn->format('Y-m-d');
+	}
 }

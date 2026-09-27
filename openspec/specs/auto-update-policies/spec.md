@@ -37,7 +37,7 @@ Admins MUST be able to set, read, and clear a per-app policy `level` ∈ `none|p
 
 ### Requirement: Nightly policy execution through the standard installer [MVP]
 
-A daily `TimedJob` MUST, when `auto_update_enabled` is true and the current server time is inside `auto_update_window` (default `01:00-05:00`): for every app with policy level ≠ none — skip pinned apps entirely; list versions from the app's bound source; select the highest available version that is (a) strictly newer than installed, (b) compatible, (c) within the policy level (patch: same major.minor; minor: same major; all: any); and install it via `InstallerService::installAppVersion` with all standard verification, backup/restore, and outcome classification. The job MUST never downgrade, MUST attempt a given (appId, version) at most once (recording attempts), and MUST proceed to the next app after any failure.
+A `TimedJob` that wakes every 15 minutes MUST, once per opening of the window, when `auto_update_enabled` is true and the current time in Nextcloud's `default_timezone` (UTC when unset or invalid) is inside `auto_update_window` (default `01:00-05:00`): for every app with policy level ≠ none — skip pinned apps entirely; list versions from the app's bound source; select the highest available version that is (a) strictly newer than installed, (b) compatible, (c) within the policy level (patch: same major.minor; minor: same major; all: any); and install it via `InstallerService::installAppVersion` with all standard verification, backup/restore, and outcome classification. The job MUST never downgrade, MUST attempt a given (appId, version) at most once (recording attempts), and MUST proceed to the next app after any failure.
 
 #### Scenario: Patch-level update applied
 

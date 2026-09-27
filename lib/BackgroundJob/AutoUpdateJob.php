@@ -28,7 +28,7 @@ use OCP\BackgroundJob\TimedJob;
 use Psr\Log\LoggerInterface;
 
 /**
- * Nightly policy-driven auto-update sweep — turns Versioniq from a repair
+ * Policy-driven auto-update sweep, once per update window. Turns Versioniq from a repair
  * tool into bounded, observable update automation; see "Nightly policy
  * execution through the standard installer".
  *
@@ -51,7 +51,13 @@ use Psr\Log\LoggerInterface;
  * @psalm-api
  */
 class AutoUpdateJob extends TimedJob {
-	private const INTERVAL_SECONDS = 24 * 60 * 60;
+	/**
+	 * Wakes every quarter hour and lets the window decide. A 24-hour interval
+	 * kept the job near the time cron first picked it up, so a job first run
+	 * at 14:00 missed a 01:00-05:00 window for months (#429). The opening key
+	 * below keeps it to one sweep per window.
+	 */
+	private const INTERVAL_SECONDS = 15 * 60;
 
 	public function __construct(
 		ITimeFactory $time,
@@ -80,12 +86,21 @@ class AutoUpdateJob extends TimedJob {
 			return;
 		}
 
-		$now = $this->time->getDateTime();
-		if (!AutoUpdateWindow::isWithin($this->settingsStore->getWindow(), $now)) {
+		$zoneName = $this->settingsStore->getTimeZoneName();
+		$now = $this->time->getDateTime('now', new \DateTimeZone($zoneName !== '' ? $zoneName : 'UTC'));
+		$window = $this->settingsStore->getWindow();
+		if (!AutoUpdateWindow::isWithin($window, $now)) {
 			// Outside the configured window — see "Disabled or outside the
 			// window is a no-op".
 			return;
 		}
+
+		$openingKey = AutoUpdateWindow::openingKey($window, $now);
+		if ($this->settingsStore->hasSweptWindow($openingKey)) {
+			// Already swept this window; the job wakes every quarter hour.
+			return;
+		}
+		$this->settingsStore->markWindowSwept($openingKey);
 
 		foreach ($this->policyStore->all() as $appId => $policy) {
 			if ($policy->level === Policy::LEVEL_NONE) {

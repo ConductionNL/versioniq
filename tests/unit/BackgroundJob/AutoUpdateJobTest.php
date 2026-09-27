@@ -275,4 +275,76 @@ final class AutoUpdateJobTest extends TestCase {
 		$this->runJob($job);
 		$this->addToAssertionCount(1);
 	}
+
+	/**
+	 * A 24-hour TimedJob first picked up at 14:00 keeps running near 14:00 and
+	 * can miss a 01:00-05:00 window for months (#429). The job must wake often
+	 * enough that every window of an hour or more sees at least one run.
+	 */
+	public function testTheJobWakesAtLeastHourly(): void {
+		$job = $this->buildJob($this->mocks(), $this->timeFactory());
+		$interval = new \ReflectionProperty(\OCP\BackgroundJob\TimedJob::class, 'interval');
+
+		$this->assertLessThanOrEqual(3600, $interval->getValue($job));
+	}
+
+	/**
+	 * Waking every 15 minutes must not mean sweeping every 15 minutes: one
+	 * sweep per window, keyed by the window and the date it opened.
+	 */
+	public function testASecondRunInTheSameWindowIsANoOp(): void {
+		$mocks = $this->mocks();
+		$mocks['settingsStore']->method('isEnabled')->willReturn(true);
+		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$swept = [];
+		$mocks['settingsStore']->method('hasSweptWindow')->willReturnCallback(
+			static function (string $key) use (&$swept): bool {
+				return in_array($key, $swept, true);
+			}
+		);
+		$mocks['settingsStore']->method('markWindowSwept')->willReturnCallback(
+			static function (string $key) use (&$swept): void {
+				$swept[] = $key;
+			}
+		);
+		$mocks['policyStore']->expects($this->once())->method('all')->willReturn([]);
+
+		$this->runJob($this->buildJob($mocks, $this->timeFactory('2026-07-23T02:00:00')));
+		$this->runJob($this->buildJob($mocks, $this->timeFactory('2026-07-23T02:15:00')));
+
+		$this->assertSame(['01:00-05:00@2026-07-23'], $swept);
+	}
+
+	public function testTheNextNightsWindowSweepsAgain(): void {
+		$mocks = $this->mocks();
+		$mocks['settingsStore']->method('isEnabled')->willReturn(true);
+		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$mocks['settingsStore']->method('hasSweptWindow')->willReturnCallback(
+			static fn (string $key): bool => $key === '01:00-05:00@2026-07-22'
+		);
+		$mocks['policyStore']->expects($this->once())->method('all')->willReturn([]);
+
+		$this->runJob($this->buildJob($mocks, $this->timeFactory('2026-07-23T02:00:00')));
+	}
+
+	/**
+	 * The window is read in the time zone the settings name (Nextcloud's
+	 * default_timezone), not in whatever zone PHP runs in (#429).
+	 */
+	public function testTheWindowIsComparedInTheConfiguredTimeZone(): void {
+		$mocks = $this->mocks();
+		$mocks['settingsStore']->method('isEnabled')->willReturn(true);
+		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$mocks['settingsStore']->method('getTimeZoneName')->willReturn('Europe/Amsterdam');
+		// 00:30 UTC is 02:30 in Amsterdam in July: inside the window there.
+		$mocks['policyStore']->expects($this->once())->method('all')->willReturn([]);
+
+		$time = $this->createMock(ITimeFactory::class);
+		$time->method('getDateTime')->willReturnCallback(
+			static fn (string $when = 'now', ?\DateTimeZone $zone = null): \DateTime => (new \DateTime('2026-07-23T00:30:00', new \DateTimeZone('UTC')))
+				->setTimezone($zone ?? new \DateTimeZone('UTC'))
+		);
+
+		$this->runJob($this->buildJob($mocks, $time));
+	}
 }

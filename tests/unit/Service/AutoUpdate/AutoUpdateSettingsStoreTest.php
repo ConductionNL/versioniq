@@ -68,4 +68,45 @@ final class AutoUpdateSettingsStoreTest extends TestCase {
 		$store = new AutoUpdateSettingsStore($config);
 		$store->setWindow('22:00-04:00');
 	}
+
+	public function testTimeZoneFollowsTheInstanceDefaultTimezone(): void {
+		$system = $this->createMock(\OCP\IConfig::class);
+		$system->method('getSystemValueString')->with('default_timezone', 'UTC')->willReturn('Europe/Amsterdam');
+
+		$store = new AutoUpdateSettingsStore($this->createMock(IAppConfig::class), $system);
+
+		$this->assertSame('Europe/Amsterdam', $store->getTimeZoneName());
+	}
+
+	public function testAnInvalidTimezoneFallsBackToUtc(): void {
+		$system = $this->createMock(\OCP\IConfig::class);
+		$system->method('getSystemValueString')->willReturn('Mars/Olympus');
+
+		$store = new AutoUpdateSettingsStore($this->createMock(IAppConfig::class), $system);
+
+		$this->assertSame('UTC', $store->getTimeZoneName());
+	}
+
+	public function testASweptWindowIsRemembered(): void {
+		$stored = '';
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getValueString')->willReturnCallback(
+			static function (string $app, string $key, string $default = '') use (&$stored): string {
+				return $key === AutoUpdateSettingsStore::CONFIG_LAST_SWEPT_WINDOW ? $stored : $default;
+			}
+		);
+		$config->method('setValueString')->willReturnCallback(
+			static function (string $app, string $key, string $value) use (&$stored): bool {
+				$stored = $value;
+				return true;
+			}
+		);
+
+		$store = new AutoUpdateSettingsStore($config);
+
+		$this->assertFalse($store->hasSweptWindow('01:00-05:00@2026-07-23'));
+		$store->markWindowSwept('01:00-05:00@2026-07-23');
+		$this->assertTrue($store->hasSweptWindow('01:00-05:00@2026-07-23'));
+		$this->assertFalse($store->hasSweptWindow('01:00-05:00@2026-07-24'));
+	}
 }
