@@ -210,7 +210,6 @@ OC.L10N.register(
         "Disabled": "Uitgeschakeld",
         "Not installed": "Niet geïnstalleerd",
         "This app is installed but not enabled.": "Deze app is geïnstalleerd maar niet ingeschakeld.",
-        "Enable it on the apps page": "Schakel hem in op de apps-pagina",
         "Update window (HH:MM-HH:MM, time zone {timeZone})": "Updatevenster (UU:MM-UU:MM, tijdzone {timeZone})",
         "Bind an installed app to a GitHub repository, or to one on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.": "Koppel een geïnstalleerde app aan een GitHub-repository, of aan een repository op een zelf gehoste Forgejo- of Gitea-server, zodat versies daaruit worden gehaald in plaats van uit de App Store. De repository moet op de lijst met vertrouwde bronnen staan.",
         "Self-hosted Forgejo or Gitea": "Zelf gehoste Forgejo of Gitea",
@@ -279,7 +278,12 @@ OC.L10N.register(
         "This version declares support for the running Nextcloud version.": "Deze versie geeft aan de draaiende Nextcloud-versie te ondersteunen.",
         "This version does not declare support for the running Nextcloud version; installing it will likely fail.": "Deze versie geeft niet aan de draaiende Nextcloud-versie te ondersteunen; installeren mislukt waarschijnlijk.",
         "Runs on this server": "Draait op deze server",
-        "Not for this server version": "Niet voor deze serverversie"
+        "Not for this server version": "Niet voor deze serverversie",
+        "Could not enable the app.": "De app kon niet worden ingeschakeld.",
+        "Enable {appId}": "{appId} inschakelen",
+        "Enable": "Inschakelen",
+        "Nextcloud asks for your password before it enables an app.": "Nextcloud vraagt je wachtwoord voordat een app wordt ingeschakeld.",
+        "Password": "Wachtwoord"
     },
     "nplurals=2; plural=(n != 1);"
 )

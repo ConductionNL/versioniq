@@ -185,7 +185,6 @@
         "Disabled": "Disabled",
         "Not installed": "Not installed",
         "This app is installed but not enabled.": "This app is installed but not enabled.",
-        "Enable it on the apps page": "Enable it on the apps page",
         "Update window (HH:MM-HH:MM, time zone {timeZone})": "Update window (HH:MM-HH:MM, time zone {timeZone})",
         "Bind an installed app to a GitHub repository, or to one on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.": "Bind an installed app to a GitHub repository, or to one on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.",
         "Self-hosted Forgejo or Gitea": "Self-hosted Forgejo or Gitea",
@@ -257,6 +256,11 @@
         "This version declares support for the running Nextcloud version.": "This version declares support for the running Nextcloud version.",
         "This version does not declare support for the running Nextcloud version; installing it will likely fail.": "This version does not declare support for the running Nextcloud version; installing it will likely fail.",
         "Runs on this server": "Runs on this server",
-        "Not for this server version": "Not for this server version"
+        "Not for this server version": "Not for this server version",
+        "Could not enable the app.": "Could not enable the app.",
+        "Enable {appId}": "Enable {appId}",
+        "Enable": "Enable",
+        "Nextcloud asks for your password before it enables an app.": "Nextcloud asks for your password before it enables an app.",
+        "Password": "Password"
     }
 }
