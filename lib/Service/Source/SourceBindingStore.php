@@ -127,6 +127,29 @@ class SourceBindingStore {
 		$this->config->deleteKey(Application::APP_ID, $this->key($appId));
 	}
 
+	/**
+	 * Lists the ids of every app that has a persisted source binding, whether
+	 * or not the app is installed, so the Apps tab can offer an app that was
+	 * bound but not installed yet; see "List Installed Apps".
+	 *
+	 * @spec openspec/specs/version-management/spec.md
+	 * @return list<string>
+	 */
+	public function listBoundAppIds(): array {
+		$appIds = [];
+		foreach ($this->config->getKeys(Application::APP_ID) as $key) {
+			if (!str_starts_with($key, 'source.')) {
+				continue;
+			}
+			$appId = substr($key, strlen('source.'));
+			if ($appId !== '') {
+				$appIds[] = $appId;
+			}
+		}
+
+		return $appIds;
+	}
+
 	private function key(string $appId): string {
 		return 'source.' . $appId;
 	}

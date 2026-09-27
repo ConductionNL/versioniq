@@ -177,7 +177,11 @@ OC.L10N.register(
         "Simulated": "Simulated",
         "Switched off": "Switched off",
         "Not available": "Not available",
-        "Error": "Error"
+        "Error": "Error",
+        "Disabled": "Disabled",
+        "Not installed": "Not installed",
+        "This app is installed but not enabled.": "This app is installed but not enabled.",
+        "Enable it on the apps page": "Enable it on the apps page"
     },
     "nplurals=2; plural=(n != 1);"
 )

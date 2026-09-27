@@ -204,7 +204,11 @@ OC.L10N.register(
         "Simulated": "Gesimuleerd",
         "Switched off": "Uitgeschakeld",
         "Not available": "Niet beschikbaar",
-        "Error": "Fout"
+        "Error": "Fout",
+        "Disabled": "Uitgeschakeld",
+        "Not installed": "Niet geïnstalleerd",
+        "This app is installed but not enabled.": "Deze app is geïnstalleerd maar niet ingeschakeld.",
+        "Enable it on the apps page": "Schakel hem in op de apps-pagina"
     },
     "nplurals=2; plural=(n != 1);"
 )

@@ -491,22 +491,22 @@
 			"area": "inventory",
 			"name": "Manage the versions of disabled apps as well as enabled ones.",
 			"rowSource": "competitor",
-			"versioniq": "no",
+			"versioniq": "yes",
 			"nextcloud": "partial",
 			"renovate": "yes",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "none",
-				"evidence": "lib/Service/InstallerService.php:87",
-				"reachedOn": "nothing"
+				"state": "built",
+				"evidence": "lib/Service/InstallerService.php:94, lib/Service/Source/SourceBindingStore.php:138, src/App.vue:2185",
+				"reachedOn": "Apps tab (app card marked Disabled)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "The app list is built from IAppManager::getEnabledApps(), so disabled apps never appear and cannot be picked in the UI. The CLI install path could still target one by id (not checked live).",
+			"note": "The app list joins IAppManager::getEnabledApps() with getAppInstalledVersions(false), so installed but disabled apps are listed with a Disabled mark and their versions can be listed and installed from the page.",
 			"evidence": {
 				"nextcloud": "The Disabled category lists disabled apps (apps/appstore/src/views/AppstoreManage.vue:37), but the Updates view only offers updates for active apps (same file :39); occ app:update ,all covers disabled apps too (core/Command/App/Update.php:82).",
 				"renovate": "lib/config/options/index.ts:1601 matchDepTypes lets rules cover dev, optional and peer dependencies the same as runtime ones; mapped as components that are present but not active at runtime.",
@@ -1393,7 +1393,7 @@
 			"area": "install",
 			"name": "Find and install an app that is not installed yet.",
 			"rowSource": "competitor",
-			"versioniq": "partial",
+			"versioniq": "yes",
 			"nextcloud": "yes",
 			"renovate": "no",
 			"dependabot": "no",
@@ -1401,14 +1401,14 @@
 			"easy-updates-manager": "yes",
 			"built": {
 				"state": "built",
-				"evidence": "src/components/DiscoverPanel.vue:259, src/App.vue:298, lib/Service/InstallerService.php:87, lib/Command/InstallVersion.php:118",
-				"reachedOn": "Discover tab (find, and install an App Store app through the version picker); occ versioniq:install (install)"
+				"evidence": "src/components/DiscoverPanel.vue:259, lib/Service/InstallerService.php:94, lib/Service/Source/SourceBindingStore.php:138, src/App.vue:2469, lib/Command/InstallVersion.php:118",
+				"reachedOn": "Discover tab (find; Install... opens the version picker for an App Store hit, or the bind form for a forge hit), then the Apps tab (a bound app is listed as Not installed and installs from its version list); occ versioniq:install"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "app-discovery",
 			"featureConfidence": "medium",
-			"note": "The Discover tab searches the App Store and GitHub for apps not installed yet. An App Store hit's 'Install...' opens the version picker, which installs it. A forge hit's 'Install...' only prefills a source binding, and the Apps tab lists enabled apps only, so no page then installs the new forge app. The CLI can install it by id (left disabled).",
+			"note": "The Discover tab searches the App Store and GitHub for apps not installed yet. An App Store hit's 'Install...' opens the version picker, which installs it. A forge hit's 'Install...' prefills a source binding, after which the Apps tab lists the app as Not installed and installs it from its version list. After a live install of an app Nextcloud has not enabled, the result links to the apps page to enable it.",
 			"evidence": {
 				"nextcloud": "Discover, category browse and search views with Install actions (apps/appstore/src/router/routes.ts, apps/appstore/src/actions/actionInstall.ts; enableApp downloads when needed at apps/appstore/lib/Controller/ApiController.php:171-176); occ app:install.",
 				"renovate": "Renovate only updates dependencies it extracts from existing package files (docs/usage/key-concepts/how-renovate-works.md); it does not add new dependencies.",
