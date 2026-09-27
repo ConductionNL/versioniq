@@ -7,10 +7,13 @@
         "Advisories checked just now": "Advisories checked just now",
         "Advisories checked {hours} h ago": "Advisories checked {hours} h ago",
         "Advisories checked {minutes} min ago": "Advisories checked {minutes} min ago",
-        "Advisories not checked yet — the background job runs every 6 hours": "Advisories not checked yet — the background job runs every 6 hours",
+        "_Advisories not checked yet. The background job runs every %n hour._::_Advisories not checked yet. The background job runs every %n hours._": [
+            "Advisories not checked yet. The background job runs every %n hour.",
+            "Advisories not checked yet. The background job runs every %n hours."
+        ],
         "Advisory": "Advisory",
         "Advisory settings saved.": "Advisory settings saved.",
-        "Advisory status unavailable — could not reach the server": "Advisory status unavailable — could not reach the server",
+        "Advisory status unavailable. Could not reach the server.": "Advisory status unavailable. Could not reach the server.",
         "All": "All",
         "All sources": "All sources",
         "An owner/organisation is required.": "An owner/organisation is required.",
