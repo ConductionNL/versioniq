@@ -178,6 +178,9 @@ OC.L10N.register(
         "Switched off": "Switched off",
         "Not available": "Not available",
         "Error": "Error",
+        "Update channel:": "Update channel:",
+        "Safe mode (block downgrades, and pre-releases on a stable update channel)": "Safe mode (block downgrades, and pre-releases on a stable update channel)",
+        "Safe mode is enabled. Disable it to downgrade or to install a pre-release.": "Safe mode is enabled. Disable it to downgrade or to install a pre-release.",
         "Advisories not checked": "Advisories not checked",
         "Background jobs such as the advisory check and automatic updates run without a signed-in admin, so they only use tokens shared with admins. Share a token to keep private repositories checked and updated.": "Background jobs such as the advisory check and automatic updates run without a signed-in admin, so they only use tokens shared with admins. Share a token to keep private repositories checked and updated."
     },

@@ -847,14 +847,14 @@
 			"easy-updates-manager": "partial",
 			"built": {
 				"state": "none",
-				"evidence": "src/App.vue:586, src/App.vue:1989, src/App.vue:1999, src/App.vue:1180",
+				"evidence": "src/App.vue:591, src/App.vue:1994, src/App.vue:2003, src/App.vue:1186, src/utils/safeMode.ts:50",
 				"reachedOn": "Apps tab (read-only label)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "The server's update channel is displayed read-only; there is no channel choice for the instance or per app, and nothing filters versions by channel despite the safe-mode label claiming it does.",
+			"note": "The server's update channel is displayed read-only and safe mode follows it, hiding pre-releases while the channel is stable, production or enterprise; there is no channel choice for the instance or per app.",
 			"evidence": {
 				"nextcloud": "Admin UI channel selector stable/beta/enterprise (apps/updatenotification/lib/Controller/AdminController.php:46, apps/updatenotification/src/components/UpdateNotification.vue:111-113) which also governs app pre-releases (AppFetcher.php:66). Instance-wide only, not per app.",
 				"renovate": "lib/config/options/index.ts:1933 followTag makes a package follow a release tag such as next or beta, settable per package through packageRules or for the whole repository.",
