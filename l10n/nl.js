@@ -247,7 +247,22 @@ OC.L10N.register(
         "Show server advisories": "Serveradviezen tonen",
         "No published advisory is about this server version.": "Geen gepubliceerd advies gaat over deze serverversie.",
         "No installed app has a published advisory.": "Geen geïnstalleerde app heeft een gepubliceerd advies.",
-        "Affected": "Geraakt"
+        "Affected": "Geraakt",
+        "Installed without checksum verification.": "Geïnstalleerd zonder controle van de checksum.",
+        "The package came from the local artifact cache, not from the source.": "Het pakket kwam uit de lokale artefactcache, niet van de bron.",
+        "This app ships with Nextcloud: its version follows the server release. Bind a forge source to manage it from a repository.": "Deze app wordt met Nextcloud meegeleverd: de versie volgt de serverrelease. Koppel een forge-bron om de app vanuit een repository te beheren.",
+        "Shipped with Nextcloud": "Meegeleverd met Nextcloud",
+        "Source: {source}": "Bron: {source}",
+        "App Store": "App Store",
+        "Use another source this once": "Eenmalig een andere bron gebruiken",
+        "Load versions": "Versies laden",
+        "Use the bound source": "De gekoppelde bron gebruiken",
+        "Applies to this version list and the next install only. The binding stays {source}.": "Geldt alleen voor deze versielijst en de volgende installatie. De koppeling blijft {source}.",
+        "Scheduled and blocked updates": "Geplande en geblokkeerde updates",
+        "Automatic updates are off, so nothing below runs until they are enabled.": "Automatische updates staan uit, dus niets hieronder draait totdat ze zijn ingeschakeld.",
+        "Runs in the window {window} ({timeZone}).": "Draait in het venster {window} ({timeZone}).",
+        "No app has an automatic update policy.": "Geen enkele app heeft een beleid voor automatische updates.",
+        "policy: {level}": "beleid: {level}"
     },
     "nplurals=2; plural=(n != 1);"
 )

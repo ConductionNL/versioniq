@@ -27,6 +27,24 @@ import { chooseApp, openSettings, versionsLoaded } from "./helpers.ts";
 const APP = "dashboard";
 
 test.describe("version listing and release notes", () => {
+	test("the app card names its source and the picker offers a one-off source", async ({
+		page,
+	}) => {
+		await openSettings(page);
+
+		// #438: boundSourceId was in /api/apps and never rendered.
+		const card = page.locator(`[data-app-id="${APP}"]`);
+		await expect(card.getByTestId("app-source")).toContainText("Source:");
+
+		// #438: the ?source= override existed on the API and occ only.
+		await chooseApp(page, APP);
+		await versionsLoaded(page);
+		await expect(page.getByTestId("source-override-input")).toBeVisible();
+		await expect(page.getByTestId("source-override")).toContainText(
+			"The binding stays",
+		);
+	});
+
 	test("versions load for an App Store app and name their source", async ({
 		page,
 	}) => {
