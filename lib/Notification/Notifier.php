@@ -173,8 +173,8 @@ class Notifier implements INotifier {
 			// Sent weekly by AdvisoryDigestNotifier. Without this branch the
 			// digest was stored but skipped by the bell every time (#428).
 			$parameters = $notification->getSubjectParameters();
-			$apps = is_int($parameters['apps'] ?? null) ? $parameters['apps'] : 0;
-			$advisories = is_int($parameters['advisories'] ?? null) ? $parameters['advisories'] : 0;
+			$apps = isset($parameters['apps']) && is_int($parameters['apps']) ? $parameters['apps'] : 0;
+			$advisories = isset($parameters['advisories']) && is_int($parameters['advisories']) ? $parameters['advisories'] : 0;
 
 			$notification
 				->setParsedSubject(
