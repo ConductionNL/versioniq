@@ -69,4 +69,14 @@ final class AutoUpdateWindowTest extends TestCase {
 		$this->assertTrue(AutoUpdateWindow::isWithin('01:00-05:00', new \DateTimeImmutable('2026-07-23 01:00:00')));
 		$this->assertFalse(AutoUpdateWindow::isWithin('01:00-05:00', new \DateTimeImmutable('2026-07-23 05:00:00')));
 	}
+
+	public function testOpeningKeyOfANonCrossingWindowIsToday(): void {
+		$this->assertSame('01:00-05:00@2026-07-23', AutoUpdateWindow::openingKey('01:00-05:00', new \DateTimeImmutable('2026-07-23T02:00:00')));
+	}
+
+	public function testOpeningKeyAfterMidnightInACrossingWindowIsYesterday(): void {
+		$window = '23:00-03:00';
+		$this->assertSame('23:00-03:00@2026-07-22', AutoUpdateWindow::openingKey($window, new \DateTimeImmutable('2026-07-22T23:30:00')));
+		$this->assertSame('23:00-03:00@2026-07-22', AutoUpdateWindow::openingKey($window, new \DateTimeImmutable('2026-07-23T01:00:00')));
+	}
 }

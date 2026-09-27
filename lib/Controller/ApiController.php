@@ -679,6 +679,7 @@ class ApiController extends OCSController {
 			'policies' => $policies,
 			'autoUpdateEnabled' => $this->autoUpdateSettingsStore->isEnabled(),
 			'autoUpdateWindow' => $this->autoUpdateSettingsStore->getWindow(),
+			'autoUpdateTimeZone' => $this->autoUpdateSettingsStore->getTimeZoneName(),
 		]);
 	}
 
@@ -805,6 +806,7 @@ class ApiController extends OCSController {
 		return new DataResponse([
 			'autoUpdateEnabled' => $this->autoUpdateSettingsStore->isEnabled(),
 			'autoUpdateWindow' => $this->autoUpdateSettingsStore->getWindow(),
+			'autoUpdateTimeZone' => $this->autoUpdateSettingsStore->getTimeZoneName(),
 		]);
 	}
 
