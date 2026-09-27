@@ -1983,14 +1983,14 @@
 			"easy-updates-manager": "yes",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/InstallerService.php:522, lib/Service/InstallerService.php:716",
+				"evidence": "lib/Service/InstallerService.php:524, lib/Service/InstallerService.php:719",
 				"reachedOn": "Apps tab (any install); occ versioniq:install; background job AutoUpdateJob"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "high",
-			"note": "Maintenance mode is switched on around the install when it was off and switched back in a finally block.",
+			"note": "Maintenance mode is switched on around a real install when it was off and switched back in a finally block. A dry run never takes it, so a preview does not lock users out (#427).",
 			"evidence": {
 				"nextcloud": "App update from the UI toggles maintenance mode around the update (apps/appstore/lib/Controller/ApiController.php:258-266); the server upgrade does too (lib/private/Updater.php:81-123; nextcloud/updater step 7).",
 				"renovate": "not checked: no analog for an instance maintenance mode in a repository bot.",
@@ -2041,14 +2041,14 @@
 			"easy-updates-manager": "partial",
 			"built": {
 				"state": "built",
-				"evidence": "src/App.vue:2001, lib/Service/InstallerService.php:347, lib/Service/SelectedReleaseInstallerService.php:316",
+				"evidence": "src/App.vue:2001, lib/Service/InstallerService.php:347, lib/Service/SelectedReleaseInstallerService.php:316, lib/Service/SelectedReleaseInstallerService.php:696",
 				"reachedOn": "Apps tab ('Dry run' toggle); occ versioniq:install ,dry-run"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "medium",
-			"note": "A dry run downloads and verifies the package (signature or SHA-256, app id, version, migration diff) without swapping files. It runs no tests, and for App Store packages skips the server-compatibility and dependency check that only runs on a real install.",
+			"note": "A dry run downloads and verifies the package (signature or SHA-256, app id, version, migration diff) without swapping files, without moving the live app folder and without maintenance mode (#427). It runs no tests, and for App Store packages skips the server-compatibility and dependency check that only runs on a real install.",
 			"evidence": {
 				"nextcloud": "The update path downloads, verifies the signature and installs (lib/private/Installer.php:102-116); no test or staging step. Code integrity runs after the core upgrade only (lib/private/Updater.php:285-290).",
 				"renovate": "Updates arrive as PRs that run the repository's CI; automerge only merges when status checks pass (lib/config/options/index.ts:2376, ignoreTests lib/config/options/index.ts:2413), and a \"Pending Status Checks\" section shows waiting ones (dependency-dashboard.ts:562).",
