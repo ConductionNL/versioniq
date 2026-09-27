@@ -177,7 +177,9 @@ OC.L10N.register(
         "Simulated": "Simulated",
         "Switched off": "Switched off",
         "Not available": "Not available",
-        "Error": "Error"
+        "Error": "Error",
+        "Advisories not checked": "Advisories not checked",
+        "Background jobs such as the advisory check and automatic updates run without a signed-in admin, so they only use tokens shared with admins. Share a token to keep private repositories checked and updated.": "Background jobs such as the advisory check and automatic updates run without a signed-in admin, so they only use tokens shared with admins. Share a token to keep private repositories checked and updated."
     },
     "nplurals=2; plural=(n != 1);"
 )
