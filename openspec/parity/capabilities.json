@@ -3646,14 +3646,14 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "src/App.vue:2066, lib/Controller/ApiController.php:861, lib/BackgroundJob/AdvisoryRefreshJob.php:65",
+				"evidence": "src/App.vue:2066, lib/Controller/ApiController.php:861, lib/BackgroundJob/AdvisoryRefreshJob.php:65, src/utils/advisoryFreshness.ts:29, src/App.vue:724",
 				"reachedOn": "Apps tab, security advisory checks (check every N hours)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "Interval is settable in the UI within server-supplied bounds and applied as the TimedJob interval. The freshness line still says the job runs every 6 hours regardless of the setting.",
+			"note": "Interval is settable in the UI within server-supplied bounds and applied as the TimedJob interval. Before the first check, the freshness line names the saved interval.",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
 				"renovate": "Advisories are checked on every run, so the interval is the run cadence: the self-hoster's cron, or every 4 hours (hourly for Enterprise) on Mend cloud (docs/usage/mend-hosted/overview.md:60-70).",
