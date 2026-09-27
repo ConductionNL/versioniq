@@ -20,6 +20,7 @@ use OCA\Versioniq\Service\Pat\PatManager;
 use OCA\Versioniq\Service\Pat\PatValidator;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\PolicyStore;
+use OCA\Versioniq\Service\Source\SourceBinding;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IGroupManager;
@@ -667,5 +668,53 @@ final class ApiTest extends TestCase {
 
 		$this->assertSame(200, $response->getStatus());
 		$this->assertArrayHasKey('deprecationNotice', $response->getData());
+	}
+
+	/**
+	 * Issue #437: a bind request for the self-hosted Forgejo or Gitea forge
+	 * used to fall through to a GitHub binding, because only `codeberg` was
+	 * recognised and everything else became `github`.
+	 */
+	public function testBindSourceForForgejoStoresAForgejoBinding(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'kind' => 'github-release',
+				'forge' => 'forgejo',
+				'owner' => 'acme',
+				'repo' => 'widget',
+				default => $default,
+			}
+		);
+
+		$installer = $this->createMock(InstallerService::class);
+		$installer->expects($this->once())
+			->method('bindSource')
+			->with('widget', $this->callback(static fn (SourceBinding $binding): bool => $binding->getId() === 'forgejo:acme/widget'));
+
+		$response = $this->buildAdminController($installer, $request)->bindSource('widget');
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame('forgejo:acme/widget', $response->getData()['sourceId']);
+	}
+
+	public function testBindSourceWithAnUnknownForgeIsRejected(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'kind' => 'github-release',
+				'forge' => 'gitlab',
+				'owner' => 'acme',
+				'repo' => 'widget',
+				default => $default,
+			}
+		);
+
+		$installer = $this->createMock(InstallerService::class);
+		$installer->expects($this->never())->method('bindSource');
+
+		$response = $this->buildAdminController($installer, $request)->bindSource('widget');
+
+		$this->assertSame(400, $response->getStatus());
 	}
 }

@@ -6,6 +6,7 @@ import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { ocsGet, ocsWrite } from '../ocs.ts'
+import { forgeLabel, isRetiredForge, forgeOptions as offeredForges } from '../utils/forges.ts'
 
 type ExpiryState = 'ok' | 'expiring' | 'expired' | 'unknown'
 
@@ -35,10 +36,7 @@ const error = ref('')
 const notice = ref('')
 const deeplink = ref<{ url: string, instructions: string[] } | null>(null)
 
-const forgeOptions: SelectOption[] = [
-	{ id: 'github', label: 'GitHub' },
-	{ id: 'codeberg', label: 'Codeberg' },
-]
+const forgeOptions: SelectOption[] = offeredForges()
 
 /**
  *
@@ -202,6 +200,9 @@ onMounted(loadPats)
 				<span>
 					<strong>{{ pat.label }}</strong>
 					<code>{{ pat.forge || 'github' }}:{{ pat.targetPattern }}</code>
+					<span v-if="isRetiredForge(pat.forge || 'github')" data-testid="retired-forge" :class="$style.hint">
+						{{ t('versioniq', '(retired forge)') }}
+					</span>
 					<span
 						v-if="pat.expiryState && pat.expiryState !== 'ok'"
 						data-testid="expiry-badge"
@@ -235,7 +236,7 @@ onMounted(loadPats)
 				:clearable="false"
 				label="label" />
 			<NcButton variant="secondary" :disabled="loading" @click="fetchDeeplink">
-				{{ t('versioniq', 'Create a token on {forge}…', { forge }) }}
+				{{ t('versioniq', 'Create a token on {forge}…', { forge: forgeLabel(forge) }) }}
 			</NcButton>
 			<NcNoteCard v-if="deeplink" type="info">
 				<a :href="deeplink.url" target="_blank" rel="noopener noreferrer">{{ deeplink.url }}</a>

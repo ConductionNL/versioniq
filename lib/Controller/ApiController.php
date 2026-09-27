@@ -255,17 +255,14 @@ class ApiController extends OCSController {
 		try {
 			$binding = match ($kind) {
 				SourceBinding::KIND_APPSTORE => SourceBinding::appStore(),
-				SourceBinding::KIND_GITHUB_RELEASE => $forge === SourceBinding::FORGE_CODEBERG
-					? SourceBinding::codeberg(
-						$this->stringParam('owner', ''),
-						$this->stringParam('repo', ''),
-						$this->stringParam('assetPattern', '*.tar.gz'),
-					)
-					: SourceBinding::github(
-						$this->stringParam('owner', ''),
-						$this->stringParam('repo', ''),
-						$this->stringParam('assetPattern', '*.tar.gz'),
-					),
+				// Any known forge, the self-hosted forgejo one included (issue
+				// #437); an unknown forge is a 400, not a silent GitHub binding.
+				SourceBinding::KIND_GITHUB_RELEASE => SourceBinding::release(
+					$forge,
+					$this->stringParam('owner', ''),
+					$this->stringParam('repo', ''),
+					$this->stringParam('assetPattern', '*.tar.gz'),
+				),
 				default => throw new InvalidArgumentException('Unknown source kind: ' . $kind),
 			};
 		} catch (InvalidArgumentException $error) {
@@ -995,8 +992,8 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => $result->error ?? 'PAT validation failed.'], Http::STATUS_BAD_REQUEST);
 		}
 
-		// Codeberg/Forgejo tokens are opaque; GitHub tokens are classified by prefix.
-		$kind = $forge === SourceBinding::FORGE_CODEBERG
+		// Forgejo and Gitea tokens are opaque; GitHub tokens are classified by prefix.
+		$kind = $forge !== SourceBinding::FORGE_GITHUB
 			? Pat::KIND_FORGE_TOKEN
 			: $this->patValidator->detectKind($token);
 
@@ -1178,14 +1175,15 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		// A codeberg forge maps to the opaque forge-token deeplink; otherwise the
-		// caller selects a GitHub kind (classic / fine-grained).
+		// A Forgejo or Gitea forge maps to the opaque forge-token deeplink on
+		// that forge's host; otherwise the caller selects a GitHub kind
+		// (classic / fine-grained).
 		$forge = $this->stringParam('forge', SourceBinding::FORGE_GITHUB);
-		$kind = $forge === SourceBinding::FORGE_CODEBERG
+		$kind = $forge !== SourceBinding::FORGE_GITHUB
 			? Pat::KIND_FORGE_TOKEN
 			: $this->stringParam('kind', Pat::KIND_FINE_GRAINED);
 		try {
-			return new DataResponse($this->deeplinkBuilder->build($kind));
+			return new DataResponse($this->deeplinkBuilder->build($kind, $forge));
 		} catch (InvalidArgumentException $error) {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
 		}

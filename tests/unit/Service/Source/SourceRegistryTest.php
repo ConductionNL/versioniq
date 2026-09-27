@@ -75,7 +75,7 @@ final class SourceRegistryTest extends TestCase {
 		SourceRegistry::parseSourceId('codeberg:Conduction/');
 	}
 
-	public function testListAvailableIncludesCodeberg(): void {
+	public function testListAvailableIncludesAppstoreAndGithub(): void {
 		$registry = new SourceRegistry(
 			$this->createMock(AppStoreSource::class),
 			$this->createMock(ForgeReleaseSource::class),
@@ -85,6 +85,23 @@ final class SourceRegistryTest extends TestCase {
 
 		$this->assertContains('appstore', $ids);
 		$this->assertContains('github', $ids);
-		$this->assertContains('codeberg', $ids);
+	}
+
+	public function testParseForgejo(): void {
+		$binding = SourceRegistry::parseSourceId('forgejo:acme/widget');
+
+		$this->assertSame('forgejo', $binding->getForge());
+		$this->assertSame('forgejo:acme/widget', $binding->getId());
+	}
+
+	public function testListAvailableOffersForgejoNotCodeberg(): void {
+		$registry = new SourceRegistry(
+			$this->createMock(AppStoreSource::class),
+			$this->createMock(ForgeReleaseSource::class),
+		);
+		$ids = array_column($registry->listAvailable(), 'id');
+
+		$this->assertContains('forgejo', $ids);
+		$this->assertNotContains('codeberg', $ids);
 	}
 }

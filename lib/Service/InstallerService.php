@@ -788,7 +788,7 @@ class InstallerService {
 	 * @throws InvalidArgumentException
 	 */
 	private function buildAndValidatePattern(string $forge, string $owner, ?string $repo): string {
-		if (!in_array($forge, [SourceBinding::FORGE_GITHUB, SourceBinding::FORGE_CODEBERG], true)) {
+		if (!in_array($forge, SourceBinding::FORGES, true)) {
 			throw new InvalidArgumentException('Unknown forge: ' . $forge);
 		}
 		$owner = trim($owner);

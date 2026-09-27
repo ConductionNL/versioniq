@@ -88,4 +88,49 @@ final class ForgeRegistryTest extends TestCase {
 
 		self::assertSame('https://api.github.com', $forge->apiBaseUrl);
 	}
+
+	// Issue #437: Codeberg is retired as a forge of its own, and another
+	// Forgejo or Gitea host gets a generic `forgejo` forge with a host the
+	// admin configures, instead of riding on forge.codeberg.api_base.
+
+	public function testForgejoIsAbsentUntilAHostIsConfigured(): void {
+		$registry = $this->registry();
+
+		self::assertFalse($registry->has(ForgeRegistry::FORGE_FORGEJO));
+		self::assertSame([ForgeRegistry::FORGE_GITHUB], $registry->selectableIds());
+	}
+
+	public function testForgejoHostDerivesApiAndTokenUrls(): void {
+		$registry = $this->registry(['forge.forgejo.web_base' => 'https://git.example.org/']);
+		$forge = $registry->get(ForgeRegistry::FORGE_FORGEJO);
+
+		self::assertSame('https://git.example.org', $forge->webBaseUrl);
+		self::assertSame('https://git.example.org/api/v1', $forge->apiBaseUrl);
+		self::assertSame('https://git.example.org/user/settings/applications', $forge->tokenCreateUrl);
+		self::assertSame(Forge::SCHEME_TOKEN, $forge->authScheme);
+		self::assertFalse($forge->exposesScopeHeader);
+		self::assertSame([ForgeRegistry::FORGE_GITHUB, ForgeRegistry::FORGE_FORGEJO], $registry->selectableIds());
+		self::assertSame('https://git.example.org', $registry->forgejoHost());
+	}
+
+	public function testForgejoApiBaseOverrideWins(): void {
+		$forge = $this->registry([
+			'forge.forgejo.web_base' => 'http://forge-fixture:9099',
+			'forge.forgejo.api_base' => 'http://forge-fixture:9099/custom/api',
+		])->get(ForgeRegistry::FORGE_FORGEJO);
+
+		self::assertSame('http://forge-fixture:9099/custom/api', $forge->apiBaseUrl);
+	}
+
+	public function testCodebergIsRetiredButStoredBindingsStillResolve(): void {
+		$registry = $this->registry(['forge.forgejo.web_base' => 'https://git.example.org']);
+
+		self::assertTrue($registry->has(ForgeRegistry::FORGE_CODEBERG));
+		self::assertTrue($registry->isRetired(ForgeRegistry::FORGE_CODEBERG));
+		self::assertFalse($registry->isRetired(ForgeRegistry::FORGE_FORGEJO));
+		self::assertNotContains(ForgeRegistry::FORGE_CODEBERG, $registry->selectableIds());
+		// A stored codeberg binding keeps reading codeberg.org through the
+		// same Forgejo API shape the generic forge uses.
+		self::assertSame('https://codeberg.org/api/v1', $registry->get(ForgeRegistry::FORGE_CODEBERG)->apiBaseUrl);
+	}
 }

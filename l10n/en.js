@@ -27,7 +27,7 @@ OC.L10N.register(
         "Automatic updates": "Automatic updates",
         "Automation disabled — enable it in settings to take effect.": "Automation disabled — enable it in settings to take effect.",
         "Available offline": "Available offline",
-        "Bind an installed app to a GitHub or Codeberg repository so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.": "Bind an installed app to a GitHub or Codeberg repository so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.",
+        "Bind an installed app to a GitHub repository, or to one on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.": "Bind an installed app to a GitHub repository, or to one on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.",
         "Bind source": "Bind source",
         "Bound to {source}": "Bound to {source}",
         "Changes in this range": "Changes in this range",
@@ -180,7 +180,18 @@ OC.L10N.register(
         "Error": "Error",
         "Update channel:": "Update channel:",
         "Safe mode (block downgrades, and pre-releases on a stable update channel)": "Safe mode (block downgrades, and pre-releases on a stable update channel)",
-        "Safe mode is enabled. Disable it to downgrade or to install a pre-release.": "Safe mode is enabled. Disable it to downgrade or to install a pre-release."
+        "Safe mode is enabled. Disable it to downgrade or to install a pre-release.": "Safe mode is enabled. Disable it to downgrade or to install a pre-release.",
+        "Self-hosted Forgejo or Gitea": "Self-hosted Forgejo or Gitea",
+        "Self-hosted Forgejo or Gitea host": "Self-hosted Forgejo or Gitea host",
+        "Set the address of your Forgejo or Gitea host to bind apps, store tokens and trust owners on it. Leave it empty to turn the forge off.": "Set the address of your Forgejo or Gitea host to bind apps, store tokens and trust owners on it. Leave it empty to turn the forge off.",
+        "Save host": "Save host",
+        "Self-hosted forge host saved.": "Self-hosted forge host saved.",
+        "Self-hosted forge host cleared.": "Self-hosted forge host cleared.",
+        "Could not load the self-hosted forge host.": "Could not load the self-hosted forge host.",
+        "Could not save the self-hosted forge host.": "Could not save the self-hosted forge host.",
+        "Set the self-hosted Forgejo or Gitea host below first.": "Set the self-hosted Forgejo or Gitea host below first.",
+        "This app is bound to Codeberg, which is retired as a separate source. The binding keeps working for now; rebind it to GitHub or to a self-hosted Forgejo or Gitea host.": "This app is bound to Codeberg, which is retired as a separate source. The binding keeps working for now; rebind it to GitHub or to a self-hosted Forgejo or Gitea host.",
+        "(retired forge)": "(retired forge)"
     },
     "nplurals=2; plural=(n != 1);"
 )

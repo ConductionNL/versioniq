@@ -89,8 +89,8 @@ occ() { php "${NC_ROOT}/occ" "$@"; }
 # Point both forge adapters at the fixture, and allow the fetch: Nextcloud
 # refuses requests to local addresses unless told otherwise, which would make
 # every fixture install fail as a network error rather than as a finding.
-occ config:app:set versioniq forge.codeberg.api_base --value="${BASE}/api/v1" > /dev/null
-occ config:app:set versioniq forge.codeberg.web_base --value="${BASE}" > /dev/null
+occ config:app:set versioniq forge.forgejo.api_base --value="${BASE}/api/v1" > /dev/null
+occ config:app:set versioniq forge.forgejo.web_base --value="${BASE}" > /dev/null
 occ config:app:set versioniq forge.github.api_base --value="${BASE}" > /dev/null
 occ config:app:set versioniq forge.github.web_base --value="${BASE}" > /dev/null
 occ config:system:set allow_local_remote_servers --value=true --type=boolean > /dev/null
@@ -102,7 +102,7 @@ occ config:system:set allow_local_remote_servers --value=true --type=boolean > /
 # removes the last one, so the suite stops asserting on somebody else's uptime.
 occ config:app:set versioniq appstore.api_base --value="${BASE}/appstore/api/v1" > /dev/null
 occ config:app:set versioniq trusted_sources \
-	--value='["github:ConductionNL/*","codeberg:Conduction/*","codeberg:fixtureowner/*","github:fixtureowner/*"]' > /dev/null
+	--value='["github:ConductionNL/*","codeberg:Conduction/*","forgejo:fixtureowner/*","github:fixtureowner/*"]' > /dev/null
 
 # Install the baseline fixture app (1.0.0) and bind it to the fixture source, so
 # the install/downgrade specs have a real app to move between versions.
@@ -119,7 +119,7 @@ occ config:app:set fixtureapp installed_version --value=1.0.0 > /dev/null
 occ app:enable fixtureapp > /dev/null
 occ maintenance:mode --off > /dev/null 2>&1 || true
 occ config:app:set versioniq source.fixtureapp \
-	--value='{"kind":"github-release","forge":"codeberg","owner":"fixtureowner","repo":"fixtureapp","assetPattern":"*.tar.gz"}' > /dev/null
+	--value='{"kind":"github-release","forge":"forgejo","owner":"fixtureowner","repo":"fixtureapp","assetPattern":"*.tar.gz"}' > /dev/null
 
 # PROVE THE APP CAN SEE THE FIXTURE, not merely that both are running. The specs
 # probe /health directly from the browser context, which says nothing about
@@ -199,4 +199,4 @@ if ! printf '%s' "${versions}" | grep -q '1\.'; then
 	printf '%s\n' "${versions}"
 fi
 
-echo "Forge fixture bootstrapped: fixtureapp bound to codeberg:fixtureowner/fixtureapp at ${BASE}"
+echo "Forge fixture bootstrapped: fixtureapp bound to forgejo:fixtureowner/fixtureapp at ${BASE}"

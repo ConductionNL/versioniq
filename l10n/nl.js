@@ -54,7 +54,7 @@ OC.L10N.register(
         "Automatic updates": "Automatische updates",
         "Automation disabled — enable it in settings to take effect.": "Automatisering staat uit. Zet het aan bij de instellingen om het te laten werken.",
         "Available offline": "Offline beschikbaar",
-        "Bind an installed app to a GitHub or Codeberg repository so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.": "Koppel een geïnstalleerde app aan een GitHub- of Codeberg-repository, zodat versies daaruit worden gehaald in plaats van uit de App Store. De repository moet op de lijst met vertrouwde bronnen staan.",
+        "Bind an installed app to a GitHub repository, or to one on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.": "Koppel een geïnstalleerde app aan een GitHub-repository, of aan een repository op een zelf gehoste Forgejo- of Gitea-server, zodat versies daaruit worden gehaald in plaats van uit de App Store. De repository moet op de lijst met vertrouwde bronnen staan.",
         "Bind source": "Bron koppelen",
         "Bound to {source}": "Gekoppeld aan {source}",
         "Changes in this range": "Wijzigingen in dit bereik",
@@ -207,7 +207,18 @@ OC.L10N.register(
         "Error": "Fout",
         "Update channel:": "Updatekanaal:",
         "Safe mode (block downgrades, and pre-releases on a stable update channel)": "Veilige modus (blokkeert downgrades, en pre-releases op een stabiel updatekanaal)",
-        "Safe mode is enabled. Disable it to downgrade or to install a pre-release.": "Veilige modus staat aan. Zet deze uit om te downgraden of een pre-release te installeren."
+        "Safe mode is enabled. Disable it to downgrade or to install a pre-release.": "Veilige modus staat aan. Zet deze uit om te downgraden of een pre-release te installeren.",
+        "Self-hosted Forgejo or Gitea": "Zelf gehoste Forgejo of Gitea",
+        "Self-hosted Forgejo or Gitea host": "Adres van de zelf gehoste Forgejo- of Gitea-server",
+        "Set the address of your Forgejo or Gitea host to bind apps, store tokens and trust owners on it. Leave it empty to turn the forge off.": "Vul het adres van je Forgejo- of Gitea-server in om er apps aan te koppelen, tokens voor op te slaan en eigenaren op te vertrouwen. Laat het leeg om deze forge uit te zetten.",
+        "Save host": "Adres opslaan",
+        "Self-hosted forge host saved.": "Adres van de zelf gehoste forge opgeslagen.",
+        "Self-hosted forge host cleared.": "Adres van de zelf gehoste forge gewist.",
+        "Could not load the self-hosted forge host.": "Kon het adres van de zelf gehoste forge niet laden.",
+        "Could not save the self-hosted forge host.": "Kon het adres van de zelf gehoste forge niet opslaan.",
+        "Set the self-hosted Forgejo or Gitea host below first.": "Vul eerst hieronder het adres van de zelf gehoste Forgejo- of Gitea-server in.",
+        "This app is bound to Codeberg, which is retired as a separate source. The binding keeps working for now; rebind it to GitHub or to a self-hosted Forgejo or Gitea host.": "Deze app is gekoppeld aan Codeberg, dat als aparte bron is uitgefaseerd. De koppeling blijft voorlopig werken; koppel de app opnieuw aan GitHub of aan een zelf gehoste Forgejo- of Gitea-server.",
+        "(retired forge)": "(uitgefaseerde forge)"
     },
     "nplurals=2; plural=(n != 1);"
 )

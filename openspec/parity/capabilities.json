@@ -4355,14 +4355,14 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/Source/ForgeRegistry.php:45, src/components/SourcesPanel.vue:67, lib/Controller/ApiController.php:258",
-				"reachedOn": "Sources tab (Codeberg forge option)"
+				"evidence": "lib/Service/Source/ForgeRegistry.php:96, src/components/SourcesPanel.vue:244, lib/Controller/ForgeController.php:83, lib/Controller/ApiController.php:248",
+				"reachedOn": "Sources tab (self-hosted Forgejo or Gitea forge option and host field)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "medium",
-			"note": "Codeberg is a bindable forge; another Forgejo or Gitea host works only by overriding forge.codeberg.api_base, which replaces Codeberg. ConnectionReportService calls Codeberg retired while the UI still offers it.",
+			"note": "Any Forgejo or Gitea host, Codeberg included, is bound through the self-hosted forge whose host the admin sets on the Sources tab. Codeberg is retired as a forge of its own: it is no longer offered, and bindings, tokens and trusted patterns stored under it keep working and are marked retired.",
 			"evidence": {
 				"nextcloud": "Single store source only (lib/private/Installer.php:169,239).",
 				"renovate": "lib/modules/datasource/forgejo-releases, forgejo-tags, gitea-releases and gitea-tags; Forgejo and Gitea are also supported platforms (lib/modules/platform/forgejo, gitea).",
@@ -4682,7 +4682,7 @@
 			"providerHow": "read-from-code",
 			"feature": "connection-registry",
 			"featureConfidence": "high",
-			"note": "Reachability and last result for the App Store, GitHub and the advisory feed are shown from integriq's connection registry; without integriq there is no status view, and Codeberg has no row.",
+			"note": "Reachability and last result for the App Store, GitHub and the advisory feed are shown from integriq's connection registry; without integriq there is no status view, and neither Codeberg nor the self-hosted Forgejo or Gitea forge has a row.",
 			"evidence": {
 				"nextcloud": "Admins get a notification after 3, 7, 14 and 30 days of failed update checks (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:30,88-94), the last check time is shown (Settings/Admin.php:44), and a setup check tests internet connectivity (apps/settings/lib/SetupChecks/InternetConnectivity.php:41). Store fetch failures are only logged (Fetcher.php:100-103).",
 				"renovate": "Lookup failures surface as dependency lookup warnings and a \"Repository Problems\" section on the dashboard (lib/workers/repository/dependency-dashboard.ts:333); no per-source reachability or last-read view.",
@@ -4704,14 +4704,14 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "src/components/TokensPanel.vue:97, lib/Controller/ApiController.php:971, lib/Service/Pat/PatManager.php:65",
+				"evidence": "src/components/TokensPanel.vue:95, lib/Controller/ApiController.php:969, lib/Service/Pat/PatManager.php:65",
 				"reachedOn": "Tokens tab"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "pat-management",
 			"featureConfidence": "high",
-			"note": "Admins add GitHub or Codeberg tokens with a label and target pattern.",
+			"note": "Admins add GitHub or self-hosted Forgejo or Gitea tokens with a label and target pattern.",
 			"evidence": {
 				"nextcloud": "Nextcloud has no forge sources and stores no forge tokens; the only credential is the subscription key sent to the default store (lib/private/App/AppStore/Fetcher/Fetcher.php:88-95).",
 				"renovate": "hostRules (lib/config/options/index.ts:2887) and secrets (lib/config/options/index.ts:361) in bot config; Mend cloud stores secrets in the Developer Portal (docs/usage/mend-hosted/credentials.md:19-60).",
@@ -4820,14 +4820,14 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/Pat/PatDeeplinkBuilder.php:75, src/components/TokensPanel.vue:172, lib/Controller/ApiController.php:1175",
+				"evidence": "lib/Service/Pat/PatDeeplinkBuilder.php:84, src/components/TokensPanel.vue:170, lib/Controller/ApiController.php:1173",
 				"reachedOn": "Tokens tab (create token link)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "pat-management",
 			"featureConfidence": "high",
-			"note": "A classic GitHub link carries scopes=repo prefilled; the fine-grained and Codeberg links open the creation page with written instructions instead of prefilled scopes.",
+			"note": "A classic GitHub link carries scopes=repo prefilled; the fine-grained and Forgejo or Gitea links open the creation page with written instructions instead of prefilled scopes.",
 			"evidence": {
 				"nextcloud": "Nextcloud has no forge sources and stores no forge tokens; the only credential is the subscription key sent to the default store (lib/private/App/AppStore/Fetcher/Fetcher.php:88-95).",
 				"renovate": "not checked: docs describe the scopes to choose (docs/usage/mend-hosted/github-com-token.md) but no prefilled creation link was found in the tool.",
@@ -5704,7 +5704,7 @@
 			"providerHow": "read-from-code",
 			"feature": "connection-registry",
 			"featureConfidence": "high",
-			"note": "An Integrations tab lists the App Store, GitHub and advisory feed rows from integriq's registry; it is absent without integriq and has no Codeberg row.",
+			"note": "An Integrations tab lists the App Store, GitHub and advisory feed rows from integriq's registry; it is absent without integriq and has no Codeberg or self-hosted Forgejo or Gitea row.",
 			"evidence": {
 				"nextcloud": "The Security and setup warnings overview runs checks such as internet connectivity, email test and cron (apps/settings/lib/SetupChecks/InternetConnectivity.php, EmailTestSuccessful.php, CronInfo.php); it does not cover the app store or update server health.",
 				"renovate": "Mend cloud shows each repository's Renovate status (failed, timeout, resource-limit) in the Developer Portal (docs/usage/mend-hosted/job-scheduling.md:19-40); nothing comparable in the self-hosted CLI.",

@@ -58,7 +58,9 @@ class ConnectionReportService {
 
 	/**
 	 * The forge whose requests are reported. Codeberg is retired, and gets no
-	 * row, so its requests are never reported.
+	 * row, so its requests are never reported. The self-hosted Forgejo or
+	 * Gitea forge has no row in lib/Settings/connections.json either, so its
+	 * requests are not reported yet.
 	 */
 	public const REPORTED_FORGE = 'github';
 

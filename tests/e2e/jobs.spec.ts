@@ -201,7 +201,7 @@ test.describe("background jobs", () => {
 	test("the expiry job warns once for a token nearing expiry", async ({
 		page,
 	}) => {
-		// Create a codeberg PAT, then age its expiry to 10 days out (crosses 14d).
+		// Create a Forgejo PAT, then age its expiry to 10 days out (crosses 14d).
 		await page.request.post(
 			"/ocs/v2.php/apps/versioniq/api/pats?format=json",
 			{
@@ -210,10 +210,10 @@ test.describe("background jobs", () => {
 					"Content-Type": "application/json",
 				},
 				data: {
-					forge: "codeberg",
+					forge: "forgejo",
 					label: "expiring",
 					targetPattern: "fixtureowner/*",
-					token: "codeberg-expiry-token",
+					token: "forgejo-expiry-token",
 				},
 			},
 		);
@@ -266,10 +266,10 @@ test.describe("background jobs", () => {
 					"Content-Type": "application/json",
 				},
 				data: {
-					forge: "codeberg",
+					forge: "forgejo",
 					label: "noexpiry",
 					targetPattern: "fixtureowner/*",
-					token: "codeberg-noexp-token",
+					token: "forgejo-noexp-token",
 				},
 			},
 		);
