@@ -520,7 +520,8 @@ class InstallerService {
 		// $dryRun was already resolved (independent of $includeDebug) at the
 		// top of this method — see MODIFIED "Debug Mode".
 		try {
-			if (!$this->config->getSystemValueBool('maintenance', false)) {
+			// A dry run changes nothing, so it never locks users out (#427).
+			if (!$dryRun && !$this->config->getSystemValueBool('maintenance', false)) {
 				$maintenanceWasSet = true;
 				$this->config->setSystemValue('maintenance', true);
 			}
