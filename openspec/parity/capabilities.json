@@ -2792,7 +2792,7 @@
 			"area": "autoupdate",
 			"name": "Restrict automatic updates to a maintenance time window.",
 			"rowSource": "own-code",
-			"versioniq": "partial",
+			"versioniq": "yes",
 			"nextcloud": "no",
 			"renovate": "yes",
 			"dependabot": "partial",
@@ -2800,14 +2800,14 @@
 			"easy-updates-manager": "yes",
 			"built": {
 				"state": "built",
-				"evidence": "src/App.vue:2032, lib/Controller/ApiController.php:794, lib/Service/AutoUpdate/AutoUpdateWindow.php:45, lib/BackgroundJob/AutoUpdateJob.php:84",
+				"evidence": "src/App.vue:2073, lib/Controller/ApiController.php:795, lib/Service/AutoUpdate/AutoUpdateWindow.php:45, lib/BackgroundJob/AutoUpdateJob.php:60, lib/BackgroundJob/AutoUpdateJob.php:99, lib/Service/AutoUpdate/AutoUpdateSettingsStore.php:49",
 				"reachedOn": "Apps tab, automatic updates block (update window)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "An HH:MM-HH:MM window (default 01:00-05:00, midnight crossing supported) is saved and checked, but the job is a 24 hour TimedJob that silently returns outside the window, so a first run outside it can keep missing the window.",
+			"note": "An HH:MM-HH:MM window (default 01:00-05:00, midnight crossing supported) is saved and checked. The job wakes every 15 minutes and sweeps once per window opening, so no window of 15 minutes or more is missed, and the window is read in Nextcloud's default_timezone (UTC when unset), which the label names. Fixed in #429.",
 			"evidence": {
 				"nextcloud": "maintenance_window_start delays time-insensitive jobs such as the update check (config/config.sample.php:1703-1715, UpdateAvailableNotifications.php:49), but nothing installs updates automatically.",
 				"renovate": "lib/config/options/index.ts:1027 schedule and lib/config/options/index.ts:1037 automergeSchedule with timezone (lib/config/options/index.ts:1021); docs/usage/known-limitations.md:13-30 notes Mend cloud only runs every few hours, so windows need to be wide enough.",

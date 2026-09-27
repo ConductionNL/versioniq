@@ -167,7 +167,6 @@
         "Type an app name to search across your configured sources.": "Typ een appnaam om je ingestelde bronnen te doorzoeken.",
         "Type at least {min} characters to search.": "Typ minstens {min} tekens om te zoeken.",
         "Unshare": "Delen stoppen",
-        "Update window (HH:MM-HH:MM, server time)": "Updatevenster (UU:MM-UU:MM, servertijd)",
         "Use the HH:MM-HH:MM format, e.g. 01:00-05:00.": "Gebruik de notatie UU:MM-UU:MM, bijvoorbeeld 01:00-05:00.",
         "Verified archives are kept locally after a successful install so rollback still works if the source deletes or moves the release. At most {keep} versions per app are retained; installs re-verify the cached artifact before use.": "Geverifieerde archieven blijven na een geslaagde installatie lokaal bewaard, zodat terugrollen blijft werken als de bron de release verwijdert of verplaatst. Er worden hoogstens {keep} versies per app bewaard; installaties verifiëren het artefact uit de cache opnieuw voor gebruik.",
         "Versioniq": "Versioniq",
@@ -212,7 +211,8 @@
         "Disabled": "Uitgeschakeld",
         "Not installed": "Niet geïnstalleerd",
         "This app is installed but not enabled.": "Deze app is geïnstalleerd maar niet ingeschakeld.",
-        "Enable it on the apps page": "Schakel hem in op de apps-pagina"
+        "Enable it on the apps page": "Schakel hem in op de apps-pagina",
+        "Update window (HH:MM-HH:MM, time zone {timeZone})": "Updatevenster (UU:MM-UU:MM, tijdzone {timeZone})"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

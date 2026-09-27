@@ -223,6 +223,8 @@ const autoUpdateEnabled = ref(false)
 const savedAutoUpdateEnabled = ref(false)
 const autoUpdateWindowInput = ref(AUTO_UPDATE_WINDOW_DEFAULT)
 const savedAutoUpdateWindow = ref(AUTO_UPDATE_WINDOW_DEFAULT)
+// The zone the server reads the window in (Nextcloud's default_timezone, else UTC).
+const autoUpdateTimeZone = ref('UTC')
 const isSavingAutoUpdateSettings = ref(false)
 const autoUpdateSettingsError = ref('')
 const autoUpdateSettingsNotice = ref('')
@@ -826,7 +828,7 @@ function pinTooltip (pin: PinRecord | null): string {
 async function loadPolicies (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/policies')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string }>(response)
+		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string }>(response)
 		const map: Record<string, PolicyRecord> = {}
 		for (const policy of payload.policies || []) {
 			map[policy.appId] = policy
@@ -835,6 +837,7 @@ async function loadPolicies (): Promise<void> {
 		autoUpdateEnabled.value = Boolean(payload.autoUpdateEnabled)
 		savedAutoUpdateEnabled.value = autoUpdateEnabled.value
 		autoUpdateWindowInput.value = payload.autoUpdateWindow || AUTO_UPDATE_WINDOW_DEFAULT
+		autoUpdateTimeZone.value = payload.autoUpdateTimeZone || 'UTC'
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
 	} catch {
 		// Non-fatal: the app list stays usable without policy badges.
@@ -2067,7 +2070,7 @@ watch(dryRunEnabled, () => {
 									<span>{{ t('versioniq', 'Enable automatic updates') }}</span>
 								</label>
 								<label :class="$style.filterField" for="auto-update-window">
-									<span :class="$style.filterFieldLabel">{{ t('versioniq', 'Update window (HH:MM-HH:MM, server time)') }}</span>
+									<span :class="$style.filterFieldLabel">{{ t('versioniq', 'Update window (HH:MM-HH:MM, time zone {timeZone})', { timeZone: autoUpdateTimeZone }) }}</span>
 									<input
 										id="auto-update-window"
 										v-model="autoUpdateWindowInput"
