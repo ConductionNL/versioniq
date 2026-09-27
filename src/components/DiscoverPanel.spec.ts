@@ -237,6 +237,41 @@ describe('DiscoverPanel', () => {
 		}]])
 	})
 
+	it('opens the version picker, not the forge bind form, for a not-installed App Store hit', async () => {
+		// The real App Store provider shape: the binding carries only the kind
+		// (lib/Service/Discovery/AppStoreDiscovery.php), no forge, owner or repo.
+		mockedOcsGet.mockResolvedValue({
+			payload: {
+				results: [{
+					appId: 'deck',
+					name: 'Deck',
+					summary: '',
+					iconUrl: null,
+					homepageUrl: null,
+					installedVersion: null,
+					sourceCandidates: [{
+						providerId: 'appstore',
+						sourceBinding: { kind: 'appstore' },
+						installable: true,
+						installableReason: null,
+					}],
+				}],
+				providers: [],
+				errors: [],
+			},
+		})
+
+		const wrapper = mount(DiscoverPanel)
+		await typeQuery(wrapper, 'deck')
+		await vi.advanceTimersByTimeAsync(400)
+		await flushPromises()
+
+		await wrapper.get('[data-testid="discover-install"]').trigger('click')
+
+		expect(wrapper.emitted('prefillBind')).toBeUndefined()
+		expect(wrapper.emitted('openApp')).toEqual([['deck']])
+	})
+
 	it('shows the not-trusted reason and emits openTrusted for a non-installable hit', async () => {
 		mockedOcsGet.mockResolvedValue({
 			payload: {
