@@ -175,6 +175,21 @@ final class SourceBindingStoreTest extends TestCase {
 		$store->clear('openregister');
 	}
 
+	public function testListBoundAppIdsReturnsOnlyAppsWithASourceKey(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getKeys')->with(Application::APP_ID)->willReturn([
+			'source.hermiq',
+			'advisory.interval_hours',
+			'source.deck',
+			'pin.deck',
+			'source.',
+		]);
+
+		$store = $this->makeStore($config);
+
+		$this->assertSame(['hermiq', 'deck'], $store->listBoundAppIds());
+	}
+
 	// --- Recorded SHA-256 lifecycle: "Recorded digests are binding-scoped and surfaced" ---
 
 	private const SHA_A = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';

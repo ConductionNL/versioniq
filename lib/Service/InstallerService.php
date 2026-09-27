@@ -74,19 +74,28 @@ class InstallerService {
 	}
 
 	/**
-	 * Returns installed apps enriched with metadata for frontend cards, including
-	 * the last-known-good version record; see "List Installed Apps" and
+	 * Returns the manageable apps enriched with metadata for frontend cards:
+	 * enabled apps, installed-but-disabled apps and apps bound to a source but
+	 * not installed yet, each with its `state` (`enabled`, `disabled`,
+	 * `notInstalled`), including the last-known-good version record; see
+	 * "List Installed Apps" and
 	 * "Last-known-good version record".
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @spec openspec/specs/migration-safety/spec.md
-	 * @return list<array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,lkg:?array{version:string,recordedAt:string,sourceId:?string}}>
+	 * @return list<array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string}}>
 	 */
 	public function getInstalledApps(): array {
-		$installedApps = array_values(array_filter(
-			$this->appManager->getEnabledApps(),
+		// Enabled apps, installed-but-disabled apps (Nextcloud keeps their
+		// installed version) and apps bound to a source but not installed yet,
+		// so every one of them can be picked and installed from the page; see
+		// "List Installed Apps".
+		$enabledApps = $this->appManager->getEnabledApps();
+		$installedVersions = $this->appManager->getAppInstalledVersions(false);
+		$installedApps = array_values(array_unique(array_filter(
+			array_merge($enabledApps, array_keys($installedVersions), $this->bindingStore->listBoundAppIds()),
 			fn (string $appId): bool => !$this->isSelfManagedApp($appId)
-		));
+		)));
 		sort($installedApps);
 		$alwaysEnabledApps = $this->appManager->getAlwaysEnabledApps();
 		$appList = [];
@@ -103,7 +112,7 @@ class InstallerService {
 		$lkgStore = $this->lkgStore;
 
 		return array_map(
-			static function (string $appId) use ($appList, $alwaysEnabledApps, $bindingStore, $appManager, $environmentCheck, $lkgStore): array {
+			static function (string $appId) use ($appList, $alwaysEnabledApps, $bindingStore, $appManager, $environmentCheck, $lkgStore, $enabledApps, $installedVersions): array {
 				$app = $appList[$appId] ?? [];
 				$name = isset($app['name']) && is_string($app['name']) && trim($app['name']) !== ''
 					? trim($app['name'])
@@ -122,10 +131,24 @@ class InstallerService {
 					// Path unknown — leave defaults; install-time guard still applies.
 				}
 
-				try {
-					$installedVersion = $appManager->getAppVersion($appId, false);
-				} catch (Exception) {
-					$installedVersion = '';
+				if (in_array($appId, $enabledApps, true)) {
+					$state = 'enabled';
+				} elseif (isset($installedVersions[$appId])) {
+					$state = 'disabled';
+				} else {
+					$state = 'notInstalled';
+				}
+
+				$installedVersion = '';
+				if ($state !== 'notInstalled') {
+					try {
+						$installedVersion = $appManager->getAppVersion($appId, false);
+					} catch (Exception) {
+						$installedVersion = '';
+					}
+					if ($installedVersion === '') {
+						$installedVersion = $installedVersions[$appId] ?? '';
+					}
 				}
 
 				return [
@@ -140,6 +163,7 @@ class InstallerService {
 					'manageable' => $env['manageable'],
 					'warning' => $env['warning'],
 					'installedVersion' => $installedVersion === '' ? null : $installedVersion,
+					'state' => $state,
 					'lkg' => $lkgStore->get($appId)?->toArray(),
 				];
 			},
@@ -228,8 +252,8 @@ class InstallerService {
 	 * through, so truncation behaviour is identical regardless of origin.
 	 *
 	 * @spec openspec/specs/changelog-visibility/spec.md
-	 * @param list<array{version:string, changelog?:?string}> $versions
-	 * @return list<array{version:string, changelog:?string}>
+	 * @param list<array{version:string, changelog?:?string, serverCompatible?:?bool}> $versions
+	 * @return list<array{version:string, changelog:?string, serverCompatible?:?bool}>
 	 */
 	private function applyChangelogTruncation(array $versions): array {
 		return array_map(
@@ -258,8 +282,8 @@ class InstallerService {
 	 * record; see "Recorded digests are binding-scoped and surfaced".
 	 *
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @param list<array{version:string, changelog:?string}> $versions
-	 * @return list<array{version:string, changelog:?string, recordedSha:?string}>
+	 * @param list<array{version:string, changelog:?string, serverCompatible?:?bool}> $versions
+	 * @return list<array{version:string, changelog:?string, serverCompatible?:?bool, recordedSha:?string}>
 	 */
 	private function applyRecordedSha(array $versions, SourceBinding $binding): array {
 		return array_map(
@@ -520,7 +544,8 @@ class InstallerService {
 		// $dryRun was already resolved (independent of $includeDebug) at the
 		// top of this method — see MODIFIED "Debug Mode".
 		try {
-			if (!$this->config->getSystemValueBool('maintenance', false)) {
+			// A dry run changes nothing, so it never locks users out (#427).
+			if (!$dryRun && !$this->config->getSystemValueBool('maintenance', false)) {
 				$maintenanceWasSet = true;
 				$this->config->setSystemValue('maintenance', true);
 			}

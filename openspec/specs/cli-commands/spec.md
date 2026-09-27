@@ -16,7 +16,7 @@ Expose Versioniq's version listing and version-specific install through `occ`, s
 
 ### Requirement: List versions from the CLI [MVP]
 
-`occ versioniq:versions <appId>` MUST print the available versions of the app from its bound source (or `--source=<sourceId>` override), including installed version, compatibility markers, and source id. `--json` MUST emit the same data as machine-readable JSON. Errors (unknown app, unreachable source) MUST exit non-zero with the classified message on stderr.
+`occ versioniq:versions <appId>` MUST print the available versions of the app from its bound source (or `--source=<sourceId>` override), including installed version, a marker of where each version stands relative to the installed one, whether each version runs on this server (`yes`, `no`, or `unknown` when the source does not say), and source id. `--json` MUST emit the same data as machine-readable JSON. Errors (unknown app, unreachable source) MUST exit non-zero with the classified message on stderr.
 
 #### Scenario: Human listing
 
@@ -26,6 +26,16 @@ Expose Versioniq's version listing and version-specific install through `occ`, s
 - WHEN `occ versioniq:versions openregister` runs
 - THEN it MUST print the installed version and the available versions with compatibility markers
 - AND exit code MUST be 0
+
+#### Scenario: Versions that need a different server are marked
+
+@e2e exclude needs an App Store release whose platform range excludes the test server; covered by tests/unit/Command/ListVersionsTest.php and tests/unit/Service/Source/AppStoreSourceTest.php.
+
+- GIVEN an App Store app whose newest release declares `platformVersionSpec` `>=29.0.0 <=30` and the server runs 28.0.0
+- WHEN `occ versioniq:versions <appId>` runs
+- THEN the column comparing with the installed version MUST be headed "Relative to installed"
+- AND that release MUST show `no` under "Runs on this server"
+- AND a release whose source states no platform range MUST show `unknown`
 
 #### Scenario: JSON listing
 

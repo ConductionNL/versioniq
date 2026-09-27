@@ -187,6 +187,9 @@ onMounted(loadPats)
 		<p :class="$style.hint">
 			{{ t('versioniq', 'Personal access tokens let Versioniq read private repositories. Tokens are encrypted at rest and never shown again after creation.') }}
 		</p>
+		<p :class="$style.hint">
+			{{ t('versioniq', 'Background jobs such as the advisory check and automatic updates run without a signed-in admin, so they only use tokens shared with admins. Share a token to keep private repositories checked and updated.') }}
+		</p>
 
 		<NcNoteCard v-if="error" type="error">
 			{{ error }}

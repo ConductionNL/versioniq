@@ -24,6 +24,7 @@ import DowngradeConfirmDialog from './dialogs/DowngradeConfirmDialog.vue'
 import PinDialog from './dialogs/PinDialog.vue'
 import PinOverrideDialog from './dialogs/PinOverrideDialog.vue'
 import ShaMismatchDialog from './dialogs/ShaMismatchDialog.vue'
+import { advisoryFreshnessLabel as advisoryFreshnessLabelFor } from './utils/advisoryFreshness.ts'
 import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow.ts'
 import { buildChangelogRange } from './utils/changelog.ts'
 import { tabForHash } from './utils/connectionRegistry.ts'
@@ -41,6 +42,7 @@ type AppOption = {
 	manageable?: boolean
 	warning?: string | null
 	installedVersion?: string | null
+	state?: 'enabled' | 'disabled' | 'notInstalled'
 	lkg?: LkgRecord | null
 }
 
@@ -611,8 +613,8 @@ async function loadApps (): Promise<void> {
 // unreachable advisory source never delays the (fast) app list. The badge
 // appears once this resolves. Read-only — it never changes a version.
 //
-// The endpoint returns a STORED snapshot written by the 6-hourly
-// AdvisoryRefreshJob, not a live correlation, so `checkedAt` travels with it
+// The endpoint returns a STORED snapshot written by AdvisoryRefreshJob on
+// the saved interval, not a live correlation, so `checkedAt` travels with it
 // and is rendered. An empty map has three quite different causes — swept and
 // found nothing, never swept because cron has not run, or the fetch failed —
 // and without the timestamp all three render as "no advisories", which reads
@@ -717,29 +719,14 @@ async function saveAdvisorySettings (): Promise<void> {
 	}
 }
 
-/**
- * How the advisory data should describe itself. Deliberately says something
- * in all three states rather than falling silent when there is nothing to
- * report, because silence is what made #160 invisible for so long.
- */
-const advisoryFreshnessLabel = computed((): string => {
-	if (advisoriesUnavailable.value) {
-		return t('versioniq', 'Advisory status unavailable — could not reach the server')
-	}
-	if (advisoriesCheckedAt.value === null) {
-		return t('versioniq', 'Advisories not checked yet — the background job runs every 6 hours')
-	}
-
-	const ageMinutes = Math.max(0, Math.round((Date.now() / 1000 - advisoriesCheckedAt.value) / 60))
-	if (ageMinutes < 1) {
-		return t('versioniq', 'Advisories checked just now')
-	}
-	if (ageMinutes < 60) {
-		return t('versioniq', 'Advisories checked {minutes} min ago', { minutes: ageMinutes })
-	}
-
-	return t('versioniq', 'Advisories checked {hours} h ago', { hours: Math.round(ageMinutes / 60) })
-})
+// See utils/advisoryFreshness.ts; the interval is the saved one, so the
+// label names what the background job actually uses (issue #436).
+const advisoryFreshnessLabel = computed((): string => advisoryFreshnessLabelFor({
+	unavailable: advisoriesUnavailable.value,
+	checkedAt: advisoriesCheckedAt.value,
+	intervalHours: Number(advisorySavedInterval.value) || 6,
+	nowSeconds: Date.now() / 1000,
+}))
 
 const advisoryFor = (appId: string): AdvisoryCorrelation | null => advisories.value[appId] ?? null
 
@@ -1158,6 +1145,35 @@ const filteredApps = computed(() => {
 
 const selectedAppOption = computed(() => {
 	return apps.value.find((app) => app.id === selectedApp.value) ?? null
+})
+
+/**
+ * Card label for an app that is listed but not enabled: installed but
+ * disabled, or bound to a source and not installed yet; see "List Installed
+ * Apps".
+ *
+ * @param state The app's state from the app list.
+ * @spec openspec/specs/version-management/spec.md
+ */
+function appStateLabel (state: AppOption['state']): string {
+	if (state === 'disabled') {
+		return t('versioniq', 'Disabled')
+	}
+	if (state === 'notInstalled') {
+		return t('versioniq', 'Not installed')
+	}
+	return ''
+}
+
+// After a live install of an app that Nextcloud has not enabled, the result
+// panel offers the way to enable it; see "List Installed Apps".
+const installedAppNeedsEnabling = computed(() => {
+	const result = lastInstallResult.value
+	if (!result || result.dryRun || installStatusTone.value !== 'success') {
+		return false
+	}
+	const app = apps.value.find((candidate) => candidate.id === result.appId)
+	return app !== undefined && app.state !== undefined && app.state !== 'enabled'
 })
 
 /**
@@ -1761,6 +1777,9 @@ async function performInstall (): Promise<void> {
 			selectedVersion.value = ''
 			await checkVersions(true)
 			await loadPins()
+			// Refresh the list so a disabled or not-installed app shows its
+			// new state after the install.
+			await loadApps()
 		}
 	} catch (error) {
 		errorMessage.value = error instanceof Error ? error.message : 'Could not install selected version.'
@@ -2151,6 +2170,12 @@ watch(dryRunEnabled, () => {
 															</p>
 															<span v-if="app.isCore" :class="$style.appCardCoreFlag">CORE</span>
 															<span
+																v-if="app.state === 'disabled' || app.state === 'notInstalled'"
+																:class="$style.appCardStateFlag"
+																data-testid="app-state-badge">
+																{{ appStateLabel(app.state) }}
+															</span>
+															<span
 																v-if="pinFor(app.id)"
 																:class="$style.pinBadge"
 																data-testid="pin-badge"
@@ -2162,6 +2187,13 @@ watch(dryRunEnabled, () => {
 																:class="[$style.advisoryBadge, { [$style.advisoryBadgeVulnerable]: advisoryFor(app.id)?.state === 'pinned-to-vulnerable' }]"
 																:title="advisoryFor(app.id)?.advisories?.[0]?.summary ?? ''">
 																⚠ {{ advisoryBadgeLabel(advisoryFor(app.id)?.state ?? 'none') }}
+															</span>
+															<span
+																v-if="advisoryFor(app.id)?.state === 'none' && advisoryFor(app.id)?.error"
+																:class="$style.advisoryBadge"
+																data-testid="advisory-unchecked-badge"
+																:title="advisoryFor(app.id)?.error ?? ''">
+																{{ t('versioniq', 'Advisories not checked') }}
 															</span>
 														</div>
 														<p :class="$style.appCardMeta">
@@ -2430,6 +2462,10 @@ watch(dryRunEnabled, () => {
 									</p>
 									<p v-if="lastInstallResult.hint" :class="$style.resultHint">
 										{{ lastInstallResult.hint }}
+									</p>
+									<p v-if="installedAppNeedsEnabling" :class="$style.resultHint" data-testid="install-enable-hint">
+										{{ t('versioniq', 'This app is installed but not enabled.') }}
+										<a :href="apiUrl('/index.php/settings/apps/disabled')">{{ t('versioniq', 'Enable it on the apps page') }}</a>
 									</p>
 									<div :class="$style.resultGrid">
 										<div>
@@ -2837,6 +2873,18 @@ watch(dryRunEnabled, () => {
 	color: var(--color-text-maxcontrast);
 	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 	word-break: break-all;
+}
+
+.appCardStateFlag {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 8px;
+	border-radius: 9999px;
+	border: 1px solid var(--color-border-dark);
+	color: var(--color-text-maxcontrast);
+	font-size: 11px;
+	font-weight: 700;
+	flex-shrink: 0;
 }
 
 .appCardCoreFlag {

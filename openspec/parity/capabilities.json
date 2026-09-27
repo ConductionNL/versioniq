@@ -433,22 +433,22 @@
 			"area": "inventory",
 			"name": "See whether an app version is compatible with the running server version before choosing it.",
 			"rowSource": "competitor",
-			"versioniq": "no",
+			"versioniq": "partial",
 			"nextcloud": "yes",
 			"renovate": "partial",
 			"dependabot": "partial",
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "none",
-				"evidence": "lib/Service/SelectedReleaseInstallerService.php:316, lib/Service/SelectedReleaseInstallerService.php:337, lib/Command/ListVersions.php:128, lib/Service/Source/AppStoreSource.php:608",
-				"reachedOn": "nothing"
+				"state": "built",
+				"evidence": "lib/Service/Source/AppStoreSource.php:661, lib/Service/Source/AppStoreSource.php:631, lib/Command/ListVersions.php:114, lib/Command/ListVersions.php:120",
+				"reachedOn": "occ versioniq:versions (Runs on this server column); GET /api/app/{appId}/versions (serverCompatible per App Store version)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Server compatibility is only checked after download and file swap during a real install, which then reverts; the version list carries no compatibility field and a dry run skips the check. The CLI 'Compatibility' column only says newer/older than installed.",
+			"note": "Each App Store version now carries serverCompatible, read from the release's platformVersionSpec against the running server, and occ versioniq:versions shows it as a 'Runs on this server' column next to 'Relative to installed'. Forge releases show unknown until their info.xml range is read, and the web version picker does not show the field yet; the full check still runs only during a real install.",
 			"evidence": {
 				"nextcloud": "apps/appstore/lib/Controller/ApiController.php:133-135 computes missingDependencies and isCompatible; shown in apps/appstore/src/components/AppstoreSidebar/AppDetailsTab.vue:137 and filterable via 'Show incompatible' (apps/appstore/src/components/AppToolbar.vue:105). Applies to the single latest release only.",
 				"renovate": "lib/config/options/index.ts:499 constraintsFiltering filters releases by language constraints (engines, PHP), and lib/modules/datasource/nextcloud/readme.md has you point registryUrls at a per-platform apps.json so only releases for that server version are offered; not shown to the user as a compatibility verdict.",
@@ -491,22 +491,22 @@
 			"area": "inventory",
 			"name": "Manage the versions of disabled apps as well as enabled ones.",
 			"rowSource": "competitor",
-			"versioniq": "no",
+			"versioniq": "yes",
 			"nextcloud": "partial",
 			"renovate": "yes",
 			"dependabot": "unknown",
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "none",
-				"evidence": "lib/Service/InstallerService.php:87",
-				"reachedOn": "nothing"
+				"state": "built",
+				"evidence": "lib/Service/InstallerService.php:94, lib/Service/Source/SourceBindingStore.php:138, src/App.vue:2189",
+				"reachedOn": "Apps tab (app card marked Disabled)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "The app list is built from IAppManager::getEnabledApps(), so disabled apps never appear and cannot be picked in the UI. The CLI install path could still target one by id (not checked live).",
+			"note": "The app list joins IAppManager::getEnabledApps() with getAppInstalledVersions(false), so installed but disabled apps are listed with a Disabled mark and their versions can be listed and installed from the page.",
 			"evidence": {
 				"nextcloud": "The Disabled category lists disabled apps (apps/appstore/src/views/AppstoreManage.vue:37), but the Updates view only offers updates for active apps (same file :39); occ app:update ,all covers disabled apps too (core/Command/App/Update.php:82).",
 				"renovate": "lib/config/options/index.ts:1601 matchDepTypes lets rules cover dev, optional and peer dependencies the same as runtime ones; mapped as components that are present but not active at runtime.",
@@ -1343,14 +1343,14 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Command/ListVersions.php:51, lib/Command/ListVersions.php:70, appinfo/info.xml",
+				"evidence": "lib/Command/ListVersions.php:51, lib/Command/ListVersions.php:70, lib/Command/ListVersions.php:120, appinfo/info.xml",
 				"reachedOn": "occ versioniq:versions"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "cli-commands",
 			"featureConfidence": "high",
-			"note": "occ versioniq:versions <appId> [,source] [,json] lists available versions with an installed/newer/older marker and any recorded SHA-256.",
+			"note": "occ versioniq:versions <appId> [,source] [,json] lists available versions with where each stands relative to the installed version, whether it runs on this server (yes, no or unknown), and any recorded SHA-256.",
 			"evidence": {
 				"nextcloud": "occ app:update ,showonly ,showcurrent prints the current and the newest available version only (core/Command/App/Update.php:70-97); not the full version list.",
 				"renovate": "lib/config/options/index.ts:597 dryRun=lookup (allowedValues at lib/config/options/index.ts:602) runs lookups without changes and logs the candidate updates; there is no dedicated list-versions command.",
@@ -1393,7 +1393,7 @@
 			"area": "install",
 			"name": "Find and install an app that is not installed yet.",
 			"rowSource": "competitor",
-			"versioniq": "partial",
+			"versioniq": "yes",
 			"nextcloud": "yes",
 			"renovate": "no",
 			"dependabot": "no",
@@ -1401,14 +1401,14 @@
 			"easy-updates-manager": "yes",
 			"built": {
 				"state": "built",
-				"evidence": "src/components/DiscoverPanel.vue:259, src/App.vue:298, lib/Service/InstallerService.php:87, lib/Command/InstallVersion.php:118",
-				"reachedOn": "Discover tab (find, and install an App Store app through the version picker); occ versioniq:install (install)"
+				"evidence": "src/components/DiscoverPanel.vue:259, lib/Service/InstallerService.php:94, lib/Service/Source/SourceBindingStore.php:138, src/App.vue:2480, lib/Command/InstallVersion.php:118",
+				"reachedOn": "Discover tab (find; Install... opens the version picker for an App Store hit, or the bind form for a forge hit), then the Apps tab (a bound app is listed as Not installed and installs from its version list); occ versioniq:install"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "app-discovery",
 			"featureConfidence": "medium",
-			"note": "The Discover tab searches the App Store and GitHub for apps not installed yet. An App Store hit's 'Install...' opens the version picker, which installs it. A forge hit's 'Install...' only prefills a source binding, and the Apps tab lists enabled apps only, so no page then installs the new forge app. The CLI can install it by id (left disabled).",
+			"note": "The Discover tab searches the App Store and GitHub for apps not installed yet. An App Store hit's 'Install...' opens the version picker, which installs it. A forge hit's 'Install...' prefills a source binding, after which the Apps tab lists the app as Not installed and installs it from its version list. After a live install of an app Nextcloud has not enabled, the result links to the apps page to enable it.",
 			"evidence": {
 				"nextcloud": "Discover, category browse and search views with Install actions (apps/appstore/src/router/routes.ts, apps/appstore/src/actions/actionInstall.ts; enableApp downloads when needed at apps/appstore/lib/Controller/ApiController.php:171-176); occ app:install.",
 				"renovate": "Renovate only updates dependencies it extracts from existing package files (docs/usage/key-concepts/how-renovate-works.md); it does not add new dependencies.",
@@ -1983,14 +1983,14 @@
 			"easy-updates-manager": "yes",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/InstallerService.php:522, lib/Service/InstallerService.php:716",
+				"evidence": "lib/Service/InstallerService.php:524, lib/Service/InstallerService.php:719",
 				"reachedOn": "Apps tab (any install); occ versioniq:install; background job AutoUpdateJob"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "high",
-			"note": "Maintenance mode is switched on around the install when it was off and switched back in a finally block.",
+			"note": "Maintenance mode is switched on around a real install when it was off and switched back in a finally block. A dry run never takes it, so a preview does not lock users out (#427).",
 			"evidence": {
 				"nextcloud": "App update from the UI toggles maintenance mode around the update (apps/appstore/lib/Controller/ApiController.php:258-266); the server upgrade does too (lib/private/Updater.php:81-123; nextcloud/updater step 7).",
 				"renovate": "not checked: no analog for an instance maintenance mode in a repository bot.",
@@ -2041,14 +2041,14 @@
 			"easy-updates-manager": "partial",
 			"built": {
 				"state": "built",
-				"evidence": "src/App.vue:2001, lib/Service/InstallerService.php:347, lib/Service/SelectedReleaseInstallerService.php:316",
+				"evidence": "src/App.vue:2001, lib/Service/InstallerService.php:347, lib/Service/SelectedReleaseInstallerService.php:316, lib/Service/SelectedReleaseInstallerService.php:696",
 				"reachedOn": "Apps tab ('Dry run' toggle); occ versioniq:install ,dry-run"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "medium",
-			"note": "A dry run downloads and verifies the package (signature or SHA-256, app id, version, migration diff) without swapping files. It runs no tests, and for App Store packages skips the server-compatibility and dependency check that only runs on a real install.",
+			"note": "A dry run downloads and verifies the package (signature or SHA-256, app id, version, migration diff) without swapping files, without moving the live app folder and without maintenance mode (#427). It runs no tests, and for App Store packages skips the server-compatibility and dependency check that only runs on a real install.",
 			"evidence": {
 				"nextcloud": "The update path downloads, verifies the signature and installs (lib/private/Installer.php:102-116); no test or staging step. Code integrity runs after the core upgrade only (lib/private/Updater.php:285-290).",
 				"renovate": "Updates arrive as PRs that run the repository's CI; automerge only merges when status checks pass (lib/config/options/index.ts:2376, ignoreTests lib/config/options/index.ts:2413), and a \"Pending Status Checks\" section shows waiting ones (dependency-dashboard.ts:562).",
@@ -3169,22 +3169,22 @@
 			"area": "autoupdate",
 			"name": "Let scheduled checks and automatic updates reach private sources without a signed-in admin.",
 			"rowSource": "own-code",
-			"versioniq": "no",
+			"versioniq": "yes",
 			"nextcloud": "no",
 			"renovate": "yes",
 			"dependabot": "yes",
 			"osv-scanner": "partial",
 			"easy-updates-manager": "unknown",
 			"built": {
-				"state": "none",
-				"evidence": "lib/Service/Source/ForgeReleaseSource.php:265, lib/Service/Source/ForgeReleaseSource.php:283",
-				"reachedOn": "nothing: background jobs run without a session user"
+				"state": "built",
+				"evidence": "lib/Service/Pat/PatResolver.php:82, lib/Service/Source/ForgeReleaseSource.php:269, lib/Service/Source/ForgeReleaseSource.php:288, lib/Service/ExternalReleaseInstallerService.php:430, src/components/TokensPanel.vue:193",
+				"reachedOn": "background jobs AdvisoryRefreshJob, AutoUpdateJob and PinReconcileJob, using a token shared with admins on the Tokens tab"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "pat-management",
 			"featureConfidence": "medium",
-			"note": "Tokens are resolved from the logged-in user, so background jobs fetch private repositories without a token and their releases and advisories go missing silently. Proposed by reader own-b.",
+			"note": "With no session user the token lookup picks from tokens an admin shared with all admins, so scheduled advisory checks, automatic updates and pin reconciles read private repositories. A private, unshared token is never used by a job; the Tokens tab says so. Fixed in #430.",
 			"evidence": {
 				"nextcloud": "No private sources and no automatic updates; the unattended daily job only checks the public store and update server (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:53-71).",
 				"renovate": "lib/config/options/index.ts:2887 hostRules and secrets (lib/config/options/index.ts:361) give the bot credentials for private registries, so scheduled runs need no signed-in user.",
@@ -3450,7 +3450,7 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "For apps bound to a GitHub repo the forge security-advisories endpoint is read and merged with the central feed. The sweep runs in cron with no user, so no PAT is used and private repositories cannot be read.",
+			"note": "For apps bound to a GitHub repo the forge security-advisories endpoint is read and merged with the central feed. The sweep runs in cron with no user and authenticates with a token shared with admins, so private repositories are read too (#430); an app whose source could not be reached shows an \"Advisories not checked\" badge instead of reading as clean.",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
 				"renovate": "lib/config/options/index.ts:2428 vulnerabilityAlerts reads the repository's Dependabot alerts (supportedPlatforms github); docs/usage/configuration-options.md:5305 requires the dependency graph and Dependabot alerts.",
@@ -3609,7 +3609,7 @@
 			"area": "advisories",
 			"name": "Get a periodic digest of non-urgent advisories.",
 			"rowSource": "own-code",
-			"versioniq": "no",
+			"versioniq": "yes",
 			"nextcloud": "no",
 			"renovate": "partial",
 			"dependabot": "yes",
@@ -3617,14 +3617,14 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/Advisory/AdvisoryDigestNotifier.php:116, lib/Notification/Notifier.php:63",
-				"reachedOn": "Apps tab toggle exists; the digest notification never renders"
+				"evidence": "lib/BackgroundJob/AdvisoryRefreshJob.php:114, lib/Service/Advisory/AdvisoryDigestNotifier.php:116, lib/Notification/Notifier.php:172",
+				"reachedOn": "background job AdvisoryRefreshJob, Nextcloud notification centre (weekly, Apps tab toggle)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "The digest is sent with subject advisory_digest, but Notifier::prepare has branches only for pinned_to_vulnerable, pat_expiring, pin_drift, pat_expired, auto_update_success and auto_update_failure (lines 63 to 155), so it throws and the digest never shows. Rated no because the path breaks; lane verified the subject list. Code reading, needs a live check.",
+			"note": "Once a week the advisory sweep sends every admin one advisory_digest notification with the number of apps that have published advisories not affecting the installed version and the advisory total; Notifier::prepare renders it. A unit test prepares every subject the app sends, so a subject without a branch fails the build. Fixed in #428.",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
 				"renovate": "lib/config/options/index.ts:964 dependencyDashboardOSVVulnerabilitySummary (experimental) keeps a vulnerabilities section on the dashboard issue (dependency-dashboard.ts:780); it is a standing list, not a periodic digest message.",
@@ -3646,14 +3646,14 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "src/App.vue:2066, lib/Controller/ApiController.php:861, lib/BackgroundJob/AdvisoryRefreshJob.php:65",
+				"evidence": "src/App.vue:2066, lib/Controller/ApiController.php:861, lib/BackgroundJob/AdvisoryRefreshJob.php:65, src/utils/advisoryFreshness.ts:29, src/App.vue:724",
 				"reachedOn": "Apps tab, security advisory checks (check every N hours)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "Interval is settable in the UI within server-supplied bounds and applied as the TimedJob interval. The freshness line still says the job runs every 6 hours regardless of the setting.",
+			"note": "Interval is settable in the UI within server-supplied bounds and applied as the TimedJob interval. Before the first check, the freshness line names the saved interval.",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
 				"renovate": "Advisories are checked on every run, so the interval is the run cadence: the self-hoster's cron, or every 4 hours (hourly for Enterprise) on Mend cloud (docs/usage/mend-hosted/overview.md:60-70).",
@@ -4420,7 +4420,7 @@
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "A stored PAT matching the repo is used for release listing and download on interactive requests; background jobs run without a user and cannot use it (see adv-github-advisories defect).",
+			"note": "A stored PAT matching the repo is used for release listing and download on interactive requests, and a PAT shared with admins is used by background jobs (#430).",
 			"evidence": {
 				"nextcloud": "Single store source; the only credential sent is the Nextcloud subscription key, to the default store (lib/private/App/AppStore/Fetcher/Fetcher.php:88-95).",
 				"renovate": "lib/config/options/index.ts:2887 hostRules with token, username and password per host (lib/config/options/index.ts:1134-1154) authenticate private registries and forges.",

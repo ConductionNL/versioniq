@@ -651,22 +651,8 @@ class SelectedReleaseInstallerService {
 			$this->addDebug('migration-diff', ['orphanedMigrations' => $this->orphanedMigrations]);
 		}
 
-		$backupDestination = null;
-		if (is_dir($destination)) {
-			$backupDestination = $destination . '.appversion-backup';
-			if (!rename($destination, $backupDestination)) {
-				throw new Exception('Could not backup existing app folder before replacement.');
-			}
-		}
-
+		$backupDestination = $this->backupExistingFolder($destination, $dryRun, $previousPath !== null);
 		if ($dryRun) {
-			$this->addDebug('dry-run-skip-filesystem', [
-				'message' => 'Skipping backup, copy/replace, and cleanup.',
-				'hasExistingAppPath' => $previousPath !== null,
-			]);
-			if ($backupDestination !== null && is_dir($backupDestination)) {
-				rename($backupDestination, $destination);
-			}
 			return null;
 		}
 
@@ -697,6 +683,37 @@ class SelectedReleaseInstallerService {
 
 		// Backup is intentionally retained until finalize() succeeds; the caller
 		// owns its deletion (success) or restore (finalize-phase failure).
+		return $backupDestination;
+	}
+
+	/**
+	 * Moves the live app folder aside before the new files are copied in.
+	 *
+	 * @return ?string The backup path, or null when there was nothing to move
+	 *                 or the run is a dry run.
+	 * @throws Exception When the live folder cannot be moved aside.
+	 */
+	private function backupExistingFolder(string $destination, bool $dryRun, bool $hasExistingAppPath): ?string {
+		// A dry run returns BEFORE the live folder is touched (#427). It used
+		// to rename the folder aside and back, and the rename back was never
+		// checked, so a failure there left the app folder missing.
+		if ($dryRun) {
+			$this->addDebug('dry-run-skip-filesystem', [
+				'message' => 'Skipping backup, copy/replace, and cleanup.',
+				'hasExistingAppPath' => $hasExistingAppPath,
+			]);
+			return null;
+		}
+
+		if (!is_dir($destination)) {
+			return null;
+		}
+
+		$backupDestination = $destination . '.appversion-backup';
+		if (!rename($destination, $backupDestination)) {
+			throw new Exception('Could not backup existing app folder before replacement.');
+		}
+
 		return $backupDestination;
 	}
 

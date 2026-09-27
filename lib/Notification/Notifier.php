@@ -47,11 +47,12 @@ class Notifier implements INotifier {
 	 * "PAT expiry warnings" for the `pat_expiring` / `pat_expired` subjects,
 	 * "Drift response — notify and offer re-pin" for `pin_drift`, and
 	 * "Every auto-update outcome is reported" for `auto_update_success` /
-	 * `auto_update_failure`.
+	 * `auto_update_failure`, and the weekly `advisory_digest`.
 	 *
 	 * @spec openspec/specs/pat-management/spec.md
 	 * @spec openspec/specs/version-pinning/spec.md
 	 * @spec openspec/specs/auto-update-policies/spec.md
+	 * @spec openspec/specs/security-advisory-correlation/spec.md
 	 */
 	public function prepare(INotification $notification, string $languageCode): INotification {
 		if ($notification->getApp() !== Application::APP_ID) {
@@ -163,6 +164,29 @@ class Notifier implements INotifier {
 				)
 				->setParsedMessage(
 					$l->t('%1$s could not be automatically updated to %2$s. %3$s', [$app, $targetVersion, $hint])
+				);
+
+			return $notification;
+		}
+
+		if ($notification->getSubject() === 'advisory_digest') {
+			// Sent weekly by AdvisoryDigestNotifier. Without this branch the
+			// digest was stored but skipped by the bell every time (#428).
+			$parameters = $notification->getSubjectParameters();
+			$apps = isset($parameters['apps']) && is_int($parameters['apps']) ? $parameters['apps'] : 0;
+			$advisories = isset($parameters['advisories']) && is_int($parameters['advisories']) ? $parameters['advisories'] : 0;
+
+			$notification
+				->setParsedSubject(
+					$l->t('Weekly security advisory digest')
+				)
+				->setParsedMessage(
+					$l->n(
+						'%1$d installed app has published security advisories (%2$d in total) that do not affect the installed version. Review them on the Versioniq Apps tab.',
+						'%1$d installed apps have published security advisories (%2$d in total) that do not affect the installed versions. Review them on the Versioniq Apps tab.',
+						$apps,
+						[$apps, $advisories]
+					)
 				);
 
 			return $notification;
