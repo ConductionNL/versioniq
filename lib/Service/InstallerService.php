@@ -339,10 +339,11 @@ class InstallerService {
 
 		return array_map(
 			function (array $entry) use ($appId, $serverVersion): array {
-				if (($entry['cachedOffline'] ?? false) !== true || isset($entry['serverCompatible']) || !is_string($entry['version'] ?? null)) {
+				$version = $entry['version'] ?? null;
+				if (($entry['cachedOffline'] ?? false) !== true || isset($entry['serverCompatible']) || !is_string($version)) {
 					return $entry;
 				}
-				$spec = $this->artifactCache->platformSpecFor($appId, $entry['version']);
+				$spec = $this->artifactCache->platformSpecFor($appId, $version);
 				if ($spec !== null) {
 					$entry['serverCompatible'] = AppStoreSource::satisfiesPlatformSpec($serverVersion, $spec);
 				}

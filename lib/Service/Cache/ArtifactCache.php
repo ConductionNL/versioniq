@@ -208,25 +208,26 @@ class ArtifactCache {
 		}
 
 		$infoXml = self::infoXmlFromArchive($cached['content']);
-		if ($infoXml === null) {
+		if ($infoXml === null || $infoXml === '') {
 			return null;
 		}
 
+		$dom = new \DOMDocument();
 		$previous = libxml_use_internal_errors(true);
 		try {
-			$xml = simplexml_load_string($infoXml, \SimpleXMLElement::class, LIBXML_NONET);
+			$loaded = $dom->loadXML($infoXml, LIBXML_NONET);
 		} finally {
 			libxml_clear_errors();
 			libxml_use_internal_errors($previous);
 		}
-		if ($xml === false || !isset($xml->dependencies->nextcloud)) {
+		$nextcloud = $loaded ? $dom->getElementsByTagName('nextcloud')->item(0) : null;
+		if (!$nextcloud instanceof \DOMElement) {
 			return null;
 		}
 
-		$nextcloud = $xml->dependencies->nextcloud;
+		$min = trim($nextcloud->getAttribute('min-version'));
+		$max = trim($nextcloud->getAttribute('max-version'));
 		$bounds = [];
-		$min = trim((string)($nextcloud['min-version'] ?? ''));
-		$max = trim((string)($nextcloud['max-version'] ?? ''));
 		if (preg_match('/^\d+(\.\d+)*$/', $min) === 1) {
 			$bounds[] = '>=' . $min;
 		}
