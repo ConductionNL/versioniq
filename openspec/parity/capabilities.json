@@ -3609,7 +3609,7 @@
 			"area": "advisories",
 			"name": "Get a periodic digest of non-urgent advisories.",
 			"rowSource": "own-code",
-			"versioniq": "no",
+			"versioniq": "yes",
 			"nextcloud": "no",
 			"renovate": "partial",
 			"dependabot": "yes",
@@ -3617,14 +3617,14 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/Advisory/AdvisoryDigestNotifier.php:116, lib/Notification/Notifier.php:63",
-				"reachedOn": "Apps tab toggle exists; the digest notification never renders"
+				"evidence": "lib/BackgroundJob/AdvisoryRefreshJob.php:114, lib/Service/Advisory/AdvisoryDigestNotifier.php:116, lib/Notification/Notifier.php:172",
+				"reachedOn": "background job AdvisoryRefreshJob, Nextcloud notification centre (weekly, Apps tab toggle)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "The digest is sent with subject advisory_digest, but Notifier::prepare has branches only for pinned_to_vulnerable, pat_expiring, pin_drift, pat_expired, auto_update_success and auto_update_failure (lines 63 to 155), so it throws and the digest never shows. Rated no because the path breaks; lane verified the subject list. Code reading, needs a live check.",
+			"note": "Once a week the advisory sweep sends every admin one advisory_digest notification with the number of apps that have published advisories not affecting the installed version and the advisory total; Notifier::prepare renders it. A unit test prepares every subject the app sends, so a subject without a branch fails the build. Fixed in #428.",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
 				"renovate": "lib/config/options/index.ts:964 dependencyDashboardOSVVulnerabilitySummary (experimental) keeps a vulnerabilities section on the dashboard issue (dependency-dashboard.ts:780); it is a standing list, not a periodic digest message.",
