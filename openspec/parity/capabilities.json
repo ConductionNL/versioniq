@@ -826,7 +826,7 @@
 			"area": "releases",
 			"name": "Show or hide pre-release versions such as betas and release candidates when choosing a version.",
 			"rowSource": "competitor",
-			"versioniq": "no",
+			"versioniq": "partial",
 			"nextcloud": "partial",
 			"renovate": "yes",
 			"dependabot": "partial",
@@ -834,15 +834,15 @@
 			"easy-updates-manager": "partial",
 			"built": {
 				"state": "specified",
-				"evidence": "looked in lib/Service/Source/AppStoreSource.php:578-612, lib/Service/Source/ForgeReleaseSource.php:89-128, src/App.vue:1180-1191",
-				"reachedOn": "nothing",
+				"evidence": "src/utils/safeMode.ts:50-56, src/App.vue:1223-1234",
+				"reachedOn": "Apps tab, version picker with safe mode on",
 				"owner": "ConductionNL/versioniq"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "No show/hide control for pre-releases; whatever the source lists is shown. src/utils/versionCompare.ts only orders prerelease suffixes. Specified 2026-09-27 in openspec/changes/releases-channel-and-prereleases (openspec pass).",
+			"note": "No show/hide control for pre-releases; whatever the source lists is shown. src/utils/versionCompare.ts only orders prerelease suffixes. Specified 2026-09-27 in openspec/changes/releases-channel-and-prereleases (openspec pass). Corrected 2026-09-27: since 4cc1ebe (#446, after the comparison) safe mode hides pre-releases while the server channel is stable, production or enterprise (src/utils/safeMode.ts:50-56, filtered at src/App.vue:1223-1234). There is still no show or hide control of its own, no channel choice, and the forge prerelease flag is ignored, so the rating is partial, not no.",
 			"evidence": {
 				"nextcloud": "Pre-releases are included only via the beta/daily channel or ,allow-unstable on occ app:install/app:update (lib/private/App/AppStore/Fetcher/AppFetcher.php:66-77, core/Command/App/Update.php:59); no per-choice toggle in the UI.",
 				"renovate": "lib/config/options/index.ts:1918 ignoreUnstable (default true) hides unstable versions; opting in or following a pre-release line is per package via packageRules; nextcloud nightlies are marked unstable (nextcloud/index.ts:70).",
@@ -1646,7 +1646,7 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "looked in src/App.vue and lib/Controller/ApiController.php (single-app install only)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -1655,7 +1655,7 @@
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "high",
-			"note": "No multi-app or point-in-time rollback.",
+			"note": "No multi-app or point-in-time rollback. Specified 2026-09-27 in openspec/changes/install-bulk-rollback (openspec pass).",
 			"evidence": {
 				"nextcloud": "No rollback of any kind; downgrade is refused (lib/private/Installer.php:310).",
 				"renovate": "not checked: no option rolls back several dependencies to an earlier state; the analog is a git revert and no doc states an absence.",
@@ -1707,7 +1707,7 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "built",
+				"state": "specified",
 				"evidence": "lib/Service/ExternalReleaseInstallerService.php:583, lib/Service/SelectedReleaseInstallerService.php:334",
 				"reachedOn": "Apps tab install flow honours an existing override; nothing in versioniq sets one",
 				"owner": "ConductionNL/versioniq"
@@ -1716,7 +1716,7 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "medium",
-			"note": "Both installers honour the platform's app_install_overwrite list and otherwise refuse an incompatible version; there is no force option in the UI or occ command.",
+			"note": "Both installers honour the platform's app_install_overwrite list and otherwise refuse an incompatible version; there is no force option in the UI or occ command. Specified 2026-09-27 in openspec/changes/install-force-incompatible (openspec pass).",
 			"evidence": {
 				"nextcloud": "Force enable via the UI and occ app:install ,force records app_install_overwrite (apps/appstore/lib/Controller/ApiController.php:167-169, core/Command/App/Install.php:31-57); since 2026-08 the override is cleared on a major upgrade (lib/private/Updater.php:215-218, backported to stable34 in #63633).",
 				"renovate": "lib/config/options/index.ts:499 constraintsFiltering defaults to none, so updates are proposed regardless of declared constraints, and lib/config/options/index.ts:723 composerIgnorePlatformReqs forces composer past platform requirements; there is no override that lifts itself at the next major.",
@@ -2098,7 +2098,7 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "built",
+				"state": "specified",
 				"evidence": "src/App.vue:2001, lib/Service/InstallerService.php:347, lib/Service/SelectedReleaseInstallerService.php:316, lib/Service/SelectedReleaseInstallerService.php:696",
 				"reachedOn": "Apps tab ('Dry run' toggle); occ versioniq:install ,dry-run",
 				"owner": "ConductionNL/versioniq"
@@ -2107,7 +2107,7 @@
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "medium",
-			"note": "A dry run downloads and verifies the package (signature or SHA-256, app id, version, migration diff) without swapping files, without moving the live app folder and without maintenance mode (#427). It runs no tests, and for App Store packages skips the server-compatibility and dependency check that only runs on a real install.",
+			"note": "A dry run downloads and verifies the package (signature or SHA-256, app id, version, migration diff) without swapping files, without moving the live app folder and without maintenance mode (#427). It runs no tests, and for App Store packages skips the server-compatibility and dependency check that only runs on a real install. Specified 2026-09-27 in openspec/changes/safety-update-checks (openspec pass).",
 			"evidence": {
 				"nextcloud": "The update path downloads, verifies the signature and installs (lib/private/Installer.php:102-116); no test or staging step. Code integrity runs after the core upgrade only (lib/private/Updater.php:285-290).",
 				"renovate": "Updates arrive as PRs that run the repository's CI; automerge only merges when status checks pass (lib/config/options/index.ts:2376, ignoreTests lib/config/options/index.ts:2413), and a \"Pending Status Checks\" section shows waiting ones (dependency-dashboard.ts:562).",
@@ -2249,7 +2249,7 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "built",
+				"state": "specified",
 				"evidence": "lib/Service/Installer/MigrationDiffer.php:31, lib/Service/SelectedReleaseInstallerService.php:650, src/utils/migrationSafety.ts:49",
 				"reachedOn": "Apps tab, downgrade confirm dialog (dry run)",
 				"owner": "ConductionNL/versioniq"
@@ -2258,7 +2258,7 @@
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "high",
-			"note": "The dry run lists the migrations a downgrade would orphan; there is no preview of the migrations an upgrade will run, and no duration estimate.",
+			"note": "The dry run lists the migrations a downgrade would orphan; there is no preview of the migrations an upgrade will run, and no duration estimate. Specified 2026-09-27 in openspec/changes/safety-upgrade-migration-preview (openspec pass).",
 			"evidence": {
 				"nextcloud": "occ migrations:preview <version> lists server and shipped-app migrations from release metadata (core/Command/Db/Migrations/PreviewCommand.php:38-70) and names apps without metadata; the app store and admin UI parts are still open work packages on the issue.",
 				"renovate": "not checked: no analog for previewing database changes in a dependency bot.",
@@ -2341,7 +2341,7 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "built",
+				"state": "specified",
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:352",
 				"reachedOn": "Apps tab install flow",
 				"owner": "ConductionNL/versioniq"
@@ -2350,7 +2350,7 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "medium",
-			"note": "An install through Versioniq keeps the previous enabled state, so it does not leave an app disabled; an app disabled by another path is neither reported nor re-enabled.",
+			"note": "An install through Versioniq keeps the previous enabled state, so it does not leave an app disabled; an app disabled by another path is neither reported nor re-enabled. Specified 2026-09-27 in openspec/changes/audit-external-changes (openspec pass).",
 			"evidence": {
 				"nextcloud": "During a server upgrade, incompatible apps are disabled and reported ('incompatibleAppDisabled' in the occ upgrade output, core/Command/Upgrade.php:161, and logged at lib/private/Updater.php:502-503). Auto-disabled apps are then updated from the store and re-enabled with their previous state, including groups (lib/private/Updater.php:258-263,409-417). An app with no compatible release stays disabled, with only a log line and no notification.",
 				"renovate": "not checked: no analog for an app enabled state in a repository dependency bot.",
@@ -2581,7 +2581,7 @@
 			"osv-scanner": "yes",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "built",
+				"state": "specified",
 				"evidence": "lib/Service/Policy/Policy.php:30, lib/Service/AutoUpdate/CandidateSelector.php:66, src/components/PolicySelector.vue:24, src/App.vue:2194",
 				"reachedOn": "Apps tab (per-app 'Auto-update' selector); background job AutoUpdateJob",
 				"owner": "ConductionNL/versioniq"
@@ -2590,7 +2590,7 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "medium",
-			"note": "A per-app auto-update policy of Patch, Minor or All limits which newer versions the nightly job installs. It restricts only automatic updates; manual installs and Nextcloud's updater are not held to the range, and non-semver versions never qualify.",
+			"note": "A per-app auto-update policy of Patch, Minor or All limits which newer versions the nightly job installs. It restricts only automatic updates; manual installs and Nextcloud's updater are not held to the range, and non-semver versions never qualify. Specified 2026-09-27 in openspec/changes/pinning-ranges-and-skips (openspec pass).",
 			"evidence": {
 				"nextcloud": "Updates always go to the highest compatible release (lib/private/App/AppStore/Fetcher/AppFetcher.php:123-140); no range constraint.",
 				"renovate": "lib/config/options/index.ts:1859 allowedVersions restricts to a range, and matchUpdateTypes (lib/config/options/index.ts:1798) with enabled:false limits a package to patch releases.",
@@ -2611,7 +2611,7 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "lib/Service/AutoUpdate/AttemptLedger.php:49 (automatic never-retry only), src/App.vue (no skip control)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -2620,7 +2620,7 @@
 			"providerHow": "read-from-code",
 			"feature": "version-pinning",
 			"featureConfidence": "high",
-			"note": "No way to skip one chosen version. The auto-update attempt ledger never retries a version that was already attempted, but that is automatic, not an admin choice.",
+			"note": "No way to skip one chosen version. The auto-update attempt ledger never retries a version that was already attempted, but that is automatic, not an admin choice. Specified 2026-09-27 in openspec/changes/pinning-ranges-and-skips (openspec pass).",
 			"evidence": {
 				"nextcloud": "Not supported; open feature request 'Ability to ignore a specific app update version' https://github.com/nextcloud/server/issues/57633 (opened 2026-01-18).",
 				"renovate": "Closing a PR ignores that version and later versions still arrive (userStrings.ignoreOther, lib/config/options/index.ts:3491; lib/workers/repository/update/branch/handle-existing.ts:13-30); allowedVersions accepts a negated regex to skip one version.",
@@ -2823,7 +2823,7 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "lib/Service/Policy/Policy.php:24 (absent policy means none), lib/Service/Policy/PolicyStore.php:42, src/App.vue:2019",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -2832,7 +2832,7 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "There is no instance-wide default level; an app with no stored policy is treated as none, so every app must be set one by one.",
+			"note": "There is no instance-wide default level; an app with no stored policy is treated as none, so every app must be set one by one. Specified 2026-09-27 in openspec/changes/autoupdate-default-and-config-file (openspec pass).",
 			"evidence": {
 				"nextcloud": "No automatic updates exist (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154).",
 				"renovate": "Top-level config, presets such as config:recommended (lib/config/presets/internal/config.preset.ts) and globalExtends (lib/config/options/index.ts:454) set one default for every dependency.",
@@ -2913,7 +2913,7 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "lib/Service/AutoUpdate/AutoUpdateWindow.php:26 (time of day only), lib/Service/AutoUpdate/AutoUpdateSettingsStore.php:27",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -2922,7 +2922,7 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "Only a daily time-of-day window exists; no weekday selection or cron expression.",
+			"note": "Only a daily time-of-day window exists; no weekday selection or cron expression. Specified 2026-09-27 in openspec/changes/autoupdate-schedules (openspec pass).",
 			"evidence": {
 				"nextcloud": "No automatic updates exist; the check job runs daily (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:48).",
 				"renovate": "schedule (lib/config/options/index.ts:1027) accepts cron syntax and later.js text such as \"before 5am on monday\"; lib/config/presets/internal/schedule.preset.ts ships weekly and monthly presets.",
@@ -3003,7 +3003,7 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:90 (one install per app, no batch)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -3012,7 +3012,7 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "Each app is installed separately in its own try/catch; there is no batch or grouped change.",
+			"note": "Each app is installed separately in its own try/catch; there is no batch or grouped change. Specified 2026-09-27 in openspec/changes/autoupdate-run-batching (openspec pass).",
 			"evidence": {
 				"nextcloud": "No automatic updates exist (UpdateAvailableNotifications.php:146-154).",
 				"renovate": "lib/config/options/index.ts:2669 groupName and group presets (lib/config/presets/internal/group.preset.ts), minimumGroupSize (lib/config/options/index.ts:440).",
@@ -3033,7 +3033,7 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "lib/Service/AutoUpdate/CandidateSelector.php:46 (semver bound only, no advisory input), lib/Service/Policy/Policy.php:34",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -3042,7 +3042,7 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "Candidate selection knows only semver levels; advisory correlation is never consulted, so there is no security-fixes-only policy.",
+			"note": "Candidate selection knows only semver levels; advisory correlation is never consulted, so there is no security-fixes-only policy. Specified 2026-09-27 in openspec/changes/autoupdate-security-first (openspec pass).",
 			"evidence": {
 				"nextcloud": "No automatic updates and no security classification of releases (lib/private/App/AppStore/Fetcher/AppFetcher.php:74-108).",
 				"renovate": "lib/config/presets/internal/security.preset.ts:142-155 security:only-security-updates disables all updates except vulnerability fixes.",
@@ -3063,7 +3063,7 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "grep approv in lib and src: no hits; lib/BackgroundJob/AutoUpdateJob.php:151 installs directly",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -3072,7 +3072,7 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "The nightly job installs the candidate directly; there is no proposed-update queue or approval step.",
+			"note": "The nightly job installs the candidate directly; there is no proposed-update queue or approval step. Specified 2026-09-27 in openspec/changes/autoupdate-proposed-updates (openspec pass).",
 			"evidence": {
 				"nextcloud": "No proposal or approval flow; every update is a manual admin action (apps/appstore/lib/Controller/ApiController.php:253).",
 				"renovate": "lib/config/options/index.ts:911 dependencyDashboardApproval holds updates under \"Pending Approval\" until a checkbox is ticked (dependency-dashboard.ts:500-507).",
@@ -3093,7 +3093,7 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "built",
+				"state": "specified",
 				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:155, lib/Service/InstallerService.php:333",
 				"reachedOn": "background job AutoUpdateJob",
 				"owner": "ConductionNL/versioniq"
@@ -3102,7 +3102,7 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "medium",
-			"note": "Automatic installs go through the standard installer, which verifies signature, integrity and compatibility before swapping files and restores on failure; there is no configurable test or health gate an admin can attach.",
+			"note": "Automatic installs go through the standard installer, which verifies signature, integrity and compatibility before swapping files and restores on failure; there is no configurable test or health gate an admin can attach. Specified 2026-09-27 in openspec/changes/safety-update-checks (openspec pass).",
 			"evidence": {
 				"nextcloud": "No automatic updates exist (UpdateAvailableNotifications.php:146-154).",
 				"renovate": "lib/config/options/index.ts:2376 automerge with automergeType (lib/config/options/index.ts:2383) and platformAutomerge (lib/config/options/index.ts:3466) merges once status checks pass.",
@@ -3123,7 +3123,7 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:90 (every policy app processed each run)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -3132,7 +3132,7 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "No cap on the number of installs per run or per period.",
+			"note": "No cap on the number of installs per run or per period. Specified 2026-09-27 in openspec/changes/autoupdate-run-batching (openspec pass).",
 			"evidence": {
 				"nextcloud": "No automatic updates exist; the web UI queues manual updates one at a time (apps/appstore/src/service/api.ts PQueue concurrency 1), which is a client queue, not a policy.",
 				"renovate": "lib/config/options/index.ts:2287 prHourlyLimit, lib/config/options/index.ts:2294 prConcurrentLimit, lib/config/options/index.ts:2301 branchConcurrentLimit and lib/config/options/index.ts:2281 commitHourlyLimit.",
@@ -3183,7 +3183,7 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "lib/Service/Policy/PolicyStore.php:42 (policies as app config JSON keys policy.{appId})",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -3192,7 +3192,7 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "Policies live in oc_appconfig; there is no versioned configuration file import or export.",
+			"note": "Policies live in oc_appconfig; there is no versioned configuration file import or export. Specified 2026-09-27 in openspec/changes/autoupdate-default-and-config-file (openspec pass).",
 			"evidence": {
 				"nextcloud": "config.php holds update-related switches (updatechecker, updater.release.channel, appstoreenabled; config/config.sample.php:972-990,1400) but no update policies.",
 				"renovate": "renovate.json and other config files in the repository (lib/config/options/index.ts:296 configFileNames), validated by renovate-config-validator (docs/usage/config-validation.md).",
@@ -3396,7 +3396,7 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:54 runs one daily job for every policy level",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -3405,7 +3405,7 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "medium",
-			"note": "One schedule and one window apply to all policies; there is no schedule per update type.",
+			"note": "One schedule and one window apply to all policies; there is no schedule per update type. Specified 2026-09-27 in openspec/changes/autoupdate-schedules (openspec pass).",
 			"evidence": {
 				"nextcloud": "No automatic updates exist; the only update background job notifies and never installs (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154).",
 				"renovate": "packageRules with matchUpdateTypes (lib/config/options/index.ts:1798) or the major, minor and patch config objects (lib/config/options/index.ts:1999-2017) each take their own schedule (lib/config/options/index.ts:1027), for example patches any time and majors monthly.",
@@ -3788,7 +3788,7 @@
 			"osv-scanner": "yes",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "grep dismiss in src: only discover provider errors (src/components/DiscoverPanel.vue:111); lib/Service/Advisory/AdvisoryNotifier.php:36 stores notified keys, not dismissals",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -3797,7 +3797,7 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "No way to dismiss or ignore an advisory with a reason.",
+			"note": "No way to dismiss or ignore an advisory with a reason. Specified 2026-09-27 in openspec/changes/advisories-triage (openspec pass).",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
 				"renovate": "Closing a security PR ignores that update (handle-existing.ts:13-30) and alerts dismissed on GitHub are no longer delivered; no reason field is recorded by Renovate.",
@@ -4092,7 +4092,7 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "grep ncsc in lib and src: no hits",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -4101,7 +4101,7 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "NCSC advisories are not read.",
+			"note": "NCSC advisories are not read. Specified 2026-09-27 in openspec/changes/advisories-ncsc-feed (openspec pass).",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
 				"renovate": "not checked: no NCSC source in the code; Renovate reads only GitHub alerts and OSV.",
@@ -4124,7 +4124,7 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "built",
+				"state": "specified",
 				"evidence": "lib/Service/Advisory/AdvisoryService.php:293, src/App.vue:2159",
 				"reachedOn": "Apps tab, Advisory badge tooltip",
 				"owner": "ConductionNL/versioniq"
@@ -4133,7 +4133,7 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "medium",
-			"note": "Apps with a security history get an Advisory badge whose tooltip shows only the first advisory summary; the full per-app advisory list is in the API payload but not listed in the UI, and ids are GHSA rather than CVE.",
+			"note": "Apps with a security history get an Advisory badge whose tooltip shows only the first advisory summary; the full per-app advisory list is in the API payload but not listed in the UI, and ids are GHSA rather than CVE. Specified 2026-09-27 in openspec/changes/advisories-per-app-detail (openspec pass).",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
 				"renovate": "lib/config/options/index.ts:964 dependencyDashboardOSVVulnerabilitySummary=all lists the CVEs known for each dependency on the dashboard (dependency-dashboard.ts:780); not a recency-ordered history.",
@@ -4308,7 +4308,7 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "built",
+				"state": "specified",
 				"evidence": "lib/Service/Advisory/AdvisoryService.php:304, lib/Service/Advisory/AdvisoryService.php:295",
 				"reachedOn": "Apps tab vulnerable badge",
 				"owner": "ConductionNL/versioniq"
@@ -4317,7 +4317,7 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "medium",
-			"note": "When no published version resolves the advisory, recommendedVersion stays null and no safe version is shown; the reason (no fix yet, blocked by server compatibility) is not explained.",
+			"note": "When no published version resolves the advisory, recommendedVersion stays null and no safe version is shown; the reason (no fix yet, blocked by server compatibility) is not explained. Specified 2026-09-27 in openspec/changes/advisories-per-app-detail (openspec pass).",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 link (core/Notification/CoreNotifier.php:59). The nearest thing is the missing-dependencies list for incompatible releases (apps/appstore/lib/Controller/ApiController.php:133-135), which is unrelated to advisories.",
 				"renovate": "The dashboard OSV summary with value unresolved lists advisories with no fix applied (lib/workers/repository/dependency-dashboard.ts:802-820), and \"No fixed version available\" is logged (lib/workers/repository/process/vulnerabilities.ts:585); a blocking dependency is not explained.",
@@ -4401,7 +4401,7 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "no assignee field in lib/Service/Advisory/AdvisoryResultStore.php",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -4410,7 +4410,7 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "medium",
-			"note": "Advisories go to every admin; they cannot be assigned.",
+			"note": "Advisories go to every admin; they cannot be assigned. Specified 2026-09-27 in openspec/changes/advisories-triage (openspec pass).",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 link (core/Notification/CoreNotifier.php:59).",
 				"renovate": "vulnerabilityAlerts is a mergeable config object (lib/config/options/index.ts:2428) that takes assignees, reviewers and labels for security PRs, and assigneesFromCodeOwners (lib/config/options/index.ts:2731) assigns them from CODEOWNERS.",
@@ -5333,7 +5333,7 @@
 			"osv-scanner": "yes",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "built",
+				"state": "specified",
 				"evidence": "src/App.vue:2157, src/App.vue:1980, lib/Service/Advisory/AdvisoryService.php:311",
 				"reachedOn": "Apps tab advisory badges and freshness line",
 				"owner": "ConductionNL/versioniq"
@@ -5342,7 +5342,7 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "medium",
-			"note": "Each app card says whether its installed version is vulnerable and the page says when that was checked, but there is no overall patch compliance status, and the server's own advisory row is computed but not shown on any card.",
+			"note": "Each app card says whether its installed version is vulnerable and the page says when that was checked, but there is no overall patch compliance status, and the server's own advisory row is computed but not shown on any card. Specified 2026-09-27 in openspec/changes/advisories-per-app-detail (openspec pass).",
 			"evidence": {
 				"nextcloud": "The overview says whether the server is up to date and warns when the version is end of life (apps/updatenotification/src/components/UpdateNotification.vue:9-10,95); pending app updates are counted (apps/appstore/lib/Controller/PageController.php:84). No security-patch status because no advisories are read.",
 				"renovate": "The dashboard shows open security PRs and the OSV summary of unresolved CVEs (lib/config/options/index.ts:964), and the report carries libyears (lib/workers/repository/process/libyear.ts); no compliance status as such.",
@@ -5365,7 +5365,7 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "built",
+				"state": "specified",
 				"evidence": "lib/Service/Policy/Policy.php:36, src/components/PolicySelector.vue:24",
 				"reachedOn": "Apps tab, policy selector",
 				"owner": "ConductionNL/versioniq"
@@ -5374,7 +5374,7 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "medium",
-			"note": "A per-app update level is recorded with who set it and when, but there is no written policy per patch type and no security-first handling.",
+			"note": "A per-app update level is recorded with who set it and when, but there is no written policy per patch type and no security-first handling. Specified 2026-09-27 in openspec/changes/autoupdate-security-first (openspec pass).",
 			"evidence": {
 				"nextcloud": "No policy object exists; the only update configuration is the channel and notify groups (apps/updatenotification/lib/Settings/Admin.php:47-60).",
 				"renovate": "The update policy is written as versioned config: vulnerabilityAlerts (lib/config/options/index.ts:2428) for security fixes, packageRules per update type, schedules and automerge, reviewable in the repository.",
@@ -6356,7 +6356,7 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:141, lib/Service/AutoUpdate/CandidateSelector.php:46 (candidate computed inside the job only), routes in _lane/routes.txt (no preview route)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -6365,7 +6365,7 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "The policy's candidate per app is computed only inside the nightly job and never exposed, so an admin cannot see what the policy would apply now. The dry run that exists is per manual install (the Dry run toggle on the Apps tab), not a policy preview.",
+			"note": "The policy's candidate per app is computed only inside the nightly job and never exposed, so an admin cannot see what the policy would apply now. The dry run that exists is per manual install (the Dry run toggle on the Apps tab), not a policy preview. Specified 2026-09-27 in openspec/changes/autoupdate-proposed-updates (openspec pass).",
 			"evidence": {
 				"nextcloud": "There is no automatic update policy to evaluate; the closest is occ app:update --all --showonly, which lists the manual updates available now without applying them (core/Command/App/Update.php:41-52).",
 				"renovate": "dryRun extract, lookup or full (lib/config/options/index.ts:597-603) runs the whole pipeline with the current config and logs the branches and PRs it would create instead of writing them; lib/config-validator.ts validates a changed config first.",
@@ -6676,7 +6676,7 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "built",
+				"state": "specified",
 				"evidence": "lib/Listener/AppUpdatedListener.php:48, lib/Service/Pin/PinDriftHandler.php:55-58, lib/Service/Pin/PinStore.php:159, lib/BackgroundJob/PinReconcileJob.php:54",
 				"reachedOn": "History tab (pin_drift rows) and per-app drift banner, pinned apps only",
 				"owner": "ConductionNL/versioniq"
@@ -6685,7 +6685,7 @@
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "high",
-			"note": "A version change made outside Versioniq is recorded only for a pinned app, as a pin_drift audit row with the new version; changes to unpinned apps are not recorded, and the trigger (occ, the app store page, another tool) is never captured.",
+			"note": "A version change made outside Versioniq is recorded only for a pinned app, as a pin_drift audit row with the new version; changes to unpinned apps are not recorded, and the trigger (occ, the app store page, another tool) is never captured. Specified 2026-09-27 in openspec/changes/audit-external-changes (openspec pass).",
 			"evidence": {
 				"nextcloud": "Every upgrade path, UI, occ, server upgrade or code replaced by hand and then migrated, goes through upgradeApp, which dispatches AppUpdateEvent (lib/private/App/AppManager.php:1099,1155), logged by admin_audit as 'App updated' (apps/admin_audit/lib/Listener/AppManagementEventListener.php:56-59) next to the occ command line (apps/admin_audit/lib/Listener/ConsoleEventListener.php:38). No from and to versions, and admin_audit must be enabled.",
 				"renovate": "The instance is a repository here, so its git history is the record. Renovate records nothing itself, but in its model every version change, by the bot or by hand, is a commit to the manifest in the repository's git history with author and message; Renovate only notices manual edits on its own branches (lib/workers/repository/dependency-dashboard.ts:555). An instance maps to a repository.",
@@ -6740,7 +6740,7 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "built",
+				"state": "specified",
 				"evidence": "lib/Controller/ApiController.php:1207, src/components/HistoryPanel.vue:28, src/components/HistoryPanel.vue:54, src/App.vue:2495",
 				"reachedOn": "History tab",
 				"owner": "ConductionNL/versioniq"
@@ -6749,7 +6749,7 @@
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "high",
-			"note": "The History tab lists every install, manual or automatic, with time and from and to version, newest first and filterable by app only. There is no period filter, no mark for installs that fixed an advisory, no export, and server updates are not included.",
+			"note": "The History tab lists every install, manual or automatic, with time and from and to version, newest first and filterable by app only. There is no period filter, no mark for installs that fixed an advisory, no export, and server updates are not included. Specified 2026-09-27 in openspec/changes/audit-security-reports (openspec pass).",
 			"evidence": {
 				"nextcloud": "Updates carry no security flag because no advisories are read (a search for 'advisor' in apps, core and lib finds only apps/settings/lib/WellKnown/SecurityTxtHandler.php:28 and core/Notification/CoreNotifier.php:59); admin_audit logs 'App updated' without versions (apps/admin_audit/lib/Listener/AppManagementEventListener.php:56-59) and there is no report.",
 				"renovate": "Fix updates are marked with the [SECURITY] commit suffix and their own branch topic (lib/config/options/index.ts:2438-2439), so merged ones can be listed from the forge's PR search over a period; Renovate itself builds no period report, and the JSON report has no security section (lib/instrumentation/reporting.ts:39-63).",
@@ -6804,7 +6804,7 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "lib/Service/AutoUpdate/AutoUpdateNotifier.php:48, lib/Service/AutoUpdate/AutoUpdateNotifier.php:63 (success and failure only, after the install)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -6813,7 +6813,7 @@
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "Admins are notified only after the nightly job succeeded or failed; nothing announces an update before it runs, and the next candidate is never shown.",
+			"note": "Admins are notified only after the nightly job succeeded or failed; nothing announces an update before it runs, and the next candidate is never shown. Specified 2026-09-27 in openspec/changes/autoupdate-proposed-updates (openspec pass).",
 			"evidence": {
 				"nextcloud": "No update is ever scheduled: notifications fire when a new version is found (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-196) and every install is a manual action (apps/appstore/lib/Controller/ApiController.php:253-260), so there is no run to announce in advance.",
 				"renovate": "With automergeSchedule (lib/config/options/index.ts:1037) the PR, carrying release notes, opens at once (prCreation, lib/config/options/index.ts:2268) and is merged only in the later window, and 'Awaiting Schedule' lists what is queued (lib/workers/repository/dependency-dashboard.ts:518). The lead time follows the windows, not a set number of days before each update.",
@@ -6964,7 +6964,7 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "lib/Service/Advisory/AdvisoryResultStore.php:40, lib/Service/Advisory/AdvisoryResultStore.php:60 (one current result set, overwritten each sweep)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -6973,7 +6973,7 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "Advisory results are a single current snapshot that each sweep overwrites, so there is no history to compute resolution within deadline or trends; there are no severity deadlines either.",
+			"note": "Advisory results are a single current snapshot that each sweep overwrites, so there is no history to compute resolution within deadline or trends; there are no severity deadlines either. Specified 2026-09-27 in openspec/changes/audit-security-reports (openspec pass).",
 			"evidence": {
 				"nextcloud": "No advisories or deadlines exist to measure: a search of apps, core and lib for 'advisor' finds only apps/settings/lib/WellKnown/SecurityTxtHandler.php:28 and core/Notification/CoreNotifier.php:59.",
 				"renovate": "Renovate keeps no remediation deadlines or history: the vulnerability options (lib/config/options/index.ts:2428-2460) shape fix PRs, and the report carries libyears only (lib/instrumentation/reporting.ts:52-62), not resolution times per severity.",

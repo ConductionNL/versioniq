@@ -208,6 +208,22 @@
 		"decidedOn": "2026-09-27"
 	},
 	{
+		"row": "ins-bulk-rollback",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: core area (install).",
+		"change": "install-bulk-rollback",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "ins-force-incompatible",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: partial and built, and a competitor changelog as demand says the missing half matters.",
+		"change": "install-force-incompatible",
+		"decidedOn": "2026-09-27"
+	},
+	{
 		"row": "ins-replace-successor",
 		"matrix": "versioniq",
 		"decision": "build",
@@ -248,11 +264,27 @@
 		"decidedOn": "2026-09-27"
 	},
 	{
+		"row": "saf-test-before-apply",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: 2 competitors rated yes (Renovate, Dependabot).",
+		"change": "safety-update-checks",
+		"decidedOn": "2026-09-27"
+	},
+	{
 		"row": "saf-health-after",
 		"matrix": "versioniq",
 		"decision": "defer",
 		"reason": "Defer: one competitor rated yes (Easy Updates Manager), no demand row, outside the core areas (area safety). openspec/changes/archive/2026-07-23-add-migration-safety-guard/proposal.md lists post-install health checks as future work.",
 		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "saf-migration-preview",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: partial and built, and a roadmap item as demand says the missing half matters.",
+		"change": "safety-upgrade-migration-preview",
 		"decidedOn": "2026-09-27"
 	},
 	{
@@ -272,11 +304,35 @@
 		"decidedOn": "2026-09-27"
 	},
 	{
+		"row": "saf-reactivate-after-update",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: partial and built, and a competitor changelog as demand says the missing half matters.",
+		"change": "audit-external-changes",
+		"decidedOn": "2026-09-27"
+	},
+	{
 		"row": "pin-enforce-platform",
 		"matrix": "versioniq",
 		"decision": "decided-no",
 		"reason": "A recorded non-goal covers it: openspec/changes/archive/2026-07-23-add-version-pinning/proposal.md, Out of scope, says blocking or intercepting Nextcloud's own updater is impossible without core changes, and the version-pinning spec states that a pin is monitored, not enforced against the Nextcloud updater.",
 		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "pin-range",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: 3 competitors rated yes (Renovate, Dependabot, OSV-Scanner).",
+		"change": "pinning-ranges-and-skips",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "pin-ignore-version",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Renovate, Dependabot).",
+		"change": "pinning-ranges-and-skips",
 		"decidedOn": "2026-09-27"
 	},
 	{
@@ -312,11 +368,75 @@
 		"decidedOn": "2026-09-27"
 	},
 	{
+		"row": "aut-global-default",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 3 competitors rated yes (Renovate, Dependabot, Easy Updates Manager).",
+		"change": "autoupdate-default-and-config-file",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aut-schedule-days",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 3 competitors rated yes (Renovate, Dependabot, Easy Updates Manager).",
+		"change": "autoupdate-schedules",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aut-grouping",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Renovate, Dependabot).",
+		"change": "autoupdate-run-batching",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aut-security-only",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Renovate, Dependabot).",
+		"change": "autoupdate-security-first",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aut-approval",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Renovate, Dependabot).",
+		"change": "autoupdate-proposed-updates",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aut-automerge",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: 2 competitors rated yes (Renovate, Dependabot).",
+		"change": "safety-update-checks",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aut-rate-limit",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Renovate, Dependabot).",
+		"change": "autoupdate-run-batching",
+		"decidedOn": "2026-09-27"
+	},
+	{
 		"row": "aut-core-policy",
 		"matrix": "versioniq",
 		"decision": "decided-no",
 		"reason": "Server core updates are the platform updater's work (row ins-server-core-update in this matrix, owner nextcloud/server, decided-no), and the current specs refuse to manage core and always-enabled apps (cli-commands, requirement CLI trust context, and the isManageableApp guard in version-management), so a core policy has nothing in Versioniq to act on.",
 		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aut-config-as-code",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Renovate, Dependabot).",
+		"change": "autoupdate-default-and-config-file",
 		"decidedOn": "2026-09-27"
 	},
 	{
@@ -352,6 +472,14 @@
 		"decidedOn": "2026-09-27"
 	},
 	{
+		"row": "aut-schedule-per-type",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: a feature request as demand plus one competitor rated yes (Renovate).",
+		"change": "autoupdate-schedules",
+		"decidedOn": "2026-09-27"
+	},
+	{
 		"row": "aut-notify-failures-only",
 		"matrix": "versioniq",
 		"decision": "defer",
@@ -373,6 +501,14 @@
 		"decision": "build",
 		"reason": "Build: 2 competitors rated yes (Renovate, Dependabot).",
 		"change": "install-one-click-updates",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-dismiss",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Dependabot, OSV-Scanner).",
+		"change": "advisories-triage",
 		"decidedOn": "2026-09-27"
 	},
 	{
@@ -424,6 +560,22 @@
 		"decidedOn": "2026-09-27"
 	},
 	{
+		"row": "adv-ncsc",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: a tender demand row.",
+		"change": "advisories-ncsc-feed",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-cve-history",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: partial and built, and a tender as demand says the missing half matters.",
+		"change": "advisories-per-app-detail",
+		"decidedOn": "2026-09-27"
+	},
+	{
 		"row": "adv-coverage-gaps",
 		"matrix": "versioniq",
 		"decision": "defer",
@@ -456,6 +608,14 @@
 		"decidedOn": "2026-09-27"
 	},
 	{
+		"row": "adv-unfixable-reason",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: partial and built, and a feature request as demand says the missing half matters.",
+		"change": "advisories-per-app-detail",
+		"decidedOn": "2026-09-27"
+	},
+	{
 		"row": "adv-vulnerable-path",
 		"matrix": "versioniq",
 		"decision": "defer",
@@ -469,6 +629,14 @@
 		"decision": "build",
 		"reason": "Build: 2 competitors rated yes (Dependabot, OSV-Scanner).",
 		"change": "safety-withdrawn-and-revoked",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-assign-owner",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Renovate, Dependabot).",
+		"change": "advisories-triage",
 		"decidedOn": "2026-09-27"
 	},
 	{
@@ -493,6 +661,22 @@
 		"decision": "defer",
 		"reason": "partial, built, no demand: one competitor rated yes and no demand row says the missing half matters.",
 		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aud-patch-compliance",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: partial and built, and a tender as demand says the missing half matters.",
+		"change": "advisories-per-app-detail",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aud-patch-policy",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: partial and built, and a tender as demand says the missing half matters.",
+		"change": "autoupdate-security-first",
 		"decidedOn": "2026-09-27"
 	},
 	{
@@ -632,6 +816,14 @@
 		"decidedOn": "2026-09-27"
 	},
 	{
+		"row": "aut-dry-run",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: a feature request as demand plus one competitor rated yes (Renovate).",
+		"change": "autoupdate-proposed-updates",
+		"decidedOn": "2026-09-27"
+	},
+	{
 		"row": "adv-dismiss-review",
 		"matrix": "versioniq",
 		"decision": "defer",
@@ -696,6 +888,14 @@
 		"decidedOn": "2026-09-27"
 	},
 	{
+		"row": "aud-external-changes",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: partial and built, and a competitor changelog as demand says the missing half matters.",
+		"change": "audit-external-changes",
+		"decidedOn": "2026-09-27"
+	},
+	{
 		"row": "inv-sbom-per-update",
 		"matrix": "versioniq",
 		"decision": "build",
@@ -704,11 +904,27 @@
 		"decidedOn": "2026-09-27"
 	},
 	{
+		"row": "aud-security-update-report",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: partial and built, and a tender as demand says the missing half matters.",
+		"change": "audit-security-reports",
+		"decidedOn": "2026-09-27"
+	},
+	{
 		"row": "inv-end-of-support",
 		"matrix": "versioniq",
 		"decision": "build",
 		"reason": "Build: a tender demand row; core area (inventory).",
 		"change": "inventory-lifecycle-signals",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aut-advance-notice",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: a tender demand row.",
+		"change": "autoupdate-proposed-updates",
 		"decidedOn": "2026-09-27"
 	},
 	{
@@ -741,6 +957,14 @@
 		"decision": "build",
 		"reason": "Build: a tender demand row; core area (inventory).",
 		"change": "inventory-pending-updates",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aud-remediation-kpi",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: a tender demand row.",
+		"change": "audit-security-reports",
 		"decidedOn": "2026-09-27"
 	}
 ]

@@ -40,7 +40,7 @@ In scope: the triage store, three routes, the triage fields on `GET /api/advisor
 Out of scope:
 - Rules that dismiss advisories by criteria (auto-triage). A fixed reason per advisory is enough to record a decision; rules can follow.
 - Assigning to someone who is not an admin. Versioniq is admin-only, so an assignee must be able to open it.
-- Advisories about bundled libraries. `advisories-bundled-libraries` specifies those; they get triage when that change lands.
+- Advisories about bundled libraries. `advisories-bundled-libraries` specifies those; dismissing a library finding is a follow-up to both changes.
 - Deadlines per severity. `autoupdate-security-first` records them; `audit-security-reports` reports on them and counts dismissals separately.
 
 ## Impact
