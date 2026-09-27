@@ -26,11 +26,22 @@ final class SourceBinding {
 	/**
 	 * Forges a `github-release` binding may target. The `kind` stays
 	 * `github-release` for backward compatibility (legacy rows have no forge);
-	 * the `forge` config field discriminates GitHub from Codeberg/Forgejo.
+	 * the `forge` config field discriminates GitHub from a Forgejo or Gitea
+	 * host. `codeberg` is retired (issue #437) but stays readable, so a
+	 * binding stored under it keeps working; see {@see ForgeRegistry}.
 	 */
 	public const FORGE_GITHUB = 'github';
+	public const FORGE_FORGEJO = 'forgejo';
 	public const FORGE_CODEBERG = 'codeberg';
-	private const ALLOWED_FORGES = [self::FORGE_GITHUB, self::FORGE_CODEBERG];
+
+	/**
+	 * Every forge a stored binding, source id or trusted pattern may carry,
+	 * the retired one included.
+	 *
+	 * @var list<string>
+	 */
+	public const FORGES = [self::FORGE_GITHUB, self::FORGE_FORGEJO, self::FORGE_CODEBERG];
+	private const ALLOWED_FORGES = self::FORGES;
 
 	/**
 	 * Cap on the number of `version => sha256` entries carried in the binding's
@@ -77,7 +88,7 @@ final class SourceBinding {
 	}
 
 	/**
-	 * Returns the forge a `github-release` binding targets (`github`|`codeberg`),
+	 * Returns the forge a `github-release` binding targets (`github`|`forgejo`|`codeberg`),
 	 * defaulting to `github` when absent (legacy rows). Empty string for
 	 * non-release bindings.
 	 *
@@ -304,7 +315,11 @@ final class SourceBinding {
 	/**
 	 * Builds a validated github-release binding with a boundAt timestamp; see "Source binding".
 	 *
+	 * Public API kept for callers and tests; the controller and source-id
+	 * parser build through {@see release()} since issue #437.
+	 *
 	 * @spec openspec/specs/external-sources/spec.md
+	 * @psalm-api
 	 */
 	public static function github(string $owner, string $repo, string $assetPattern = '*.tar.gz'): self {
 		return self::forgeRelease(self::FORGE_GITHUB, $owner, $repo, $assetPattern);
@@ -312,11 +327,25 @@ final class SourceBinding {
 
 	/**
 	 * Builds a validated codeberg (Forgejo) release binding; mirrors ::github().
+	 * Codeberg is retired as a forge of its own (issue #437); this stays for
+	 * stored data and tests.
 	 *
 	 * @spec openspec/specs/external-sources/spec.md
+	 * @psalm-api
 	 */
 	public static function codeberg(string $owner, string $repo, string $assetPattern = '*.tar.gz'): self {
 		return self::forgeRelease(self::FORGE_CODEBERG, $owner, $repo, $assetPattern);
+	}
+
+	/**
+	 * Builds a validated release binding on any known forge; an unknown forge
+	 * is rejected by the constructor.
+	 *
+	 * @spec openspec/specs/external-sources/spec.md
+	 * @throws InvalidArgumentException
+	 */
+	public static function release(string $forge, string $owner, string $repo, string $assetPattern = '*.tar.gz'): self {
+		return self::forgeRelease($forge, $owner, $repo, $assetPattern);
 	}
 
 	/**

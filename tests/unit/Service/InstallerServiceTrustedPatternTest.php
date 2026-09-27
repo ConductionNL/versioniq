@@ -102,4 +102,10 @@ final class InstallerServiceTrustedPatternTest extends TestCase {
 		self::assertNotContains('github:acme/*', $result);
 		self::assertContains('codeberg:Conduction/openregister', $result);
 	}
+
+	public function testForgejoPatternIsAccepted(): void {
+		$result = $this->service()->addTrustedPattern('forgejo', 'acme', null);
+
+		self::assertContains('forgejo:acme/*', $result);
+	}
 }

@@ -41,24 +41,33 @@ class PatDeeplinkBuilder {
 	 * @spec openspec/specs/pat-management/spec.md
 	 * @return array{kind:string, url:string, instructions:list<string>}
 	 */
-	public function build(string $kind): array {
+	public function build(string $kind, string $forge = ForgeRegistry::FORGE_CODEBERG): array {
 		return match ($kind) {
 			Pat::KIND_CLASSIC => $this->buildClassic(),
 			Pat::KIND_FINE_GRAINED => $this->buildFineGrained(),
-			Pat::KIND_FORGE_TOKEN => $this->buildCodeberg(),
+			Pat::KIND_FORGE_TOKEN => $this->buildForgeToken($forge),
 			default => throw new InvalidArgumentException('Unknown PAT kind: ' . $kind),
 		};
 	}
 
 	/**
+	 * The token page of a Forgejo or Gitea forge: the configured self-hosted
+	 * host, or codeberg.org for the retired `codeberg` forge (issue #437).
+	 *
 	 * @return array{kind:string, url:string, instructions:list<string>}
+	 * @throws InvalidArgumentException when the forge is GitHub, unknown, or
+	 *                                  the self-hosted host is not configured
 	 */
-	private function buildCodeberg(): array {
+	private function buildForgeToken(string $forge): array {
+		if ($forge === ForgeRegistry::FORGE_GITHUB) {
+			throw new InvalidArgumentException('A forge-token link is for a Forgejo or Gitea forge, not GitHub.');
+		}
+
 		return [
 			'kind' => Pat::KIND_FORGE_TOKEN,
-			'url' => $this->forgeRegistry->get(ForgeRegistry::FORGE_CODEBERG)->tokenCreateUrl,
+			'url' => $this->forgeRegistry->get($forge)->tokenCreateUrl,
 			'instructions' => [
-				'Open the link to create a Codeberg access token (Settings → Applications → Manage access tokens).',
+				'Open the link to create an access token on your Forgejo or Gitea host (Settings, Applications, Manage access tokens).',
 				'Give it a name like "Nextcloud Versioniq" and select read-only repository scopes only.',
 				'Set an expiration if your policy requires one.',
 				'Click "Generate Token" and paste the resulting value back into Versioniq.',

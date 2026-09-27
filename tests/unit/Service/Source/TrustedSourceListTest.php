@@ -103,4 +103,14 @@ final class TrustedSourceListTest extends TestCase {
 		$this->assertTrue($list->isAllowed('codeberg:acme/widget'));
 		$this->assertFalse($list->isAllowed('github:acme/widget'));
 	}
+
+	public function testForgejoPatternAllowsForgejoSourceOnly(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getValueString')->willReturn('["forgejo:acme/*"]');
+		$list = new TrustedSourceList($config);
+
+		$this->assertTrue($list->isAllowed('forgejo:acme/widget'));
+		$this->assertFalse($list->isAllowed('github:acme/widget'));
+		$this->assertFalse($list->isAllowed('codeberg:acme/widget'));
+	}
 }

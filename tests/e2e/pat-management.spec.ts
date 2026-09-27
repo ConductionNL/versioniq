@@ -5,7 +5,7 @@ import { fixtureAvailable, occ, openSettings, openTab } from "./helpers.ts";
 
 /**
  * Personal Access Token management, driven via the API and the Tokens panel.
- * Codeberg tokens validate against the fixture forge's /user endpoint.
+ * Forgejo tokens validate against the fixture forge's /user endpoint.
  *
  * @spec openspec/specs/pat-management/spec.md
  */
@@ -51,7 +51,7 @@ test.describe("PAT management", () => {
 					"Content-Type": "application/json",
 				},
 				data: {
-					forge: "codeberg",
+					forge: "forgejo",
 					label: "fixture token",
 					targetPattern: "fixtureowner/*",
 					...data,
@@ -60,13 +60,13 @@ test.describe("PAT management", () => {
 		);
 	}
 
-	test("a valid Codeberg token is accepted with an unverifiable-scope warning", async ({
+	test("a valid Forgejo token is accepted with an unverifiable-scope warning", async ({
 		page,
 	}) => {
-		// Codeberg does not expose token scopes, so a valid token is accepted with
+		// Forgejo does not expose token scopes, so a valid token is accepted with
 		// a best-effort warning. Validated against the fixture /user endpoint.
-		const res = await addToken(page, { token: "codeberg-good-token" });
-		expect(res.ok(), "valid codeberg token accepted").toBeTruthy();
+		const res = await addToken(page, { token: "forgejo-good-token" });
+		expect(res.ok(), "valid forgejo token accepted").toBeTruthy();
 		const body = (await res.json())?.ocs?.data;
 		expect(JSON.stringify(body).toLowerCase()).toMatch(
 			/unverifi|scope|warning/,
@@ -74,7 +74,7 @@ test.describe("PAT management", () => {
 	});
 
 	test("a revoked token is rejected", async ({ page }) => {
-		const res = await addToken(page, { token: "codeberg-revoked-token" });
+		const res = await addToken(page, { token: "forgejo-revoked-token" });
 		expect(res.ok()).toBeFalsy();
 		expect(await pats(page)).toHaveLength(0);
 	});
@@ -82,11 +82,11 @@ test.describe("PAT management", () => {
 	test("a created token is never exposed in plaintext by the API", async ({
 		page,
 	}) => {
-		await addToken(page, { token: "codeberg-secret-abcdef123456" });
+		await addToken(page, { token: "forgejo-secret-abcdef123456" });
 		const list = await pats(page);
 		expect(list.length).toBe(1);
 		expect(JSON.stringify(list)).not.toContain(
-			"codeberg-secret-abcdef123456",
+			"forgejo-secret-abcdef123456",
 		);
 		// A redacted hint may be present, but never the token or encrypted bytes.
 		expect(JSON.stringify(list)).not.toContain("encrypted");
@@ -96,7 +96,7 @@ test.describe("PAT management", () => {
 		const created = (
 			await (
 				await addToken(page, {
-					token: "codeberg-editable-token",
+					token: "forgejo-editable-token",
 					label: "before",
 				})
 			).json()
@@ -132,7 +132,8 @@ test.describe("PAT management", () => {
 		for (const [forge, kind, needle] of [
 			["github", "classic", "github.com"],
 			["github", "fine-grained", "github.com"],
-			["codeberg", "forge-token", "codeberg.org"],
+			// The self-hosted forge links to its own host (the fixture here).
+			["forgejo", "forge-token", "/user/settings/applications"],
 		] as const) {
 			const res = await page.request.get(
 				`/ocs/v2.php/apps/versioniq/api/pats/deeplink?forge=${forge}&kind=${kind}&format=json`,
@@ -145,13 +146,13 @@ test.describe("PAT management", () => {
 
 	test("the Tokens panel lists tokens redacted", async ({ page }) => {
 		await addToken(page, {
-			token: "codeberg-panel-token-zzz",
+			token: "forgejo-panel-token-zzz",
 			label: "panel token",
 		});
 		await openSettings(page);
 		const panel = await openTab(page, "Tokens");
 		await expect(panel).toContainText("panel token");
-		await expect(panel).not.toContainText("codeberg-panel-token-zzz");
+		await expect(panel).not.toContainText("forgejo-panel-token-zzz");
 	});
 
 	test("unauthenticated callers cannot list tokens", async ({

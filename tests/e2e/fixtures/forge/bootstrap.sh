@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Bootstraps the fixture forge for e2e: builds artifacts, starts the fixture
 # container on a shared docker network with the Nextcloud container, points the
-# codeberg forge at it, enables local-address fetches, allowlists the fixture
+# self-hosted forgejo forge at it, enables local-address fetches, allowlists the fixture
 # repo, and installs+binds a baseline fixture app. Idempotent.
 #
 # Usage: bootstrap.sh <nc-container> [<network>] [<fixture-port>]
@@ -26,14 +26,14 @@ done
 
 occ() { docker exec -u www-data "$CT" php occ "$@"; }
 
-# Point the codeberg forge at the fixture and allow local-address fetches.
-occ config:app:set versioniq forge.codeberg.api_base --value="http://forge-fixture:9099/api/v1" >/dev/null
-occ config:app:set versioniq forge.codeberg.web_base --value="http://forge-fixture:9099" >/dev/null
+# Point the self-hosted forgejo forge at the fixture and allow local-address fetches.
+occ config:app:set versioniq forge.forgejo.api_base --value="http://forge-fixture:9099/api/v1" >/dev/null
+occ config:app:set versioniq forge.forgejo.web_base --value="http://forge-fixture:9099" >/dev/null
 occ config:app:set versioniq forge.github.api_base --value="http://forge-fixture:9099" >/dev/null
 occ config:app:set versioniq forge.github.web_base --value="http://forge-fixture:9099" >/dev/null
 occ config:system:set allow_local_remote_servers --value=true --type=boolean >/dev/null
 occ config:app:set versioniq trusted_sources \
-	--value='["github:ConductionNL/*","codeberg:Conduction/*","codeberg:fixtureowner/*","github:fixtureowner/*"]' >/dev/null
+	--value='["github:ConductionNL/*","codeberg:Conduction/*","forgejo:fixtureowner/*","github:fixtureowner/*"]' >/dev/null
 
 # Install a baseline fixture app (1.0.0) and bind it to the fixture source.
 tmp="$(mktemp -d)"; tar -C "$tmp" -xzf "$HERE/artifacts/fixtureapp-1.0.0.tar.gz"
@@ -47,6 +47,6 @@ occ config:app:set fixtureapp installed_version --value=1.0.0 >/dev/null
 occ app:enable fixtureapp >/dev/null
 occ maintenance:mode --off >/dev/null 2>&1 || true
 occ config:app:set versioniq source.fixtureapp \
-	--value='{"kind":"github-release","forge":"codeberg","owner":"fixtureowner","repo":"fixtureapp","assetPattern":"*.tar.gz"}' >/dev/null
+	--value='{"kind":"github-release","forge":"forgejo","owner":"fixtureowner","repo":"fixtureapp","assetPattern":"*.tar.gz"}' >/dev/null
 
-echo "forge fixture bootstrapped for $CT (fixtureapp bound to codeberg:fixtureowner/fixtureapp)"
+echo "forge fixture bootstrapped for $CT (fixtureapp bound to forgejo:fixtureowner/fixtureapp)"

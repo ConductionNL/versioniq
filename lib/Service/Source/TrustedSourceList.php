@@ -150,7 +150,7 @@ class TrustedSourceList {
 	 * (`{forge}:owner/repo` for a known forge).
 	 */
 	private function isForgeQualified(string $sourceId): bool {
-		foreach ([SourceBinding::FORGE_GITHUB, SourceBinding::FORGE_CODEBERG] as $forge) {
+		foreach (SourceBinding::FORGES as $forge) {
 			$prefix = $forge . ':';
 			if (!str_starts_with($sourceId, $prefix)) {
 				continue;
@@ -172,7 +172,7 @@ class TrustedSourceList {
 	 * only forge before this capability existed).
 	 */
 	private function normalizePattern(string $pattern): string {
-		foreach ([SourceBinding::FORGE_GITHUB, SourceBinding::FORGE_CODEBERG] as $forge) {
+		foreach (SourceBinding::FORGES as $forge) {
 			if (str_starts_with($pattern, $forge . ':')) {
 				return $pattern;
 			}

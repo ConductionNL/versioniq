@@ -61,4 +61,25 @@ final class PatDeeplinkBuilderTest extends TestCase {
 
 		$this->assertStringContainsString('Nextcloud', $result['url']);
 	}
+
+	public function testForgejoDeeplinkPointsAtTheConfiguredHost(): void {
+		$request = $this->createMock(IRequest::class);
+		$appConfig = $this->createMock(\OCP\IAppConfig::class);
+		$appConfig->method('getValueString')->willReturnCallback(
+			static fn (string $app, string $key, string $default = ''): string => $key === 'forge.forgejo.web_base' ? 'https://git.example.org' : $default,
+		);
+		$builder = new PatDeeplinkBuilder($request, new ForgeRegistry($appConfig));
+
+		$result = $builder->build(Pat::KIND_FORGE_TOKEN, ForgeRegistry::FORGE_FORGEJO);
+
+		$this->assertSame(Pat::KIND_FORGE_TOKEN, $result['kind']);
+		$this->assertSame('https://git.example.org/user/settings/applications', $result['url']);
+		$this->assertStringNotContainsString('Codeberg', implode(' ', $result['instructions']));
+	}
+
+	public function testForgejoDeeplinkWithoutAHostIsRejected(): void {
+		$this->expectException(InvalidArgumentException::class);
+
+		$this->buildBuilder()->build(Pat::KIND_FORGE_TOKEN, ForgeRegistry::FORGE_FORGEJO);
+	}
 }

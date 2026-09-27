@@ -7,6 +7,7 @@ import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { ocsGet, ocsWrite } from '../ocs.ts'
+import { forgeOf, isRetiredForge, forgeOptions as offeredForges } from '../utils/forges.ts'
 
 type SelectOption = { id: string, label: string }
 
@@ -22,10 +23,7 @@ const loading = ref(false)
 const error = ref('')
 const notice = ref('')
 
-const forgeOptions: SelectOption[] = [
-	{ id: 'github', label: 'GitHub' },
-	{ id: 'codeberg', label: 'Codeberg' },
-]
+const forgeOptions: SelectOption[] = offeredForges()
 
 /**
  *
@@ -121,7 +119,12 @@ onMounted(loadPatterns)
 
 		<ul :class="$style.list">
 			<li v-for="pattern in patterns" :key="pattern" :class="$style.row">
-				<code>{{ pattern }}</code>
+				<span>
+					<code>{{ pattern }}</code>
+					<span v-if="isRetiredForge(forgeOf(pattern))" data-testid="retired-forge" :class="$style.hint">
+						{{ t('versioniq', '(retired forge)') }}
+					</span>
+				</span>
 				<NcButton variant="tertiary" :disabled="loading" @click="removePattern(pattern)">
 					{{ t('versioniq', 'Remove') }}
 				</NcButton>

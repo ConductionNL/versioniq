@@ -15,7 +15,7 @@ import {
 
 /**
  * PAT validation, private-repo auth, ownership, and lifecycle — driven against
- * the fixture forge (github + codeberg base URLs both point at it).
+ * the fixture forge (github + forgejo base URLs both point at it).
  *
  * @spec openspec/specs/pat-management/spec.md
  */
@@ -101,9 +101,9 @@ test.describe("PAT validation & lifecycle", () => {
 		page,
 	}) => {
 		await addPat(page, {
-			forge: "codeberg",
+			forge: "forgejo",
 			label: "enc",
-			token: "codeberg-plaintext-marker-zzz999",
+			token: "forgejo-plaintext-marker-zzz999",
 		});
 		const enc = (
 			await sql(
@@ -112,7 +112,7 @@ test.describe("PAT validation & lifecycle", () => {
 		).trim();
 		expect(enc.length, "a value is stored").toBeGreaterThan(0);
 		expect(enc, "not the plaintext token").not.toContain(
-			"codeberg-plaintext-marker-zzz999",
+			"forgejo-plaintext-marker-zzz999",
 		);
 	});
 
@@ -128,21 +128,21 @@ test.describe("PAT validation & lifecycle", () => {
 
 		// Without a token: the private repo 404s → no versions.
 		const noauth = await page.request.get(
-			`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/versions?source=codeberg:fixtureowner/fixtureapp&format=json`,
+			`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/versions?source=forgejo:fixtureowner/fixtureapp&format=json`,
 			{ headers: { "OCS-APIRequest": "true" } },
 		);
 		expect(
 			((await noauth.json())?.ocs?.data?.availableVersions ?? []).length,
 		).toBe(0);
 
-		// With a matching codeberg PAT: the token is attached and versions list.
+		// With a matching Forgejo PAT: the token is attached and versions list.
 		await addPat(page, {
-			forge: "codeberg",
+			forge: "forgejo",
 			label: "private",
-			token: "codeberg-private-repo-token-000",
+			token: "forgejo-private-repo-token-000",
 		});
 		const withauth = await page.request.get(
-			`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/versions?source=codeberg:fixtureowner/fixtureapp&format=json`,
+			`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/versions?source=forgejo:fixtureowner/fixtureapp&format=json`,
 			{ headers: { "OCS-APIRequest": "true" } },
 		);
 		expect(
@@ -159,11 +159,11 @@ test.describe("PAT validation & lifecycle", () => {
 			repo: "fixtureowner/fixtureapp",
 			requireAuth: true,
 		});
-		// A matching codeberg PAT that we then age into the past.
+		// A matching Forgejo PAT that we then age into the past.
 		await addPat(page, {
-			forge: "codeberg",
+			forge: "forgejo",
 			label: "expired",
-			token: "codeberg-expired-token-000",
+			token: "forgejo-expired-token-000",
 		});
 		await sqlExec(
 			`UPDATE oc_app_versions_pats SET expires_at = '${tsOffset(-1)}' WHERE label='expired'`,
@@ -171,7 +171,7 @@ test.describe("PAT validation & lifecycle", () => {
 
 		// The expired PAT must not be attached → the private repo 404s → no versions.
 		const res = await page.request.get(
-			`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/versions?source=codeberg:fixtureowner/fixtureapp&format=json`,
+			`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/versions?source=forgejo:fixtureowner/fixtureapp&format=json`,
 			{ headers: { "OCS-APIRequest": "true" } },
 		);
 		expect(
@@ -192,7 +192,7 @@ test.describe("PAT validation & lifecycle", () => {
 		// string, which the NEXT statement interpolated into `WHERE id=` — one
 		// type mismatch showing up as a syntax error two queries later.
 		await sqlExec(
-			`INSERT INTO oc_app_versions_pats (owner_uid, label, target_pattern, kind, forge, encrypted_token, token_hint, shared_with_admins, warned_thresholds, created_at) VALUES ('otheradmin','theirs','x/*','forge-token','codeberg','enc','abcd...wxyz',false,'[]', '${tsOffset()}')`,
+			`INSERT INTO oc_app_versions_pats (owner_uid, label, target_pattern, kind, forge, encrypted_token, token_hint, shared_with_admins, warned_thresholds, created_at) VALUES ('otheradmin','theirs','x/*','forge-token','forgejo','enc','abcd...wxyz',false,'[]', '${tsOffset()}')`,
 		);
 		const id = (
 			await sql(
@@ -249,7 +249,7 @@ test.describe("PAT validation & lifecycle", () => {
 		await occ("user:delete", "pat-sweep-user"); // clean any prior run
 		await userAdd();
 		await sqlExec(
-			`INSERT INTO oc_app_versions_pats (owner_uid, label, target_pattern, kind, forge, encrypted_token, token_hint, shared_with_admins, warned_thresholds, created_at) VALUES ('pat-sweep-user','swept','x/*','forge-token','codeberg','enc','abcd...wxyz',false,'[]', '${tsOffset()}')`,
+			`INSERT INTO oc_app_versions_pats (owner_uid, label, target_pattern, kind, forge, encrypted_token, token_hint, shared_with_admins, warned_thresholds, created_at) VALUES ('pat-sweep-user','swept','x/*','forge-token','forgejo','enc','abcd...wxyz',false,'[]', '${tsOffset()}')`,
 		);
 		expect(
 			Number(

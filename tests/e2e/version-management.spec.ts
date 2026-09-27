@@ -61,7 +61,7 @@ test.describe("version management", () => {
 			const binding = JSON.parse(
 				(await appConfigValue(page, `source.${FIXTURE_APP}`)) ?? "{}",
 			);
-			expect(binding.forge).toBe("codeberg");
+			expect(binding.forge).toBe("forgejo");
 			expect(binding.owner).toBe("fixtureowner");
 			expect(binding.repo).toBe("fixtureapp");
 		});
@@ -79,7 +79,7 @@ test.describe("version management", () => {
 						},
 						data: {
 							kind: "github-release",
-							forge: "codeberg",
+							forge: "forgejo",
 							owner: "fixtureowner",
 							repo,
 						},

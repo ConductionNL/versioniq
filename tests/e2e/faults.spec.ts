@@ -176,7 +176,7 @@ test.describe("faults, diffs and cache integrity", () => {
 			"versioniq",
 			"trusted_sources",
 			"--value",
-			'["github:ConductionNL/*","codeberg:Conduction/*","codeberg:fixtureowner/*","github:fixtureowner/*"]',
+			'["github:ConductionNL/*","codeberg:Conduction/*","forgejo:fixtureowner/*","github:fixtureowner/*"]',
 		);
 	});
 

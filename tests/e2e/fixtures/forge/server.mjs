@@ -8,8 +8,8 @@ import { readdir, readFile } from "node:fs/promises";
 // force a 404/429, or set an advisory feed — the states that are impossible to
 // reach against a real forge.
 //
-// The app is pointed here by setting `forge.codeberg.api_base` /
-// `forge.codeberg.web_base` app config to this server's URL (see docs/e2e.md).
+// The app is pointed here by setting `forge.forgejo.api_base` /
+// `forge.forgejo.web_base` app config to this server's URL (see docs/e2e.md).
 import { createServer } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -198,9 +198,9 @@ const server = createServer(async (req, res) => {
 		}
 
 		// --- Forge API (Forgejo `/api/v1/...` and GitHub `/...` shapes) -----
-		// GitHub base is `https://api.github.com` (no `/api/v1`); Codeberg is
-		// `https://codeberg.org/api/v1`. Accept an optional `/api/v1` prefix so
-		// one fixture serves both when github/codeberg base URLs point here.
+		// GitHub base is `https://api.github.com` (no `/api/v1`); a Forgejo host
+		// is `https://<host>/api/v1`. Accept an optional `/api/v1` prefix so
+		// one fixture serves both when the github and forgejo base URLs point here.
 		const api = path.replace(/^\/api\/v1/, "");
 		const auth = req.headers.authorization ?? "";
 

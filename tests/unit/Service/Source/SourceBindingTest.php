@@ -223,4 +223,15 @@ final class SourceBindingTest extends TestCase {
 		// The original is untouched (immutability).
 		$this->assertCount(0, $fresh->getRecordedShaMap());
 	}
+
+	public function testForgejoForgeIsAccepted(): void {
+		$binding = new SourceBinding(SourceBinding::KIND_GITHUB_RELEASE, [
+			'forge' => 'forgejo',
+			'owner' => 'acme',
+			'repo' => 'widget',
+		]);
+
+		$this->assertSame('forgejo', $binding->getForge());
+		$this->assertSame('forgejo:acme/widget', $binding->getId());
+	}
 }
