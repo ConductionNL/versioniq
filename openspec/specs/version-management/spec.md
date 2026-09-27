@@ -16,7 +16,7 @@ Each app may be bound to a single source (App Store or external such as GitHub r
 ## Requirements
 ### Requirement: List Installed Apps [MVP]
 
-The system MUST display all currently installed Nextcloud apps with their name, current version, description, and icon. Core/always-enabled apps SHOULD be visually distinguished but still listed.
+The system MUST display all currently installed Nextcloud apps with their name, current version, description, and icon. Core/always-enabled apps SHOULD be visually distinguished but still listed. Installed apps that are disabled, and apps bound to a source but not installed yet, MUST be listed too, each marked with its state (`disabled`, `notInstalled`), so their versions can be listed and installed from the page.
 
 #### Scenario: Admin views installed apps
 
@@ -28,6 +28,17 @@ The system MUST display all currently installed Nextcloud apps with their name, 
 - AND each card MUST show: app name, current version, icon, and summary
 - AND apps MUST be sorted alphabetically
 - AND the Versioniq app itself MUST be excluded from the list
+
+#### Scenario: Disabled and bound but not installed apps are listed
+
+@e2e exclude needs a disabled app and a bound, uninstalled app with a reachable release source on the test instance; the list and its states are covered by tests/unit/Service/InstallerServiceAppListTest.php.
+
+- GIVEN `calendar` is installed and disabled, and `hermiq` is bound to `github:ConductionNL/hermiq` but not installed
+- WHEN the app list loads
+- THEN `calendar` MUST be listed with state `disabled` and its installed version
+- AND `hermiq` MUST be listed with state `notInstalled` and no installed version
+- AND each card MUST show that state, and choosing the app MUST open its version list
+- AND after a live install of an app Nextcloud has not enabled, the result MUST offer a link to enable it
 
 #### Scenario: Non-admin user is blocked
 

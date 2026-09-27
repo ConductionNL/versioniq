@@ -41,6 +41,7 @@ type AppOption = {
 	manageable?: boolean
 	warning?: string | null
 	installedVersion?: string | null
+	state?: 'enabled' | 'disabled' | 'notInstalled'
 	lkg?: LkgRecord | null
 }
 
@@ -1161,6 +1162,35 @@ const selectedAppOption = computed(() => {
 })
 
 /**
+ * Card label for an app that is listed but not enabled: installed but
+ * disabled, or bound to a source and not installed yet; see "List Installed
+ * Apps".
+ *
+ * @param state The app's state from the app list.
+ * @spec openspec/specs/version-management/spec.md
+ */
+function appStateLabel (state: AppOption['state']): string {
+	if (state === 'disabled') {
+		return t('versioniq', 'Disabled')
+	}
+	if (state === 'notInstalled') {
+		return t('versioniq', 'Not installed')
+	}
+	return ''
+}
+
+// After a live install of an app that Nextcloud has not enabled, the result
+// panel offers the way to enable it; see "List Installed Apps".
+const installedAppNeedsEnabling = computed(() => {
+	const result = lastInstallResult.value
+	if (!result || result.dryRun || installStatusTone.value !== 'success') {
+		return false
+	}
+	const app = apps.value.find((candidate) => candidate.id === result.appId)
+	return app !== undefined && app.state !== undefined && app.state !== 'enabled'
+})
+
+/**
  *
  * @param app
  */
@@ -1761,6 +1791,9 @@ async function performInstall (): Promise<void> {
 			selectedVersion.value = ''
 			await checkVersions(true)
 			await loadPins()
+			// Refresh the list so a disabled or not-installed app shows its
+			// new state after the install.
+			await loadApps()
 		}
 	} catch (error) {
 		errorMessage.value = error instanceof Error ? error.message : 'Could not install selected version.'
@@ -2151,6 +2184,12 @@ watch(dryRunEnabled, () => {
 															</p>
 															<span v-if="app.isCore" :class="$style.appCardCoreFlag">CORE</span>
 															<span
+																v-if="app.state === 'disabled' || app.state === 'notInstalled'"
+																:class="$style.appCardStateFlag"
+																data-testid="app-state-badge">
+																{{ appStateLabel(app.state) }}
+															</span>
+															<span
 																v-if="pinFor(app.id)"
 																:class="$style.pinBadge"
 																data-testid="pin-badge"
@@ -2437,6 +2476,10 @@ watch(dryRunEnabled, () => {
 									</p>
 									<p v-if="lastInstallResult.hint" :class="$style.resultHint">
 										{{ lastInstallResult.hint }}
+									</p>
+									<p v-if="installedAppNeedsEnabling" :class="$style.resultHint" data-testid="install-enable-hint">
+										{{ t('versioniq', 'This app is installed but not enabled.') }}
+										<a :href="apiUrl('/index.php/settings/apps/disabled')">{{ t('versioniq', 'Enable it on the apps page') }}</a>
 									</p>
 									<div :class="$style.resultGrid">
 										<div>
@@ -2844,6 +2887,18 @@ watch(dryRunEnabled, () => {
 	color: var(--color-text-maxcontrast);
 	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 	word-break: break-all;
+}
+
+.appCardStateFlag {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 8px;
+	border-radius: 9999px;
+	border: 1px solid var(--color-border-dark);
+	color: var(--color-text-maxcontrast);
+	font-size: 11px;
+	font-weight: 700;
+	flex-shrink: 0;
 }
 
 .appCardCoreFlag {

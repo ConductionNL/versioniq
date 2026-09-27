@@ -208,7 +208,11 @@
         "Safe mode (block downgrades, and pre-releases on a stable update channel)": "Veilige modus (blokkeert downgrades, en pre-releases op een stabiel updatekanaal)",
         "Safe mode is enabled. Disable it to downgrade or to install a pre-release.": "Veilige modus staat aan. Zet deze uit om te downgraden of een pre-release te installeren.",
         "Advisories not checked": "Advisories niet gecontroleerd",
-        "Background jobs such as the advisory check and automatic updates run without a signed-in admin, so they only use tokens shared with admins. Share a token to keep private repositories checked and updated.": "Achtergrondtaken zoals de advisorycontrole en automatische updates draaien zonder ingelogde beheerder, dus ze gebruiken alleen tokens die met beheerders gedeeld zijn. Deel een token om privérepositories gecontroleerd en bijgewerkt te houden."
+        "Background jobs such as the advisory check and automatic updates run without a signed-in admin, so they only use tokens shared with admins. Share a token to keep private repositories checked and updated.": "Achtergrondtaken zoals de advisorycontrole en automatische updates draaien zonder ingelogde beheerder, dus ze gebruiken alleen tokens die met beheerders gedeeld zijn. Deel een token om privérepositories gecontroleerd en bijgewerkt te houden.",
+        "Disabled": "Uitgeschakeld",
+        "Not installed": "Niet geïnstalleerd",
+        "This app is installed but not enabled.": "Deze app is geïnstalleerd maar niet ingeschakeld.",
+        "Enable it on the apps page": "Schakel hem in op de apps-pagina"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

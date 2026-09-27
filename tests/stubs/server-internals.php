@@ -35,6 +35,7 @@ namespace {
 		 * @return array<int, array<string, mixed>>
 		 */
 		public static function listAllApps(): array {
+			return [];
 		}
 
 		/**
