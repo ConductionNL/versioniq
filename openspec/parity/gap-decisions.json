@@ -75,7 +75,7 @@
 		"row": "rel-prerelease",
 		"matrix": "versioniq",
 		"decision": "build",
-		"reason": "Build: core area (releases).",
+		"reason": "Build: core area (releases). Matrix corrected 2026-09-27: safe mode already hides pre-releases on a stable channel (src/utils/safeMode.ts:50-56), so the row is partial; the change specifies the missing half.",
 		"change": "releases-channel-and-prereleases",
 		"decidedOn": "2026-09-27"
 	},
@@ -91,7 +91,7 @@
 		"row": "rel-release-date",
 		"matrix": "versioniq",
 		"decision": "build",
-		"reason": "Build: core area (releases).",
+		"reason": "Build: core area (releases). openspec/specs/version-management/spec.md:103 (scenario View versions for an app, from the initial spec of 2026-04-07, no change directory) already requires a release date per version and neither source reads one: a spec claim the code does not meet, listed as a defect, not filed. No change directory covers it, so the rule gives build.",
 		"change": "releases-version-facts",
 		"decidedOn": "2026-09-27"
 	},
