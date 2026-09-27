@@ -362,7 +362,7 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "The Apps tab lists every enabled app as a card, but the card shows name, id and description only; the installed version the API already returns (installedVersion) appears only after 'Choose app' opens the detail. No single list of apps with their versions. Specified 2026-09-27 in openspec/changes/inventory-pending-updates (openspec pass).",
+			"note": "The Apps tab lists every enabled app as a card, but the card shows name, id and description only; the installed version the API already returns (installedVersion) appears only after 'Choose app' opens the detail. No single list of apps with their versions. Existing 2026-09-27: openspec/changes/archive/2026-06-14-move-to-admin-settings specifies the missing half; the code lacks it (defect of that change, not filed). See openspec/parity/gap-decisions.json.",
 			"evidence": {
 				"nextcloud": "apps/appstore/src/views/AppstoreManage.vue:33 (Installed category) with the version column at apps/appstore/src/components/AppTable/AppTableRow.vue:79; CLI core/Command/App/ListApps.php:64 prints installed versions.",
 				"renovate": "lib/workers/repository/package-files.ts:39 renders a \"Detected Dependencies\" section in the dependency dashboard listing every detected dependency with its current version per package file; an \"app\" maps to a dependency.",
@@ -5550,7 +5550,7 @@
 				"state": "built",
 				"evidence": "lib/AppInfo/Application.php:46, lib/Notification/Notifier.php:56",
 				"reachedOn": "Nextcloud notification centre",
-				"owner": "nextcloud/server"
+				"owner": "ConductionNL/versioniq"
 			},
 			"provider": "nextcloud-server",
 			"providerHow": "read-from-code",

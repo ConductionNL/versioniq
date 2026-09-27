@@ -2,9 +2,9 @@
 	{
 		"row": "inv-list-installed",
 		"matrix": "versioniq",
-		"decision": "build",
-		"reason": "Build the missing half: 5 competitors rated yes (Nextcloud server app management and update notification, Renovate, Dependabot, OSV-Scanner, Easy Updates Manager).",
-		"change": "inventory-pending-updates",
+		"decision": "existing",
+		"reason": "Existing: openspec/changes/archive/2026-06-14-move-to-admin-settings (now requirement List Installed Apps in openspec/specs/version-management/spec.md, scenario Admin views installed apps) requires every card to show the current version. The card template src/App.vue:2206-2317 never renders installedVersion, which InstallerService::getInstalledApps() already returns (lib/Service/InstallerService.php:89-170), so the change shipped without it: a defect of that change, not filed. Task 3.1 of openspec/changes/inventory-pending-updates fixes it. Coordinator ruling 2026-09-27.",
+		"change": "2026-06-14-move-to-admin-settings",
 		"decidedOn": "2026-09-27"
 	},
 	{
