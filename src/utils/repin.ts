@@ -7,7 +7,6 @@
 // (409), so re-pin goes through the same confirmation as the version list
 // and sends the flag once the admin confirms (#431).
 
-// @spec openspec/specs/version-pinning/spec.md
 import { compareVersions } from './versionCompare.ts'
 
 export type RepinDeps = {
@@ -23,6 +22,7 @@ export type RepinDeps = {
  * @param pinnedVersion the version the pin holds
  * @param installedVersion the version the app runs now (the drift)
  * @param deps the install call and the downgrade confirmation
+ * @spec openspec/specs/version-pinning/spec.md
  */
 export async function repinApp (appId: string, pinnedVersion: string, installedVersion: string, deps: RepinDeps): Promise<{ installed: boolean, metaMessage?: string }> {
 	const isDowngrade = installedVersion !== '' && compareVersions(pinnedVersion, installedVersion) < 0

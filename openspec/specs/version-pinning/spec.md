@@ -173,6 +173,16 @@ On newly detected drift the system MUST notify admin-group members via `OCP\Noti
 - THEN the system MUST install 2.3.0 via the existing install path (bound source, allowlist, integrity checks all apply)
 - AND on success the pin MUST remain at 2.3.0 with the drift markers cleared
 
+#### Scenario: Re-pin to an older version confirms the downgrade
+
+@e2e exclude reproducing out-of-band upward drift is not possible in a browser run; the flow is unit-tested in src/utils/repin.spec.ts.
+
+- GIVEN the drift banner for `openregister` (pinned 2.3.0, installed 2.5.0 after Nextcloud's updater ran)
+- WHEN the admin clicks Re-pin
+- THEN the UI MUST open the downgrade confirmation with its migration preview
+- AND on confirm the install request MUST carry `allowDowngrade`, so the server-side downgrade guard does not refuse it
+- AND on cancel nothing MUST be installed
+
 #### Scenario: Accept the new version
 
 @e2e exclude the drift-banner Accept action requires reproducing drift; unit-tested.
