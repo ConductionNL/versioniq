@@ -5,7 +5,7 @@
 <meta name="generator" content="Docusaurus v3.10.1">
 <title data-rh="true">End-to-end tests | Versioniq</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" property="og:image" content="https://versioniq.conduction.nl/img/og-versioniq.png"><meta data-rh="true" name="twitter:image" content="https://versioniq.conduction.nl/img/og-versioniq.png"><meta data-rh="true" property="og:url" content="https://versioniq.conduction.nl/docs/e2e/"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="twitter:site" content="@ConductionNL"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:type" content="website"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="End-to-end tests | Versioniq"><meta data-rh="true" name="description" content="The Playwright suite in tests/e2e/ drives the real admin UI against a running"><meta data-rh="true" property="og:description" content="The Playwright suite in tests/e2e/ drives the real admin UI against a running"><link data-rh="true" rel="icon" href="/img/favicon.svg"><link data-rh="true" rel="canonical" href="https://versioniq.conduction.nl/docs/e2e/"><link data-rh="true" rel="alternate" href="https://versioniq.conduction.nl/docs/e2e/" hreflang="en"><link data-rh="true" rel="alternate" href="https://versioniq.conduction.nl/docs/e2e/" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"End-to-end tests","item":"https://versioniq.conduction.nl/docs/e2e"}]}</script><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","@id":"https://versioniq.conduction.nl/docs/e2e#article","mainEntityOfPage":"https://versioniq.conduction.nl/docs/e2e","headline":"End-to-end tests","inLanguage":"en","publisher":{"@id":"https://www.conduction.nl/#org"},"description":"The Playwright suite in tests/e2e/ drives the real admin UI against a running","author":{"@type":"Organization","name":"Conduction","@id":"https://www.conduction.nl/#org"}}</script><script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","@id":"https://www.conduction.nl/#org","name":"Conduction B.V.","alternateName":"Conduction","url":"https://www.conduction.nl/","logo":"https://www.conduction.nl/img/brand/avatar-conduction-gold-on-white.svg","foundingDate":"2019","description":"Dutch open-source software company building EUPL-1.2 apps for the Nextcloud workspace.","address":{"@type":"PostalAddress","streetAddress":"Lauriergracht 14h","postalCode":"1016 RR","addressLocality":"Amsterdam","addressCountry":"NL"},"email":"info@conduction.nl","telephone":"+31-85-303-6840","taxID":"NL860784241B01","vatID":"NL860784241B01","identifier":{"@type":"PropertyValue","propertyID":"KvK","value":"76741850"},"sameAs":["https://codeberg.org/Conduction","https://www.linkedin.com/company/conduction/"]}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","@id":"https://versioniq.conduction.nl/#website","url":"https://versioniq.conduction.nl/","name":"Versioniq","publisher":{"@id":"https://www.conduction.nl/#org"},"inLanguage":["en"]}</script><link rel="stylesheet" href="/assets/css/styles.28363669.css">
-<script src="/assets/js/runtime~main.7bd0d689.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.b37a9ec2.js" defer="defer"></script>
 <script src="/assets/js/main.f9cddb75.js" defer="defer"></script>
 </head>
 <body>
@@ -57,11 +57,11 @@ the upstream payload is large; they are never silently skipped.</li>
 <p><code>tests/e2e/forge.spec.ts</code> drives real installs, TOFU digest enforcement,
 integrity failures, rate-limiting, and offline-cache fallback against a
 <strong>fixture forge</strong> — a Forgejo/Gitea-shaped HTTP double in
-<code>tests/e2e/fixtures/forge/</code> — instead of real GitHub/Codeberg. This relies on
+<code>tests/e2e/fixtures/forge/</code> — instead of real GitHub or Forgejo hosts. This relies on
 two app config seams (both default to the public host, so production is
 unaffected):</p>
 <ul>
-<li class=""><code>forge.{github,codeberg}.{api_base,web_base}</code> — point a forge at another
+<li class=""><code>forge.{github,forgejo}.{api_base,web_base}</code> — point a forge at another
 deployment (self-hosted Forgejo / GitHub Enterprise, or the fixture).</li>
 <li class="">the <code>allow_local_remote_servers</code> system switch — the app&#x27;s forge fetches
 defer to it, so a fixture on the Docker network is reachable only when it is
@@ -70,8 +70,8 @@ enabled (off by default).</li>
 <p>Bootstrap it before the forge specs:</p>
 <div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><div class="token-line" style="color:#393A34"><span class="token plain">tests/e2e/fixtures/forge/bootstrap.sh av-e2e</span><br></div></code></pre></div></div>
 <p>This builds the app tarballs, starts the fixture container on a shared network
-with Nextcloud, points the codeberg forge at it, enables local-address fetches,
-allowlists <code>codeberg:fixtureowner/*</code>, and installs+binds a baseline
+with Nextcloud, points the self-hosted forgejo forge at it, enables local-address fetches,
+allowlists <code>forgejo:fixtureowner/*</code>, and installs+binds a baseline
 <code>fixtureapp</code>. The forge specs skip themselves when the fixture is unreachable.</p>
 <blockquote>
 <p>Forge <strong>installs</strong> in these specs are driven through <code>occ versioniq:install</code>,
