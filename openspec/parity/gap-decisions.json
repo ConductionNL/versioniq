@@ -496,6 +496,14 @@
 		"decidedOn": "2026-09-27"
 	},
 	{
+		"row": "adv-osv-feed",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 3 competitors rated yes (Renovate, Dependabot, OSV-Scanner).",
+		"change": "advisories-bundled-libraries",
+		"decidedOn": "2026-09-27"
+	},
+	{
 		"row": "adv-one-click-fix",
 		"matrix": "versioniq",
 		"decision": "build",
@@ -509,6 +517,14 @@
 		"decision": "build",
 		"reason": "Build: 2 competitors rated yes (Dependabot, OSV-Scanner).",
 		"change": "advisories-triage",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adv-dependencies",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: a tender demand row; 2 competitors rated yes (Dependabot, OSV-Scanner).",
+		"change": "advisories-bundled-libraries",
 		"decidedOn": "2026-09-27"
 	},
 	{
@@ -640,6 +656,14 @@
 		"decidedOn": "2026-09-27"
 	},
 	{
+		"row": "src-gitlab",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Renovate, Dependabot).",
+		"change": "sources-gitlab-forge",
+		"decidedOn": "2026-09-27"
+	},
+	{
 		"row": "src-discover-github",
 		"matrix": "versioniq",
 		"decision": "defer",
@@ -661,6 +685,30 @@
 		"decision": "defer",
 		"reason": "partial, built, no demand: one competitor rated yes and no demand row says the missing half matters.",
 		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aud-activity-stream",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Renovate, Dependabot).",
+		"change": "audit-attribution-and-forwarding",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aud-auto-attributed",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: 3 competitors rated yes (Renovate, Dependabot, Easy Updates Manager).",
+		"change": "audit-attribution-and-forwarding",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aud-siem",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Nextcloud server app management and update notification, Easy Updates Manager).",
+		"change": "audit-attribution-and-forwarding",
 		"decidedOn": "2026-09-27"
 	},
 	{
@@ -709,6 +757,22 @@
 		"decision": "build",
 		"reason": "Build: 2 competitors rated yes (Dependabot, Easy Updates Manager).",
 		"change": "releases-new-release-alerts",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adm-i18n",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build the missing half: 2 competitors rated yes (Nextcloud server app management and update notification, Easy Updates Manager).",
+		"change": "admin-translate-apps-tab",
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "adm-ai-assistant",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Dependabot, OSV-Scanner).",
+		"change": "admin-mcp-assistant",
 		"decidedOn": "2026-09-27"
 	},
 	{
@@ -829,6 +893,14 @@
 		"decision": "defer",
 		"reason": "Defer: one competitor rated yes (Dependabot), a competitor changelog as demand, a changelog row alone is not demand under the rule, outside the core areas (area advisories). It needs the dismissal that openspec/changes/advisories-triage specifies first.",
 		"change": null,
+		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "aud-log-policy",
+		"matrix": "versioniq",
+		"decision": "build",
+		"reason": "Build: 2 competitors rated yes (Renovate, Dependabot).",
+		"change": "audit-attribution-and-forwarding",
 		"decidedOn": "2026-09-27"
 	},
 	{

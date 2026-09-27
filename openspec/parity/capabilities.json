@@ -3578,7 +3578,7 @@
 			"osv-scanner": "yes",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "lib/Service/Advisory/AdvisoryService.php:81 (only NextcloudAdvisoryFeed and source advisories), grep osv: no hits",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -3587,7 +3587,7 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "No OSV or other cross-ecosystem database is read.",
+			"note": "No OSV or other cross-ecosystem database is read. Specified 2026-09-27 in openspec/changes/advisories-bundled-libraries (openspec pass).",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
 				"renovate": "lib/config/options/index.ts:2459 osvVulnerabilityAlerts (experimental) uses osv.dev through @renovatebot/osv-offline (package.json:186).",
@@ -3850,7 +3850,7 @@
 			"osv-scanner": "yes",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "lib/Service/Advisory/AdvisoryPackageMap.php:86 (maps packages to app ids or the server only)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -3859,7 +3859,7 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "Only apps and the server are correlated; bundled composer or npm libraries inside an app are never inspected.",
+			"note": "Only apps and the server are correlated; bundled composer or npm libraries inside an app are never inspected. Specified 2026-09-27 in openspec/changes/advisories-bundled-libraries (openspec pass).",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
 				"renovate": "Vulnerability fixes apply to lock-file-only transitive dependencies with rangeStrategy update-lockfile (lib/config/options/index.ts:2432-2443), where the manager extracts them; coverage depends on the manager.",
@@ -4521,7 +4521,7 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "lib/Service/Source/ForgeRegistry.php:37 (github and codeberg only), lib/Service/Source/SourceBinding.php:33",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -4530,7 +4530,7 @@
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "GitLab is not a known forge.",
+			"note": "GitLab is not a known forge. Specified 2026-09-27 in openspec/changes/sources-gitlab-forge (openspec pass).",
 			"evidence": {
 				"nextcloud": "Single store source only (lib/private/Installer.php:169,239).",
 				"renovate": "lib/modules/datasource/gitlab-releases, gitlab-tags and gitlab-packages.",
@@ -5241,7 +5241,7 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "grep OCP Activity in lib: no hits; lib/AppInfo/Application.php:43 registers no activity provider",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -5250,7 +5250,7 @@
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "high",
-			"note": "Version changes are not published to the Nextcloud activity stream.",
+			"note": "Version changes are not published to the Nextcloud activity stream. Specified 2026-09-27 in openspec/changes/audit-attribution-and-forwarding (openspec pass).",
 			"evidence": {
 				"nextcloud": "Only admin_audit and updatenotification listen to AppUpdateEvent (apps/admin_audit/lib/AppInfo/Application.php:124-126, apps/updatenotification/lib/AppInfo/Application.php:44); the activity app at v34.0.4 (github.com/nextcloud/activity) has no listener for app events.",
 				"renovate": "PRs, merges and dashboard updates appear in the forge's own activity feed and notifications, the platform stream in its domain.",
@@ -5271,7 +5271,7 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "built",
+				"state": "specified",
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:444, lib/Service/ExternalReleaseInstallerService.php:410, src/components/HistoryPanel.vue:11",
 				"reachedOn": "History tab (actor column)",
 				"owner": "ConductionNL/versioniq"
@@ -5280,7 +5280,7 @@
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "medium",
-			"note": "Automatic installs have no session user and are recorded as actor system, but occ installs are recorded as system too, so automatic and CLI changes cannot be told apart.",
+			"note": "Automatic installs have no session user and are recorded as actor system, but occ installs are recorded as system too, so automatic and CLI changes cannot be told apart. Specified 2026-09-27 in openspec/changes/audit-attribution-and-forwarding (openspec pass).",
 			"evidence": {
 				"nextcloud": "No automatic updates exist (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154), so there is nothing to attribute.",
 				"renovate": "Automerged updates are merged by the bot account (automerge lib/config/options/index.ts:2376, assignAutomerge lib/config/options/index.ts:2752), so the forge history tells them apart from manual merges.",
@@ -5301,7 +5301,7 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "lib/Service/Audit/AuditLogger.php:88 (database only); no syslog, webhook or admin_audit emission",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -5310,7 +5310,7 @@
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "high",
-			"note": "Audit entries go only to the app's own table.",
+			"note": "Audit entries go only to the app's own table. Specified 2026-09-27 in openspec/changes/audit-attribution-and-forwarding (openspec pass).",
 			"evidence": {
 				"nextcloud": "log_type_audit supports file, syslog, systemd and errorlog with a separate syslog tag (apps/admin_audit/lib/AuditLogger.php:24-34).",
 				"renovate": "Logs can be JSON (docs/usage/troubleshooting.md:36) and runs export OpenTelemetry traces, metrics and logs (docs/usage/opentelemetry.md:87-112) to a collector; no ready-made SIEM integration.",
@@ -5697,7 +5697,7 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "built",
+				"state": "specified",
 				"evidence": "l10n/nl.json:1, src/App.vue:1999, src/App.vue:2107, src/App.vue:2229",
 				"reachedOn": "whole admin page",
 				"owner": "ConductionNL/versioniq"
@@ -5706,7 +5706,7 @@
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Strings go through t() and a Dutch translation ships, but a good part of the Apps tab (safe mode, dry run, pick an installed app, result grid, downgrade warning) is hardcoded English.",
+			"note": "Strings go through t() and a Dutch translation ships, but a good part of the Apps tab (safe mode, dry run, pick an installed app, result grid, downgrade warning) is hardcoded English. Specified 2026-09-27 in openspec/changes/admin-translate-apps-tab (openspec pass).",
 			"evidence": {
 				"nextcloud": "apps/appstore/l10n holds 76 language files including nl.json.",
 				"renovate": "Only userStrings (lib/config/options/index.ts:3480) and templated PR and dashboard text can be overridden; the product ships in English only.",
@@ -5908,7 +5908,7 @@
 			"osv-scanner": "yes",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "no MCP server or assistant integration under lib/ or src/",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -5917,7 +5917,7 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "medium",
-			"note": "No AI assistant or MCP surface.",
+			"note": "No AI assistant or MCP surface. Specified 2026-09-27 in openspec/changes/admin-mcp-assistant (openspec pass).",
 			"evidence": {
 				"nextcloud": "Nothing in server v34.0.4's apps management or updatenotification code exposes version or advisory data to an assistant or an MCP server (apps/appstore, apps/updatenotification). Nextcloud's AI apps (assistant, context agent) are separate apps outside this repo, and no advisory data exists for them to explain.",
 				"renovate": "Renovate ships no AI assistant or MCP server; the only MCP server listed is the third-party renovate-config-debugger for config debugging (docs/usage/community-tools.md:63), not advisory checks.",
@@ -6420,7 +6420,7 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "none",
+				"state": "specified",
 				"evidence": "lib/Service/Audit/AuditLogger.php:33-37 (operations install, bind_source, pin, unpin, pin_drift only), lib/Service/AutoUpdate/AutoUpdateSettingsStore.php:61, lib/Service/Policy/Policy.php:36-39, src/App.vue:217",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq"
@@ -6429,7 +6429,7 @@
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "high",
-			"note": "The audit trail has no policy or settings operations: turning the auto-update kill switch or advisory digest on or off leaves no trace. A per-app policy keeps only its last setBy and setAt, which GET /api/policies returns and the page loads but never shows, so no page reaches who changed it; there is no history.",
+			"note": "The audit trail has no policy or settings operations: turning the auto-update kill switch or advisory digest on or off leaves no trace. A per-app policy keeps only its last setBy and setAt, which GET /api/policies returns and the page loads but never shows, so no page reaches who changed it; there is no history. Corrected 2026-09-27: the Settings tab fields are audited as operation settings (lib/Controller/SettingsController.php:120-134); the kill switch, the window, the advisory settings and the per-app policies are not, so the rating stays no. Specified 2026-09-27 in openspec/changes/audit-attribution-and-forwarding (openspec pass).",
 			"evidence": {
 				"nextcloud": "There are no automatic update switches; occ changes to update settings are logged as 'Console command executed' with the command line (apps/admin_audit/lib/Listener/ConsoleEventListener.php:38), but changing the update channel in the UI (apps/updatenotification/lib/Controller/AdminController.php:46-47) has no admin_audit listener.",
 				"renovate": "The instance is a repository here, so its git history is the record. The update policy, including vulnerabilityAlerts.enabled (lib/config/options/index.ts:2428), lives in the repository's Renovate config file, so every change is a commit with author and time; self-hosted global config sits wherever the operator keeps it. An instance maps to a repository.",
