@@ -4821,7 +4821,7 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "src/components/IntegrationsPanel.vue:30, src/utils/connectionRegistry.ts:25, lib/Settings/connections.json:4, lib/Settings/Admin.php:53",
 				"owner": "ConductionNL/integriq",
 				"reachedOn": "Integrations tab (only when integriq is enabled)"
@@ -4830,7 +4830,7 @@
 			"providerHow": "read-from-code",
 			"feature": "connection-registry",
 			"featureConfidence": "high",
-			"note": "Reachability and last result for the App Store, GitHub and the advisory feed are shown from integriq's connection registry; without integriq there is no status view, and neither Codeberg nor the self-hosted Forgejo or Gitea forge has a row.",
+			"note": "Reachability and last result for the App Store, GitHub and the advisory feed are shown from integriq's connection registry; without integriq there is no status view, and neither Codeberg nor the self-hosted Forgejo or Gitea forge has a row. Building: ConductionNL/integriq openspec/changes/connection-registry, an existing open change, covers it (integriq lane, OpenSpec pass 2026-09-27).",
 			"evidence": {
 				"nextcloud": "Admins get a notification after 3, 7, 14 and 30 days of failed update checks (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:30,88-94), the last check time is shown (Settings/Admin.php:44), and a setup check tests internet connectivity (apps/settings/lib/SetupChecks/InternetConnectivity.php:41). Store fetch failures are only logged (Fetcher.php:100-103).",
 				"renovate": "Lookup failures surface as dependency lookup warnings and a \"Repository Problems\" section on the dashboard (lib/workers/repository/dependency-dashboard.ts:333); no per-source reachability or last-read view.",
@@ -5877,7 +5877,7 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "src/App.vue:2525, src/components/IntegrationsPanel.vue:30, lib/Settings/connections.json:4, lib/Settings/Admin.php:53",
 				"owner": "ConductionNL/integriq",
 				"reachedOn": "Integrations tab (only when integriq is enabled)"
@@ -5886,7 +5886,7 @@
 			"providerHow": "read-from-code",
 			"feature": "connection-registry",
 			"featureConfidence": "high",
-			"note": "An Integrations tab lists the App Store, GitHub and advisory feed rows from integriq's registry; it is absent without integriq and has no Codeberg or self-hosted Forgejo or Gitea row.",
+			"note": "An Integrations tab lists the App Store, GitHub and advisory feed rows from integriq's registry; it is absent without integriq and has no Codeberg or self-hosted Forgejo or Gitea row. Building: ConductionNL/integriq openspec/changes/connection-registry, an existing open change, covers it (integriq lane, OpenSpec pass 2026-09-27).",
 			"evidence": {
 				"nextcloud": "The Security and setup warnings overview runs checks such as internet connectivity, email test and cron (apps/settings/lib/SetupChecks/InternetConnectivity.php, EmailTestSuccessful.php, CronInfo.php); it does not cover the app store or update server health.",
 				"renovate": "Mend cloud shows each repository's Renovate status (failed, timeout, resource-limit) in the Developer Portal (docs/usage/mend-hosted/job-scheduling.md:19-40); nothing comparable in the self-hosted CLI.",
