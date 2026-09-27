@@ -52,7 +52,6 @@ OC.L10N.register(
         "Auto-update: {level}": "Automatisch bijwerken: {level}",
         "Automatic update settings saved.": "Instellingen voor automatisch bijwerken opgeslagen.",
         "Automatic updates": "Automatische updates",
-        "Automation disabled — enable it in settings to take effect.": "Automatisering staat uit. Zet het aan bij de instellingen om het te laten werken.",
         "Available offline": "Offline beschikbaar",
         "Bind source": "Bron koppelen",
         "Bound to {source}": "Gekoppeld aan {source}",
@@ -224,7 +223,14 @@ OC.L10N.register(
         "Could not save the self-hosted forge host.": "Kon het adres van de zelf gehoste forge niet opslaan.",
         "Set the self-hosted Forgejo or Gitea host below first.": "Vul eerst hieronder het adres van de zelf gehoste Forgejo- of Gitea-server in.",
         "This app is bound to Codeberg, which is retired as a separate source. The binding keeps working for now; rebind it to GitHub or to a self-hosted Forgejo or Gitea host.": "Deze app is gekoppeld aan Codeberg, dat als aparte bron is uitgefaseerd. De koppeling blijft voorlopig werken; koppel de app opnieuw aan GitHub of aan een zelf gehoste Forgejo- of Gitea-server.",
-        "(retired forge)": "(uitgefaseerde forge)"
+        "(retired forge)": "(uitgefaseerde forge)",
+        "Automatic updates skip these versions because an earlier attempt failed:": "Automatische updates slaan deze versies over omdat een eerdere poging mislukte:",
+        "Retry {version}": "{version} opnieuw proberen",
+        "Automation is disabled. Enable it in settings to take effect.": "Automatisering staat uit. Zet deze aan in de instellingen om effect te hebben.",
+        "Could not clear the failed attempt.": "Kon de mislukte poging niet wissen.",
+        "Binding removed. {appId} reads its versions from the App Store again.": "Koppeling verwijderd. {appId} haalt zijn versies weer uit de App Store.",
+        "Could not remove the binding.": "Kon de koppeling niet verwijderen.",
+        "Remove binding and use the App Store": "Koppeling verwijderen en de App Store gebruiken"
     },
     "nplurals=2; plural=(n != 1);"
 )

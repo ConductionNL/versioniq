@@ -27,7 +27,6 @@
         "Auto-update: {level}": "Auto-update: {level}",
         "Automatic update settings saved.": "Automatic update settings saved.",
         "Automatic updates": "Automatic updates",
-        "Automation disabled — enable it in settings to take effect.": "Automation disabled — enable it in settings to take effect.",
         "Available offline": "Available offline",
         "Bind source": "Bind source",
         "Bound to {source}": "Bound to {source}",
@@ -199,6 +198,13 @@
         "Could not save the self-hosted forge host.": "Could not save the self-hosted forge host.",
         "Set the self-hosted Forgejo or Gitea host below first.": "Set the self-hosted Forgejo or Gitea host below first.",
         "This app is bound to Codeberg, which is retired as a separate source. The binding keeps working for now; rebind it to GitHub or to a self-hosted Forgejo or Gitea host.": "This app is bound to Codeberg, which is retired as a separate source. The binding keeps working for now; rebind it to GitHub or to a self-hosted Forgejo or Gitea host.",
-        "(retired forge)": "(retired forge)"
+        "(retired forge)": "(retired forge)",
+        "Automatic updates skip these versions because an earlier attempt failed:": "Automatic updates skip these versions because an earlier attempt failed:",
+        "Retry {version}": "Retry {version}",
+        "Automation is disabled. Enable it in settings to take effect.": "Automation is disabled. Enable it in settings to take effect.",
+        "Could not clear the failed attempt.": "Could not clear the failed attempt.",
+        "Binding removed. {appId} reads its versions from the App Store again.": "Binding removed. {appId} reads its versions from the App Store again.",
+        "Could not remove the binding.": "Could not remove the binding.",
+        "Remove binding and use the App Store": "Remove binding and use the App Store"
     }
 }

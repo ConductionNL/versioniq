@@ -10,6 +10,7 @@ use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Db\PatMapper;
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
@@ -54,6 +55,7 @@ final class ApiTest extends TestCase {
 		?PolicyStore $policyStore = null,
 		?AutoUpdateSettingsStore $autoUpdateSettingsStore = null,
 		?ArtifactCache $artifactCache = null,
+		?AttemptLedger $attemptLedger = null,
 	): ApiController {
 		return new ApiController(
 			'versioniq',
@@ -77,6 +79,8 @@ final class ApiTest extends TestCase {
 			$policyStore ?? $this->createMock(PolicyStore::class),
 			$autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
 			$artifactCache ?? $this->createMock(ArtifactCache::class),
+			null,
+			$attemptLedger ?? $this->createMock(AttemptLedger::class),
 		);
 	}
 
@@ -94,6 +98,7 @@ final class ApiTest extends TestCase {
 		?PolicyStore $policyStore = null,
 		?AutoUpdateSettingsStore $autoUpdateSettingsStore = null,
 		?ArtifactCache $artifactCache = null,
+		?AttemptLedger $attemptLedger = null,
 	): ApiController {
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn($uid);
@@ -124,6 +129,8 @@ final class ApiTest extends TestCase {
 			$policyStore ?? $this->createMock(PolicyStore::class),
 			$autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
 			$artifactCache ?? $this->createMock(ArtifactCache::class),
+			null,
+			$attemptLedger ?? $this->createMock(AttemptLedger::class),
 		);
 	}
 
@@ -716,5 +723,55 @@ final class ApiTest extends TestCase {
 		$response = $this->buildAdminController($installer, $request)->bindSource('widget');
 
 		$this->assertSame(400, $response->getStatus());
+	}
+
+	public function testPoliciesListEachAppsBlockedVersions(): void {
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->method('all')->willReturn([
+			'openregister' => new \OCA\Versioniq\Service\Policy\Policy('patch', 'alice', '2026-07-23T00:00:00+00:00'),
+		]);
+		$ledger = $this->createMock(AttemptLedger::class);
+		$ledger->method('blockedVersions')->with('openregister')->willReturn([['version' => '2.3.4', 'at' => '2026-07-22T02:00:00+00:00']]);
+
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->createMock(IRequest::class), null, null, null, 'admin', $policyStore, null, null, $ledger)->policies();
+
+		$this->assertSame([['version' => '2.3.4', 'at' => '2026-07-22T02:00:00+00:00']], $response->getData()['policies'][0]['blockedVersions']);
+	}
+
+	public function testRetryAttemptForgetsTheVersion(): void {
+		$ledger = $this->createMock(AttemptLedger::class);
+		$ledger->expects($this->once())->method('forget')->with('openregister', '2.3.4')->willReturn(true);
+
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->createMock(IRequest::class), null, null, null, 'admin', null, null, null, $ledger)->retryAttempt('openregister', '2.3.4');
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertTrue($response->getData()['cleared']);
+	}
+
+	public function testRetryAttemptOnAnUnknownVersionIs404(): void {
+		$ledger = $this->createMock(AttemptLedger::class);
+		$ledger->method('forget')->willReturn(false);
+
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->createMock(IRequest::class), null, null, null, 'admin', null, null, null, $ledger)->retryAttempt('openregister', '9.9.9');
+
+		$this->assertSame(404, $response->getStatus());
+	}
+
+	public function testRetryAttemptForbiddenForNonAdmin(): void {
+		$this->assertSame(403, $this->buildController()->retryAttempt('openregister', '2.3.4')->getStatus());
+	}
+
+	public function testClearBindingRemovesTheBinding(): void {
+		$installer = $this->createMock(InstallerService::class);
+		$installer->expects($this->once())->method('clearBinding')->with('openregister');
+
+		$response = $this->buildAdminController($installer, $this->createMock(IRequest::class))->clearBinding('openregister');
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame('appstore', $response->getData()['sourceId']);
+	}
+
+	public function testClearBindingForbiddenForNonAdmin(): void {
+		$this->assertSame(403, $this->buildController()->clearBinding('openregister')->getStatus());
 	}
 }

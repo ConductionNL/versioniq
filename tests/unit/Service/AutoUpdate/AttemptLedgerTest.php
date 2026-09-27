@@ -100,4 +100,42 @@ final class AttemptLedgerTest extends TestCase {
 		$this->assertArrayHasKey('1.0.11', $decoded);
 		$this->assertArrayHasKey('1.0.2', $decoded);
 	}
+
+	/**
+	 * A failed automatic update blocked that version for good: nothing could
+	 * clear the ledger short of occ config:app:delete (#438).
+	 */
+	public function testForgetClearsOneVersionSoItIsTriedAgain(): void {
+		$stored = json_encode([
+			'2.3.4' => ['at' => '2026-07-22T02:00:00+00:00', 'outcome' => 'failure'],
+			'2.3.3' => ['at' => '2026-07-20T02:00:00+00:00', 'outcome' => 'success'],
+		], JSON_THROW_ON_ERROR);
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getValueString')->willReturnCallback(static function () use (&$stored): string {
+			return $stored;
+		});
+		$config->method('setValueString')->willReturnCallback(static function (string $app, string $key, string $value) use (&$stored): bool {
+			$stored = $value;
+			return true;
+		});
+
+		$ledger = new AttemptLedger($config, $this->logger());
+
+		$this->assertTrue($ledger->forget('openregister', '2.3.4'));
+		$this->assertFalse($ledger->hasAttempted('openregister', '2.3.4'));
+		$this->assertTrue($ledger->hasAttempted('openregister', '2.3.3'));
+		$this->assertFalse($ledger->forget('openregister', '9.9.9'));
+	}
+
+	public function testBlockedVersionsListsOnlyFailures(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getValueString')->willReturn(json_encode([
+			'2.3.4' => ['at' => '2026-07-22T02:00:00+00:00', 'outcome' => 'failure'],
+			'2.3.3' => ['at' => '2026-07-20T02:00:00+00:00', 'outcome' => 'success'],
+		], JSON_THROW_ON_ERROR));
+
+		$ledger = new AttemptLedger($config, $this->logger());
+
+		$this->assertSame([['version' => '2.3.4', 'at' => '2026-07-22T02:00:00+00:00']], $ledger->blockedVersions('openregister'));
+	}
 }

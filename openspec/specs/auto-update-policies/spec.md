@@ -64,6 +64,15 @@ A `TimedJob` that wakes every 15 minutes MUST, once per opening of the window, w
 - WHEN the job runs again and the source still offers 2.3.4 as the qualifying target
 - THEN the job MUST NOT reattempt 2.3.4
 
+#### Scenario: An admin retries a blocked version
+
+@e2e exclude a blocked version only exists after the cron job failed an install; covered by src/components/PolicySelector.spec.ts and tests/unit/Controller/ApiTest.php (testRetryAttemptForgetsTheVersion).
+
+- GIVEN the 2.3.4 install failed and is recorded
+- WHEN the admin opens the Apps tab
+- THEN the app's policy MUST list 2.3.4 as skipped because an earlier attempt failed, with a Retry action
+- AND Retry MUST call `DELETE /api/app/{appId}/attempts/{version}` (admin-only, password-confirmed), after which the next run inside the window MAY attempt 2.3.4 again
+
 #### Scenario: Disabled or outside the window is a no-op
 
 @e2e exclude the job's window/kill-switch gate is unit-tested.

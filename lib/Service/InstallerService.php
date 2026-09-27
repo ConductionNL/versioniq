@@ -764,6 +764,17 @@ class InstallerService {
 		return $this->bindingStore->get($appId);
 	}
 
+	/**
+	 * Removes an app's source binding, so the app is read from the App Store
+	 * again and any digests recorded on the old binding are dropped; see
+	 * "Source binding" (#438).
+	 *
+	 * @spec openspec/specs/external-sources/spec.md
+	 */
+	public function clearBinding(string $appId): void {
+		$this->bindingStore->clear($appId);
+	}
+
 	public function getTrustedSources(): TrustedSourceList {
 		return $this->trustedSources;
 	}
