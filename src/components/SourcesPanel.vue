@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { t } from '@nextcloud/l10n'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { ocsGet, ocsWrite } from '../ocs.ts'
+import { FORGE_FORGEJO, forgeOf, isRetiredForge, forgeOptions as offeredForges } from '../utils/forges.ts'
 
 type AppOption = { id: string, label: string }
 type SelectOption = { id: string, label: string }
@@ -62,10 +63,67 @@ watch(() => props.prefill, (value) => {
 }, { immediate: true })
 
 const appOptions = computed<SelectOption[]>(() => props.apps.map((app) => ({ id: app.id, label: `${app.label} (${app.id})` })))
-const forgeOptions: SelectOption[] = [
-	{ id: 'github', label: 'GitHub' },
-	{ id: 'codeberg', label: 'Codeberg' },
-]
+const forgeOptions: SelectOption[] = offeredForges()
+
+const FORGEJO_HOST = '/ocs/v2.php/apps/versioniq/api/forges/forgejo'
+const forgejoHost = ref('')
+const forgejoConfigured = ref(false)
+const hostNotice = ref('')
+const hostError = ref('')
+
+/**
+ * Whether the selected app is still bound to a retired forge (Codeberg);
+ * such a binding keeps working but should be rebound (issue #437).
+ */
+const boundToRetiredForge = computed(() => isRetiredForge(forgeOf(currentBinding.value?.sourceId ?? '')))
+
+/**
+ * Loads the self-hosted Forgejo or Gitea host.
+ *
+ * @spec openspec/specs/external-sources/spec.md
+ */
+async function loadForgejoHost (): Promise<void> {
+	try {
+		const { payload } = await ocsGet<{ host?: string, configured?: boolean }>(FORGEJO_HOST)
+		forgejoHost.value = payload.host ?? ''
+		forgejoConfigured.value = payload.configured === true
+	} catch (e) {
+		hostError.value = e instanceof Error ? e.message : t('versioniq', 'Could not load the self-hosted forge host.')
+	}
+}
+
+/**
+ * Saves (or, when empty, clears) the self-hosted Forgejo or Gitea host.
+ *
+ * @spec openspec/specs/external-sources/spec.md
+ */
+async function saveForgejoHost (): Promise<void> {
+	hostError.value = ''
+	hostNotice.value = ''
+	loading.value = true
+	try {
+		const { payload, error: apiError } = await ocsWrite<{ host?: string, configured?: boolean }>(
+			'PUT',
+			FORGEJO_HOST,
+			{ host: forgejoHost.value.trim() },
+		)
+		if (apiError) {
+			hostError.value = apiError
+			return
+		}
+		forgejoHost.value = payload.host ?? ''
+		forgejoConfigured.value = payload.configured === true
+		hostNotice.value = forgejoConfigured.value
+			? t('versioniq', 'Self-hosted forge host saved.')
+			: t('versioniq', 'Self-hosted forge host cleared.')
+	} catch (e) {
+		hostError.value = e instanceof Error ? e.message : t('versioniq', 'Could not save the self-hosted forge host.')
+	} finally {
+		loading.value = false
+	}
+}
+
+onMounted(loadForgejoHost)
 
 /**
  *
@@ -106,6 +164,10 @@ async function bind (): Promise<void> {
 		error.value = t('versioniq', 'Owner and repository are required.')
 		return
 	}
+	if (forge.value === FORGE_FORGEJO && !forgejoConfigured.value) {
+		error.value = t('versioniq', 'Set the self-hosted Forgejo or Gitea host below first.')
+		return
+	}
 	loading.value = true
 	try {
 		const { payload, error: apiError } = await ocsWrite<{ sourceId?: string }>(
@@ -138,7 +200,7 @@ async function bind (): Promise<void> {
 	<div :class="$style.panel">
 		<h3 id="section-sources">{{ t('versioniq', 'App sources') }}</h3>
 		<p :class="$style.hint">
-			{{ t('versioniq', 'Bind an installed app to a GitHub or Codeberg repository so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.') }}
+			{{ t('versioniq', 'Bind an installed app to a GitHub repository, or to one on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.') }}
 		</p>
 
 		<NcNoteCard v-if="error" type="error">
@@ -160,6 +222,9 @@ async function bind (): Promise<void> {
 			<p v-if="currentBinding && currentBinding.sourceId" :class="$style.hint">
 				{{ t('versioniq', 'Current source:') }} <code>{{ currentBinding.sourceId }}</code>
 			</p>
+			<NcNoteCard v-if="boundToRetiredForge" type="warning" data-testid="retired-source">
+				{{ t('versioniq', 'This app is bound to Codeberg, which is retired as a separate source. The binding keeps working for now; rebind it to GitHub or to a self-hosted Forgejo or Gitea host.') }}
+			</NcNoteCard>
 
 			<NcSelect
 				v-model="forge"
@@ -173,6 +238,23 @@ async function bind (): Promise<void> {
 			<NcTextField v-model="assetPattern" :label="t('versioniq', 'Asset pattern')" placeholder="*.tar.gz" />
 			<NcButton variant="primary" type="submit" :disabled="loading">
 				{{ t('versioniq', 'Bind source') }}
+			</NcButton>
+		</form>
+
+		<h3 id="section-forgejo-host">{{ t('versioniq', 'Self-hosted Forgejo or Gitea') }}</h3>
+		<p :class="$style.hint">
+			{{ t('versioniq', 'Set the address of your Forgejo or Gitea host to bind apps, store tokens and trust owners on it. Leave it empty to turn the forge off.') }}
+		</p>
+		<NcNoteCard v-if="hostError" type="error">
+			{{ hostError }}
+		</NcNoteCard>
+		<NcNoteCard v-if="hostNotice" type="success">
+			{{ hostNotice }}
+		</NcNoteCard>
+		<form :class="$style.form" @submit.prevent="saveForgejoHost">
+			<NcTextField v-model="forgejoHost" :label="t('versioniq', 'Self-hosted Forgejo or Gitea host')" placeholder="https://git.example.org" />
+			<NcButton variant="secondary" type="submit" :disabled="loading">
+				{{ t('versioniq', 'Save host') }}
 			</NcButton>
 		</form>
 	</div>

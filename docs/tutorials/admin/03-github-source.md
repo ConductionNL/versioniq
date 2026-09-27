@@ -24,8 +24,8 @@ By the end of this guide you will have:
 
 1. Added the repository owner to the **trusted-sources allowlist**.
 2. (Private repos only) Stored a **personal access token**.
-3. **Bound** an installed app to `github:{owner}/{repo}` or
-   `codeberg:{owner}/{repo}`.
+3. **Bound** an installed app to `github:{owner}/{repo}` or, on a
+   self-hosted Forgejo or Gitea host, `forgejo:{owner}/{repo}`.
 4. Confirmed the app's version picker now lists the forge releases and
    can install one.
 
@@ -38,7 +38,7 @@ By the end of this guide you will have:
   the App Store).
 - For private repos: a personal access token with read access to the
   repository contents (GitHub fine-grained PATs need `Contents: Read`;
-  classic PATs need `repo` scope; Codeberg tokens need
+  classic PATs need `repo` scope; Forgejo and Gitea tokens need
   `read:repository`).
 
 ## Step 1 — Trust the source
@@ -51,7 +51,14 @@ security boundary, so add concrete owners only.
 Pick the forge, enter the owner (and optionally a single repository —
 leaving it blank trusts everything the owner publishes), tick the
 confirmation checkbox, and select **Add trusted source**. The pattern
-appears in the list as `github:Owner/*` or `codeberg:Owner/repo`.
+appears in the list as `github:Owner/*` or `forgejo:Owner/repo`.
+
+To use a self-hosted Forgejo or Gitea host, first enter its address
+(for example `https://git.example.org`) under **Self-hosted Forgejo or
+Gitea** on the **Sources** tab. Codeberg is no longer offered as a forge
+of its own: anything already stored under `codeberg` keeps working and
+is marked retired, and a Codeberg repository can be reached by entering
+`https://codeberg.org` as the self-hosted host.
 
 ![The Trusted sources tab with forge-qualified allowlist patterns](/img/tutorials/trusted-sources.png)
 
@@ -74,10 +81,10 @@ the owner and repository. The asset pattern selects which release asset
 to install (`*.tar.gz` matches the standard packaged-app tarball).
 Select **Bind source**.
 
-![Binding OpenCatalogi to codeberg:Conduction/opencatalogi on the Sources tab](/img/tutorials/bind-source.png)
+![Binding OpenCatalogi to a forge repository on the Sources tab](/img/tutorials/bind-source.png)
 
 The panel confirms the binding — `Current source:
-codeberg:Conduction/opencatalogi` in this example. If you get a
+github:ConductionNL/opencatalogi` in this example. If you get a
 *forbidden* error instead, the repository does not match any
 trusted-sources pattern: go back to step 1.
 
@@ -86,10 +93,10 @@ trusted-sources pattern: go back to step 1.
 Switch to the **Apps** tab and choose the app. The version list is now
 fetched from the forge's releases — newest first, the `v` prefix
 stripped from tags — and the footer reads `Versions source:
-codeberg:Conduction/opencatalogi` instead of `appstore`. Select a
+github:ConductionNL/opencatalogi` instead of `appstore`. Select a
 version to install it.
 
-![OpenCatalogi's version picker listing Codeberg releases](/img/tutorials/forge-versions.png)
+![OpenCatalogi's version picker listing forge releases](/img/tutorials/forge-versions.png)
 
 Safe mode (the checkbox at the top) still applies: downgrades are
 blocked while it is on, and every install honours the configured update

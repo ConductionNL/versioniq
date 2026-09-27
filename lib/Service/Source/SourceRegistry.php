@@ -60,10 +60,12 @@ class SourceRegistry {
 				'kind' => SourceBinding::KIND_GITHUB_RELEASE,
 				'label' => 'GitHub Releases (public)',
 			],
+			// Codeberg is retired as a source of its own (issue #437); another
+			// Forgejo or Gitea host, Codeberg included, is the forgejo forge.
 			[
-				'id' => 'codeberg',
+				'id' => 'forgejo',
 				'kind' => SourceBinding::KIND_GITHUB_RELEASE,
-				'label' => 'Codeberg Releases (public)',
+				'label' => 'Self-hosted Forgejo or Gitea releases',
 			],
 		];
 	}
@@ -79,7 +81,7 @@ class SourceRegistry {
 			return SourceBinding::appStore();
 		}
 
-		foreach ([SourceBinding::FORGE_GITHUB, SourceBinding::FORGE_CODEBERG] as $forge) {
+		foreach (SourceBinding::FORGES as $forge) {
 			$prefix = $forge . ':';
 			if (!str_starts_with($sourceId, $prefix)) {
 				continue;
@@ -95,9 +97,7 @@ class SourceRegistry {
 				throw new InvalidArgumentException(sprintf('%s source id has empty owner or repo', $forge));
 			}
 
-			return $forge === SourceBinding::FORGE_CODEBERG
-				? SourceBinding::codeberg($owner, $repo)
-				: SourceBinding::github($owner, $repo);
+			return SourceBinding::release($forge, $owner, $repo);
 		}
 
 		throw new InvalidArgumentException('Unknown source id: ' . $sourceId);

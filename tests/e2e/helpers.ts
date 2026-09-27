@@ -117,7 +117,7 @@ export async function versionsLoaded(page: Page): Promise<boolean> {
  * every one of them fails as though the FEATURE did nothing:
  *
  *     expect(pin.driftedTo ?? …, 'drift recorded on the pin').toBeTruthy()
- *     expect(binding.forge).toBe('codeberg')          // Received: undefined
+ *     expect(binding.forge).toBe('forgejo')           // Received: undefined
  *     expect(binding.sha256?.['1.0.1'], …).toMatch(…) // Received: undefined
  *
  * A null read and a feature that wrote nothing are indistinguishable once the
@@ -210,7 +210,7 @@ export const FIXTURE_URL =
 
 /** The app installed from the fixture forge, and the source it is bound to. */
 export const FIXTURE_APP = "fixtureapp";
-export const FIXTURE_SOURCE = "codeberg:fixtureowner/fixtureapp";
+export const FIXTURE_SOURCE = "forgejo:fixtureowner/fixtureapp";
 
 /** Whether the fixture forge is reachable — forge specs skip when it is not. */
 export async function fixtureAvailable(page: Page): Promise<boolean> {
@@ -731,7 +731,7 @@ export async function runJob(classSubstring: string): Promise<void> {
 /** The fixture app's clean source binding, with no recorded digests. */
 const CLEAN_FIXTURE_BINDING = JSON.stringify({
 	kind: "github-release",
-	forge: "codeberg",
+	forge: "forgejo",
 	owner: "fixtureowner",
 	repo: "fixtureapp",
 	assetPattern: "*.tar.gz",

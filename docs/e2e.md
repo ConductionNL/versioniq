@@ -101,11 +101,11 @@ instance:
 `tests/e2e/forge.spec.ts` drives real installs, TOFU digest enforcement,
 integrity failures, rate-limiting, and offline-cache fallback against a
 **fixture forge** — a Forgejo/Gitea-shaped HTTP double in
-`tests/e2e/fixtures/forge/` — instead of real GitHub/Codeberg. This relies on
+`tests/e2e/fixtures/forge/` — instead of real GitHub or Forgejo hosts. This relies on
 two app config seams (both default to the public host, so production is
 unaffected):
 
-- `forge.{github,codeberg}.{api_base,web_base}` — point a forge at another
+- `forge.{github,forgejo}.{api_base,web_base}` — point a forge at another
   deployment (self-hosted Forgejo / GitHub Enterprise, or the fixture).
 - the `allow_local_remote_servers` system switch — the app's forge fetches
   defer to it, so a fixture on the Docker network is reachable only when it is
@@ -118,8 +118,8 @@ tests/e2e/fixtures/forge/bootstrap.sh av-e2e
 ```
 
 This builds the app tarballs, starts the fixture container on a shared network
-with Nextcloud, points the codeberg forge at it, enables local-address fetches,
-allowlists `codeberg:fixtureowner/*`, and installs+binds a baseline
+with Nextcloud, points the self-hosted forgejo forge at it, enables local-address fetches,
+allowlists `forgejo:fixtureowner/*`, and installs+binds a baseline
 `fixtureapp`. The forge specs skip themselves when the fixture is unreachable.
 
 > Forge **installs** in these specs are driven through `occ versioniq:install`,
