@@ -2800,7 +2800,7 @@
 			"easy-updates-manager": "yes",
 			"built": {
 				"state": "built",
-				"evidence": "src/App.vue:2073, lib/Controller/ApiController.php:795, lib/Service/AutoUpdate/AutoUpdateWindow.php:45, lib/BackgroundJob/AutoUpdateJob.php:60, lib/BackgroundJob/AutoUpdateJob.php:99, lib/Service/AutoUpdate/AutoUpdateSettingsStore.php:49",
+				"evidence": "src/App.vue:2059, lib/Controller/ApiController.php:795, lib/Service/AutoUpdate/AutoUpdateWindow.php:45, lib/BackgroundJob/AutoUpdateJob.php:60, lib/BackgroundJob/AutoUpdateJob.php:99, lib/Service/AutoUpdate/AutoUpdateSettingsStore.php:49",
 				"reachedOn": "Apps tab, automatic updates block (update window)"
 			},
 			"provider": "versioniq",
