@@ -435,6 +435,31 @@ The admin UI MUST surface source binding so an admin can view an app's current b
 - **WHEN** the admin opens the Trusted sources tab
 - **THEN** the UI MUST list both forge-qualified patterns
 
+### Requirement: Install provenance and a one-off source on the page
+
+The install result MUST show the installer's `integrityWarning` when an external install
+went ahead without checksum verification, and MUST say when the package came from the local
+artifact cache (`servedFromCache`). The version picker MUST offer the one-off `source`
+override that the API and `occ versioniq:install --source` accept, for the version list and
+the next install only, without changing the app's binding.
+
+#### Scenario: An unverified install is flagged in the result
+
+@e2e exclude an unverified install needs a forge release with no checksum asset; covered by src/utils/installResult.spec.ts and src/components/InstallResultNotices.spec.ts.
+
+- **GIVEN** an external install that proceeded without checksum verification
+- **WHEN** the install result renders
+- **THEN** it MUST show "Installed without checksum verification." with the installer's warning, as an alert
+
+#### Scenario: A one-off source from the picker
+
+@e2e tests/e2e/versions.spec.ts
+
+- **GIVEN** an app bound to the App Store
+- **WHEN** the admin enters `github:owner/repo` under "Use another source this once" and loads versions
+- **THEN** the version list MUST be requested with `?source=github:owner/repo`, and the next install MUST carry the same `source`
+- **AND** the app's binding MUST NOT change, and the override MUST clear when another app is picked or the install succeeds
+
 ## User Stories
 
 1. As a Conduction admin, I want to install Conduction apps directly from GitHub so I can roll back to a version that the App Store has already removed.

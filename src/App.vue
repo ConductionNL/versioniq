@@ -3,6 +3,7 @@ import type {PrefillBindPayload} from './components/DiscoverPanel.vue';
 import type {BlockedVersion, PolicyLevel} from './components/PolicySelector.vue';
 import type { PinRecord } from './dialogs/PinDialog.vue'
 import type {AdvisoryCorrelation} from './utils/advisories.ts';
+import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
 import type {LkgRecord} from './utils/migrationSafety.ts';
 
 import { loadState } from '@nextcloud/initial-state'
@@ -11,13 +12,17 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import AdvisoriesPanel from './components/AdvisoriesPanel.vue'
+import AppSourceBadges from './components/AppSourceBadges.vue'
+import AutoUpdateOverview from './components/AutoUpdateOverview.vue'
 import CachePanel from './components/CachePanel.vue'
 import ChangelogRangePanel from './components/ChangelogRangePanel.vue'
 import DiscoverPanel from './components/DiscoverPanel.vue'
 import HistoryPanel from './components/HistoryPanel.vue'
+import InstallResultNotices from './components/InstallResultNotices.vue'
 import IntegrationsPanel from './components/IntegrationsPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
+import SourceOverrideField from './components/SourceOverrideField.vue'
 import SourcesPanel from './components/SourcesPanel.vue'
 import TokensPanel from './components/TokensPanel.vue'
 import TrustedSourcesPanel from './components/TrustedSourcesPanel.vue'
@@ -31,6 +36,7 @@ import { advisoryFreshnessLabel as advisoryFreshnessLabelFor } from './utils/adv
 import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow.ts'
 import { buildChangelogRange } from './utils/changelog.ts'
 import { tabForHash } from './utils/connectionRegistry.ts'
+import { normalizeInstallResult, withSourceOverride } from './utils/installResult.ts'
 import { shouldOfferLkgRollback } from './utils/migrationSafety.ts'
 import { repinApp } from './utils/repin.ts'
 import { isBlockedBySafeMode } from './utils/safeMode.ts'
@@ -43,6 +49,8 @@ type AppOption = {
 	summary: string
 	preview: string
 	isCore: boolean
+	isShipped?: boolean
+	boundSourceId?: string | null
 	manageable?: boolean
 	warning?: string | null
 	installedVersion?: string | null
@@ -57,27 +65,6 @@ type AppVersion = {
 	cachedOffline?: boolean
 }
 
-type InstallDebugEntry = {
-	stage: string
-	data?: unknown
-}
-
-type InstallResult = {
-	appId: string
-	fromVersion?: string | null
-	toVersion: string
-	installedVersion?: string | null
-	updateType?: string
-	message: string
-	dryRun: boolean
-	installStatus: string
-	stage?: string | null
-	category?: string | null
-	hint?: string | null
-	debug?: InstallDebugEntry[]
-	recordedShaMatched?: boolean | null
-	orphanedMigrations?: string[] | null
-}
 
 const isLoading = ref(true)
 const apps = ref<AppOption[]>([])
@@ -94,6 +81,9 @@ const isCheckingVersions = ref(false)
 const isInstallingVersion = ref(false)
 const installedVersion = ref('')
 const availableSource = ref('')
+// One-off source for the selected app's version list and next install; the
+// binding is left alone (#438).
+const sourceOverride = ref('')
 const errorMessage = ref('')
 const selectedVersion = ref('')
 const safeModeEnabled = ref(true)
@@ -477,66 +467,6 @@ async function unwrapOcsResponseWithMeta <T, >(response: Response): Promise<{ pa
 	return { payload: data }
 }
 
-/**
- *
- * @param payload
- * @param payload.appId
- * @param payload.fromVersion
- * @param payload.toVersion
- * @param payload.installedVersion
- * @param payload.updateType
- * @param payload.message
- * @param payload.dryRun
- * @param payload.installStatus
- * @param payload.stage
- * @param payload.category
- * @param payload.hint
- * @param payload.debug
- * @param payload.recordedShaMatched
- */
-function normalizeInstallResult (payload: {
-	appId?: string
-	fromVersion?: string | null
-	toVersion?: string
-	installedVersion?: string | null
-	updateType?: string
-	message?: string
-	dryRun?: boolean
-	installStatus?: string
-	stage?: string | null
-	category?: string | null
-	hint?: string | null
-	debug?: unknown
-	recordedShaMatched?: boolean
-}): InstallResult {
-	const normalizedUpdateType = payload.updateType ?? 'none'
-	const normalizedFrom = payload.fromVersion ?? null
-	const normalizedTo = payload.toVersion || ''
-	const resolvedMessage = payload.message || 'Install completed.'
-	const shouldForceDowngradeMessage = normalizedUpdateType === 'downgrade'
-		|| (normalizedFrom !== null && normalizedTo !== '' && compareVersions(normalizedTo, normalizedFrom) < 0)
-	const finalMessage = shouldForceDowngradeMessage
-		? (resolvedMessage === 'App updated.'
-			? 'App downgraded.'
-			: resolvedMessage)
-		: resolvedMessage
-
-	return {
-		appId: payload.appId || '',
-		fromVersion: normalizedFrom,
-		toVersion: normalizedTo,
-		installedVersion: payload.installedVersion ?? null,
-		updateType: normalizedUpdateType,
-		message: finalMessage,
-		dryRun: Boolean(payload.dryRun),
-		installStatus: payload.installStatus || 'failed',
-		stage: payload.stage ?? null,
-		category: payload.category ?? null,
-		hint: payload.hint ?? null,
-		debug: Array.isArray(payload.debug) ? payload.debug as InstallDebugEntry[] : [],
-		recordedShaMatched: payload.recordedShaMatched ?? null,
-	}
-}
 
 const installStatusTone = computed<'success' | 'warning' | 'error' | 'info'>(() => {
 	const result = lastInstallResult.value
@@ -1016,6 +946,7 @@ function resetSelectedAppState (): void {
 	hasCheckedVersions.value = false
 	installedVersion.value = ''
 	availableSource.value = ''
+	sourceOverride.value = ''
 	lastInstallDebug.value = []
 	lastInstallResult.value = null
 	hasInstallResult.value = false
@@ -1048,7 +979,7 @@ async function checkVersions (preserveInstallResult = false): Promise<void> {
 	installedVersion.value = ''
 
 	try {
-		const url = withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/versions`)
+		const url = withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/versions`, withSourceOverride({}, sourceOverride.value))
 		const response = await fetch(apiUrl(url), { headers: { ...ocsHeaders, Accept: 'application/json' } })
 		const payload = await unwrapOcsResponse<{
 			availableVersions?: AppVersion[]
@@ -1135,6 +1066,21 @@ async function onPanelBound (appId: string): Promise<void> {
 		await checkVersions(true)
 	}
 }
+
+/**
+ * Reloads the selected app's versions from a one-off source (or the bound
+ * one again, when blank); the next install uses the same source (#438).
+ *
+ * @param source The override, for example `github:owner/repo`; blank clears it.
+ * @spec openspec/specs/external-sources/spec.md
+ */
+async function onApplySourceOverride (source: string): Promise<void> {
+	sourceOverride.value = source
+	await checkVersions()
+}
+
+// Labels for the scheduled/blocked overview, keyed by app id.
+const appLabels = computed((): Record<string, string> => Object.fromEntries(apps.value.map((app) => [app.id, app.label])))
 
 /**
  *
@@ -1547,6 +1493,8 @@ type InstallApiPayload = {
 	actualSha?: string
 	recordedShaMatched?: boolean
 	orphanedMigrations?: string[] | null
+	integrityWarning?: string | null
+	servedFromCache?: boolean
 }
 
 /**
@@ -1568,11 +1516,11 @@ async function requestInstall (appId: string,
 	forceDryRun = false): Promise<{ payload: InstallApiPayload, metaMessage?: string }> {
 	// dryRun is sent explicitly and independently of debug — see MODIFIED
 	// "Debug Mode". debug now controls diagnostic verbosity only.
-	const query: Record<string, string> = {
+	const query: Record<string, string> = withSourceOverride({
 		debug: includeDebug.value ? '1' : '0',
 		dryRun: (forceDryRun || dryRunRequested.value) ? '1' : '0',
 		targetVersion: version,
-	}
+	}, sourceOverride.value)
 	if (overridePin) {
 		query.overridePin = overridePin
 	}
@@ -1810,6 +1758,7 @@ async function performInstall (): Promise<void> {
 			selectedApp.value = ''
 			installedVersion.value = ''
 			availableSource.value = ''
+			sourceOverride.value = ''
 			selectedVersion.value = ''
 			await checkVersions(true)
 			await loadPins()
@@ -2115,6 +2064,14 @@ watch(dryRunEnabled, () => {
 									@click="saveAutoUpdateSettings">
 									{{ t('versioniq', 'Save') }}
 								</NcButton>
+								<AutoUpdateOverview
+									:policies="policies"
+									:labels="appLabels"
+									:autoUpdateEnabled="autoUpdateEnabled"
+									:window="savedAutoUpdateWindow"
+									:timeZone="autoUpdateTimeZone"
+									:disabled="isSavingPolicy"
+									@retry="onRetryAttempt" />
 
 								<h3 id="section-advisories" :class="$style.advisorySettingsHeading">{{ t('versioniq', 'Security advisory checks') }}</h3>
 								<p :class="$style.hint">
@@ -2235,6 +2192,10 @@ watch(dryRunEnabled, () => {
 														<p :class="$style.appCardMeta">
 															{{ app.id }}
 														</p>
+														<AppSourceBadges
+															:isShipped="app.isShipped === true"
+															:isCore="app.isCore"
+															:boundSourceId="app.boundSourceId ?? null" />
 														<p
 															v-if="advisoryFor(app.id)?.state === 'pinned-to-vulnerable'"
 															:class="$style.advisoryDetail">
@@ -2381,6 +2342,12 @@ watch(dryRunEnabled, () => {
 										<ChangelogRangePanel :entries="changelogRange" />
 									</div>
 									<template v-if="appDetailTab === 'versions'">
+										<SourceOverrideField
+											v-if="selectedApp"
+											:modelValue="sourceOverride"
+											:boundSourceId="selectedAppOption?.boundSourceId ?? null"
+											:disabled="isCheckingVersions || isInstallingVersion"
+											@apply="onApplySourceOverride" />
 										<div v-if="versions.length > 0" :class="$style.versionListContainer">
 											<!-- aria-label, not a placeholder. A placeholder is not an
 											     accessible name: it is announced inconsistently and
@@ -2501,6 +2468,9 @@ watch(dryRunEnabled, () => {
 									<p v-if="lastInstallResult.hint" :class="$style.resultHint">
 										{{ lastInstallResult.hint }}
 									</p>
+									<InstallResultNotices
+										:integrityWarning="lastInstallResult.integrityWarning ?? null"
+										:servedFromCache="lastInstallResult.servedFromCache === true" />
 									<p v-if="installedAppNeedsEnabling" :class="$style.resultHint" data-testid="install-enable-hint">
 										{{ t('versioniq', 'This app is installed but not enabled.') }}
 										<a :href="apiUrl('/index.php/settings/apps/disabled')">{{ t('versioniq', 'Enable it on the apps page') }}</a>

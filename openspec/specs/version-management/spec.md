@@ -437,6 +437,21 @@ The admin UI MUST present a tab/section switcher with at least the sections Apps
 - **THEN** the UI MUST show a "Forbidden" state
 - **AND** the write endpoints MUST return HTTP 403
 
+### Requirement: The app card shows shipped apps and the bound source
+
+Each app card MUST mark an app that ships with Nextcloud but is not always enabled
+(`isShipped`), and MUST name the source its versions come from (`boundSourceId`, or the App
+Store when unbound). The dead `GET /api/admin-check` route is removed: the page is a
+non-delegable admin setting and every endpoint already refuses a non-admin.
+
+#### Scenario: Shipped app and source on the card
+
+@e2e tests/e2e/versions.spec.ts
+
+- **GIVEN** a shipped app that is not always enabled, bound to no source
+- **WHEN** the Apps tab renders its card
+- **THEN** the card MUST show "Shipped with Nextcloud" and "Source: App Store"
+
 ## User Stories
 
 1. As a Nextcloud admin, I want to roll back an app to a previous version so that I can recover from a broken update.

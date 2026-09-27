@@ -89,20 +89,6 @@ class ApiController extends OCSController {
 	}
 
 	/**
-	 * Reports whether the current user is an admin so the frontend can gate the UI
-	 *
-	 * @return DataResponse<Http::STATUS_OK, array{isAdmin: bool}, array{}>
-	 *
-	 * 200: Admin status returned
-	 *
-	 * @spec openspec/specs/version-management/spec.md
-	 */
-	#[ApiRoute(verb: 'GET', url: '/api/admin-check')]
-	public function adminCheck(): DataResponse {
-		return new DataResponse(['isAdmin' => $this->isAdmin()], Http::STATUS_OK);
-	}
-
-	/**
 	 * Lists installed apps (admin-only); see "List Installed Apps"
 	 *
 	 * @return DataResponse<Http::STATUS_OK, array{apps: list<array<string, mixed>>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>

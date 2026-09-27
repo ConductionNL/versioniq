@@ -220,7 +220,22 @@ OC.L10N.register(
         "Show server advisories": "Show server advisories",
         "No published advisory is about this server version.": "No published advisory is about this server version.",
         "No installed app has a published advisory.": "No installed app has a published advisory.",
-        "Affected": "Affected"
+        "Affected": "Affected",
+        "Installed without checksum verification.": "Installed without checksum verification.",
+        "The package came from the local artifact cache, not from the source.": "The package came from the local artifact cache, not from the source.",
+        "This app ships with Nextcloud: its version follows the server release. Bind a forge source to manage it from a repository.": "This app ships with Nextcloud: its version follows the server release. Bind a forge source to manage it from a repository.",
+        "Shipped with Nextcloud": "Shipped with Nextcloud",
+        "Source: {source}": "Source: {source}",
+        "App Store": "App Store",
+        "Use another source this once": "Use another source this once",
+        "Load versions": "Load versions",
+        "Use the bound source": "Use the bound source",
+        "Applies to this version list and the next install only. The binding stays {source}.": "Applies to this version list and the next install only. The binding stays {source}.",
+        "Scheduled and blocked updates": "Scheduled and blocked updates",
+        "Automatic updates are off, so nothing below runs until they are enabled.": "Automatic updates are off, so nothing below runs until they are enabled.",
+        "Runs in the window {window} ({timeZone}).": "Runs in the window {window} ({timeZone}).",
+        "No app has an automatic update policy.": "No app has an automatic update policy.",
+        "policy: {level}": "policy: {level}"
     },
     "nplurals=2; plural=(n != 1);"
 )

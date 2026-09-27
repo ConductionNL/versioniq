@@ -412,14 +412,14 @@
 			"easy-updates-manager": "partial",
 			"built": {
 				"state": "built",
-				"evidence": "src/App.vue:2403, src/components/SourcesPanel.vue:160, lib/Service/InstallerService.php:139, lib/Service/InstallerService.php:882",
-				"reachedOn": "Apps tab (app detail) and Sources tab"
+				"evidence": "src/components/AppSourceBadges.vue:29, src/App.vue:2195, src/components/SourcesPanel.vue:160, lib/Service/InstallerService.php:162",
+				"reachedOn": "Apps tab (every app card) and Sources tab"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "Shows the bound source (appstore, github:owner/repo, codeberg:owner/repo) per app after opening it or selecting it on the Sources tab. It is the binding, not provenance: an unbound app reads 'appstore' even if it was installed by hand or from git, manual upload is not a source kind, and boundSourceId in the list payload is not rendered.",
+			"note": "Every app card names its bound source (App Store, github:owner/repo, forgejo:owner/repo) from boundSourceId in the list payload. It is the binding, not provenance: an unbound app reads App Store even if it was installed by hand or from git, and manual upload is not a source kind.",
 			"evidence": {
 				"nextcloud": "The table row shows name, version, level and groups only (apps/appstore/src/components/AppTable/AppTableRow.vue:62-110); the store/git distinction exists internally (apps/appstore/lib/Controller/ApiController.php:341, lib/private/Installer.php:407) but is never shown. Nextcloud has only one install source, the app store.",
 				"renovate": "Every dependency carries a datasource (lib/modules/datasource/types.ts), shown in the deprecations table (lib/workers/repository/dependency-dashboard.ts:476) and PR tables, but the detected-dependencies list groups by manager and file, not by source.",
@@ -520,7 +520,7 @@
 			"area": "inventory",
 			"name": "Tell apps shipped with the server apart from apps installed separately.",
 			"rowSource": "competitor",
-			"versioniq": "partial",
+			"versioniq": "yes",
 			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "unknown",
@@ -528,14 +528,14 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "src/App.vue:2148, src/App.vue:2118, lib/Service/InstallerService.php:137, lib/Service/InstallerService.php:188",
-				"reachedOn": "Apps tab"
+				"evidence": "src/components/AppSourceBadges.vue:25, src/App.vue:2195, lib/Service/InstallerService.php:161, lib/Service/InstallerService.php:188",
+				"reachedOn": "Apps tab (app card)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "medium",
-			"note": "Always-enabled apps get a CORE flag and can be hidden; shipped apps get an explanatory error when their versions are requested. isShipped is returned per app but not rendered, so a shipped-but-not-always-enabled app looks like any other.",
+			"note": "Always-enabled apps get a CORE flag and can be hidden; every other shipped app gets a 'Shipped with Nextcloud' badge on its card, and an explanatory error when its versions are requested. Fixed in #438.",
 			"evidence": {
 				"nextcloud": "occ app:list ,shipped=true|false (core/Command/App/ListApps.php:31); the API marks shipped and internal apps (apps/appstore/lib/Controller/ApiController.php:136,465).",
 				"renovate": "not checked: no clear analog in a repository dependency bot for components shipped with the platform versus installed separately.",
@@ -2120,7 +2120,7 @@
 			"area": "safety",
 			"name": "See clearly when an install went ahead without checksum verification.",
 			"rowSource": "own-code",
-			"versioniq": "partial",
+			"versioniq": "yes",
 			"nextcloud": "partial",
 			"renovate": "partial",
 			"dependabot": "unknown",
@@ -2128,14 +2128,14 @@
 			"easy-updates-manager": "partial",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/ExternalReleaseInstallerService.php:465, lib/Service/InstallerService.php:582",
-				"reachedOn": "History tab (audit message only); no component renders integrityWarning"
+				"evidence": "lib/Service/ExternalReleaseInstallerService.php:465, lib/Service/InstallerService.php:582, src/utils/installResult.ts:85, src/components/InstallResultNotices.vue:24, src/App.vue:2471",
+				"reachedOn": "Apps tab, install result (Installed without checksum verification alert) and the History tab"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "medium",
-			"note": "The installer returns an 'install proceeded without verification' warning that reaches the API payload as integrityWarning, but no component renders it; only the audit message keeps it. Proposed by reader own-a.",
+			"note": "When an external install goes ahead without checksum verification, the install result shows an alert with the installer's warning; the audit message keeps it too. The result also says when the package came from the local artifact cache. Fixed in #438.",
 			"evidence": {
 				"nextcloud": "Store installs cannot proceed unverified (lib/private/Installer.php:245,336-342); an app folder placed by hand is installed with no signature check and no warning at install time (lib/private/Installer.php:56-94), only the separate code integrity check can flag it later (apps/settings/lib/SetupChecks/CodeIntegrity.php:36).",
 				"renovate": "The PR body shows a caution when a new npm release lacks the attestation its predecessor had (lib/workers/repository/update/pr/index.ts:150-155); no warning for unverified checksums.",
@@ -3140,22 +3140,22 @@
 			"area": "autoupdate",
 			"name": "See all pending, scheduled and blocked updates on one dashboard.",
 			"rowSource": "competitor",
-			"versioniq": "no",
+			"versioniq": "partial",
 			"nextcloud": "partial",
 			"renovate": "yes",
 			"dependabot": "partial",
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "none",
-				"evidence": "src/App.vue:2194 (per-card policy badge only), lib/Service/AutoUpdate/AttemptLedger.php:80 (ledger never exposed by a route)",
-				"reachedOn": "nothing"
+				"state": "built",
+				"evidence": "src/components/AutoUpdateOverview.vue:76, src/components/AutoUpdateOverview.vue:86, src/App.vue:2067, lib/Controller/ApiController.php:724",
+				"reachedOn": "Apps tab, Automatic updates section (Scheduled and blocked updates)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "medium",
-			"note": "App cards show a policy badge and pin badge, but nothing lists pending, scheduled or blocked updates in one view.",
+			"note": "One overview lists every app with an auto-update policy (level and window) and every version an earlier automatic attempt failed on, with Retry. Pending updates (a newer version available now) are not listed: the page has no per-app availability without querying every source. Added in #438.",
 			"evidence": {
 				"nextcloud": "The Updates category lists pending updates with a counter (apps/appstore/src/views/AppstoreManage.vue:39, apps/appstore/src/store/updates.ts:23); nothing is scheduled or blocked, so only the pending part exists.",
 				"renovate": "The Dependency Dashboard issue (lib/config/options/index.ts:904) lists pending approval, awaiting schedule, rate-limited, errored, pending status checks and open updates (lib/workers/repository/dependency-dashboard.ts:500-610).",
@@ -4471,14 +4471,14 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Command/InstallVersion.php:79, lib/Controller/ApiController.php:461",
-				"reachedOn": "occ versioniq:install ,source="
+				"evidence": "lib/Command/InstallVersion.php:79, lib/Controller/ApiController.php:461, src/components/SourceOverrideField.vue:47, src/App.vue:2345, src/App.vue:982, src/App.vue:1519",
+				"reachedOn": "Apps tab, version picker (Use another source this once); occ versioniq:install --source="
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
 			"featureConfidence": "high",
-			"note": "A one-off source override exists on the install and versions API and the occ install command; the web UI does not expose it.",
+			"note": "The version picker takes a one-off source for the version list and the next install (sent as ?source= on both), and says the binding stays as it is; the override clears when another app is picked or the install succeeds. Also on occ versioniq:install --source. Page control added in #438.",
 			"evidence": {
 				"nextcloud": "One store URL for the whole instance (lib/private/App/AppStore/Fetcher/Fetcher.php:244-246).",
 				"renovate": "not checked: every source choice is persistent config; no one-off override for a single update was found.",

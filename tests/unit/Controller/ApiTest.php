@@ -171,6 +171,18 @@ final class ApiTest extends TestCase {
 		$this->assertSame('default', $method->invoke($controller, 'array', 'default'));
 	}
 
+	/**
+	 * `GET /api/admin-check` had no caller: the page is an admin setting
+	 * (not delegable), so it only renders for admins, and every endpoint
+	 * already answers 403 to anyone else. A route nobody calls is surface
+	 * nobody tests, so it is gone (#438 item 8).
+	 *
+	 * @spec openspec/specs/version-management/spec.md
+	 */
+	public function testTheUncalledAdminCheckRouteIsGone(): void {
+		$this->assertFalse(method_exists(ApiController::class, 'adminCheck'));
+	}
+
 	public function testInstallerServiceClassExists(): void {
 		// Smoke test that InstallerService autoloads cleanly from the new namespace structure.
 		$this->assertTrue(class_exists(InstallerService::class));

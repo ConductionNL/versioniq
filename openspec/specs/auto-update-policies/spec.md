@@ -123,3 +123,20 @@ Each attempted install MUST produce an admin notification: success (app, old →
 - GIVEN window `23:00-03:00`
 - WHEN the job fires at 00:30
 - THEN it MUST be considered inside the window
+
+### Requirement: Scheduled and blocked updates on one view
+
+The Automatic updates section MUST list, in one place, every app with an auto-update policy
+(its level and the window it runs in) and every version an earlier automatic attempt failed
+on, each with a Retry that calls `DELETE /api/app/{appId}/attempts/{version}`. Pending updates
+(a newer version available now) are not listed: the page has no per-app availability without
+querying every source.
+
+#### Scenario: One overview of scheduled and blocked updates
+
+@e2e exclude a blocked row only exists after the cron job failed an install; covered by src/components/AutoUpdateOverview.spec.ts.
+
+- **GIVEN** two apps with a policy, one with a failed version 2.3.4
+- **WHEN** the admin opens the Apps tab
+- **THEN** the overview MUST list both apps as scheduled with the window, and 2.3.4 as blocked with a Retry
+- **AND** while automatic updates are off it MUST say nothing runs until they are enabled
