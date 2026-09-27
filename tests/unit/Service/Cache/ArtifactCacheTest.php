@@ -230,4 +230,75 @@ final class ArtifactCacheTest extends TestCase {
 
 		return $factory;
 	}
+
+	/**
+	 * A gzipped tar holding `<top>/appinfo/info.xml`, built by hand so the test
+	 * needs no phar support.
+	 */
+	private function tarGzWithInfoXml(string $infoXml, string $top = 'myapp'): string {
+		$entry = static function (string $name, string $body): string {
+			$header = str_pad($name, 100, "\0")
+				. str_pad('0000644', 8, "\0")
+				. str_pad('0000000', 8, "\0")
+				. str_pad('0000000', 8, "\0")
+				. str_pad(sprintf('%011o', strlen($body)), 12, "\0")
+				. str_pad('00000000000', 12, "\0")
+				. '        '
+				. '0'
+				. str_repeat("\0", 100)
+				. "ustar\0" . '00';
+			$header = str_pad($header, 512, "\0");
+			$checksum = array_sum(array_map('ord', str_split($header)));
+			$header = substr_replace($header, str_pad(sprintf('%06o', $checksum), 7, "\0") . ' ', 148, 8);
+
+			return $header . str_pad($body, (int)ceil(strlen($body) / 512) * 512, "\0");
+		};
+
+		return (string)gzencode(
+			$entry($top . '/README.md', 'readme')
+			. $entry($top . '/appinfo/info.xml', $infoXml)
+			. str_repeat("\0", 1024)
+		);
+	}
+
+	/**
+	 * #435: a forge release showed server compatibility as unknown although
+	 * the cached artifact's info.xml states the range.
+	 *
+	 * @spec openspec/specs/version-management/spec.md
+	 */
+	public function testPlatformSpecIsReadFromTheCachedArtifactInfoXml(): void {
+		file_put_contents($this->tempArchive, $this->tarGzWithInfoXml(
+			'<?xml version="1.0"?><info><id>myapp</id><version>1.2.0</version><dependencies><nextcloud min-version="30" max-version="32"/></dependencies></info>'
+		));
+		$cache = $this->build(new FakeAppData());
+		$cache->store('myapp', '1.2.0', $this->tempArchive, []);
+
+		self::assertSame('>=30 <=32', $cache->platformSpecFor('myapp', '1.2.0'));
+	}
+
+	/**
+	 * @spec openspec/specs/version-management/spec.md
+	 */
+	public function testPlatformSpecWithOnlyAMinimum(): void {
+		file_put_contents($this->tempArchive, $this->tarGzWithInfoXml(
+			'<?xml version="1.0"?><info><dependencies><nextcloud min-version="31"/></dependencies></info>'
+		));
+		$cache = $this->build(new FakeAppData());
+		$cache->store('myapp', '1.2.0', $this->tempArchive, []);
+
+		self::assertSame('>=31', $cache->platformSpecFor('myapp', '1.2.0'));
+	}
+
+	/**
+	 * @spec openspec/specs/version-management/spec.md
+	 */
+	public function testPlatformSpecIsNullForAnUncachedVersionOrAnArchiveWithoutInfoXml(): void {
+		$cache = $this->build(new FakeAppData());
+		self::assertNull($cache->platformSpecFor('myapp', '9.9.9'));
+
+		file_put_contents($this->tempArchive, 'not a tarball');
+		$cache->store('myapp', '1.0.0', $this->tempArchive, []);
+		self::assertNull($cache->platformSpecFor('myapp', '1.0.0'));
+	}
 }

@@ -280,7 +280,11 @@
         "Default: {url}": "Standaard: {url}",
         "GitHub API address (GitHub Enterprise, https only)": "GitHub API-adres (GitHub Enterprise, alleen https)",
         "GitHub web address (GitHub Enterprise, https only)": "GitHub-webadres (GitHub Enterprise, alleen https)",
-        "Advisory feed address (an internal mirror)": "Adres van de adviezenfeed (een interne mirror)"
+        "Advisory feed address (an internal mirror)": "Adres van de adviezenfeed (een interne mirror)",
+        "This version declares support for the running Nextcloud version.": "Deze versie geeft aan de draaiende Nextcloud-versie te ondersteunen.",
+        "This version does not declare support for the running Nextcloud version; installing it will likely fail.": "Deze versie geeft niet aan de draaiende Nextcloud-versie te ondersteunen; installeren mislukt waarschijnlijk.",
+        "Runs on this server": "Draait op deze server",
+        "Not for this server version": "Niet voor deze serverversie"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

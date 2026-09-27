@@ -441,14 +441,14 @@
 			"easy-updates-manager": "yes",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/Source/AppStoreSource.php:661, lib/Service/Source/AppStoreSource.php:631, lib/Command/ListVersions.php:114, lib/Command/ListVersions.php:120",
-				"reachedOn": "occ versioniq:versions (Runs on this server column); GET /api/app/{appId}/versions (serverCompatible per App Store version)"
+				"evidence": "lib/Service/Source/AppStoreSource.php:661, lib/Service/Source/AppStoreSource.php:631, lib/Service/Cache/ArtifactCache.php:204, lib/Service/InstallerService.php:334, src/components/ServerCompatBadge.vue:19, src/App.vue:2379, lib/Command/ListVersions.php:114",
+				"reachedOn": "Apps tab, version picker (Runs on this server / Not for this server version); occ versioniq:versions (Runs on this server column); GET /api/app/{appId}/versions (serverCompatible)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Each App Store version now carries serverCompatible, read from the release's platformVersionSpec against the running server, and occ versioniq:versions shows it as a 'Runs on this server' column next to 'Relative to installed'. Forge releases show unknown until their info.xml range is read, and the web version picker does not show the field yet; the full check still runs only during a real install.",
+			"note": "Each App Store version carries serverCompatible from the release's platformVersionSpec against the running server, and a forge release held in the artifact cache carries it from the nextcloud range in its own info.xml. The web version picker shows it as a badge and occ versioniq:versions as a column. A forge release that was never downloaded still reads unknown, because forges publish no range in release metadata, so this stays partial.",
 			"evidence": {
 				"nextcloud": "apps/appstore/lib/Controller/ApiController.php:133-135 computes missingDependencies and isCompatible; shown in apps/appstore/src/components/AppstoreSidebar/AppDetailsTab.vue:137 and filterable via 'Show incompatible' (apps/appstore/src/components/AppToolbar.vue:105). Applies to the single latest release only.",
 				"renovate": "lib/config/options/index.ts:499 constraintsFiltering filters releases by language constraints (engines, PHP), and lib/modules/datasource/nextcloud/readme.md has you point registryUrls at a per-platform apps.json so only releases for that server version are offered; not shown to the user as a compatibility verdict.",
