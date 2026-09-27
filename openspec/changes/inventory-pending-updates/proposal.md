@@ -8,11 +8,11 @@ kind: code
 
 An admin who wants to know which apps are behind has to open every app on the Apps tab, one at a time. The card shows the app's name, id and description, but not the version it runs, and nothing says a newer one exists. Every tool Versioniq is compared with answers "what is out of date" on one screen.
 
-This change comes from the competitor parity matrix `openspec/parity/capabilities.json` (versioniq, compared 2026-09-26) and covers five rows that share one screen and one service.
+This change comes from the competitor parity matrix `openspec/parity/capabilities.json` (versioniq, compared 2026-09-26) and covers five rows that share one screen and one service. One of them, `inv-list-installed`, is recorded `existing` in `openspec/parity/gap-decisions.json`: the archived change `2026-06-14-move-to-admin-settings` already requires the installed version on every card and shipped without it. This change closes that defect in task 3.1, next to the four rows it specifies.
 
 | Row | Rating now | What is missing |
 |---|---|---|
-| `inv-list-installed` | partial, built | The card does not show the installed version, although `openspec/specs/version-management/spec.md` ("List Installed Apps") already requires it. |
+| `inv-list-installed` | partial, built (decision `existing`) | The card does not show the installed version, although `openspec/specs/version-management/spec.md` ("List Installed Apps"), from the archived change `2026-06-14-move-to-admin-settings`, already requires it. |
 | `inv-update-available` | no | Nothing marks an app that has a newer version. |
 | `inv-version-lag` | no | Nothing measures how far an app is behind, or flags it against a policy such as "at most one release behind". |
 | `pin-still-notify` | partial, built | A pinned app's newer versions show only when its version list is opened. |

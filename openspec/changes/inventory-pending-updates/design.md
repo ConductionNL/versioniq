@@ -4,7 +4,7 @@ Read against `development` at 02e1050 (2026-09-27).
 
 ## Context
 
-- `InstallerService::getInstalledApps()` (`lib/Service/InstallerService.php:89`) already returns `installedVersion` and `state` for every card. `src/App.vue:2206-2318` renders the card from it and never prints the version.
+- `InstallerService::getInstalledApps()` (`lib/Service/InstallerService.php:89`) already returns `installedVersion` and `state` for every card. `src/App.vue:2206-2317` renders the card from it and never prints the version.
 - `InstallerService::getAppVersions()` (`lib/Service/InstallerService.php:185`) resolves the bound source and lists versions, newest first, each with a nullable `serverCompatible`. It costs one external call per app, except that the App Store catalogue is fetched once and cached for an hour for every app (`AppStoreSource::cacheCatalogueEntries`, `lib/Service/Source/AppStoreSource.php:490`).
 - `AutoUpdateJob::processApp()` (`lib/BackgroundJob/AutoUpdateJob.php:123`) already works out a candidate per app through `CandidateSelector::select()` and throws the answer away.
 - Issue #160: `GET /api/advisories` used to correlate live, did not answer within 120 s on an 88-app instance, and held the session lock so `/api/pins` never ran. The fix was a sweep in `AdvisoryRefreshJob` writing to `AdvisoryResultStore`, read by the endpoint. A live "what is behind" list has the same cost, so it gets the same shape.

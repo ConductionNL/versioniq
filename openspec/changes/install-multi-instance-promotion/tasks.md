@@ -22,7 +22,7 @@
 - [ ] 4.1 Add `src/components/InstancesPanel.vue`, the Instances tab in `src/App.vue`, `src/dialogs/InstanceConnectionDialog.vue` and `src/dialogs/PromoteDialog.vue` (design D5, D6). Verify: `src/components/InstancesPanel.spec.ts` covers a differing row, the "differs only" filter, a stale remote with its error, and an older Versioniq; `src/dialogs/PromoteDialog.spec.ts` covers the waiting-period message, the downgrade confirmation and the rollback link.
 - [ ] 4.2 Add the waiting-period field to `src/components/InstanceSettingsPanel.vue`. Verify: `src/components/InstanceSettingsPanel.spec.ts` saves 14 and rejects 91.
 - [ ] 4.3 Add the new strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
-- [ ] 4.4 Add `tests/e2e/instances.spec.ts`: connect the test instance to itself through the forge fixture host, read the manifest, and promote a fixture app version. Verify: the spec passes in `npm run test:e2e`.
+- [ ] 4.4 Add `tests/e2e/instances.spec.ts`: read `GET /api/instance/manifest` on the test instance as admin and as a non-admin, and assert the Instances tab shows this instance's column with the fixture app's version. A second instance is not available in the e2e setup and connections accept https only, so the remote read and the promotion are covered by the unit tests of 2.2 and 3.2. Verify: the spec passes in `npm run test:e2e`.
 
 ## 5. Commands
 
