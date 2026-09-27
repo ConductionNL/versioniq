@@ -20,6 +20,27 @@ import { occ, openSettings, openTab, versionsLoaded } from "./helpers.ts";
  * @spec openspec/specs/security-advisory-correlation/spec.md
  */
 test.describe("security advisories", () => {
+	test("the Advisories tab shows the server's own advisories and a severity per advisory", async ({
+		page,
+	}) => {
+		await openSettings(page);
+		await openTab(page, "Advisories");
+
+		// The server row renders whether or not the feed had anything about
+		// this server version (#438: it was computed and never shown).
+		const server = page.getByTestId("advisories-server");
+		await expect(server).toBeVisible();
+		await expect(server).toContainText("Nextcloud server");
+
+		// Every rendered severity is one of the documented levels.
+		for (const chip of await page.getByTestId("advisory-severity").all()) {
+			await expect(chip).toHaveAttribute(
+				"data-severity",
+				/^(low|medium|high|critical|unknown)$/,
+			);
+		}
+	});
+
 	test("the advisory surface states how old its answer is", async ({
 		page,
 	}) => {

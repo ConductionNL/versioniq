@@ -230,7 +230,24 @@ OC.L10N.register(
         "Could not clear the failed attempt.": "Kon de mislukte poging niet wissen.",
         "Binding removed. {appId} reads its versions from the App Store again.": "Koppeling verwijderd. {appId} haalt zijn versies weer uit de App Store.",
         "Could not remove the binding.": "Kon de koppeling niet verwijderen.",
-        "Remove binding and use the App Store": "Koppeling verwijderen en de App Store gebruiken"
+        "Remove binding and use the App Store": "Koppeling verwijderen en de App Store gebruiken",
+        "Advisories": "Adviezen",
+        "Low": "Laag",
+        "Medium": "Middel",
+        "High": "Hoog",
+        "Critical": "Kritiek",
+        "Unknown severity": "Onbekende ernst",
+        "{label}, {severity}": "{label}, {severity}",
+        "Security advisories": "Beveiligingsadviezen",
+        "Nextcloud server": "Nextcloud-server",
+        "Installed version: {version}": "Geïnstalleerde versie: {version}",
+        "This server version is affected by a published advisory.": "Deze serverversie wordt geraakt door een gepubliceerd advies.",
+        "Upgrade to {version} or later.": "Werk bij naar {version} of later.",
+        "_%n published advisory is about the server; it does not affect this version._::_%n published advisories are about the server; none affect this version._": ["%n gepubliceerd advies gaat over de server; het raakt deze versie niet.","%n gepubliceerde adviezen gaan over de server; geen ervan raakt deze versie."],
+        "Show server advisories": "Serveradviezen tonen",
+        "No published advisory is about this server version.": "Geen gepubliceerd advies gaat over deze serverversie.",
+        "No installed app has a published advisory.": "Geen geïnstalleerde app heeft een gepubliceerd advies.",
+        "Affected": "Geraakt"
     },
     "nplurals=2; plural=(n != 1);"
 )

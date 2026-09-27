@@ -3493,7 +3493,7 @@
 			"area": "advisories",
 			"name": "See the severity of each advisory, for example as a CVSS score or level.",
 			"rowSource": "own-code",
-			"versioniq": "partial",
+			"versioniq": "yes",
 			"nextcloud": "no",
 			"renovate": "yes",
 			"dependabot": "yes",
@@ -3501,14 +3501,14 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/Advisory/AdvisoryService.php:343, lib/Service/Advisory/AdvisorySeverity.php:45, src/App.vue:55, src/App.vue:2159",
-				"reachedOn": "Apps tab, advisory badge tooltip (summary only)"
+				"evidence": "lib/Service/Advisory/AdvisoryService.php:343, lib/Service/Advisory/AdvisorySeverity.php:45, src/utils/advisories.ts:58, src/utils/advisories.ts:74, src/components/AdvisoriesPanel.vue:53, src/App.vue:2225",
+				"reachedOn": "Advisories tab (a severity chip per advisory) and the Apps tab advisory badge (highest severity)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "Severity is carried in the snapshot and API payload as low, medium, high, critical or unknown, mapped the same way from every source, but the UI never renders it; the badge shows only a state label and the first summary as a tooltip.",
+			"note": "Severity (low, medium, high, critical or unknown, mapped the same way from every source) is rendered as a chip per advisory on the Advisories tab, and the app card badge carries the highest severity, so a critical and a low advisory no longer look the same. Fixed in #438.",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
 				"renovate": "lib/workers/repository/process/vulnerabilities.ts:623-686 computes a CVSS score and level and writes a Severity section into the PR.",
@@ -4021,7 +4021,7 @@
 			"area": "advisories",
 			"name": "See the advisories that affect the server itself, not only its apps.",
 			"rowSource": "own-code",
-			"versioniq": "partial",
+			"versioniq": "yes",
 			"nextcloud": "no",
 			"renovate": "partial",
 			"dependabot": "unknown",
@@ -4029,14 +4029,14 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/Advisory/AdvisoryService.php:218",
-				"reachedOn": "notification only; no app card renders the server row"
+				"evidence": "lib/Service/Advisory/AdvisoryService.php:218, src/utils/advisories.ts:92, src/components/AdvisoriesPanel.vue:32, src/App.vue:2573",
+				"reachedOn": "Advisories tab (Nextcloud server section)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "medium",
-			"note": "A server advisory row is computed and notified on, but the Apps tab never renders it. Proposed by reader own-b.",
+			"note": "The :server row the sweep computes is shown on the Advisories tab: the installed server version, whether it is affected, the recommended version, and every server advisory with its id, summary and severity. Fixed in #438.",
 			"evidence": {
 				"nextcloud": "No advisory feed is read for the server either; the overview warns only when the server version is end of life (apps/updatenotification/src/components/UpdateNotification.vue:9-10, versionIsEol from lib/private/Updater/VersionCheck.php).",
 				"renovate": "Runtime versions map to OSV only where the datasource is mapped, for example golang-version to Go (lib/util/vulnerability/ecosystem.ts:31); node-version, docker and nextcloud are not.",

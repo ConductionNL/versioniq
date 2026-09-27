@@ -16,6 +16,7 @@ test.describe("admin settings shell", () => {
 		});
 		for (const name of [
 			"Apps",
+			"Advisories",
 			"History",
 			"Sources",
 			"Tokens",
@@ -44,10 +45,10 @@ test.describe("admin settings shell", () => {
 		await tablist.getByRole("tab", { name: "Apps", exact: true }).focus();
 		await page.keyboard.press("ArrowRight");
 		await expect(
-			tablist.getByRole("tab", { name: "History", exact: true }),
+			tablist.getByRole("tab", { name: "Advisories", exact: true }),
 		).toHaveAttribute("aria-selected", "true");
 		await expect(
-			page.getByRole("tabpanel", { name: "History" }),
+			page.getByRole("tabpanel", { name: "Advisories" }),
 		).toBeVisible();
 	});
 
