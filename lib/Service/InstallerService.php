@@ -23,6 +23,7 @@ use OCA\Versioniq\Service\Installer\ShaMismatchException;
 use OCA\Versioniq\Service\Lkg\LkgStore;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Source\AppStoreSource;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
@@ -228,6 +229,7 @@ class InstallerService {
 		$versions = $this->applyChangelogTruncation($result['versions']);
 		$versions = $this->applyRecordedSha($versions, $binding);
 		$versions = $this->applyCachedOffline($versions, $appId);
+		$versions = $this->applyCachedServerCompatibility($versions, $appId);
 
 		$envelope = [
 			'installedVersion' => $installedVersion,
@@ -316,6 +318,54 @@ class InstallerService {
 			},
 			$versions
 		);
+	}
+
+	/**
+	 * Stamps `serverCompatible` on cached versions that do not carry it yet,
+	 * from the range in the cached artifact's own info.xml. Forge releases
+	 * publish no range, so without this every one of them read as unknown
+	 * (#435). A verdict the source already gave (the App Store's
+	 * platformVersionSpec) is kept; an uncached forge release stays unknown.
+	 *
+	 * @spec openspec/specs/version-management/spec.md
+	 * @param list<array<string, mixed>> $versions
+	 * @return list<array<string, mixed>>
+	 */
+	private function applyCachedServerCompatibility(array $versions, string $appId): array {
+		$serverVersion = $this->serverCoreVersion();
+		if ($serverVersion === '') {
+			return $versions;
+		}
+
+		return array_map(
+			function (array $entry) use ($appId, $serverVersion): array {
+				$version = $entry['version'] ?? null;
+				if (($entry['cachedOffline'] ?? false) !== true || isset($entry['serverCompatible']) || !is_string($version)) {
+					return $entry;
+				}
+				$spec = $this->artifactCache->platformSpecFor($appId, $version);
+				if ($spec !== null) {
+					$entry['serverCompatible'] = AppStoreSource::satisfiesPlatformSpec($serverVersion, $spec);
+				}
+
+				return $entry;
+			},
+			$versions
+		);
+	}
+
+	/**
+	 * The running server's version as `major.minor.patch`, or '' when unknown.
+	 */
+	private function serverCoreVersion(): string {
+		$core = array_slice(explode('.', $this->config->getSystemValueString('version', '')), 0, 3);
+		foreach ($core as $part) {
+			if (!ctype_digit($part)) {
+				return '';
+			}
+		}
+
+		return implode('.', $core);
 	}
 
 	/**

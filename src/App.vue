@@ -23,6 +23,7 @@ import InstanceSettingsPanel from './components/InstanceSettingsPanel.vue'
 import IntegrationsPanel from './components/IntegrationsPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
+import ServerCompatBadge from './components/ServerCompatBadge.vue'
 import SourceOverrideField from './components/SourceOverrideField.vue'
 import SourcesPanel from './components/SourcesPanel.vue'
 import TokensPanel from './components/TokensPanel.vue'
@@ -64,6 +65,7 @@ type AppVersion = {
 	changelog?: string | null
 	recordedSha?: string | null
 	cachedOffline?: boolean
+	serverCompatible?: boolean | null
 }
 
 
@@ -2374,6 +2376,7 @@ watch(dryRunEnabled, () => {
 													<li v-for="version in visibleVersions" :key="version.version" :class="$style.versionItem">
 														<div :class="$style.versionItemMain">
 															<span>{{ version.version }}</span>
+															<ServerCompatBadge :serverCompatible="version.serverCompatible ?? null" />
 															<span
 																v-if="version.cachedOffline"
 																:class="$style.cachedOfflineBadge"

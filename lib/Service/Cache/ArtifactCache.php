@@ -191,6 +191,99 @@ class ArtifactCache {
 	}
 
 	/**
+	 * The server range a cached version declares in its own
+	 * `appinfo/info.xml` (`<dependencies><nextcloud min-version max-version>`),
+	 * as a platform spec such as `>=30 <=32`, or null when the version is not
+	 * cached or the archive does not say. Forge releases carry no range in
+	 * their release metadata, so this is the only place it can be read before
+	 * an install (#435). The archive goes through fetch(), so it is
+	 * re-verified against its recorded SHA-256 first.
+	 *
+	 * @spec openspec/specs/version-management/spec.md
+	 */
+	public function platformSpecFor(string $appId, string $version): ?string {
+		$cached = $this->fetch($appId, $version);
+		if ($cached === null) {
+			return null;
+		}
+
+		$infoXml = self::infoXmlFromArchive($cached['content']);
+		if ($infoXml === null || $infoXml === '') {
+			return null;
+		}
+
+		$dom = new \DOMDocument();
+		$previous = libxml_use_internal_errors(true);
+		try {
+			$loaded = $dom->loadXML($infoXml, LIBXML_NONET);
+		} finally {
+			libxml_clear_errors();
+			libxml_use_internal_errors($previous);
+		}
+		$nextcloud = $loaded ? $dom->getElementsByTagName('nextcloud')->item(0) : null;
+		if (!$nextcloud instanceof \DOMElement) {
+			return null;
+		}
+
+		$min = trim($nextcloud->getAttribute('min-version'));
+		$max = trim($nextcloud->getAttribute('max-version'));
+		$bounds = [];
+		if (preg_match('/^\d+(\.\d+)*$/', $min) === 1) {
+			$bounds[] = '>=' . $min;
+		}
+		if (preg_match('/^\d+(\.\d+)*$/', $max) === 1) {
+			$bounds[] = '<=' . $max;
+		}
+
+		return $bounds === [] ? null : implode(' ', $bounds);
+	}
+
+	/** Largest decompressed archive this will read: well above any app release. */
+	private const MAX_ARCHIVE_BYTES = 256 * 1024 * 1024;
+
+	/**
+	 * The content of `appinfo/info.xml` at the archive's top level (directly or
+	 * one folder down, as release tarballs are laid out), from a gzipped or
+	 * plain tar, or null when there is none.
+	 */
+	private static function infoXmlFromArchive(string $content): ?string {
+		if (str_starts_with($content, "\x1f\x8b")) {
+			$decoded = @gzdecode($content, self::MAX_ARCHIVE_BYTES);
+			if ($decoded === false) {
+				return null;
+			}
+			$content = $decoded;
+		}
+
+		$offset = 0;
+		$length = strlen($content);
+		while ($offset + 512 <= $length) {
+			$header = substr($content, $offset, 512);
+			if (trim($header, "\0") === '') {
+				return null;
+			}
+			$name = rtrim(substr($header, 0, 100), "\0");
+			$prefix = substr($header, 257, 6) === "ustar\0" || substr($header, 257, 5) === 'ustar'
+				? rtrim(substr($header, 345, 155), "\0")
+				: '';
+			if ($prefix !== '') {
+				$name = $prefix . '/' . $name;
+			}
+			$size = octdec(trim(substr($header, 124, 12), "\0 "));
+			if (!is_int($size) || $size < 0) {
+				return null;
+			}
+			$offset += 512;
+			if (preg_match('#^(\./)?([^/]+/)?appinfo/info\.xml$#', $name) === 1) {
+				return substr($content, $offset, $size);
+			}
+			$offset += (int)(ceil($size / 512) * 512);
+		}
+
+		return null;
+	}
+
+	/**
 	 * Lists the versions currently cached for `$appId` (one directory
 	 * listing, no per-version IO), used by
 	 * {@see \OCA\Versioniq\Service\InstallerService::getAppVersions()} to

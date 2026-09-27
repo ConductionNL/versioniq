@@ -248,7 +248,11 @@ OC.L10N.register(
         "Default: {url}": "Default: {url}",
         "GitHub API address (GitHub Enterprise, https only)": "GitHub API address (GitHub Enterprise, https only)",
         "GitHub web address (GitHub Enterprise, https only)": "GitHub web address (GitHub Enterprise, https only)",
-        "Advisory feed address (an internal mirror)": "Advisory feed address (an internal mirror)"
+        "Advisory feed address (an internal mirror)": "Advisory feed address (an internal mirror)",
+        "This version declares support for the running Nextcloud version.": "This version declares support for the running Nextcloud version.",
+        "This version does not declare support for the running Nextcloud version; installing it will likely fail.": "This version does not declare support for the running Nextcloud version; installing it will likely fail.",
+        "Runs on this server": "Runs on this server",
+        "Not for this server version": "Not for this server version"
     },
     "nplurals=2; plural=(n != 1);"
 )

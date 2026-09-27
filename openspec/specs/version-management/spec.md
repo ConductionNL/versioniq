@@ -54,7 +54,16 @@ The system MUST display all currently installed Nextcloud apps with their name, 
 
 ### Requirement: Fetch Available Versions [MVP]
 
-The system MUST query the **bound source** for an app to retrieve all available releases. If no source is bound, the App Store is queried by default. Versions MUST be filtered by compatibility with the current Nextcloud version and update channel. Each App Store version entry MUST carry `serverCompatible`: true or false from the release's `platformVersionSpec` against the running server, or null when the release states no range.
+The system MUST query the **bound source** for an app to retrieve all available releases. If no source is bound, the App Store is queried by default. Versions MUST be filtered by compatibility with the current Nextcloud version and update channel. Each App Store version entry MUST carry `serverCompatible`: true or false from the release's `platformVersionSpec` against the running server, or null when the release states no range. A forge release carries no range in its release metadata, so for a version held in the artifact cache `serverCompatible` MUST be computed from the `<nextcloud min-version max-version>` range in that archive's own `appinfo/info.xml`; an uncached forge release stays null. The web version picker MUST show the value.
+
+#### Scenario: A cached forge release shows server compatibility
+
+@e2e exclude a cached forge release needs a completed forge install on the instance first; covered by tests/unit/Service/Cache/ArtifactCacheTest.php (testPlatformSpecIsReadFromTheCachedArtifactInfoXml), tests/unit/Service/InstallerServiceCacheTest.php (testCachedForgeVersionsGetServerCompatibilityFromTheirInfoXml) and src/components/ServerCompatBadge.spec.ts.
+
+- GIVEN a forge-bound app whose cached 2.3.0 archive declares `min-version="30" max-version="31"` and a server on 31.0.4
+- WHEN the version list loads
+- THEN 2.3.0 MUST carry `serverCompatible: true` and the picker MUST show "Runs on this server"
+- AND a version whose range excludes the server MUST show "Not for this server version", and an uncached forge release MUST show nothing
 
 #### Scenario: Bound source is queried first
 
