@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Source;
 
 use Exception;
+use OCA\Versioniq\Service\Advisory\AdvisorySeverity;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
 use OCA\Versioniq\Service\Pat\PatManager;
@@ -221,7 +222,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			return null;
 		}
 		/** @var mixed $severity */
-		$severity = $entry['severity'] ?? 'medium';
+		$severity = $entry['severity'] ?? null;
 		/** @var mixed $summary */
 		$summary = $entry['summary'] ?? ($entry['title'] ?? '');
 
@@ -252,7 +253,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 
 		return [
 			'id' => $id,
-			'severity' => is_string($severity) ? strtolower($severity) : 'medium',
+			'severity' => AdvisorySeverity::normalize($severity),
 			'summary' => is_string($summary) ? $summary : '',
 			'affected' => $affected,
 			'firstPatchedVersion' => $firstPatched,

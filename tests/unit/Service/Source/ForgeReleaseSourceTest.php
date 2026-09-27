@@ -308,4 +308,27 @@ final class ForgeReleaseSourceTest extends TestCase {
 		$this->assertSame('2.3.0', $result['versions'][0]['version']);
 		$this->assertNull($result['versions'][0]['changelog']);
 	}
+
+	/**
+	 * Issue #443: an advisory without a severity reads `unknown` from every
+	 * source, as AdvisorySourceInterface documents, instead of `medium` here
+	 * and `unknown` from the Nextcloud feed.
+	 *
+	 * @spec openspec/specs/security-advisory-correlation/spec.md
+	 */
+	public function testAnAdvisoryWithoutASeverityIsUnknown(): void {
+		$body = json_encode([
+			['ghsa_id' => 'GHSA-none', 'summary' => 'Unscored'],
+			['ghsa_id' => 'GHSA-null', 'summary' => 'Null', 'severity' => null],
+			['ghsa_id' => 'GHSA-high', 'summary' => 'Scored', 'severity' => 'Critical'],
+		], JSON_THROW_ON_ERROR);
+
+		$client = $this->createMock(IClient::class);
+		$client->method('get')->willReturn($this->mockResponse(200, $body));
+
+		$result = $this->buildSource($client)->listAdvisories('openregister', SourceBinding::github('ConductionNL', 'openregister'));
+
+		$this->assertNull($result['error']);
+		$this->assertSame(['unknown', 'unknown', 'critical'], array_column($result['advisories'], 'severity'));
+	}
 }

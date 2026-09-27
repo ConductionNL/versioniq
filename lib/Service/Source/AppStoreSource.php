@@ -14,6 +14,7 @@ namespace OCA\Versioniq\Service\Source;
 
 use Exception;
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Advisory\AdvisorySeverity;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
 use OCP\Http\Client\IClientService;
@@ -196,7 +197,8 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 			if (!is_string($id) || $id === '') {
 				continue;
 			}
-			$severity = $entry['severity'] ?? 'medium';
+			/** @var mixed $severity */
+			$severity = $entry['severity'] ?? null;
 			$summary = $entry['summary'] ?? ($entry['title'] ?? '');
 			$affected = [];
 			/** @var mixed $affectedRaw */
@@ -217,7 +219,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 
 			$advisories[] = [
 				'id' => $id,
-				'severity' => is_string($severity) ? strtolower($severity) : 'medium',
+				'severity' => AdvisorySeverity::normalize($severity),
 				'summary' => is_string($summary) ? $summary : '',
 				'affected' => $affected,
 				'firstPatchedVersion' => is_string($patched) && $patched !== '' ? $patched : null,

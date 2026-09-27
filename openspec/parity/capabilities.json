@@ -3501,14 +3501,14 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/Advisory/AdvisoryService.php:343, src/App.vue:55, src/App.vue:2159",
+				"evidence": "lib/Service/Advisory/AdvisoryService.php:343, lib/Service/Advisory/AdvisorySeverity.php:45, src/App.vue:55, src/App.vue:2159",
 				"reachedOn": "Apps tab, advisory badge tooltip (summary only)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "Severity is carried in the snapshot and API payload, but the UI never renders it; the badge shows only a state label and the first summary as a tooltip.",
+			"note": "Severity is carried in the snapshot and API payload as low, medium, high, critical or unknown, mapped the same way from every source, but the UI never renders it; the badge shows only a state label and the first summary as a tooltip.",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
 				"renovate": "lib/workers/repository/process/vulnerabilities.ts:623-686 computes a CVSS score and level and writes a Severity section into the PR.",

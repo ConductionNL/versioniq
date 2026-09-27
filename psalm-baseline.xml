@@ -189,7 +189,6 @@
   </file>
   <file src="lib/Service/Source/AppStoreSource.php">
     <MixedAssignment>
-      <code><![CDATA[$severity]]></code>
       <code><![CDATA[$summary]]></code>
     </MixedAssignment>
   </file>
