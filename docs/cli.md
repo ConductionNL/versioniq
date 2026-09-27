@@ -26,21 +26,26 @@ occ versioniq:versions <appId> [--source=<sourceId>] [--json]
 
 Lists the versions available for an already-installed app from its bound
 source (or a one-off `--source` override), including the installed
-version, a compatibility marker (`installed` / `newer` / `older`) relative
-to the installed version, and the source id.
+version, where each version stands relative to the installed one
+(`installed` / `newer` / `older`), whether it runs on this server
+(`yes` / `no` / `unknown`), and the source id.
+
+Whether a version runs on this server comes from the App Store release's
+platform range. A forge release does not state one, so it shows `unknown`;
+the install still checks the app's own range before it finalises.
 
 ```
 $ occ versioniq:versions openregister
 App: openregister
 Source: appstore
 Installed version: 2.4.0
-+---------+---------------+------------------+
-| Version | Compatibility | Recorded SHA-256 |
-+---------+---------------+------------------+
-| 2.5.0   | newer         |                  |
-| 2.4.0   | installed     |                  |
-| 2.3.0   | older         |                  |
-+---------+---------------+------------------+
++---------+-----------------------+---------------------+------------------+
+| Version | Relative to installed | Runs on this server | Recorded SHA-256 |
++---------+-----------------------+---------------------+------------------+
+| 2.5.0   | newer                 | no                  |                  |
+| 2.4.0   | installed             | yes                 |                  |
+| 2.3.0   | older                 | yes                 |                  |
++---------+-----------------------+---------------------+------------------+
 ```
 
 Pass `--json` for a machine-readable envelope:

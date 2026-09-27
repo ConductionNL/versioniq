@@ -41,6 +41,41 @@ final class ListVersionsTest extends TestCase {
 		self::assertStringContainsString('older', $display);
 	}
 
+	/**
+	 * The column comparing with the installed version says so, and a second
+	 * column says whether each version runs on this server where the source
+	 * knows it (issue #435).
+	 *
+	 * @spec openspec/specs/cli-commands/spec.md
+	 */
+	public function testHumanListingSaysWhetherEachVersionRunsOnThisServer(): void {
+		$installer = $this->createMock(InstallerService::class);
+		$installer->method('getAppVersions')->willReturn([
+			'installedVersion' => '1.0.0',
+			'availableVersions' => [
+				['version' => '2.0.0', 'changelog' => null, 'recordedSha' => null, 'serverCompatible' => false],
+				['version' => '1.1.0', 'changelog' => null, 'recordedSha' => null, 'serverCompatible' => true],
+				['version' => '1.0.5', 'changelog' => null, 'recordedSha' => null],
+			],
+			'versions' => [],
+			'source' => 'appstore',
+			'sourceId' => 'appstore',
+			'statusCode' => Http::STATUS_OK,
+			'hasError' => false,
+		]);
+
+		$tester = new CommandTester(new ListVersions($installer));
+		self::assertSame(0, $tester->execute(['appId' => 'deck']));
+		$display = $tester->getDisplay();
+
+		self::assertStringContainsString('Relative to installed', $display);
+		self::assertStringContainsString('Runs on this server', $display);
+		self::assertStringNotContainsString('| Compatibility', $display);
+		self::assertMatchesRegularExpression('/\|\s*2\.0\.0\s*\|\s*newer\s*\|\s*no\s*\|/', $display);
+		self::assertMatchesRegularExpression('/\|\s*1\.1\.0\s*\|\s*newer\s*\|\s*yes\s*\|/', $display);
+		self::assertMatchesRegularExpression('/\|\s*1\.0\.5\s*\|\s*newer\s*\|\s*unknown\s*\|/', $display);
+	}
+
 	public function testJsonListingEmitsMachineReadableEnvelopeWithRequiredFields(): void {
 		$installer = $this->createMock(InstallerService::class);
 		$installer->method('getAppVersions')->willReturn([

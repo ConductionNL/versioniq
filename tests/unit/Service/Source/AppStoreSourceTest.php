@@ -67,6 +67,42 @@ final class AppStoreSourceTest extends TestCase {
 		$this->assertSame('Nederlandse notities', $result['versions'][0]['changelog']);
 	}
 
+	/**
+	 * Each App Store release carries its `platformVersionSpec`; the listing
+	 * says whether the running server (28.0.0 in buildSource) satisfies it
+	 * (issue #435).
+	 *
+	 * @spec openspec/specs/version-management/spec.md
+	 */
+	public function testMarksEachReleaseWithWhetherItRunsOnThisServer(): void {
+		$source = $this->buildSource([
+			'id' => 'deck',
+			'releases' => [
+				['version' => '1.13.0', 'platformVersionSpec' => '>=26.0.0 <=28'],
+				['version' => '1.14.0', 'platformVersionSpec' => '>=29.0.0 <=30'],
+				['version' => '1.12.0', 'platformVersionSpec' => '>=25.0.0 <28.0.0'],
+				['version' => '1.11.0', 'platformVersionSpec' => '*'],
+				['version' => '1.10.0'],
+				['version' => '1.9.0', 'platformVersionSpec' => 'not a spec'],
+			],
+		]);
+
+		$result = $source->listVersions('deck', $this->binding());
+
+		$byVersion = [];
+		foreach ($result['versions'] as $entry) {
+			$byVersion[$entry['version']] = array_key_exists('serverCompatible', $entry) ? $entry['serverCompatible'] : 'missing';
+		}
+		$this->assertSame([
+			'1.14.0' => false,
+			'1.13.0' => true,
+			'1.12.0' => false,
+			'1.11.0' => true,
+			'1.10.0' => null,
+			'1.9.0' => null,
+		], $byVersion);
+	}
+
 	public function testFallsBackToEnglishWhenRequestedLanguageMissing(): void {
 		$source = $this->buildSource([
 			'id' => 'openregister',

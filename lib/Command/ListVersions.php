@@ -89,7 +89,7 @@ class ListVersions extends Command {
 	}
 
 	/**
-	 * @param array{installedVersion:?string, availableVersions:list<array{version:string,changelog?:?string,recordedSha?:?string}>, versions:list<array{version:string,changelog?:?string,recordedSha?:?string}>, source:string, sourceId:string, error?:string} $result
+	 * @param array{installedVersion:?string, availableVersions:list<array{version:string,changelog?:?string,recordedSha?:?string,serverCompatible?:?bool}>, versions:list<array{version:string,changelog?:?string,recordedSha?:?string}>, source:string, sourceId:string, error?:string} $result
 	 */
 	private function renderTable(OutputInterface $output, string $appId, array $result): void {
 		$installedVersion = $result['installedVersion'] ?? null;
@@ -111,12 +111,13 @@ class ListVersions extends Command {
 			$rows[] = [
 				$version,
 				$this->compatibilityMarker($version, $installedVersion),
+				$this->serverCompatibilityMarker($entry['serverCompatible'] ?? null),
 				$entry['recordedSha'] ?? '',
 			];
 		}
 
 		$table = new Table($output);
-		$table->setHeaders(['Version', 'Compatibility', 'Recorded SHA-256']);
+		$table->setHeaders(['Version', 'Relative to installed', 'Runs on this server', 'Recorded SHA-256']);
 		$table->setRows($rows);
 		$table->render();
 	}
@@ -134,6 +135,21 @@ class ListVersions extends Command {
 		}
 
 		return version_compare($version, $installedVersion, '>') ? 'newer' : 'older';
+	}
+
+	/**
+	 * Says whether a version runs on this server: `yes`, `no`, or `unknown`
+	 * when the source does not say (a forge release, or an App Store release
+	 * without a platform range); see "List versions from the CLI".
+	 *
+	 * @spec openspec/specs/cli-commands/spec.md
+	 */
+	private function serverCompatibilityMarker(?bool $serverCompatible): string {
+		if ($serverCompatible === null) {
+			return 'unknown';
+		}
+
+		return $serverCompatible ? 'yes' : 'no';
 	}
 
 	private function errorOutput(OutputInterface $output): OutputInterface {

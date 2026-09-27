@@ -43,9 +43,14 @@ interface SourceInterface {
 	 * fail-soft: a mapping failure for one release yields `null` for that
 	 * entry, never a failed listing.
 	 *
+	 * An entry MAY carry `serverCompatible`: whether the release runs on this
+	 * server, or null when the source cannot tell. The App Store reads it from
+	 * each release's `platformVersionSpec`.
+	 *
 	 * @spec openspec/specs/external-sources/spec.md
 	 * @spec openspec/specs/changelog-visibility/spec.md
-	 * @return array{versions: list<array{version: string, changelog: ?string}>, error: ?string}
+	 * @spec openspec/specs/version-management/spec.md
+	 * @return array{versions: list<array{version: string, changelog: ?string, serverCompatible?: ?bool}>, error: ?string}
 	 */
 	public function listVersions(string $appId, SourceBinding $binding): array;
 
