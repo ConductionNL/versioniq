@@ -30,6 +30,7 @@ import TokensPanel from './components/TokensPanel.vue'
 import TrustedSourcesPanel from './components/TrustedSourcesPanel.vue'
 import VersionChangelog from './components/VersionChangelog.vue'
 import DowngradeConfirmDialog from './dialogs/DowngradeConfirmDialog.vue'
+import EnableAppDialog from './dialogs/EnableAppDialog.vue'
 import PinDialog from './dialogs/PinDialog.vue'
 import PinOverrideDialog from './dialogs/PinOverrideDialog.vue'
 import ShaMismatchDialog from './dialogs/ShaMismatchDialog.vue'
@@ -38,6 +39,7 @@ import { advisoryFreshnessLabel as advisoryFreshnessLabelFor } from './utils/adv
 import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow.ts'
 import { buildChangelogRange } from './utils/changelog.ts'
 import { tabForHash } from './utils/connectionRegistry.ts'
+import { currentLoginName, enableApp } from './utils/enableApp.ts'
 import { normalizeInstallResult, withSourceOverride } from './utils/installResult.ts'
 import { shouldOfferLkgRollback } from './utils/migrationSafety.ts'
 import { repinApp } from './utils/repin.ts'
@@ -521,6 +523,46 @@ async function checkUpdateChannel (): Promise<void> {
 		updateChannel.value = payload.updateChannel || ''
 	} catch {
 		updateChannel.value = ''
+	}
+}
+
+// One-click enable through Nextcloud's own endpoint (#433): the dialog asks
+// for the password that endpoint's strict confirmation requires.
+const enableDialogAppId = ref('')
+const isEnableDialogOpen = ref(false)
+const isEnablingApp = ref(false)
+const enableAppError = ref('')
+
+/**
+ * Opens the enable dialog for an installed but disabled app.
+ *
+ * @param appId The app to enable.
+ * @spec openspec/specs/version-management/spec.md
+ */
+function openEnableDialog (appId: string): void {
+	enableDialogAppId.value = appId
+	enableAppError.value = ''
+	isEnableDialogOpen.value = true
+}
+
+/**
+ * Enables the app with the given password, then reloads the app list so its
+ * card and the install result reflect the new state.
+ *
+ * @param password The password Nextcloud's strict confirmation requires.
+ * @spec openspec/specs/version-management/spec.md
+ */
+async function onEnableConfirmed (password: string): Promise<void> {
+	isEnablingApp.value = true
+	enableAppError.value = ''
+	try {
+		await enableApp(enableDialogAppId.value, currentLoginName(), password)
+		isEnableDialogOpen.value = false
+		await loadApps()
+	} catch (error) {
+		enableAppError.value = error instanceof Error ? error.message : t('versioniq', 'Could not enable the app.')
+	} finally {
+		isEnablingApp.value = false
 	}
 }
 
@@ -1960,6 +2002,13 @@ watch(dryRunEnabled, () => {
 				:targetVersion="pinOverrideTargetVersion"
 				@update:open="isPinOverrideDialogOpen = $event"
 				@resolve="onPinOverrideResolve" />
+			<EnableAppDialog
+				:open="isEnableDialogOpen"
+				:appId="enableDialogAppId"
+				:busy="isEnablingApp"
+				:error="enableAppError"
+				@update:open="isEnableDialogOpen = $event"
+				@confirm="onEnableConfirmed" />
 			<ShaMismatchDialog
 				:open="isShaMismatchDialogOpen"
 				:appId="shaMismatchAppId"
@@ -2248,6 +2297,15 @@ watch(dryRunEnabled, () => {
 												{{ selectedApp === app.id && isCheckingVersions ? 'Loading…' : 'Choose app' }}
 											</button>
 											<button
+												v-if="app.state === 'disabled'"
+												type="button"
+												:class="$style.appCardButton"
+												data-testid="app-enable-button"
+												:disabled="isInstallingVersion || isEnablingApp"
+												@click="openEnableDialog(app.id)">
+												{{ t('versioniq', 'Enable') }}
+											</button>
+											<button
 												v-if="!app.isCore && app.lkg && shouldOfferLkgRollback(app)"
 												type="button"
 												:class="$style.appCardButton"
@@ -2479,7 +2537,12 @@ watch(dryRunEnabled, () => {
 										:servedFromCache="lastInstallResult.servedFromCache === true" />
 									<p v-if="installedAppNeedsEnabling" :class="$style.resultHint" data-testid="install-enable-hint">
 										{{ t('versioniq', 'This app is installed but not enabled.') }}
-										<a :href="apiUrl('/index.php/settings/apps/disabled')">{{ t('versioniq', 'Enable it on the apps page') }}</a>
+										<NcButton
+											variant="primary"
+											data-testid="install-enable-button"
+											@click="openEnableDialog(lastInstallResult.appId)">
+											{{ t('versioniq', 'Enable {appId}', { appId: lastInstallResult.appId }) }}
+										</NcButton>
 									</p>
 									<div :class="$style.resultGrid">
 										<div>

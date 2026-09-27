@@ -38,7 +38,16 @@ The system MUST display all currently installed Nextcloud apps with their name, 
 - THEN `calendar` MUST be listed with state `disabled` and its installed version
 - AND `hermiq` MUST be listed with state `notInstalled` and no installed version
 - AND each card MUST show that state, and choosing the app MUST open its version list
-- AND after a live install of an app Nextcloud has not enabled, the result MUST offer a link to enable it
+- AND after a live install of an app Nextcloud has not enabled, the result MUST offer to enable it
+
+#### Scenario: One-click enable through Nextcloud's own endpoint
+
+@e2e exclude enabling needs a disabled app and the admin's password typed into a dialog on the test instance; covered by src/utils/enableApp.spec.ts and src/dialogs/EnableAppDialog.spec.ts.
+
+- GIVEN `calendar` is installed and disabled, or was just installed and Nextcloud has not enabled it
+- WHEN the admin clicks Enable on its card or in the install result, and enters their password
+- THEN the page MUST call Nextcloud's own `POST /ocs/v2.php/cloud/apps/calendar` (provisioning API, admin-only) with the password as the Basic credentials its strict password confirmation requires
+- AND on success the app list MUST reload with `calendar` enabled; on failure the dialog MUST stay open and show Nextcloud's message
 
 #### Scenario: Non-admin user is blocked
 
