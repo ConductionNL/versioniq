@@ -76,6 +76,8 @@ test.describe("background jobs", () => {
 	test("a patch policy applies the highest same-minor release, and notifies", async ({
 		page,
 	}) => {
+		// @e2e auto-update-policies::patch-level-update-applied
+		// @e2e auto-update-policies::success-notification
 		expect(await installed()).toBe("1.0.0");
 		await sqlExec("DELETE FROM oc_notifications WHERE app='versioniq'");
 		await setPolicy(page, "patch");
@@ -105,6 +107,7 @@ test.describe("background jobs", () => {
 	});
 
 	test("a pinned app is skipped by the auto-update job", async ({ page }) => {
+		// @e2e auto-update-policies::pinned-app-skipped
 		await setPolicy(page, "all");
 		await page.request.put(
 			`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/pin?format=json`,
@@ -138,6 +141,7 @@ test.describe("background jobs", () => {
 	test("the job is a no-op while the kill switch is off", async ({
 		page,
 	}) => {
+		// @e2e auto-update-policies::disabled-or-outside-the-window-is-a-no-op
 		await setPolicy(page, "all");
 		await occ(
 			"config:app:set",
