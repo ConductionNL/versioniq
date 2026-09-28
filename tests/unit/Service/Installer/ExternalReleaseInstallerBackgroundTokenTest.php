@@ -86,6 +86,7 @@ final class ExternalReleaseInstallerBackgroundTokenTest extends TestCase {
 			$this->createMock(AuditLogger::class),
 			$this->createMock(MigrationDiffer::class),
 			$artifactCache,
+			new \OCA\Versioniq\Service\Source\ForgeRegistry($this->createMock(IAppConfig::class)),
 		);
 
 		try {

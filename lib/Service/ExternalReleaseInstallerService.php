@@ -25,6 +25,7 @@ use OCA\Versioniq\Service\Installer\MigrationDiffer;
 use OCA\Versioniq\Service\Installer\ShaMismatchException;
 use OCA\Versioniq\Service\Pat\PatManager;
 use OCA\Versioniq\Service\Pat\PatResolver;
+use OCA\Versioniq\Service\Source\ForgeRegistry;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
@@ -89,6 +90,7 @@ class ExternalReleaseInstallerService {
 		private AuditLogger $auditLogger,
 		private MigrationDiffer $migrationDiffer,
 		private ArtifactCache $artifactCache,
+		private ForgeRegistry $forgeRegistry,
 	) {
 	}
 
@@ -164,7 +166,7 @@ class ExternalReleaseInstallerService {
 			$this->addDebug('auth-resolution', ['hasPat' => $authResolution !== null]);
 
 			try {
-				$this->authenticatedDownload($downloadUrl, $tempFile, $authResolution);
+				$this->authenticatedDownload($downloadUrl, $tempFile, $this->patForUrl($downloadUrl, $binding, $authResolution));
 			} catch (Exception $error) {
 				// Download failed (network error, dead URL, deleted release
 				// asset): fall back to a cached artifact for this exact
@@ -210,7 +212,11 @@ class ExternalReleaseInstallerService {
 				'acceptNewSha' => $acceptNewSha,
 			]);
 
-			$integrityWarning = $this->verifyChecksum($actualSha, $shaUrl, $authResolution);
+			$integrityWarning = $this->verifyChecksum(
+				$actualSha,
+				$shaUrl,
+				$shaUrl === null ? null : $this->patForUrl($shaUrl, $binding, $authResolution),
+			);
 			$this->addDebug('checksum', ['shaUrl' => $shaUrl, 'integrityWarning' => $integrityWarning]);
 
 			// Captured for the caller to persist via ArtifactCache::store()
@@ -428,6 +434,45 @@ class ExternalReleaseInstallerService {
 		// No session user means AutoUpdateJob; the resolver then picks from
 		// tokens shared with admins instead of downloading anonymously (#430).
 		return $this->patResolver->findFor($binding->getForge(), $ownerRepo, $this->userSession->getUser()?->getUID());
+	}
+
+	/**
+	 * The stored token, only when the URL is on the binding's own forge host.
+	 *
+	 * The asset and checksum URLs come from the release JSON, and a forge that
+	 * lets a release link an external asset would otherwise hand that host the
+	 * token. The host must equal the forge's web or API host exactly, so a
+	 * lookalike such as `github.com.example.org` does not qualify. Anything
+	 * else is fetched anonymously. The HTTP client's own redirect handling
+	 * already drops the header when a redirect changes host.
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-1.3
+	 */
+	private function patForUrl(string $url, SourceBinding $binding, ?\OCA\Versioniq\Db\Pat $pat): ?\OCA\Versioniq\Db\Pat {
+		if ($pat === null) {
+			return null;
+		}
+
+		$host = strtolower((string)parse_url($url, PHP_URL_HOST));
+		if ($host === '' || !$this->forgeRegistry->has($binding->getForge())) {
+			return null;
+		}
+
+		$forge = $this->forgeRegistry->get($binding->getForge());
+		$forgeHosts = array_filter([
+			strtolower((string)parse_url($forge->webBaseUrl, PHP_URL_HOST)),
+			strtolower((string)parse_url($forge->apiBaseUrl, PHP_URL_HOST)),
+		]);
+		if (in_array($host, $forgeHosts, true)) {
+			return $pat;
+		}
+
+		$this->logger->info('External installer: {host} is not {forge}\'s host, so the stored token is not sent there.', [
+			'host' => $host,
+			'forge' => $forge->id,
+		]);
+
+		return null;
 	}
 
 	private function authenticatedDownload(string $url, string $sinkPath, ?\OCA\Versioniq\Db\Pat $pat): void {
