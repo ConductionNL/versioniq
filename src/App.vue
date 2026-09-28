@@ -2246,6 +2246,12 @@ watch(dryRunEnabled, () => {
 														<p :class="$style.appCardMeta">
 															{{ app.id }}
 														</p>
+														<p
+															v-if="app.installedVersion"
+															:class="$style.appCardMeta"
+															data-testid="app-installed-version">
+															{{ t('versioniq', 'Installed {version}', { version: app.installedVersion }) }}
+														</p>
 														<AppSourceBadges
 															:isShipped="app.isShipped === true"
 															:isCore="app.isCore"

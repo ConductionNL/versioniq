@@ -283,7 +283,8 @@ OC.L10N.register(
         "Enable {appId}": "{appId} inschakelen",
         "Enable": "Inschakelen",
         "Nextcloud asks for your password before it enables an app.": "Nextcloud vraagt je wachtwoord voordat een app wordt ingeschakeld.",
-        "Password": "Wachtwoord"
+        "Password": "Wachtwoord",
+        "Installed {version}": "Geïnstalleerd: {version}"
     },
     "nplurals=2; plural=(n != 1);"
 )
