@@ -240,6 +240,38 @@ final class ForgeReleaseSourceTest extends TestCase {
 	/**
 	 * @spec openspec/specs/changelog-visibility/spec.md
 	 */
+	/**
+	 * Versioniq#480: every forge version carries its release date from
+	 * `published_at`; a draft (no date) and an unreadable date stay null.
+	 *
+	 * @spec openspec/changes/releases-version-facts/tasks.md#task-1.1
+	 */
+	public function testListVersionsCarriesThePublishedDate(): void {
+		$body = json_encode([
+			['tag_name' => 'v2.3.0', 'published_at' => '2026-02-01T12:00:00Z'],
+			['tag_name' => 'v2.2.0', 'published_at' => null],
+			['tag_name' => 'v2.1.0', 'published_at' => 'yesterday-ish'],
+		], JSON_THROW_ON_ERROR);
+
+		$client = $this->createMock(IClient::class);
+		$client->method('get')->willReturn($this->mockResponse(200, $body));
+
+		$result = $this->buildSource($client)->listVersions(
+			'openregister',
+			SourceBinding::github('ConductionNL', 'openregister')
+		);
+
+		$byVersion = [];
+		foreach ($result['versions'] as $entry) {
+			$byVersion[$entry['version']] = array_key_exists('releasedAt', $entry) ? $entry['releasedAt'] : 'missing';
+		}
+		$this->assertSame([
+			'2.3.0' => '2026-02-01T12:00:00Z',
+			'2.2.0' => null,
+			'2.1.0' => null,
+		], $byVersion);
+	}
+
 	public function testListVersionsMapsReleaseBodyAsChangelog(): void {
 		$body = json_encode([
 			['tag_name' => 'v2.3.0', 'body' => 'Fixes LDAP sync'],

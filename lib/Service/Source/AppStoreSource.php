@@ -581,18 +581,21 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @param array<mixed> $releases
-	 * @return list<array{version: string, changelog: ?string, serverCompatible: ?bool}>
+	 * @return list<array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string}>
 	 */
 	private function normalizeVersions(array $releases): array {
 		/** @var array<string, ?string> $changelogsByVersion */
 		$changelogsByVersion = [];
 		/** @var array<string, ?bool> $compatibleByVersion */
 		$compatibleByVersion = [];
+		/** @var array<string, ?string> $releasedAtByVersion */
+		$releasedAtByVersion = [];
 		$serverVersion = $this->getServerVersion();
 		$order = [];
 		/** @var mixed $release */
 		foreach ($releases as $release) {
 			$compatible = null;
+			$releasedAt = null;
 			if (is_string($release)) {
 				$version = $release;
 				$changelog = null;
@@ -606,6 +609,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 				/** @var mixed $spec */
 				$spec = $release['platformVersionSpec'] ?? null;
 				$compatible = is_string($spec) ? self::satisfiesPlatformSpec($serverVersion, $spec) : null;
+				$releasedAt = ReleaseDate::normalize($release['created'] ?? null);
 			} else {
 				continue;
 			}
@@ -614,12 +618,16 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 				$order[] = $version;
 				$changelogsByVersion[$version] = $changelog;
 				$compatibleByVersion[$version] = $compatible;
+				$releasedAtByVersion[$version] = $releasedAt;
 			} else {
 				if ($changelogsByVersion[$version] === null && $changelog !== null) {
 					$changelogsByVersion[$version] = $changelog;
 				}
 				if ($compatibleByVersion[$version] === null && $compatible !== null) {
 					$compatibleByVersion[$version] = $compatible;
+				}
+				if ($releasedAtByVersion[$version] === null && $releasedAt !== null) {
+					$releasedAtByVersion[$version] = $releasedAt;
 				}
 			}
 		}
@@ -631,6 +639,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 				'version' => $version,
 				'changelog' => $changelogsByVersion[$version],
 				'serverCompatible' => $compatibleByVersion[$version],
+				'releasedAt' => $releasedAtByVersion[$version],
 			],
 			$order
 		);

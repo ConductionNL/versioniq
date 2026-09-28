@@ -193,22 +193,6 @@
     </MixedAssignment>
   </file>
   <file src="lib/Service/Source/ForgeReleaseSource.php">
-    <InvalidArgument>
-      <code><![CDATA[usort(
-			$unique,
-			/**
-			 * @param array{version: string, changelog: ?string} $a
-			 * @param array{version: string, changelog: ?string} $b
-			 */
-			static fn (array $a, array $b): int => version_compare($b['version'], $a['version'])
-		)]]></code>
-    </InvalidArgument>
-    <InvalidReturnStatement>
-      <code><![CDATA[$unique]]></code>
-    </InvalidReturnStatement>
-    <InvalidReturnType>
-      <code><![CDATA[list<array{version: string, changelog: ?string}>]]></code>
-    </InvalidReturnType>
     <MixedAssignment>
       <code><![CDATA[$patched]]></code>
     </MixedAssignment>

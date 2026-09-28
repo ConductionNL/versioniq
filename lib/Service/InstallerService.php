@@ -265,8 +265,8 @@ class InstallerService {
 	 * through, so truncation behaviour is identical regardless of origin.
 	 *
 	 * @spec openspec/specs/changelog-visibility/spec.md
-	 * @param list<array{version:string, changelog?:?string, serverCompatible?:?bool}> $versions
-	 * @return list<array{version:string, changelog:?string, serverCompatible?:?bool}>
+	 * @param list<array{version:string, changelog?:?string, serverCompatible?:?bool, releasedAt?:?string}> $versions
+	 * @return list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string}>
 	 */
 	private function applyChangelogTruncation(array $versions): array {
 		return array_map(
@@ -295,8 +295,8 @@ class InstallerService {
 	 * record; see "Recorded digests are binding-scoped and surfaced".
 	 *
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @param list<array{version:string, changelog:?string, serverCompatible?:?bool}> $versions
-	 * @return list<array{version:string, changelog:?string, serverCompatible?:?bool, recordedSha:?string}>
+	 * @param list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string}> $versions
+	 * @return list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string, recordedSha:?string}>
 	 */
 	private function applyRecordedSha(array $versions, SourceBinding $binding): array {
 		return array_map(
