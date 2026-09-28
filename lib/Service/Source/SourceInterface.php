@@ -50,7 +50,7 @@ interface SourceInterface {
 	 * @spec openspec/specs/external-sources/spec.md
 	 * @spec openspec/specs/changelog-visibility/spec.md
 	 * @spec openspec/specs/version-management/spec.md
-	 * @return array{versions: list<array{version: string, changelog: ?string, serverCompatible?: ?bool}>, error: ?string}
+	 * @return array{versions: list<array{version: string, changelog: ?string, serverCompatible?: ?bool, releasedAt?: ?string}>, error: ?string}
 	 */
 	public function listVersions(string $appId, SourceBinding $binding): array;
 

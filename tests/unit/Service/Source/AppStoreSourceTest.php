@@ -103,6 +103,37 @@ final class AppStoreSourceTest extends TestCase {
 		], $byVersion);
 	}
 
+	/**
+	 * Versioniq#480: every App Store version carries its release date from the
+	 * release's `created`, normalised to ISO 8601 UTC, or null when absent or unreadable.
+	 *
+	 * @spec openspec/changes/releases-version-facts/tasks.md#task-1.1
+	 */
+	public function testEachVersionCarriesItsReleaseDate(): void {
+		$source = $this->buildSource([
+			'id' => 'deck',
+			'releases' => [
+				['version' => '1.14.0', 'created' => '2026-03-05T10:15:30.123456Z'],
+				['version' => '1.13.0', 'created' => '2026-01-02T08:00:00+01:00'],
+				['version' => '1.12.0'],
+				['version' => '1.11.0', 'created' => 'not a date'],
+			],
+		]);
+
+		$result = $source->listVersions('deck', $this->binding());
+
+		$byVersion = [];
+		foreach ($result['versions'] as $entry) {
+			$byVersion[$entry['version']] = array_key_exists('releasedAt', $entry) ? $entry['releasedAt'] : 'missing';
+		}
+		$this->assertSame([
+			'1.14.0' => '2026-03-05T10:15:30Z',
+			'1.13.0' => '2026-01-02T07:00:00Z',
+			'1.12.0' => null,
+			'1.11.0' => null,
+		], $byVersion);
+	}
+
 	public function testFallsBackToEnglishWhenRequestedLanguageMissing(): void {
 		$source = $this->buildSource([
 			'id' => 'openregister',

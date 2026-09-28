@@ -117,6 +117,8 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			$versions[] = [
 				'version' => $this->normalizeVersion($tag),
 				'changelog' => $this->extractChangelog($release),
+				// A draft carries no published_at and stays null.
+				'releasedAt' => ReleaseDate::normalize($release['published_at'] ?? null),
 			];
 		}
 
@@ -452,11 +454,12 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	}
 
 	/**
-	 * @param list<array{version: string, changelog: ?string}> $versions
-	 * @return list<array{version: string, changelog: ?string}>
+	 * @param list<array{version: string, changelog: ?string, releasedAt: ?string}> $versions
+	 * @return list<array{version: string, changelog: ?string, releasedAt: ?string}>
 	 */
 	private function dedupeAndSort(array $versions): array {
 		$seenAt = [];
+		/** @var list<array{version: string, changelog: ?string, releasedAt: ?string}> $unique */
 		$unique = [];
 		foreach ($versions as $entry) {
 			if (!isset($seenAt[$entry['version']])) {
@@ -470,13 +473,16 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			if ($unique[$index]['changelog'] === null && $entry['changelog'] !== null) {
 				$unique[$index]['changelog'] = $entry['changelog'];
 			}
+			if ($unique[$index]['releasedAt'] === null && $entry['releasedAt'] !== null) {
+				$unique[$index]['releasedAt'] = $entry['releasedAt'];
+			}
 		}
 
 		usort(
 			$unique,
 			/**
-			 * @param array{version: string, changelog: ?string} $a
-			 * @param array{version: string, changelog: ?string} $b
+			 * @param array{version: string, changelog: ?string, releasedAt: ?string} $a
+			 * @param array{version: string, changelog: ?string, releasedAt: ?string} $b
 			 */
 			static fn (array $a, array $b): int => version_compare($b['version'], $a['version'])
 		);
