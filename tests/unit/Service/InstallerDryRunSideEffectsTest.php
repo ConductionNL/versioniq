@@ -88,6 +88,7 @@ final class InstallerDryRunSideEffectsTest extends TestCase {
 			$timeFactory,
 			$this->createMock(LkgStore::class),
 			$this->createMock(ArtifactCache::class),
+			$this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
 		);
 	}
 

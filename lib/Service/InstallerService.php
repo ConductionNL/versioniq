@@ -30,9 +30,11 @@ use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\SourceRegistry;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
 use OCA\Versioniq\Service\Source\UntrustedSourceException;
+use OCP\App\Events\AppUpdateEvent;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\EventDispatcher\IEventDispatcher;
 use OCP\IAppConfig;
 use OCP\IConfig;
 use OCP\IUserSession;
@@ -55,6 +57,14 @@ class InstallerService {
 	public const OVERRIDE_PIN_REPIN = 'repin';
 	public const OVERRIDE_PIN_UNPIN = 'unpin';
 
+	/**
+	 * App config switch (bool, on by default): raise the platform's
+	 * AppUpdateEvent after an update through Versioniq, so the app's users are
+	 * told as they are for the platform's own updates; see "Users hear what
+	 * changed after an update through Versioniq".
+	 */
+	public const KEY_NOTIFY_USERS_ON_UPDATE = 'notify_users_on_update';
+
 	public function __construct(
 		private IAppManager $appManager,
 		private IConfig $config,
@@ -71,6 +81,7 @@ class InstallerService {
 		private ITimeFactory $timeFactory,
 		private LkgStore $lkgStore,
 		private ArtifactCache $artifactCache,
+		private IEventDispatcher $eventDispatcher,
 	) {
 	}
 
@@ -701,6 +712,10 @@ class InstallerService {
 					// the pinned version".
 					$this->pinStore->set($appId, new Pin($pin->version, $pin->pinnedBy, $pin->pinnedAt, $pin->reason));
 				}
+
+				// After the pin is settled, so our own listener does not read a
+				// re-pinned install as drift.
+				$this->dispatchUpdateEvent($appId, $installedVersion, $appVersion);
 			}
 
 			return ['statusCode' => Http::STATUS_OK, 'payload' => $payload];
@@ -934,6 +949,25 @@ class InstallerService {
 		$stage = $last['stage'] ?? null;
 
 		return is_string($stage) ? $stage : null;
+	}
+
+	/**
+	 * Raises the platform's AppUpdateEvent for a real version change of an
+	 * installed app, as Nextcloud's own update path does, unless the admin
+	 * switched it off. A fresh install or a reinstall of the same version is
+	 * not an update and raises nothing.
+	 *
+	 * @spec openspec/changes/releases-notes-reach/tasks.md#task-1.1
+	 */
+	private function dispatchUpdateEvent(string $appId, string $fromVersion, string $toVersion): void {
+		if ($fromVersion === '' || $toVersion === '' || $fromVersion === $toVersion) {
+			return;
+		}
+		if (!$this->appConfig->getValueBool(Application::APP_ID, self::KEY_NOTIFY_USERS_ON_UPDATE, true)) {
+			return;
+		}
+
+		$this->eventDispatcher->dispatchTyped(new AppUpdateEvent($appId));
 	}
 
 	private function resolveBinding(string $appId, ?string $sourceOverride): SourceBinding {
