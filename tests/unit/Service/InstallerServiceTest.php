@@ -108,6 +108,7 @@ final class InstallerServiceTest extends TestCase {
 			$this->timeFactory,
 			$this->lkgStore,
 			$this->artifactCache,
+			$this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
 		);
 	}
 

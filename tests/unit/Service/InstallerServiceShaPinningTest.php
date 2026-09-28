@@ -114,6 +114,7 @@ final class InstallerServiceShaPinningTest extends TestCase {
 			$this->createMock(ITimeFactory::class),
 			$this->createMock(\OCA\Versioniq\Service\Lkg\LkgStore::class),
 			$this->createMock(\OCA\Versioniq\Service\Cache\ArtifactCache::class),
+			$this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
 		);
 	}
 

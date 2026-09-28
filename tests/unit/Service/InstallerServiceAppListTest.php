@@ -79,6 +79,7 @@ final class InstallerServiceAppListTest extends TestCase {
 			$this->createMock(ITimeFactory::class),
 			$this->createMock(LkgStore::class),
 			$this->createMock(ArtifactCache::class),
+			$this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
 		);
 	}
 

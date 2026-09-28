@@ -104,6 +104,7 @@ final class InstallerServiceCacheTest extends TestCase {
 			$this->createMock(ITimeFactory::class),
 			$this->createMock(\OCA\Versioniq\Service\Lkg\LkgStore::class),
 			$this->artifactCache,
+			$this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
 		);
 	}
 
