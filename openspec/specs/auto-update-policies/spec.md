@@ -41,7 +41,7 @@ A `TimedJob` that wakes every 15 minutes MUST, once per opening of the window, w
 
 #### Scenario: Patch-level update applied
 
-@e2e exclude the nightly AutoUpdateJob cannot be driven within a browser run; candidate selection is unit-tested.
+@e2e tests/e2e/jobs.spec.ts
 
 - GIVEN `openregister` installed at 2.3.0, policy patch, source lists 2.3.4 and 2.4.0
 - WHEN the job runs inside the window
@@ -50,7 +50,7 @@ A `TimedJob` that wakes every 15 minutes MUST, once per opening of the window, w
 
 #### Scenario: Pinned app skipped
 
-@e2e exclude the job's pin-skip is unit-tested.
+@e2e tests/e2e/jobs.spec.ts
 
 - GIVEN `openregister` has any policy and a pin
 - WHEN the job runs
@@ -58,7 +58,7 @@ A `TimedJob` that wakes every 15 minutes MUST, once per opening of the window, w
 
 #### Scenario: Failed attempt is not retried
 
-@e2e exclude the job's attempt ledger is unit-tested.
+@e2e exclude tests/e2e/jobs.spec.ts ("a failed auto-update attempt is not retried") drives the failure and asserts the attempt is recorded, but a second run in the same window is a no-op by design, so the refusal to reattempt is covered by tests/unit/BackgroundJob/AutoUpdateJobTest.php (testAlreadyAttemptedCandidateIsNotReattempted).
 
 - GIVEN the 2.3.4 install failed yesterday (recorded)
 - WHEN the job runs again and the source still offers 2.3.4 as the qualifying target
@@ -75,7 +75,7 @@ A `TimedJob` that wakes every 15 minutes MUST, once per opening of the window, w
 
 #### Scenario: Disabled or outside the window is a no-op
 
-@e2e exclude the job's window/kill-switch gate is unit-tested.
+@e2e tests/e2e/jobs.spec.ts drives the disabled half; every jobs test opens the window to 00:00-23:59, so the outside-the-window half is covered by tests/unit/BackgroundJob/AutoUpdateJobTest.php (testOutsideTheWindowIsANoOpWithNoSourceQueries).
 
 - GIVEN `auto_update_enabled` false, or a run at 13:00 with window `01:00-05:00`
 - WHEN the job fires
@@ -89,14 +89,14 @@ Each attempted install MUST produce an admin notification: success (app, old →
 
 #### Scenario: Success notification
 
-@e2e exclude the job's success notification is unit-tested.
+@e2e tests/e2e/jobs.spec.ts
 
 - GIVEN the job updates `openregister` 2.3.0 → 2.3.4
 - THEN admins MUST receive a notification naming the app and both versions
 
 #### Scenario: Failure notification carries the classification
 
-@e2e exclude the job's failure notification is unit-tested.
+@e2e exclude tests/e2e/jobs.spec.ts ("a failed auto-update attempt is not retried") asserts an auto_update_failure notification reaches admins, but not its hint; the category-derived hint is covered by tests/unit/BackgroundJob/AutoUpdateJobTest.php (testFailedInstallRecordsTheAttemptAndNotifiesWithTheClassification).
 
 - GIVEN the 2.3.4 install fails with category `checksum_mismatch`
 - THEN admins MUST receive a failure notification naming the category-derived hint
