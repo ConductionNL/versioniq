@@ -81,7 +81,7 @@ class ListUpdates extends Command {
 		}
 
 		if ((bool)$input->getOption('json')) {
-			$output->writeln((string)json_encode(
+			$output->writeln(json_encode(
 				['checkedAt' => $snapshot['checkedAt'], 'maxLinesBehind' => $limit, 'updates' => $updates],
 				JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES,
 			));
@@ -93,7 +93,7 @@ class ListUpdates extends Command {
 		$rows = [];
 		foreach ($updates as $appId => $entry) {
 			$rows[] = [
-				(string)$appId,
+				$appId,
 				(string)($entry['installedVersion'] ?? ''),
 				$this->statusOf($entry),
 				(string)($entry['linesBehind'] ?? 0),
@@ -113,7 +113,7 @@ class ListUpdates extends Command {
 	 */
 	private function statusOf(array $entry): string {
 		if (is_string($entry['error'] ?? null)) {
-			return 'not checked: ' . $entry['error'];
+			return 'not checked: ' . (string)$entry['error'];
 		}
 		if (($entry['updateAvailable'] ?? false) === true) {
 			return (string)($entry['newestCompatibleVersion'] ?? '');

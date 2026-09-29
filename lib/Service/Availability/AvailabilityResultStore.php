@@ -22,6 +22,8 @@ use Psr\Log\LoggerInterface;
  * the CLI must say out loud rather than read as "nothing to update".
  *
  * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
+ *
+ * @psalm-api
  */
 class AvailabilityResultStore {
 	private const KEY = 'availability.results';

@@ -26,6 +26,8 @@ use Psr\Log\LoggerInterface;
  * `occ versioniq:updates --refresh`, never in a page request (issue #160).
  *
  * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
+ *
+ * @psalm-api
  */
 class AvailabilityService {
 	/** Plain major.minor.patch, the rule CandidateSelector applies. */
@@ -52,7 +54,7 @@ class AvailabilityService {
 		$results = [];
 
 		foreach ($this->installerService->getInstalledApps() as $app) {
-			$appId = (string)($app['id'] ?? '');
+			$appId = $app['id'] ?? '';
 			$installedVersion = $app['installedVersion'] ?? null;
 			if ($appId === '' || ($app['state'] ?? '') === 'notInstalled' || !is_string($installedVersion) || $installedVersion === '') {
 				continue;
@@ -79,7 +81,7 @@ class AvailabilityService {
 
 			$sourceId = is_string($listing['sourceId'] ?? null) ? $listing['sourceId'] : $boundSourceId;
 			$error = ($listing['hasError'] ?? false) === true
-				? (string)($listing['error'] ?? 'The source did not answer.')
+				? ($listing['error'] ?? 'The source did not answer.')
 				: null;
 			$versions = $error === null && is_array($listing['availableVersions'] ?? null) ? $listing['availableVersions'] : [];
 
@@ -101,7 +103,7 @@ class AvailabilityService {
 		$installedParts = $this->parse($installedVersion);
 
 		foreach ($versions as $entry) {
-			$version = is_string($entry['version'] ?? null) ? trim($entry['version']) : '';
+			$version = is_string($entry['version'] ?? null) ? trim((string)$entry['version']) : '';
 			$parts = $this->parse($version);
 			if ($parts === null) {
 				continue;

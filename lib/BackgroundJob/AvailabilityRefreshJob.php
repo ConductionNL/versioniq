@@ -23,6 +23,8 @@ use Psr\Log\LoggerInterface;
  * (inventory-pending-updates, design D1).
  *
  * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
+ *
+ * @psalm-api
  */
 class AvailabilityRefreshJob extends TimedJob {
 	public const SWEEP_BUDGET_SECONDS = 600.0;
