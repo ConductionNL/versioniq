@@ -32,6 +32,8 @@ const settings = {
 	githubWebDefault: 'https://github.com',
 	advisoryFeedUrl: '',
 	advisoryFeedDefault: 'https://api.github.com/repos/nextcloud/security-advisories/security-advisories',
+	maxLinesBehind: null,
+	maxLinesBehindMax: 10,
 }
 
 describe('InstanceSettingsPanel', () => {
@@ -80,5 +82,22 @@ describe('InstanceSettingsPanel', () => {
 		await flushPromises()
 
 		expect(wrapper.find('[data-testid="instance-settings-error"]').text()).toContain('between 30 and 3650')
+	})
+
+	// inventory-pending-updates D3: the lag limit, empty for off.
+	// @spec openspec/specs/pending-updates/spec.md
+	it('saves the release lag limit and sends empty when the check is off', async () => {
+		mockedGet.mockResolvedValue({ payload: settings })
+		mockedWrite.mockResolvedValue({ payload: { ...settings, maxLinesBehind: 1 } })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		expect((wrapper.find('[data-testid="setting-max-lines-behind"]').element as HTMLInputElement).value).toBe('')
+		await wrapper.find('[data-testid="setting-max-lines-behind"]').setValue('1')
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		expect(mockedWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/instance-settings', expect.objectContaining({ maxLinesBehind: '1' }))
+		expect((wrapper.find('[data-testid="setting-max-lines-behind"]').element as HTMLInputElement).value).toBe('1')
 	})
 })

@@ -290,7 +290,25 @@
         "Nextcloud asks for your password before it enables an app.": "Nextcloud vraagt je wachtwoord voordat een app wordt ingeschakeld.",
         "Password": "Wachtwoord",
         "Installed {version}": "Geïnstalleerd: {version}",
-        "Released {date}": "Uitgebracht op {date}"
+        "Released {date}": "Uitgebracht op {date}",
+        "Updates not checked": "Updates niet gecontroleerd",
+        "Update available: {version}, held by the pin": "Update beschikbaar: {version}, tegengehouden door het vastzetten",
+        "Update available: {version}": "Update beschikbaar: {version}",
+        "Update status unavailable. Could not reach the server.": "Updatestatus niet beschikbaar. De server was niet bereikbaar.",
+        "Updates not checked yet. The background job runs every 6 hours.": "Updates nog niet gecontroleerd. De achtergrondtaak draait elke 6 uur.",
+        "Updates checked just now": "Updates zojuist gecontroleerd",
+        "Updates checked {minutes} min ago": "Updates {minutes} min geleden gecontroleerd",
+        "Updates checked {hours} h ago": "Updates {hours} uur geleden gecontroleerd",
+        "Updates": "Updates",
+        "All apps": "Alle apps",
+        "Apps with an update": "Apps met een update",
+        "Outside the update policy": "Buiten het updatebeleid",
+        "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Aantal releases dat een app achter mag lopen (0 tot {max}, laat leeg om de controle uit te zetten)",
+        "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "Een app die verder achterloopt, wordt gemarkeerd op het tabblad Apps. 1 betekent de nieuwste release of de release daarvoor.",
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
+            "Buiten het updatebeleid: %n release achter",
+            "Buiten het updatebeleid: %n releases achter"
+        ]
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

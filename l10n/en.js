@@ -256,7 +256,22 @@ OC.L10N.register(
         "Enable {appId}": "Enable {appId}",
         "Enable": "Enable",
         "Nextcloud asks for your password before it enables an app.": "Nextcloud asks for your password before it enables an app.",
-        "Password": "Password"
+        "Password": "Password",
+        "Updates not checked": "Updates not checked",
+        "Update available: {version}, held by the pin": "Update available: {version}, held by the pin",
+        "Update available: {version}": "Update available: {version}",
+        "Update status unavailable. Could not reach the server.": "Update status unavailable. Could not reach the server.",
+        "Updates not checked yet. The background job runs every 6 hours.": "Updates not checked yet. The background job runs every 6 hours.",
+        "Updates checked just now": "Updates checked just now",
+        "Updates checked {minutes} min ago": "Updates checked {minutes} min ago",
+        "Updates checked {hours} h ago": "Updates checked {hours} h ago",
+        "Updates": "Updates",
+        "All apps": "All apps",
+        "Apps with an update": "Apps with an update",
+        "Outside the update policy": "Outside the update policy",
+        "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)",
+        "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.",
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"]
     },
     "nplurals=2; plural=(n != 1);"
 )
