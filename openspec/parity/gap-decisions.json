@@ -1038,5 +1038,261 @@
 		"reason": "Build: a tender demand row.",
 		"change": "audit-security-reports",
 		"decidedOn": "2026-09-27"
+	},
+	{
+		"row": "saf-safe-mode",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): one competitor rated yes (Easy Updates Manager), no demand row, outside the core areas (area safety). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "saf-health-after",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): one competitor rated yes (Easy Updates Manager), no demand row, outside the core areas (area safety). openspec/changes/archive/2026-07-23-add-migration-safety-guard/proposal.md lists post-install health checks as future work. Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "saf-publisher-change",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, no demand row, outside the core areas (area safety). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "pin-expiry",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, no demand row, outside the core areas (area pinning). openspec/changes/archive/2026-07-23-add-version-pinning/proposal.md lists pin expiry as future work, not as a non-goal. Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "pin-show-in-platform",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area pinning). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "aut-presets",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): one competitor rated yes (Renovate), no demand row, outside the core areas (area autoupdate). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "aut-sync-group-versions",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area autoupdate). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "aut-merge-queue",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): one competitor rated yes (Renovate), a competitor changelog as demand, a changelog row alone is not demand under the rule, outside the core areas (area autoupdate). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "aut-notify-failures-only",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area autoupdate). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "aut-update-order",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area autoupdate). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "adv-reachability",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): one competitor rated yes (OSV-Scanner), no demand row, outside the core areas (area advisories). It builds on bundled-library matching, which openspec/changes/advisories-bundled-libraries specifies first. Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "adv-exploit-prob",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): one competitor rated yes (Dependabot), no demand row, outside the core areas (area advisories). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "adv-export-report",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): one competitor rated yes (OSV-Scanner), no demand row, outside the core areas (area advisories). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "adv-license",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): one competitor rated yes (OSV-Scanner), no demand row, outside the core areas (area advisories). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "adv-coverage-gaps",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, no demand row, outside the core areas (area advisories). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "adv-license-change",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area advisories). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "adv-stale-exception",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): one competitor rated yes (OSV-Scanner), a competitor changelog as demand, a changelog row alone is not demand under the rule, outside the core areas (area advisories). It needs the dismissal that openspec/changes/advisories-triage specifies first. Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "adv-grace-by-severity",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area advisories). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "adv-vulnerable-path",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area advisories). It builds on bundled-library matching, which openspec/changes/advisories-bundled-libraries specifies first. Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "aud-log-tokens",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, no demand row, outside the core areas (area audit). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "saf-predownload-before-maintenance",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area safety). The defect candidate in the row note (maintenance mode switched on for a dry run) does not hold at development 02e1050: lib/Service/InstallerService.php:597-600 skips maintenance mode for a dry run (#427). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "aut-per-app-cooldown",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area autoupdate). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "aut-change-ticket",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area autoupdate). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "pin-sync-across-instances",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area pinning). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "pin-security-override",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area pinning). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "adv-dismiss-review",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): one competitor rated yes (Dependabot), a competitor changelog as demand, a changelog row alone is not demand under the rule, outside the core areas (area advisories). It needs the dismissal that openspec/changes/advisories-triage specifies first. Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "adv-severity-threshold",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area advisories). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "adm-outbound-data-preview",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area admin). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "adv-pattern-exception",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): one competitor rated yes (OSV-Scanner), a competitor changelog as demand, a changelog row alone is not demand under the rule, outside the core areas (area advisories). It needs the dismissal that openspec/changes/advisories-triage specifies first. Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "adv-suppressed-visible",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area advisories). It needs the dismissal that openspec/changes/advisories-triage specifies first. Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "saf-cluster-consistency",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area safety). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
+	},
+	{
+		"row": "aut-coexist-host-updater",
+		"matrix": "versioniq",
+		"decision": "decided-no",
+		"reason": "Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area autoupdate). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
+		"change": null,
+		"decidedOn": "2026-09-28"
 	}
 ]
