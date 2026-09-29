@@ -42,6 +42,10 @@ class InstanceSettings {
 	public const KEY_GITHUB_API_BASE = 'forge.github.api_base';
 	public const KEY_GITHUB_WEB_BASE = 'forge.github.web_base';
 	public const KEY_ADVISORY_FEED = 'advisory.feed_base';
+	/** How many release lines an app may fall behind; absent means off (inventory-pending-updates D3). */
+	public const KEY_MAX_LINES_BEHIND = 'update.max_lines_behind';
+
+	public const MAX_LINES_BEHIND = 10;
 
 	/** Ten years: longer is a history nobody reads, and the table keeps growing. */
 	public const MAX_RETENTION_DAYS = 3650;
@@ -69,7 +73,7 @@ class InstanceSettings {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string}
+	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int}
 	 */
 	public function read(): array {
 		$retention = $this->config->getValueInt(Application::APP_ID, PruneAuditJob::CONFIG_KEY_RETENTION_DAYS, PruneAuditJob::DEFAULT_RETENTION_DAYS);
@@ -89,6 +93,8 @@ class InstanceSettings {
 			'githubWebDefault' => ForgeRegistry::GITHUB_WEB_DEFAULT,
 			'advisoryFeedUrl' => $this->stored(self::KEY_ADVISORY_FEED),
 			'advisoryFeedDefault' => NextcloudAdvisoryFeed::DEFAULT_FEED_URL,
+			'maxLinesBehind' => $this->maxLinesBehind(),
+			'maxLinesBehindMax' => self::MAX_LINES_BEHIND,
 		];
 	}
 
@@ -116,6 +122,13 @@ class InstanceSettings {
 			$ints[ArtifactCache::CONFIG_KEEP] = $this->intInRange($fields['artifactCacheKeep'], 0, self::MAX_CACHE_KEEP, 'The number of cached versions');
 		}
 
+		$lagLimit = null;
+		if (isset($fields['maxLinesBehind'])) {
+			$lagLimit = trim($fields['maxLinesBehind']) === ''
+				? ''
+				: (string)$this->intInRange($fields['maxLinesBehind'], 0, self::MAX_LINES_BEHIND, 'The number of releases an app may fall behind');
+		}
+
 		$urls = [];
 		foreach (self::URL_FIELDS as $field => [$key, $httpsOnly]) {
 			if (isset($fields[$field])) {
@@ -126,6 +139,11 @@ class InstanceSettings {
 		foreach ($ints as $key => $value) {
 			$this->config->setValueInt(Application::APP_ID, $key, $value);
 		}
+		if ($lagLimit === '') {
+			$this->config->deleteKey(Application::APP_ID, self::KEY_MAX_LINES_BEHIND);
+		} elseif ($lagLimit !== null) {
+			$this->config->setValueString(Application::APP_ID, self::KEY_MAX_LINES_BEHIND, $lagLimit);
+		}
 		foreach ($urls as $key => $value) {
 			if ($value === '') {
 				$this->config->deleteKey(Application::APP_ID, $key);
@@ -135,9 +153,23 @@ class InstanceSettings {
 		}
 
 		return array_values(array_filter(
-			['auditRetentionDays', 'artifactCacheKeep', ...array_keys(self::URL_FIELDS)],
+			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS)],
 			static fn (string $field): bool => isset($fields[$field]),
 		));
+	}
+
+	/**
+	 * The admin's lag limit in release lines, or null when the check is off.
+	 *
+	 * @spec openspec/specs/pending-updates/spec.md#requirement-an-admin-sets-how-far-an-app-may-fall-behind
+	 */
+	public function maxLinesBehind(): ?int {
+		$raw = $this->stored(self::KEY_MAX_LINES_BEHIND);
+		if (preg_match('/^\d+$/', $raw) !== 1) {
+			return null;
+		}
+
+		return min((int)$raw, self::MAX_LINES_BEHIND);
 	}
 
 	private function stored(string $key): string {

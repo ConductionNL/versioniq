@@ -5,6 +5,7 @@ import type { PinRecord } from './dialogs/PinDialog.vue'
 import type {AdvisoryCorrelation} from './utils/advisories.ts';
 import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
 import type {LkgRecord} from './utils/migrationSafety.ts';
+import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
 
 import { loadState } from '@nextcloud/initial-state'
 import { t } from '@nextcloud/l10n'
@@ -43,6 +44,7 @@ import { tabForHash } from './utils/connectionRegistry.ts'
 import { currentLoginName, enableApp } from './utils/enableApp.ts'
 import { normalizeInstallResult, withSourceOverride } from './utils/installResult.ts'
 import { shouldOfferLkgRollback } from './utils/migrationSafety.ts'
+import { filterByUpdates, isOutsidePolicy, outsidePolicyLabel, updateBadge, updatesFreshnessLabel as updatesFreshnessLabelFor } from './utils/pendingUpdates.ts'
 import { repinApp } from './utils/repin.ts'
 import { isBlockedBySafeMode } from './utils/safeMode.ts'
 import { compareVersions, parseVersionCore } from './utils/versionCompare.ts'
@@ -79,6 +81,8 @@ const advisories = ref<Record<string, AdvisoryCorrelation>>({})
 const appFilter = ref('')
 const showFilters = ref(false)
 const coreAppsVisibility = ref<'show' | 'hide'>('show')
+// inventory-pending-updates: narrows the list to apps with an update, or past the lag limit.
+const updatesFilter = ref<UpdatesFilter>('all')
 const updateChannel = ref('')
 const selectedApp = ref('')
 const versions = ref<AppVersion[]>([])
@@ -618,6 +622,42 @@ async function loadAdvisories (): Promise<void> {
 	}
 }
 
+// ── Pending updates (inventory-pending-updates) ────────────────────────────
+// A snapshot AvailabilityRefreshJob stores every 6 hours, read like the
+// advisory one: listing versions live for every app is the request that timed
+// out in issue #160.
+const pendingUpdates = ref<Record<string, PendingUpdate>>({})
+const updatesCheckedAt = ref<number | null>(null)
+const updatesUnavailable = ref(false)
+const maxLinesBehind = ref<number | null>(null)
+
+/**
+ * @spec openspec/specs/pending-updates/spec.md#requirement-every-app-card-shows-its-installed-version-and-whether-an-update-is-available
+ */
+async function loadUpdates (): Promise<void> {
+	try {
+		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/updates')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
+		const payload = await unwrapOcsResponse<{ updates: Record<string, PendingUpdate>, checkedAt: number | null, maxLinesBehind: number | null }>(response)
+		pendingUpdates.value = payload.updates || {}
+		updatesCheckedAt.value = payload.checkedAt ?? null
+		maxLinesBehind.value = payload.maxLinesBehind ?? null
+		updatesUnavailable.value = false
+	} catch {
+		pendingUpdates.value = {}
+		updatesCheckedAt.value = null
+		updatesUnavailable.value = true
+	}
+}
+
+const updatesFreshnessLabel = computed((): string => updatesFreshnessLabelFor({
+	unavailable: updatesUnavailable.value,
+	checkedAt: updatesCheckedAt.value,
+	nowSeconds: Date.now() / 1000,
+}))
+
+const updateBadgeFor = (appId: string) => updateBadge(pendingUpdates.value[appId])
+const outsidePolicyFor = (appId: string): boolean => isOutsidePolicy(pendingUpdates.value[appId], maxLinesBehind.value)
+
 // ── Advisory check settings ───────────────────────────────────────────────
 // The supported range comes from the SERVER rather than being hardcoded here:
 // a client that pins its own bounds drifts from the server the first time the
@@ -1155,9 +1195,12 @@ function clearSelectedApp () {
 
 const filteredApps = computed(() => {
 	const filter = appFilter.value.trim().toLowerCase()
-	const visibleApps = coreAppsVisibility.value === 'hide'
-		? apps.value.filter((app) => !app.isCore)
-		: apps.value
+	const visibleApps = filterByUpdates(
+		coreAppsVisibility.value === 'hide' ? apps.value.filter((app) => !app.isCore) : apps.value,
+		pendingUpdates.value,
+		updatesFilter.value,
+		maxLinesBehind.value,
+	)
 
 	if (filter === '') {
 		return visibleApps
@@ -1924,6 +1967,7 @@ onMounted(async () => {
 	void loadPins().catch(() => undefined)
 	void loadPolicies().catch(() => undefined)
 	void loadAdvisorySettings().catch(() => undefined)
+	void loadUpdates().catch(() => undefined)
 })
 
 watch([safeModeEnabled, installedVersion, selectedVersion], () => {
@@ -2042,6 +2086,11 @@ watch(dryRunEnabled, () => {
 					:class="$style.advisoryFreshness"
 					data-testid="advisory-freshness">
 					{{ advisoryFreshnessLabel }}
+				</p>
+				<p v-show="currentTab === 'apps'"
+					:class="$style.advisoryFreshness"
+					data-testid="updates-freshness">
+					{{ updatesFreshnessLabel }}
 				</p>
 				<div v-show="currentTab === 'apps'"
 					id="apps-panel"
@@ -2193,6 +2242,14 @@ watch(dryRunEnabled, () => {
 												<option value="hide">Hide core apps</option>
 											</select>
 										</label>
+										<label :class="$style.filterField">
+											<span :class="$style.filterFieldLabel">{{ t('versioniq', 'Updates') }}</span>
+											<select v-model="updatesFilter" :class="$style.filterSelect" data-testid="updates-filter">
+												<option value="all">{{ t('versioniq', 'All apps') }}</option>
+												<option value="update">{{ t('versioniq', 'Apps with an update') }}</option>
+												<option value="outsidePolicy">{{ t('versioniq', 'Outside the update policy') }}</option>
+											</select>
+										</label>
 									</div>
 									<input
 										id="app-filter"
@@ -2253,6 +2310,23 @@ watch(dryRunEnabled, () => {
 															:class="$style.appCardMeta"
 															data-testid="app-installed-version">
 															{{ t('versioniq', 'Installed {version}', { version: app.installedVersion }) }}
+														</p>
+														<p
+															v-if="updateBadgeFor(app.id) || outsidePolicyFor(app.id)"
+															:class="$style.updateFlags">
+															<span
+																v-if="updateBadgeFor(app.id)"
+																:class="updateBadgeFor(app.id)?.kind === 'notChecked' ? $style.appCardStateFlag : $style.updateBadge"
+																:title="updateBadgeFor(app.id)?.title ?? ''"
+																data-testid="update-badge">
+																{{ updateBadgeFor(app.id)?.label }}
+															</span>
+															<span
+																v-if="outsidePolicyFor(app.id)"
+																:class="$style.advisoryBadge"
+																data-testid="update-policy-flag">
+																{{ outsidePolicyLabel(pendingUpdates[app.id]?.linesBehind ?? 0) }}
+															</span>
 														</p>
 														<AppSourceBadges
 															:isShipped="app.isShipped === true"
@@ -3030,6 +3104,24 @@ watch(dryRunEnabled, () => {
 .advisoryBadgeVulnerable {
 	background: var(--color-error, #d32f2f);
 	color: var(--color-primary-text, #fff);
+}
+
+.updateFlags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin: 4px 0 0;
+}
+
+.updateBadge {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 8px;
+	border-radius: 9999px;
+	border: 1px solid var(--color-primary-element);
+	color: var(--color-main-text);
+	font-size: 11px;
+	font-weight: 700;
 }
 
 .advisoryDetail {

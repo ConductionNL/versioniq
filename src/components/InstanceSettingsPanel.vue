@@ -28,6 +28,8 @@ type Settings = {
 	githubWebDefault: string
 	advisoryFeedUrl: string
 	advisoryFeedDefault: string
+	maxLinesBehind: number | null
+	maxLinesBehindMax: number
 }
 
 const ENDPOINT = '/ocs/v2.php/apps/versioniq/api/instance-settings'
@@ -40,6 +42,7 @@ const form = ref({
 	githubApiBase: '',
 	githubWebBase: '',
 	advisoryFeedUrl: '',
+	maxLinesBehind: '',
 })
 const saving = ref(false)
 const error = ref('')
@@ -58,6 +61,7 @@ function fill (settings: Settings): void {
 		githubApiBase: settings.githubApiBase,
 		githubWebBase: settings.githubWebBase,
 		advisoryFeedUrl: settings.advisoryFeedUrl,
+		maxLinesBehind: settings.maxLinesBehind === null || settings.maxLinesBehind === undefined ? '' : String(settings.maxLinesBehind),
 	}
 }
 
@@ -132,6 +136,19 @@ onMounted(load)
 					min="0"
 					:max="loaded.artifactCacheKeepMax"
 					data-testid="setting-cache-keep">
+			</label>
+
+			<h4>{{ t('versioniq', 'Updates') }}</h4>
+			<label :class="$style.field" for="setting-max-lines-behind">
+				<span>{{ t('versioniq', 'Releases an app may fall behind (0 to {max}, leave empty to turn the check off)', { max: loaded.maxLinesBehindMax }) }}</span>
+				<input
+					id="setting-max-lines-behind"
+					v-model="form.maxLinesBehind"
+					type="number"
+					min="0"
+					:max="loaded.maxLinesBehindMax"
+					data-testid="setting-max-lines-behind">
+				<span :class="$style.hint">{{ t('versioniq', 'An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.') }}</span>
 			</label>
 
 			<h4>{{ t('versioniq', 'Sources and mirrors') }}</h4>
