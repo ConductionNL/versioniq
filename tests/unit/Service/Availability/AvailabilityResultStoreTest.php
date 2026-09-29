@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 
 /**
- * @spec openspec/changes/inventory-pending-updates/specs/pending-updates/spec.md
+ * @spec openspec/specs/pending-updates/spec.md
  */
 final class AvailabilityResultStoreTest extends TestCase {
 	/** @var array<string, string|int> */

@@ -99,9 +99,27 @@ Commands MUST run without password confirmation (CLI executes as the server user
 - WHEN `occ versioniq:install versioniq 1.0.0` runs
 - THEN it MUST refuse with a non-zero exit code
 
+### Requirement: List pending updates from the CLI
+
+`occ versioniq:updates` MUST print, for every app in the stored availability snapshot, the installed version, the newest version this server can run, the release lines behind and whether the app is pinned. `--json` MUST print the same data and the snapshot time as JSON. `--refresh` MUST run the availability sweep and store it before printing. `--outside-policy` MUST limit the output to apps past the admin's limit. The command MUST exit 1 when no snapshot exists and `--refresh` was not given.
+
+#### Scenario: A script reads pending updates as JSON
+
+- **GIVEN** the last sweep recorded `openregister` 2.3.0 with 2.4.1 available
+- **WHEN** an admin runs `occ versioniq:updates --json`
+- **THEN** stdout MUST be valid JSON with `checkedAt` and an `updates` entry for `openregister` naming 2.3.0 and 2.4.1
+- **AND** the exit code MUST be 0
+
+#### Scenario: Never checked is not reported as nothing to do
+
+- **GIVEN** no availability sweep has completed
+- **WHEN** an admin runs `occ versioniq:updates`
+- **THEN** the command MUST say that no check has run and exit 1
+
 ## Implementation Notes
 
 - `lib/Command/ListVersions.php` and `lib/Command/InstallVersion.php`, registered via `<commands>` in `appinfo/info.xml`; both delegate to `InstallerService` (no duplicated logic).
 - Documented exit-code map: `0` ok · `1` unknown/unclassified · `2` unknown app / bad arguments (includes the self/core-app guard) · `3` downgrade refused · `4` preflight_permission · `5` download · `6` integrity (`checksum_mismatch`/`appid_mismatch`/`version_mismatch`/`sha_mismatch`) · `7` incompatible · `8` finalize (installStatus — `reverted` vs `installed-but-broken` — printed explicitly) · `9` untrusted source.
 - `InstallerService::isManageableApp()` is the single shared self/core-app predicate, reused by `getAppVersions()`, `installAppVersion()`, and `InstallVersion`'s CLI pre-check (no duplicated guard logic).
 - The MODIFIED "Debug Mode" requirement in `version-management` (dry-run decoupled from `debug`) is the API-side counterpart this capability depends on — see that spec's "Debug Mode" requirement.
+- `lib/Command/ListUpdates.php` (`versioniq:updates`) reads the snapshot `AvailabilityResultStore` holds; `--refresh` runs `AvailabilityService::sweep()` first. Exit `1` means no snapshot exists, never "nothing behind" (inventory-pending-updates, archived 2026-09-29).

@@ -25,7 +25,7 @@ use Psr\Log\LoggerInterface;
  * It costs one source call per app, so it runs in AvailabilityRefreshJob and
  * `occ versioniq:updates --refresh`, never in a page request (issue #160).
  *
- * @spec openspec/changes/inventory-pending-updates/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
+ * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
  */
 class AvailabilityService {
 	/** Plain major.minor.patch, the rule CandidateSelector applies. */
@@ -44,7 +44,7 @@ class AvailabilityService {
 	 * An app reached after the budget ran out is recorded with an error rather
 	 * than left out, so the page says "not checked" instead of nothing.
 	 *
-	 * @spec openspec/changes/inventory-pending-updates/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
+	 * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
 	 * @return array<string, array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string}>
 	 */
 	public function sweep(float $budgetSeconds): array {

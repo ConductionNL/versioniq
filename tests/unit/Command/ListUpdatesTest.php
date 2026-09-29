@@ -15,7 +15,7 @@ use Symfony\Component\Console\Tester\CommandTester;
 /**
  * `occ versioniq:updates` (inventory-pending-updates D6).
  *
- * @spec openspec/changes/inventory-pending-updates/specs/cli-commands/spec.md
+ * @spec openspec/specs/cli-commands/spec.md
  */
 final class ListUpdatesTest extends TestCase {
 	private const SNAPSHOT = [

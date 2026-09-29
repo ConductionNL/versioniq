@@ -161,7 +161,7 @@ class InstanceSettings {
 	/**
 	 * The admin's lag limit in release lines, or null when the check is off.
 	 *
-	 * @spec openspec/changes/inventory-pending-updates/specs/pending-updates/spec.md#requirement-an-admin-sets-how-far-an-app-may-fall-behind
+	 * @spec openspec/specs/pending-updates/spec.md#requirement-an-admin-sets-how-far-an-app-may-fall-behind
 	 */
 	public function maxLinesBehind(): ?int {
 		$raw = $this->stored(self::KEY_MAX_LINES_BEHIND);

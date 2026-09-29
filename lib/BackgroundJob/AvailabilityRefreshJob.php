@@ -22,7 +22,7 @@ use Psr\Log\LoggerInterface;
  * stores the answer for GET /api/updates and `occ versioniq:updates`
  * (inventory-pending-updates, design D1).
  *
- * @spec openspec/changes/inventory-pending-updates/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
+ * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
  */
 class AvailabilityRefreshJob extends TimedJob {
 	public const SWEEP_BUDGET_SECONDS = 600.0;
@@ -40,7 +40,7 @@ class AvailabilityRefreshJob extends TimedJob {
 	}
 
 	/**
-	 * @spec openspec/changes/inventory-pending-updates/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
+	 * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
 	 * @param mixed $argument
 	 */
 	protected function run($argument): void {

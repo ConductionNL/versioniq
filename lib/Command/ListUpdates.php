@@ -27,7 +27,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  * pending updates of every app from the stored availability snapshot, so a
  * script can ask "what is behind" across the instance in one call.
  *
- * @spec openspec/changes/inventory-pending-updates/specs/cli-commands/spec.md#requirement-list-pending-updates-from-the-cli
+ * @spec openspec/specs/cli-commands/spec.md#requirement-list-pending-updates-from-the-cli
  * @psalm-api
  */
 class ListUpdates extends Command {
@@ -44,7 +44,7 @@ class ListUpdates extends Command {
 	}
 
 	/**
-	 * @spec openspec/changes/inventory-pending-updates/specs/cli-commands/spec.md#requirement-list-pending-updates-from-the-cli
+	 * @spec openspec/specs/cli-commands/spec.md#requirement-list-pending-updates-from-the-cli
 	 */
 	protected function configure(): void {
 		$this
@@ -56,7 +56,7 @@ class ListUpdates extends Command {
 	}
 
 	/**
-	 * @spec openspec/changes/inventory-pending-updates/specs/cli-commands/spec.md#requirement-list-pending-updates-from-the-cli
+	 * @spec openspec/specs/cli-commands/spec.md#requirement-list-pending-updates-from-the-cli
 	 */
 	protected function execute(InputInterface $input, OutputInterface $output): int {
 		if ((bool)$input->getOption('refresh')) {

@@ -15,7 +15,7 @@ use Psr\Log\NullLogger;
 /**
  * The availability sweep of inventory-pending-updates (design D2).
  *
- * @spec openspec/changes/inventory-pending-updates/specs/pending-updates/spec.md
+ * @spec openspec/specs/pending-updates/spec.md
  */
 final class AvailabilityServiceTest extends TestCase {
 	/**

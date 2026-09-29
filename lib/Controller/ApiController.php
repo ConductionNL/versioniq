@@ -168,7 +168,7 @@ class ApiController extends OCSController {
 	 * 200: Stored pending updates returned
 	 * 403: Caller is not an administrator
 	 *
-	 * @spec openspec/changes/inventory-pending-updates/specs/pending-updates/spec.md#requirement-an-admin-sets-how-far-an-app-may-fall-behind
+	 * @spec openspec/specs/pending-updates/spec.md#requirement-an-admin-sets-how-far-an-app-may-fall-behind
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/updates')]
 	public function updates(): DataResponse {

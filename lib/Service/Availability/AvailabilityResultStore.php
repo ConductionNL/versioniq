@@ -21,7 +21,7 @@ use Psr\Log\LoggerInterface;
  * another. `checkedAt: null` means no sweep has completed, which the page and
  * the CLI must say out loud rather than read as "nothing to update".
  *
- * @spec openspec/changes/inventory-pending-updates/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
+ * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
  */
 class AvailabilityResultStore {
 	private const KEY = 'availability.results';
@@ -37,7 +37,7 @@ class AvailabilityResultStore {
 	/**
 	 * Saves a snapshot; one that cannot be encoded keeps the previous one.
 	 *
-	 * @spec openspec/changes/inventory-pending-updates/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
+	 * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
 	 * @param array<string, array<string, mixed>> $updates
 	 */
 	public function save(array $updates, int $checkedAt): void {
@@ -56,7 +56,7 @@ class AvailabilityResultStore {
 	}
 
 	/**
-	 * @spec openspec/changes/inventory-pending-updates/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
+	 * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
 	 * @return array{updates: array<array-key, mixed>, checkedAt: ?int}
 	 */
 	public function read(): array {

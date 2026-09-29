@@ -132,7 +132,7 @@ final class InstanceSettingsTest extends TestCase {
 	 * inventory-pending-updates D3: how many release lines an app may fall
 	 * behind, 0 to 10, empty for off.
 	 *
-	 * @spec openspec/changes/inventory-pending-updates/specs/pending-updates/spec.md
+	 * @spec openspec/specs/pending-updates/spec.md
 	 */
 	public function testTheLagLimitIsOffUntilSetAndAcceptsZeroToTen(): void {
 		$store = $this->store();
@@ -155,7 +155,7 @@ final class InstanceSettingsTest extends TestCase {
 	}
 
 	/**
-	 * @spec openspec/changes/inventory-pending-updates/specs/pending-updates/spec.md
+	 * @spec openspec/specs/pending-updates/spec.md
 	 */
 	public function testTheLagLimitRefusesElevenAndMinusOne(): void {
 		foreach (['11', '-1', 'two'] as $raw) {

@@ -12,7 +12,7 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 /**
- * @spec openspec/changes/inventory-pending-updates/specs/pending-updates/spec.md
+ * @spec openspec/specs/pending-updates/spec.md
  */
 final class AvailabilityRefreshJobTest extends TestCase {
 	private function runJob(AvailabilityService $service, AvailabilityResultStore $store, ?LoggerInterface $logger = null): AvailabilityRefreshJob {
