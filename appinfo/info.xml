@@ -27,6 +27,7 @@ Versioniq gives Nextcloud administrators the ability to roll back apps to previo
 		<job>OCA\Versioniq\BackgroundJob\AutoUpdateJob</job>
 		<job>OCA\Versioniq\BackgroundJob\PruneAuditJob</job>
 		<job>OCA\Versioniq\BackgroundJob\PinReconcileJob</job>
+		<job>OCA\Versioniq\BackgroundJob\AvailabilityRefreshJob</job>
 	</background-jobs>
 	<repair-steps>
 		<!-- THE app_versions -> versioniq RENAME IS A DATA MIGRATION.
@@ -117,6 +118,7 @@ Versioniq gives Nextcloud administrators the ability to roll back apps to previo
 	<commands>
 		<command>OCA\Versioniq\Command\ListVersions</command>
 		<command>OCA\Versioniq\Command\InstallVersion</command>
+		<command>OCA\Versioniq\Command\ListUpdates</command>
 	</commands>
 	<settings>
 		<admin>OCA\Versioniq\Settings\Admin</admin>

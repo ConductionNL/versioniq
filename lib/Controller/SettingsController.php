@@ -51,7 +51,7 @@ class SettingsController extends OCSController {
 	/**
 	 * Returns the instance settings with their defaults
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array<string, int|string>, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array<string, int|string|null>, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: The settings, each override ('' when unset) next to its default
 	 * 403: Caller is not an administrator
@@ -77,8 +77,9 @@ class SettingsController extends OCSController {
 	 * @param string|null $githubApiBase GitHub API base URL (https); blank uses api.github.com
 	 * @param string|null $githubWebBase GitHub web base URL (https); blank uses github.com
 	 * @param string|null $advisoryFeedUrl Advisory feed URL; blank uses the published Nextcloud feed
+	 * @param string|null $maxLinesBehind Release lines an app may fall behind, 0 to 10; blank turns the check off
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array<string, int|string>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array<string, int|string|null>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: The settings after the change
 	 * 400: A value is out of range or not an acceptable URL; nothing was changed
@@ -96,6 +97,7 @@ class SettingsController extends OCSController {
 		?string $githubApiBase = null,
 		?string $githubWebBase = null,
 		?string $advisoryFeedUrl = null,
+		?string $maxLinesBehind = null,
 	): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -108,6 +110,7 @@ class SettingsController extends OCSController {
 			'githubApiBase' => $githubApiBase,
 			'githubWebBase' => $githubWebBase,
 			'advisoryFeedUrl' => $advisoryFeedUrl,
+			'maxLinesBehind' => $maxLinesBehind,
 		], static fn (?string $value): bool => $value !== null);
 
 		try {

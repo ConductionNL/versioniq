@@ -21,6 +21,7 @@ use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
+use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
@@ -33,6 +34,7 @@ use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyStore;
+use OCA\Versioniq\Service\Settings\InstanceSettings;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\UntrustedSourceException;
 use OCP\App\IAppManager;
@@ -84,6 +86,10 @@ class ApiController extends OCSController {
 		// Lists and clears blocked automatic-update versions (#438). Optional
 		// and last for the same reason as the one above.
 		private ?AttemptLedger $attemptLedger = null,
+		// The pending-updates snapshot and the lag limit
+		// (inventory-pending-updates). Optional and last for the same reason.
+		private ?AvailabilityResultStore $availabilityResultStore = null,
+		private ?InstanceSettings $instanceSettings = null,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -145,6 +151,37 @@ class ApiController extends OCSController {
 		return new DataResponse([
 			'advisories' => $snapshot['advisories'],
 			'checkedAt' => $snapshot['checkedAt'],
+		]);
+	}
+
+	/**
+	 * Returns the stored pending-updates snapshot (admin-only, read-only): per
+	 * app the installed version, the newest version, the newest one this
+	 * server can run, the release lines behind, the pin and the source error.
+	 * `checkedAt` is the unix time of the last sweep, null when none has run;
+	 * `maxLinesBehind` is the admin's lag limit, null when the check is off.
+	 * Like /api/advisories it reads what AvailabilityRefreshJob stored and
+	 * never calls a source (issue #160).
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{updates: array<array-key, mixed>, checkedAt: ?int, maxLinesBehind: ?int}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 *
+	 * 200: Stored pending updates returned
+	 * 403: Caller is not an administrator
+	 *
+	 * @spec openspec/changes/inventory-pending-updates/specs/pending-updates/spec.md#requirement-an-admin-sets-how-far-an-app-may-fall-behind
+	 */
+	#[ApiRoute(verb: 'GET', url: '/api/updates')]
+	public function updates(): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$snapshot = $this->availabilityResultStore?->read() ?? ['updates' => [], 'checkedAt' => null];
+
+		return new DataResponse([
+			'updates' => $snapshot['updates'],
+			'checkedAt' => $snapshot['checkedAt'],
+			'maxLinesBehind' => $this->instanceSettings?->maxLinesBehind(),
 		]);
 	}
 

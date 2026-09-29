@@ -127,4 +127,45 @@ final class InstanceSettingsTest extends TestCase {
 
 		self::assertSame([], $this->config);
 	}
+
+	/**
+	 * inventory-pending-updates D3: how many release lines an app may fall
+	 * behind, 0 to 10, empty for off.
+	 *
+	 * @spec openspec/changes/inventory-pending-updates/specs/pending-updates/spec.md
+	 */
+	public function testTheLagLimitIsOffUntilSetAndAcceptsZeroToTen(): void {
+		$store = $this->store();
+		self::assertNull($store->read()['maxLinesBehind']);
+		self::assertNull($store->maxLinesBehind());
+
+		$store->update(['maxLinesBehind' => '1']);
+		self::assertSame(1, $store->read()['maxLinesBehind']);
+		self::assertSame('1', $this->config[InstanceSettings::KEY_MAX_LINES_BEHIND]);
+
+		$store->update(['maxLinesBehind' => '0']);
+		self::assertSame(0, $store->maxLinesBehind());
+
+		$store->update(['maxLinesBehind' => '10']);
+		self::assertSame(10, $store->maxLinesBehind());
+
+		$store->update(['maxLinesBehind' => '']);
+		self::assertNull($store->maxLinesBehind());
+		self::assertArrayNotHasKey(InstanceSettings::KEY_MAX_LINES_BEHIND, $this->config);
+	}
+
+	/**
+	 * @spec openspec/changes/inventory-pending-updates/specs/pending-updates/spec.md
+	 */
+	public function testTheLagLimitRefusesElevenAndMinusOne(): void {
+		foreach (['11', '-1', 'two'] as $raw) {
+			try {
+				$this->store()->update(['maxLinesBehind' => $raw]);
+				self::fail('Accepted ' . $raw);
+			} catch (InvalidArgumentException $error) {
+				self::assertStringContainsString('between 0 and 10', $error->getMessage());
+			}
+		}
+		self::assertArrayNotHasKey(InstanceSettings::KEY_MAX_LINES_BEHIND, $this->config);
+	}
 }
