@@ -39,7 +39,7 @@
     "conduction/coding-standard": "^1.0",
     "conduction/hydra-gates": "^1.0",
     "cyclonedx/cyclonedx-php-composer": "^6.2",
-    "nextcloud/ocp": "dev-master",
+    "nextcloud/ocp": "^35.0",
     "roave/security-advisories": "dev-latest",
     "symfony/console": "^6.4"
   },
