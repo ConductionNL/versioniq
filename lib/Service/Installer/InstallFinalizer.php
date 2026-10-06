@@ -79,7 +79,9 @@ class InstallFinalizer {
 		$coordinator = Server::get(Coordinator::class);
 		$coordinator->runLazyRegistration($appId);
 
-		\OC_App::registerAutoloading($appId, $appPath);
+		// \OC_App::registerAutoloading() is gone in Nextcloud 35; AppAutoloader
+		// picks whichever registrar this server has.
+		AppAutoloader::register($appId, $appPath, $this->appManager, $info);
 
 		$previousVersion = $this->appConfig->getValueString($appId, 'installed_version', '');
 		$migrationService = new MigrationService($appId, Server::get(Connection::class));
