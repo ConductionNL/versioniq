@@ -42,6 +42,12 @@ class AppAutoloaderTest extends TestCase {
 
 	public function testNamespaceComesFromTheAppManagerWhenItAnswers(): void {
 		$appManager = $this->createMock(IAppManager::class);
+		if (!method_exists(IAppManager::class, 'getAppNamespace')) {
+			// Before Nextcloud 34 the interface has no getAppNamespace(), so
+			// info.xml is the first source that answers.
+			$this->assertSame('OCA\\Other', AppAutoloader::resolveNamespace('myapp', $appManager, ['namespace' => 'Other']));
+			return;
+		}
 		$appManager->method('getAppNamespace')->with('myapp')->willReturn('OCA\\MyApp');
 
 		$this->assertSame('OCA\\MyApp', AppAutoloader::resolveNamespace('myapp', $appManager, ['namespace' => 'Other']));
@@ -49,7 +55,11 @@ class AppAutoloaderTest extends TestCase {
 
 	public function testNamespaceFallsBackToInfoXmlThenAppId(): void {
 		$appManager = $this->createMock(IAppManager::class);
-		$appManager->method('getAppNamespace')->willThrowException(new \RuntimeException('boom'));
+		if (method_exists(IAppManager::class, 'getAppNamespace')) {
+			// Nextcloud 34+: the app manager is asked first; when it throws,
+			// info.xml and then the app id answer instead.
+			$appManager->method('getAppNamespace')->willThrowException(new \RuntimeException('boom'));
+		}
 
 		$this->assertSame('OCA\\OpenRegister', AppAutoloader::resolveNamespace('openregister', $appManager, ['namespace' => 'OpenRegister']));
 		$this->assertSame('OCA\\Myapp', AppAutoloader::resolveNamespace('myapp', $appManager, []));
