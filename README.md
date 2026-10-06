@@ -27,3 +27,11 @@ upload it to the Appstore.
 
 - Official community chat: https://cloud.nextcloud.com/call/xs25tz5y
 - Official community forum: https://help.nextcloud.com/c/dev/11
+
+<!-- discovery:start -->
+## Standards & federation
+
+Versioniq declares no interoperability standards of its own.
+
+Other servers can read this list without logging in, from the Nextcloud capabilities endpoint (published by OpenRegister). Details, federation and admin switches: [docs/standards-and-federation.md](docs/standards-and-federation.md).
+<!-- discovery:end -->

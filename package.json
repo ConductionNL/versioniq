@@ -4,6 +4,8 @@
   "license": "EUPL-1.2",
   "type": "module",
   "scripts": {
+    "docs:standards": "node scripts/generate-standards-docs.cjs",
+    "check:standards-docs": "node scripts/generate-standards-docs.cjs --check",
     "build": "vite build",
     "dev": "vite --mode development build",
     "lint": "eslint src tests scripts",
