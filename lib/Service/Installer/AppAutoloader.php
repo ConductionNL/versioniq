@@ -45,6 +45,8 @@ final class AppAutoloader {
 
 	/**
 	 * @param array<string, mixed> $info Parsed `appinfo/info.xml`; only `namespace` is read, as a fallback.
+	 *
+	 * @spec openspec/specs/version-management/spec.md
 	 */
 	public static function register(string $appId, string $appPath, IAppManager $appManager, array $info = []): void {
 		if (self::legacyRegistrarAvailable()) {
@@ -65,6 +67,8 @@ final class AppAutoloader {
 
 	/**
 	 * Whether the legacy static (Nextcloud 32-34) can be called.
+	 *
+	 * @spec openspec/specs/version-management/spec.md
 	 */
 	public static function legacyRegistrarAvailable(): bool {
 		return class_exists(\OC_App::class) && method_exists(\OC_App::class, 'registerAutoloading');
@@ -76,6 +80,8 @@ final class AppAutoloader {
 	 * capitalised app id.
 	 *
 	 * @param array<string, mixed> $info
+	 *
+	 * @spec openspec/specs/version-management/spec.md
 	 */
 	public static function resolveNamespace(string $appId, IAppManager $appManager, array $info = []): string {
 		if (method_exists($appManager, 'getAppNamespace')) {
@@ -101,6 +107,8 @@ final class AppAutoloader {
 	/**
 	 * Map a class to its file under `<appPath>/lib/`, or null when the class is
 	 * outside `$namespace`.
+	 *
+	 * @spec openspec/specs/version-management/spec.md
 	 */
 	public static function classFile(string $namespace, string $appPath, string $class): ?string {
 		$prefix = rtrim($namespace, '\\') . '\\';
@@ -119,6 +127,8 @@ final class AppAutoloader {
 	/**
 	 * Plain-PHP equivalent of core's registration, used only when neither
 	 * private registrar exists.
+	 *
+	 * @spec openspec/specs/version-management/spec.md
 	 */
 	public static function registerFallback(string $namespace, string $appId, string $appPath): void {
 		$appPath = rtrim($appPath, '/');
