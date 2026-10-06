@@ -19,7 +19,7 @@ Versioniq gives Nextcloud administrators the ability to roll back apps to previo
 		     and nextcloud/ocp dev-master, so this app has never been analysed
 		     against the NC 31 API surface — the 31 claim was advertised and
 		     backed by nothing. Every core Conduction app declares 32-34. -->
-		<nextcloud min-version="32" max-version="34"/>
+		<nextcloud min-version="32" max-version="35"/>
 	</dependencies>
 	<background-jobs>
 		<job>OCA\Versioniq\BackgroundJob\AdvisoryRefreshJob</job>

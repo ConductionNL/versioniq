@@ -77,6 +77,13 @@ final class FakeSimpleFolder implements ISimpleFolder {
 		return $folder;
 	}
 
+	/**
+	 * Added to ISimpleFolder in Nextcloud 35; harmless extra method on 32-34.
+	 */
+	public function getOrCreateFolder(string $path, int $maxRetries = 5): ISimpleFolder {
+		return $this->folders[$path] ?? $this->newFolder($path);
+	}
+
 	public function rememberFile(FakeSimpleFile $file): void {
 		$this->files[$file->getName()] = $file;
 	}

@@ -66,14 +66,9 @@ jobs:
       app-name: versioniq
       php-version: "8.3"
       php-test-versions: '["8.3", "8.4"]'
-      # THE LIST IS THE WHOLE DECLARED RANGE. appinfo/info.xml declares
-      # <nextcloud min-version="32" max-version="34"/>, so 32, 33 and 34 each get
-      # a leg. The previous list ran stable31 — below the floor even before this
-      # change raised it — and had no stable34 leg at all, so the one major this
-      # app most needed to prove was the one nothing touched.
-      # stable34 leads because newman, playwright and journeydoc-capture all read
-      # `fromJSON(inputs.nextcloud-test-refs)[0]` as their single server.
-      nextcloud-test-refs: '["stable34", "stable32", "stable33"]'
+      # No nextcloud-test-refs override: the shared quality.yml derives the
+      # server matrix from <nextcloud min-version/max-version> in
+      # appinfo/info.xml (currently 32-35), so it cannot drift from the range.
       # This repo's PHP toolchain is the upstream Nextcloud app-template one:
       # php-cs-fixer + psalm (+ rector, phpunit). It has no phpcs.xml, no
       # phpmd.xml and no phpstan.neon, and correspondingly no `phpcs`, `phpmd`,
