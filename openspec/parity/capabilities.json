@@ -4874,7 +4874,8 @@
 				"state": "building",
 				"evidence": "src/components/IntegrationsPanel.vue:30, src/utils/connectionRegistry.ts:25, lib/Settings/connections.json:4, lib/Settings/Admin.php:53",
 				"owner": "ConductionNL/integriq",
-				"reachedOn": "Integrations tab (only when integriq is enabled)"
+				"reachedOn": "Integrations tab (only when integriq is enabled)",
+				"change": "integriq/connection-registry"
 			},
 			"provider": "integriq",
 			"providerHow": "read-from-code",
@@ -5937,7 +5938,8 @@
 				"state": "building",
 				"evidence": "src/App.vue:2525, src/components/IntegrationsPanel.vue:30, lib/Settings/connections.json:4, lib/Settings/Admin.php:53",
 				"owner": "ConductionNL/integriq",
-				"reachedOn": "Integrations tab (only when integriq is enabled)"
+				"reachedOn": "Integrations tab (only when integriq is enabled)",
+				"change": "integriq/connection-registry"
 			},
 			"provider": "integriq",
 			"providerHow": "read-from-code",
