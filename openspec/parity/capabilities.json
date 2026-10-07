@@ -480,10 +480,11 @@
 			"easy-updates-manager": "yes",
 			"built": {
 				"state": "built",
-				"evidence": "src/App.vue:1140, src/App.vue:2125",
+				"evidence": "src/App.vue:1196 (filteredApps: label or id, case-insensitive, after the core and updates filters), src/App.vue:2240 (Hide core apps), src/App.vue:2256 (Search apps input)",
 				"reachedOn": "Apps tab",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/version-management",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -914,10 +915,11 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "src/App.vue:1180, src/App.vue:2317",
+				"evidence": "src/App.vue:1268 (filteredVersions), src/App.vue:2505 (Filter versions input), src/App.vue:2579 (No versions match your filter.)",
 				"reachedOn": "Apps tab (app detail, Versions)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/version-management",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1910,10 +1912,11 @@
 			"easy-updates-manager": "partial",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/SelectedReleaseInstallerService.php:133, lib/Service/SelectedReleaseInstallerService.php:604",
+				"evidence": "lib/Service/SelectedReleaseInstallerService.php:133 (verifyCertificate: root chain, CRL, revoked serial, CN equals app id), lib/Service/SelectedReleaseInstallerService.php:604 (SHA-512 archive signature)",
 				"reachedOn": "Apps tab (any App Store install)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/migration-safety",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2096,10 +2099,11 @@
 			"easy-updates-manager": "yes",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/InstallerService.php:524, lib/Service/InstallerService.php:719",
+				"evidence": "lib/Service/InstallerService.php:609 (maintenance on for a real install when it was off), lib/Service/InstallerService.php:807 (switched off in finally); tests/unit/Service/InstallerDryRunSideEffectsTest.php:98 (dry run never writes it)",
 				"reachedOn": "Apps tab (any install); occ versioniq:install; background job AutoUpdateJob",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/migration-safety",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3832,7 +3836,8 @@
 				"evidence": "lib/BackgroundJob/AdvisoryRefreshJob.php:114, lib/Service/Advisory/AdvisoryDigestNotifier.php:116, lib/Notification/Notifier.php:172",
 				"reachedOn": "background job AdvisoryRefreshJob, Nextcloud notification centre (weekly, Apps tab toggle)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/security-advisory-correlation",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3860,10 +3865,11 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "src/App.vue:2066, lib/Controller/ApiController.php:861, lib/BackgroundJob/AdvisoryRefreshJob.php:65, src/utils/advisoryFreshness.ts:29, src/App.vue:724",
+				"evidence": "lib/Service/Advisory/AdvisorySettingsStore.php:36 (6 h default, 1 to 24), lib/BackgroundJob/AdvisoryRefreshJob.php:65 (setInterval), lib/Controller/ApiController.php:916 and :947 (GET and PUT /api/advisory/settings, 400 outside the bounds), src/App.vue:2185 (interval field), src/utils/advisoryFreshness.ts:29",
 				"reachedOn": "Apps tab, security advisory checks (check every N hours)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/security-advisory-correlation",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3925,7 +3931,8 @@
 				"evidence": "lib/Service/Advisory/BranchAwareRange.php:72, lib/Service/Advisory/AdvisoryService.php:274",
 				"reachedOn": "background job AdvisoryRefreshJob, Apps tab badges",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/security-advisory-correlation",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4049,7 +4056,8 @@
 				"evidence": "lib/Service/Advisory/NextcloudAdvisoryFeed.php:263, lib/Service/Settings/InstanceSettings.php:105, src/components/InstanceSettingsPanel.vue:178",
 				"reachedOn": "Settings tab (Advisory feed address); occ config:app:set versioniq advisory.feed_base",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/audit-trail",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5356,7 +5364,8 @@
 				"evidence": "lib/Controller/ApiController.php:1207",
 				"reachedOn": "OCS API GET /api/audit (no export control in the UI)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/audit-trail",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5793,7 +5802,8 @@
 				"evidence": "lib/Controller/ApiController.php:53, openapi.json:1",
 				"reachedOn": "OCS API under /ocs/v2.php/apps/versioniq/api",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/admin-api",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5813,7 +5823,7 @@
 			"area": "admin",
 			"name": "Publish an OpenAPI description of the API.",
 			"rowSource": "own-code",
-			"versioniq": "yes",
+			"versioniq": "partial",
 			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "yes",
@@ -5821,16 +5831,17 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "openapi.json:1",
+				"evidence": "openapi.json:1 (OpenAPI 3.0.3, 24 paths, generated by composer run openapi), .github/workflows/openapi.yml:113 (regenerates and fails on a diff); missing: GET /api/updates (lib/Controller/ApiController.php, from inventory-pending-updates #493) is not in openapi.json on development",
 				"reachedOn": "openapi.json in the app package",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/admin-api",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "A generated OpenAPI 3.0.3 description ships with the app.",
+			"note": "A generated OpenAPI 3.0.3 description ships with the app and CI checks it is fresh. Re-rated 2026-10-07 from yes to partial: the committed openapi.json lacks the GET /api/updates route added in #493, so the description is one route behind and the openapi check is red until it is regenerated.",
 			"evidence": {
 				"nextcloud": "apps/appstore/openapi.json and apps/updatenotification/openapi.json are generated from the controllers; published at https://docs.nextcloud.com/server/latest/developer_manual/_static/openapi.html.",
 				"renovate": "not checked: no OpenAPI description found in the repo; Mend portal APIs were not read.",
@@ -5883,10 +5894,11 @@
 			"easy-updates-manager": "partial",
 			"built": {
 				"state": "built",
-				"evidence": "src/App.vue:1923, src/App.vue:337, src/App.vue:1963, src/components/HistoryPanel.vue:145",
+				"evidence": "src/App.vue:2024 (skip link to #versioniq-main), src/App.vue:2070 (tablist with aria-selected, aria-controls and roving tabindex), src/App.vue:337 (Left, Right, Home, End keys), src/App.vue:2509 (labelled filter input), src/components/HistoryPanel.vue:151 (scope=col headers); tests/e2e/shell.spec.ts:38 drives the arrow keys",
 				"reachedOn": "whole admin page",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/version-management",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
