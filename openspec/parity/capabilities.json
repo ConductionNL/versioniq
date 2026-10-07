@@ -357,7 +357,7 @@
 				"evidence": "src/App.vue:2311 (Installed {version} on every card), lib/Service/Availability/AvailabilityService.php",
 				"reachedOn": "Apps tab, every app card",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/archive/2026-09-29-inventory-pending-updates"
+				"change": "inventory-pending-updates"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -388,7 +388,7 @@
 				"evidence": "lib/Service/Availability/AvailabilityService.php, lib/Controller/ApiController.php:174 (GET /api/updates), src/utils/pendingUpdates.ts updateBadge",
 				"reachedOn": "Apps tab, the Update available badge and the Updates filter",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/archive/2026-09-29-inventory-pending-updates"
+				"change": "inventory-pending-updates"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -418,7 +418,8 @@
 				"state": "built",
 				"evidence": "src/components/AppSourceBadges.vue:29, src/App.vue:2195, src/components/SourcesPanel.vue:160, lib/Service/InstallerService.php:162",
 				"reachedOn": "Apps tab (every app card) and Sources tab",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "surface-external-sources-ui"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -479,7 +480,8 @@
 				"state": "built",
 				"evidence": "src/App.vue:1140, src/App.vue:2125",
 				"reachedOn": "Apps tab",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "none"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -509,7 +511,8 @@
 				"state": "built",
 				"evidence": "lib/Service/InstallerService.php:94, lib/Service/Source/SourceBindingStore.php:138, src/App.vue:2222, src/App.vue:2303, src/utils/enableApp.ts:44",
 				"reachedOn": "Apps tab (app card marked Disabled, with an Enable button)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "openspec/specs/version-management"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -539,7 +542,8 @@
 				"state": "built",
 				"evidence": "src/components/AppSourceBadges.vue:25, src/App.vue:2195, lib/Service/InstallerService.php:161, lib/Service/InstallerService.php:188",
 				"reachedOn": "Apps tab (app card)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "openspec/specs/version-management"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -693,7 +697,8 @@
 				"state": "built",
 				"evidence": "src/App.vue:2176, src/App.vue:2186, lib/Service/InstallerService.php:108",
 				"reachedOn": "Apps tab",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "openspec/specs/version-management"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -723,7 +728,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Installer/EnvironmentCheck.php:60, src/App.vue:2189",
 				"reachedOn": "Apps tab, per-app card warning",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "improve-install-failure-diagnostics"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -753,7 +759,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Source/AppStoreSource.php:578, lib/Service/Source/ForgeReleaseSource.php:89, lib/Service/InstallerService.php:160, src/App.vue:2330",
 				"reachedOn": "Apps tab (app detail, Versions)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "openspec/specs/version-management"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -783,7 +790,8 @@
 				"state": "built",
 				"evidence": "src/components/VersionChangelog.vue:18, src/App.vue:2360, lib/Service/Source/AppStoreSource.php:634, lib/Service/InstallerService.php:247",
 				"reachedOn": "Apps tab (app detail, Versions)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-changelog-visibility"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -813,7 +821,8 @@
 				"state": "built",
 				"evidence": "src/utils/changelog.ts:38, src/App.vue:1394, src/App.vue:2307",
 				"reachedOn": "Apps tab (app detail, after selecting a version)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-changelog-visibility"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -905,7 +914,8 @@
 				"state": "built",
 				"evidence": "src/App.vue:1180, src/App.vue:2317",
 				"reachedOn": "Apps tab (app detail, Versions)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "none"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1217,7 +1227,8 @@
 				"state": "built",
 				"evidence": "src/App.vue:1661, src/App.vue:2370, lib/Controller/ApiController.php:457, lib/Service/InstallerService.php:333",
 				"reachedOn": "Apps tab (app detail, select version, Update or Degrade)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "openspec/specs/version-management"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1309,7 +1320,8 @@
 				"state": "built",
 				"evidence": "src/App.vue:2210, lib/Service/Installer/InstallFinalizer.php:169, src/utils/migrationSafety.ts:27",
 				"reachedOn": "Apps tab (app card 'Roll back to' button, or version picker)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-migration-safety-guard"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1339,7 +1351,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Installer/InstallFinalizer.php:169, src/App.vue:1791, src/App.vue:2210, src/utils/migrationSafety.ts:27",
 				"reachedOn": "Apps tab (app card)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-migration-safety-guard"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1369,7 +1382,8 @@
 				"state": "built",
 				"evidence": "src/App.vue:1440, src/App.vue:1672, src/dialogs/DowngradeConfirmDialog.vue:63, src/App.vue:2364",
 				"reachedOn": "Apps tab (Degrade button)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-migration-safety-guard"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1399,7 +1413,8 @@
 				"state": "built",
 				"evidence": "lib/Command/ListVersions.php:51, lib/Command/ListVersions.php:70, lib/Command/ListVersions.php:120, appinfo/info.xml",
 				"reachedOn": "occ versioniq:versions",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-occ-cli-commands"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1429,7 +1444,8 @@
 				"state": "built",
 				"evidence": "lib/Command/InstallVersion.php:75, lib/Command/InstallVersion.php:118, lib/Command/InstallVersion.php:193",
 				"reachedOn": "occ versioniq:install",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-occ-cli-commands"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1459,7 +1475,8 @@
 				"state": "built",
 				"evidence": "src/components/DiscoverPanel.vue:259, lib/Service/InstallerService.php:94, lib/Service/Source/SourceBindingStore.php:138, src/App.vue:2542, src/utils/enableApp.ts:44, lib/Command/InstallVersion.php:118",
 				"reachedOn": "Discover tab (find; Install... opens the version picker for an App Store hit, or the bind form for a forge hit), then the Apps tab (a bound app is listed as Not installed and installs from its version list); occ versioniq:install",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-discovery-search-ui"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1519,7 +1536,8 @@
 				"state": "built",
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:515, lib/Service/ExternalReleaseInstallerService.php:168, lib/Service/InstallerService.php:284, src/App.vue:2333",
 				"reachedOn": "Apps tab (version list 'Available offline' badge, install)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-release-artifact-cache"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1549,7 +1567,8 @@
 				"state": "built",
 				"evidence": "src/components/CachePanel.vue:46, src/components/CachePanel.vue:103, lib/Controller/ApiController.php:1238, lib/Controller/ApiController.php:1260",
 				"reachedOn": "Artifact cache tab",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-release-artifact-cache"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1641,7 +1660,8 @@
 				"state": "built",
 				"evidence": "src/App.vue:2009, src/App.vue:2456, lib/Service/InstallerService.php:602, lib/Command/InstallVersion.php:83",
 				"reachedOn": "Apps tab ('Show install debug output' toggle); occ versioniq:install ,json",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "openspec/specs/version-management"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1702,7 +1722,8 @@
 				"state": "built",
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:352",
 				"reachedOn": "Apps tab install flow, occ versioniq:install",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "improve-install-failure-diagnostics"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1796,7 +1817,8 @@
 				"state": "built",
 				"evidence": "lib/Service/InstallerService.php:470, lib/Service/Installer/EnvironmentCheck.php:51, src/App.vue:2189",
 				"reachedOn": "Apps tab (card warning; install refusal)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "improve-install-failure-diagnostics"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1826,7 +1848,8 @@
 				"state": "built",
 				"evidence": "lib/Service/InstallerService.php:401, lib/Command/InstallVersion.php:81, src/App.vue:1694",
 				"reachedOn": "Apps tab (Degrade); occ versioniq:install ,allow-downgrade",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-migration-safety-guard"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1856,7 +1879,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Installer/MigrationDiffer.php:43, lib/Service/SelectedReleaseInstallerService.php:648, lib/Service/ExternalReleaseInstallerService.php:252, src/dialogs/DowngradeConfirmDialog.vue:82",
 				"reachedOn": "Apps tab (downgrade confirmation dialog)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-migration-safety-guard"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1886,7 +1910,8 @@
 				"state": "built",
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:133, lib/Service/SelectedReleaseInstallerService.php:604",
 				"reachedOn": "Apps tab (any App Store install)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "none"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1916,7 +1941,8 @@
 				"state": "built",
 				"evidence": "lib/Service/ExternalReleaseInstallerService.php:348, lib/Service/InstallerService.php:264, src/App.vue:2340",
 				"reachedOn": "Apps tab (version list 'Checksum recorded' badge)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-external-source-sha-pinning"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1946,7 +1972,8 @@
 				"state": "built",
 				"evidence": "lib/Service/ExternalReleaseInstallerService.php:201, src/App.vue:1705, src/dialogs/ShaMismatchDialog.vue:45",
 				"reachedOn": "Apps tab (SHA mismatch dialog); occ versioniq:install ,accept-new-sha",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-external-source-sha-pinning"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1976,7 +2003,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Installer/FailureClassifier.php:119, lib/Service/Installer/FailureClassifier.php:164, src/App.vue:2427",
 				"reachedOn": "Apps tab (install result panel); occ versioniq:install exit codes",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "improve-install-failure-diagnostics"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2006,7 +2034,8 @@
 				"state": "built",
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:361, lib/Service/ExternalReleaseInstallerService.php:316, lib/Service/Installer/FailureClassifier.php:177",
 				"reachedOn": "Apps tab (install result 'Installed but broken')",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "improve-install-failure-diagnostics"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2036,7 +2065,8 @@
 				"state": "built",
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:654, lib/Service/SelectedReleaseInstallerService.php:373, lib/Service/ExternalReleaseInstallerService.php:275",
 				"reachedOn": "Apps tab (any install, implicit)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "improve-install-failure-diagnostics"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2066,7 +2096,8 @@
 				"state": "built",
 				"evidence": "lib/Service/InstallerService.php:524, lib/Service/InstallerService.php:719",
 				"reachedOn": "Apps tab (any install); occ versioniq:install; background job AutoUpdateJob",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "none"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2187,7 +2218,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Source/TrustedSourceList.php:100, lib/Service/InstallerService.php:381, src/components/TrustedSourcesPanel.vue:63",
 				"reachedOn": "Trusted sources tab",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-external-source-installs"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2217,7 +2249,8 @@
 				"state": "built",
 				"evidence": "lib/Service/ExternalReleaseInstallerService.php:465, lib/Service/InstallerService.php:582, src/utils/installResult.ts:85, src/components/InstallResultNotices.vue:24, src/App.vue:2471",
 				"reachedOn": "Apps tab, install result (Installed without checksum verification alert) and the History tab",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "openspec/specs/external-sources"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2247,7 +2280,8 @@
 				"state": "built",
 				"evidence": "lib/Service/InstallerService.php:939",
 				"reachedOn": "every install path: Apps tab, API, occ, auto-update job",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "openspec/specs/version-management"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2402,7 +2436,8 @@
 				"state": "built",
 				"evidence": "src/App.vue:2275, src/dialogs/PinDialog.vue:53, lib/Controller/ApiController.php:579, lib/Service/Pin/PinStore.php:97",
 				"reachedOn": "Apps tab (app detail 'Pin this version')",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-version-pinning"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2432,7 +2467,8 @@
 				"state": "built",
 				"evidence": "src/App.vue:2268, src/App.vue:975, lib/Controller/ApiController.php:642",
 				"reachedOn": "Apps tab (app detail 'Unpin'; drift banner 'Accept: remove pin')",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-version-pinning"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2462,7 +2498,8 @@
 				"state": "built",
 				"evidence": "src/App.vue:807, src/App.vue:2150, src/dialogs/PinDialog.vue:103, src/components/HistoryPanel.vue:175",
 				"reachedOn": "Apps tab (pin badge tooltip); History tab",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-version-pinning"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2492,7 +2529,8 @@
 				"state": "built",
 				"evidence": "lib/Service/InstallerService.php:428, lib/BackgroundJob/AutoUpdateJob.php:109, src/App.vue:1696",
 				"reachedOn": "Apps tab (pin override dialog); background job AutoUpdateJob",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-version-pinning"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2552,7 +2590,8 @@
 				"state": "built",
 				"evidence": "lib/Listener/AppUpdatedListener.php:48, lib/BackgroundJob/PinReconcileJob.php:54, lib/Service/Pin/PinDriftHandler.php:54, src/App.vue:2283",
 				"reachedOn": "Apps tab (drift banner); admin notification; background job PinReconcileJob",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-version-pinning"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2582,7 +2621,8 @@
 				"state": "built",
 				"evidence": "src/components/PinDriftBanner.vue:97, src/App.vue:1670, src/utils/repin.ts:27, lib/Service/InstallerService.php:445",
 				"reachedOn": "Apps tab (drift banner 'Re-pin {version}')",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-version-pinning"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2704,7 +2744,8 @@
 				"state": "built",
 				"evidence": "lib/Controller/ApiController.php:539, src/App.vue:781, src/App.vue:2150",
 				"reachedOn": "Apps tab (pin badges on app cards)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-version-pinning"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2736,7 +2777,7 @@
 				"evidence": "src/utils/pendingUpdates.ts updateBadge (pinned variant), lib/Service/Availability/AvailabilityService.php (pinned apps swept)",
 				"reachedOn": "Apps tab, Update available: {version}, held by the pin",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/archive/2026-09-29-inventory-pending-updates"
+				"change": "inventory-pending-updates"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2797,7 +2838,8 @@
 				"state": "built",
 				"evidence": "src/App.vue:2194, src/components/PolicySelector.vue:43, src/App.vue:850, lib/Controller/ApiController.php:703, lib/BackgroundJob/AutoUpdateJob.php:90",
 				"reachedOn": "Apps tab, policy selector on each app card",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-auto-update-policies"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2827,7 +2869,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Policy/Policy.php:34, lib/Service/AutoUpdate/CandidateSelector.php:79, src/components/PolicySelector.vue:24",
 				"reachedOn": "Apps tab, policy selector on each app card",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-auto-update-policies"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2888,7 +2931,8 @@
 				"state": "built",
 				"evidence": "src/App.vue:2026, lib/Controller/ApiController.php:773, lib/BackgroundJob/AutoUpdateJob.php:77",
 				"reachedOn": "Apps tab, automatic updates block (Enable automatic updates)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-auto-update-policies"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2918,7 +2962,8 @@
 				"state": "built",
 				"evidence": "src/App.vue:2059, lib/Controller/ApiController.php:795, lib/Service/AutoUpdate/AutoUpdateWindow.php:45, lib/BackgroundJob/AutoUpdateJob.php:60, lib/BackgroundJob/AutoUpdateJob.php:99, lib/Service/AutoUpdate/AutoUpdateSettingsStore.php:49",
 				"reachedOn": "Apps tab, automatic updates block (update window)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-auto-update-policies"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2979,7 +3024,8 @@
 				"state": "built",
 				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:176, lib/BackgroundJob/AutoUpdateJob.php:184, lib/Service/AutoUpdate/AutoUpdateNotifier.php:48, lib/Notification/Notifier.php:135, lib/Notification/Notifier.php:154",
 				"reachedOn": "background job AutoUpdateJob, Nextcloud notification centre",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-auto-update-policies"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3009,7 +3055,8 @@
 				"state": "built",
 				"evidence": "lib/Service/AutoUpdate/AttemptLedger.php:49, lib/BackgroundJob/AutoUpdateJob.php:146, lib/BackgroundJob/AutoUpdateJob.php:181",
 				"reachedOn": "background job AutoUpdateJob",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-auto-update-policies"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3285,7 +3332,8 @@
 				"state": "built",
 				"evidence": "src/components/AutoUpdateOverview.vue:76, src/components/AutoUpdateOverview.vue:86, src/App.vue:2067, lib/Controller/ApiController.php:724",
 				"reachedOn": "Apps tab, Automatic updates section (Scheduled and blocked updates)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "openspec/specs/auto-update-policies"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3315,7 +3363,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Pat/PatResolver.php:82, lib/Service/Source/ForgeReleaseSource.php:269, lib/Service/Source/ForgeReleaseSource.php:288, lib/Service/ExternalReleaseInstallerService.php:430, src/components/TokensPanel.vue:193",
 				"reachedOn": "background jobs AdvisoryRefreshJob, AutoUpdateJob and PinReconcileJob, using a token shared with admins on the Tokens tab",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-github-pat-management"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3345,7 +3394,8 @@
 				"state": "built",
 				"evidence": "lib/Service/AutoUpdate/AttemptLedger.php:84, lib/Service/AutoUpdate/AttemptLedger.php:104, lib/Controller/ApiController.php:738, lib/Controller/ApiController.php:702, src/components/PolicySelector.vue:64",
 				"reachedOn": "Apps tab, auto-update policy on each app card (Retry {version})",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "openspec/specs/auto-update-policies"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3531,7 +3581,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Advisory/AdvisoryService.php:245, lib/BackgroundJob/AdvisoryRefreshJob.php:83, lib/Controller/ApiController.php:147, src/App.vue:2157",
 				"reachedOn": "Apps tab, advisory badge on each app card",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "security-advisory-correlation"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3561,7 +3612,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Advisory/NextcloudAdvisoryFeed.php:44, lib/Service/Advisory/NextcloudAdvisoryFeed.php:93, lib/Service/Advisory/AdvisoryService.php:166",
 				"reachedOn": "background job AdvisoryRefreshJob, Apps tab badges",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "security-advisory-correlation"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3591,7 +3643,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Source/ForgeReleaseSource.php:174, lib/Service/Advisory/AdvisoryService.php:129",
 				"reachedOn": "background job AdvisoryRefreshJob, Apps tab badges",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "security-advisory-correlation"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3652,7 +3705,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Advisory/AdvisoryService.php:343, lib/Service/Advisory/AdvisorySeverity.php:45, src/utils/advisories.ts:58, src/utils/advisories.ts:74, src/components/AdvisoriesPanel.vue:53, src/App.vue:2225",
 				"reachedOn": "Advisories tab (a severity chip per advisory) and the Apps tab advisory badge (highest severity)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "security-advisory-correlation"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3682,7 +3736,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Advisory/AdvisoryService.php:304, src/App.vue:2171",
 				"reachedOn": "Apps tab, app card detail line for a vulnerable version",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "security-advisory-correlation"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3743,7 +3798,8 @@
 				"state": "built",
 				"evidence": "lib/BackgroundJob/AdvisoryRefreshJob.php:105, lib/Service/Advisory/AdvisoryNotifier.php:54, lib/Notification/Notifier.php:63",
 				"reachedOn": "background job AdvisoryRefreshJob, Nextcloud notification centre",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "security-advisory-correlation"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3773,7 +3829,8 @@
 				"state": "built",
 				"evidence": "lib/BackgroundJob/AdvisoryRefreshJob.php:114, lib/Service/Advisory/AdvisoryDigestNotifier.php:116, lib/Notification/Notifier.php:172",
 				"reachedOn": "background job AdvisoryRefreshJob, Nextcloud notification centre (weekly, Apps tab toggle)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "none"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3803,7 +3860,8 @@
 				"state": "built",
 				"evidence": "src/App.vue:2066, lib/Controller/ApiController.php:861, lib/BackgroundJob/AdvisoryRefreshJob.php:65, src/utils/advisoryFreshness.ts:29, src/App.vue:724",
 				"reachedOn": "Apps tab, security advisory checks (check every N hours)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "none"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3864,7 +3922,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Advisory/BranchAwareRange.php:72, lib/Service/Advisory/AdvisoryService.php:274",
 				"reachedOn": "background job AdvisoryRefreshJob, Apps tab badges",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "none"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3987,7 +4046,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Advisory/NextcloudAdvisoryFeed.php:263, lib/Service/Settings/InstanceSettings.php:105, src/components/InstanceSettingsPanel.vue:178",
 				"reachedOn": "Settings tab (Advisory feed address); occ config:app:set versioniq advisory.feed_base",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "none"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4017,7 +4077,8 @@
 				"state": "built",
 				"evidence": "lib/Controller/ApiController.php:157, src/App.vue:724, src/App.vue:1980, lib/BackgroundJob/AdvisoryRefreshJob.php:95",
 				"reachedOn": "Apps tab, advisory freshness line",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "openspec/specs/security-advisory-correlation"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4077,7 +4138,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Advisory/AdvisoryService.php:311, lib/Service/Advisory/AdvisoryNotifier.php:61, src/App.vue:2158",
 				"reachedOn": "Apps tab, Vulnerable version badge next to the pin badge; notification centre",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "security-advisory-correlation"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4203,7 +4265,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Advisory/AdvisoryService.php:218, src/utils/advisories.ts:92, src/components/AdvisoriesPanel.vue:32, src/App.vue:2573",
 				"reachedOn": "Advisories tab (Nextcloud server section)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "openspec/specs/security-advisory-correlation"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4483,7 +4546,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Source/AppStoreSource.php:36, src/App.vue:2413",
 				"reachedOn": "Apps tab, version list of a chosen app",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "openspec/specs/version-management"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4513,7 +4577,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Source/ForgeReleaseSource.php:40, src/components/SourcesPanel.vue:66, lib/Controller/ApiController.php:264",
 				"reachedOn": "Sources tab (bind), Apps tab version list",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-external-source-installs"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4543,7 +4608,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Source/ForgeRegistry.php:96, src/components/SourcesPanel.vue:244, lib/Controller/ForgeController.php:83, lib/Controller/ApiController.php:248",
 				"reachedOn": "Sources tab (self-hosted Forgejo or Gitea forge option and host field)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "codeberg-forge-support"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4604,7 +4670,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Source/ForgeReleaseSource.php:283, lib/Service/Pat/PatManager.php:88, src/components/TokensPanel.vue:97",
 				"reachedOn": "Tokens tab plus Apps tab version list",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-github-pat-management"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4634,7 +4701,8 @@
 				"state": "built",
 				"evidence": "src/components/SourcesPanel.vue:108, lib/Controller/ApiController.php:247, lib/Service/Source/SourceBindingStore.php:109, lib/Controller/ApiController.php:252, src/components/SourcesPanel.vue:260, lib/Service/Source/SourceBindingStore.php:128",
 				"reachedOn": "Sources tab",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-external-source-installs"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4664,7 +4732,8 @@
 				"state": "built",
 				"evidence": "lib/Command/InstallVersion.php:79, lib/Controller/ApiController.php:461, src/components/SourceOverrideField.vue:47, src/App.vue:2345, src/App.vue:982, src/App.vue:1519",
 				"reachedOn": "Apps tab, version picker (Use another source this once); occ versioniq:install --source=",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "openspec/specs/external-sources"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4694,7 +4763,8 @@
 				"state": "built",
 				"evidence": "src/components/TrustedSourcesPanel.vue:63, src/components/TrustedSourcesPanel.vue:91, lib/Controller/ApiController.php:315, lib/Controller/ApiController.php:354",
 				"reachedOn": "Trusted sources tab",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "surface-external-sources-ui"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4724,7 +4794,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Source/AppStoreSource.php:327, lib/Service/Source/ForgeRegistry.php:82, lib/Service/Settings/InstanceSettings.php:105, src/components/InstanceSettingsPanel.vue:148, src/components/InstanceSettingsPanel.vue:158, src/components/SourcesPanel.vue:284",
 				"reachedOn": "Settings tab (App Store and GitHub addresses) and Sources tab (self-hosted Forgejo or Gitea host)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "openspec/specs/audit-trail"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4754,7 +4825,8 @@
 				"state": "built",
 				"evidence": "src/components/DiscoverPanel.vue:64, lib/Service/Discovery/AppStoreDiscovery.php:92, lib/Controller/ApiController.php:1129",
 				"reachedOn": "Discover tab",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-app-discovery-search"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4784,7 +4856,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Discovery/GithubSearchDiscovery.php:55, lib/Service/Discovery/DiscoveryAggregator.php:40",
 				"reachedOn": "Discover tab, only after occ config:app:set versioniq discovery.github_search_enabled true",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-app-discovery-search"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4814,7 +4887,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Discovery/GithubPrivateDiscovery.php:67, lib/Service/Discovery/DiscoveryAggregator.php:40",
 				"reachedOn": "Discover tab (when the admin has a visible PAT)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-app-discovery-search"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4844,7 +4918,8 @@
 				"state": "built",
 				"evidence": "src/components/DiscoverPanel.vue:246, src/components/DiscoverPanel.vue:259, src/App.vue:298, src/App.vue:312",
 				"reachedOn": "Discover tab to Apps tab (Open version picker, or Install... on an App Store hit) or Sources tab (Install... on a forge hit)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-discovery-search-ui"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4905,7 +4980,8 @@
 				"state": "built",
 				"evidence": "src/components/TokensPanel.vue:95, lib/Controller/ApiController.php:971, lib/Service/Pat/PatManager.php:65",
 				"reachedOn": "Tokens tab",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-github-pat-management"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4935,7 +5011,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Pat/PatManager.php:65, lib/Service/Pat/PatManager.php:88",
 				"reachedOn": "Tokens tab (storage side)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-github-pat-management"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4965,7 +5042,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Pat/PatValidator.php:70, lib/Service/Pat/PatValidator.php:141, lib/Controller/ApiController.php:993",
 				"reachedOn": "Tokens tab (add token)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-github-pat-management"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4995,7 +5073,8 @@
 				"state": "built",
 				"evidence": "lib/BackgroundJob/PatExpiryWarningJob.php:69, lib/Notification/Notifier.php:80, src/components/TokensPanel.vue:206",
 				"reachedOn": "Tokens tab expiry badge; background job PatExpiryWarningJob notifications",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-pat-expiry-warnings"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5025,7 +5104,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Pat/PatDeeplinkBuilder.php:84, src/components/TokensPanel.vue:170, lib/Controller/ApiController.php:1175",
 				"reachedOn": "Tokens tab (create token link)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-github-pat-management"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5055,7 +5135,8 @@
 				"state": "built",
 				"evidence": "src/components/TokensPanel.vue:129, src/components/TokensPanel.vue:219, lib/Controller/ApiController.php:1035",
 				"reachedOn": "Tokens tab (Share with admins toggle)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-github-pat-management"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5085,7 +5166,8 @@
 				"state": "built",
 				"evidence": "lib/Listener/UserDeletedListener.php:44, lib/AppInfo/Application.php:44",
 				"reachedOn": "UserDeletedEvent listener",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-github-pat-management"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5115,7 +5197,8 @@
 				"state": "built",
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:445, lib/Service/ExternalReleaseInstallerService.php:411, lib/Service/Pin/PinStore.php:97, lib/Service/Pin/PinStore.php:125, lib/Service/Pin/PinStore.php:159",
 				"reachedOn": "History tab and per-app History tab",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-version-audit-trail"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5145,7 +5228,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Source/SourceBindingStore.php:109, lib/Service/Source/TrustedSourceList.php:80",
 				"reachedOn": "History tab",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-version-audit-trail"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5175,7 +5259,8 @@
 				"state": "built",
 				"evidence": "src/App.vue:2495, src/App.vue:2413, src/components/HistoryPanel.vue:79, lib/Db/AuditEntryMapper.php:59",
 				"reachedOn": "History tab (global) and the History sub-tab of a chosen app",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-version-audit-trail"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5205,7 +5290,8 @@
 				"state": "built",
 				"evidence": "lib/Service/Audit/AuditLogger.php:88, lib/Db/AuditEntry.php:22, lib/Controller/ApiController.php:1197",
 				"reachedOn": "History tab (read-only)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-version-audit-trail"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5235,7 +5321,8 @@
 				"state": "built",
 				"evidence": "lib/BackgroundJob/PruneAuditJob.php:62, lib/BackgroundJob/PruneAuditJob.php:95, lib/Service/Settings/InstanceSettings.php:105, lib/Controller/SettingsController.php:91, src/components/InstanceSettingsPanel.vue:124",
 				"reachedOn": "Settings tab (Keep history for); background job PruneAuditJob",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-version-audit-trail"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5265,7 +5352,8 @@
 				"state": "built",
 				"evidence": "lib/Controller/ApiController.php:1207",
 				"reachedOn": "OCS API GET /api/audit (no export control in the UI)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "none"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5456,7 +5544,8 @@
 				"state": "built",
 				"evidence": "src/App.vue:2004, src/App.vue:1523, lib/Service/Installer/InstallFinalizer.php:169, src/App.vue:2211, src/App.vue:1791",
 				"reachedOn": "Apps tab (Dry run toggle, Roll back to X button)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-migration-safety-guard"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5516,7 +5605,8 @@
 				"state": "built",
 				"evidence": "lib/Controller/ApiController.php:1336, lib/Settings/Admin.php:51, appinfo/info.xml:122",
 				"reachedOn": "Admin settings, Versioniq section",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "move-to-admin-settings"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5546,7 +5636,8 @@
 				"state": "built",
 				"evidence": "lib/Controller/ApiController.php:246, lib/Controller/ApiController.php:456, src/ocs.ts:70, src/App.vue:1080",
 				"reachedOn": "every write action (bind, install, pin, policy, tokens, cache)",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "openspec/specs/version-management"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5606,7 +5697,8 @@
 				"state": "built",
 				"evidence": "lib/AppInfo/Application.php:46, lib/Notification/Notifier.php:56",
 				"reachedOn": "Nextcloud notification centre",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "add-auto-update-policies"
 			},
 			"provider": "nextcloud-server",
 			"providerHow": "read-from-code",
@@ -5697,7 +5789,8 @@
 				"state": "built",
 				"evidence": "lib/Controller/ApiController.php:53, openapi.json:1",
 				"reachedOn": "OCS API under /ocs/v2.php/apps/versioniq/api",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "none"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5727,7 +5820,8 @@
 				"state": "built",
 				"evidence": "openapi.json:1",
 				"reachedOn": "openapi.json in the app package",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "none"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5788,7 +5882,8 @@
 				"state": "built",
 				"evidence": "src/App.vue:1923, src/App.vue:337, src/App.vue:1963, src/components/HistoryPanel.vue:145",
 				"reachedOn": "whole admin page",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "none"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5818,7 +5913,8 @@
 				"state": "built",
 				"evidence": "appinfo/info.xml:122, lib/Settings/Admin.php:51",
 				"reachedOn": "Admin settings, Versioniq section",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"change": "move-to-admin-settings"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5848,7 +5944,8 @@
 				"state": "built",
 				"evidence": "appinfo/info.xml:11, lib/Service/Source/ForgeRegistry.php:78",
 				"reachedOn": "whole app",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "none"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5878,7 +5975,8 @@
 				"state": "built",
 				"evidence": "appinfo/info.xml:11, LICENSE:2",
 				"reachedOn": "appinfo licence",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "openspec/specs/source-license-headers"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5908,7 +6006,8 @@
 				"state": "built",
 				"evidence": "appinfo/info.xml:11",
 				"reachedOn": "whole app",
-				"owner": "ConductionNL/versioniq"
+				"owner": "ConductionNL/versioniq",
+				"spec": "none"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6135,7 +6234,7 @@
 				"evidence": "lib/Command/ListUpdates.php (--json, --refresh, --outside-policy), appinfo/info.xml",
 				"reachedOn": "occ versioniq:updates --json",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/archive/2026-09-29-inventory-pending-updates"
+				"change": "inventory-pending-updates"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7014,7 +7113,7 @@
 				"evidence": "lib/Service/Settings/InstanceSettings.php (update.max_lines_behind), src/utils/pendingUpdates.ts isOutsidePolicy, src/components/InstanceSettingsPanel.vue",
 				"reachedOn": "Settings tab lag limit; Apps tab Outside the update policy flag and filter",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/archive/2026-09-29-inventory-pending-updates"
+				"change": "inventory-pending-updates"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
