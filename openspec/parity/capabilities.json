@@ -7129,6 +7129,25 @@
 			}
 		},
 		{
+			"id": "inv-enable-app",
+			"area": "inventory",
+			"name": "Enable a disabled or freshly installed app from its card or the install result, after confirming the password.",
+			"versioniq": "yes",
+			"nextcloud": "unchecked",
+			"renovate": "unchecked",
+			"dependabot": "unchecked",
+			"osv-scanner": "unchecked",
+			"easy-updates-manager": "unchecked",
+			"built": {
+				"state": "built",
+				"evidence": "src/dialogs/EnableAppDialog.vue, src/utils/enableApp.ts, src/App.vue:35",
+				"reachedOn": "Apps tab card Enable action; install result",
+				"owner": "ConductionNL/versioniq",
+				"spec": "openspec/specs/version-management"
+			},
+			"source": "spec-round-2026-10-07"
+		},
+		{
 			"id": "aud-remediation-kpi",
 			"area": "audit",
 			"name": "See per severity the share of advisories and patches resolved within their deadline, with trends over time.",
