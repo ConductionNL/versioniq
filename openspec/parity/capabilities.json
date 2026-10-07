@@ -449,7 +449,7 @@
 				"evidence": "lib/Service/Source/AppStoreSource.php:661, lib/Service/Source/AppStoreSource.php:631, lib/Service/Cache/ArtifactCache.php:204, lib/Service/InstallerService.php:334, src/components/ServerCompatBadge.vue:19, src/App.vue:2379, lib/Command/ListVersions.php:114",
 				"reachedOn": "Apps tab, version picker (Runs on this server / Not for this server version); occ versioniq:versions (Runs on this server column); GET /api/app/{appId}/versions (serverCompatible)",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/inventory-upgrade-readiness"
+				"change": "inventory-upgrade-readiness"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -570,7 +570,7 @@
 				"evidence": "looked in lib/Service/Source/AppStoreSource.php:578-612 (release platform ranges not read) and src/App.vue",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/inventory-upgrade-readiness"
+				"change": "inventory-upgrade-readiness"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -601,7 +601,7 @@
 				"evidence": "looked in lib/Service, lib/Controller/ApiController.php (single-instance only)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/install-multi-instance-promotion"
+				"change": "install-multi-instance-promotion"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -632,7 +632,7 @@
 				"evidence": "looked in lib/Controller/ApiController.php routes and lib/Command (only per-app versioniq:versions ,json at lib/Command/ListVersions.php:55)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/inventory-export-sbom-metrics"
+				"change": "inventory-export-sbom-metrics"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -663,7 +663,7 @@
 				"evidence": "looked in lib/Service/Source/AppStoreSource.php and lib/Notification/Notifier.php:63-154",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/inventory-lifecycle-signals"
+				"change": "inventory-lifecycle-signals"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -844,7 +844,7 @@
 				"evidence": "src/utils/safeMode.ts:50-56, src/App.vue:1223-1234",
 				"reachedOn": "Apps tab, version picker with safe mode on",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/releases-channel-and-prereleases"
+				"change": "releases-channel-and-prereleases"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -875,7 +875,7 @@
 				"evidence": "src/App.vue:591, src/App.vue:1994, src/App.vue:2003, src/App.vue:1186, src/utils/safeMode.ts:50",
 				"reachedOn": "Apps tab (read-only label)",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/releases-channel-and-prereleases"
+				"change": "releases-channel-and-prereleases"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -936,7 +936,7 @@
 				"evidence": "lib/Service/Source/AppStoreSource.php:608 (entries carry only version and changelog), src/App.vue:2330-2360",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/releases-version-facts"
+				"change": "releases-version-facts"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -967,7 +967,7 @@
 				"evidence": "lib/Service/AutoUpdate/CandidateSelector.php:46-64 (no age criterion)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/releases-minimum-age"
+				"change": "releases-minimum-age"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -998,7 +998,7 @@
 				"evidence": "looked in lib/Service/Source and src/App.vue",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/releases-version-facts"
+				"change": "releases-version-facts"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1029,7 +1029,7 @@
 				"evidence": "src/App.vue:1400, src/App.vue:2297, src/dialogs/DowngradeConfirmDialog.vue:76",
 				"reachedOn": "Apps tab (after selecting a version)",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/releases-version-facts"
+				"change": "releases-version-facts"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1060,7 +1060,7 @@
 				"evidence": "lib/Notification/Notifier.php:63-154 (subjects: pinned_to_vulnerable, pat_*, pin_drift, auto_update_*)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/releases-new-release-alerts"
+				"change": "releases-new-release-alerts"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1091,7 +1091,7 @@
 				"evidence": "looked in lib/Controller/ApiController.php routes (no feed or webhook)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/releases-new-release-alerts"
+				"change": "releases-new-release-alerts"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1123,7 +1123,7 @@
 				"evidence": "notifications go to admins only (lib/Service/Advisory/AdvisoryDigestNotifier.php:114, lib/Service/Pin/PinDriftHandler.php:90); no user-facing changelog notice",
 				"reachedOn": "nothing in versioniq; whether the platform's app_updated notice fires after a versioniq install was not checked",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/releases-notes-reach"
+				"change": "releases-notes-reach"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1155,7 +1155,7 @@
 				"evidence": "lib/Service/Source/AppStoreSource.php:100, lib/Service/Source/ForgeReleaseSource.php:89",
 				"reachedOn": "Apps tab versions list",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/safety-withdrawn-and-revoked"
+				"change": "safety-withdrawn-and-revoked"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1187,7 +1187,7 @@
 				"evidence": "no LTS concept in lib/Service/Source/AppStoreSource.php:100 or src/App.vue version filter",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/releases-channel-and-prereleases"
+				"change": "releases-channel-and-prereleases"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1248,7 +1248,7 @@
 				"evidence": "src/App.vue:369, src/App.vue:2370, lib/BackgroundJob/AutoUpdateJob.php:141",
 				"reachedOn": "Apps tab (app detail)",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/install-one-click-updates"
+				"change": "install-one-click-updates"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1279,7 +1279,7 @@
 				"evidence": "src/App.vue:2136-2219 (no bulk action), lib/BackgroundJob/AutoUpdateJob.php:90",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/install-one-click-updates"
+				"change": "install-one-click-updates"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1580,7 +1580,7 @@
 				"evidence": "lib/Controller/ApiController.php (no upload route), lib/Controller/ApiController.php:256 (source kinds appstore and github-release only)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/install-manual-upload"
+				"change": "install-manual-upload"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1611,7 +1611,7 @@
 				"evidence": "src/App.vue:2377, src/App.vue:2417, src/App.vue:2421",
 				"reachedOn": "Apps tab (install button and result panel)",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/install-live-progress"
+				"change": "install-live-progress"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1672,7 +1672,7 @@
 				"evidence": "looked in src/App.vue and lib/Controller/ApiController.php (single-app install only)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/install-bulk-rollback"
+				"change": "install-bulk-rollback"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1734,7 +1734,7 @@
 				"evidence": "lib/Service/ExternalReleaseInstallerService.php:583, lib/Service/SelectedReleaseInstallerService.php:334",
 				"reachedOn": "Apps tab install flow honours an existing override; nothing in versioniq sets one",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/install-force-incompatible"
+				"change": "install-force-incompatible"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1766,7 +1766,7 @@
 				"evidence": "no deprecation or successor handling in lib/Service/InstallerService.php or lib/Service/Source/AppStoreSource.php",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/inventory-lifecycle-signals"
+				"change": "inventory-lifecycle-signals"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2127,7 +2127,7 @@
 				"evidence": "src/App.vue:2001, lib/Service/InstallerService.php:347, lib/Service/SelectedReleaseInstallerService.php:316, lib/Service/SelectedReleaseInstallerService.php:696",
 				"reachedOn": "Apps tab ('Dry run' toggle); occ versioniq:install ,dry-run",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/safety-update-checks"
+				"change": "safety-update-checks"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2279,7 +2279,7 @@
 				"evidence": "lib/Service/Installer/MigrationDiffer.php:31, lib/Service/SelectedReleaseInstallerService.php:650, src/utils/migrationSafety.ts:49",
 				"reachedOn": "Apps tab, downgrade confirm dialog (dry run)",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/safety-upgrade-migration-preview"
+				"change": "safety-upgrade-migration-preview"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2372,7 +2372,7 @@
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:352",
 				"reachedOn": "Apps tab install flow",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/audit-external-changes"
+				"change": "audit-external-changes"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2613,7 +2613,7 @@
 				"evidence": "lib/Service/Policy/Policy.php:30, lib/Service/AutoUpdate/CandidateSelector.php:66, src/components/PolicySelector.vue:24, src/App.vue:2194",
 				"reachedOn": "Apps tab (per-app 'Auto-update' selector); background job AutoUpdateJob",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/pinning-ranges-and-skips"
+				"change": "pinning-ranges-and-skips"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2644,7 +2644,7 @@
 				"evidence": "lib/Service/AutoUpdate/AttemptLedger.php:49 (automatic never-retry only), src/App.vue (no skip control)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/pinning-ranges-and-skips"
+				"change": "pinning-ranges-and-skips"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2858,7 +2858,7 @@
 				"evidence": "lib/Service/Policy/Policy.php:24 (absent policy means none), lib/Service/Policy/PolicyStore.php:42, src/App.vue:2019",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/autoupdate-default-and-config-file"
+				"change": "autoupdate-default-and-config-file"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2949,7 +2949,7 @@
 				"evidence": "lib/Service/AutoUpdate/AutoUpdateWindow.php:26 (time of day only), lib/Service/AutoUpdate/AutoUpdateSettingsStore.php:27",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/autoupdate-schedules"
+				"change": "autoupdate-schedules"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3040,7 +3040,7 @@
 				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:90 (one install per app, no batch)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/autoupdate-run-batching"
+				"change": "autoupdate-run-batching"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3071,7 +3071,7 @@
 				"evidence": "lib/Service/AutoUpdate/CandidateSelector.php:46 (semver bound only, no advisory input), lib/Service/Policy/Policy.php:34",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/autoupdate-security-first"
+				"change": "autoupdate-security-first"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3102,7 +3102,7 @@
 				"evidence": "grep approv in lib and src: no hits; lib/BackgroundJob/AutoUpdateJob.php:151 installs directly",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/autoupdate-proposed-updates"
+				"change": "autoupdate-proposed-updates"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3133,7 +3133,7 @@
 				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:155, lib/Service/InstallerService.php:333",
 				"reachedOn": "background job AutoUpdateJob",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/safety-update-checks"
+				"change": "safety-update-checks"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3164,7 +3164,7 @@
 				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:90 (every policy app processed each run)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/autoupdate-run-batching"
+				"change": "autoupdate-run-batching"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3225,7 +3225,7 @@
 				"evidence": "lib/Service/Policy/PolicyStore.php:42 (policies as app config JSON keys policy.{appId})",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/autoupdate-default-and-config-file"
+				"change": "autoupdate-default-and-config-file"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3439,7 +3439,7 @@
 				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:54 runs one daily job for every policy level",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/autoupdate-schedules"
+				"change": "autoupdate-schedules"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3622,7 +3622,7 @@
 				"evidence": "lib/Service/Advisory/AdvisoryService.php:81 (only NextcloudAdvisoryFeed and source advisories), grep osv: no hits",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/advisories-bundled-libraries"
+				"change": "advisories-bundled-libraries"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3713,7 +3713,7 @@
 				"evidence": "src/App.vue:2171 (safe version is text only, no action)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/install-one-click-updates"
+				"change": "install-one-click-updates"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3834,7 +3834,7 @@
 				"evidence": "grep dismiss in src: only discover provider errors (src/components/DiscoverPanel.vue:111); lib/Service/Advisory/AdvisoryNotifier.php:36 stores notified keys, not dismissals",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/advisories-triage"
+				"change": "advisories-triage"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3897,7 +3897,7 @@
 				"evidence": "lib/Service/Advisory/AdvisoryPackageMap.php:86 (maps packages to app ids or the server only)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/advisories-bundled-libraries"
+				"change": "advisories-bundled-libraries"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4140,7 +4140,7 @@
 				"evidence": "grep ncsc in lib and src: no hits",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/advisories-ncsc-feed"
+				"change": "advisories-ncsc-feed"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4173,7 +4173,7 @@
 				"evidence": "lib/Service/Advisory/AdvisoryService.php:293, src/App.vue:2159",
 				"reachedOn": "Apps tab, Advisory badge tooltip",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/advisories-per-app-detail"
+				"change": "advisories-per-app-detail"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4358,7 +4358,7 @@
 				"evidence": "lib/Service/Advisory/AdvisoryService.php:304, lib/Service/Advisory/AdvisoryService.php:295",
 				"reachedOn": "Apps tab vulnerable badge",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/advisories-per-app-detail"
+				"change": "advisories-per-app-detail"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4421,7 +4421,7 @@
 				"evidence": "lib/Service/Advisory/AdvisoryPackageMap.php:86 matches security advisories only; no malware feed is read",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/safety-withdrawn-and-revoked"
+				"change": "safety-withdrawn-and-revoked"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4453,7 +4453,7 @@
 				"evidence": "no assignee field in lib/Service/Advisory/AdvisoryResultStore.php",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/advisories-triage"
+				"change": "advisories-triage"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4574,7 +4574,7 @@
 				"evidence": "lib/Service/Source/ForgeRegistry.php:37 (github and codeberg only), lib/Service/Source/SourceBinding.php:33",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/sources-gitlab-forge"
+				"change": "sources-gitlab-forge"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5296,7 +5296,7 @@
 				"evidence": "grep OCP Activity in lib: no hits; lib/AppInfo/Application.php:43 registers no activity provider",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/audit-attribution-and-forwarding"
+				"change": "audit-attribution-and-forwarding"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5327,7 +5327,7 @@
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:444, lib/Service/ExternalReleaseInstallerService.php:410, src/components/HistoryPanel.vue:11",
 				"reachedOn": "History tab (actor column)",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/audit-attribution-and-forwarding"
+				"change": "audit-attribution-and-forwarding"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5358,7 +5358,7 @@
 				"evidence": "lib/Service/Audit/AuditLogger.php:88 (database only); no syslog, webhook or admin_audit emission",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/audit-attribution-and-forwarding"
+				"change": "audit-attribution-and-forwarding"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5391,7 +5391,7 @@
 				"evidence": "src/App.vue:2157, src/App.vue:1980, lib/Service/Advisory/AdvisoryService.php:311",
 				"reachedOn": "Apps tab advisory badges and freshness line",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/advisories-per-app-detail"
+				"change": "advisories-per-app-detail"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5424,7 +5424,7 @@
 				"evidence": "lib/Service/Policy/Policy.php:36, src/components/PolicySelector.vue:24",
 				"reachedOn": "Apps tab, policy selector",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/autoupdate-security-first"
+				"change": "autoupdate-security-first"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5667,7 +5667,7 @@
 				"evidence": "grep webhook in lib and src: no hits",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/releases-new-release-alerts"
+				"change": "releases-new-release-alerts"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5758,7 +5758,7 @@
 				"evidence": "l10n/nl.json:1, src/App.vue:1999, src/App.vue:2107, src/App.vue:2229",
 				"reachedOn": "whole admin page",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/admin-translate-apps-tab"
+				"change": "admin-translate-apps-tab"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5971,7 +5971,7 @@
 				"evidence": "no MCP server or assistant integration under lib/ or src/",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/admin-mcp-assistant"
+				"change": "admin-mcp-assistant"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6004,7 +6004,7 @@
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:346, lib/Service/ExternalReleaseInstallerService.php:605, lib/Service/Source/AppStoreSource.php:578",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/inventory-upgrade-readiness"
+				"change": "inventory-upgrade-readiness"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6069,7 +6069,7 @@
 				"evidence": "looked in lib/Controller/ApiController.php (29 routes in _lane/routes.txt), lib/Command and lib/BackgroundJob; grep metric, prometheus, openmetrics in lib and src: no hits",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/inventory-export-sbom-metrics"
+				"change": "inventory-export-sbom-metrics"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6102,7 +6102,7 @@
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:135, lib/Service/SelectedReleaseInstallerService.php:174, lib/Service/SelectedReleaseInstallerService.php:176",
 				"reachedOn": "Apps tab (any App Store install); occ versioniq:install",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/safety-withdrawn-and-revoked"
+				"change": "safety-withdrawn-and-revoked"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6168,7 +6168,7 @@
 				"evidence": "looked in lib/Service/Discovery/DiscoveryHit.php:29 (hit fields), lib/Service/Source/AppStoreSource.php and src/App.vue app cards; grep featured, verified, publisher, maintainer: no hits",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/inventory-verified-publisher"
+				"change": "inventory-verified-publisher"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6233,7 +6233,7 @@
 				"evidence": "lib/Service/AutoUpdate/CandidateSelector.php:46-64 (no age criterion), src/App.vue:2194 (policy badge only)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/releases-minimum-age"
+				"change": "releases-minimum-age"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6266,7 +6266,7 @@
 				"evidence": "lib/Service/AutoUpdate/CandidateSelector.php:46-64",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/releases-minimum-age"
+				"change": "releases-minimum-age"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6395,7 +6395,7 @@
 				"evidence": "lib/Service/AutoUpdate/CandidateSelector.php:46-64, lib/BackgroundJob/AutoUpdateJob.php:90",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/releases-minimum-age"
+				"change": "releases-minimum-age"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6428,7 +6428,7 @@
 				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:141, lib/Service/AutoUpdate/CandidateSelector.php:46 (candidate computed inside the job only), routes in _lane/routes.txt (no preview route)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/autoupdate-proposed-updates"
+				"change": "autoupdate-proposed-updates"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6493,7 +6493,7 @@
 				"evidence": "lib/Service/Audit/AuditLogger.php:33-37 (operations install, bind_source, pin, unpin, pin_drift only), lib/Service/AutoUpdate/AutoUpdateSettingsStore.php:61, lib/Service/Policy/Policy.php:36-39, src/App.vue:217",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/audit-attribution-and-forwarding"
+				"change": "audit-attribution-and-forwarding"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6750,7 +6750,7 @@
 				"evidence": "lib/Listener/AppUpdatedListener.php:48, lib/Service/Pin/PinDriftHandler.php:55-58, lib/Service/Pin/PinStore.php:159, lib/BackgroundJob/PinReconcileJob.php:54",
 				"reachedOn": "History tab (pin_drift rows) and per-app drift banner, pinned apps only",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/audit-external-changes"
+				"change": "audit-external-changes"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6783,7 +6783,7 @@
 				"evidence": "grep sbom, spdx, cyclonedx in lib and src: no hits; looked in lib/Service/Installer/InstallFinalizer.php (no post-install export)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/inventory-export-sbom-metrics"
+				"change": "inventory-export-sbom-metrics"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6816,7 +6816,7 @@
 				"evidence": "lib/Controller/ApiController.php:1207, src/components/HistoryPanel.vue:28, src/components/HistoryPanel.vue:54, src/App.vue:2495",
 				"reachedOn": "History tab",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/audit-security-reports"
+				"change": "audit-security-reports"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6849,7 +6849,7 @@
 				"evidence": "grep end of life, eol, end of support in lib and src: no hits; lib/Notification/Notifier.php:135, lib/Notification/Notifier.php:154 (no support-end subject)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/inventory-lifecycle-signals"
+				"change": "inventory-lifecycle-signals"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6882,7 +6882,7 @@
 				"evidence": "lib/Service/AutoUpdate/AutoUpdateNotifier.php:48, lib/Service/AutoUpdate/AutoUpdateNotifier.php:63 (success and failure only, after the install)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/autoupdate-proposed-updates"
+				"change": "autoupdate-proposed-updates"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6915,7 +6915,7 @@
 				"evidence": "looked in lib/Service and lib/Controller/ApiController.php (single instance only)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/install-multi-instance-promotion"
+				"change": "install-multi-instance-promotion"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6948,7 +6948,7 @@
 				"evidence": "lib/Service/Source/AppStoreSource.php:578 (version and changelog only), src/components/VersionChangelog.vue:18",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/releases-version-facts"
+				"change": "releases-version-facts"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6981,7 +6981,7 @@
 				"evidence": "lib/Service/Source/AppStoreSource.php:644, lib/Service/Source/AppStoreSource.php:646, src/components/VersionChangelog.vue:18, src/App.vue:2360",
 				"reachedOn": "Apps tab (app detail, Versions, release notes disclosure)",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/releases-notes-reach"
+				"change": "releases-notes-reach"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7047,7 +7047,7 @@
 				"evidence": "lib/Service/Advisory/AdvisoryResultStore.php:40, lib/Service/Advisory/AdvisoryResultStore.php:60 (one current result set, overwritten each sweep)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "openspec/changes/audit-security-reports"
+				"change": "audit-security-reports"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
