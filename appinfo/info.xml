@@ -7,7 +7,7 @@
 	<description>> ⚠️ **Active development — not for production use yet.** This app is under active development. Although it may carry a stable release status, **please do not use it in production environments before 12 June 2026.** See [conduction.nl/apps](https://conduction.nl/apps) for release planning and what this app does.
 
 Versioniq gives Nextcloud administrators the ability to roll back apps to previous versions or install specific newer versions. Essential for debugging, testing compatibility, and recovering from broken updates.</description>
-	<version>1.6.6</version>
+	<version>1.6.7-unstable.20261007150243</version>
 	<licence>EUPL-1.2</licence>
 	<author mail="info@conduction.nl" homepage="https://conduction.nl">Conduction B.V.</author>
 	<namespace>Versioniq</namespace>
@@ -104,6 +104,14 @@ Versioniq gives Nextcloud administrators the ability to roll back apps to previo
 				replacement. Idempotent — a fresh install removes nothing.
 			-->
 			<step>OCA\Versioniq\Repair\RemoveRetiredCronJobs</step>
+			<!--
+				The App Store payload cache used to be EAGER app config, which
+				Nextcloud preloads on every request of every app (36 MB, ~300 ms
+				per request, measured 2026-10-06). The code now writes it lazy;
+				this flips the rows already stored. After MigrateAppConfigKeys,
+				which copies keys across eagerly.
+			-->
+			<step>OCA\Versioniq\Repair\MarkPayloadCacheLazy</step>
 		</post-migration>
 		<install>
 			<step>OCA\Versioniq\Repair\MigrateAppConfigKeys</step>
@@ -113,6 +121,9 @@ Versioniq gives Nextcloud administrators the ability to roll back apps to previo
 			     this block is the one that actually fires on the upgrade the
 			     step exists for. -->
 			<step>OCA\Versioniq\Repair\MigrateSchemaApplicationId</step>
+			<!-- Same step as in <post-migration>: MigrateAppConfigKeys above
+			     copies any old payload rows eagerly. -->
+			<step>OCA\Versioniq\Repair\MarkPayloadCacheLazy</step>
 		</install>
 	</repair-steps>
 	<commands>
