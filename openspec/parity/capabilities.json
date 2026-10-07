@@ -450,13 +450,15 @@
 				"evidence": "lib/Service/Source/AppStoreSource.php:661, lib/Service/Source/AppStoreSource.php:631, lib/Service/Cache/ArtifactCache.php:204, lib/Service/InstallerService.php:334, src/components/ServerCompatBadge.vue:19, src/App.vue:2379, lib/Command/ListVersions.php:114",
 				"reachedOn": "Apps tab, version picker (Runs on this server / Not for this server version); occ versioniq:versions (Runs on this server column); GET /api/app/{appId}/versions (serverCompatible)",
 				"owner": "ConductionNL/versioniq",
-				"change": "inventory-upgrade-readiness"
+				"change": "inventory-upgrade-readiness",
+				"readOn": "2026-10-07",
+				"spec": "openspec/specs/version-management"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "Each App Store version carries serverCompatible from the release's platformVersionSpec against the running server, and a forge release held in the artifact cache carries it from the nextcloud range in its own info.xml. The web version picker shows it as a badge and occ versioniq:versions as a column. A forge release that was never downloaded still reads unknown, because forges publish no range in release metadata, so this stays partial. Specified 2026-09-27 in openspec/changes/inventory-upgrade-readiness (openspec pass).",
+			"note": "Re-rated 2026-10-07 (parity scan), state and rating unchanged. The built half is specified in the version-management main spec (Fetch Available Versions: serverCompatible on each App Store version and on cached forge releases, shown in the web picker): App Store versions carry serverCompatible from platformVersionSpec, cached forge releases from their own info.xml, shown by ServerCompatBadge in the picker and as a column in occ versioniq:versions. The missing half stays specified in inventory-upgrade-readiness: a forge release that was never downloaded reads unknown, because the forge range lookup (ForgeRangeStore) is not built. Partial is the right rating until that lands.",
 			"evidence": {
 				"nextcloud": "apps/appstore/lib/Controller/ApiController.php:133-135 computes missingDependencies and isCompatible; shown in apps/appstore/src/components/AppstoreSidebar/AppDetailsTab.vue:137 and filterable via 'Show incompatible' (apps/appstore/src/components/AppToolbar.vue:105). Applies to the single latest release only.",
 				"renovate": "lib/config/options/index.ts:499 constraintsFiltering filters releases by language constraints (engines, PHP), and lib/modules/datasource/nextcloud/readme.md has you point registryUrls at a per-platform apps.json so only releases for that server version are offered; not shown to the user as a compatibility verdict.",
@@ -478,10 +480,11 @@
 			"easy-updates-manager": "yes",
 			"built": {
 				"state": "built",
-				"evidence": "src/App.vue:1140, src/App.vue:2125",
+				"evidence": "src/App.vue:1196 (filteredApps: label or id, case-insensitive, after the core and updates filters), src/App.vue:2240 (Hide core apps), src/App.vue:2256 (Search apps input)",
 				"reachedOn": "Apps tab",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/version-management",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -912,10 +915,11 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "src/App.vue:1180, src/App.vue:2317",
+				"evidence": "src/App.vue:1268 (filteredVersions), src/App.vue:2505 (Filter versions input), src/App.vue:2579 (No versions match your filter.)",
 				"reachedOn": "Apps tab (app detail, Versions)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/version-management",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1908,10 +1912,11 @@
 			"easy-updates-manager": "partial",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/SelectedReleaseInstallerService.php:133, lib/Service/SelectedReleaseInstallerService.php:604",
+				"evidence": "lib/Service/SelectedReleaseInstallerService.php:133 (verifyCertificate: root chain, CRL, revoked serial, CN equals app id), lib/Service/SelectedReleaseInstallerService.php:604 (SHA-512 archive signature)",
 				"reachedOn": "Apps tab (any App Store install)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/migration-safety",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2094,10 +2099,11 @@
 			"easy-updates-manager": "yes",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/InstallerService.php:524, lib/Service/InstallerService.php:719",
+				"evidence": "lib/Service/InstallerService.php:609 (maintenance on for a real install when it was off), lib/Service/InstallerService.php:807 (switched off in finally); tests/unit/Service/InstallerDryRunSideEffectsTest.php:98 (dry run never writes it)",
 				"reachedOn": "Apps tab (any install); occ versioniq:install; background job AutoUpdateJob",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/migration-safety",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3830,7 +3836,8 @@
 				"evidence": "lib/BackgroundJob/AdvisoryRefreshJob.php:114, lib/Service/Advisory/AdvisoryDigestNotifier.php:116, lib/Notification/Notifier.php:172",
 				"reachedOn": "background job AdvisoryRefreshJob, Nextcloud notification centre (weekly, Apps tab toggle)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/security-advisory-correlation",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3858,10 +3865,11 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "src/App.vue:2066, lib/Controller/ApiController.php:861, lib/BackgroundJob/AdvisoryRefreshJob.php:65, src/utils/advisoryFreshness.ts:29, src/App.vue:724",
+				"evidence": "lib/Service/Advisory/AdvisorySettingsStore.php:36 (6 h default, 1 to 24), lib/BackgroundJob/AdvisoryRefreshJob.php:65 (setInterval), lib/Controller/ApiController.php:916 and :947 (GET and PUT /api/advisory/settings, 400 outside the bounds), src/App.vue:2185 (interval field), src/utils/advisoryFreshness.ts:29",
 				"reachedOn": "Apps tab, security advisory checks (check every N hours)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/security-advisory-correlation",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3923,7 +3931,8 @@
 				"evidence": "lib/Service/Advisory/BranchAwareRange.php:72, lib/Service/Advisory/AdvisoryService.php:274",
 				"reachedOn": "background job AdvisoryRefreshJob, Apps tab badges",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/security-advisory-correlation",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4047,7 +4056,8 @@
 				"evidence": "lib/Service/Advisory/NextcloudAdvisoryFeed.php:263, lib/Service/Settings/InstanceSettings.php:105, src/components/InstanceSettingsPanel.vue:178",
 				"reachedOn": "Settings tab (Advisory feed address); occ config:app:set versioniq advisory.feed_base",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/audit-trail",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4946,17 +4956,18 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "building",
-				"evidence": "src/components/IntegrationsPanel.vue:30, src/utils/connectionRegistry.ts:25, lib/Settings/connections.json:4, lib/Settings/Admin.php:53",
-				"owner": "ConductionNL/integriq",
+				"state": "built",
+				"evidence": "lib/Settings/connections.json:4 declares the appstore, github and advisories connections; lib/Service/Connection/ConnectionReportService.php reports what a real request met, called from lib/Service/Source/AppStoreSource.php:259, lib/Service/Advisory/NextcloudAdvisoryFeed.php:151 and lib/Controller/ApiController.php:1100 (token save) and :1197 (token removal); lib/Settings/Admin.php:53 provides integriq-installed; src/components/IntegrationsPanel.vue:152 shows each row status and :156 when integriq last checked it (checkedAt); src/App.vue:242 adds the Integrations tab only when integriq is installed.",
+				"owner": "ConductionNL/versioniq",
 				"reachedOn": "Integrations tab (only when integriq is enabled)",
-				"change": "integriq/connection-registry"
+				"change": "adopt-connection-registry",
+				"readOn": "2026-10-07"
 			},
 			"provider": "integriq",
 			"providerHow": "read-from-code",
 			"feature": "connection-registry",
 			"featureConfidence": "high",
-			"note": "Reachability and last result for the App Store, GitHub and the advisory feed are shown from integriq's connection registry; without integriq there is no status view, and neither Codeberg nor the self-hosted Forgejo or Gitea forge has a row. Building: ConductionNL/integriq openspec/changes/connection-registry, an existing open change, covers it (integriq lane, OpenSpec pass 2026-09-27).",
+			"note": "Re-rated 2026-10-07 (parity scan): built through versioniq change adopt-connection-registry (all code tasks done; only the live e2e run against an instance with integriq, task 5.1, is open) on top of integriq change connection-registry, archived on integriq development as 2026-09-29-connection-registry. The Integrations tab shows reachability and last check time for the App Store, GitHub and the advisory feed. Stays partial: without integriq there is no status view, and a self-hosted Forgejo or Gitea forge has no row (Codeberg was left out on purpose, it is retired).",
 			"evidence": {
 				"nextcloud": "Admins get a notification after 3, 7, 14 and 30 days of failed update checks (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:30,88-94), the last check time is shown (Settings/Admin.php:44), and a setup check tests internet connectivity (apps/settings/lib/SetupChecks/InternetConnectivity.php:41). Store fetch failures are only logged (Fetcher.php:100-103).",
 				"renovate": "Lookup failures surface as dependency lookup warnings and a \"Repository Problems\" section on the dashboard (lib/workers/repository/dependency-dashboard.ts:333); no per-source reachability or last-read view.",
@@ -5353,7 +5364,8 @@
 				"evidence": "lib/Controller/ApiController.php:1207",
 				"reachedOn": "OCS API GET /api/audit (no export control in the UI)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/audit-trail",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5790,7 +5802,8 @@
 				"evidence": "lib/Controller/ApiController.php:53, openapi.json:1",
 				"reachedOn": "OCS API under /ocs/v2.php/apps/versioniq/api",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/admin-api",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5810,7 +5823,7 @@
 			"area": "admin",
 			"name": "Publish an OpenAPI description of the API.",
 			"rowSource": "own-code",
-			"versioniq": "yes",
+			"versioniq": "partial",
 			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "yes",
@@ -5818,16 +5831,17 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "openapi.json:1",
+				"evidence": "openapi.json:1 (OpenAPI 3.0.3, 24 paths, generated by composer run openapi), .github/workflows/openapi.yml:113 (regenerates and fails on a diff); missing: GET /api/updates (lib/Controller/ApiController.php, from inventory-pending-updates #493) is not in openapi.json on development",
 				"reachedOn": "openapi.json in the app package",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/admin-api",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "version-management",
 			"featureConfidence": "high",
-			"note": "A generated OpenAPI 3.0.3 description ships with the app.",
+			"note": "A generated OpenAPI 3.0.3 description ships with the app and CI checks it is fresh. Re-rated 2026-10-07 from yes to partial: the committed openapi.json lacks the GET /api/updates route added in #493, so the description is one route behind and the openapi check is red until it is regenerated.",
 			"evidence": {
 				"nextcloud": "apps/appstore/openapi.json and apps/updatenotification/openapi.json are generated from the controllers; published at https://docs.nextcloud.com/server/latest/developer_manual/_static/openapi.html.",
 				"renovate": "not checked: no OpenAPI description found in the repo; Mend portal APIs were not read.",
@@ -5880,10 +5894,11 @@
 			"easy-updates-manager": "partial",
 			"built": {
 				"state": "built",
-				"evidence": "src/App.vue:1923, src/App.vue:337, src/App.vue:1963, src/components/HistoryPanel.vue:145",
+				"evidence": "src/App.vue:2024 (skip link to #versioniq-main), src/App.vue:2070 (tablist with aria-selected, aria-controls and roving tabindex), src/App.vue:337 (Left, Right, Home, End keys), src/App.vue:2509 (labelled filter input), src/components/HistoryPanel.vue:151 (scope=col headers); tests/e2e/shell.spec.ts:38 drives the arrow keys",
 				"reachedOn": "whole admin page",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "openspec/specs/version-management",
+				"readOn": "2026-10-07"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6034,17 +6049,18 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "building",
-				"evidence": "src/App.vue:2525, src/components/IntegrationsPanel.vue:30, lib/Settings/connections.json:4, lib/Settings/Admin.php:53",
-				"owner": "ConductionNL/integriq",
+				"state": "built",
+				"evidence": "lib/Settings/connections.json:4 declares the appstore, github and advisories connections; lib/Service/Connection/ConnectionReportService.php reports what a real request met, called from lib/Service/Source/AppStoreSource.php:259, lib/Service/Advisory/NextcloudAdvisoryFeed.php:151 and lib/Controller/ApiController.php:1100 (token save) and :1197 (token removal); lib/Settings/Admin.php:53 provides integriq-installed; src/App.vue:2735 mounts src/components/IntegrationsPanel.vue, which lists integriq app_connection rows for app=versioniq and links Add integration to integriq (:111).",
+				"owner": "ConductionNL/versioniq",
 				"reachedOn": "Integrations tab (only when integriq is enabled)",
-				"change": "integriq/connection-registry"
+				"change": "adopt-connection-registry",
+				"readOn": "2026-10-07"
 			},
 			"provider": "integriq",
 			"providerHow": "read-from-code",
 			"feature": "connection-registry",
 			"featureConfidence": "high",
-			"note": "An Integrations tab lists the App Store, GitHub and advisory feed rows from integriq's registry; it is absent without integriq and has no Codeberg or self-hosted Forgejo or Gitea row. Building: ConductionNL/integriq openspec/changes/connection-registry, an existing open change, covers it (integriq lane, OpenSpec pass 2026-09-27).",
+			"note": "Re-rated 2026-10-07 (parity scan): built through versioniq change adopt-connection-registry (code tasks done, live e2e task 5.1 open) on integriq connection-registry, archived on integriq development as 2026-09-29-connection-registry. One Integrations tab lists the App Store, GitHub and advisory feed connections. Stays partial: the tab is absent without integriq, and a self-hosted Forgejo or Gitea forge has no row.",
 			"evidence": {
 				"nextcloud": "The Security and setup warnings overview runs checks such as internet connectivity, email test and cron (apps/settings/lib/SetupChecks/InternetConnectivity.php, EmailTestSuccessful.php, CronInfo.php); it does not cover the app store or update server health.",
 				"renovate": "Mend cloud shows each repository's Renovate status (failed, timeout, resource-limit) in the Developer Portal (docs/usage/mend-hosted/job-scheduling.md:19-40); nothing comparable in the self-hosted CLI.",

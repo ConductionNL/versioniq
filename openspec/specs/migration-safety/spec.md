@@ -101,3 +101,60 @@ After every successful finalize, the system MUST record `lkg.{appId}` (JSON: `ve
 - GIVEN installed 2.6.0 (broken) and `lkg.openregister` = 2.5.0
 - WHEN the admin clicks "Roll back to last known good"
 - THEN the standard install flow for 2.5.0 MUST start, presenting the downgrade dialog with the migration diff
+
+### Requirement: An App Store package is verified against Nextcloud code signing before install [MVP]
+
+Before an App Store release is downloaded, the system MUST check the release certificate
+against the Nextcloud code-signing root (`resources/codesigning/root.crt`) and its revocation
+list (`root.crl`): the CRL signature MUST validate, the certificate serial MUST NOT be revoked,
+the certificate MUST be issued by the trusted root, and its common name MUST equal the app id.
+After the download the system MUST verify the archive's SHA-512 signature with that
+certificate's public key. Any failure MUST stop the install before a file is swapped. A forge
+release carries no signature; it is checked by SHA-256 instead (external-sources, artifact-cache).
+Code: `lib/Service/SelectedReleaseInstallerService.php` (`verifyCertificate`, the
+`openssl_verify` check).
+
+#### Scenario: A certificate issued to another app is refused
+
+@e2e exclude needs a release signed by the Nextcloud code-signing root for a different app id, which CI cannot produce.
+
+- **GIVEN** an App Store release of `openregister` whose certificate CN is `calendar`
+- **WHEN** the admin installs that version
+- **THEN** the install MUST fail with "App with id openregister has a cert issued to calendar"
+- **AND** no file of the installed app MUST change
+
+#### Scenario: A tampered archive is refused
+
+@e2e exclude needs a store archive altered in transit; the signature step is a single openssl_verify call on the downloaded bytes.
+
+- **GIVEN** a valid certificate and an archive whose bytes do not match the release signature
+- **WHEN** the install verifies the download
+- **THEN** the install MUST fail with "Release signature verification failed."
+- **AND** no file of the installed app MUST change
+
+### Requirement: Maintenance mode is held around a real install [MVP]
+
+For a real install, the system MUST switch Nextcloud maintenance mode on before it touches the
+app's files when maintenance mode was off, and MUST switch it off again when the install ends,
+whether it succeeded, failed or threw. When maintenance mode was already on, the system MUST
+leave it on. A dry run MUST NOT switch maintenance mode on, so a preview never locks users out
+(#427). This holds for installs from the Apps tab, `occ versioniq:install` and the
+automatic-update job, which share `InstallerService`. Code: `lib/Service/InstallerService.php`
+(`$maintenanceWasSet` and the `finally` block).
+
+#### Scenario: A real install takes and releases maintenance mode
+
+@e2e exclude maintenance mode locks every other request on the shared CI instance, including the test's own. No unit test asserts the on and off pair yet (InstallerServiceTest only runs with maintenance already on); listed as a gap in the PR.
+
+- **GIVEN** maintenance mode is off
+- **WHEN** the admin installs another version of an app and the install fails halfway
+- **THEN** maintenance mode MUST have been on while files were swapped
+- **AND** maintenance mode MUST be off again when the response returns
+
+#### Scenario: A dry run leaves maintenance mode alone
+
+@e2e exclude covered by tests/unit/Service/InstallerDryRunSideEffectsTest.php.
+
+- **GIVEN** maintenance mode is off
+- **WHEN** the admin runs a dry run of an install
+- **THEN** maintenance mode MUST NOT be switched on at any point
