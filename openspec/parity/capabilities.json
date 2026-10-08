@@ -318,6 +318,397 @@
 			"name": "Administration and platform fit"
 		}
 	],
+	"features": [
+		{
+			"slug": "app-inventory",
+			"title": "Installed app inventory",
+			"title_nl": "Overzicht van geinstalleerde apps",
+			"area": "inventory",
+			"overlay": null,
+			"specs": [
+				"cli-commands",
+				"pending-updates",
+				"version-management",
+				"external-sources",
+				"pat-management",
+				"inventory-verified-publisher"
+			]
+		},
+		{
+			"slug": "upgrade-readiness",
+			"title": "Server upgrade readiness",
+			"title_nl": "Gereedheid voor een serverupgrade",
+			"area": "inventory",
+			"overlay": null,
+			"specs": [
+				"version-management",
+				"inventory-upgrade-readiness"
+			]
+		},
+		{
+			"slug": "lifecycle-signals",
+			"title": "End of life and deprecation warnings",
+			"title_nl": "Waarschuwingen voor einde ondersteuning en verouderde apps",
+			"area": "inventory",
+			"overlay": null,
+			"specs": [
+				"inventory-lifecycle-signals"
+			]
+		},
+		{
+			"slug": "sbom-and-metrics",
+			"title": "SBOM export and monitoring metrics",
+			"title_nl": "SBOM-export en monitoringmetrieken",
+			"area": "inventory",
+			"overlay": null,
+			"specs": [
+				"inventory-export-sbom-metrics"
+			]
+		},
+		{
+			"slug": "version-facts",
+			"title": "Every version with its release facts",
+			"title_nl": "Elke versie met haar releasegegevens",
+			"area": "releases",
+			"overlay": null,
+			"specs": [
+				"version-management",
+				"releases-version-facts",
+				"safety-withdrawn-and-revoked"
+			]
+		},
+		{
+			"slug": "changelog-visibility",
+			"title": "Release notes and changelogs",
+			"title_nl": "Releasenotes en changelogs",
+			"area": "releases",
+			"overlay": null,
+			"specs": [
+				"changelog-visibility",
+				"releases-notes-reach",
+				"releases-version-facts"
+			]
+		},
+		{
+			"slug": "release-channels",
+			"title": "Release channels and pre-releases",
+			"title_nl": "Releasekanalen en voorlopige versies",
+			"area": "releases",
+			"overlay": null,
+			"specs": [
+				"releases-channel-and-prereleases"
+			]
+		},
+		{
+			"slug": "minimum-release-age",
+			"title": "Minimum release age before updating",
+			"title_nl": "Minimale leeftijd van een release voor bijwerken",
+			"area": "releases",
+			"overlay": null,
+			"specs": [
+				"releases-minimum-age"
+			]
+		},
+		{
+			"slug": "alerts",
+			"title": "Alerts by notification, e-mail and webhook",
+			"title_nl": "Meldingen via notificatie, e-mail en webhook",
+			"area": "admin",
+			"overlay": null,
+			"specs": [
+				"releases-new-release-alerts",
+				"auto-update-policies"
+			]
+		},
+		{
+			"slug": "install-any-version",
+			"title": "Install any version in one action",
+			"title_nl": "Elke versie installeren met een klik",
+			"area": "install",
+			"overlay": null,
+			"specs": [
+				"version-management",
+				"install-one-click-updates",
+				"install-live-progress",
+				"install-force-incompatible"
+			]
+		},
+		{
+			"slug": "rollback",
+			"title": "Rollback and safe downgrades",
+			"title_nl": "Terugdraaien en veilig downgraden",
+			"area": "install",
+			"overlay": null,
+			"specs": [
+				"migration-safety",
+				"install-bulk-rollback"
+			]
+		},
+		{
+			"slug": "cli-commands",
+			"title": "Command line commands",
+			"title_nl": "Commando's voor de opdrachtregel",
+			"area": "install",
+			"overlay": null,
+			"specs": [
+				"cli-commands",
+				"pending-updates"
+			]
+		},
+		{
+			"slug": "artifact-cache",
+			"title": "Offline package cache",
+			"title_nl": "Offline pakketcache",
+			"area": "install",
+			"overlay": null,
+			"specs": [
+				"artifact-cache"
+			]
+		},
+		{
+			"slug": "multi-instance",
+			"title": "Versions across several instances",
+			"title_nl": "Versies over meerdere installaties",
+			"area": "inventory",
+			"overlay": null,
+			"specs": [
+				"install-multi-instance-promotion"
+			]
+		},
+		{
+			"slug": "install-diagnostics",
+			"title": "Install checks and failure recovery",
+			"title_nl": "Installatiecontroles en herstel na fouten",
+			"area": "safety",
+			"overlay": null,
+			"specs": [
+				"version-management",
+				"audit-external-changes"
+			]
+		},
+		{
+			"slug": "migration-safety",
+			"title": "Safe updates with backups and maintenance mode",
+			"title_nl": "Veilig bijwerken met back-ups en onderhoudsmodus",
+			"area": "safety",
+			"overlay": null,
+			"specs": [
+				"version-management",
+				"migration-safety",
+				"safety-update-checks",
+				"safety-upgrade-migration-preview"
+			]
+		},
+		{
+			"slug": "package-integrity",
+			"title": "Package signatures and checksums",
+			"title_nl": "Handtekeningen en checksums van pakketten",
+			"area": "safety",
+			"overlay": null,
+			"specs": [
+				"migration-safety",
+				"external-sources",
+				"safety-withdrawn-and-revoked"
+			]
+		},
+		{
+			"slug": "version-pinning",
+			"title": "Version pinning and drift detection",
+			"title_nl": "Versies vastzetten en afwijkingen opsporen",
+			"area": "pinning",
+			"overlay": null,
+			"specs": [
+				"audit-trail",
+				"version-pinning",
+				"pinning-ranges-and-skips",
+				"cli-commands",
+				"pending-updates"
+			]
+		},
+		{
+			"slug": "auto-update-policies",
+			"title": "Automatic update policies",
+			"title_nl": "Beleid voor automatisch bijwerken",
+			"area": "autoupdate",
+			"overlay": null,
+			"specs": [
+				"auto-update-policies",
+				"autoupdate-default-and-config-file",
+				"autoupdate-security-first",
+				"autoupdate-proposed-updates"
+			]
+		},
+		{
+			"slug": "update-scheduling",
+			"title": "Update windows, schedules and batching",
+			"title_nl": "Onderhoudsvensters, schema's en batches",
+			"area": "autoupdate",
+			"overlay": null,
+			"specs": [
+				"auto-update-policies",
+				"autoupdate-schedules",
+				"autoupdate-run-batching"
+			]
+		},
+		{
+			"slug": "update-approval",
+			"title": "Approve and announce updates",
+			"title_nl": "Updates goedkeuren en aankondigen",
+			"area": "autoupdate",
+			"overlay": null,
+			"specs": [
+				"autoupdate-proposed-updates",
+				"safety-update-checks"
+			]
+		},
+		{
+			"slug": "security-advisory-correlation",
+			"title": "Security advisories matched to installed versions",
+			"title_nl": "Beveiligingsadviezen gekoppeld aan geinstalleerde versies",
+			"area": "advisories",
+			"overlay": null,
+			"specs": [
+				"security-advisory-correlation",
+				"advisories-bundled-libraries",
+				"advisories-ncsc-feed",
+				"audit-trail",
+				"advisories-per-app-detail",
+				"safety-withdrawn-and-revoked"
+			]
+		},
+		{
+			"slug": "advisory-prioritisation",
+			"title": "Advisory severity and fixes",
+			"title_nl": "Ernst van adviezen en oplossingen",
+			"area": "advisories",
+			"overlay": null,
+			"specs": [
+				"security-advisory-correlation",
+				"install-one-click-updates",
+				"advisories-per-app-detail"
+			]
+		},
+		{
+			"slug": "advisory-triage",
+			"title": "Advisory triage and exceptions",
+			"title_nl": "Adviezen beoordelen en uitzonderingen",
+			"area": "advisories",
+			"overlay": null,
+			"specs": [
+				"advisories-triage"
+			]
+		},
+		{
+			"slug": "licence-checks",
+			"title": "Licence checks",
+			"title_nl": "Licentiecontroles",
+			"area": "advisories",
+			"overlay": null,
+			"specs": []
+		},
+		{
+			"slug": "external-sources",
+			"title": "Install from GitHub, GitLab and Codeberg",
+			"title_nl": "Installeren vanaf GitHub, GitLab en Codeberg",
+			"area": "sources",
+			"overlay": null,
+			"specs": [
+				"version-management",
+				"external-sources",
+				"pat-management",
+				"sources-gitlab-forge",
+				"audit-trail",
+				"install-manual-upload"
+			]
+		},
+		{
+			"slug": "app-discovery",
+			"title": "Find apps to install",
+			"title_nl": "Apps vinden om te installeren",
+			"area": "sources",
+			"overlay": null,
+			"specs": [
+				"app-discovery"
+			]
+		},
+		{
+			"slug": "access-tokens",
+			"title": "Forge access tokens",
+			"title_nl": "Toegangstokens voor forges",
+			"area": "sources",
+			"overlay": null,
+			"specs": [
+				"pat-management"
+			]
+		},
+		{
+			"slug": "audit-trail",
+			"title": "Version history and audit trail",
+			"title_nl": "Versiegeschiedenis en audittrail",
+			"area": "audit",
+			"overlay": null,
+			"specs": [
+				"audit-trail",
+				"audit-attribution-and-forwarding",
+				"audit-external-changes"
+			]
+		},
+		{
+			"slug": "patch-compliance",
+			"title": "Patch compliance reporting",
+			"title_nl": "Rapportage over patchcompliance",
+			"area": "audit",
+			"overlay": null,
+			"specs": [
+				"advisories-per-app-detail",
+				"autoupdate-security-first",
+				"audit-security-reports"
+			]
+		},
+		{
+			"slug": "connections",
+			"title": "Connection health and outbound data",
+			"title_nl": "Gezondheid van koppelingen en uitgaande gegevens",
+			"area": "admin",
+			"overlay": null,
+			"specs": [
+				"adopt-connection-registry"
+			]
+		},
+		{
+			"slug": "admin-access",
+			"title": "Admin-only access and delegation",
+			"title_nl": "Alleen voor beheerders, met delegatie",
+			"area": "admin",
+			"overlay": null,
+			"specs": [
+				"version-management"
+			]
+		},
+		{
+			"slug": "api-and-assistant",
+			"title": "API and AI assistant",
+			"title_nl": "API en AI-assistent",
+			"area": "admin",
+			"overlay": null,
+			"specs": [
+				"admin-api",
+				"admin-mcp-assistant"
+			]
+		},
+		{
+			"slug": "open-and-accessible",
+			"title": "Accessible, multilingual, open source and self-hosted",
+			"title_nl": "Toegankelijk, meertalig, open source en zelf gehost",
+			"area": "admin",
+			"overlay": null,
+			"specs": [
+				"admin-translate-apps-tab",
+				"version-management",
+				"source-license-headers"
+			]
+		}
+	],
 	"providers": [
 		{
 			"key": "versioniq",
@@ -361,7 +752,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "app-inventory",
 			"featureConfidence": "high",
 			"note": "The Apps tab lists every enabled app as a card, but the card shows name, id and description only; the installed version the API already returns (installedVersion) appears only after 'Choose app' opens the detail. No single list of apps with their versions. Existing 2026-09-27: openspec/changes/archive/2026-06-14-move-to-admin-settings specifies the missing half; the code lacks it (defect of that change, not filed). See openspec/parity/gap-decisions.json.",
 			"evidence": {
@@ -392,7 +783,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "app-inventory",
 			"featureConfidence": "high",
 			"note": "Nothing marks which apps have a newer release; an admin must open each app's version list. The nightly AutoUpdateJob computes candidates per policy but never displays them. Specified 2026-09-27 in openspec/changes/inventory-pending-updates (openspec pass).",
 			"evidence": {
@@ -423,7 +814,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "external-sources",
+			"feature": "app-inventory",
 			"featureConfidence": "high",
 			"note": "Every app card names its bound source (App Store, github:owner/repo, forgejo:owner/repo) from boundSourceId in the list payload. It is the binding, not provenance: an unbound app reads App Store even if it was installed by hand or from git, and manual upload is not a source kind.",
 			"evidence": {
@@ -456,7 +847,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "upgrade-readiness",
 			"featureConfidence": "high",
 			"note": "Re-rated 2026-10-07 (parity scan), state and rating unchanged. The built half is specified in the version-management main spec (Fetch Available Versions: serverCompatible on each App Store version and on cached forge releases, shown in the web picker): App Store versions carry serverCompatible from platformVersionSpec, cached forge releases from their own info.xml, shown by ServerCompatBadge in the picker and as a column in occ versioniq:versions. The missing half stays specified in inventory-upgrade-readiness: a forge release that was never downloaded reads unknown, because the forge range lookup (ForgeRangeStore) is not built. Partial is the right rating until that lands.",
 			"evidence": {
@@ -488,7 +879,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "app-inventory",
 			"featureConfidence": "high",
 			"note": "Text filter over app label and id, plus a show/hide core apps filter.",
 			"evidence": {
@@ -519,7 +910,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "app-inventory",
 			"featureConfidence": "high",
 			"note": "The app list joins IAppManager::getEnabledApps() with getAppInstalledVersions(false), so installed but disabled apps are listed with a Disabled mark and their versions can be listed and installed from the page. The card's Enable button enables the app through Nextcloud's own OCS apps endpoint after a password prompt (#433).",
 			"evidence": {
@@ -550,8 +941,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
-			"featureConfidence": "medium",
+			"feature": "app-inventory",
+			"featureConfidence": "high",
 			"note": "Always-enabled apps get a CORE flag and can be hidden; every other shipped app gets a 'Shipped with Nextcloud' badge on its card, and an explanatory error when its versions are requested. Fixed in #438.",
 			"evidence": {
 				"nextcloud": "occ app:list ,shipped=true|false (core/Command/App/ListApps.php:31); the API marks shipped and internal apps (apps/appstore/lib/Controller/ApiController.php:136,465).",
@@ -581,7 +972,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "upgrade-readiness",
 			"featureConfidence": "high",
 			"note": "No check of installed apps against the next server major. Specified 2026-09-27 in openspec/changes/inventory-upgrade-readiness (openspec pass).",
 			"evidence": {
@@ -612,7 +1003,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "multi-instance",
 			"featureConfidence": "high",
 			"note": "Manages only the instance it runs on. Specified 2026-09-27 in openspec/changes/install-multi-instance-promotion (openspec pass).",
 			"evidence": {
@@ -643,7 +1034,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "cli-commands",
+			"feature": "sbom-and-metrics",
 			"featureConfidence": "high",
 			"note": "No inventory or SBOM export; the only JSON output is the per-app version list from occ versioniq:versions ,json. Specified 2026-09-27 in openspec/changes/inventory-export-sbom-metrics (openspec pass).",
 			"evidence": {
@@ -674,7 +1065,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "lifecycle-signals",
 			"featureConfidence": "high",
 			"note": "No deprecation or abandonment signal is read or shown. Specified 2026-09-27 in openspec/changes/inventory-lifecycle-signals (openspec pass).",
 			"evidence": {
@@ -705,8 +1096,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
-			"featureConfidence": "medium",
+			"feature": "app-inventory",
+			"featureConfidence": "high",
 			"note": "Cards show icon, name, summary or description. Author, licence and links are not shown; Discover hits carry homepageUrl but the template does not render it.",
 			"evidence": {
 				"nextcloud": "apps/appstore/src/components/AppstoreSidebar/AppDetailsTab.vue:171-205 shows author, categories, website and docs links; licence and description come from apps/appstore/lib/Controller/ApiController.php:460-463.",
@@ -736,7 +1127,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "install-diagnostics",
 			"featureConfidence": "medium",
 			"note": "EnvironmentCheck::inspect feeds a per-card warning before any install is attempted. Proposed by reader own-a.",
 			"evidence": {
@@ -767,7 +1158,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "version-facts",
 			"featureConfidence": "high",
 			"note": "Lists every published release from the App Store or the bound forge, older and newer. The 'Safe mode' toggle is on by default (src/App.vue:107) and hides every older version until switched off (src/App.vue:1182).",
 			"evidence": {
@@ -860,7 +1251,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "release-channels",
 			"featureConfidence": "high",
 			"note": "No show/hide control for pre-releases; whatever the source lists is shown. src/utils/versionCompare.ts only orders prerelease suffixes. Specified 2026-09-27 in openspec/changes/releases-channel-and-prereleases (openspec pass). Corrected 2026-09-27: since 4cc1ebe (#446, after the comparison) safe mode hides pre-releases while the server channel is stable, production or enterprise (src/utils/safeMode.ts:50-56, filtered at src/App.vue:1223-1234). There is still no show or hide control of its own, no channel choice, and the forge prerelease flag is ignored, so the rating is partial, not no.",
 			"evidence": {
@@ -891,7 +1282,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "release-channels",
 			"featureConfidence": "high",
 			"note": "The server's update channel is displayed read-only and safe mode follows it, hiding pre-releases while the channel is stable, production or enterprise; there is no channel choice for the instance or per app. Specified 2026-09-27 in openspec/changes/releases-channel-and-prereleases (openspec pass).",
 			"evidence": {
@@ -923,7 +1314,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "version-facts",
 			"featureConfidence": "high",
 			"note": "Text filter over the version list.",
 			"evidence": {
@@ -954,7 +1345,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "version-facts",
 			"featureConfidence": "high",
 			"note": "Release dates are not read from either source and not shown. Specified 2026-09-27 in openspec/changes/releases-version-facts (openspec pass).",
 			"evidence": {
@@ -985,7 +1376,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
+			"feature": "minimum-release-age",
 			"featureConfidence": "high",
 			"note": "No cooldown: the nightly auto-update picks the newest in-policy version regardless of its age. Specified 2026-09-27 in openspec/changes/releases-minimum-age (openspec pass).",
 			"evidence": {
@@ -1016,7 +1407,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "version-facts",
 			"featureConfidence": "high",
 			"note": "No adoption or success-rate data. Specified 2026-09-27 in openspec/changes/releases-version-facts (openspec pass).",
 			"evidence": {
@@ -1047,8 +1438,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
-			"featureConfidence": "medium",
+			"feature": "version-facts",
+			"featureConfidence": "high",
 			"note": "On selecting a target the page says how many major and minor steps the move crosses, which surfaces a major jump. No breaking flag is read from release metadata. Specified 2026-09-27 in openspec/changes/releases-version-facts (openspec pass).",
 			"evidence": {
 				"nextcloud": "Update entries carry only the new version string (apps/appstore/lib/Controller/ApiController.php:114-117, UpdateAllDialog.vue:73); no major or breaking marker.",
@@ -1078,7 +1469,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "alerts",
 			"featureConfidence": "high",
 			"note": "No notification when a new version appears; notifications exist only for advisories, token expiry, pin drift and completed or failed auto-updates. Specified 2026-09-27 in openspec/changes/releases-new-release-alerts (openspec pass).",
 			"evidence": {
@@ -1109,7 +1500,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "alerts",
 			"featureConfidence": "high",
 			"note": "No e-mail, RSS or webhook subscription. Specified 2026-09-27 in openspec/changes/releases-new-release-alerts (openspec pass).",
 			"evidence": {
@@ -1142,7 +1533,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "changelog-visibility",
-			"featureConfidence": "low",
+			"featureConfidence": "high",
 			"note": "Versioniq shows changelogs to the admin only. Whether its installer dispatches the platform's AppUpdateEvent, which drives the users' what's new notice, was not checked. Checked 2026-09-27: the Versioniq installers dispatch no AppUpdateEvent (lib/Service/Installer/InstallFinalizer.php:73-170 runs migrations and repair steps and dispatches nothing), so the platform's what's new notice does not fire after a Versioniq install. Specified 2026-09-27 in openspec/changes/releases-notes-reach (openspec pass).",
 			"evidence": {
 				"nextcloud": "After an app update, users for whom the app is enabled get an app_updated notification linking to the CHANGELOG entry (apps/updatenotification/lib/Listener/AppUpdateEventListener.php, apps/updatenotification/lib/BackgroundJob/AppUpdatedNotifications.php:44-100, apps/updatenotification/lib/Controller/ChangelogController.php:40).",
@@ -1173,8 +1564,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
-			"featureConfidence": "low",
+			"feature": "version-facts",
+			"featureConfidence": "high",
 			"note": "Versions are listed live from the store catalogue or forge release list, so a deleted release drops out; there is no explicit handling of a withdrawn or retracted flag, and a cached package can still be reinstalled. Specified 2026-09-27 in openspec/changes/safety-withdrawn-and-revoked (openspec pass).",
 			"evidence": {
 				"nextcloud": "Only releases present in the store's apps.json are offered (lib/private/App/AppStore/Fetcher/AppFetcher.php:69-140), so a release the publisher deletes stops being offered, and a revoked signing certificate blocks install (lib/private/Installer.php:181-199). There is no explicit withdrawn marker and no notice to the admin.",
@@ -1205,8 +1596,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
-			"featureConfidence": "medium",
+			"feature": "release-channels",
+			"featureConfidence": "high",
 			"note": "Versions are filtered by direction and pre-release only; there is no long-term support filter. Specified 2026-09-27 in openspec/changes/releases-channel-and-prereleases (openspec pass).",
 			"evidence": {
 				"nextcloud": "For the server core, the Enterprise channel offers the latest patch level and delays majors, but it is customer-only (apps/updatenotification/src/components/UpdateNotification.vue:298-303). Apps have no long-term support filter: the fetcher always takes the highest compatible release (lib/private/App/AppStore/Fetcher/AppFetcher.php:123-140).",
@@ -1236,7 +1627,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "install-any-version",
 			"featureConfidence": "high",
 			"note": "Pick an installed app, select any listed version and press Update or Degrade; password confirmation, pin and downgrade guards apply. Core (always-enabled) apps and Versioniq itself are refused.",
 			"evidence": {
@@ -1267,8 +1658,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
-			"featureConfidence": "medium",
+			"feature": "install-any-version",
+			"featureConfidence": "high",
 			"note": "Updating to latest takes choosing the app, selecting the top version and pressing Update; there is no one-click 'update to latest'. A per-app 'All' auto-update policy does it unattended at night. Specified 2026-09-27 in openspec/changes/install-one-click-updates (openspec pass).",
 			"evidence": {
 				"nextcloud": "Update action per app (apps/appstore/src/actions/actionUpdate.ts, POST /api/v1/apps/update in apps/appstore/lib/Controller/ApiController.php:253-271); occ app:update <id> (core/Command/App/Update.php:33).",
@@ -1298,7 +1689,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
+			"feature": "install-any-version",
 			"featureConfidence": "high",
 			"note": "No 'update all' action. The nightly AutoUpdateJob updates every app whose policy allows it, which is scheduled automation rather than an admin action. Specified 2026-09-27 in openspec/changes/install-one-click-updates (openspec pass).",
 			"evidence": {
@@ -1329,8 +1720,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "migration-safety",
-			"featureConfidence": "medium",
+			"feature": "rollback",
+			"featureConfidence": "high",
 			"note": "The one-click rollback targets the last version Versioniq finalized, and that record is overwritten with the new version on every successful Versioniq install; so after an update through Versioniq there is no one-click way back to the previous version, only picking it by hand. It covers the case where something outside Versioniq changed the version.",
 			"evidence": {
 				"nextcloud": "Downgrades are refused (lib/private/Installer.php:310 'tried to update to lower version') and the old app folder is deleted before the new one is copied (lib/private/Installer.php:323), so no previous version is kept.",
@@ -1360,7 +1751,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "migration-safety",
+			"feature": "rollback",
 			"featureConfidence": "high",
 			"note": "The last version that finalized cleanly is recorded only on success; when the installed version differs, the card offers 'Roll back to {version}', which runs the normal install with downgrade confirmation.",
 			"evidence": {
@@ -1391,7 +1782,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "migration-safety",
+			"feature": "rollback",
 			"featureConfidence": "high",
 			"note": "A downgrade opens a confirmation dialog naming the transition, the range and the migrations the target lacks; an inline warning also shows. The server refuses without allowDowngrade.",
 			"evidence": {
@@ -1485,7 +1876,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "app-discovery",
-			"featureConfidence": "medium",
+			"featureConfidence": "high",
 			"note": "The Discover tab searches the App Store and GitHub for apps not installed yet. An App Store hit's 'Install...' opens the version picker, which installs it. A forge hit's 'Install...' prefills a source binding, after which the Apps tab lists the app as Not installed and installs it from its version list. After a live install of an app Nextcloud has not enabled, the result offers Enable, which asks for the password and calls Nextcloud's own POST /ocs/v2.php/cloud/apps/{appId} (#433).",
 			"evidence": {
 				"nextcloud": "Discover, category browse and search views with Install actions (apps/appstore/src/router/routes.ts, apps/appstore/src/actions/actionInstall.ts; enableApp downloads when needed at apps/appstore/lib/Controller/ApiController.php:171-176); occ app:install.",
@@ -1514,8 +1905,8 @@
 			},
 			"provider": "nextcloud-server",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
-			"featureConfidence": "high",
+			"feature": "install-any-version",
+			"featureConfidence": "medium",
 			"note": "Server updates are out of scope; Nextcloud's own updater does that. Decided no on 2026-09-27 (openspec pass): Platform-provided, owner nextcloud/server: the server itself is updated by the Nextcloud updater (nextcloud/updater and occ upgrade), outside the fleet.",
 			"evidence": {
 				"nextcloud": "Admin overview shows the new server version and opens the web updater (apps/updatenotification/src/components/UpdateNotification.vue:58); the standalone updater (nextcloud/updater@v34.0.4 lib/UpdateCommand.php:37-51 steps) and occ upgrade (core/Command/Upgrade.php) run it.",
@@ -1638,8 +2029,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
-			"featureConfidence": "medium",
+			"feature": "install-any-version",
+			"featureConfidence": "high",
 			"note": "A spinner with 'Installing...' runs while the request is open, then a result panel shows status (Done, Dry run, Reverted, Installed but broken, Failed), transition, mode, failure category and stage. No live stage-by-stage progress. Specified 2026-09-27 in openspec/changes/install-live-progress (openspec pass).",
 			"evidence": {
 				"nextcloud": "Apps: a loading icon per row and an error toast (apps/appstore/src/components/AppTable/AppTableRow.vue:70, apps/appstore/src/store/updates.ts:56); server core: the standalone updater reports 12 named steps with download progress (nextcloud/updater@v34.0.4 lib/UpdateCommand.php:37-51, lib/Updater.php:803).",
@@ -1669,7 +2060,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "install-diagnostics",
 			"featureConfidence": "high",
 			"note": "With debug on, the result panel shows a step timeline of installer stages with their data; failures carry category, stage and hint.",
 			"evidence": {
@@ -1700,7 +2091,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "migration-safety",
+			"feature": "rollback",
 			"featureConfidence": "high",
 			"note": "No multi-app or point-in-time rollback. Specified 2026-09-27 in openspec/changes/install-bulk-rollback (openspec pass).",
 			"evidence": {
@@ -1731,8 +2122,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
-			"featureConfidence": "medium",
+			"feature": "install-any-version",
+			"featureConfidence": "high",
 			"note": "Both installers carry the previous enabled flag into finalize. Proposed by reader own-a.",
 			"evidence": {
 				"nextcloud": "An in-place update runs upgradeApp without touching the enabled setting (lib/private/Installer.php:112), and during a server upgrade auto-disabled apps get their previous state back, including group restrictions (lib/private/App/AppManager.php:696-701, lib/private/Updater.php:410-417).",
@@ -1763,8 +2154,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
-			"featureConfidence": "medium",
+			"feature": "install-any-version",
+			"featureConfidence": "high",
 			"note": "Both installers honour the platform's app_install_overwrite list and otherwise refuse an incompatible version; there is no force option in the UI or occ command. Specified 2026-09-27 in openspec/changes/install-force-incompatible (openspec pass).",
 			"evidence": {
 				"nextcloud": "Force enable via the UI and occ app:install ,force records app_install_overwrite (apps/appstore/lib/Controller/ApiController.php:167-169, core/Command/App/Install.php:31-57); since 2026-08 the override is cleared on a major upgrade (lib/private/Updater.php:215-218, backported to stable34 in #63633).",
@@ -1795,8 +2186,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
-			"featureConfidence": "medium",
+			"feature": "lifecycle-signals",
+			"featureConfidence": "high",
 			"note": "Versioniq changes versions of one app id; it cannot move an install to a renamed or successor app, which its own app_versions to versioniq rename had to do with repair steps. Specified 2026-09-27 in openspec/changes/inventory-lifecycle-signals (openspec pass).",
 			"evidence": {
 				"nextcloud": "Apps that moved into the server are kept in a hardcoded list only to hide them from the upgrade check (apps/updatenotification/lib/Controller/APIController.php:37-46,86). No successor mapping or replace action exists.",
@@ -1826,8 +2217,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "migration-safety",
-			"featureConfidence": "medium",
+			"feature": "install-diagnostics",
+			"featureConfidence": "high",
 			"note": "Checks that the app folder's parent is writable, warns on the card and refuses early; disk space and other environment checks are not made.",
 			"evidence": {
 				"nextcloud": "Install checks that the apps folder is writable (lib/private/Installer.php:135-150); the server updater checks expected files and write permissions (nextcloud/updater@v34.0.4 lib/Updater.php:389,410). No disk space check before install; a separate setup check covers temp space (apps/settings/lib/SetupChecks/TempSpaceAvailable.php:73).",
@@ -1857,7 +2248,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "migration-safety",
+			"feature": "rollback",
 			"featureConfidence": "high",
 			"note": "Any real downgrade is refused with 409 unless allowDowngrade is passed, which the UI sends only after the confirmation dialog. The guard covers every downgrade, not only ones that reverse migrations.",
 			"evidence": {
@@ -1888,7 +2279,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "migration-safety",
+			"feature": "rollback",
 			"featureConfidence": "high",
 			"note": "Compares lib/Migration file names of the installed and target archives and lists the migrations the target lacks in the downgrade dialog; a diff failure degrades to a generic warning.",
 			"evidence": {
@@ -1920,7 +2311,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "migration-safety",
+			"feature": "package-integrity",
 			"featureConfidence": "high",
 			"note": "App Store packages are checked against the Nextcloud code-signing root and CRL, the certificate CN must match the app id, and the archive signature is verified before files are swapped. Forge releases have no signature to verify and rely on SHA-256 instead.",
 			"evidence": {
@@ -1951,7 +2342,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "external-sources",
+			"feature": "package-integrity",
 			"featureConfidence": "high",
 			"note": "After the first successful install of a forge release its SHA-256 is recorded on the binding, and the version list badges it.",
 			"evidence": {
@@ -1982,7 +2373,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "external-sources",
+			"feature": "package-integrity",
 			"featureConfidence": "high",
 			"note": "A reinstall whose digest differs from the recorded one is refused before any file change; the UI offers 'Accept new checksum and install', which is logged and audited.",
 			"evidence": {
@@ -2013,7 +2404,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "migration-safety",
+			"feature": "install-diagnostics",
 			"featureConfidence": "high",
 			"note": "Failures are classified into categories (permission, download, checksum, incompatible, finalize, downgrade guard and more) with a plain-language hint shown first in the result panel.",
 			"evidence": {
@@ -2044,8 +2435,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "migration-safety",
-			"featureConfidence": "medium",
+			"feature": "install-diagnostics",
+			"featureConfidence": "high",
 			"note": "When migrations or repair steps fail, the previous files are restored from the kept backup and the outcome is reported as installed-but-broken; partially applied migrations stay and the admin is told to check manually.",
 			"evidence": {
 				"nextcloud": "During a server upgrade, apps that were auto-disabled are re-fetched and re-enabled (lib/private/Updater.php:258-263,392-435) and a pending app upgrade is forced through the upgrade page (lib/private/App/AppManager.php isUpgradeRequired); a failed web app update leaves the old folder already deleted (lib/private/Installer.php:323).",
@@ -2076,7 +2467,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
-			"featureConfidence": "medium",
+			"featureConfidence": "high",
 			"note": "The app folder is moved aside before replacement and restored on failure, but deleted once finalize succeeds; no database backup or restorable snapshot is kept. The artifact cache retains old archives for re-installing files only.",
 			"evidence": {
 				"nextcloud": "The standalone server updater backs up the code (not data or database) before replacing it, skippable with ,no-backup (nextcloud/updater@v34.0.4 lib/Updater.php:475-490, lib/UpdateCommand.php:59); app updates take no backup (lib/private/Installer.php:323).",
@@ -2137,7 +2528,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "migration-safety",
+			"feature": "install-diagnostics",
 			"featureConfidence": "high",
 			"note": "Nothing recovers from an update that breaks the admin interface. The UI toggle named 'Safe mode' only hides and blocks downgrades in the version picker. Decided no on 2026-09-28 (defer retired): one competitor rated yes (Easy Updates Manager), no demand row, outside the core areas (area safety). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
@@ -2169,7 +2560,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
-			"featureConfidence": "medium",
+			"featureConfidence": "high",
 			"note": "A dry run downloads and verifies the package (signature or SHA-256, app id, version, migration diff) without swapping files, without moving the live app folder and without maintenance mode (#427). It runs no tests, and for App Store packages skips the server-compatibility and dependency check that only runs on a real install. Specified 2026-09-27 in openspec/changes/safety-update-checks (openspec pass).",
 			"evidence": {
 				"nextcloud": "The update path downloads, verifies the signature and installs (lib/private/Installer.php:102-116); no test or staging step. Code integrity runs after the core upgrade only (lib/private/Updater.php:285-290).",
@@ -2198,7 +2589,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "migration-safety",
+			"feature": "install-diagnostics",
 			"featureConfidence": "high",
 			"note": "No health check after an update. Automatic restore happens only when finalize itself throws, which is part of the install, not a check that the app works. Decided no on 2026-09-28 (defer retired): one competitor rated yes (Easy Updates Manager), no demand row, outside the core areas (area safety). openspec/changes/archive/2026-07-23-add-migration-safety-guard/proposal.md lists post-install health checks as future work. Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
@@ -2260,8 +2651,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "external-sources",
-			"featureConfidence": "medium",
+			"feature": "package-integrity",
+			"featureConfidence": "high",
 			"note": "When an external install goes ahead without checksum verification, the install result shows an alert with the installer's warning; the audit message keeps it too. The result also says when the package came from the local artifact cache. Fixed in #438.",
 			"evidence": {
 				"nextcloud": "Store installs cannot proceed unverified (lib/private/Installer.php:245,336-342); an app folder placed by hand is installed with no signature check and no warning at install time (lib/private/Installer.php:56-94), only the separate code integrity check can flag it later (apps/settings/lib/SetupChecks/CodeIntegrity.php:36).",
@@ -2291,7 +2682,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "migration-safety",
 			"featureConfidence": "medium",
 			"note": "isManageableApp refuses always-enabled apps and Versioniq itself across UI, API, CLI and auto-update. Proposed by reader own-a.",
 			"evidence": {
@@ -2354,8 +2745,8 @@
 			},
 			"provider": "nextcloud-server",
 			"providerHow": "read-from-code",
-			"feature": "external-sources",
-			"featureConfidence": "medium",
+			"feature": "package-integrity",
+			"featureConfidence": "high",
 			"note": "Versioniq verifies archives before install, never the files of an installed app afterwards; that is the platform's code integrity check. Decided no on 2026-09-27 (openspec pass): Platform-provided, owner nextcloud/server: occ integrity:check-app and the server's code integrity check verify installed app files; Versioniq verifies the downloaded archive only.",
 			"evidence": {
 				"nextcloud": "occ integrity:check-app (core/Command/Integrity/CheckApp.php:41), the Code integrity setup check (apps/settings/lib/SetupChecks/CodeIntegrity.php:36) and the post-upgrade instance verification (lib/private/Updater.php:285-290).",
@@ -2384,8 +2775,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "external-sources",
-			"featureConfidence": "medium",
+			"feature": "package-integrity",
+			"featureConfidence": "high",
 			"note": "Versioniq checks checksums and signatures, not whether the publisher of a release changed. Decided no on 2026-09-28 (defer retired): no competitor rated yes, no demand row, outside the core areas (area safety). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
 				"nextcloud": "The only signer check is that the certificate CN equals the app id and chains to the Nextcloud CA (lib/private/Installer.php:201-229). The signer is not compared with the one of the installed version.",
@@ -2416,7 +2807,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "install-diagnostics",
 			"featureConfidence": "medium",
 			"note": "An install through Versioniq keeps the previous enabled state, so it does not leave an app disabled; an app disabled by another path is neither reported nor re-enabled. Specified 2026-09-27 in openspec/changes/audit-external-changes (openspec pass).",
 			"evidence": {
@@ -2663,7 +3054,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
+			"feature": "version-pinning",
 			"featureConfidence": "medium",
 			"note": "A per-app auto-update policy of Patch, Minor or All limits which newer versions the nightly job installs. It restricts only automatic updates; manual installs and Nextcloud's updater are not held to the range, and non-semver versions never qualify. Specified 2026-09-27 in openspec/changes/pinning-ranges-and-skips (openspec pass).",
 			"evidence": {
@@ -2756,7 +3147,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "version-pinning",
-			"featureConfidence": "medium",
+			"featureConfidence": "high",
 			"note": "All pins are fetched and shown as badges on the app cards, but there is no dedicated list or 'pinned only' filter; the admin scans the full app list.",
 			"evidence": {
 				"nextcloud": "No pin exists (lib/private/Installer.php:361-400).",
@@ -2788,7 +3179,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "version-pinning",
-			"featureConfidence": "medium",
+			"featureConfidence": "high",
 			"note": "A pinned app's version list still shows newer versions when opened, but nothing signals that one exists (see inv-update-available). Specified 2026-09-27 in openspec/changes/inventory-pending-updates (openspec pass).",
 			"evidence": {
 				"nextcloud": "No pin or update block exists; the only update skip is an app folder containing .git (lib/private/Installer.php:375-377), a developer checkout marker. A .git app is excluded from update checks entirely, so no newer version is shown for it (lib/private/Installer.php:375, apps/updatenotification/lib/Controller/APIController.php:110-117).",
@@ -2819,7 +3210,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "version-pinning",
-			"featureConfidence": "medium",
+			"featureConfidence": "high",
 			"note": "Pins live in Versioniq only; the platform's app list shows no pin and still offers the update. Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area pinning). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
 				"nextcloud": "No pin or update block exists; the only update skip is an app folder containing .git (lib/private/Installer.php:375-377), a developer checkout marker. The app list shows name, version, level and groups only (apps/appstore/src/components/AppTable/AppTableRow.vue:62-110).",
@@ -2973,7 +3364,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
+			"feature": "update-scheduling",
 			"featureConfidence": "high",
 			"note": "An HH:MM-HH:MM window (default 01:00-05:00, midnight crossing supported) is saved and checked. The job wakes every 15 minutes and sweeps once per window opening, so no window of 15 minutes or more is missed, and the window is read in Nextcloud's default_timezone (UTC when unset), which the label names. Fixed in #429.",
 			"evidence": {
@@ -3004,7 +3395,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
+			"feature": "update-scheduling",
 			"featureConfidence": "high",
 			"note": "Only a daily time-of-day window exists; no weekday selection or cron expression. Specified 2026-09-27 in openspec/changes/autoupdate-schedules (openspec pass).",
 			"evidence": {
@@ -3097,7 +3488,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
+			"feature": "update-scheduling",
 			"featureConfidence": "high",
 			"note": "Each app is installed separately in its own try/catch; there is no batch or grouped change. Specified 2026-09-27 in openspec/changes/autoupdate-run-batching (openspec pass).",
 			"evidence": {
@@ -3159,7 +3550,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
+			"feature": "update-approval",
 			"featureConfidence": "high",
 			"note": "The nightly job installs the candidate directly; there is no proposed-update queue or approval step. Specified 2026-09-27 in openspec/changes/autoupdate-proposed-updates (openspec pass).",
 			"evidence": {
@@ -3190,8 +3581,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
-			"featureConfidence": "medium",
+			"feature": "update-approval",
+			"featureConfidence": "high",
 			"note": "Automatic installs go through the standard installer, which verifies signature, integrity and compatibility before swapping files and restores on failure; there is no configurable test or health gate an admin can attach. Specified 2026-09-27 in openspec/changes/safety-update-checks (openspec pass).",
 			"evidence": {
 				"nextcloud": "No automatic updates exist (UpdateAvailableNotifications.php:146-154).",
@@ -3221,7 +3612,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
+			"feature": "update-scheduling",
 			"featureConfidence": "high",
 			"note": "No cap on the number of installs per run or per period. Specified 2026-09-27 in openspec/changes/autoupdate-run-batching (openspec pass).",
 			"evidence": {
@@ -3312,8 +3703,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
-			"featureConfidence": "high",
+			"feature": "multi-instance",
+			"featureConfidence": "medium",
 			"note": "No preset sharing across installations. Decided no on 2026-09-28 (defer retired): one competitor rated yes (Renovate), no demand row, outside the core areas (area autoupdate). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
 				"nextcloud": "No update policies exist to share (UpdateAvailableNotifications.php:146-154).",
@@ -3344,7 +3735,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
-			"featureConfidence": "medium",
+			"featureConfidence": "high",
 			"note": "One overview lists every app with an auto-update policy (level and window) and every version an earlier automatic attempt failed on, with Retry. Pending updates (a newer version available now) are not listed: the page has no per-app availability without querying every source. Added in #438.",
 			"evidence": {
 				"nextcloud": "The Updates category lists pending updates with a counter (apps/appstore/src/views/AppstoreManage.vue:39, apps/appstore/src/store/updates.ts:23); nothing is scheduled or blocked, so only the pending part exists.",
@@ -3374,7 +3765,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "pat-management",
+			"feature": "external-sources",
 			"featureConfidence": "medium",
 			"note": "With no session user the token lookup picks from tokens an admin shared with all admins, so scheduled advisory checks, automatic updates and pin reconciles read private repositories. A private, unshared token is never used by a job; the Tokens tab says so. Fixed in #430.",
 			"evidence": {
@@ -3406,7 +3797,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
-			"featureConfidence": "medium",
+			"featureConfidence": "high",
 			"note": "Each app card lists the versions an automatic update failed on, which the job skips, with a Retry action that clears that attempt (DELETE /api/app/{appId}/attempts/{version}, password-confirmed) so the next run inside the window tries it again. Fixed in #438.",
 			"evidence": {
 				"nextcloud": "No automatic updates exist (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154).",
@@ -3436,8 +3827,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
-			"featureConfidence": "medium",
+			"feature": "update-scheduling",
+			"featureConfidence": "high",
 			"note": "Each app is updated on its own policy; nothing keeps related apps on matching versions. Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area autoupdate). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
 				"nextcloud": "No automatic updates exist; the only update background job notifies and never installs (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154). Bundles install a set of apps together once (lib/private/Installer.php:473-485), but their versions are not kept in step.",
@@ -3467,8 +3858,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
-			"featureConfidence": "medium",
+			"feature": "update-scheduling",
+			"featureConfidence": "high",
 			"note": "The nightly job applies each app's candidate through the installer; there is no queue that tests each update on top of the previous ones. Decided no on 2026-09-28 (defer retired): one competitor rated yes (Renovate), a competitor changelog as demand, a changelog row alone is not demand under the rule, outside the core areas (area autoupdate). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
 				"nextcloud": "No automatic updates exist; the only update background job notifies and never installs (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154). The web UI's one-at-a-time request queue (apps/appstore/src/service/api.ts, PQueue concurrency 1) does no testing.",
@@ -3499,8 +3890,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
-			"featureConfidence": "medium",
+			"feature": "update-scheduling",
+			"featureConfidence": "high",
 			"note": "One schedule and one window apply to all policies; there is no schedule per update type. Specified 2026-09-27 in openspec/changes/autoupdate-schedules (openspec pass).",
 			"evidence": {
 				"nextcloud": "No automatic updates exist; the only update background job notifies and never installs (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154).",
@@ -3531,7 +3922,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
-			"featureConfidence": "medium",
+			"featureConfidence": "high",
 			"note": "Success and failure are both always sent to every admin; there is no failures-only option. Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area autoupdate). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
 				"nextcloud": "No automatic updates exist; the only update background job notifies and never installs (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154). Manual update failures show an error toast to the admin who ran them (apps/appstore/src/store/updates.ts:56).",
@@ -3561,8 +3952,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
-			"featureConfidence": "medium",
+			"feature": "update-scheduling",
+			"featureConfidence": "high",
 			"note": "No update order between apps. Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area autoupdate). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
 				"nextcloud": "No automatic updates exist; the only update background job notifies and never installs (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154). A server upgrade updates enabled store apps in list order, with no dependency ordering (lib/private/Updater.php:258-263,392-420).",
@@ -3716,7 +4107,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
+			"feature": "advisory-prioritisation",
 			"featureConfidence": "high",
 			"note": "Severity (low, medium, high, critical or unknown, mapped the same way from every source) is rendered as a chip per advisory on the Advisories tab, and the app card badge carries the highest severity, so a critical and a low advisory no longer look the same. Fixed in #438.",
 			"evidence": {
@@ -3747,7 +4138,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
+			"feature": "advisory-prioritisation",
 			"featureConfidence": "high",
 			"note": "The branch patch (or nearest resolving version) is shown as 'safe version: X' under a vulnerable app card.",
 			"evidence": {
@@ -3778,7 +4169,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
+			"feature": "advisory-prioritisation",
 			"featureConfidence": "high",
 			"note": "The recommended version is displayed as text; the admin must open the app and select and install that version by hand. Specified 2026-09-27 in openspec/changes/install-one-click-updates (openspec pass).",
 			"evidence": {
@@ -3809,7 +4200,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
+			"feature": "advisory-prioritisation",
 			"featureConfidence": "high",
 			"note": "When an installed version is newly inside an affected range every admin-group member gets a pinned_to_vulnerable notification, deduplicated per (app, advisory); latency is the sweep interval (1 to 24 hours).",
 			"evidence": {
@@ -3841,7 +4232,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
+			"feature": "advisory-prioritisation",
 			"featureConfidence": "high",
 			"note": "Once a week the advisory sweep sends every admin one advisory_digest notification with the number of apps that have published advisories not affecting the installed version and the advisory total; Notifier::prepare renders it. A unit test prepares every subject the app sends, so a subject without a branch fails the build. Fixed in #428.",
 			"evidence": {
@@ -3904,7 +4295,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
+			"feature": "advisory-triage",
 			"featureConfidence": "high",
 			"note": "No way to dismiss or ignore an advisory with a reason. Specified 2026-09-27 in openspec/changes/advisories-triage (openspec pass).",
 			"evidence": {
@@ -4029,7 +4420,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
+			"feature": "advisory-prioritisation",
 			"featureConfidence": "high",
 			"note": "No EPSS or known-exploited data. Decided no on 2026-09-28 (defer retired): one competitor rated yes (Dependabot), no demand row, outside the core areas (area advisories). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
@@ -4062,7 +4453,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
-			"featureConfidence": "low",
+			"featureConfidence": "high",
 			"note": "The advisory feed address can point at an internal mirror from the Settings tab (http or https), so an instance without internet access can check advisories against a mirror it hosts. There is no bundled or importable local database, so this stays partial.",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
@@ -4122,7 +4513,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
+			"feature": "advisory-triage",
 			"featureConfidence": "high",
 			"note": "No export in SARIF, VEX or another standard format; only the internal /api/advisories JSON. Decided no on 2026-09-28 (defer retired): one competitor rated yes (OSV-Scanner), no demand row, outside the core areas (area advisories). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
@@ -4153,8 +4544,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
-			"featureConfidence": "high",
+			"feature": "advisory-prioritisation",
+			"featureConfidence": "medium",
 			"note": "Any installed version inside an affected range, pinned or not, is flagged pinned-to-vulnerable with a badge and an admin notification; the pin dialog itself does not warn before pinning.",
 			"evidence": {
 				"nextcloud": "No pins and no advisory matching. The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
@@ -4183,7 +4574,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
+			"feature": "licence-checks",
 			"featureConfidence": "high",
 			"note": "No licence inventory or policy check. Decided no on 2026-09-28 (defer retired): one competitor rated yes (OSV-Scanner), no demand row, outside the core areas (area advisories). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
@@ -4250,7 +4641,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
-			"featureConfidence": "medium",
+			"featureConfidence": "high",
 			"note": "Apps with a security history get an Advisory badge whose tooltip shows only the first advisory summary; the full per-app advisory list is in the API payload but not listed in the UI, and ids are GHSA rather than CVE. Specified 2026-09-27 in openspec/changes/advisories-per-app-detail (openspec pass).",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
@@ -4281,7 +4672,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
-			"featureConfidence": "medium",
+			"featureConfidence": "high",
 			"note": "The :server row the sweep computes is shown on the Advisories tab: the installed server version, whether it is affected, the recommended version, and every server advisory with its id, summary and severity. Fixed in #438.",
 			"evidence": {
 				"nextcloud": "No advisory feed is read for the server either; the overview warns only when the server version is end of life (apps/updatenotification/src/components/UpdateNotification.vue:9-10, versionIsEol from lib/private/Updater/VersionCheck.php).",
@@ -4311,7 +4702,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
-			"featureConfidence": "medium",
+			"featureConfidence": "high",
 			"note": "Per-app correlation errors and budget skips are stored and logged, never shown, so a clean badge list cannot be told apart from an incomplete check. Proposed by reader own-b. Decided no on 2026-09-28 (defer retired): no competitor rated yes, no demand row, outside the core areas (area advisories). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
 				"nextcloud": "No advisory checking exists (see adv-correlate-installed); the server search for 'advisor' finds no matching code.",
@@ -4341,8 +4732,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "changelog-visibility",
-			"featureConfidence": "low",
+			"feature": "licence-checks",
+			"featureConfidence": "medium",
 			"note": "Version listings carry version, date and notes; no licence is read or compared between versions. Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area advisories). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
 				"nextcloud": "The licence of the latest release is shown (apps/appstore/lib/Controller/ApiController.php:463) but never compared across versions.",
@@ -4372,8 +4763,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
-			"featureConfidence": "medium",
+			"feature": "advisory-triage",
+			"featureConfidence": "high",
 			"note": "Versioniq has no advisory exceptions to go stale, see adv-dismiss. Decided no on 2026-09-28 (defer retired): one competitor rated yes (OSV-Scanner), a competitor changelog as demand, a changelog row alone is not demand under the rule, outside the core areas (area advisories). It needs the dismissal that openspec/changes/advisories-triage specifies first. Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 link (core/Notification/CoreNotifier.php:59).",
@@ -4403,8 +4794,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
-			"featureConfidence": "medium",
+			"feature": "advisory-prioritisation",
+			"featureConfidence": "high",
 			"note": "A matching advisory counts immediately; urgency split is urgent versus digest, not a grace period. Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area advisories). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 link (core/Notification/CoreNotifier.php:59).",
@@ -4435,8 +4826,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
-			"featureConfidence": "medium",
+			"feature": "advisory-prioritisation",
+			"featureConfidence": "high",
 			"note": "When no published version resolves the advisory, recommendedVersion stays null and no safe version is shown; the reason (no fix yet, blocked by server compatibility) is not explained. Specified 2026-09-27 in openspec/changes/advisories-per-app-detail (openspec pass).",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 link (core/Notification/CoreNotifier.php:59). The nearest thing is the missing-dependencies list for incompatible releases (apps/appstore/lib/Controller/ApiController.php:133-135), which is unrelated to advisories.",
@@ -4467,7 +4858,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
-			"featureConfidence": "medium",
+			"featureConfidence": "high",
 			"note": "Bundled libraries are not inspected, so there is no path from an app to a vulnerable library. Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area advisories). It builds on bundled-library matching, which openspec/changes/advisories-bundled-libraries specifies first. Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 link (core/Notification/CoreNotifier.php:59). Bundled app libraries are not inventoried.",
@@ -4530,8 +4921,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
-			"featureConfidence": "medium",
+			"feature": "advisory-triage",
+			"featureConfidence": "high",
 			"note": "Advisories go to every admin; they cannot be assigned. Specified 2026-09-27 in openspec/changes/advisories-triage (openspec pass).",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 link (core/Notification/CoreNotifier.php:59).",
@@ -4624,7 +5015,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "external-sources",
-			"featureConfidence": "medium",
+			"featureConfidence": "high",
 			"note": "Any Forgejo or Gitea host, Codeberg included, is bound through the self-hosted forge whose host the admin sets on the Sources tab. Codeberg is retired as a forge of its own: it is no longer offered, and bindings, tokens and trusted patterns stored under it keep working and are marked retired.",
 			"evidence": {
 				"nextcloud": "Single store source only (lib/private/Installer.php:169,239).",
@@ -4965,7 +5356,7 @@
 			},
 			"provider": "integriq",
 			"providerHow": "read-from-code",
-			"feature": "connection-registry",
+			"feature": "connections",
 			"featureConfidence": "high",
 			"note": "Re-rated 2026-10-07 (parity scan): built through versioniq change adopt-connection-registry (all code tasks done; only the live e2e run against an instance with integriq, task 5.1, is open) on top of integriq change connection-registry, archived on integriq development as 2026-09-29-connection-registry. The Integrations tab shows reachability and last check time for the App Store, GitHub and the advisory feed. Stays partial: without integriq there is no status view, and a self-hosted Forgejo or Gitea forge has no row (Codeberg was left out on purpose, it is retired).",
 			"evidence": {
@@ -4996,7 +5387,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "pat-management",
+			"feature": "access-tokens",
 			"featureConfidence": "high",
 			"note": "Admins add GitHub or self-hosted Forgejo or Gitea tokens with a label and target pattern.",
 			"evidence": {
@@ -5027,7 +5418,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "pat-management",
+			"feature": "access-tokens",
 			"featureConfidence": "high",
 			"note": "Tokens are encrypted with Nextcloud ICrypto before storage and only decrypted inside useToken; the API returns redacted rows.",
 			"evidence": {
@@ -5058,7 +5449,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "pat-management",
+			"feature": "access-tokens",
 			"featureConfidence": "high",
 			"note": "A token is probed against the forge user endpoint; classic GitHub tokens with scopes beyond repo or public_repo are rejected, fine-grained and Codeberg tokens are accepted with an unverifiable-scope warning.",
 			"evidence": {
@@ -5089,7 +5480,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "pat-management",
+			"feature": "access-tokens",
 			"featureConfidence": "high",
 			"note": "Owners are notified at 14 days, 3 days and on expiry, and the Tokens tab shows an expiry badge; tokens whose forge does not disclose expiry are never warned about.",
 			"evidence": {
@@ -5120,7 +5511,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "pat-management",
+			"feature": "access-tokens",
 			"featureConfidence": "high",
 			"note": "A classic GitHub link carries scopes=repo prefilled; the fine-grained and Forgejo or Gitea links open the creation page with written instructions instead of prefilled scopes.",
 			"evidence": {
@@ -5151,7 +5542,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "pat-management",
+			"feature": "access-tokens",
 			"featureConfidence": "high",
 			"note": "Owners toggle sharedWithAdmins; only the owner can change or delete a token.",
 			"evidence": {
@@ -5182,7 +5573,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "pat-management",
+			"feature": "access-tokens",
 			"featureConfidence": "high",
 			"note": "Deleting a user removes every token they own.",
 			"evidence": {
@@ -5307,7 +5698,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
-			"featureConfidence": "medium",
+			"featureConfidence": "high",
 			"note": "The only writer is insert-only and no route updates or deletes entries; immutability is enforced by the app, not by the database, and the prune job deletes old rows.",
 			"evidence": {
 				"nextcloud": "audit.log is a plain file in the data directory written by the web server user (apps/admin_audit/lib/AuditLogger.php:28-31) with size rotation (apps/admin_audit/lib/BackgroundJobs/Rotate.php:37); nothing makes entries tamper-evident unless shipped to syslog.",
@@ -5370,7 +5761,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
-			"featureConfidence": "medium",
+			"featureConfidence": "high",
 			"note": "History is readable as paginated JSON through the admin API; there is no export button or file format.",
 			"evidence": {
 				"nextcloud": "The audit log is a JSON-lines file or syslog stream that can be copied (apps/admin_audit/lib/AuditLogger.php:24-34); no export action.",
@@ -5432,7 +5823,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
-			"featureConfidence": "medium",
+			"featureConfidence": "high",
 			"note": "Automatic installs have no session user and are recorded as actor system, but occ installs are recorded as system too, so automatic and CLI changes cannot be told apart. Specified 2026-09-27 in openspec/changes/audit-attribution-and-forwarding (openspec pass).",
 			"evidence": {
 				"nextcloud": "No automatic updates exist (apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:146-154), so there is nothing to attribute.",
@@ -5495,8 +5886,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
-			"featureConfidence": "medium",
+			"feature": "patch-compliance",
+			"featureConfidence": "high",
 			"note": "Each app card says whether its installed version is vulnerable and the page says when that was checked, but there is no overall patch compliance status, and the server's own advisory row is computed but not shown on any card. Specified 2026-09-27 in openspec/changes/advisories-per-app-detail (openspec pass).",
 			"evidence": {
 				"nextcloud": "The overview says whether the server is up to date and warns when the version is end of life (apps/updatenotification/src/components/UpdateNotification.vue:9-10,95); pending app updates are counted (apps/appstore/lib/Controller/PageController.php:84). No security-patch status because no advisories are read.",
@@ -5528,8 +5919,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
-			"featureConfidence": "medium",
+			"feature": "patch-compliance",
+			"featureConfidence": "high",
 			"note": "A per-app update level is recorded with who set it and when, but there is no written policy per patch type and no security-first handling. Specified 2026-09-27 in openspec/changes/autoupdate-security-first (openspec pass).",
 			"evidence": {
 				"nextcloud": "No policy object exists; the only update configuration is the channel and notify groups (apps/updatenotification/lib/Settings/Admin.php:47-60).",
@@ -5591,8 +5982,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "audit-trail",
-			"featureConfidence": "medium",
+			"feature": "access-tokens",
+			"featureConfidence": "high",
 			"note": "Token lifecycle changes are not audited. Proposed by reader own-b. Decided no on 2026-09-28 (defer retired): no competitor rated yes, no demand row, outside the core areas (area audit). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
 				"nextcloud": "No forge tokens exist to log (lib/private/App/AppStore/Fetcher/Fetcher.php:88-95 is the only credential, the subscription key).",
@@ -5622,7 +6013,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "admin-access",
 			"featureConfidence": "high",
 			"note": "Every endpoint checks group admin and the page is an admin settings section.",
 			"evidence": {
@@ -5653,7 +6044,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "admin-access",
 			"featureConfidence": "high",
 			"note": "Write routes carry PasswordConfirmationRequired and the frontend prompts through Nextcloud's password confirmation.",
 			"evidence": {
@@ -5683,7 +6074,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "admin-access",
 			"featureConfidence": "high",
 			"note": "Delegation is deliberately not supported; every route requires full admin. Decided no on 2026-09-27 (openspec pass): A recorded non-goal covers it: openspec/config.yaml rules say Versioniq is an admin-only utility and every feature requires admin privileges, and every spec in openspec/specs answers a non-admin with 403.",
 			"evidence": {
@@ -5714,7 +6105,7 @@
 			},
 			"provider": "nextcloud-server",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "alerts",
 			"featureConfidence": "high",
 			"note": "Advisory, pin drift, token expiry and automatic update outcomes go to the notification centre (the advisory digest subject is not rendered, see adv-digest).",
 			"evidence": {
@@ -5744,8 +6135,8 @@
 			},
 			"provider": "nextcloud-server",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
-			"featureConfidence": "medium",
+			"feature": "alerts",
+			"featureConfidence": "high",
 			"note": "Versioniq sends no e-mail itself; alerts reach e-mail only if the notifications app's own e-mail forwarding of unread notifications is on. Decided no on 2026-09-27 (openspec pass): Platform-provided, owner nextcloud/server: the Nextcloud notifications app mails notifications to every user who turns e-mail on, and Versioniq already raises its alerts as Nextcloud notifications (lib/Notification/Notifier.php).",
 			"evidence": {
 				"nextcloud": "The shipped notifications app mails pending notifications in batches (nextcloud/notifications@v34.0.4 lib/MailNotifications.php:63,119), which includes update notifications.",
@@ -5775,7 +6166,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "alerts",
 			"featureConfidence": "high",
 			"note": "No chat or webhook delivery. Specified 2026-09-27 in openspec/changes/releases-new-release-alerts (openspec pass).",
 			"evidence": {
@@ -5807,7 +6198,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "api-and-assistant",
 			"featureConfidence": "high",
 			"note": "Every UI action is an OCS route with typed responses; install and list are also occ commands.",
 			"evidence": {
@@ -5839,7 +6230,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "api-and-assistant",
 			"featureConfidence": "high",
 			"note": "A generated OpenAPI 3.0.3 description ships with the app and CI checks it is fresh. Re-rated 2026-10-07 from yes to partial: the committed openapi.json lacks the GET /api/updates route added in #493, so the description is one route behind and the openapi check is red until it is regenerated.",
 			"evidence": {
@@ -5870,7 +6261,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "open-and-accessible",
 			"featureConfidence": "high",
 			"note": "Strings go through t() and a Dutch translation ships, but a good part of the Apps tab (safe mode, dry run, pick an installed app, result grid, downgrade warning) is hardcoded English. Specified 2026-09-27 in openspec/changes/admin-translate-apps-tab (openspec pass).",
 			"evidence": {
@@ -5902,8 +6293,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
-			"featureConfidence": "medium",
+			"feature": "open-and-accessible",
+			"featureConfidence": "high",
 			"note": "Skip link, a WAI-ARIA tablist with arrow-key support, labelled inputs and scoped table headers are in the code; not verified with a screen reader.",
 			"evidence": {
 				"nextcloud": "Components use aria labels and visually hidden text (30 aria-label uses in apps/appstore/src, e.g. AppTableRow.vue:74-75); not audited here and no accessibility statement URL resolved.",
@@ -5933,7 +6324,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "admin-access",
 			"featureConfidence": "high",
 			"note": "Runs as a Nextcloud admin settings section.",
 			"evidence": {
@@ -5964,7 +6355,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "open-and-accessible",
 			"featureConfidence": "high",
 			"note": "Runs inside the Nextcloud instance with no SaaS dependency; it does call the public App Store, GitHub and Codeberg APIs unless their base URLs are overridden.",
 			"evidence": {
@@ -5995,7 +6386,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "open-and-accessible",
 			"featureConfidence": "high",
 			"note": "EUPL-1.2.",
 			"evidence": {
@@ -6026,7 +6417,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "open-and-accessible",
 			"featureConfidence": "high",
 			"note": "No paid tier or licence gate in the code.",
 			"evidence": {
@@ -6058,7 +6449,7 @@
 			},
 			"provider": "integriq",
 			"providerHow": "read-from-code",
-			"feature": "connection-registry",
+			"feature": "connections",
 			"featureConfidence": "high",
 			"note": "Re-rated 2026-10-07 (parity scan): built through versioniq change adopt-connection-registry (code tasks done, live e2e task 5.1 open) on integriq connection-registry, archived on integriq development as 2026-09-29-connection-registry. One Integrations tab lists the App Store, GitHub and advisory feed connections. Stays partial: the tab is absent without integriq, and a self-hosted Forgejo or Gitea forge has no row.",
 			"evidence": {
@@ -6090,7 +6481,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
+			"feature": "api-and-assistant",
 			"featureConfidence": "medium",
 			"note": "No AI assistant or MCP surface. Specified 2026-09-27 in openspec/changes/admin-mcp-assistant (openspec pass).",
 			"evidence": {
@@ -6123,7 +6514,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "upgrade-readiness",
 			"featureConfidence": "high",
 			"note": "The PHP constraint is only enforced after download and file swap during a real install, through the server's \\OC_App::checkAppDependencies, which then reverts; the version list carries only version and changelog, so an admin cannot see beforehand which versions support the running PHP. Same shape as inv-compat-server. Reworded 2026-09-27 to the gap updater issue 750 describes (list PHP-incompatible apps before a server upgrade); the old wording was \"See whether an app version supports the running PHP version, not only the server version, before installing or upgrading.\", which read broader than that issue. Ratings and evidence are unchanged. Specified 2026-09-27 in openspec/changes/inventory-upgrade-readiness (openspec pass).",
 			"evidence": {
@@ -6155,8 +6546,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "migration-safety",
-			"featureConfidence": "high",
+			"feature": "artifact-cache",
+			"featureConfidence": "medium",
 			"note": "Maintenance mode is switched on before the installer downloads and verifies the package, so the downtime covers the whole fetch; the artifact cache is only a fallback after a failed download. It is switched on for a dry run too (lib/Service/InstallerService.php:523 does not test $dryRun): defect candidate, code reading, needs a live check. Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area safety). The defect candidate in the row note (maintenance mode switched on for a dry run) does not hold at development 02e1050: lib/Service/InstallerService.php:597-600 skips maintenance mode for a dry run (#427). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
 				"nextcloud": "The server updater downloads (step 4), verifies (5) and extracts (6) before enabling maintenance mode in step 7 ((nextcloud/updater) lib/UpdateCommand.php:454-475), but an app update from the UI sets maintenance first and only then calls downloadApp (apps/appstore/lib/Controller/ApiController.php:258-260, lib/private/Installer.php:102-105).",
@@ -6188,8 +6579,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": null,
-			"featureConfidence": "medium",
+			"feature": "sbom-and-metrics",
+			"featureConfidence": "high",
 			"note": "No metrics endpoint; the admin-only GET /api/apps returns installed apps as JSON for the page but it is not a scrapeable metric and carries no behind or shipped flag. The server's own OpenMetrics exporter is outside this app. Specified 2026-09-27 in openspec/changes/inventory-export-sbom-metrics (openspec pass).",
 			"evidence": {
 				"nextcloud": "core/Controller/OpenMetricsController.php:49 serves /metrics and lib/private/OpenMetrics/Exporters/AppEnabled.php:52-53 emits app_enabled with app_id and version labels for every installed app. No shipped label and no label for an available update (server issue 62895 is open).",
@@ -6221,7 +6612,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "migration-safety",
+			"feature": "package-integrity",
 			"featureConfidence": "high",
 			"note": "An App Store install is refused when the app certificate's serial is on the server's shipped resources/codesigning/root.crl, so the list is only as fresh as the server release. Nothing rechecks or disables apps already installed when a certificate is revoked later, and forge releases carry no certificate. Specified 2026-09-27 in openspec/changes/safety-withdrawn-and-revoked (openspec pass).",
 			"evidence": {
@@ -6255,7 +6646,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "cli-commands",
-			"featureConfidence": "high",
+			"featureConfidence": "medium",
 			"note": "occ versioniq:versions with the json option prints one app's installed version and available versions as JSON, so a script can work out pending updates app by app. There is no command that lists pending updates across all apps. Specified 2026-09-27 in openspec/changes/inventory-pending-updates (openspec pass).",
 			"evidence": {
 				"nextcloud": "occ app:update extends the plain Command class, so it has no --output option (core/Command/App/Update.php:21), and occ update:check prints text only (apps/updatenotification/lib/Command/Check.php:43-53). The admin OCS endpoint GET /api/v1/apps returns JSON with an update field per app (apps/appstore/lib/Controller/ApiController.php:90-116), usable from curl.",
@@ -6287,8 +6678,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "app-discovery",
-			"featureConfidence": "medium",
+			"feature": "app-inventory",
+			"featureConfidence": "high",
 			"note": "No publisher trust level is shown. The closest thing is the admin's own trusted-source allowlist, which marks GitHub hits in Discover as not installable until their owner is allowed (lib/Service/Discovery/GithubSearchDiscovery.php:145); that is the admin's choice, not a verified-publisher mark. Specified 2026-09-27 in openspec/changes/inventory-verified-publisher (openspec pass).",
 			"evidence": {
 				"nextcloud": "apps/appstore/src/components/BadgeAppLevel.vue:19-27 shows a Supported badge (covered by the subscription) or a Featured badge (community apps ready for production), in the table and sidebar (apps/appstore/src/components/AppTable/AppTableRow.vue:83, apps/appstore/src/components/AppstoreSidebar/AppDetailsTab.vue:130-132). No mark for apps maintained by Nextcloud or a verified publisher (appstore issue 1502 is open).",
@@ -6319,7 +6710,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
+			"feature": "update-scheduling",
 			"featureConfidence": "high",
 			"note": "The nightly job installs the newest in-policy version of every policy app on each run; the only memory per app is the attempt ledger, which stops a retry of the same version, not a cooldown after an update. The window is instance-wide. Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area autoupdate). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
@@ -6352,7 +6743,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
+			"feature": "minimum-release-age",
 			"featureConfidence": "high",
 			"note": "no by construction: depends on rel-min-age, which versioniq rates no. Versioniq has no minimum release age, so nothing is held back and there is nothing to show; the Apps tab also does not show which update the policy would take next. Specified 2026-09-27 in openspec/changes/releases-minimum-age (openspec pass).",
 			"evidence": {
@@ -6385,7 +6776,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
+			"feature": "minimum-release-age",
 			"featureConfidence": "high",
 			"note": "no by construction: depends on rel-min-age, which versioniq rates no. There is no minimum age hold, so there is no per-version exception either. An admin can always install a specific version by hand from the Apps tab. Specified 2026-09-27 in openspec/changes/releases-minimum-age (openspec pass).",
 			"evidence": {
@@ -6417,8 +6808,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": null,
-			"featureConfidence": "medium",
+			"feature": "update-approval",
+			"featureConfidence": "high",
 			"note": "No link to an external change system. A manual install asks for password confirmation and is audited, but no ticket key is asked for or stored, and the nightly job installs without any approval. Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area autoupdate). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
 				"nextcloud": "No proposal or approval flow exists to attach a ticket to; updates are manual admin actions (apps/appstore/lib/Controller/ApiController.php:253-270), and the admin_audit log records only the app id (apps/admin_audit/lib/Listener/AppManagementEventListener.php:56).",
@@ -6449,7 +6840,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-pinning",
+			"feature": "multi-instance",
 			"featureConfidence": "high",
 			"note": "A pin holds one app on one version on the instance it was set on; there is no way to share or compare pins across instances. Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area pinning). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
@@ -6514,7 +6905,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
+			"feature": "minimum-release-age",
 			"featureConfidence": "high",
 			"note": "no by construction: depends on rel-min-age, which versioniq rates no. There is no minimum age hold and the auto-update policy does not look at advisories, so there is no security exemption. Advisories only raise a badge, a recommended version and a notification. Specified 2026-09-27 in openspec/changes/releases-minimum-age (openspec pass).",
 			"evidence": {
@@ -6579,7 +6970,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
+			"feature": "advisory-triage",
 			"featureConfidence": "high",
 			"note": "no by construction: depends on adv-dismiss, which versioniq rates no. Advisories cannot be dismissed at all (see adv-dismiss), so there is no second-person approval either. Decided no on 2026-09-28 (defer retired): one competitor rated yes (Dependabot), a competitor changelog as demand, a changelog row alone is not demand under the rule, outside the core areas (area advisories). It needs the dismissal that openspec/changes/advisories-triage specifies first. Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
@@ -6645,7 +7036,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
-			"featureConfidence": "high",
+			"featureConfidence": "medium",
 			"note": "Advisories are matched only against the apps installed on this instance; there is no SBOM import. Decided no on 2026-09-27 (openspec pass): Outside the product: openspec/config.yaml describes Versioniq as managing the versions of the Nextcloud apps installed on this instance, and openspec/changes/archive/2026-07-07-security-advisory-correlation/proposal.md puts advisory ingestion for arbitrary packages out of scope. Watching an uploaded SBOM of software outside the instance is that general scanner.",
 			"evidence": {
 				"nextcloud": "No SBOM import and no advisory matching: a search of apps, core and lib for 'advisor' finds only apps/settings/lib/WellKnown/SecurityTxtHandler.php:28 and core/Notification/CoreNotifier.php:59.",
@@ -6676,7 +7067,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
+			"feature": "advisory-prioritisation",
 			"featureConfidence": "high",
 			"note": "Every matching advisory is raised whatever its severity; the advisory settings hold only the sweep interval and the digest switch. Unscored records become 'unknown' from the Nextcloud feed (lib/Service/Advisory/NextcloudAdvisoryFeed.php:173) but 'medium' from the App Store source (lib/Service/Source/AppStoreSource.php:199). Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area advisories). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
@@ -6708,8 +7099,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "connection-registry",
-			"featureConfidence": "medium",
+			"feature": "connections",
+			"featureConfidence": "high",
 			"note": "No preview of outgoing requests. The advisory feed is pulled whole and matched locally, but App Store and GitHub requests name the app id or repository; the Integrations tab (only with integriq installed) reports after the fact which services answered, not what was sent. Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area admin). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
 				"nextcloud": "The version check sends server version, PHP version, install and update times, channel and subscription state to the updater server (lib/private/Updater/VersionCheck.php:59-68) with no preview in the UI; the app store catalogue is downloaded whole (lib/private/App/AppStore/Fetcher/Fetcher.php:98), so no app inventory leaves, but nothing shows the admin what is sent.",
@@ -6740,7 +7131,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
+			"feature": "advisory-triage",
 			"featureConfidence": "high",
 			"note": "no by construction: depends on adv-dismiss, which versioniq rates no. There are no advisory exceptions at all (see adv-dismiss), so none that match several apps by pattern. Decided no on 2026-09-28 (defer retired): one competitor rated yes (OSV-Scanner), a competitor changelog as demand, a changelog row alone is not demand under the rule, outside the core areas (area advisories). It needs the dismissal that openspec/changes/advisories-triage specifies first. Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
@@ -6772,7 +7163,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
+			"feature": "advisory-triage",
 			"featureConfidence": "high",
 			"note": "no by construction: depends on adv-dismiss, which versioniq rates no. Nothing is ever suppressed and there is no report export, so the row has nothing to act on; every matched advisory shows on its app card. Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area advisories). It needs the dismissal that openspec/changes/advisories-triage specifies first. Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
@@ -6804,8 +7195,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "migration-safety",
-			"featureConfidence": "medium",
+			"feature": "multi-instance",
+			"featureConfidence": "high",
 			"note": "An install replaces the app folder on the web server that handled the request; on several servers without a shared apps directory the others keep the old files, and nothing compares versions between nodes. Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area safety). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
 				"nextcloud": "Each web server compares its app code version with the version in the shared database and puts itself into 'update required' on any difference (lib/private/App/AppManager.php:1164-1170, lib/private/legacy/OC_Util.php:715-721), and refuses a core downgrade (lib/private/legacy/OC_Util.php:689-710), so a lagging node shows up; but an update is applied only on the node that runs it and there is no cluster-wide view (grep -i 'cluster' in lib/private/App, Installer and apps/appstore finds nothing).",
@@ -6837,7 +7228,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
-			"featureConfidence": "medium",
+			"featureConfidence": "high",
 			"note": "Versioniq does not detect other updaters or say which one controls an app. It only notices, after the fact, that a pinned app changed version (pin drift); updates of unpinned apps by another tool go unnoticed. Decided no on 2026-09-28 (defer retired): no competitor rated yes, a feature request as demand, a feature request needs one competitor yes to build, outside the core areas (area autoupdate). Reversible when a tender, a second competitor or a feature request with a competitor yes arrives.",
 			"evidence": {
 				"nextcloud": "The server does not detect other updaters; it only lets the operator switch off the web updater or the update check by hand (lib/base.php:263 upgrade.disable-web, apps/updatenotification/lib/BackgroundJob/UpdateAvailableNotifications.php:77 updatechecker). grep -rliE 'plesk|cpanel|softaculous' in lib, core, apps/appstore and apps/updatenotification finds nothing.",
@@ -6902,8 +7293,8 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": null,
-			"featureConfidence": "medium",
+			"feature": "sbom-and-metrics",
+			"featureConfidence": "high",
 			"note": "Close overlap with parent row inv-export-inventory (an on-demand SBOM export), which versioniq rates no; this row adds the per-update trigger and a named standard. No SBOM is produced, on demand or after an update (see inv-export-inventory). Specified 2026-09-27 in openspec/changes/inventory-export-sbom-metrics (openspec pass).",
 			"evidence": {
 				"nextcloud": "No SBOM is produced at all: the only structured inventory is occ app:list with JSON output (core/Command/App/ListApps.php:64, core/Command/Base.php:37), run by hand, and nothing is generated when an app is updated (apps/admin_audit/lib/Listener/AppManagementEventListener.php:56-59 only logs the event).",
@@ -6935,7 +7326,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "audit-trail",
+			"feature": "patch-compliance",
 			"featureConfidence": "high",
 			"note": "The History tab lists every install, manual or automatic, with time and from and to version, newest first and filterable by app only. There is no period filter, no mark for installs that fixed an advisory, no export, and server updates are not included. Specified 2026-09-27 in openspec/changes/audit-security-reports (openspec pass).",
 			"evidence": {
@@ -6968,7 +7359,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "lifecycle-signals",
 			"featureConfidence": "high",
 			"note": "No end of support or end of life date is read or shown for any app or for the server, and nothing warns before one passes. Specified 2026-09-27 in openspec/changes/inventory-lifecycle-signals (openspec pass).",
 			"evidence": {
@@ -7001,7 +7392,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "auto-update-policies",
+			"feature": "update-approval",
 			"featureConfidence": "high",
 			"note": "Admins are notified only after the nightly job succeeded or failed; nothing announces an update before it runs, and the next candidate is never shown. Specified 2026-09-27 in openspec/changes/autoupdate-proposed-updates (openspec pass).",
 			"evidence": {
@@ -7034,7 +7425,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "multi-instance",
 			"featureConfidence": "high",
 			"note": "Versioniq manages only its own instance; an admin can install the exact version tested elsewhere, and roll back, by hand on each instance, but there is no test, acceptance, production chain. Specified 2026-09-27 in openspec/changes/install-multi-instance-promotion (openspec pass).",
 			"evidence": {
@@ -7068,7 +7459,7 @@
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "changelog-visibility",
-			"featureConfidence": "medium",
+			"featureConfidence": "high",
 			"note": "Each version shows its release notes but no known problems or workarounds found afterwards; security advisories are the only after-the-fact problems shown. Specified 2026-09-27 in openspec/changes/releases-version-facts (openspec pass).",
 			"evidence": {
 				"nextcloud": "A store release carries version, requirements, signature and a changelog translation only (lib/private/App/AppStore/Fetcher/ResponseDefinitions.php:48-66); there is no known-issues field or view.",
@@ -7133,7 +7524,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "version-management",
+			"feature": "app-inventory",
 			"featureConfidence": "high",
 			"note": "Nothing measures how far an app is behind or flags apps outside an N-1 style policy; an admin can only open each app's version list, or run occ versioniq:versions, and count the newer versions. Specified 2026-09-27 in openspec/changes/inventory-pending-updates (openspec pass).",
 			"evidence": {
@@ -7161,6 +7552,7 @@
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/version-management"
 			},
+			"feature": "app-inventory",
 			"source": "spec-round-2026-10-07"
 		},
 		{
@@ -7185,7 +7577,7 @@
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
-			"feature": "security-advisory-correlation",
+			"feature": "patch-compliance",
 			"featureConfidence": "high",
 			"note": "Advisory results are a single current snapshot that each sweep overwrites, so there is no history to compute resolution within deadline or trends; there are no severity deadlines either. Specified 2026-09-27 in openspec/changes/audit-security-reports (openspec pass).",
 			"evidence": {
