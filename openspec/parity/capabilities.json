@@ -8309,5 +8309,18 @@
 			}
 		}
 	],
-	"pending": []
+	"pending": [],
+	"specScreens": {
+		"pat-management": {
+			"board": [
+				"VqTokens"
+			]
+		},
+		"pending-updates": {
+			"board": [
+				"VqApps",
+				"VqAutomatischeUpdates"
+			]
+		}
+	}
 }
