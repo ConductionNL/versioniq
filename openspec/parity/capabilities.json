@@ -748,7 +748,11 @@
 				"evidence": "src/App.vue:2311 (Installed {version} on every card), lib/Service/Availability/AvailabilityService.php",
 				"reachedOn": "Apps tab, every app card",
 				"owner": "ConductionNL/versioniq",
-				"change": "inventory-pending-updates"
+				"change": "inventory-pending-updates",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -779,7 +783,11 @@
 				"evidence": "lib/Service/Availability/AvailabilityService.php, lib/Controller/ApiController.php:174 (GET /api/updates), src/utils/pendingUpdates.ts updateBadge",
 				"reachedOn": "Apps tab, the Update available badge and the Updates filter",
 				"owner": "ConductionNL/versioniq",
-				"change": "inventory-pending-updates"
+				"change": "inventory-pending-updates",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -810,7 +818,11 @@
 				"evidence": "src/components/AppSourceBadges.vue:29, src/App.vue:2195, src/components/SourcesPanel.vue:160, lib/Service/InstallerService.php:162",
 				"reachedOn": "Apps tab (every app card) and Sources tab",
 				"owner": "ConductionNL/versioniq",
-				"change": "surface-external-sources-ui"
+				"change": "surface-external-sources-ui",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -843,7 +855,11 @@
 				"owner": "ConductionNL/versioniq",
 				"change": "inventory-upgrade-readiness",
 				"readOn": "2026-10-07",
-				"spec": "openspec/specs/version-management"
+				"spec": "openspec/specs/version-management",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -875,7 +891,11 @@
 				"reachedOn": "Apps tab",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/version-management",
-				"readOn": "2026-10-07"
+				"readOn": "2026-10-07",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -906,7 +926,11 @@
 				"evidence": "lib/Service/InstallerService.php:94, lib/Service/Source/SourceBindingStore.php:138, src/App.vue:2222, src/App.vue:2303, src/utils/enableApp.ts:44",
 				"reachedOn": "Apps tab (app card marked Disabled, with an Enable button)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/version-management"
+				"spec": "openspec/specs/version-management",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -937,7 +961,11 @@
 				"evidence": "src/components/AppSourceBadges.vue:25, src/App.vue:2195, lib/Service/InstallerService.php:161, lib/Service/InstallerService.php:188",
 				"reachedOn": "Apps tab (app card)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/version-management"
+				"spec": "openspec/specs/version-management",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -968,7 +996,11 @@
 				"evidence": "looked in lib/Service/Source/AppStoreSource.php:578-612 (release platform ranges not read) and src/App.vue",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "inventory-upgrade-readiness"
+				"change": "inventory-upgrade-readiness",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstellingen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -999,7 +1031,11 @@
 				"evidence": "looked in lib/Service, lib/Controller/ApiController.php (single-instance only)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "install-multi-instance-promotion"
+				"change": "install-multi-instance-promotion",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1030,7 +1066,11 @@
 				"evidence": "looked in lib/Controller/ApiController.php routes and lib/Command (only per-app versioniq:versions ,json at lib/Command/ListVersions.php:55)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "inventory-export-sbom-metrics"
+				"change": "inventory-export-sbom-metrics",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1061,7 +1101,11 @@
 				"evidence": "looked in lib/Service/Source/AppStoreSource.php and lib/Notification/Notifier.php:63-154",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "inventory-lifecycle-signals"
+				"change": "inventory-lifecycle-signals",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1092,7 +1136,11 @@
 				"evidence": "src/App.vue:2176, src/App.vue:2186, lib/Service/InstallerService.php:108",
 				"reachedOn": "Apps tab",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/version-management"
+				"spec": "openspec/specs/version-management",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1123,7 +1171,11 @@
 				"evidence": "lib/Service/Installer/EnvironmentCheck.php:60, src/App.vue:2189",
 				"reachedOn": "Apps tab, per-app card warning",
 				"owner": "ConductionNL/versioniq",
-				"change": "improve-install-failure-diagnostics"
+				"change": "improve-install-failure-diagnostics",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1154,7 +1206,11 @@
 				"evidence": "lib/Service/Source/AppStoreSource.php:578, lib/Service/Source/ForgeReleaseSource.php:89, lib/Service/InstallerService.php:160, src/App.vue:2330",
 				"reachedOn": "Apps tab (app detail, Versions)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/version-management"
+				"spec": "openspec/specs/version-management",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1185,7 +1241,11 @@
 				"evidence": "src/components/VersionChangelog.vue:18, src/App.vue:2360, lib/Service/Source/AppStoreSource.php:634, lib/Service/InstallerService.php:247",
 				"reachedOn": "Apps tab (app detail, Versions)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-changelog-visibility"
+				"change": "add-changelog-visibility",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1216,7 +1276,11 @@
 				"evidence": "src/utils/changelog.ts:38, src/App.vue:1394, src/App.vue:2307",
 				"reachedOn": "Apps tab (app detail, after selecting a version)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-changelog-visibility"
+				"change": "add-changelog-visibility",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1247,7 +1311,11 @@
 				"evidence": "src/utils/safeMode.ts:50-56, src/App.vue:1223-1234",
 				"reachedOn": "Apps tab, version picker with safe mode on",
 				"owner": "ConductionNL/versioniq",
-				"change": "releases-channel-and-prereleases"
+				"change": "releases-channel-and-prereleases",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1278,7 +1346,11 @@
 				"evidence": "src/App.vue:591, src/App.vue:1994, src/App.vue:2003, src/App.vue:1186, src/utils/safeMode.ts:50",
 				"reachedOn": "Apps tab (read-only label)",
 				"owner": "ConductionNL/versioniq",
-				"change": "releases-channel-and-prereleases"
+				"change": "releases-channel-and-prereleases",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1310,7 +1382,11 @@
 				"reachedOn": "Apps tab (app detail, Versions)",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/version-management",
-				"readOn": "2026-10-07"
+				"readOn": "2026-10-07",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1341,7 +1417,11 @@
 				"evidence": "lib/Service/Source/AppStoreSource.php:608 (entries carry only version and changelog), src/App.vue:2330-2360",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "releases-version-facts"
+				"change": "releases-version-facts",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1372,7 +1452,11 @@
 				"evidence": "lib/Service/AutoUpdate/CandidateSelector.php:46-64 (no age criterion)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "releases-minimum-age"
+				"change": "releases-minimum-age",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1403,7 +1487,11 @@
 				"evidence": "looked in lib/Service/Source and src/App.vue",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "releases-version-facts"
+				"change": "releases-version-facts",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1434,7 +1522,11 @@
 				"evidence": "src/App.vue:1400, src/App.vue:2297, src/dialogs/DowngradeConfirmDialog.vue:76",
 				"reachedOn": "Apps tab (after selecting a version)",
 				"owner": "ConductionNL/versioniq",
-				"change": "releases-version-facts"
+				"change": "releases-version-facts",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1465,7 +1557,11 @@
 				"evidence": "lib/Notification/Notifier.php:63-154 (subjects: pinned_to_vulnerable, pat_*, pin_drift, auto_update_*)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "releases-new-release-alerts"
+				"change": "releases-new-release-alerts",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstellingen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1496,7 +1592,11 @@
 				"evidence": "looked in lib/Controller/ApiController.php routes (no feed or webhook)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "releases-new-release-alerts"
+				"change": "releases-new-release-alerts",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstellingen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1528,7 +1628,11 @@
 				"evidence": "notifications go to admins only (lib/Service/Advisory/AdvisoryDigestNotifier.php:114, lib/Service/Pin/PinDriftHandler.php:90); no user-facing changelog notice",
 				"reachedOn": "nothing in versioniq; whether the platform's app_updated notice fires after a versioniq install was not checked",
 				"owner": "ConductionNL/versioniq",
-				"change": "releases-notes-reach"
+				"change": "releases-notes-reach",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstellingen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1560,7 +1664,11 @@
 				"evidence": "lib/Service/Source/AppStoreSource.php:100, lib/Service/Source/ForgeReleaseSource.php:89",
 				"reachedOn": "Apps tab versions list",
 				"owner": "ConductionNL/versioniq",
-				"change": "safety-withdrawn-and-revoked"
+				"change": "safety-withdrawn-and-revoked",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1592,7 +1700,11 @@
 				"evidence": "no LTS concept in lib/Service/Source/AppStoreSource.php:100 or src/App.vue version filter",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "releases-channel-and-prereleases"
+				"change": "releases-channel-and-prereleases",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1623,7 +1735,11 @@
 				"evidence": "src/App.vue:1661, src/App.vue:2370, lib/Controller/ApiController.php:457, lib/Service/InstallerService.php:333",
 				"reachedOn": "Apps tab (app detail, select version, Update or Degrade)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/version-management"
+				"spec": "openspec/specs/version-management",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1654,7 +1770,11 @@
 				"evidence": "src/App.vue:369, src/App.vue:2370, lib/BackgroundJob/AutoUpdateJob.php:141",
 				"reachedOn": "Apps tab (app detail)",
 				"owner": "ConductionNL/versioniq",
-				"change": "install-one-click-updates"
+				"change": "install-one-click-updates",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1685,7 +1805,11 @@
 				"evidence": "src/App.vue:2136-2219 (no bulk action), lib/BackgroundJob/AutoUpdateJob.php:90",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "install-one-click-updates"
+				"change": "install-one-click-updates",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1716,7 +1840,11 @@
 				"evidence": "src/App.vue:2210, lib/Service/Installer/InstallFinalizer.php:169, src/utils/migrationSafety.ts:27",
 				"reachedOn": "Apps tab (app card 'Roll back to' button, or version picker)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-migration-safety-guard"
+				"change": "add-migration-safety-guard",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1747,7 +1875,11 @@
 				"evidence": "lib/Service/Installer/InstallFinalizer.php:169, src/App.vue:1791, src/App.vue:2210, src/utils/migrationSafety.ts:27",
 				"reachedOn": "Apps tab (app card)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-migration-safety-guard"
+				"change": "add-migration-safety-guard",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1778,7 +1910,11 @@
 				"evidence": "src/App.vue:1440, src/App.vue:1672, src/dialogs/DowngradeConfirmDialog.vue:63, src/App.vue:2364",
 				"reachedOn": "Apps tab (Degrade button)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-migration-safety-guard"
+				"change": "add-migration-safety-guard",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqVersieTerugzetten"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1809,7 +1945,11 @@
 				"evidence": "lib/Command/ListVersions.php:51, lib/Command/ListVersions.php:70, lib/Command/ListVersions.php:120, appinfo/info.xml",
 				"reachedOn": "occ versioniq:versions",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-occ-cli-commands"
+				"change": "add-occ-cli-commands",
+				"screen": {
+					"board": null,
+					"reason": "A command-line command (occ versioniq:versions); it has no screen."
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1840,7 +1980,11 @@
 				"evidence": "lib/Command/InstallVersion.php:75, lib/Command/InstallVersion.php:118, lib/Command/InstallVersion.php:193",
 				"reachedOn": "occ versioniq:install",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-occ-cli-commands"
+				"change": "add-occ-cli-commands",
+				"screen": {
+					"board": null,
+					"reason": "A command-line command (occ versioniq:install); it has no screen."
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1871,7 +2015,11 @@
 				"evidence": "src/components/DiscoverPanel.vue:259, lib/Service/InstallerService.php:94, lib/Service/Source/SourceBindingStore.php:138, src/App.vue:2542, src/utils/enableApp.ts:44, lib/Command/InstallVersion.php:118",
 				"reachedOn": "Discover tab (find; Install... opens the version picker for an App Store hit, or the bind form for a forge hit), then the Apps tab (a bound app is listed as Not installed and installs from its version list); occ versioniq:install",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-discovery-search-ui"
+				"change": "add-discovery-search-ui",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqOntdekken"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1932,7 +2080,11 @@
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:515, lib/Service/ExternalReleaseInstallerService.php:168, lib/Service/InstallerService.php:284, src/App.vue:2333",
 				"reachedOn": "Apps tab (version list 'Available offline' badge, install)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-release-artifact-cache"
+				"change": "add-release-artifact-cache",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1963,7 +2115,11 @@
 				"evidence": "src/components/CachePanel.vue:46, src/components/CachePanel.vue:103, lib/Controller/ApiController.php:1238, lib/Controller/ApiController.php:1260",
 				"reachedOn": "Artifact cache tab",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-release-artifact-cache"
+				"change": "add-release-artifact-cache",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstellingen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1994,7 +2150,11 @@
 				"evidence": "lib/Controller/ApiController.php (no upload route), lib/Controller/ApiController.php:256 (source kinds appstore and github-release only)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "install-manual-upload"
+				"change": "install-manual-upload",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqOntdekken"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2025,7 +2185,11 @@
 				"evidence": "src/App.vue:2377, src/App.vue:2417, src/App.vue:2421",
 				"reachedOn": "Apps tab (install button and result panel)",
 				"owner": "ConductionNL/versioniq",
-				"change": "install-live-progress"
+				"change": "install-live-progress",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstalleren"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2056,7 +2220,11 @@
 				"evidence": "src/App.vue:2009, src/App.vue:2456, lib/Service/InstallerService.php:602, lib/Command/InstallVersion.php:83",
 				"reachedOn": "Apps tab ('Show install debug output' toggle); occ versioniq:install ,json",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/version-management"
+				"spec": "openspec/specs/version-management",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstalleren"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2087,7 +2255,11 @@
 				"evidence": "looked in src/App.vue and lib/Controller/ApiController.php (single-app install only)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "install-bulk-rollback"
+				"change": "install-bulk-rollback",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2118,7 +2290,11 @@
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:352",
 				"reachedOn": "Apps tab install flow, occ versioniq:install",
 				"owner": "ConductionNL/versioniq",
-				"change": "improve-install-failure-diagnostics"
+				"change": "improve-install-failure-diagnostics",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstalleren"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2150,7 +2326,11 @@
 				"evidence": "lib/Service/ExternalReleaseInstallerService.php:583, lib/Service/SelectedReleaseInstallerService.php:334",
 				"reachedOn": "Apps tab install flow honours an existing override; nothing in versioniq sets one",
 				"owner": "ConductionNL/versioniq",
-				"change": "install-force-incompatible"
+				"change": "install-force-incompatible",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2182,7 +2362,11 @@
 				"evidence": "no deprecation or successor handling in lib/Service/InstallerService.php or lib/Service/Source/AppStoreSource.php",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "inventory-lifecycle-signals"
+				"change": "inventory-lifecycle-signals",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2213,7 +2397,11 @@
 				"evidence": "lib/Service/InstallerService.php:470, lib/Service/Installer/EnvironmentCheck.php:51, src/App.vue:2189",
 				"reachedOn": "Apps tab (card warning; install refusal)",
 				"owner": "ConductionNL/versioniq",
-				"change": "improve-install-failure-diagnostics"
+				"change": "improve-install-failure-diagnostics",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2244,7 +2432,11 @@
 				"evidence": "lib/Service/InstallerService.php:401, lib/Command/InstallVersion.php:81, src/App.vue:1694",
 				"reachedOn": "Apps tab (Degrade); occ versioniq:install ,allow-downgrade",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-migration-safety-guard"
+				"change": "add-migration-safety-guard",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqVersieTerugzetten"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2275,7 +2467,11 @@
 				"evidence": "lib/Service/Installer/MigrationDiffer.php:43, lib/Service/SelectedReleaseInstallerService.php:648, lib/Service/ExternalReleaseInstallerService.php:252, src/dialogs/DowngradeConfirmDialog.vue:82",
 				"reachedOn": "Apps tab (downgrade confirmation dialog)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-migration-safety-guard"
+				"change": "add-migration-safety-guard",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqVersieTerugzetten"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2307,7 +2503,11 @@
 				"reachedOn": "Apps tab (any App Store install)",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/migration-safety",
-				"readOn": "2026-10-07"
+				"readOn": "2026-10-07",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstalleren"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2338,7 +2538,11 @@
 				"evidence": "lib/Service/ExternalReleaseInstallerService.php:348, lib/Service/InstallerService.php:264, src/App.vue:2340",
 				"reachedOn": "Apps tab (version list 'Checksum recorded' badge)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-external-source-sha-pinning"
+				"change": "add-external-source-sha-pinning",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2369,7 +2573,11 @@
 				"evidence": "lib/Service/ExternalReleaseInstallerService.php:201, src/App.vue:1705, src/dialogs/ShaMismatchDialog.vue:45",
 				"reachedOn": "Apps tab (SHA mismatch dialog); occ versioniq:install ,accept-new-sha",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-external-source-sha-pinning"
+				"change": "add-external-source-sha-pinning",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstalleren"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2400,7 +2608,11 @@
 				"evidence": "lib/Service/Installer/FailureClassifier.php:119, lib/Service/Installer/FailureClassifier.php:164, src/App.vue:2427",
 				"reachedOn": "Apps tab (install result panel); occ versioniq:install exit codes",
 				"owner": "ConductionNL/versioniq",
-				"change": "improve-install-failure-diagnostics"
+				"change": "improve-install-failure-diagnostics",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstalleren"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2431,7 +2643,11 @@
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:361, lib/Service/ExternalReleaseInstallerService.php:316, lib/Service/Installer/FailureClassifier.php:177",
 				"reachedOn": "Apps tab (install result 'Installed but broken')",
 				"owner": "ConductionNL/versioniq",
-				"change": "improve-install-failure-diagnostics"
+				"change": "improve-install-failure-diagnostics",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstalleren"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2462,7 +2678,11 @@
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:654, lib/Service/SelectedReleaseInstallerService.php:373, lib/Service/ExternalReleaseInstallerService.php:275",
 				"reachedOn": "Apps tab (any install, implicit)",
 				"owner": "ConductionNL/versioniq",
-				"change": "improve-install-failure-diagnostics"
+				"change": "improve-install-failure-diagnostics",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstalleren"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2494,7 +2714,11 @@
 				"reachedOn": "Apps tab (any install); occ versioniq:install; background job AutoUpdateJob",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/migration-safety",
-				"readOn": "2026-10-07"
+				"readOn": "2026-10-07",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstalleren"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2555,7 +2779,11 @@
 				"evidence": "src/App.vue:2001, lib/Service/InstallerService.php:347, lib/Service/SelectedReleaseInstallerService.php:316, lib/Service/SelectedReleaseInstallerService.php:696",
 				"reachedOn": "Apps tab ('Dry run' toggle); occ versioniq:install ,dry-run",
 				"owner": "ConductionNL/versioniq",
-				"change": "safety-update-checks"
+				"change": "safety-update-checks",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstalleren"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2616,7 +2844,11 @@
 				"evidence": "lib/Service/Source/TrustedSourceList.php:100, lib/Service/InstallerService.php:381, src/components/TrustedSourcesPanel.vue:63",
 				"reachedOn": "Trusted sources tab",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-external-source-installs"
+				"change": "add-external-source-installs",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBronnen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2647,7 +2879,11 @@
 				"evidence": "lib/Service/ExternalReleaseInstallerService.php:465, lib/Service/InstallerService.php:582, src/utils/installResult.ts:85, src/components/InstallResultNotices.vue:24, src/App.vue:2471",
 				"reachedOn": "Apps tab, install result (Installed without checksum verification alert) and the History tab",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/external-sources"
+				"spec": "openspec/specs/external-sources",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstalleren"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2678,7 +2914,11 @@
 				"evidence": "lib/Service/InstallerService.php:939",
 				"reachedOn": "every install path: Apps tab, API, occ, auto-update job",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/version-management"
+				"spec": "openspec/specs/version-management",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2710,7 +2950,11 @@
 				"evidence": "lib/Service/Installer/MigrationDiffer.php:31, lib/Service/SelectedReleaseInstallerService.php:650, src/utils/migrationSafety.ts:49",
 				"reachedOn": "Apps tab, downgrade confirm dialog (dry run)",
 				"owner": "ConductionNL/versioniq",
-				"change": "safety-upgrade-migration-preview"
+				"change": "safety-upgrade-migration-preview",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqVersieTerugzetten"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2803,7 +3047,11 @@
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:352",
 				"reachedOn": "Apps tab install flow",
 				"owner": "ConductionNL/versioniq",
-				"change": "audit-external-changes"
+				"change": "audit-external-changes",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstalleren"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2834,7 +3082,11 @@
 				"evidence": "src/App.vue:2275, src/dialogs/PinDialog.vue:53, lib/Controller/ApiController.php:579, lib/Service/Pin/PinStore.php:97",
 				"reachedOn": "Apps tab (app detail 'Pin this version')",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-version-pinning"
+				"change": "add-version-pinning",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2865,7 +3117,11 @@
 				"evidence": "src/App.vue:2268, src/App.vue:975, lib/Controller/ApiController.php:642",
 				"reachedOn": "Apps tab (app detail 'Unpin'; drift banner 'Accept: remove pin')",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-version-pinning"
+				"change": "add-version-pinning",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2896,7 +3152,11 @@
 				"evidence": "src/App.vue:807, src/App.vue:2150, src/dialogs/PinDialog.vue:103, src/components/HistoryPanel.vue:175",
 				"reachedOn": "Apps tab (pin badge tooltip); History tab",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-version-pinning"
+				"change": "add-version-pinning",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2927,7 +3187,11 @@
 				"evidence": "lib/Service/InstallerService.php:428, lib/BackgroundJob/AutoUpdateJob.php:109, src/App.vue:1696",
 				"reachedOn": "Apps tab (pin override dialog); background job AutoUpdateJob",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-version-pinning"
+				"change": "add-version-pinning",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstalleren"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2988,7 +3252,11 @@
 				"evidence": "lib/Listener/AppUpdatedListener.php:48, lib/BackgroundJob/PinReconcileJob.php:54, lib/Service/Pin/PinDriftHandler.php:54, src/App.vue:2283",
 				"reachedOn": "Apps tab (drift banner); admin notification; background job PinReconcileJob",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-version-pinning"
+				"change": "add-version-pinning",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3019,7 +3287,11 @@
 				"evidence": "src/components/PinDriftBanner.vue:97, src/App.vue:1670, src/utils/repin.ts:27, lib/Service/InstallerService.php:445",
 				"reachedOn": "Apps tab (drift banner 'Re-pin {version}')",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-version-pinning"
+				"change": "add-version-pinning",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3050,7 +3322,11 @@
 				"evidence": "lib/Service/Policy/Policy.php:30, lib/Service/AutoUpdate/CandidateSelector.php:66, src/components/PolicySelector.vue:24, src/App.vue:2194",
 				"reachedOn": "Apps tab (per-app 'Auto-update' selector); background job AutoUpdateJob",
 				"owner": "ConductionNL/versioniq",
-				"change": "pinning-ranges-and-skips"
+				"change": "pinning-ranges-and-skips",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3081,7 +3357,11 @@
 				"evidence": "lib/Service/AutoUpdate/AttemptLedger.php:49 (automatic never-retry only), src/App.vue (no skip control)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "pinning-ranges-and-skips"
+				"change": "pinning-ranges-and-skips",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3142,7 +3422,11 @@
 				"evidence": "lib/Controller/ApiController.php:539, src/App.vue:781, src/App.vue:2150",
 				"reachedOn": "Apps tab (pin badges on app cards)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-version-pinning"
+				"change": "add-version-pinning",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3174,7 +3458,11 @@
 				"evidence": "src/utils/pendingUpdates.ts updateBadge (pinned variant), lib/Service/Availability/AvailabilityService.php (pinned apps swept)",
 				"reachedOn": "Apps tab, Update available: {version}, held by the pin",
 				"owner": "ConductionNL/versioniq",
-				"change": "inventory-pending-updates"
+				"change": "inventory-pending-updates",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3236,7 +3524,11 @@
 				"evidence": "src/App.vue:2194, src/components/PolicySelector.vue:43, src/App.vue:850, lib/Controller/ApiController.php:703, lib/BackgroundJob/AutoUpdateJob.php:90",
 				"reachedOn": "Apps tab, policy selector on each app card",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-auto-update-policies"
+				"change": "add-auto-update-policies",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3267,7 +3559,11 @@
 				"evidence": "lib/Service/Policy/Policy.php:34, lib/Service/AutoUpdate/CandidateSelector.php:79, src/components/PolicySelector.vue:24",
 				"reachedOn": "Apps tab, policy selector on each app card",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-auto-update-policies"
+				"change": "add-auto-update-policies",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3298,7 +3594,11 @@
 				"evidence": "lib/Service/Policy/Policy.php:24 (absent policy means none), lib/Service/Policy/PolicyStore.php:42, src/App.vue:2019",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "autoupdate-default-and-config-file"
+				"change": "autoupdate-default-and-config-file",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3329,7 +3629,11 @@
 				"evidence": "src/App.vue:2026, lib/Controller/ApiController.php:773, lib/BackgroundJob/AutoUpdateJob.php:77",
 				"reachedOn": "Apps tab, automatic updates block (Enable automatic updates)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-auto-update-policies"
+				"change": "add-auto-update-policies",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3360,7 +3664,11 @@
 				"evidence": "src/App.vue:2059, lib/Controller/ApiController.php:795, lib/Service/AutoUpdate/AutoUpdateWindow.php:45, lib/BackgroundJob/AutoUpdateJob.php:60, lib/BackgroundJob/AutoUpdateJob.php:99, lib/Service/AutoUpdate/AutoUpdateSettingsStore.php:49",
 				"reachedOn": "Apps tab, automatic updates block (update window)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-auto-update-policies"
+				"change": "add-auto-update-policies",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3391,7 +3699,11 @@
 				"evidence": "lib/Service/AutoUpdate/AutoUpdateWindow.php:26 (time of day only), lib/Service/AutoUpdate/AutoUpdateSettingsStore.php:27",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "autoupdate-schedules"
+				"change": "autoupdate-schedules",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3422,7 +3734,11 @@
 				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:176, lib/BackgroundJob/AutoUpdateJob.php:184, lib/Service/AutoUpdate/AutoUpdateNotifier.php:48, lib/Notification/Notifier.php:135, lib/Notification/Notifier.php:154",
 				"reachedOn": "background job AutoUpdateJob, Nextcloud notification centre",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-auto-update-policies"
+				"change": "add-auto-update-policies",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3453,7 +3769,11 @@
 				"evidence": "lib/Service/AutoUpdate/AttemptLedger.php:49, lib/BackgroundJob/AutoUpdateJob.php:146, lib/BackgroundJob/AutoUpdateJob.php:181",
 				"reachedOn": "background job AutoUpdateJob",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-auto-update-policies"
+				"change": "add-auto-update-policies",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3484,7 +3804,11 @@
 				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:90 (one install per app, no batch)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "autoupdate-run-batching"
+				"change": "autoupdate-run-batching",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3515,7 +3839,11 @@
 				"evidence": "lib/Service/AutoUpdate/CandidateSelector.php:46 (semver bound only, no advisory input), lib/Service/Policy/Policy.php:34",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "autoupdate-security-first"
+				"change": "autoupdate-security-first",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3546,7 +3874,11 @@
 				"evidence": "grep approv in lib and src: no hits; lib/BackgroundJob/AutoUpdateJob.php:151 installs directly",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "autoupdate-proposed-updates"
+				"change": "autoupdate-proposed-updates",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3577,7 +3909,11 @@
 				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:155, lib/Service/InstallerService.php:333",
 				"reachedOn": "background job AutoUpdateJob",
 				"owner": "ConductionNL/versioniq",
-				"change": "safety-update-checks"
+				"change": "safety-update-checks",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3608,7 +3944,11 @@
 				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:90 (every policy app processed each run)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "autoupdate-run-batching"
+				"change": "autoupdate-run-batching",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3669,7 +4009,11 @@
 				"evidence": "lib/Service/Policy/PolicyStore.php:42 (policies as app config JSON keys policy.{appId})",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "autoupdate-default-and-config-file"
+				"change": "autoupdate-default-and-config-file",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3730,7 +4074,11 @@
 				"evidence": "src/components/AutoUpdateOverview.vue:76, src/components/AutoUpdateOverview.vue:86, src/App.vue:2067, lib/Controller/ApiController.php:724",
 				"reachedOn": "Apps tab, Automatic updates section (Scheduled and blocked updates)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/auto-update-policies"
+				"spec": "openspec/specs/auto-update-policies",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3761,7 +4109,11 @@
 				"evidence": "lib/Service/Pat/PatResolver.php:82, lib/Service/Source/ForgeReleaseSource.php:269, lib/Service/Source/ForgeReleaseSource.php:288, lib/Service/ExternalReleaseInstallerService.php:430, src/components/TokensPanel.vue:193",
 				"reachedOn": "background jobs AdvisoryRefreshJob, AutoUpdateJob and PinReconcileJob, using a token shared with admins on the Tokens tab",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-github-pat-management"
+				"change": "add-github-pat-management",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqTokens"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3792,7 +4144,11 @@
 				"evidence": "lib/Service/AutoUpdate/AttemptLedger.php:84, lib/Service/AutoUpdate/AttemptLedger.php:104, lib/Controller/ApiController.php:738, lib/Controller/ApiController.php:702, src/components/PolicySelector.vue:64",
 				"reachedOn": "Apps tab, auto-update policy on each app card (Retry {version})",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/auto-update-policies"
+				"spec": "openspec/specs/auto-update-policies",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3886,7 +4242,11 @@
 				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:54 runs one daily job for every policy level",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "autoupdate-schedules"
+				"change": "autoupdate-schedules",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3979,7 +4339,11 @@
 				"evidence": "lib/Service/Advisory/AdvisoryService.php:245, lib/BackgroundJob/AdvisoryRefreshJob.php:83, lib/Controller/ApiController.php:147, src/App.vue:2157",
 				"reachedOn": "Apps tab, advisory badge on each app card",
 				"owner": "ConductionNL/versioniq",
-				"change": "security-advisory-correlation"
+				"change": "security-advisory-correlation",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4010,7 +4374,11 @@
 				"evidence": "lib/Service/Advisory/NextcloudAdvisoryFeed.php:44, lib/Service/Advisory/NextcloudAdvisoryFeed.php:93, lib/Service/Advisory/AdvisoryService.php:166",
 				"reachedOn": "background job AdvisoryRefreshJob, Apps tab badges",
 				"owner": "ConductionNL/versioniq",
-				"change": "security-advisory-correlation"
+				"change": "security-advisory-correlation",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBeveiligingsadviezen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4041,7 +4409,11 @@
 				"evidence": "lib/Service/Source/ForgeReleaseSource.php:174, lib/Service/Advisory/AdvisoryService.php:129",
 				"reachedOn": "background job AdvisoryRefreshJob, Apps tab badges",
 				"owner": "ConductionNL/versioniq",
-				"change": "security-advisory-correlation"
+				"change": "security-advisory-correlation",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBeveiligingsadviezen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4072,7 +4444,11 @@
 				"evidence": "lib/Service/Advisory/AdvisoryService.php:81 (only NextcloudAdvisoryFeed and source advisories), grep osv: no hits",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "advisories-bundled-libraries"
+				"change": "advisories-bundled-libraries",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBeveiligingsadviezen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4103,7 +4479,11 @@
 				"evidence": "lib/Service/Advisory/AdvisoryService.php:343, lib/Service/Advisory/AdvisorySeverity.php:45, src/utils/advisories.ts:58, src/utils/advisories.ts:74, src/components/AdvisoriesPanel.vue:53, src/App.vue:2225",
 				"reachedOn": "Advisories tab (a severity chip per advisory) and the Apps tab advisory badge (highest severity)",
 				"owner": "ConductionNL/versioniq",
-				"change": "security-advisory-correlation"
+				"change": "security-advisory-correlation",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBeveiligingsadviezen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4134,7 +4514,11 @@
 				"evidence": "lib/Service/Advisory/AdvisoryService.php:304, src/App.vue:2171",
 				"reachedOn": "Apps tab, app card detail line for a vulnerable version",
 				"owner": "ConductionNL/versioniq",
-				"change": "security-advisory-correlation"
+				"change": "security-advisory-correlation",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4165,7 +4549,11 @@
 				"evidence": "src/App.vue:2171 (safe version is text only, no action)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "install-one-click-updates"
+				"change": "install-one-click-updates",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBeveiligingsadviezen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4196,7 +4584,11 @@
 				"evidence": "lib/BackgroundJob/AdvisoryRefreshJob.php:105, lib/Service/Advisory/AdvisoryNotifier.php:54, lib/Notification/Notifier.php:63",
 				"reachedOn": "background job AdvisoryRefreshJob, Nextcloud notification centre",
 				"owner": "ConductionNL/versioniq",
-				"change": "security-advisory-correlation"
+				"change": "security-advisory-correlation",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstellingen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4228,7 +4620,11 @@
 				"reachedOn": "background job AdvisoryRefreshJob, Nextcloud notification centre (weekly, Apps tab toggle)",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/security-advisory-correlation",
-				"readOn": "2026-10-07"
+				"readOn": "2026-10-07",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstellingen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4260,7 +4656,11 @@
 				"reachedOn": "Apps tab, security advisory checks (check every N hours)",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/security-advisory-correlation",
-				"readOn": "2026-10-07"
+				"readOn": "2026-10-07",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBeveiligingsadviezen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4291,7 +4691,11 @@
 				"evidence": "grep dismiss in src: only discover provider errors (src/components/DiscoverPanel.vue:111); lib/Service/Advisory/AdvisoryNotifier.php:36 stores notified keys, not dismissals",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "advisories-triage"
+				"change": "advisories-triage",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBeveiligingsadviezen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4323,7 +4727,11 @@
 				"reachedOn": "background job AdvisoryRefreshJob, Apps tab badges",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/security-advisory-correlation",
-				"readOn": "2026-10-07"
+				"readOn": "2026-10-07",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBeveiligingsadviezen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4356,7 +4764,11 @@
 				"evidence": "lib/Service/Advisory/AdvisoryPackageMap.php:86 (maps packages to app ids or the server only)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "advisories-bundled-libraries"
+				"change": "advisories-bundled-libraries",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBeveiligingsadviezen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4448,7 +4860,11 @@
 				"reachedOn": "Settings tab (Advisory feed address); occ config:app:set versioniq advisory.feed_base",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/audit-trail",
-				"readOn": "2026-10-07"
+				"readOn": "2026-10-07",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstellingen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4479,7 +4895,11 @@
 				"evidence": "lib/Controller/ApiController.php:157, src/App.vue:724, src/App.vue:1980, lib/BackgroundJob/AdvisoryRefreshJob.php:95",
 				"reachedOn": "Apps tab, advisory freshness line",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/security-advisory-correlation"
+				"spec": "openspec/specs/security-advisory-correlation",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4540,7 +4960,11 @@
 				"evidence": "lib/Service/Advisory/AdvisoryService.php:311, lib/Service/Advisory/AdvisoryNotifier.php:61, src/App.vue:2158",
 				"reachedOn": "Apps tab, Vulnerable version badge next to the pin badge; notification centre",
 				"owner": "ConductionNL/versioniq",
-				"change": "security-advisory-correlation"
+				"change": "security-advisory-correlation",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4603,7 +5027,11 @@
 				"evidence": "grep ncsc in lib and src: no hits",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "advisories-ncsc-feed"
+				"change": "advisories-ncsc-feed",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBeveiligingsadviezen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4636,7 +5064,11 @@
 				"evidence": "lib/Service/Advisory/AdvisoryService.php:293, src/App.vue:2159",
 				"reachedOn": "Apps tab, Advisory badge tooltip",
 				"owner": "ConductionNL/versioniq",
-				"change": "advisories-per-app-detail"
+				"change": "advisories-per-app-detail",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4667,7 +5099,11 @@
 				"evidence": "lib/Service/Advisory/AdvisoryService.php:218, src/utils/advisories.ts:92, src/components/AdvisoriesPanel.vue:32, src/App.vue:2573",
 				"reachedOn": "Advisories tab (Nextcloud server section)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/security-advisory-correlation"
+				"spec": "openspec/specs/security-advisory-correlation",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBeveiligingsadviezen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4822,7 +5258,11 @@
 				"evidence": "lib/Service/Advisory/AdvisoryService.php:304, lib/Service/Advisory/AdvisoryService.php:295",
 				"reachedOn": "Apps tab vulnerable badge",
 				"owner": "ConductionNL/versioniq",
-				"change": "advisories-per-app-detail"
+				"change": "advisories-per-app-detail",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBeveiligingsadviezen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4885,7 +5325,11 @@
 				"evidence": "lib/Service/Advisory/AdvisoryPackageMap.php:86 matches security advisories only; no malware feed is read",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "safety-withdrawn-and-revoked"
+				"change": "safety-withdrawn-and-revoked",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBeveiligingsadviezen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4917,7 +5361,11 @@
 				"evidence": "no assignee field in lib/Service/Advisory/AdvisoryResultStore.php",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "advisories-triage"
+				"change": "advisories-triage",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBeveiligingsadviezen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4948,7 +5396,11 @@
 				"evidence": "lib/Service/Source/AppStoreSource.php:36, src/App.vue:2413",
 				"reachedOn": "Apps tab, version list of a chosen app",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/version-management"
+				"spec": "openspec/specs/version-management",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4979,7 +5431,11 @@
 				"evidence": "lib/Service/Source/ForgeReleaseSource.php:40, src/components/SourcesPanel.vue:66, lib/Controller/ApiController.php:264",
 				"reachedOn": "Sources tab (bind), Apps tab version list",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-external-source-installs"
+				"change": "add-external-source-installs",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBronnen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5010,7 +5466,11 @@
 				"evidence": "lib/Service/Source/ForgeRegistry.php:96, src/components/SourcesPanel.vue:244, lib/Controller/ForgeController.php:83, lib/Controller/ApiController.php:248",
 				"reachedOn": "Sources tab (self-hosted Forgejo or Gitea forge option and host field)",
 				"owner": "ConductionNL/versioniq",
-				"change": "codeberg-forge-support"
+				"change": "codeberg-forge-support",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBronnen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5041,7 +5501,11 @@
 				"evidence": "lib/Service/Source/ForgeRegistry.php:37 (github and codeberg only), lib/Service/Source/SourceBinding.php:33",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "sources-gitlab-forge"
+				"change": "sources-gitlab-forge",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBronnen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5072,7 +5536,11 @@
 				"evidence": "lib/Service/Source/ForgeReleaseSource.php:283, lib/Service/Pat/PatManager.php:88, src/components/TokensPanel.vue:97",
 				"reachedOn": "Tokens tab plus Apps tab version list",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-github-pat-management"
+				"change": "add-github-pat-management",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5103,7 +5571,11 @@
 				"evidence": "src/components/SourcesPanel.vue:108, lib/Controller/ApiController.php:247, lib/Service/Source/SourceBindingStore.php:109, lib/Controller/ApiController.php:252, src/components/SourcesPanel.vue:260, lib/Service/Source/SourceBindingStore.php:128",
 				"reachedOn": "Sources tab",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-external-source-installs"
+				"change": "add-external-source-installs",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBronnen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5134,7 +5606,11 @@
 				"evidence": "lib/Command/InstallVersion.php:79, lib/Controller/ApiController.php:461, src/components/SourceOverrideField.vue:47, src/App.vue:2345, src/App.vue:982, src/App.vue:1519",
 				"reachedOn": "Apps tab, version picker (Use another source this once); occ versioniq:install --source=",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/external-sources"
+				"spec": "openspec/specs/external-sources",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5165,7 +5641,11 @@
 				"evidence": "src/components/TrustedSourcesPanel.vue:63, src/components/TrustedSourcesPanel.vue:91, lib/Controller/ApiController.php:315, lib/Controller/ApiController.php:354",
 				"reachedOn": "Trusted sources tab",
 				"owner": "ConductionNL/versioniq",
-				"change": "surface-external-sources-ui"
+				"change": "surface-external-sources-ui",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBronnen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5196,7 +5676,11 @@
 				"evidence": "lib/Service/Source/AppStoreSource.php:327, lib/Service/Source/ForgeRegistry.php:82, lib/Service/Settings/InstanceSettings.php:105, src/components/InstanceSettingsPanel.vue:148, src/components/InstanceSettingsPanel.vue:158, src/components/SourcesPanel.vue:284",
 				"reachedOn": "Settings tab (App Store and GitHub addresses) and Sources tab (self-hosted Forgejo or Gitea host)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/audit-trail"
+				"spec": "openspec/specs/audit-trail",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstellingen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5227,7 +5711,11 @@
 				"evidence": "src/components/DiscoverPanel.vue:64, lib/Service/Discovery/AppStoreDiscovery.php:92, lib/Controller/ApiController.php:1129",
 				"reachedOn": "Discover tab",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-app-discovery-search"
+				"change": "add-app-discovery-search",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqOntdekken"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5258,7 +5746,11 @@
 				"evidence": "lib/Service/Discovery/GithubSearchDiscovery.php:55, lib/Service/Discovery/DiscoveryAggregator.php:40",
 				"reachedOn": "Discover tab, only after occ config:app:set versioniq discovery.github_search_enabled true",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-app-discovery-search"
+				"change": "add-app-discovery-search",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqOntdekken"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5289,7 +5781,11 @@
 				"evidence": "lib/Service/Discovery/GithubPrivateDiscovery.php:67, lib/Service/Discovery/DiscoveryAggregator.php:40",
 				"reachedOn": "Discover tab (when the admin has a visible PAT)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-app-discovery-search"
+				"change": "add-app-discovery-search",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqOntdekken"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5320,7 +5816,11 @@
 				"evidence": "src/components/DiscoverPanel.vue:246, src/components/DiscoverPanel.vue:259, src/App.vue:298, src/App.vue:312",
 				"reachedOn": "Discover tab to Apps tab (Open version picker, or Install... on an App Store hit) or Sources tab (Install... on a forge hit)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-discovery-search-ui"
+				"change": "add-discovery-search-ui",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqOntdekken"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5352,7 +5852,11 @@
 				"owner": "ConductionNL/versioniq",
 				"reachedOn": "Integrations tab (only when integriq is enabled)",
 				"change": "adopt-connection-registry",
-				"readOn": "2026-10-07"
+				"readOn": "2026-10-07",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBronnen"
+				}
 			},
 			"provider": "integriq",
 			"providerHow": "read-from-code",
@@ -5383,7 +5887,11 @@
 				"evidence": "src/components/TokensPanel.vue:95, lib/Controller/ApiController.php:971, lib/Service/Pat/PatManager.php:65",
 				"reachedOn": "Tokens tab",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-github-pat-management"
+				"change": "add-github-pat-management",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqTokens"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5414,7 +5922,11 @@
 				"evidence": "lib/Service/Pat/PatManager.php:65, lib/Service/Pat/PatManager.php:88",
 				"reachedOn": "Tokens tab (storage side)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-github-pat-management"
+				"change": "add-github-pat-management",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqTokens"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5445,7 +5957,11 @@
 				"evidence": "lib/Service/Pat/PatValidator.php:70, lib/Service/Pat/PatValidator.php:141, lib/Controller/ApiController.php:993",
 				"reachedOn": "Tokens tab (add token)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-github-pat-management"
+				"change": "add-github-pat-management",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqTokens"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5476,7 +5992,11 @@
 				"evidence": "lib/BackgroundJob/PatExpiryWarningJob.php:69, lib/Notification/Notifier.php:80, src/components/TokensPanel.vue:206",
 				"reachedOn": "Tokens tab expiry badge; background job PatExpiryWarningJob notifications",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-pat-expiry-warnings"
+				"change": "add-pat-expiry-warnings",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqTokens"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5507,7 +6027,11 @@
 				"evidence": "lib/Service/Pat/PatDeeplinkBuilder.php:84, src/components/TokensPanel.vue:170, lib/Controller/ApiController.php:1175",
 				"reachedOn": "Tokens tab (create token link)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-github-pat-management"
+				"change": "add-github-pat-management",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqTokens"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5538,7 +6062,11 @@
 				"evidence": "src/components/TokensPanel.vue:129, src/components/TokensPanel.vue:219, lib/Controller/ApiController.php:1035",
 				"reachedOn": "Tokens tab (Share with admins toggle)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-github-pat-management"
+				"change": "add-github-pat-management",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqTokens"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5569,7 +6097,11 @@
 				"evidence": "lib/Listener/UserDeletedListener.php:44, lib/AppInfo/Application.php:44",
 				"reachedOn": "UserDeletedEvent listener",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-github-pat-management"
+				"change": "add-github-pat-management",
+				"screen": {
+					"board": null,
+					"reason": "A background listener that removes tokens when a user is deleted; it has no screen."
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5600,7 +6132,11 @@
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:445, lib/Service/ExternalReleaseInstallerService.php:411, lib/Service/Pin/PinStore.php:97, lib/Service/Pin/PinStore.php:125, lib/Service/Pin/PinStore.php:159",
 				"reachedOn": "History tab and per-app History tab",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-version-audit-trail"
+				"change": "add-version-audit-trail",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqHistorie"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5631,7 +6167,11 @@
 				"evidence": "lib/Service/Source/SourceBindingStore.php:109, lib/Service/Source/TrustedSourceList.php:80",
 				"reachedOn": "History tab",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-version-audit-trail"
+				"change": "add-version-audit-trail",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqHistorie"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5662,7 +6202,11 @@
 				"evidence": "src/App.vue:2495, src/App.vue:2413, src/components/HistoryPanel.vue:79, lib/Db/AuditEntryMapper.php:59",
 				"reachedOn": "History tab (global) and the History sub-tab of a chosen app",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-version-audit-trail"
+				"change": "add-version-audit-trail",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqHistorie"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5693,7 +6237,11 @@
 				"evidence": "lib/Service/Audit/AuditLogger.php:88, lib/Db/AuditEntry.php:22, lib/Controller/ApiController.php:1197",
 				"reachedOn": "History tab (read-only)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-version-audit-trail"
+				"change": "add-version-audit-trail",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqHistorie"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5724,7 +6272,11 @@
 				"evidence": "lib/BackgroundJob/PruneAuditJob.php:62, lib/BackgroundJob/PruneAuditJob.php:95, lib/Service/Settings/InstanceSettings.php:105, lib/Controller/SettingsController.php:91, src/components/InstanceSettingsPanel.vue:124",
 				"reachedOn": "Settings tab (Keep history for); background job PruneAuditJob",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-version-audit-trail"
+				"change": "add-version-audit-trail",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstellingen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5756,7 +6308,11 @@
 				"reachedOn": "OCS API GET /api/audit (no export control in the UI)",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/audit-trail",
-				"readOn": "2026-10-07"
+				"readOn": "2026-10-07",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqHistorie"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5787,7 +6343,11 @@
 				"evidence": "grep OCP Activity in lib: no hits; lib/AppInfo/Application.php:43 registers no activity provider",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "audit-attribution-and-forwarding"
+				"change": "audit-attribution-and-forwarding",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstellingen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5818,7 +6378,11 @@
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:444, lib/Service/ExternalReleaseInstallerService.php:410, src/components/HistoryPanel.vue:11",
 				"reachedOn": "History tab (actor column)",
 				"owner": "ConductionNL/versioniq",
-				"change": "audit-attribution-and-forwarding"
+				"change": "audit-attribution-and-forwarding",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqHistorie"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5849,7 +6413,11 @@
 				"evidence": "lib/Service/Audit/AuditLogger.php:88 (database only); no syslog, webhook or admin_audit emission",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "audit-attribution-and-forwarding"
+				"change": "audit-attribution-and-forwarding",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstellingen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5882,7 +6450,11 @@
 				"evidence": "src/App.vue:2157, src/App.vue:1980, lib/Service/Advisory/AdvisoryService.php:311",
 				"reachedOn": "Apps tab advisory badges and freshness line",
 				"owner": "ConductionNL/versioniq",
-				"change": "advisories-per-app-detail"
+				"change": "advisories-per-app-detail",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5915,7 +6487,11 @@
 				"evidence": "lib/Service/Policy/Policy.php:36, src/components/PolicySelector.vue:24",
 				"reachedOn": "Apps tab, policy selector",
 				"owner": "ConductionNL/versioniq",
-				"change": "autoupdate-security-first"
+				"change": "autoupdate-security-first",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5948,7 +6524,11 @@
 				"evidence": "src/App.vue:2004, src/App.vue:1523, lib/Service/Installer/InstallFinalizer.php:169, src/App.vue:2211, src/App.vue:1791",
 				"reachedOn": "Apps tab (Dry run toggle, Roll back to X button)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-migration-safety-guard"
+				"change": "add-migration-safety-guard",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstalleren"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6009,7 +6589,11 @@
 				"evidence": "lib/Controller/ApiController.php:1336, lib/Settings/Admin.php:51, appinfo/info.xml:122",
 				"reachedOn": "Admin settings, Versioniq section",
 				"owner": "ConductionNL/versioniq",
-				"change": "move-to-admin-settings"
+				"change": "move-to-admin-settings",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6040,7 +6624,11 @@
 				"evidence": "lib/Controller/ApiController.php:246, lib/Controller/ApiController.php:456, src/ocs.ts:70, src/App.vue:1080",
 				"reachedOn": "every write action (bind, install, pin, policy, tokens, cache)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/version-management"
+				"spec": "openspec/specs/version-management",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqVersieTerugzetten"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6101,7 +6689,11 @@
 				"evidence": "lib/AppInfo/Application.php:46, lib/Notification/Notifier.php:56",
 				"reachedOn": "Nextcloud notification centre",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-auto-update-policies"
+				"change": "add-auto-update-policies",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstellingen"
+				}
 			},
 			"provider": "nextcloud-server",
 			"providerHow": "read-from-code",
@@ -6162,7 +6754,11 @@
 				"evidence": "grep webhook in lib and src: no hits",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "releases-new-release-alerts"
+				"change": "releases-new-release-alerts",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstellingen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6194,7 +6790,11 @@
 				"reachedOn": "OCS API under /ocs/v2.php/apps/versioniq/api",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/admin-api",
-				"readOn": "2026-10-07"
+				"readOn": "2026-10-07",
+				"screen": {
+					"board": null,
+					"reason": "An OCS API for scripts and other apps; it has no screen of its own."
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6226,7 +6826,11 @@
 				"reachedOn": "openapi.json in the app package",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/admin-api",
-				"readOn": "2026-10-07"
+				"readOn": "2026-10-07",
+				"screen": {
+					"board": null,
+					"reason": "An openapi.json file shipped in the app package; nothing to show on a screen."
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6257,7 +6861,11 @@
 				"evidence": "l10n/nl.json:1, src/App.vue:1999, src/App.vue:2107, src/App.vue:2229",
 				"reachedOn": "whole admin page",
 				"owner": "ConductionNL/versioniq",
-				"change": "admin-translate-apps-tab"
+				"change": "admin-translate-apps-tab",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6289,7 +6897,11 @@
 				"reachedOn": "whole admin page",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/version-management",
-				"readOn": "2026-10-07"
+				"readOn": "2026-10-07",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6320,7 +6932,11 @@
 				"evidence": "appinfo/info.xml:122, lib/Settings/Admin.php:51",
 				"reachedOn": "Admin settings, Versioniq section",
 				"owner": "ConductionNL/versioniq",
-				"change": "move-to-admin-settings"
+				"change": "move-to-admin-settings",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6351,7 +6967,11 @@
 				"evidence": "appinfo/info.xml:11, lib/Service/Source/ForgeRegistry.php:78",
 				"reachedOn": "whole app",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "none",
+				"screen": {
+					"board": null,
+					"reason": "A property of how the app runs (fully on premises), not a screen."
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6382,7 +7002,11 @@
 				"evidence": "appinfo/info.xml:11, LICENSE:2",
 				"reachedOn": "appinfo licence",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/source-license-headers"
+				"spec": "openspec/specs/source-license-headers",
+				"screen": {
+					"board": null,
+					"reason": "The licence in appinfo; a property of the app, not a screen."
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6413,7 +7037,11 @@
 				"evidence": "appinfo/info.xml:11",
 				"reachedOn": "whole app",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none"
+				"spec": "none",
+				"screen": {
+					"board": null,
+					"reason": "Every feature is free; a property of the app, not a screen."
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6445,7 +7073,11 @@
 				"owner": "ConductionNL/versioniq",
 				"reachedOn": "Integrations tab (only when integriq is enabled)",
 				"change": "adopt-connection-registry",
-				"readOn": "2026-10-07"
+				"readOn": "2026-10-07",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBronnen"
+				}
 			},
 			"provider": "integriq",
 			"providerHow": "read-from-code",
@@ -6477,7 +7109,11 @@
 				"evidence": "no MCP server or assistant integration under lib/ or src/",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "admin-mcp-assistant"
+				"change": "admin-mcp-assistant",
+				"screen": {
+					"board": null,
+					"reason": "Runs through an MCP server for an external AI assistant; it has no screen in Versioniq."
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6510,7 +7146,11 @@
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:346, lib/Service/ExternalReleaseInstallerService.php:605, lib/Service/Source/AppStoreSource.php:578",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "inventory-upgrade-readiness"
+				"change": "inventory-upgrade-readiness",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstellingen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6575,7 +7215,11 @@
 				"evidence": "looked in lib/Controller/ApiController.php (29 routes in _lane/routes.txt), lib/Command and lib/BackgroundJob; grep metric, prometheus, openmetrics in lib and src: no hits",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "inventory-export-sbom-metrics"
+				"change": "inventory-export-sbom-metrics",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstellingen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6608,7 +7252,11 @@
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:135, lib/Service/SelectedReleaseInstallerService.php:174, lib/Service/SelectedReleaseInstallerService.php:176",
 				"reachedOn": "Apps tab (any App Store install); occ versioniq:install",
 				"owner": "ConductionNL/versioniq",
-				"change": "safety-withdrawn-and-revoked"
+				"change": "safety-withdrawn-and-revoked",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstalleren"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6641,7 +7289,11 @@
 				"evidence": "lib/Command/ListUpdates.php (--json, --refresh, --outside-policy), appinfo/info.xml",
 				"reachedOn": "occ versioniq:updates --json",
 				"owner": "ConductionNL/versioniq",
-				"change": "inventory-pending-updates"
+				"change": "inventory-pending-updates",
+				"screen": {
+					"board": null,
+					"reason": "A command-line option (occ versioniq:updates --json); it has no screen."
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6674,7 +7326,11 @@
 				"evidence": "looked in lib/Service/Discovery/DiscoveryHit.php:29 (hit fields), lib/Service/Source/AppStoreSource.php and src/App.vue app cards; grep featured, verified, publisher, maintainer: no hits",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "inventory-verified-publisher"
+				"change": "inventory-verified-publisher",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6739,7 +7395,11 @@
 				"evidence": "lib/Service/AutoUpdate/CandidateSelector.php:46-64 (no age criterion), src/App.vue:2194 (policy badge only)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "releases-minimum-age"
+				"change": "releases-minimum-age",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6772,7 +7432,11 @@
 				"evidence": "lib/Service/AutoUpdate/CandidateSelector.php:46-64",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "releases-minimum-age"
+				"change": "releases-minimum-age",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6901,7 +7565,11 @@
 				"evidence": "lib/Service/AutoUpdate/CandidateSelector.php:46-64, lib/BackgroundJob/AutoUpdateJob.php:90",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "releases-minimum-age"
+				"change": "releases-minimum-age",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6934,7 +7602,11 @@
 				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:141, lib/Service/AutoUpdate/CandidateSelector.php:46 (candidate computed inside the job only), routes in _lane/routes.txt (no preview route)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "autoupdate-proposed-updates"
+				"change": "autoupdate-proposed-updates",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6999,7 +7671,11 @@
 				"evidence": "lib/Service/Audit/AuditLogger.php:33-37 (operations install, bind_source, pin, unpin, pin_drift only), lib/Service/AutoUpdate/AutoUpdateSettingsStore.php:61, lib/Service/Policy/Policy.php:36-39, src/App.vue:217",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "audit-attribution-and-forwarding"
+				"change": "audit-attribution-and-forwarding",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqHistorie"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7256,7 +7932,11 @@
 				"evidence": "lib/Listener/AppUpdatedListener.php:48, lib/Service/Pin/PinDriftHandler.php:55-58, lib/Service/Pin/PinStore.php:159, lib/BackgroundJob/PinReconcileJob.php:54",
 				"reachedOn": "History tab (pin_drift rows) and per-app drift banner, pinned apps only",
 				"owner": "ConductionNL/versioniq",
-				"change": "audit-external-changes"
+				"change": "audit-external-changes",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqHistorie"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7289,7 +7969,11 @@
 				"evidence": "grep sbom, spdx, cyclonedx in lib and src: no hits; looked in lib/Service/Installer/InstallFinalizer.php (no post-install export)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "inventory-export-sbom-metrics"
+				"change": "inventory-export-sbom-metrics",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqInstellingen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7322,7 +8006,11 @@
 				"evidence": "lib/Controller/ApiController.php:1207, src/components/HistoryPanel.vue:28, src/components/HistoryPanel.vue:54, src/App.vue:2495",
 				"reachedOn": "History tab",
 				"owner": "ConductionNL/versioniq",
-				"change": "audit-security-reports"
+				"change": "audit-security-reports",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqHistorie"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7355,7 +8043,11 @@
 				"evidence": "grep end of life, eol, end of support in lib and src: no hits; lib/Notification/Notifier.php:135, lib/Notification/Notifier.php:154 (no support-end subject)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "inventory-lifecycle-signals"
+				"change": "inventory-lifecycle-signals",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7388,7 +8080,11 @@
 				"evidence": "lib/Service/AutoUpdate/AutoUpdateNotifier.php:48, lib/Service/AutoUpdate/AutoUpdateNotifier.php:63 (success and failure only, after the install)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "autoupdate-proposed-updates"
+				"change": "autoupdate-proposed-updates",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAutomatischeUpdates"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7421,7 +8117,11 @@
 				"evidence": "looked in lib/Service and lib/Controller/ApiController.php (single instance only)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "install-multi-instance-promotion"
+				"change": "install-multi-instance-promotion",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7454,7 +8154,11 @@
 				"evidence": "lib/Service/Source/AppStoreSource.php:578 (version and changelog only), src/components/VersionChangelog.vue:18",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "releases-version-facts"
+				"change": "releases-version-facts",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7487,7 +8191,11 @@
 				"evidence": "lib/Service/Source/AppStoreSource.php:644, lib/Service/Source/AppStoreSource.php:646, src/components/VersionChangelog.vue:18, src/App.vue:2360",
 				"reachedOn": "Apps tab (app detail, Versions, release notes disclosure)",
 				"owner": "ConductionNL/versioniq",
-				"change": "releases-notes-reach"
+				"change": "releases-notes-reach",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqAppVersies"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7520,7 +8228,11 @@
 				"evidence": "lib/Service/Settings/InstanceSettings.php (update.max_lines_behind), src/utils/pendingUpdates.ts isOutsidePolicy, src/components/InstanceSettingsPanel.vue",
 				"reachedOn": "Settings tab lag limit; Apps tab Outside the update policy flag and filter",
 				"owner": "ConductionNL/versioniq",
-				"change": "inventory-pending-updates"
+				"change": "inventory-pending-updates",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7550,7 +8262,11 @@
 				"evidence": "src/dialogs/EnableAppDialog.vue, src/utils/enableApp.ts, src/App.vue:35",
 				"reachedOn": "Apps tab card Enable action; install result",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/version-management"
+				"spec": "openspec/specs/version-management",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqApps"
+				}
 			},
 			"feature": "app-inventory",
 			"source": "spec-round-2026-10-07"
@@ -7573,7 +8289,11 @@
 				"evidence": "lib/Service/Advisory/AdvisoryResultStore.php:40, lib/Service/Advisory/AdvisoryResultStore.php:60 (one current result set, overwritten each sweep)",
 				"reachedOn": "nothing",
 				"owner": "ConductionNL/versioniq",
-				"change": "audit-security-reports"
+				"change": "audit-security-reports",
+				"screen": {
+					"canvas": "design-system",
+					"board": "VqBeveiligingsadviezen"
+				}
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7589,5 +8309,18 @@
 			}
 		}
 	],
-	"pending": []
+	"pending": [],
+	"specScreens": {
+		"pat-management": {
+			"board": [
+				"VqTokens"
+			]
+		},
+		"pending-updates": {
+			"board": [
+				"VqApps",
+				"VqAutomatischeUpdates"
+			]
+		}
+	}
 }
