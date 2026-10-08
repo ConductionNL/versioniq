@@ -761,6 +761,10 @@
 				"dependabot": "Closed service: the dependency graph lists every dependency of a repository with its version, and the Dependabot tab lists the monitored manifests (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/explore-dependencies, https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/list-configured-dependencies). Core: each ecosystem's file parser reads the declared versions, e.g. composer/lib/dependabot/composer/file_parser.rb. An app maps to a dependency in a manifest.",
 				"osv-scanner": "An app maps to a package in a lockfile, SBOM or image. ,all-packages with ,format json lists every package with its version (cmd/osv-scanner/internal/helper/flags.go:182, docs/usage.md:125-135).",
 				"easy-updates-manager": "includes/MPSUM_Plugins_List_Table.php:110-137 builds the Plugins tab from get_plugins() and includes/MPSUM_Plugins_List_Table.php:620-623 prints each plugin's installed version (Themes tab the same in includes/MPSUM_Themes_List_Table.php); an app maps to a plugin or theme. WordPress core Plugins screen lists them too."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -792,6 +796,10 @@
 				"dependabot": "Core: an available update surfaces only as an open pull request per dependency, \"Bumps X from A to B\" (common/lib/dependabot/pull_request_creator/message_builder.rb:452); closed service: no single list of outdated dependencies, and an org-wide dashboard is an open request (https://github.com/dependabot/dependabot-core/issues/2936).",
 				"osv-scanner": "Only vulnerable packages get a Fixed Version column (docs/output.md:29); there is no general outdated-package report, and the hidden experimental update command bumps manifest dependencies without listing them first (cmd/osv-scanner/update/command.go:27-29).",
 				"easy-updates-manager": "WordPress core: Dashboard > Updates lists every plugin, theme and core release with a newer version (https://wordpress.org/documentation/article/dashboard-updates-screen/); EUM adds an admin bar menu with the update counts (includes/MPSUM_Admin_Ajax.php:1096-1140). The EUM tab itself does not print the new version."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -823,6 +831,10 @@
 				"dependabot": "Core: each dependency requirement carries its source (registry or git URL) and PR bodies link the source repository (common/lib/dependabot/pull_request_creator/message_builder/metadata_presenter.rb:98); closed service: the dependency graph shows the ecosystem but no per-dependency origin column (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/explore-dependencies).",
 				"osv-scanner": "Each finding shows the ecosystem and the lockfile or SBOM path it came from (docs/output.md:26-30), and Git-pinned dependencies get a pkg:git PURL (CHANGELOG.md:8-9); the registry or forge a package was fetched from is not shown.",
 				"easy-updates-manager": "includes/MPSUM_Plugins_List_Table.php:617-646 shows version, author and plugin site, and a View details link only for plugins known to the wordpress.org API; nothing names where a plugin came from (directory, vendor updater or upload)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -856,6 +868,10 @@
 				"dependabot": "Core: releases whose language requirement (e.g. the PHP or Python version) is not satisfied are filtered before a target is chosen (common/lib/dependabot/package/package_latest_version_finder.rb:228); the compatibility is enforced silently, not shown to the user for a version of their choice.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way (no concept of a platform version a package must be compatible with).",
 				"easy-updates-manager": "WordPress core shows \"Compatible/Untested with your version of WordPress\" and requirement details in View details (https://wordpress.org/documentation/article/manage-plugins/#plugin-compatibility-1); EUM Premium safe mode blocks updates that do not meet the WordPress or PHP requirement (premium, docs: https://easyupdatesmanager.com/knowledge-base/safe-mode-premium/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -888,6 +904,10 @@
 				"dependabot": "Closed service: alerts filter by package, ecosystem and manifest, and the dependency graph can be searched (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-alerts-filters, https://docs.github.com/en/code-security/how-tos/manage-security-alerts/manage-dependabot-alerts/view-dependabot-alerts).",
 				"osv-scanner": "The HTML report has a search box for vulnerability IDs and layer filters (internal/output/html/report_template.gohtml:59, internal/output/html/filter_template.gohtml:6); there is no search of the package list by name.",
 				"easy-updates-manager": "includes/MPSUM_Plugins_List_Table.php:252-273 search callback and includes/MPSUM_Plugins_List_Table.php:333-380 views (all, updates enabled, updates disabled, automatic) filter the Plugins tab."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -919,6 +939,10 @@
 				"dependabot": "not checked: a manifest-based repository has no counterpart of an installed but disabled component; development and optional dependencies are the nearest analogue and are updated through the allow dependency-type option (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way (no enabled or disabled state for a package).",
 				"easy-updates-manager": "includes/MPSUM_Plugins_List_Table.php:110-137 lists all installed plugins from get_plugins(), active or inactive, and each can be blocked or set to auto-update; WordPress core updates inactive plugins too (https://wordpress.org/documentation/article/dashboard-updates-screen/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -950,6 +974,10 @@
 				"dependabot": "not checked: no counterpart of apps bundled with a server was found; direct versus transitive dependencies is the nearest analogue, which the dependency graph shows (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/explore-dependencies).",
 				"osv-scanner": "Image scans report the layer that introduced a package and the base image (docs/output.md:32-37, CHANGELOG.md:164), which separates base-image packages from ones added on top; source scans have no such split.",
 				"easy-updates-manager": "WordPress bundles default themes, Akismet and Hello Dolly as ordinary plugins and themes with no marker; EUM rows (includes/MPSUM_Plugins_List_Table.php:483-646) carry no bundled flag. Must-use plugins are listed separately by core but are admin-installed (https://wordpress.org/documentation/article/manage-plugins/#must-use-plugins-1)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -981,6 +1009,10 @@
 				"dependabot": "not checked: no feature was found that lists which dependencies block a move to the next runtime or framework major; the language-requirement filter in core (common/lib/dependabot/package/package_latest_version_finder.rb:228) only applies to the current runtime.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way (no readiness check against a next platform version).",
 				"easy-updates-manager": "WordPress core shows per plugin whether it is tested with a WordPress version (https://wordpress.org/documentation/article/manage-plugins/#plugin-compatibility-1), but there is no pre-upgrade report of plugins lacking a release for the next major; EUM adds nothing here."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstellingen"
 			}
 		},
 		{
@@ -1012,6 +1044,10 @@
 				"dependabot": "Closed service: security overview aggregates Dependabot alerts across an organisation's repositories (https://docs.github.com/en/code-security/concepts/security-at-scale/security-overview); version update state stays per repository and an org-wide Dependabot dashboard is an open feature request (https://github.com/dependabot/dependabot-core/issues/2936).",
 				"osv-scanner": "One run scans many directories recursively, several lockfiles and SBOMs (cmd/osv-scanner/scan/source/command.go:28-50), or an image; there is no central view over several instances.",
 				"easy-updates-manager": "Free handles a multisite network from one screen (network admin menu, includes/MPSUM_Admin.php:577); managing many separate sites needs UpdraftCentral, a separate product that EUM plugs into (includes/MPSUM_UpdraftCentral.php:13-40, https://easyupdatesmanager.com/knowledge-base/updraftcentral/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -1043,6 +1079,10 @@
 				"dependabot": "Closed service: the dependency graph exports an SPDX SBOM from the UI and REST API (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/establish-provenance-and-integrity/export-dependencies-as-sbom); this is GitHub's dependency graph, the data Dependabot alerts run on.",
 				"osv-scanner": "Outputs SPDX 2.3 and CycloneDX 1.4 to 1.7 with ,all-packages (internal/reporter/format.go:10, docs/output.md:427-431, docs/output.md:555-559).",
 				"easy-updates-manager": "Not in EUM (premium exports logs and settings only, templates/advanced-premium.php). WordPress core Site Health Info can copy the site info, including plugins with versions, to the clipboard (https://wordpress.org/documentation/article/site-health-screen/); no SBOM format."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -1074,6 +1114,10 @@
 				"dependabot": "not checked: core drops yanked releases as targets (common/lib/dependabot/package/package_release.rb:20, package_latest_version_finder.rb:145) but I found no warning that an installed dependency is deprecated or replaced.",
 				"osv-scanner": "Experimental ,experimental-flag-deprecated-packages reports deprecated and yanked packages from deps.dev (cmd/osv-scanner/internal/helper/flags.go:195, docs/package-deprecation.md:143-156); no replacement package is named.",
 				"easy-updates-manager": "Premium, docs: \"Check plugins\" flags plugins removed from the WordPress directory and \"Unmaintained plugins\" flags plugins not updated in a year (https://easyupdatesmanager.com/knowledge-base/check-plugins-premium/, https://easyupdatesmanager.com/knowledge-base/check-for-unmaintained-plugins/); free shows only the preview (includes/MPSUM_Admin_Advanced_Preview.php:66-86). No successor is named."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -1105,6 +1149,10 @@
 				"dependabot": "Core: pull request bodies carry the dependency's release notes, changelog, commits and source links (common/lib/dependabot/pull_request_creator/message_builder/metadata_presenter.rb:98-148); the SBOM carries licences (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/establish-provenance-and-integrity/export-dependencies-as-sbom); no standing page with description and author per dependency.",
 				"osv-scanner": "Licences per package via ,licenses (docs/license-scanning.md:23-36); description, author and links are not shown (docs/output.md:22-30 lists the fields).",
 				"easy-updates-manager": "includes/MPSUM_Plugins_List_Table.php:505 and 617-646 show description, version, author with link, plugin site and View details next to the update toggles; licence is not shown."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -1136,6 +1184,10 @@
 				"dependabot": "not checked: no counterpart of a developer checkout found; vendored dependencies are handled by the vendor option (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference) rather than warned about.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way (the scanner never writes into package folders).",
 				"easy-updates-manager": "Premium version control protection blocks updates to plugins and themes under Git, SVN or HG and warns on the Plugins and Themes tabs (includes/MPSUM_Disable_VCS.php:38-161, loaded only for premium at includes/MPSUM_Disable_Updates.php:72-75; https://easyupdatesmanager.com/knowledge-base/version-control-protection-premium/). Core also skips auto-updates for a VCS checkout (https://developer.wordpress.org/advanced-administration/upgrade/upgrading/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -1167,6 +1219,10 @@
 				"dependabot": "Core: the finder returns one target, the highest allowed release (common/lib/dependabot/package/package_latest_version_finder.rb:153, releases.max_by); closed service: the comment commands offer no version listing (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands), and choosing a version is an open request (https://github.com/dependabot/dependabot-core/issues/2980).",
 				"osv-scanner": "The output fields are installed version and fixed version only (docs/output.md:22-30), and the CLI surface is scan, fix, update and experimental-mcp (cmd/osv-scanner/main.go:16-19), none of which lists published versions.",
 				"easy-updates-manager": "WordPress core and EUM only ever offer the single latest version (core Updates screen, https://wordpress.org/documentation/article/dashboard-updates-screen/); EUM stores no version list (includes/MPSUM_Plugins_List_Table.php:117-137 reads only the update transient). Older versions exist only on the wordpress.org Advanced page or via third-party rollback plugins."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -1198,6 +1254,10 @@
 				"dependabot": "Core: release notes are fetched and quoted, but only for the releases between the current and the proposed version inside a pull request (common/lib/dependabot/metadata_finders/base/release_finder.rb:166, message_builder/metadata_presenter.rb:98); not for an arbitrary version.",
 				"osv-scanner": "The output fields carry the advisory link, not release notes (docs/output.md:22-30); no command shows a version's notes (cmd/osv-scanner/main.go:16-19).",
 				"easy-updates-manager": "WordPress core: the \"View version x details\" link opens the plugin readme with its changelog tab for the offered version (https://wordpress.org/documentation/article/manage-plugins/#manual-plugin-update-from-the-plugins-page), only for wordpress.org plugins; not for an arbitrary version."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -1229,6 +1289,10 @@
 				"dependabot": "Core: the changelog is pruned to the entries between the previous and the new version (common/lib/dependabot/metadata_finders/base/changelog_pruner.rb:42), with release notes since the previous version (release_finder.rb:166) and the commit list (metadata_presenter.rb:148) in the pull request.",
 				"osv-scanner": "Same as rel-release-notes: output fields docs/output.md:22-30, no changelog command in cmd/osv-scanner/main.go:16-19.",
 				"easy-updates-manager": "WordPress core View details modal shows the whole readme changelog, which covers the versions between installed and latest, but it is not narrowed to that range (https://wordpress.org/documentation/article/manage-plugins/#manual-plugin-update-from-the-plugins-page)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -1260,6 +1324,10 @@
 				"dependabot": "Core: pre-releases are offered only when the current version is itself a pre-release (common/lib/dependabot/package/cooldown_date_tracker.rb:106, package_latest_version_finder.rb:250); there is no switch, and an option for it is an open request (https://github.com/dependabot/dependabot-core/issues/2250).",
 				"osv-scanner": "not checked: remediation picks versions through deps.dev or the native registry inside osv-scalibr; whether pre-releases are excluded was not settled from this repo.",
 				"easy-updates-manager": "Only for WordPress core: EUM \"Development updates (Core)\" lets core auto-update to bleeding edge releases (includes/MPSUM_Admin_Core.php:253-258, includes/MPSUM_Disable_Updates.php:83-89); plugins and themes get only the directory stable tag."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -1291,6 +1359,10 @@
 				"dependabot": "Core: following a pre-release line happens implicitly by being on one (common/lib/dependabot/package/cooldown_date_tracker.rb:106); no stable or beta channel setting exists in the options reference (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference) and it is requested in https://github.com/dependabot/dependabot-core/issues/2250.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way (no release channel concept).",
 				"easy-updates-manager": "Core only: EUM chooses between manual, minor-only, all releases and development releases for WordPress core (includes/MPSUM_Admin.php i18n core_updates_label_*, includes/MPSUM_Disable_Updates.php:383-396); no channel per plugin."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -1323,6 +1395,10 @@
 				"dependabot": "There is no list of versions to filter: core proposes a single target (common/lib/dependabot/package/package_latest_version_finder.rb:153) and the service has no version picker (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands, https://github.com/dependabot/dependabot-core/issues/2980).",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way (no version list to filter).",
 				"easy-updates-manager": "No version list exists to filter: core and EUM offer only the latest version (includes/MPSUM_Plugins_List_Table.php:117-137)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -1354,6 +1430,10 @@
 				"dependabot": "not checked: core reads release dates to apply cooldown (common/lib/dependabot/package/cooldown_date_tracker.rb) but I did not find a place where a version's date is shown to the user.",
 				"osv-scanner": "not checked: release dates are not among the documented output fields (docs/output.md:22-30), but deps.dev data may carry them; not settled.",
 				"easy-updates-manager": "WordPress core View details modal shows the \"Last updated\" date of the latest release for directory plugins (https://wordpress.org/documentation/article/manage-plugins/); no date per version."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -1385,6 +1465,10 @@
 				"dependabot": "Core and service: cooldown holds updates for default-days, with separate semver-major, minor and patch days and include/exclude lists (updater/lib/dependabot/job/cooldown_definition.rb:14-19); since 2026-07-14 a 3-day default applies (updater/lib/dependabot/job.rb:43, https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).",
 				"osv-scanner": "The complete documented remediation flag list has no minimum release age (docs/guided-remediation.md:701-776; cmd/osv-scanner/fix/command.go:47-205).",
 				"easy-updates-manager": "Premium, docs: \"Delay automatic updates\" holds an update for a set time to skip short-lived releases (https://easyupdatesmanager.com/knowledge-base/delay-automatic-updates-premium/; readme.txt changelog 9.0.21 and 9.0.22 record the first-seen timestamp)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -1416,6 +1500,10 @@
 				"dependabot": "Closed service: compatibility scores give the percentage of CI runs that passed in other public repositories for the same update (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-security-updates).",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way.",
 				"easy-updates-manager": "WordPress core View details shows active installations and ratings for the whole plugin, not adoption or success of a version; EUM adds nothing (feature list at https://easyupdatesmanager.com/buy/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -1447,6 +1535,10 @@
 				"dependabot": "Core: pull requests are labelled major, minor or patch from the version precision (common/lib/dependabot/pull_request_creator/labeler.rb:140); the fetch-metadata action exposes update-type for workflows (https://docs.github.com/en/code-security/tutorials/secure-your-dependencies/automate-dependabot-with-actions).",
 				"osv-scanner": ",upgrade-config can forbid major bumps per package or globally (docs/guided-remediation.md:741-756), and relax is described as potentially breaking (docs/guided-remediation.md:61); a proposed patch is not itself flagged as major in the output (docs/guided-remediation.md:260-270).",
 				"easy-updates-manager": "Core only: EUM separates major and minor WordPress core releases (includes/MPSUM_Admin_Core.php:237-250). For plugins no major flag exists; a user asked for major/minor/patch control and it was passed to developers (https://wordpress.org/support/topic/finer-control-over-plugin-updates-please/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -1478,6 +1570,10 @@
 				"dependabot": "Core and service: a new release (after cooldown) produces a pull request on the configured schedule (updater/lib/dependabot/updater/operations/update_all_versions.rb), which notifies repository watchers; an issue instead of a PR is an open request (https://github.com/dependabot/dependabot-core/issues/2242).",
 				"osv-scanner": "not checked: no release notification in the scanner; the open request github.com/google/osv-scanner/issues/238 concerns the scanner's own new versions.",
 				"easy-updates-manager": "Premium, docs: weekly or monthly e-mail report of pending updates (https://easyupdatesmanager.com/knowledge-base/email-notification-of-updates-premium/). Free: WordPress core update e-mails for new core versions, rate limited by includes/MPSUM_Send_Email_Notifications.php:46-49 and 236-256, plus core update badges."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstellingen"
 			}
 		},
 		{
@@ -1509,6 +1605,10 @@
 				"dependabot": "Closed service: webhooks exist for Dependabot alerts and pull requests (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alerts), but only for a repository that has Dependabot enabled on a manifest; there is no feed of new releases without adopting the dependency.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way.",
 				"easy-updates-manager": "Every notification path needs the plugin installed on a site (includes/MPSUM_Send_Email_Notifications.php, premium webhook); no subscription without installing."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstellingen"
 			}
 		},
 		{
@@ -1541,6 +1641,10 @@
 				"dependabot": "not checked: Dependabot's audience is the maintainers of the repository; no feature was found that tells the end users of the resulting software what changed.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way.",
 				"easy-updates-manager": "Nothing in EUM tells site users what changed; WordPress core shows an About page to admins after a core update only (https://wordpress.org/documentation/article/dashboard-updates-screen/#once-an-update-is-completed)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstellingen"
 			}
 		},
 		{
@@ -1573,6 +1677,10 @@
 				"dependabot": "Core: yanked releases are dropped before a target is chosen (common/lib/dependabot/package/package_latest_version_finder.rb:145, :160) and Go module retractions are handled (go_modules/lib/dependabot/go_modules/update_checker/latest_version_finder.rb:38).",
 				"osv-scanner": "The experimental deprecation flag reports installed versions that were yanked from the registry (docs/package-deprecation.md:147-156); whether fix skips yanked versions when choosing a target is decided inside osv-scalibr and was not settled.",
 				"easy-updates-manager": "not checked: whether wordpress.org can retract a single plugin version is a directory policy question the EUM source and docs do not cover."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -1605,6 +1713,10 @@
 				"dependabot": "Open feature request ({FR}2247, state OPEN on 2026-09-26); the options reference has no LTS filter (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).",
 				"osv-scanner": "The complete remediation flag list offers upgrade levels (major, minor, patch, none) and advisory filters, with no long-term support filter for target versions (docs/guided-remediation.md:701-776, cmd/osv-scanner/fix/command.go:47-205).",
 				"easy-updates-manager": "WordPress has no long-term support line; the nearest is EUM \"Auto update all minor versions\" for core, which stays on the current branch (includes/MPSUM_Disable_Updates.php:391-392). Plugins have no such option."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -1636,6 +1748,10 @@
 				"dependabot": "Core proposes only the highest allowed release (common/lib/dependabot/package/package_latest_version_finder.rb:153) and never a lower one (package_latest_version_finder.rb:287); closed service: no command or UI targets a chosen version (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands), requested in https://github.com/dependabot/dependabot-core/issues/2980.",
 				"osv-scanner": "fix writes chosen non-vulnerable versions into the lockfile or manifest (docs/guided-remediation.md:55-71), but the user cannot name an arbitrary version and guided remediation rewrites manifest and lockfile only and never installs (docs/guided-remediation.md:73-77).",
 				"easy-updates-manager": "Neither EUM nor WordPress core can install a chosen older or newer version; only the latest is offered (https://wordpress.org/documentation/article/dashboard-updates-screen/). The support forum sends rollback questions to backups (https://wordpress.org/support/topic/checking-for-issues-rolling-back-after-auto-updates/). A zip upload of another version is covered by ins-manual-upload."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -1667,6 +1783,10 @@
 				"dependabot": "Core and service: a pull request bumps the dependency to its latest allowed version (common/lib/dependabot/pull_request_creator/message_builder.rb:452); merging it is the one action.",
 				"osv-scanner": "The hidden experimental update command bumps manifest dependencies up to an ,upgrade-config level (cmd/osv-scanner/update/command.go:27-73), and relax relocks to the newest allowed versions (docs/guided-remediation.md:673-676); neither installs.",
 				"easy-updates-manager": "WordPress core \"update now\" per plugin (https://wordpress.org/documentation/article/manage-plugins/#manual-plugin-update-from-the-plugins-page); EUM itself does not install but leaves this path working unless updates are blocked."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -1698,6 +1818,10 @@
 				"dependabot": "Service config, core engine: groups with patterns such as \"*\" combine every pending update into one pull request (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference groups; updater/lib/dependabot/dependency_group_engine.rb).",
 				"osv-scanner": "fix applies every possible patch by default (,apply-top=-1, docs/guided-remediation.md:712-714) and update bumps every manifest dependency (cmd/osv-scanner/update/command.go:27-73); both edit files only (docs/guided-remediation.md:76-77).",
 				"easy-updates-manager": "WordPress core Select All and Update Plugins on Dashboard > Updates (https://wordpress.org/documentation/article/dashboard-updates-screen/); EUM Force Updates runs every pending automatic update at once (includes/MPSUM_Admin_Ajax.php:1007-1090)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -1729,6 +1853,10 @@
 				"dependabot": "Dependabot has no rollback: the comment commands hold none (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands); the platform's revert of the merged pull request restores the previous version, which is GitHub, not Dependabot.",
 				"osv-scanner": "No undo: the docs tell the user to commit or back up files before fix runs (docs/guided-remediation.md:73-74); the sample script reverts through git checkout, not the tool (scripts/examples/auto_guided_remediation.py:43-44).",
 				"easy-updates-manager": "No rollback to the previous version in EUM or WordPress core; support answers point to taking an UpdraftPlus backup before updating (https://wordpress.org/support/topic/checking-for-issues-rolling-back-after-auto-updates/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -1760,6 +1888,10 @@
 				"dependabot": "not checked: Dependabot keeps no record of a last known good version; CI history on the platform is the nearest counterpart and I found no documented flow.",
 				"osv-scanner": "No rollback of any kind; the user is told to commit or back up before running (docs/guided-remediation.md:73-74).",
 				"easy-updates-manager": "WordPress core only restores the previous version automatically when an update fails: manual updates since 6.3 (https://make.wordpress.org/core/2023/07/11/new-in-6-3-rollback-for-failed-manual-plugin-and-theme-updates/) and plugin auto-updates that fatal since 6.6 (https://make.wordpress.org/core/2024/04/19/merge-proposal-rollback-auto-update/); not on demand."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -1791,6 +1923,10 @@
 				"dependabot": "Core never proposes a downgrade: releases at or below the current version are dropped (common/lib/dependabot/package/package_latest_version_finder.rb:287-291), so there is no downgrade to confirm.",
 				"osv-scanner": "not checked: the sample in-place output includes a lower version (acorn 5.7.3 to 5.4.1, docs/guided-remediation.md:107) without any prompt, but whether a downgrade is ever confirmed was not settled.",
 				"easy-updates-manager": "WordPress core: uploading a zip of an installed plugin shows the current and uploaded versions and asks to replace (Upload via admin, https://wordpress.org/documentation/article/manage-plugins/#upload-via-wordpress-admin, \"Replace current with uploaded\" since 5.5); no warning about what can break. EUM adds nothing."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqVersieTerugzetten"
 			}
 		},
 		{
@@ -1822,6 +1958,10 @@
 				"dependabot": "Core: the open Dependabot CLI runs an update job locally and reports the update it would make (README.md:57, https://github.com/dependabot/cli); it does not list all versions of a dependency.",
 				"osv-scanner": "There is no command that lists a package's available versions: the CLI surface is scan, fix, update and experimental-mcp (cmd/osv-scanner/main.go:16-19), none of which does.",
 				"easy-updates-manager": "EUM has no CLI (no WP_CLI registration anywhere in the source); support confirmed there is no EUM WP-CLI command (https://wordpress.org/support/topic/enable-disable-all-updates-from-wp-cli-command/). WP-CLI is a separate tool."
+			},
+			"screen": {
+				"board": null,
+				"reason": "A command-line command (occ versioniq:versions); it has no screen."
 			}
 		},
 		{
@@ -1853,6 +1993,10 @@
 				"dependabot": "Core: the CLI takes a job definition naming dependencies and ignore conditions (README.md:375, updater/lib/dependabot/job.rb:80), so a script can update one dependency, but only to the latest allowed version, not a chosen one.",
 				"osv-scanner": "fix and update run non-interactively for scripts (docs/guided-remediation.md:618-622, cmd/osv-scanner/fix/command.go:80-90) and rewrite versions, but pick the version themselves and guided remediation rewrites manifest and lockfile only and never installs (docs/guided-remediation.md:73-77).",
 				"easy-updates-manager": "EUM and WordPress core have no CLI; WP-CLI, a separate tool, has wp plugin install ,version (https://developer.wordpress.org/cli/commands/plugin/install/). Support confirmed EUM has no WP-CLI command (https://wordpress.org/support/topic/enable-disable-all-updates-from-wp-cli-command/)."
+			},
+			"screen": {
+				"board": null,
+				"reason": "A command-line command (occ versioniq:install); it has no screen."
 			}
 		},
 		{
@@ -1884,6 +2028,10 @@
 				"dependabot": "Core updates only dependencies already declared in a manifest (updater/lib/dependabot/updater/operations/update_all_versions.rb:7); closed service: version updates act on the dependencies in your manifests (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-version-updates).",
 				"osv-scanner": "No discovery or install of new packages: the CLI surface is scan, fix, update and experimental-mcp (cmd/osv-scanner/main.go:16-19), none of which adds a dependency.",
 				"easy-updates-manager": "WordPress core Plugins > Add New search and Install Now (https://wordpress.org/documentation/article/manage-plugins/#automatic-plugin-installation-1)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqOntdekken"
 			}
 		},
 		{
@@ -1945,6 +2093,10 @@
 				"dependabot": "not checked: Dependabot does not install packages on a host; the vendor option commits vendored dependencies (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference) but no local package cache for reinstalls was found.",
 				"osv-scanner": "The tool never installs packages (guided remediation rewrites manifest and lockfile only and never installs (docs/guided-remediation.md:73-77)); only the vulnerability database has an offline copy (docs/offline-mode.md:245-283).",
 				"easy-updates-manager": "WordPress downloads each package to a temporary file and keeps no package cache; EUM stores only options and a log table (includes/MPSUM_Logs.php:583-605), no packages."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -1976,6 +2128,10 @@
 				"dependabot": "not checked: no user-facing package cache was found in the service docs; core caches are internal to a job run.",
 				"osv-scanner": "Mapped to the local vulnerability database cache: location set with OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY and refreshed with ,download-offline-databases (docs/offline-mode.md:247-283); no command lists or clears it. No package cache exists.",
 				"easy-updates-manager": "No package cache exists in EUM or WordPress core (see ins-offline-install); EUM only clears its own update transients (includes/MPSUM_Admin_Ajax.php:1015-1016)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstellingen"
 			}
 		},
 		{
@@ -2007,6 +2163,10 @@
 				"dependabot": "not checked: no counterpart of installing from an uploaded archive in a pull-request-based updater.",
 				"osv-scanner": "An exported image archive can be scanned (cmd/osv-scanner/scan/image/command.go:29), but nothing is installed from it: guided remediation rewrites manifest and lockfile only and never installs (docs/guided-remediation.md:73-77).",
 				"easy-updates-manager": "WordPress core Upload Plugin installs a zip, and replaces an installed plugin with the uploaded version (https://wordpress.org/documentation/article/manage-plugins/#upload-via-wordpress-admin)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqOntdekken"
 			}
 		},
 		{
@@ -2038,6 +2198,10 @@
 				"dependabot": "Closed service: the Dependabot job list shows each job's status and short error, with full logs (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-job-logs); there is no live progress indicator for a running job.",
 				"osv-scanner": "fix prints the actions taken, fixed IDs and remaining and unfixable counts (docs/guided-remediation.md:99-128), and the interactive TUI shows each step (docs/guided-remediation.md:624-640); there is no progress bar.",
 				"easy-updates-manager": "WordPress core update screens print each step and the outcome (\"Downloading update\", \"Unpacking\", \"Plugin upgraded successfully\", https://wordpress.org/documentation/article/dashboard-updates-screen/); EUM Force Updates returns a result message (includes/MPSUM_Admin_Ajax.php:1073-1077)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstalleren"
 			}
 		},
 		{
@@ -2069,6 +2233,10 @@
 				"dependabot": "Closed service: full job log files with every dependency checked and the stack trace (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-job-logs); core: the CLI has a debugging guide (README.md:252).",
 				"osv-scanner": "scan takes ,verbosity (cmd/osv-scanner/internal/helper/flags.go:110-124), but the fix command has no verbosity flag (cmd/osv-scanner/fix/command.go:47-205).",
 				"easy-updates-manager": "EUM logs store notes and a normalised stack trace per update (includes/MPSUM_Logs.php:109-122, 513-540) and the notification e-mail lists error codes and messages, including rollback errors (includes/MPSUM_Send_Email_Notifications.php:180-206)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstalleren"
 			}
 		},
 		{
@@ -2100,6 +2268,10 @@
 				"dependabot": "not checked: no bulk rollback in Dependabot; reverting several merged pull requests is platform work and I found no documented flow.",
 				"osv-scanner": "No rollback; the user backs up files before fix runs (docs/guided-remediation.md:73-74).",
 				"easy-updates-manager": "No multi-app rollback in EUM or core; premium automatic backup restores through the separate UpdraftPlus plugin (https://easyupdatesmanager.com/buy/), which is outside this column."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -2131,6 +2303,10 @@
 				"dependabot": "not checked: no counterpart of an enabled or disabled state for a dependency.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way (no enabled state).",
 				"easy-updates-manager": "WordPress core reactivates an active plugin after update; EUM Premium auto-update protection re-activates plugins an auto-update deactivated and reports it (premium, docs: https://easyupdatesmanager.com/knowledge-base/auto-update-protection-premium/; readme.txt 9.0.18 reactivation order)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstalleren"
 			}
 		},
 		{
@@ -2163,6 +2339,10 @@
 				"dependabot": "not checked: core filters releases with an unsatisfied language requirement (common/lib/dependabot/package/package_latest_version_finder.rb:228) and I found no option to override that filter.",
 				"osv-scanner": "The Maven override strategy forces a version through dependencyManagement even where the declared constraints would not pick it, and warns it may break if incompatible (docs/guided-remediation.md:690-699); nothing lifts the override later.",
 				"easy-updates-manager": "WordPress core refuses to install or activate a plugin whose Requires PHP or Requires at least is not met (since 5.2/5.5) and has no override; EUM Premium safe mode adds a block, not an override (https://easyupdatesmanager.com/knowledge-base/safe-mode-premium/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -2195,6 +2375,10 @@
 				"dependabot": "not checked: no feature was found that swaps a deprecated or renamed dependency for its successor.",
 				"osv-scanner": "Deprecation is reported as a boolean only, with no successor named (docs/package-deprecation.md:147-152), and remediation only changes versions of existing packages (docs/guided-remediation.md:27-35).",
 				"easy-updates-manager": "Premium only flags removed or unmaintained plugins (https://easyupdatesmanager.com/knowledge-base/check-plugins-premium/); no successor is named or installed."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -2226,6 +2410,10 @@
 				"dependabot": "not checked: Dependabot resolves updates inside its own job container, not on the target host, so disk and permission checks have no counterpart I could find.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way.",
 				"easy-updates-manager": "WordPress core asks for filesystem credentials when it cannot write and reports download or permission errors (https://wordpress.org/documentation/article/dashboard-updates-screen/#troubleshooting); EUM warns when wp-config constants block automatic updates (includes/MPSUM_Constant_Checks.php:37, main.php:741). No disk space check is exposed for plugins."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -2257,6 +2445,10 @@
 				"dependabot": "Core never proposes a downgrade (common/lib/dependabot/package/package_latest_version_finder.rb:287-291), so no guard around one exists; database migrations are outside its scope.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way (no database migrations in the package model).",
 				"easy-updates-manager": "WordPress plugins have no versioned migration model the platform tracks, and EUM keeps none (only options and the eum_logs table, includes/MPSUM_Logs.php:583-605), so nothing can refuse a downgrade on migration grounds."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqVersieTerugzetten"
 			}
 		},
 		{
@@ -2288,6 +2480,10 @@
 				"dependabot": "not checked: no counterpart of database migrations in a dependency updater.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way (no database migrations in the package model).",
 				"easy-updates-manager": "WordPress plugins have no versioned migration model the platform tracks, and EUM keeps none (only options and the eum_logs table, includes/MPSUM_Logs.php:583-605)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqVersieTerugzetten"
 			}
 		},
 		{
@@ -2320,6 +2516,10 @@
 				"dependabot": "Core: the pull request reports attestation (provenance) changes between versions (common/lib/dependabot/pull_request_creator/message_builder/metadata_presenter.rb:197), but does not refuse an update whose signature fails to verify.",
 				"osv-scanner": "not checked: the scanner's own releases carry SLSA provenance (docs/installation.md:93-101), but verification of scanned or remediated package signatures was not found in the source or docs.",
 				"easy-updates-manager": "WordPress core verifies Ed25519 signatures of core packages only and soft-fails; plugin packages are not signed (https://make.wordpress.org/core/2019/05/17/security-in-5-2/). EUM adds no signature check."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstalleren"
 			}
 		},
 		{
@@ -2351,6 +2551,10 @@
 				"dependabot": "not checked: lockfile integrity hashes are written by each package manager that Dependabot runs, not by Dependabot; I did not trace a Dependabot-owned record.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way.",
 				"easy-updates-manager": "EUM records name, versions, user, status and notes per update, no checksum (includes/MPSUM_Logs.php:513-540); core records none for plugins."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -2382,6 +2586,10 @@
 				"dependabot": "not checked: same as the first-install checksum row; enforcement would be the package manager's lockfile check, not a Dependabot feature I found.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way.",
 				"easy-updates-manager": "No recorded checksum exists to enforce (includes/MPSUM_Logs.php:513-540)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstalleren"
 			}
 		},
 		{
@@ -2413,6 +2621,10 @@
 				"dependabot": "Core: every failure is mapped to an error-type with details (updater/lib/dependabot/updater/error_handler.rb:19, :224); closed service: each error type is explained with its cause and fix (https://docs.github.com/en/code-security/reference/supply-chain-security/troubleshoot-dependabot/dependabot-errors).",
 				"osv-scanner": "Exit codes separate findings, general errors and no packages found (docs/output.md:790-799), and fix reports unfixable counts (docs/guided-remediation.md:125-126); reasons why a vulnerability cannot be fixed are an open request (github.com/google/osv-scanner/issues/925).",
 				"easy-updates-manager": "The EUM e-mail marks each item SUCCESS or FAILED with the error code and message (includes/MPSUM_Send_Email_Notifications.php:120-206) and logs keep a status including \"Update not compatible\" (includes/MPSUM_Logs_List_Table.php:379-392); no plain-language cause or next step."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstalleren"
 			}
 		},
 		{
@@ -2444,6 +2656,10 @@
 				"dependabot": "not checked: a pull request either lands or not; no counterpart of a half-installed state was found.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way.",
 				"easy-updates-manager": "WordPress core 6.3 restores the backed-up plugin when an update fails partway (https://make.wordpress.org/core/2023/07/11/new-in-6-3-rollback-for-failed-manual-plugin-and-theme-updates/); EUM Force Updates can clear a stuck auto_updater.lock via the eum_force_updates_disable_lock filter (includes/MPSUM_Admin_Ajax.php:1033-1047)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstalleren"
 			}
 		},
 		{
@@ -2475,6 +2691,10 @@
 				"dependabot": "not checked: no backup step; the git history of the repository is the implicit restore point and I found no Dependabot feature for it.",
 				"osv-scanner": "The tool takes no backup; the docs tell the user to commit or back up files first (docs/guided-remediation.md:73-74).",
 				"easy-updates-manager": "Premium, docs: automatic backup before updates through an integration with UpdraftPlus, a separate plugin that must be installed (https://easyupdatesmanager.com/buy/, includes/MPSUM_Admin_Advanced_Preview.php:34-38). Core 6.3 keeps only a temporary copy of the plugin folder."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstalleren"
 			}
 		},
 		{
@@ -2507,6 +2727,10 @@
 				"dependabot": "not checked: no counterpart of a maintenance mode in a pull-request-based updater.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way.",
 				"easy-updates-manager": "WordPress core enables and disables maintenance mode around updates (\"Enabling Maintenance mode\", https://wordpress.org/documentation/article/dashboard-updates-screen/#update-plugins); EUM does not change it (support: https://wordpress.org/support/topic/maintenance-screen-during-updates/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstalleren"
 			}
 		},
 		{
@@ -2568,6 +2792,10 @@
 				"dependabot": "Closed service: every update arrives as a pull request on which the repository's CI runs before merge, and Dependabot jobs themselves run on GitHub Actions (https://docs.github.com/en/code-security/tutorials/secure-your-dependencies/automate-dependabot-with-actions); compatibility scores add results from other repositories (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-security-updates).",
 				"osv-scanner": "Lane downgrade from partial: only a documented sample script does this, not the tool. The documented sample script applies patches one by one, runs npm ci and npm test, and keeps only patches that pass (docs/guided-remediation.md:618-622, scripts/examples/auto_guided_remediation.py:4, :95-112); ,no-introduce drops patches that add new vulnerabilities (cmd/osv-scanner/fix/command.go:148). A sample, not a built-in step.",
 				"easy-updates-manager": "Premium safe mode checks an update against the WordPress and PHP requirement before applying it (premium, docs: https://easyupdatesmanager.com/knowledge-base/safe-mode-premium/); no functional tests run."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstalleren"
 			}
 		},
 		{
@@ -2629,6 +2857,10 @@
 				"dependabot": "Service config: registries in dependabot.yml, and public registries can be removed so only listed private registries are reached (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/remove-access-to-public-registries, https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configure-private-registries).",
 				"osv-scanner": "not checked: fix warns it may follow external registries named in the project (docs/guided-remediation.md:13-14) but no registry allowlist was found; absence not documented.",
 				"easy-updates-manager": "Neither EUM nor core restricts sources: any vendor updater or uploaded zip installs; the only lever is disabling file changes entirely. Support confirmed no alternative file sources are handled (https://wordpress.org/support/topic/update-from-file-repository/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBronnen"
 			}
 		},
 		{
@@ -2660,6 +2892,10 @@
 				"dependabot": "not checked: no warning about unverified packages was found beyond attestation changes (common/lib/dependabot/pull_request_creator/message_builder/metadata_presenter.rb:197).",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way.",
 				"easy-updates-manager": "WordPress core prints a notice when a core package has no valid signature and continues (soft fail, https://make.wordpress.org/core/2019/05/17/security-in-5-2/); nothing for plugins."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstalleren"
 			}
 		},
 		{
@@ -2691,6 +2927,10 @@
 				"dependabot": "Core: any dependency can be ignored completely (updater/lib/dependabot/job.rb:555) so chosen components are protected, but there is no built-in protected set.",
 				"osv-scanner": ",upgrade-config=<package>:none stops fix and update from changing a named package (docs/guided-remediation.md:741-756, cmd/osv-scanner/fix/command.go:154); it is a per-run flag, not a stored protection.",
 				"easy-updates-manager": "EUM can disable WordPress core updates entirely (includes/MPSUM_Admin_Core.php:204-209, includes/MPSUM_Disable_Updates.php:78-80) and hide its settings from chosen admins (https://easyupdatesmanager.com/knowledge-base/exclude-users/); nothing protects EUM itself or bundled plugins by default."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -2723,6 +2963,10 @@
 				"dependabot": "not checked: no counterpart of database changes in a dependency updater.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way (no database migrations).",
 				"easy-updates-manager": "WordPress plugins have no versioned migration model the platform tracks, and EUM keeps none (only options and the eum_logs table, includes/MPSUM_Logs.php:583-605); core database upgrades run without a preview (https://wordpress.org/documentation/article/dashboard-updates-screen/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqVersieTerugzetten"
 			}
 		},
 		{
@@ -2816,6 +3060,10 @@
 				"dependabot": "not checked: a dependency in a manifest has no enabled or disabled state, so leaving an app disabled has no counterpart in a pull-request-based updater.",
 				"osv-scanner": "not checked: packages have no enabled or disabled state in a lockfile scanner, and fix never installs (docs/guided-remediation.md:76-77); the row has no counterpart and the docs do not say.",
 				"easy-updates-manager": "Premium, docs: auto-update protection detects plugins deactivated by an update, re-activates them and reports by e-mail (https://easyupdatesmanager.com/knowledge-base/auto-update-protection-premium/); changelog 9.0.18 reactivates in dependency order."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstalleren"
 			}
 		},
 		{
@@ -2847,6 +3095,10 @@
 				"dependabot": "Service and core: ignore a dependency entirely in dependabot.yml or with \"@dependabot ignore this dependency\" (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands); core applies it as an all-versions ignore (updater/lib/dependabot/job.rb:555).",
 				"osv-scanner": ",upgrade-config=<package>:none disallows any update of that package during fix or update (cmd/osv-scanner/fix/command.go:154-158, docs/guided-remediation.md:741-756); the pin is a command-line flag, not stored state, and the lockfile itself is the real pin.",
 				"easy-updates-manager": "Per plugin or theme \"Plugin updates: Blocked\" toggle (includes/MPSUM_Plugins_List_Table.php:536-569) removes its update from the update transient and from the wordpress.org request (includes/MPSUM_Disable_Updates.php:295-376), so it stays on its version."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -2878,6 +3130,10 @@
 				"dependabot": "Closed service: \"@dependabot unignore DEPENDENCY_NAME\" clears stored ignore conditions, or remove the entry from dependabot.yml (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands).",
 				"osv-scanner": "Leave the ,upgrade-config flag out of the next run (docs/guided-remediation.md:751); there is no stored pin to remove.",
 				"easy-updates-manager": "The \"Allowed\" toggle and the bulk action \"Plugin updates on\" (includes/MPSUM_Admin_Ajax.php:552-566) remove the block."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -2909,6 +3165,10 @@
 				"dependabot": "Core: each ignore condition carries its source (the command that created it) and updated_at (updater/lib/dependabot/job/ignore_condition.rb:19-20), shown by \"@dependabot show X ignore conditions\" (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands); no free-text reason field in dependabot.yml (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).",
 				"osv-scanner": ",upgrade-config has no reason field (docs/guided-remediation.md:741-756) and fix does not read osv-scanner.toml at all (docs/guided-remediation.md:786).",
 				"easy-updates-manager": "The block is stored as a bare list of plugin files (includes/MPSUM_Admin_Ajax.php:483-516, includes/MPSUM_Disable_Updates.php:295-303) with no user, time or reason; the log records only updates (includes/MPSUM_Logs.php:513-540)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -2940,6 +3200,10 @@
 				"dependabot": "Core: ignored versions are removed before a target is chosen (common/lib/dependabot/package/package_latest_version_finder.rb:148, filter_ignored_versions).",
 				"osv-scanner": "fix and update honour ,upgrade-config when it is passed (cmd/osv-scanner/fix/command.go:154-158, cmd/osv-scanner/update/command.go:43-47); a run without the flag ignores the pin.",
 				"easy-updates-manager": "EUM has no installer of its own; its Force Updates and its automatic-update policies run through the same transient the block filters (includes/MPSUM_Disable_Updates.php:295-326, includes/MPSUM_Admin_Ajax.php:1007-1030), so a blocked plugin is skipped."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstalleren"
 			}
 		},
 		{
@@ -3001,6 +3265,10 @@
 				"dependabot": "not checked: an ignore lapses on a manual upgrade (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands) rather than flagging drift; no drift warning was found.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way.",
 				"easy-updates-manager": "The block is stored as a bare list of plugin files (includes/MPSUM_Admin_Ajax.php:483-516, includes/MPSUM_Disable_Updates.php:295-303); no pinned version is kept, so a version change by upload or another tool cannot be detected."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -3032,6 +3300,10 @@
 				"dependabot": "not checked: no one-action restore of a pinned version after drift was found.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way.",
 				"easy-updates-manager": "The block is stored as a bare list of plugin files (includes/MPSUM_Admin_Ajax.php:483-516, includes/MPSUM_Disable_Updates.php:295-303); nothing to restore to."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -3063,6 +3335,10 @@
 				"dependabot": "Core and service: ignore update-types (semver-major, minor, patch) and allow update-types limit updates to a range (common/lib/dependabot/config/ignore_condition.rb:12-14, updater/lib/dependabot/job.rb:563); ignore.versions takes ranges (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).",
 				"osv-scanner": ",upgrade-config per package or globally at major, minor, patch or none (docs/guided-remediation.md:741-756); in-place fixes also respect the existing manifest constraints (docs/guided-remediation.md:658-660).",
 				"easy-updates-manager": "Only for WordPress core (minor-only, includes/MPSUM_Disable_Updates.php:391-392). For plugins a patch-only or minor-only range was requested and passed to developers (https://wordpress.org/support/topic/finer-control-over-plugin-updates-please/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -3094,6 +3370,10 @@
 				"dependabot": "Service config: ignore.versions skips specific versions while later ones are still proposed (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference); \"@dependabot ignore this patch version\" does the same from a pull request (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands).",
 				"osv-scanner": "The complete remediation flag list has no way to skip one version (docs/guided-remediation.md:701-776); ,ignore-vulns skips advisories, not versions.",
 				"easy-updates-manager": "The block is stored as a bare list of plugin files (includes/MPSUM_Admin_Ajax.php:483-516, includes/MPSUM_Disable_Updates.php:295-303); a block applies to all versions. Premium delayed updates postpone every release, not one."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -3155,6 +3435,10 @@
 				"dependabot": "Service: ignores in dependabot.yml are one list in the file, but ignores created by comment are only shown per dependency with \"@dependabot show X ignore conditions\" (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands).",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way (pins are per-run flags, nothing to list).",
 				"easy-updates-manager": "includes/MPSUM_Plugins_List_Table.php:346-352 view \"Updates disabled (n)\" lists all blocked plugins; themes the same."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -3187,6 +3471,10 @@
 				"dependabot": "Core: ignored versions are removed before a target is chosen (common/lib/dependabot/package/package_latest_version_finder.rb:148), and an ignore command closes the pull request and stops further ones (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands); a newer version of an ignored dependency is not surfaced. Security alerts still fire for vulnerable versions (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alerts).",
 				"osv-scanner": ",upgrade-config=<package>:none only limits fix and update (docs/guided-remediation.md:741-756); scan keeps reporting that package's advisories with their Fixed Version (docs/output.md:29), so a newer version stays visible, but only when it fixes an advisory.",
 				"easy-updates-manager": "Blocking removes the update from the transient, so the new version disappears (includes/MPSUM_Disable_Updates.php:295-303); support suggested manual mode with automatic updates off instead, which keeps the notice but does not block a manual update."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -3249,6 +3537,10 @@
 				"dependabot": "Service config and core: allow, ignore, groups and cooldown include/exclude take dependency names and patterns (updater/lib/dependabot/job/cooldown_definition.rb:18-19, https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference); a per-dependency schedule is an open request (https://github.com/dependabot/dependabot-core/issues/2165).",
 				"osv-scanner": "A per-package upgrade level via ,upgrade-config=<package>:<level> (docs/guided-remediation.md:741-756); applied when a user or CI runs fix, not automatically.",
 				"easy-updates-manager": "\"Choose per plugin\" / \"Choose per theme\" (includes/MPSUM_Disable_Updates.php:141-142, 157-158, 252-280) with an automatic-updates toggle per row (includes/MPSUM_Plugins_List_Table.php:576-606); EUM also rewrites core's auto-update column to match (main.php:745-747)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -3280,6 +3572,10 @@
 				"dependabot": "Core and service: allow or ignore update-types semver-patch, semver-minor or semver-major (updater/lib/dependabot/job.rb:563-590, https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).",
 				"osv-scanner": "Levels patch, minor, major and none (docs/guided-remediation.md:743-749); nothing runs them automatically, a CI job has to.",
 				"easy-updates-manager": "WordPress core only: major, minor and development levels (includes/MPSUM_Admin_Core.php:237-258, includes/MPSUM_Disable_Updates.php:383-396). Plugins update to whatever is latest; a patch/minor level for plugins is an open request (https://wordpress.org/support/topic/finer-control-over-plugin-updates-please/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -3311,6 +3607,10 @@
 				"dependabot": "Service config: options on an updates entry apply to every dependency of that ecosystem and directory, e.g. cooldown default-days (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).",
 				"osv-scanner": ",upgrade-config=<level> without a package name applies to every package (docs/guided-remediation.md:751-754); per run, not automatic.",
 				"easy-updates-manager": "General tab: plugin and theme auto-updates on, off, WordPress default or per item, plus quick actions \"Auto update everything\" and \"Disable auto updates\" (includes/MPSUM_Admin_Ajax.php:218-240, includes/MPSUM_Disable_Updates.php:137-166)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -3342,6 +3642,10 @@
 				"dependabot": "Service: open-pull-requests-limit 0 stops version updates per ecosystem entry and security updates can be switched off in settings (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference, https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/audit-log-events-for-your-organization dependabot_security_updates.disable); no single switch for both.",
 				"osv-scanner": "There are no automatic updates to switch off: the CLI surface is scan, fix, update and experimental-mcp (cmd/osv-scanner/main.go:16-19), none of which runs on its own schedule; the scheduled GitHub workflow only scans (docs/github-action.md:70-72).",
 				"easy-updates-manager": "\"Disable all updates\" master switch (includes/MPSUM_Disable_Updates.php:62-65, includes/MPSUM_Disable_Updates_All.php) and quick action \"Disable auto updates\" (includes/MPSUM_Admin_Ajax.php:231-237)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -3373,6 +3677,10 @@
 				"dependabot": "Service config: schedule.time and schedule.timezone set when a run starts (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference); there is no end of window.",
 				"osv-scanner": "No automatic updates or scheduler in the tool (the CLI surface is scan, fix, update and experimental-mcp (cmd/osv-scanner/main.go:16-19), none of which is a daemon); scheduling is the user's CI cron (docs/github-action.md:80-91).",
 				"easy-updates-manager": "Premium, docs: automatic update scheduling runs updates at a chosen time of day (https://easyupdatesmanager.com/knowledge-base/automatic-update-scheduling-premium/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -3404,6 +3712,10 @@
 				"dependabot": "Service config: schedule.interval daily to yearly, schedule.day, or cron (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).",
 				"osv-scanner": "Only scans can be scheduled, through a GitHub Actions cron the user writes (docs/github-action.md:70-99); no update is ever scheduled.",
 				"easy-updates-manager": "Premium, docs: every 12 hours, daily, weekly, fortnightly or monthly at a custom day and time (https://easyupdatesmanager.com/knowledge-base/automatic-update-scheduling-premium/); allowed weekdays selectable since 9.0.16 (readme.txt changelog)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -3435,6 +3747,10 @@
 				"dependabot": "Closed service: the job list shows each run's result and error (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-job-logs) and every success is a pull request; being notified of a failed job is an open request (https://github.com/dependabot/dependabot-core/issues/3509).",
 				"osv-scanner": "No automatic updates exist; the scheduled workflow reports scan results only (docs/github-action.md:70-72, :105-110).",
 				"easy-updates-manager": "After each automatic run EUM e-mails the configured addresses a success and failure list per core, plugin, theme and translation (includes/MPSUM_Send_Email_Notifications.php:32-230); premium adds Slack, syslog and other channels (https://easyupdatesmanager.com/knowledge-base/log-clearance-and-to-external-channels-premium/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -3466,6 +3782,10 @@
 				"dependabot": "not checked: the documented pause is tied to maintainers ignoring pull requests for 90 days (https://docs.github.com/en/code-security/reference/supply-chain-security/troubleshoot-dependabot/dependabot-updates-stopped), not to repeated failures; no failure backoff was found.",
 				"osv-scanner": "No automatic updates exist (docs/github-action.md:70-72); the only retry policy is for transient gRPC errors in plugins (CHANGELOG.md:6).",
 				"easy-updates-manager": "not checked: EUM has no retry limit of its own (includes/MPSUM_Disable_Updates.php), and whether WordPress core stops retrying a failed plugin auto-update was not verified."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -3497,6 +3817,10 @@
 				"dependabot": "Core and service: groups by pattern, dependency type or update type, for version and security updates, and multi-ecosystem groups (updater/lib/dependabot/dependency_group_engine.rb, https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).",
 				"osv-scanner": "One fix run applies several patches together into one manifest and lockfile change (docs/guided-remediation.md:712-714, :99-128); grouping rules are not configurable.",
 				"easy-updates-manager": "WordPress core applies all due automatic updates in one run and EUM sends one summary e-mail for it (includes/MPSUM_Send_Email_Notifications.php:59); there is no user-defined group."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -3528,6 +3852,10 @@
 				"dependabot": "Core: security-only jobs (updater/lib/dependabot/job.rb:305, updater/lib/dependabot/updater/operations/create_security_update_pull_request.rb); closed service: security updates switch on independently of version updates (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-security-updates).",
 				"osv-scanner": "fix only proposes upgrades that remove known vulnerabilities, filterable by ,min-severity and ,vulns (docs/guided-remediation.md:27-35, :719-733); a user or CI must run it, so nothing is automatic.",
 				"easy-updates-manager": "WordPress core only: \"Auto update all minor versions\" applies the maintenance and security releases (includes/MPSUM_Disable_Updates.php:391-392); no security-only policy for plugins."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -3559,6 +3887,10 @@
 				"dependabot": "Closed service: an update is a pull request that a person reviews and merges; reviewers can be requested per ecosystem (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).",
 				"osv-scanner": "Interactive mode shows proposed patches and writes only the ones the user selects (docs/guided-remediation.md:624-670); npm only.",
 				"easy-updates-manager": "\"Manually update\" leaves each available update on the core Updates screen until an admin applies it (includes/MPSUM_Admin.php i18n plugin_updates_label_on); there is no proposal and approval record."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -3590,6 +3922,10 @@
 				"dependabot": "Closed service: GitHub auto-merge plus the fetch-metadata action merge Dependabot pull requests once required checks pass (https://docs.github.com/en/code-security/tutorials/secure-your-dependencies/automate-dependabot-with-actions); core also applies an automerge label when one exists (common/lib/dependabot/pull_request_creator/labeler.rb:280). The merge is the platform's, driven by a workflow.",
 				"osv-scanner": "No merge or pull request step; the scheduled workflow only scans (docs/github-action.md:70-72) and fix edits local files (docs/guided-remediation.md:73-77).",
 				"easy-updates-manager": "Premium safe mode lets an automatic update through only when it meets the WordPress and PHP requirement (https://easyupdatesmanager.com/knowledge-base/safe-mode-premium/); no test checks."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -3621,6 +3957,10 @@
 				"dependabot": "Service config: open-pull-requests-limit caps concurrent version update pull requests (default 5) (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).",
 				"osv-scanner": ",apply-top=<n> caps how many patches one run applies (cmd/osv-scanner/fix/command.go:142, docs/guided-remediation.md:712-714); no per-period limit.",
 				"easy-updates-manager": "No limit on how many updates run per period in the free source (includes/MPSUM_Disable_Updates.php) or the premium feature list (https://easyupdatesmanager.com/buy/); only core update e-mails are rate limited (includes/MPSUM_Send_Email_Notifications.php:236-256)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -3682,6 +4022,10 @@
 				"dependabot": "Closed service: .github/dependabot.yml, versioned in the repository (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).",
 				"osv-scanner": "osv-scanner.toml keeps scan policy (ignores with reason and expiry, package overrides) in a versioned file (docs/configuration.md:9-66), but fix does not read it (docs/guided-remediation.md:786) and upgrade levels are flags only.",
 				"easy-updates-manager": "Settings live in the database; defaults can be set in code through the mpsum_default_options filter (includes/MPSUM_Admin_Core.php:85) and constants such as MPSUM_DISABLE_ADMIN and core WP_AUTO_UPDATE_CORE in wp-config.php (https://developer.wordpress.org/advanced-administration/upgrade/upgrading/); premium export/import is JSON, not a versioned policy file."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -3743,6 +4087,10 @@
 				"dependabot": "Closed service: per repository, the Dependabot tab lists recent update jobs and alerts (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/re-run-dependabot-jobs, https://docs.github.com/en/code-security/how-tos/manage-security-alerts/manage-dependabot-alerts/view-dependabot-alerts); no cross-repository dashboard of pending updates, requested in https://github.com/dependabot/dependabot-core/issues/2936.",
 				"osv-scanner": "not checked: the HTML report and GitHub code scanning tab show findings (docs/output.md:142-170, docs/github-action.md:105-110), but no view of pending or blocked updates was found; absence not documented.",
 				"easy-updates-manager": "Core Updates screen lists pending updates; EUM Plugins tab views show updates enabled, disabled and automatic (includes/MPSUM_Plugins_List_Table.php:333-380); scheduled or delayed items have no view."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -3774,6 +4122,10 @@
 				"dependabot": "Closed service: registry credentials are stored as Dependabot secrets and used by scheduled runs with nobody signed in (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configure-private-registries, https://docs.github.com/en/rest/dependabot/secrets).",
 				"osv-scanner": ",data-source=native uses the native tooling's stored auth, so a CI run reaches private and mirrored registries without a person (docs/guided-remediation.md:760-765); applies to remediation lookups, not automatic updates.",
 				"easy-updates-manager": "not checked: in WordPress private plugins update through each vendor's own updater, which EUM only filters; whether those run unattended is vendor-specific."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqTokens"
 			}
 		},
 		{
@@ -3805,6 +4157,10 @@
 				"dependabot": "Closed service: the recent update jobs list shows failed runs and \"Check for updates\" re-runs one (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/re-run-dependabot-jobs).",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way.",
 				"easy-updates-manager": "Logs filter failures (includes/MPSUM_Logs_List_Table.php:379-392) and Force Updates retries all pending automatic updates at once (includes/MPSUM_Admin_Ajax.php:1007-1090); no per-item reset."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -3899,6 +4255,10 @@
 				"dependabot": "Open feature request for several schedule and update-type combinations on one ecosystem and directory (https://github.com/dependabot/dependabot-core/issues/1778, OPEN on 2026-09-26); schedule is one per updates entry (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).",
 				"osv-scanner": "The tool has no update scheduler: the CLI surface is scan, fix, update and experimental-mcp (cmd/osv-scanner/main.go:16-19), and the only scheduling is a user-written GitHub Actions cron that scans (docs/github-action.md:70-99).",
 				"easy-updates-manager": "Premium, docs: scheduling sets one time for the WordPress update cron (https://easyupdatesmanager.com/knowledge-base/automatic-update-scheduling-premium/); no separate schedule per update kind."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -3992,6 +4352,10 @@
 				"dependabot": "Closed service: Dependabot alerts match the dependency graph against GitHub-reviewed advisories (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alerts); core: SecurityAdvisory#vulnerable? (common/lib/dependabot/security_advisory.rb:52). Open data: https://github.com/github/advisory-database.",
 				"osv-scanner": "The core function: packages from lockfiles, SBOMs, directories and images are matched against OSV (docs/scan-source.md:28, docs/output.md:22-30, pkg/osvscanner/osvscanner.go:118).",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -4023,6 +4387,10 @@
 				"dependabot": "not checked: whether Nextcloud's advisories published on GitHub are mapped to a package ecosystem that Dependabot alerts on; the advisory database lists its sources and Nextcloud's own feed is not among them (https://docs.github.com/en/code-security/concepts/vulnerability-reporting-and-management/github-advisory-database).",
 				"osv-scanner": "not checked: OSV imports the GitHub Advisory Database (https://google.github.io/osv.dev/data/), where Nextcloud publishes advisories, but whether Nextcloud app advisories carry an OSV ecosystem the scanner can match was not settled.",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories. The Nextcloud feed maps to a WordPress feed, which is not read either."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBeveiligingsadviezen"
 			}
 		},
 		{
@@ -4054,6 +4422,10 @@
 				"dependabot": "Closed service: the GitHub Advisory Database is the source of every Dependabot alert (https://docs.github.com/en/code-security/concepts/vulnerability-reporting-and-management/github-advisory-database); the reviewed data is open at https://github.com/github/advisory-database.",
 				"osv-scanner": "OSV.dev imports the GitHub Advisory Database (https://google.github.io/osv.dev/data/) and results carry GHSA IDs (docs/guided-remediation.md:124).",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBeveiligingsadviezen"
 			}
 		},
 		{
@@ -4085,6 +4457,10 @@
 				"dependabot": "The GitHub Advisory Database is itself a public cross-ecosystem database published in OSV format (https://github.com/github/advisory-database) and imports PyPA, RustSec, Go and others (https://docs.github.com/en/code-security/concepts/vulnerability-reporting-and-management/github-advisory-database); Dependabot does not read osv.dev directly.",
 				"osv-scanner": "Queries the OSV.dev API or a local OSV database copy (docs/offline-mode.md:245, docs/scan-source.md:28).",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBeveiligingsadviezen"
 			}
 		},
 		{
@@ -4116,6 +4492,10 @@
 				"dependabot": "Closed service: alerts show the advisory severity and CVSS score, and can be filtered by severity (https://docs.github.com/en/code-security/how-tos/manage-security-alerts/manage-dependabot-alerts/view-dependabot-alerts, https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-alerts-filters).",
 				"osv-scanner": "CVSS v2 or v3 column per finding (docs/output.md:25) and a severity summary in the HTML report (internal/output/html/severity_summary_template.gohtml).",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBeveiligingsadviezen"
 			}
 		},
 		{
@@ -4147,6 +4527,10 @@
 				"dependabot": "Core: patched versions are listed in the pull request (common/lib/dependabot/pull_request_creator/message_builder/metadata_presenter.rb:249) and the lowest fixed version is computed (common/lib/dependabot/update_checkers/base.rb:156).",
 				"osv-scanner": "Fixed Version column, shown as, when no fix exists (docs/output.md:29, :66).",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -4178,6 +4562,10 @@
 				"dependabot": "Closed service: \"Create Dependabot security update\" on the alert page opens the fixing pull request (https://docs.github.com/en/code-security/how-tos/manage-security-alerts/manage-dependabot-alerts/view-dependabot-alerts).",
 				"osv-scanner": "osv-scanner fix rewrites the manifest or lockfile to fixed versions in one command (docs/guided-remediation.md:55-71), for npm and Maven only (docs/guided-remediation.md:42-48); reinstalling is a separate step (docs/guided-remediation.md:76-77).",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBeveiligingsadviezen"
 			}
 		},
 		{
@@ -4209,6 +4597,10 @@
 				"dependabot": "Closed service: web and e-mail notifications fire for new critical or high severity alerts (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configure-dependabot-notifications).",
 				"osv-scanner": "Results are only a report and an exit code (docs/output.md:790-799); failing a CI job by minimum severity is still an open request (github.com/google/osv-scanner/issues/712).",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstellingen"
 			}
 		},
 		{
@@ -4241,6 +4633,10 @@
 				"dependabot": "Closed service: a daily or weekly e-mail digest of alerts for up to 10 repositories (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configure-dependabot-notifications).",
 				"osv-scanner": "The documented scheduled workflow scans weekly and lists results in GitHub's code scanning tab (docs/github-action.md:70-110); no digest is sent.",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstellingen"
 			}
 		},
 		{
@@ -4273,6 +4669,10 @@
 				"dependabot": "Closed service: alerts are raised on each new advisory and each manifest change (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alerts); there is no interval setting.",
 				"osv-scanner": "Set through the cron line of the scheduled workflow (docs/github-action.md:80-91, :99); the tool has no interval of its own.",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBeveiligingsadviezen"
 			}
 		},
 		{
@@ -4304,6 +4704,10 @@
 				"dependabot": "Closed service: dismiss with a reason from a list plus a comment kept on the alert timeline, singly or in bulk; auto-triage rules dismiss by criteria (https://docs.github.com/en/code-security/how-tos/manage-security-alerts/manage-dependabot-alerts/view-dependabot-alerts, https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-auto-triage-rules).",
 				"osv-scanner": "[[IgnoredVulns]] with id, reason and optional ignoreUntil in osv-scanner.toml (docs/configuration.md:25-43, internal/config/config.go:26-30); the reason is logged when a finding is filtered (pkg/osvscanner/filter.go:59).",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBeveiligingsadviezen"
 			}
 		},
 		{
@@ -4336,6 +4740,10 @@
 				"dependabot": "Closed service: Dependabot alerts scan the repository's default branch only (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alerts), so maintained release branches are not matched.",
 				"osv-scanner": "Matching uses per-ecosystem affected ranges including distro backports, with the RHEL epoch fix in v2.5.0 (CHANGELOG.md:67); an open bug still reports fixed Debian vulnerabilities (github.com/google/osv-scanner/issues/1556).",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBeveiligingsadviezen"
 			}
 		},
 		{
@@ -4369,6 +4777,10 @@
 				"dependabot": "Closed service: alerts cover transitive dependencies from the dependency graph and security updates can update them (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alerts, https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-security-updates); core: update_subdependencies (updater/lib/dependabot/job.rb:300).",
 				"osv-scanner": "Scans every package in lockfiles, transitive dependencies resolved from manifests, vendored C/C++ code and image layers (docs/supported_languages_and_lockfiles.md:79-110, docs/output.md:32-37).",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBeveiligingsadviezen"
 			}
 		},
 		{
@@ -4461,6 +4873,10 @@
 				"dependabot": "Closed service: GitHub Enterprise Server keeps a local copy of the advisory database synced hourly and matches on premises, but the sync needs GitHub Connect (https://docs.github.com/en/enterprise-server@latest/admin/configuring-settings/configuring-github-connect/enabling-dependabot-for-your-enterprise).",
 				"osv-scanner": ",offline and ,offline-vulnerabilities against a local per-ecosystem OSV database, downloadable with ,download-offline-databases (docs/offline-mode.md:245-310, cmd/osv-scanner/internal/helper/flags.go:126-163).",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstellingen"
 			}
 		},
 		{
@@ -4492,6 +4908,10 @@
 				"dependabot": "not checked: I did not find a last-checked time for alert matching in the docs read; job logs cover version update runs only (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-job-logs).",
 				"osv-scanner": "not checked: each run queries live data and no last-checked record was found; the offline database age is not reported in the documented output (docs/output.md:22-37).",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -4553,6 +4973,10 @@
 				"dependabot": "Closed service: alerts are raised for every vulnerable dependency in the graph regardless of version-update ignores (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alerts); core applies ignores differently for security jobs (common/lib/dependabot/config/ignore_condition.rb:41).",
 				"osv-scanner": "Every locked version is checked, so a pinned package with an advisory is reported (docs/output.md:22-30); there is no pin concept to tie the warning to.",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -4616,6 +5040,10 @@
 				"dependabot": "Closed service: the advisory database lists its import sources (NVD, npm, FriendsOfPHP, Go, PyPA, RubySec, RustSec, community) and NCSC is not one (https://docs.github.com/en/code-security/concepts/vulnerability-reporting-and-management/github-advisory-database).",
 				"osv-scanner": "The OSV data sources page lists every current source and NCSC is not among them (https://google.github.io/osv.dev/data/).",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBeveiligingsadviezen"
 			}
 		},
 		{
@@ -4649,6 +5077,10 @@
 				"dependabot": "Closed service: open and closed alerts per repository (https://docs.github.com/en/code-security/how-tos/manage-security-alerts/manage-dependabot-alerts/view-dependabot-alerts) and the advisory database browsable per package (https://github.com/advisories); no per-product recent CVE list for installed software.",
 				"osv-scanner": "not checked: the MCP get_vulnerability_details tool fetches one advisory (cmd/osv-scanner/mcp/command.go:73-76), but a recent-CVE list per product was not found.",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -4680,6 +5112,10 @@
 				"dependabot": "not checked: alerts cover dependencies in manifests; whether the runtime itself (for example a Docker base image or language version) is matched was not settled.",
 				"osv-scanner": "Image scans cover the OS distro packages and the base image (docs/output.md:32-37), and the Go toolchain version can be scanned (docs/configuration.md:109-130). The server maps to the OS and runtime under the app.",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories. WordPress core applies its own minor security releases automatically by default, but no advisory is shown (https://developer.wordpress.org/advanced-administration/upgrade/upgrading/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBeveiligingsadviezen"
 			}
 		},
 		{
@@ -4835,6 +5271,10 @@
 				"dependabot": "Core: when no security update is possible the job records security_update_not_possible with the latest allowed version, the lowest fixed version and the conflicting dependencies that block it, or all_versions_ignored when ignores block it (updater/lib/dependabot/updater/security_update_helpers.rb:47, :73, :84-106); closed service: each case is explained in https://docs.github.com/en/code-security/reference/supply-chain-security/troubleshoot-dependabot/dependabot-errors.",
 				"osv-scanner": "fix reports unfixable counts and marks vulnerabilities unactionable (docs/guided-remediation.md:125-126, :229), but the reason is the open request.",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBeveiligingsadviezen"
 			}
 		},
 		{
@@ -4898,6 +5338,10 @@
 				"dependabot": "Closed service: Dependabot malware alerts flag dependencies matched to malware advisories, now fed from the OpenSSF malicious-packages repository across npm, PyPI and more (https://docs.github.com/en/code-security/concepts/supply-chain-security/malware-alerts).",
 				"osv-scanner": "OSV.dev imports the OpenSSF Malicious Packages source (https://google.github.io/osv.dev/data/), and the scanner reports every OSV record matching an installed package (docs/output.md:22-30), so known malicious packages are flagged in the same scan.",
 				"easy-updates-manager": "Premium, docs: \"Check plugins\" warns when an installed plugin was removed from the WordPress directory, which is how closed and malicious plugins surface, but the reason is not given and no malware feed is read (premium, docs: https://easyupdatesmanager.com/knowledge-base/check-plugins-premium/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBeveiligingsadviezen"
 			}
 		},
 		{
@@ -4930,6 +5374,10 @@
 				"dependabot": "Closed service: alerts take assignees (users, teams or AI agents) from the alert page (https://docs.github.com/en/code-security/how-tos/manage-security-alerts/manage-dependabot-alerts/view-dependabot-alerts), with repository_vulnerability_alert.assign audit events (https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/audit-log-events-for-your-organization).",
 				"osv-scanner": "not checked: findings are a report, an exit code and SARIF for GitHub code scanning (docs/output.md:790-799, docs/github-action.md:105-110); the tool has no assignment of findings, and any assignment would happen in GitHub, which was not checked.",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBeveiligingsadviezen"
 			}
 		},
 		{
@@ -4961,6 +5409,10 @@
 				"dependabot": "Core: each ecosystem reads its official registry, e.g. Packagist for composer (composer/lib/dependabot/composer/update_checker.rb) and npm; the app store maps to the package registry.",
 				"osv-scanner": "Mapped to the official package registry: remediation reads versions from deps.dev or the native registry such as registry.npmjs.org and Maven Central (docs/guided-remediation.md:758-765); npm and Maven only.",
 				"easy-updates-manager": "WordPress.org plugin and theme directory through core; EUM filters the api.wordpress.org update checks (includes/MPSUM_Utils.php:36-40, includes/MPSUM_Disable_Updates.php:342-376)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -4992,6 +5444,10 @@
 				"dependabot": "Core: release notes come from GitHub releases (common/lib/dependabot/metadata_finders/base/release_finder.rb:305) and git and GitHub Actions dependencies are versioned from tags (common/lib/dependabot/git_metadata_fetcher.rb:56).",
 				"osv-scanner": "Git-sourced dependencies are matched by repository and tag (CHANGELOG.md:8-9) and git directories are scanned (docs/scan-source.md:28); versions are not read from GitHub releases.",
 				"easy-updates-manager": "WordPress core and EUM read plugin and theme updates from the wordpress.org API only (EUM filters that API, includes/MPSUM_Utils.php:36-40); other sources come only from a vendor's own updater or a third-party plugin."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBronnen"
 			}
 		},
 		{
@@ -5023,6 +5479,10 @@
 				"dependabot": "Core: git dependencies on any host are versioned from tags over git upload-pack (common/lib/dependabot/git_metadata_fetcher.rb:273), but release notes are fetched only from GitHub and GitLab (release_finder.rb:305-308) and no Gitea or Forgejo support exists in the source.",
 				"osv-scanner": "not checked: git URL matching is generic (CHANGELOG.md:8-9) but Forgejo or Gitea support is not documented.",
 				"easy-updates-manager": "WordPress core and EUM read plugin and theme updates from the wordpress.org API only (EUM filters that API, includes/MPSUM_Utils.php:36-40); other sources come only from a vendor's own updater or a third-party plugin."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBronnen"
 			}
 		},
 		{
@@ -5054,6 +5514,10 @@
 				"dependabot": "Core: GitLab is a supported source provider (common/lib/dependabot/source.rb:27) with its tags as release source (release_finder.rb:109); on github.com the service reaches GitLab-hosted git dependencies through registry or git credentials (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configure-private-registries).",
 				"osv-scanner": "not checked: git URL matching is generic (CHANGELOG.md:8-9) but GitLab releases are not documented.",
 				"easy-updates-manager": "WordPress core and EUM read plugin and theme updates from the wordpress.org API only (EUM filters that API, includes/MPSUM_Utils.php:36-40); other sources come only from a vendor's own updater or a third-party plugin."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBronnen"
 			}
 		},
 		{
@@ -5085,6 +5549,10 @@
 				"dependabot": "Service config and core: registries with tokens, including private git hosts and package registries (common/lib/dependabot/credential.rb, https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configure-private-registries).",
 				"osv-scanner": ",data-source=native uses npm config or Maven settings.xml credentials to read private registries (docs/guided-remediation.md:760-765); remediation lookups only.",
 				"easy-updates-manager": "WordPress core and EUM read plugin and theme updates from the wordpress.org API only (EUM filters that API, includes/MPSUM_Utils.php:36-40); other sources come only from a vendor's own updater or a third-party plugin. Support confirmed no updates from other file repositories (https://wordpress.org/support/topic/update-from-file-repository/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -5116,6 +5584,10 @@
 				"dependabot": "Service config: registries bind per ecosystem entry, and npm registries take a scope so a package scope maps to a registry (changelog https://github.blog/changelog/2026-06-30-dependabot-no-longer-infers-npmrc/); no binding per single dependency.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way.",
 				"easy-updates-manager": "WordPress core and EUM read plugin and theme updates from the wordpress.org API only (EUM filters that API, includes/MPSUM_Utils.php:36-40); other sources come only from a vendor's own updater or a third-party plugin."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBronnen"
 			}
 		},
 		{
@@ -5147,6 +5619,10 @@
 				"dependabot": "not checked: no one-off source override for a single update was found; the source comes from the manifest and registries config.",
 				"osv-scanner": ",maven-registry overrides the registry for one run (cmd/osv-scanner/fix/command.go:76-79, docs/guided-remediation.md:776); Maven only.",
 				"easy-updates-manager": "WordPress core and EUM read plugin and theme updates from the wordpress.org API only (EUM filters that API, includes/MPSUM_Utils.php:36-40); other sources come only from a vendor's own updater or a third-party plugin."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -5178,6 +5654,10 @@
 				"dependabot": "Closed service: private registries are declared in dependabot.yml and organisations grant registry access in settings (https://docs.github.com/en/code-security/how-tos/secure-at-scale/configure-organization-security/manage-usage-and-access/giving-org-access-private-registries); the allowlist lives mostly in the config file, not an admin screen.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way (no admin interface).",
 				"easy-updates-manager": "WordPress core and EUM read plugin and theme updates from the wordpress.org API only (EUM filters that API, includes/MPSUM_Utils.php:36-40); other sources come only from a vendor's own updater or a third-party plugin. There is no source list to manage."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBronnen"
 			}
 		},
 		{
@@ -5209,6 +5689,10 @@
 				"dependabot": "Service config: registries of types such as composer-repository, npm-registry, maven-repository and git point at self-hosted or mirrored registries (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference top-level registries, https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configure-private-registries).",
 				"osv-scanner": ",data-source=native for mirrored or private registries and ,maven-registry to point at a custom Maven repository (docs/guided-remediation.md:760-776); the OSV database itself can be a local mirror (docs/offline-mode.md:289-310).",
 				"easy-updates-manager": "Support: EUM cannot update from cloud or FTP file storage (https://wordpress.org/support/topic/update-from-file-repository/); core has no setting to point at a mirror."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstellingen"
 			}
 		},
 		{
@@ -5240,6 +5724,10 @@
 				"dependabot": "Dependabot works only on dependencies already declared in manifests (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-version-updates); core has no search (updater/lib/dependabot/updater/operations/update_all_versions.rb:7).",
 				"osv-scanner": "No search: the CLI surface is scan, fix, update and experimental-mcp (cmd/osv-scanner/main.go:16-19), none of which searches a registry.",
 				"easy-updates-manager": "WordPress core Plugins > Add New searches the directory by keyword, author or tag (https://wordpress.org/documentation/article/manage-plugins/#automatic-plugin-installation-1)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqOntdekken"
 			}
 		},
 		{
@@ -5271,6 +5759,10 @@
 				"dependabot": "Same scope: no search for new packages on GitHub; Dependabot updates declared dependencies only (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-version-updates).",
 				"osv-scanner": "No search: the CLI surface is scan, fix, update and experimental-mcp (cmd/osv-scanner/main.go:16-19), none of which searches GitHub.",
 				"easy-updates-manager": "WordPress core and EUM read plugin and theme updates from the wordpress.org API only (EUM filters that API, includes/MPSUM_Utils.php:36-40); other sources come only from a vendor's own updater or a third-party plugin."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqOntdekken"
 			}
 		},
 		{
@@ -5302,6 +5794,10 @@
 				"dependabot": "Same scope: no search of private repositories for new packages (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-version-updates).",
 				"osv-scanner": "No search: the CLI surface is scan, fix, update and experimental-mcp (cmd/osv-scanner/main.go:16-19), none of which searches private repositories.",
 				"easy-updates-manager": "WordPress core and EUM read plugin and theme updates from the wordpress.org API only (EUM filters that API, includes/MPSUM_Utils.php:36-40); other sources come only from a vendor's own updater or a third-party plugin."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqOntdekken"
 			}
 		},
 		{
@@ -5333,6 +5829,10 @@
 				"dependabot": "No discovery, so no route from a search result into an install (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-version-updates).",
 				"osv-scanner": "No search results exist to route into an install (cmd/osv-scanner/main.go:16-19).",
 				"easy-updates-manager": "WordPress core search results carry an Install Now button (https://wordpress.org/documentation/article/manage-plugins/#automatic-plugin-installation-1)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqOntdekken"
 			}
 		},
 		{
@@ -5365,6 +5865,10 @@
 				"dependabot": "Closed service: job logs name authentication failures and unreachable registries per run (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-job-logs); no standing reachability panel per registry.",
 				"osv-scanner": "not checked: API failures are logged per run (CHANGELOG.md:6, :23) but no reachability status view was found.",
 				"easy-updates-manager": "WordPress core Site Health tests communication with WordPress.org and background updates (https://wordpress.org/documentation/article/site-health-screen/); EUM warns about constants that block automatic updates (includes/MPSUM_Constant_Checks.php:37, main.php:741). No per-source last-read time."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBronnen"
 			}
 		},
 		{
@@ -5396,6 +5900,10 @@
 				"dependabot": "Closed service: registry tokens are stored as Dependabot secrets at repository or organisation level (https://docs.github.com/en/rest/dependabot/secrets).",
 				"osv-scanner": "OSV-Scanner stores no credentials; private registry auth is read from the native tooling such as npm config or Maven settings.xml (docs/guided-remediation.md:762-765).",
 				"easy-updates-manager": "EUM and WordPress core store no forge access tokens: there are no forge sources to authenticate to (includes/MPSUM_Utils.php:36-40)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqTokens"
 			}
 		},
 		{
@@ -5427,6 +5935,10 @@
 				"dependabot": "Closed service: Dependabot secrets are encrypted values, sealed with the repository or organisation public key before upload (https://docs.github.com/en/rest/dependabot/secrets).",
 				"osv-scanner": "OSV-Scanner stores no credentials; private registry auth is read from the native tooling such as npm config or Maven settings.xml (docs/guided-remediation.md:762-765), so there is nothing of its own to encrypt.",
 				"easy-updates-manager": "EUM and WordPress core store no forge access tokens: there are no forge sources to authenticate to (includes/MPSUM_Utils.php:36-40)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqTokens"
 			}
 		},
 		{
@@ -5458,6 +5970,10 @@
 				"dependabot": "not checked: I found no validation of a token's scopes when a secret is added; failures surface in job logs (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-job-logs).",
 				"osv-scanner": "OSV-Scanner stores no credentials; private registry auth is read from the native tooling such as npm config or Maven settings.xml (docs/guided-remediation.md:762-765); no token handling to validate.",
 				"easy-updates-manager": "EUM and WordPress core store no forge access tokens: there are no forge sources to authenticate to (includes/MPSUM_Utils.php:36-40)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqTokens"
 			}
 		},
 		{
@@ -5489,6 +6005,10 @@
 				"dependabot": "not checked: no expiry warning for stored Dependabot secrets was found.",
 				"osv-scanner": "OSV-Scanner stores no credentials; private registry auth is read from the native tooling such as npm config or Maven settings.xml (docs/guided-remediation.md:762-765); no token expiry tracking.",
 				"easy-updates-manager": "EUM and WordPress core store no forge access tokens: there are no forge sources to authenticate to (includes/MPSUM_Utils.php:36-40)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqTokens"
 			}
 		},
 		{
@@ -5520,6 +6040,10 @@
 				"dependabot": "not checked: no prefilled token creation link was found.",
 				"osv-scanner": "OSV-Scanner stores no credentials; private registry auth is read from the native tooling such as npm config or Maven settings.xml (docs/guided-remediation.md:762-765); no token creation flow.",
 				"easy-updates-manager": "EUM and WordPress core store no forge access tokens: there are no forge sources to authenticate to (includes/MPSUM_Utils.php:36-40)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqTokens"
 			}
 		},
 		{
@@ -5551,6 +6075,10 @@
 				"dependabot": "Closed service: organisation-level Dependabot secrets with selected repository access, or repository-level secrets (https://docs.github.com/en/rest/dependabot/secrets).",
 				"osv-scanner": "OSV-Scanner stores no credentials; private registry auth is read from the native tooling such as npm config or Maven settings.xml (docs/guided-remediation.md:762-765); no token sharing.",
 				"easy-updates-manager": "EUM and WordPress core store no forge access tokens: there are no forge sources to authenticate to (includes/MPSUM_Utils.php:36-40)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqTokens"
 			}
 		},
 		{
@@ -5582,6 +6110,10 @@
 				"dependabot": "not checked: secrets belong to repositories or organisations, not to a user, so removal on user deletion has no clear counterpart.",
 				"osv-scanner": "OSV-Scanner stores no credentials; private registry auth is read from the native tooling such as npm config or Maven settings.xml (docs/guided-remediation.md:762-765); no users or tokens to clean up.",
 				"easy-updates-manager": "EUM and WordPress core store no forge access tokens: there are no forge sources to authenticate to (includes/MPSUM_Utils.php:36-40)."
+			},
+			"screen": {
+				"board": null,
+				"reason": "A background listener that removes tokens when a user is deleted; it has no screen."
 			}
 		},
 		{
@@ -5613,6 +6145,10 @@
 				"dependabot": "Closed service: each update is a pull request and commit recording who merged which dependency from which version to which (\"Bumps X from A to B\", common/lib/dependabot/pull_request_creator/message_builder.rb:452); alert actions are audit log events (https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/audit-log-events-for-your-organization).",
 				"osv-scanner": "fix ,format json records each package's versionFrom and versionTo and the vulnerabilities fixed (docs/guided-remediation.md:202-206, :260-270), but per run on stdout, without who or when, and nothing persists it.",
 				"easy-updates-manager": "includes/MPSUM_Logs.php:271-325 and 388-425 log every core, plugin, theme and translation update, manual or automatic, with user, name, from and to version, status and date (includes/MPSUM_Logs.php:513-540); block and unblock changes are not logged (settings saves in includes/MPSUM_Admin_Ajax.php:483-516 write no log)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqHistorie"
 			}
 		},
 		{
@@ -5644,6 +6180,10 @@
 				"dependabot": "Registry and source config lives in dependabot.yml under git history, and Dependabot configuration changes are audit-logged (https://github.blog/changelog/2026-02-10-track-additional-dependabot-configuration-changes-in-audit-logs/).",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way.",
 				"easy-updates-manager": "There are no sources to bind (see src rows), and settings changes are not logged (includes/MPSUM_Admin_Ajax.php:197-420 writes options only)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqHistorie"
 			}
 		},
 		{
@@ -5675,6 +6215,10 @@
 				"dependabot": "Closed service: closed Dependabot pull requests and closed alerts can be browsed and filtered by package (https://docs.github.com/en/code-security/how-tos/manage-security-alerts/manage-dependabot-alerts/view-dependabot-alerts); no version-history view per dependency.",
 				"osv-scanner": "not checked: no history is kept by the tool; the osv-reporter diff between two scan outputs is the nearest thing (docs/osv-reporter.md:15-21).",
 				"easy-updates-manager": "Logs tab with filters by month, status, manual or automatic and type (includes/MPSUM_Logs_List_Table.php:413-428); search by plugin or theme name or user is premium (includes/MPSUM_Logs_List_Table.php:458-466, https://easyupdatesmanager.com/knowledge-base/log-clearance-and-to-external-channels-premium/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqHistorie"
 			}
 		},
 		{
@@ -5706,6 +6250,10 @@
 				"dependabot": "Closed service: organisation audit log entries are not editable (https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/audit-log-events-for-your-organization); pull request and git history can be rewritten by maintainers.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way (no history store).",
 				"easy-updates-manager": "An admin can clear the whole log (includes/MPSUM_Admin_Ajax.php:1177-1188, includes/MPSUM_Logs.php:643-648); premium also prunes it on a schedule."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqHistorie"
 			}
 		},
 		{
@@ -5737,6 +6285,10 @@
 				"dependabot": "not checked: audit log retention was not read for this row.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way (no history store).",
 				"easy-updates-manager": "Premium, docs: scheduled log clearance after a set period, 0 to keep forever (https://easyupdatesmanager.com/knowledge-base/log-clearance-and-to-external-channels-premium/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstellingen"
 			}
 		},
 		{
@@ -5769,6 +6321,10 @@
 				"dependabot": "Closed service: the organisation audit log can be exported and alerts read via REST (https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/audit-log-events-for-your-organization, https://docs.github.com/en/rest/dependabot/alerts); no export of update history as such.",
 				"osv-scanner": "Each fix run can be written as JSON (docs/guided-remediation.md:202-206); there is no accumulated history to export.",
 				"easy-updates-manager": "Premium: export logs to print, CSV or JSON for a date range, last 1000 entries by default (includes/MPSUM_Logs_List_Table.php:431-450 gated on is_premium; https://easyupdatesmanager.com/knowledge-base/log-export-premium/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqHistorie"
 			}
 		},
 		{
@@ -5800,6 +6356,10 @@
 				"dependabot": "Closed service: Dependabot pull requests and alerts appear in the repository activity and notifications inbox (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configure-dependabot-notifications).",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way.",
 				"easy-updates-manager": "WordPress core has no activity stream, and EUM writes only to its own eum_logs table (includes/MPSUM_Logs.php:513-540); premium external channels are e-mail, syslog, PHP log and Slack."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstellingen"
 			}
 		},
 		{
@@ -5831,6 +6391,10 @@
 				"dependabot": "Closed service: updates are authored by the dependabot[bot] account, and core writes the Bumps message and labels (common/lib/dependabot/pull_request_creator/message_builder.rb:452), so automatic proposals are told apart from manual changes.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way.",
 				"easy-updates-manager": "Each entry records action automatic or manual (includes/MPSUM_Logs.php:122, 300, 408) and the Logs tab filters on it (includes/MPSUM_Logs_List_Table.php:396-409)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqHistorie"
 			}
 		},
 		{
@@ -5862,6 +6426,10 @@
 				"dependabot": "Closed service: dependabot_alert webhook events and organisation audit log events can feed external systems (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alerts, https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-security-settings-for-your-organization/audit-log-events-for-your-organization); I did not read the audit log streaming docs for this row.",
 				"osv-scanner": "not checked: SARIF upload to GitHub code scanning is documented for scan findings (docs/github-action.md:105-110), but no sending of update events to a log or SIEM.",
 				"easy-updates-manager": "Premium, docs: send log entries to the PHP error log, e-mail, syslog or Slack via webhook (https://easyupdatesmanager.com/knowledge-base/log-clearance-and-to-external-channels-premium/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstellingen"
 			}
 		},
 		{
@@ -5895,6 +6463,10 @@
 				"dependabot": "Closed service: alert metrics and security overview show open and fixed Dependabot alerts across repositories (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alert-metrics, https://docs.github.com/en/code-security/concepts/security-at-scale/security-overview); not phrased as a patch compliance status.",
 				"osv-scanner": "Exit code 1 when vulnerabilities remain and 0 when none (docs/output.md:790-799) gates pull requests and releases as a pass or fail status (docs/github-action.md:27-60, :113-156).",
 				"easy-updates-manager": "WordPress core Site Health reports outdated WordPress, plugins and themes (https://wordpress.org/documentation/article/site-health-screen/); EUM adds no compliance status."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -5928,6 +6500,10 @@
 				"dependabot": "Closed service: dependabot.yml plus auto-triage rules encode how update types and advisories are handled (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference, https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-auto-triage-rules); no policy document or statement feature.",
 				"osv-scanner": "osv-scanner.toml records per-advisory exceptions with reason and expiry (docs/configuration.md:25-66); a policy per patch type, such as a grace period by severity, is an open request (github.com/google/osv-scanner/issues/1442).",
 				"easy-updates-manager": "EUM stores update settings, not a written policy per patch type; nothing in the premium list (https://easyupdatesmanager.com/buy/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -5961,6 +6537,10 @@
 				"dependabot": "Closed service: every update is checked by the repository's CI on its pull request before rollout (https://docs.github.com/en/code-security/tutorials/secure-your-dependencies/automate-dependabot-with-actions); a documented rollback to the previous version is not a Dependabot feature (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands).",
 				"osv-scanner": "The documented release workflow blocks a release until the scan passes (docs/github-action.md:113-156); rollback to the previous stable version is not part of the tool.",
 				"easy-updates-manager": "No release gate and no documented rollback in EUM or core (see ins-rollback); premium safe mode checks requirements only."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstalleren"
 			}
 		},
 		{
@@ -6022,6 +6602,10 @@
 				"dependabot": "Closed service: enabling Dependabot needs repository admin, alerts go to people with write, maintain or admin access, and merging needs write (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configure-dependabot-notifications); not admin-only for acting on updates.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way (a CLI run with the caller's file permissions).",
 				"easy-updates-manager": "Settings page needs manage_options (includes/MPSUM_Admin.php:578, 595; main.php:569) and every AJAX save checks manage_options or update_plugins (includes/MPSUM_Admin_Ajax.php:49-138, 471-538)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -6053,6 +6637,10 @@
 				"dependabot": "not checked: whether GitHub's sudo mode prompt covers any Dependabot setting was not read.",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way.",
 				"easy-updates-manager": "Saves are protected by nonce and capability only (includes/MPSUM_Admin_Ajax.php:101-138); no re-authentication, and WordPress core does not ask for the password before updates."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqVersieTerugzetten"
 			}
 		},
 		{
@@ -6114,6 +6702,10 @@
 				"dependabot": "Closed service: alerts and pull requests land in the GitHub notifications inbox and GitHub Mobile (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configure-dependabot-notifications).",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way (no notification centre).",
 				"easy-updates-manager": "WordPress has no notification centre; EUM uses admin notices and an admin bar menu with update counts (includes/MPSUM_Admin_Ajax.php:1096-1140, includes/MPSUM_Admin_Bar.php)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstellingen"
 			}
 		},
 		{
@@ -6175,6 +6767,10 @@
 				"dependabot": "Closed service: dependabot_alert webhook events, including assignment changes (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alerts); chat delivery goes through webhooks or GitHub apps.",
 				"osv-scanner": "not checked: gh-annotations output targets GitHub Actions (internal/reporter/format.go:10), but no chat or webhook sender was found; absence not documented.",
 				"easy-updates-manager": "Premium, docs: log alerts to Slack via webhook (https://easyupdatesmanager.com/knowledge-base/log-clearance-and-to-external-channels-premium/) and an inbound webhook to trigger updates (https://easyupdatesmanager.com/knowledge-base/webhook-premium/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstellingen"
 			}
 		},
 		{
@@ -6207,6 +6803,10 @@
 				"dependabot": "Closed service: REST endpoints for alerts, secrets and repository access (https://docs.github.com/en/rest/dependabot/alerts, https://docs.github.com/en/rest/dependabot); triggering a version update for a dependency has no API, requested in https://github.com/dependabot/dependabot-core/issues/2980.",
 				"osv-scanner": "A Go library entry point, osvscanner.DoScan and DoContainerScan (pkg/osvscanner/osvscanner.go:118, :169), and an experimental MCP server with scan and advisory tools (cmd/osv-scanner/mcp/command.go:60-86); no HTTP API, and fix has no library entry in this repo.",
 				"easy-updates-manager": "No REST or CLI API (no register_rest_route or WP_CLI in the source); remote control goes through UpdraftCentral commands for settings, logs and force updates (includes/MPSUM_Commands.php:39-586), which needs the separate UpdraftCentral product."
+			},
+			"screen": {
+				"board": null,
+				"reason": "An OCS API for scripts and other apps; it has no screen of its own."
 			}
 		},
 		{
@@ -6239,6 +6839,10 @@
 				"dependabot": "GitHub publishes the OpenAPI description of its REST API, Dependabot endpoints included (https://github.com/github/rest-api-description).",
 				"osv-scanner": "The scanner exposes no HTTP API to describe (cmd/osv-scanner/main.go:16-19); only the OSV.dev database service has an API (https://google.github.io/osv.dev/api/).",
 				"easy-updates-manager": "There is no HTTP API to describe (no register_rest_route in the source); UpdraftCentral commands are undocumented RPC (includes/MPSUM_Commands.php)."
+			},
+			"screen": {
+				"board": null,
+				"reason": "An openapi.json file shipped in the app package; nothing to show on a screen."
 			}
 		},
 		{
@@ -6270,6 +6874,10 @@
 				"dependabot": "not checked: the GitHub interface language was not verified; the docs are translated but Dutch was not checked.",
 				"osv-scanner": "Flag help, table output and the HTML report are hard-coded English with no translation catalogue (cmd/osv-scanner/internal/helper/flags.go:56-210, internal/output/html/report_template.gohtml:59).",
 				"easy-updates-manager": "All strings use the stops-core-theme-and-plugin-updates text domain (languages/stops-core-theme-and-plugin-updates.pot); Dutch and German are 100% translated on translate.wordpress.org (https://translate.wordpress.org/projects/wp-plugins/stops-core-theme-and-plugin-updates/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -6302,6 +6910,10 @@
 				"dependabot": "GitHub runs an accessibility programme (https://accessibility.github.com); no Dependabot-specific conformance statement was found.",
 				"osv-scanner": "not checked: a CLI plus a static HTML report; v2.3.6 raised the report's colour contrast (CHANGELOG.md:124), but no accessibility statement or audit was found.",
 				"easy-updates-manager": "Screen-reader labels and aria-labels on filters and toggles (includes/MPSUM_Logs_List_Table.php:363-399, includes/MPSUM_Plugins_List_Table.php:503, 557-569); no accessibility statement found on easyupdatesmanager.com."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -6333,6 +6945,10 @@
 				"dependabot": "Closed service: Dependabot is configured in the repository and organisation settings under code security, inside the platform (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-security-updates, https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/list-configured-dependencies).",
 				"osv-scanner": "A separate CLI, but the documented GitHub Action puts results in GitHub's own code scanning tab and pull request checks (docs/github-action.md:27-110), and a pre-commit hook exists (docs/usage.md:143-160).",
 				"easy-updates-manager": "Runs inside wp-admin as Dashboard > Updates options (includes/MPSUM_Admin.php:577-600) and takes over core's auto-update column on the Plugins and Themes screens (main.php:745-747)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -6364,6 +6980,10 @@
 				"dependabot": "GitHub Enterprise Server runs Dependabot on premises but needs GitHub Connect for the advisory sync (https://docs.github.com/en/enterprise-server@latest/admin/configuring-settings/configuring-github-connect/enabling-dependabot-for-your-enterprise); core with the open CLI can be self-hosted (README.md:48, README.md:57).",
 				"osv-scanner": "Runs locally; ,offline sends no project or dependency information anywhere (docs/offline-mode.md:273).",
 				"easy-updates-manager": "A WordPress plugin running on the site; premium only contacts the vendor for its own licence and updates (readme.txt changelog 9.0.18 names the plugin-update-checker package used by premium; the free zip ships only vendor/team-updraft notices and a polyfill)."
+			},
+			"screen": {
+				"board": null,
+				"reason": "A property of how the app runs (fully on premises), not a screen."
 			}
 		},
 		{
@@ -6395,6 +7015,10 @@
 				"dependabot": "Only the update engine is open: dependabot-core is MIT (LICENSE:1); the scheduler, alerts and UI are closed service.",
 				"osv-scanner": "Apache License 2.0 (LICENSE:2-3).",
 				"easy-updates-manager": "Free edition GPLv2 or later (readme.txt:9, license.txt); the premium edition's licence terms were not read."
+			},
+			"screen": {
+				"board": null,
+				"reason": "The licence in appinfo; a property of the app, not a screen."
 			}
 		},
 		{
@@ -6426,6 +7050,10 @@
 				"dependabot": "The Free plan includes Dependabot alerts, security updates and version updates (https://github.com/pricing); custom auto-triage rules on private repositories and licence policies need GitHub Code Security (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-auto-triage-rules, https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configure-license-policies).",
 				"osv-scanner": "Apache-2.0 open source with no paid edition in the repo or docs (LICENSE:2-3, docs/installation.md:7-90).",
 				"easy-updates-manager": "Scheduling, delay, safe mode, backups, log export and search, external logging and pending-update reports are premium, from $29 a year (https://easyupdatesmanager.com/buy/)."
+			},
+			"screen": {
+				"board": null,
+				"reason": "Every feature is free; a property of the app, not a screen."
 			}
 		},
 		{
@@ -6458,6 +7086,10 @@
 				"dependabot": "not checked: no panel of integration health was found; registry failures show per job in logs (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-job-logs).",
 				"osv-scanner": "not checked: the row has no counterpart in a lockfile, SBOM and image scanner, and neither the source at v2.6.0 nor the docs settle it either way.",
 				"easy-updates-manager": "WordPress core Site Health shows the WordPress.org connection and background update tests (https://wordpress.org/documentation/article/site-health-screen/); EUM has no integration panel."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBronnen"
 			}
 		},
 		{
@@ -6490,6 +7122,10 @@
 				"dependabot": "The official GitHub MCP server has a dependabot toolset with list_dependabot_alerts and get_dependabot_alert (https://github.com/github/github-mcp-server), and alerts can be assigned to AI agents that propose a fix (https://github.blog/changelog/2026-04-07-dependabot-alerts-are-now-assignable-to-ai-agents-for-remediation/).",
 				"osv-scanner": "Experimental osv-scanner experimental-mcp since v2.2.4 (2025-10-29) exposes scan_vulnerable_dependencies, get_vulnerability_details and ignore_vulnerability tools (cmd/osv-scanner/mcp/command.go:60-86, CHANGELOG.md:230).",
 				"easy-updates-manager": "No AI or MCP integration in the source or the premium list (https://easyupdatesmanager.com/buy/)."
+			},
+			"screen": {
+				"board": null,
+				"reason": "Runs through an MCP server for an external AI assistant; it has no screen in Versioniq."
 			}
 		},
 		{
@@ -6523,6 +7159,10 @@
 				"dependabot": "Core: common/lib/dependabot/package/package_latest_version_finder.rb:220-235 filters out releases whose language requirement (such as PHP) is not satisfied, and composer resolution runs with the repository's platform requirements (composer/lib/dependabot/composer/update_checker/version_resolver.rb:228). Enforced silently, logged only; an app maps to a dependency.",
 				"osv-scanner": "internal/scalibrplugin/presets.go:34 only wires the composer.lock extractor for PHP; a search of cmd/, internal/ and pkg/ for php, engines and runtime constraints found no check of the runtime version a package release supports, and the output fields (docs/output.md:22-28) carry no compatibility data.",
 				"easy-updates-manager": "Premium, docs: Safe Mode checks whether a plugin has a minimum PHP requirement, skips the update when the server does not meet it, and lists incompatible plugins on the plugin listing page (https://easyupdatesmanager.com/knowledge-base/safe-mode-premium/); the comparison chart repeats 'compatible with WordPress and your server's PHP version' (https://easyupdatesmanager.com/buy/). WordPress core also shows the Requires PHP header in a plugin's details."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstellingen"
 			}
 		},
 		{
@@ -6588,6 +7228,10 @@
 				"dependabot": "not checked: closed service; the docs read describe SBOM export and the REST API for alerts (https://docs.github.com/en/rest/dependabot/alerts) but no metrics endpoint for dependency versions, and no doc states its absence.",
 				"osv-scanner": "cmd/osv-scanner/main.go:16-19: the CLI is scan, fix, update and experimental-mcp, one-shot commands with no server or exporter; a search of cmd/, internal/, pkg/ and docs/ for prometheus, openmetrics and metrics endpoints found nothing.",
 				"easy-updates-manager": "No REST route or metrics output: a search of the free source outside vendor/ for register_rest_route, prometheus, openmetrics and metrics finds nothing, and the premium feature list has no metrics export (https://easyupdatesmanager.com/buy/); the premium webhook only lets a third party trigger updates (https://easyupdatesmanager.com/knowledge-base/webhook-premium/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstellingen"
 			}
 		},
 		{
@@ -6621,6 +7265,10 @@
 				"dependabot": "Core: grep -rliF 'revok' over all */lib directories finds nothing; the pull request only reports attestation changes (common/lib/dependabot/pull_request_creator/message_builder/metadata_presenter.rb:197-203) and never refuses an update on signer status.",
 				"osv-scanner": "not checked: the tool installs nothing and no signature verification of scanned or remediated packages was found (see its saf-signature cell), so a revocation check has no place to live; neither the source at v2.6.0 nor the docs state the absence.",
 				"easy-updates-manager": "WordPress plugin packages are not signed, only core packages (https://make.wordpress.org/core/2019/05/17/security-in-5-2/), so there is no signer certificate to revoke; a search of the free source outside vendor/ for revok, certificate and signature finds nothing."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstalleren"
 			}
 		},
 		{
@@ -6654,6 +7302,10 @@
 				"dependabot": "The open Dependabot CLI (README.md:57, https://github.com/dependabot/cli) runs one update job locally and with --output writes the pull requests it would create as YAML. It recomputes one ecosystem and directory per run; the hosted service has no command that lists its pending updates.",
 				"osv-scanner": "fix with the json format prints the proposed package updates (versionFrom, versionTo) as JSON that 'is expected to be stable' for automated tooling (docs/guided-remediation.md:204-206), but only for vulnerability-driven patches in npm and Maven manifests; the hidden update command has no listing output (cmd/osv-scanner/update/command.go:27-29).",
 				"easy-updates-manager": "EUM has no CLI: no WP_CLI registration anywhere in the free source outside vendor/, and support confirmed there is no EUM WP-CLI command (https://wordpress.org/support/topic/enable-disable-all-updates-from-wp-cli-command/). WP-CLI, a separate tool, can list plugins with updates as JSON."
+			},
+			"screen": {
+				"board": null,
+				"reason": "A command-line option (occ versioniq:updates --json); it has no screen."
 			}
 		},
 		{
@@ -6687,6 +7339,10 @@
 				"dependabot": "Core: the pull request shows maintainer changes and attestation changes between versions (common/lib/dependabot/pull_request_creator/message_builder/metadata_presenter.rb:177-203); grep -rniE 'verified|trusted' in the message builder finds nothing, so no publisher trust level is shown.",
 				"osv-scanner": "No publisher or trust data: a search of cmd/, internal/ and pkg/ for publisher, maintainer and verified finds none about packages, and the documented output fields are URL, CVSS, ecosystem, package, version, fixed version and source (docs/output.md:22-28).",
 				"easy-updates-manager": "includes/MPSUM_Plugins_List_Table.php:624-629 prints only the plugin's self-declared Author header ('By %s'); no trust level or verified mark exists in the free source or the premium feature list (https://easyupdatesmanager.com/buy/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -6752,6 +7408,10 @@
 				"dependabot": "Core: releases inside the cooldown are dropped with only a count written to the job log (common/lib/dependabot/package/package_latest_version_finder.rb:179-183), and the service receives only the cooldown configuration (updater/lib/dependabot/api_client.rb:353-363); no held-back version or eligibility date is presented.",
 				"osv-scanner": "There is no minimum release age to hold anything back (its rel-min-age cell is no: docs/guided-remediation.md:703-776, cmd/osv-scanner/fix/command.go:47-205 carry no age flag), so no held-back list exists.",
 				"easy-updates-manager": "templates/force-updates.php:20-21 only prints 'Delayed updates are on, so some assets may not be updated automatically.' when the premium delay is set; the held-back updates still appear as available on WordPress core's Updates screen, but no screen names which versions are delayed or when each becomes eligible (premium, docs: https://easyupdatesmanager.com/knowledge-base/delay-automatic-updates-premium/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -6785,6 +7445,10 @@
 				"dependabot": "Closed service: cooldown takes an exclude list of dependency names with wildcards (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference; core updater/lib/dependabot/job.rb:693), which exempts every version of that dependency until the file is edited again; no per-version exception and no automatic removal.",
 				"osv-scanner": "No minimum release age exists to make an exception to (docs/guided-remediation.md:703-776, cmd/osv-scanner/fix/command.go:47-205).",
 				"easy-updates-manager": "Premium, docs: the delay is one duration for every automatic update (https://easyupdatesmanager.com/knowledge-base/delay-automatic-updates-premium/, free stub includes/MPSUM_Commands.php:378); no per-version exemption is documented. The only bypass is Force Updates, which the delay still affects (https://easyupdatesmanager.com/knowledge-base/force-updates/), or a manual update on the core Updates screen."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -6914,6 +7578,10 @@
 				"dependabot": "Core: the lowest security fix is chosen without the cooldown filter (common/lib/dependabot/package/package_latest_version_finder.rb:414-431) and security jobs pass no cooldown (updater/lib/dependabot/updater/operations/update_all_versions.rb:249); the options reference states cooldown does not apply to security updates (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference). Issue 15161 concerned pnpm's own minimumReleaseAge setting.",
 				"osv-scanner": "There is no minimum release age hold to bypass (docs/guided-remediation.md:703-776, cmd/osv-scanner/fix/command.go:47-205 carry no age flag); every patch fix proposes is already vulnerability-driven.",
 				"easy-updates-manager": "Premium, docs: the delay applies to every automatic update (https://easyupdatesmanager.com/knowledge-base/delay-automatic-updates-premium/; readme.txt:137 records first-seen times for plugin, theme and core updates alike), and EUM has no advisory data to tell a security fix apart: no vulnerability or advisory code in the free source outside vendor/ and none in the premium list (https://easyupdatesmanager.com/buy/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -6947,6 +7615,10 @@
 				"dependabot": "The hosted service has no dry-run option in the options reference (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference) and issue 15028 is open; the open Dependabot CLI runs an update job locally and reports the diffs without creating PRs (README.md:57-61), but it takes a job file, not the repository's dependabot.yml as the service applies it.",
 				"osv-scanner": "Interactive fix shows the patches the chosen flags would produce and writes nothing until the user picks Write (docs/guided-remediation.md:624-670, :668); there is no non-interactive dry-run flag (cmd/osv-scanner/fix/command.go:47-205), and it covers npm and Maven only.",
 				"easy-updates-manager": "A search of the free source outside vendor/ for dry run and simulate finds nothing; Force Updates runs the updates for real, immediately (https://easyupdatesmanager.com/knowledge-base/force-updates/, templates/force-updates.php:20), and no premium preview is documented (https://easyupdatesmanager.com/buy/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -7012,6 +7684,10 @@
 				"dependabot": "Closed service: since 2026-02-10 organisation and enterprise audit logs record who enabled or disabled Dependabot security updates on a repository and Dependabot on self-hosted runners, and when (https://github.blog/changelog/2026-02-10-track-additional-dependabot-configuration-changes-in-audit-logs); version update policy changes are commits to dependabot.yml.",
 				"osv-scanner": "Configuration is a file the tool only reads per scanned directory (docs/configuration.md:10-22, internal/config/config.go:26-30) and the CLI keeps no state between runs (cmd/osv-scanner/main.go:16-19); who changed it is only in the repository's version control.",
 				"easy-updates-manager": "insert_log is only called from the update hooks (includes/MPSUM_Logs.php:122, :300, :408); saving the update options writes the options with no log entry (includes/MPSUM_Admin_Ajax.php:483-516), so switching automatic updates or blocks on or off is not recorded."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqHistorie"
 			}
 		},
 		{
@@ -7269,6 +7945,10 @@
 				"dependabot": "The instance is a repository here, so its git history is the record. Dependabot records nothing itself; every version change, by Dependabot or by hand, is a commit to the manifest in git history, and an ignore lapses when you upgrade yourself (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-pull-request-comment-commands). An instance maps to a repository.",
 				"osv-scanner": "The tool keeps no version history at all: each command is a one-shot run (cmd/osv-scanner/main.go:16-19) and even fix output is per run on stdout with nothing persisted (docs/guided-remediation.md:204-206).",
 				"easy-updates-manager": "The log hooks WordPress's upgrader itself (includes/MPSUM_Logs.php:95, :271, :388), so updates run from the core screens, background updates, WP-CLI or another plugin are logged with user, from and to version and a stack trace of the trigger (includes/MPSUM_Logs.php:109-122, :513); readme.txt:146 (9.0.20) keeps WP-CLI updates logged after a fatal error. Files replaced outside the upgrader, such as by FTP, are not seen."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqHistorie"
 			}
 		},
 		{
@@ -7302,6 +7982,10 @@
 				"dependabot": "Closed service: the dependency graph exports an SPDX SBOM of the current state from the UI or REST API at any time, so it is fresh after each merged update (https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/establish-provenance-and-integrity/export-dependencies-as-sbom); it is not produced or delivered automatically per update, and CycloneDX is not offered.",
 				"osv-scanner": "Each run can write the package inventory as CycloneDX 1.4 to 1.7 or SPDX 2.3 (internal/reporter/format.go:10, docs/output.md:427-431, :555-559); it regenerates on every change only when the admin wires it into CI, since the documented push, schedule and release workflows run a vulnerability scan, not an SBOM export (docs/github-action.md:23, :113-158).",
 				"easy-updates-manager": "No SBOM output in any form: its inv-export-inventory cell finds only WordPress core Site Health's clipboard copy, and premium exports cover logs and settings only (https://easyupdatesmanager.com/knowledge-base/log-export-premium/, https://easyupdatesmanager.com/knowledge-base/export-import-settings-premium/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqInstellingen"
 			}
 		},
 		{
@@ -7335,6 +8019,10 @@
 				"dependabot": "Closed service: alert metrics count alerts fixed by Dependabot, dismissed and auto-dismissed, with trends over time and across the organisation (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alert-metrics), and the alerts API lists fixed alerts with fixed_at for any period (https://docs.github.com/en/rest/dependabot/alerts). The server maps to the repository itself, so there is no separate server part.",
 				"osv-scanner": "Nothing is kept between runs: fix reports the vulnerabilities each patch fixes only for that run on stdout (docs/guided-remediation.md:204-206), and no command reports what was applied over a period (cmd/osv-scanner/main.go:16-19).",
 				"easy-updates-manager": "The log records every core, plugin, theme and translation update with date, from and to version (includes/MPSUM_Logs.php:513), and premium exports it for a date range to print, CSV or JSON as a client report (https://easyupdatesmanager.com/knowledge-base/log-export-premium/); entries are not marked as security updates, so the report cannot be limited to them."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqHistorie"
 			}
 		},
 		{
@@ -7368,6 +8056,10 @@
 				"dependabot": "Core: grep -rniE 'end.of.life|eol|deprecat' in common/lib and updater/lib finds only the notice that Dependabot itself will stop supporting a package manager or language version (common/lib/dependabot/notices.rb:116-140), not the support end of a dependency version.",
 				"osv-scanner": "A search of cmd/, internal/, pkg/ and docs/ for end of life, end-of-life, endoflife, eol and end of support finds nothing; the nearest signal is the experimental deprecated-package flag (cmd/osv-scanner/internal/helper/flags.go:195), which reports deprecation, not a support end date.",
 				"easy-updates-manager": "No support end dates: the premium checks flag plugins removed from the directory or not updated in a year (https://easyupdatesmanager.com/knowledge-base/check-plugins-premium/, https://easyupdatesmanager.com/knowledge-base/check-for-unmaintained-plugins/), which is inv-deprecated-apps, and the free source outside vendor/ has no end-of-life handling."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -7401,6 +8093,10 @@
 				"dependabot": "Closed service: Dependabot opens the PR when the update is found and does not schedule its merge; auto-merge through GitHub Actions merges as soon as checks pass (https://docs.github.com/en/code-security/tutorials/secure-your-dependencies/automate-dependabot-with-actions), and the options reference has no lead-time setting.",
 				"osv-scanner": "The tool schedules no updates (cmd/osv-scanner/main.go:16-19; fix flags cmd/osv-scanner/fix/command.go:47-205 have no schedule), so there is nothing to announce ahead.",
 				"easy-updates-manager": "Premium, docs: a weekly or monthly e-mail lists pending updates (https://easyupdatesmanager.com/knowledge-base/email-notification-of-updates-premium/) and a delay holds automatic updates for a set time (https://easyupdatesmanager.com/knowledge-base/delay-automatic-updates-premium/), so admins can hear of an update before it runs; the e-mail is not tied to the scheduled run and the docs mention no release notes in it."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAutomatischeUpdates"
 			}
 		},
 		{
@@ -7434,6 +8130,10 @@
 				"dependabot": "Closed service: target-branch sends version updates to a chosen branch such as a development branch (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference), and promotion to production is a normal git merge; Dependabot does not promote or roll back between stages.",
 				"osv-scanner": "not checked: the tool installs nothing into test, acceptance or production environments; promotion of a tested version would be the lockfile and CI pipeline's job, and neither the source at v2.6.0 nor the docs settle it.",
 				"easy-updates-manager": "EUM updates only to the version WordPress offers and keeps no version per plugin (blocks are a bare file list, includes/MPSUM_Disable_Updates.php:295-303), so a tested version cannot be promoted; the premium feature list has no staging (https://easyupdatesmanager.com/buy/). An instance maps to one WordPress site."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -7467,6 +8167,10 @@
 				"dependabot": "Core: the PR quotes release notes and commits between versions (common/lib/dependabot/pull_request_creator/message_builder/metadata_presenter.rb:98) and grep -rniF 'known issue' in common/lib and updater/lib finds nothing; compatibility scores show CI results from other repositories, not known problems.",
 				"osv-scanner": "The output carries vulnerability records only (docs/output.md:22-28) and no command shows a version's bugs or workarounds (cmd/osv-scanner/main.go:16-19).",
 				"easy-updates-manager": "No known-issues data: EUM shows version and author per plugin (includes/MPSUM_Plugins_List_Table.php:620-629) and premium alerts only after an update broke or deactivated a plugin on the site itself (https://easyupdatesmanager.com/knowledge-base/auto-update-protection-premium/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -7500,6 +8204,10 @@
 				"dependabot": "Core: release notes are fetched and quoted verbatim in the PR (common/lib/dependabot/metadata_finders/base/release_finder.rb:166, common/lib/dependabot/pull_request_creator/message_builder/metadata_presenter.rb:98); no translation step exists in the message builder.",
 				"osv-scanner": "The tool shows no release notes at all (its rel-release-notes cell: docs/output.md:22-28, cmd/osv-scanner/main.go:16-19), and its own output is English only with no translation catalogue (its adm-i18n cell).",
 				"easy-updates-manager": "WordPress core, not EUM: the plugin details view reads the readme from the WordPress.org plugin API with the admin's locale, which returns community-translated sections, changelog included, where a translation exists (for example https://api.wordpress.org/plugins/info/1.2/?action=plugin_information&request[slug]=wordpress-seo&request[locale]=nl_NL returns a Dutch changelog, read 2026-09-26); untranslated notes, such as EUM's own changelog, stay in English, and there is no machine translation."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqAppVersies"
 			}
 		},
 		{
@@ -7533,6 +8241,10 @@
 				"dependabot": "Core: a PR states only 'Bumps X from A to B' (common/lib/dependabot/pull_request_creator/message_builder.rb:451-453) and grep -rli 'libyear' in common and updater finds nothing; no lag measure or lag policy was found in the options reference either (https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).",
 				"osv-scanner": "No lag measure or policy: output fields list the fixed version only for vulnerable packages (docs/output.md:22-28), there is no outdated-package report, and the hidden update command bumps manifest dependencies without reporting distance (cmd/osv-scanner/update/command.go:27-29).",
 				"easy-updates-manager": "WordPress core's Updates screen only says a newer version exists and EUM adds update counts in the admin bar (includes/MPSUM_Admin_Ajax.php:1096-1140); neither measures how many versions behind a plugin is or checks a lag policy, and the premium list has none (https://easyupdatesmanager.com/buy/)."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
 			}
 		},
 		{
@@ -7553,7 +8265,11 @@
 				"spec": "openspec/specs/version-management"
 			},
 			"feature": "app-inventory",
-			"source": "spec-round-2026-10-07"
+			"source": "spec-round-2026-10-07",
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqApps"
+			}
 		},
 		{
 			"id": "aud-remediation-kpi",
@@ -7586,6 +8302,10 @@
 				"dependabot": "Closed service: alert metrics show fixed, dismissed and auto-dismissed alerts by severity with trends over time (https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alert-metrics); the page defines no deadlines, so the share resolved within a deadline is not shown.",
 				"osv-scanner": "No history, deadlines or trends: each run reports the current state and an exit code only (docs/output.md:790-799), and nothing is stored between runs (cmd/osv-scanner/main.go:16-19).",
 				"easy-updates-manager": "No advisory feature: the free source has no vulnerability, CVE or advisory code (grep outside vendor/ finds none), the premium feature list has none (https://easyupdatesmanager.com/buy/), and WordPress core does not match advisories; with no advisories there are no deadlines to measure."
+			},
+			"screen": {
+				"canvas": "design-system",
+				"board": "VqBeveiligingsadviezen"
 			}
 		}
 	],
