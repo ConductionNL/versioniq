@@ -32,7 +32,8 @@ use OCP\ITempManager;
 use OCP\IUserSession;
 use OCP\L10N\IFactory;
 use OCP\Server;
-use phpseclib\File\X509;
+use phpseclib\File\X509 as X509V2;
+use phpseclib3\File\X509 as X509V3;
 
 /**
  * @psalm-api
@@ -124,6 +125,23 @@ class SelectedReleaseInstallerService {
 	}
 
 	/**
+	 * Returns an X509 of the phpseclib the server bundles: phpseclib 3 on
+	 * Nextcloud 35 and later, phpseclib 2 on Nextcloud 32-34. Both offer the
+	 * loadCA, loadX509, loadCRL, validateSignature and getRevoked calls that
+	 * verifyCertificate() makes, the same calls core's Installer makes.
+	 *
+	 * @spec openspec/specs/migration-safety/spec.md
+	 * @return X509V3|X509V2
+	 */
+	private function newX509(): X509V3|X509V2 {
+		if (class_exists(X509V3::class)) {
+			return new X509V3();
+		}
+
+		return new X509V2();
+	}
+
+	/**
 	 * Verifies app certificate against Nextcloud signing chain and CRL.
 	 *
 	 * @param string $appId
@@ -141,7 +159,7 @@ class SelectedReleaseInstallerService {
 			throw new Exception('Unable to load Nextcloud certificate revocation list.');
 		}
 
-		$x509 = new X509();
+		$x509 = $this->newX509();
 		$rootCrtList = $this->splitCerts($rootCrt);
 		foreach ($rootCrtList as $rootCertificate) {
 			$x509->loadCA($rootCertificate);
@@ -152,7 +170,7 @@ class SelectedReleaseInstallerService {
 			throw new Exception('Could not parse app certificate.');
 		}
 
-		$crl = new X509();
+		$crl = $this->newX509();
 		foreach ($rootCrtList as $rootCertificate) {
 			$crl->loadCA($rootCertificate);
 		}
