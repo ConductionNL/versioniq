@@ -134,6 +134,29 @@ namespace phpseclib\File {
 	}
 }
 
+// Nextcloud 35 bundles phpseclib 3 instead of 2; same calls, new namespace.
+namespace phpseclib3\File {
+	class X509 {
+		public function loadCA(string $cert): mixed {
+		}
+
+		/**
+		 * @return array<string, mixed>|false
+		 */
+		public function loadX509(string $cert): array|false {
+		}
+
+		public function loadCRL(string $crl): mixed {
+		}
+
+		public function validateSignature(): bool {
+		}
+
+		public function getRevoked(string $serial): mixed {
+		}
+	}
+}
+
 namespace Doctrine\DBAL\Schema {
 	class Table {
 		/**
