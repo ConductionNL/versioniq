@@ -130,8 +130,8 @@ class SelectedReleaseInstallerService {
 	 * loadCA, loadX509, loadCRL, validateSignature and getRevoked calls that
 	 * verifyCertificate() makes, the same calls core's Installer makes.
 	 *
-	 * @spec openspec/specs/migration-safety/spec.md
 	 * @return X509V3|X509V2
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-an-app-store-package-is-verified-against-nextcloud-code-signing-before-install
 	 */
 	private function newX509(): X509V3|X509V2 {
 		if (class_exists(X509V3::class)) {
