@@ -20,4 +20,4 @@
 ## 4. Close
 
 - [ ] 4.1 Run the PHPUnit and Playwright jobs on the stable32, stable33 and stable34 legs of `nextcloud-test-refs`. Verify: every leg is green.
-- [ ] 4.2 Set the matrix rows `aud-security-update-report` and `aud-remediation-kpi` to `built` with evidence lines, then archive this change.
+- [ ] 4.2 Set the matrix rows `aud-security-update-report`, `aud-remediation-kpi` and `aud-export` to `built` with evidence lines, then archive this change.
