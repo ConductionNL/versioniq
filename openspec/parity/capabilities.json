@@ -4871,7 +4871,7 @@
 			"osv-scanner": "yes",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "lib/Service/Advisory/NextcloudAdvisoryFeed.php:263, lib/Service/Settings/InstanceSettings.php:105, src/components/InstanceSettingsPanel.vue:178",
 				"reachedOn": "Settings tab (Advisory feed address); occ config:app:set versioniq advisory.feed_base",
 				"owner": "ConductionNL/versioniq",
@@ -4881,13 +4881,14 @@
 					"canvas": "design-system",
 					"board": "VqInstellingen"
 				},
-				"requirement": "Instance settings on a page (advisory.feed_base mirror)"
+				"change": "sources-trust-audit-and-offline-feed",
+				"requirement": "An instance without internet imports a local copy of the advisory feed"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "The advisory feed address can point at an internal mirror from the Settings tab (http or https), so an instance without internet access can check advisories against a mirror it hosts. There is no bundled or importable local database, so this stays partial.",
+			"note": "The advisory feed address can point at an internal mirror from the Settings tab (http or https), so an instance without internet access can check advisories against a mirror it hosts. There is no bundled or importable local database, so this stays partial. Building (30 Oct): the missing half the board draws is planned in change sources-trust-audit-and-offline-feed. Delivered half: requirement 'Instance settings on a page (advisory.feed_base mirror)' in openspec/specs/audit-trail.",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
 				"renovate": "@renovatebot/osv-offline downloads the whole OSV database and queries it locally (vulnerabilities.ts:54-56), but it fetches the database from the internet.",
@@ -5764,21 +5765,22 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "lib/Service/Discovery/GithubSearchDiscovery.php:55, lib/Service/Discovery/DiscoveryAggregator.php:40",
 				"reachedOn": "Discover tab, only after occ config:app:set versioniq discovery.github_search_enabled true",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-app-discovery-search",
+				"change": "sources-trust-audit-and-offline-feed",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqOntdekken"
-				}
+				},
+				"requirement": "Public GitHub search is switched on and off on the page"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "app-discovery",
 			"featureConfidence": "high",
-			"note": "Public GitHub search is implemented but off by default and can only be switched on with an app-config key; there is no UI toggle.",
+			"note": "Public GitHub search is implemented but off by default and can only be switched on with an app-config key; there is no UI toggle. Building (30 Oct): the missing half the board draws is planned in change sources-trust-audit-and-offline-feed.",
 			"evidence": {
 				"nextcloud": "Discovery reads the store only (apps/appstore/lib/Controller/ApiController.php:380-383, DiscoverController.php).",
 				"renovate": "autodiscover (lib/config/options/index.ts:1197) finds repositories to run on, not installable packages; there is no package search (docs/usage/key-concepts/how-renovate-works.md).",
@@ -6187,21 +6189,22 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "lib/Service/Source/SourceBindingStore.php:109, lib/Service/Source/TrustedSourceList.php:80",
 				"reachedOn": "History tab",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-version-audit-trail",
+				"change": "sources-trust-audit-and-offline-feed",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqHistorie"
-				}
+				},
+				"requirement": "Trusted-source changes and cleared bindings are recorded"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "high",
-			"note": "Binding changes are audited (with 'Rebound from' text), but adding or removing trusted-source patterns and clearing a binding write no audit entry.",
+			"note": "Binding changes are audited (with 'Rebound from' text), but adding or removing trusted-source patterns and clearing a binding write no audit entry. Building (30 Oct): the missing half the board draws is planned in change sources-trust-audit-and-offline-feed.",
 			"evidence": {
 				"nextcloud": "There are no source bindings or trusted-source list to change; store settings live in config.php (config/config.sample.php:1400-1414), changed via occ config:system:set, which only appears as a generic console command line in the audit log (ConsoleEventListener.php:38).",
 				"renovate": "Source bindings live in renovate.json, so their changes are in git history; self-hosted global config changes are outside the repository.",
@@ -6327,7 +6330,7 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "lib/Controller/ApiController.php:1207",
 				"reachedOn": "OCS API GET /api/audit (no export control in the UI)",
 				"owner": "ConductionNL/versioniq",
@@ -6337,13 +6340,14 @@
 					"canvas": "design-system",
 					"board": "VqHistorie"
 				},
-				"requirement": "Audit entries are immutable and admin-readable (API read only, no export)"
+				"change": "audit-security-reports",
+				"requirement": "An admin reports on the security updates of a period (history export to CSV and JSON, task 2.2)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "high",
-			"note": "History is readable as paginated JSON through the admin API; there is no export button or file format.",
+			"note": "History is readable as paginated JSON through the admin API; there is no export button or file format. Building (30 Oct): the missing half the board draws is planned in change audit-security-reports. Delivered half: requirement 'Audit entries are immutable and admin-readable (API read only, no export)' in openspec/specs/audit-trail.",
 			"evidence": {
 				"nextcloud": "The audit log is a JSON-lines file or syslog stream that can be copied (apps/admin_audit/lib/AuditLogger.php:24-34); no export action.",
 				"renovate": "History is exportable through git log and the forge API; the experimental JSON report (lib/config/options/index.ts:534) covers the current state, not history.",
