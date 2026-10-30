@@ -1836,21 +1836,22 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "src/App.vue:2210, lib/Service/Installer/InstallFinalizer.php:169, src/utils/migrationSafety.ts:27",
 				"reachedOn": "Apps tab (app card 'Roll back to' button, or version picker)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-migration-safety-guard",
+				"change": "safety-rollback-backup-and-preflight",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "The app card offers the version before the last update as a rollback target"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "rollback",
 			"featureConfidence": "high",
-			"note": "The one-click rollback targets the last version Versioniq finalized, and that record is overwritten with the new version on every successful Versioniq install; so after an update through Versioniq there is no one-click way back to the previous version, only picking it by hand. It covers the case where something outside Versioniq changed the version.",
+			"note": "The one-click rollback targets the last version Versioniq finalized, and that record is overwritten with the new version on every successful Versioniq install; so after an update through Versioniq there is no one-click way back to the previous version, only picking it by hand. It covers the case where something outside Versioniq changed the version. Building (30 Oct): the missing half the board draws is planned in change safety-rollback-backup-and-preflight.",
 			"evidence": {
 				"nextcloud": "Downgrades are refused (lib/private/Installer.php:310 'tried to update to lower version') and the old app folder is deleted before the new one is copied (lib/private/Installer.php:323), so no previous version is kept.",
 				"renovate": "lib/config/options/index.ts:2150 rollbackPrs only rolls back when the current version has disappeared from the registry, using the rollback config at lib/config/options/index.ts:2076; rolling back a merged update is a git revert on the forge.",
@@ -2393,21 +2394,22 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "lib/Service/InstallerService.php:470, lib/Service/Installer/EnvironmentCheck.php:51, src/App.vue:2189",
 				"reachedOn": "Apps tab (card warning; install refusal)",
 				"owner": "ConductionNL/versioniq",
-				"change": "improve-install-failure-diagnostics",
+				"change": "safety-rollback-backup-and-preflight",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "The pre-flight check refuses an install that does not fit on disk"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "install-diagnostics",
 			"featureConfidence": "high",
-			"note": "Checks that the app folder's parent is writable, warns on the card and refuses early; disk space and other environment checks are not made.",
+			"note": "Checks that the app folder's parent is writable, warns on the card and refuses early; disk space and other environment checks are not made. Building (30 Oct): the missing half the board draws is planned in change safety-rollback-backup-and-preflight.",
 			"evidence": {
 				"nextcloud": "Install checks that the apps folder is writable (lib/private/Installer.php:135-150); the server updater checks expected files and write permissions (nextcloud/updater@v34.0.4 lib/Updater.php:389,410). No disk space check before install; a separate setup check covers temp space (apps/settings/lib/SetupChecks/TempSpaceAvailable.php:73).",
 				"renovate": "not checked: config validation runs before a job (docs/usage/config-validation.md), but no check of disk space or write permissions was found.",
@@ -2639,21 +2641,22 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:361, lib/Service/ExternalReleaseInstallerService.php:316, lib/Service/Installer/FailureClassifier.php:177",
 				"reachedOn": "Apps tab (install result 'Installed but broken')",
 				"owner": "ConductionNL/versioniq",
-				"change": "improve-install-failure-diagnostics",
+				"change": "safety-rollback-backup-and-preflight",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
-				}
+				},
+				"requirement": "Restoring a broken install puts back files and tables"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "install-diagnostics",
 			"featureConfidence": "high",
-			"note": "When migrations or repair steps fail, the previous files are restored from the kept backup and the outcome is reported as installed-but-broken; partially applied migrations stay and the admin is told to check manually.",
+			"note": "When migrations or repair steps fail, the previous files are restored from the kept backup and the outcome is reported as installed-but-broken; partially applied migrations stay and the admin is told to check manually. Building (30 Oct): the missing half the board draws is planned in change safety-rollback-backup-and-preflight.",
 			"evidence": {
 				"nextcloud": "During a server upgrade, apps that were auto-disabled are re-fetched and re-enabled (lib/private/Updater.php:258-263,392-435) and a pending app upgrade is forced through the upgrade page (lib/private/App/AppManager.php isUpgradeRequired); a failed web app update leaves the old folder already deleted (lib/private/Installer.php:323).",
 				"renovate": "Branches that errored are retried on the next run and listed under \"Errored\" with a retry checkbox (lib/workers/repository/dependency-dashboard.ts:541-545).",
@@ -2674,21 +2677,22 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:654, lib/Service/SelectedReleaseInstallerService.php:373, lib/Service/ExternalReleaseInstallerService.php:275",
 				"reachedOn": "Apps tab (any install, implicit)",
 				"owner": "ConductionNL/versioniq",
-				"change": "improve-install-failure-diagnostics",
+				"change": "safety-rollback-backup-and-preflight",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
-				}
+				},
+				"requirement": "A real install keeps a restorable backup of the app folder and its tables"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "high",
-			"note": "The app folder is moved aside before replacement and restored on failure, but deleted once finalize succeeds; no database backup or restorable snapshot is kept. The artifact cache retains old archives for re-installing files only.",
+			"note": "The app folder is moved aside before replacement and restored on failure, but deleted once finalize succeeds; no database backup or restorable snapshot is kept. The artifact cache retains old archives for re-installing files only. Building (30 Oct): the missing half the board draws is planned in change safety-rollback-backup-and-preflight.",
 			"evidence": {
 				"nextcloud": "The standalone server updater backs up the code (not data or database) before replacing it, skippable with ,no-backup (nextcloud/updater@v34.0.4 lib/Updater.php:475-490, lib/UpdateCommand.php:59); app updates take no backup (lib/private/Installer.php:323).",
 				"renovate": "Every update is a git branch and PR, so the previous state stays in version history and can be reverted; no separate backup is taken.",
