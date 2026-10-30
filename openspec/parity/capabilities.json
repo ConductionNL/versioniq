@@ -1133,7 +1133,7 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "src/App.vue:2176, src/App.vue:2186, lib/Service/InstallerService.php:108",
 				"reachedOn": "Apps tab",
 				"owner": "ConductionNL/versioniq",
@@ -1141,13 +1141,15 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"change": "inventory-app-details-card",
+				"requirement": "The version view shows an About card with publisher, licence and links"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "app-inventory",
 			"featureConfidence": "high",
-			"note": "Cards show icon, name, summary or description. Author, licence and links are not shown; Discover hits carry homepageUrl but the template does not render it.",
+			"note": "Cards show icon, name, summary or description. Author, licence and links are not shown; Discover hits carry homepageUrl but the template does not render it. Building (30 Oct): change inventory-app-details-card plans the About card drawn on VqAppVersies; the verified publisher mark comes from inventory-verified-publisher.",
 			"evidence": {
 				"nextcloud": "apps/appstore/src/components/AppstoreSidebar/AppDetailsTab.vue:171-205 shows author, categories, website and docs links; licence and description come from apps/appstore/lib/Controller/ApiController.php:460-463.",
 				"renovate": "Datasources return homepage, sourceUrl and changelogUrl (lib/modules/datasource/nextcloud/index.ts:44-55) and PR bodies link them; licence and author are not surfaced.",
