@@ -814,21 +814,22 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "src/components/AppSourceBadges.vue:29, src/App.vue:2195, src/components/SourcesPanel.vue:160, lib/Service/InstallerService.php:162",
 				"reachedOn": "Apps tab (every app card) and Sources tab",
 				"owner": "ConductionNL/versioniq",
-				"change": "surface-external-sources-ui",
+				"change": "inventory-pins-checks-and-pending",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "The card names where the installed version came from"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "app-inventory",
 			"featureConfidence": "high",
-			"note": "Every app card names its bound source (App Store, github:owner/repo, forgejo:owner/repo) from boundSourceId in the list payload. It is the binding, not provenance: an unbound app reads App Store even if it was installed by hand or from git, and manual upload is not a source kind.",
+			"note": "Every app card names its bound source (App Store, github:owner/repo, forgejo:owner/repo) from boundSourceId in the list payload. It is the binding, not provenance: an unbound app reads App Store even if it was installed by hand or from git, and manual upload is not a source kind. Building (30 Oct): the missing half the board draws is planned in change inventory-pins-checks-and-pending.",
 			"evidence": {
 				"nextcloud": "The table row shows name, version, level and groups only (apps/appstore/src/components/AppTable/AppTableRow.vue:62-110); the store/git distinction exists internally (apps/appstore/lib/Controller/ApiController.php:341, lib/private/Installer.php:407) but is never shown. Nextcloud has only one install source, the app store.",
 				"renovate": "Every dependency carries a datasource (lib/modules/datasource/types.ts), shown in the deprecations table (lib/workers/repository/dependency-dashboard.ts:476) and PR tables, but the detected-dependencies list groups by manager and file, not by source.",
@@ -965,7 +966,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "The app card shows shipped apps and the bound source"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1132,7 +1134,7 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "src/App.vue:2176, src/App.vue:2186, lib/Service/InstallerService.php:108",
 				"reachedOn": "Apps tab",
 				"owner": "ConductionNL/versioniq",
@@ -1140,13 +1142,15 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"change": "inventory-app-details-card",
+				"requirement": "The version view shows an About card with publisher, licence and links"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "app-inventory",
 			"featureConfidence": "high",
-			"note": "Cards show icon, name, summary or description. Author, licence and links are not shown; Discover hits carry homepageUrl but the template does not render it.",
+			"note": "Cards show icon, name, summary or description. Author, licence and links are not shown; Discover hits carry homepageUrl but the template does not render it. Building (30 Oct): change inventory-app-details-card plans the About card drawn on VqAppVersies; the verified publisher mark comes from inventory-verified-publisher.",
 			"evidence": {
 				"nextcloud": "apps/appstore/src/components/AppstoreSidebar/AppDetailsTab.vue:171-205 shows author, categories, website and docs links; licence and description come from apps/appstore/lib/Controller/ApiController.php:460-463.",
 				"renovate": "Datasources return homepage, sourceUrl and changelogUrl (lib/modules/datasource/nextcloud/index.ts:44-55) and PR bodies link them; licence and author are not surfaced.",
@@ -1836,21 +1840,22 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "src/App.vue:2210, lib/Service/Installer/InstallFinalizer.php:169, src/utils/migrationSafety.ts:27",
 				"reachedOn": "Apps tab (app card 'Roll back to' button, or version picker)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-migration-safety-guard",
+				"change": "safety-rollback-backup-and-preflight",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "The app card offers the version before the last update as a rollback target"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "rollback",
 			"featureConfidence": "high",
-			"note": "The one-click rollback targets the last version Versioniq finalized, and that record is overwritten with the new version on every successful Versioniq install; so after an update through Versioniq there is no one-click way back to the previous version, only picking it by hand. It covers the case where something outside Versioniq changed the version.",
+			"note": "The one-click rollback targets the last version Versioniq finalized, and that record is overwritten with the new version on every successful Versioniq install; so after an update through Versioniq there is no one-click way back to the previous version, only picking it by hand. It covers the case where something outside Versioniq changed the version. Building (30 Oct): the missing half the board draws is planned in change safety-rollback-backup-and-preflight.",
 			"evidence": {
 				"nextcloud": "Downgrades are refused (lib/private/Installer.php:310 'tried to update to lower version') and the old app folder is deleted before the new one is copied (lib/private/Installer.php:323), so no previous version is kept.",
 				"renovate": "lib/config/options/index.ts:2150 rollbackPrs only rolls back when the current version has disappeared from the registry, using the rollback config at lib/config/options/index.ts:2076; rolling back a merged update is a git revert on the forge.",
@@ -2294,7 +2299,9 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
-				}
+				},
+				"spec": "openspec/specs/version-management",
+				"requirement": "Install Specific Version (change retro-enabled-state-and-unattended-tokens adds the enabled-state SHALL)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2393,21 +2400,22 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "lib/Service/InstallerService.php:470, lib/Service/Installer/EnvironmentCheck.php:51, src/App.vue:2189",
 				"reachedOn": "Apps tab (card warning; install refusal)",
 				"owner": "ConductionNL/versioniq",
-				"change": "improve-install-failure-diagnostics",
+				"change": "safety-rollback-backup-and-preflight",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "The pre-flight check refuses an install that does not fit on disk"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "install-diagnostics",
 			"featureConfidence": "high",
-			"note": "Checks that the app folder's parent is writable, warns on the card and refuses early; disk space and other environment checks are not made.",
+			"note": "Checks that the app folder's parent is writable, warns on the card and refuses early; disk space and other environment checks are not made. Building (30 Oct): the missing half the board draws is planned in change safety-rollback-backup-and-preflight.",
 			"evidence": {
 				"nextcloud": "Install checks that the apps folder is writable (lib/private/Installer.php:135-150); the server updater checks expected files and write permissions (nextcloud/updater@v34.0.4 lib/Updater.php:389,410). No disk space check before install; a separate setup check covers temp space (apps/settings/lib/SetupChecks/TempSpaceAvailable.php:73).",
 				"renovate": "not checked: config validation runs before a job (docs/usage/config-validation.md), but no check of disk space or write permissions was found.",
@@ -2639,21 +2647,22 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:361, lib/Service/ExternalReleaseInstallerService.php:316, lib/Service/Installer/FailureClassifier.php:177",
 				"reachedOn": "Apps tab (install result 'Installed but broken')",
 				"owner": "ConductionNL/versioniq",
-				"change": "improve-install-failure-diagnostics",
+				"change": "safety-rollback-backup-and-preflight",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
-				}
+				},
+				"requirement": "Restoring a broken install puts back files and tables"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "install-diagnostics",
 			"featureConfidence": "high",
-			"note": "When migrations or repair steps fail, the previous files are restored from the kept backup and the outcome is reported as installed-but-broken; partially applied migrations stay and the admin is told to check manually.",
+			"note": "When migrations or repair steps fail, the previous files are restored from the kept backup and the outcome is reported as installed-but-broken; partially applied migrations stay and the admin is told to check manually. Building (30 Oct): the missing half the board draws is planned in change safety-rollback-backup-and-preflight.",
 			"evidence": {
 				"nextcloud": "During a server upgrade, apps that were auto-disabled are re-fetched and re-enabled (lib/private/Updater.php:258-263,392-435) and a pending app upgrade is forced through the upgrade page (lib/private/App/AppManager.php isUpgradeRequired); a failed web app update leaves the old folder already deleted (lib/private/Installer.php:323).",
 				"renovate": "Branches that errored are retried on the next run and listed under \"Errored\" with a retry checkbox (lib/workers/repository/dependency-dashboard.ts:541-545).",
@@ -2674,21 +2683,22 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "lib/Service/SelectedReleaseInstallerService.php:654, lib/Service/SelectedReleaseInstallerService.php:373, lib/Service/ExternalReleaseInstallerService.php:275",
 				"reachedOn": "Apps tab (any install, implicit)",
 				"owner": "ConductionNL/versioniq",
-				"change": "improve-install-failure-diagnostics",
+				"change": "safety-rollback-backup-and-preflight",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
-				}
+				},
+				"requirement": "A real install keeps a restorable backup of the app folder and its tables"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "migration-safety",
 			"featureConfidence": "high",
-			"note": "The app folder is moved aside before replacement and restored on failure, but deleted once finalize succeeds; no database backup or restorable snapshot is kept. The artifact cache retains old archives for re-installing files only.",
+			"note": "The app folder is moved aside before replacement and restored on failure, but deleted once finalize succeeds; no database backup or restorable snapshot is kept. The artifact cache retains old archives for re-installing files only. Building (30 Oct): the missing half the board draws is planned in change safety-rollback-backup-and-preflight.",
 			"evidence": {
 				"nextcloud": "The standalone server updater backs up the code (not data or database) before replacing it, skippable with ,no-backup (nextcloud/updater@v34.0.4 lib/Updater.php:475-490, lib/UpdateCommand.php:59); app updates take no backup (lib/private/Installer.php:323).",
 				"renovate": "Every update is a git branch and PR, so the previous state stays in version history and can be reverted; no separate backup is taken.",
@@ -2918,7 +2928,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "List Installed Apps (core apps distinguished)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3418,21 +3429,22 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "lib/Controller/ApiController.php:539, src/App.vue:781, src/App.vue:2150",
 				"reachedOn": "Apps tab (pin badges on app cards)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-version-pinning",
+				"change": "inventory-pins-checks-and-pending",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "The app list filters to pinned apps"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "version-pinning",
 			"featureConfidence": "high",
-			"note": "All pins are fetched and shown as badges on the app cards, but there is no dedicated list or 'pinned only' filter; the admin scans the full app list.",
+			"note": "All pins are fetched and shown as badges on the app cards, but there is no dedicated list or 'pinned only' filter; the admin scans the full app list. Building (30 Oct): the missing half the board draws is planned in change inventory-pins-checks-and-pending.",
 			"evidence": {
 				"nextcloud": "No pin exists (lib/private/Installer.php:361-400).",
 				"renovate": "Frozen dependencies are listed in the config file (ignoreDeps, packageRules); the dashboard shows closed and ignored updates but no list of pins.",
@@ -4070,7 +4082,7 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "src/components/AutoUpdateOverview.vue:76, src/components/AutoUpdateOverview.vue:86, src/App.vue:2067, lib/Controller/ApiController.php:724",
 				"reachedOn": "Apps tab, Automatic updates section (Scheduled and blocked updates)",
 				"owner": "ConductionNL/versioniq",
@@ -4078,13 +4090,15 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"change": "inventory-pins-checks-and-pending",
+				"requirement": "The overview lists the updates that are pending now"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "One overview lists every app with an auto-update policy (level and window) and every version an earlier automatic attempt failed on, with Retry. Pending updates (a newer version available now) are not listed: the page has no per-app availability without querying every source. Added in #438.",
+			"note": "One overview lists every app with an auto-update policy (level and window) and every version an earlier automatic attempt failed on, with Retry. Pending updates (a newer version available now) are not listed: the page has no per-app availability without querying every source. Added in #438. Building (30 Oct): the missing half the board draws is planned in change inventory-pins-checks-and-pending.",
 			"evidence": {
 				"nextcloud": "The Updates category lists pending updates with a counter (apps/appstore/src/views/AppstoreManage.vue:39, apps/appstore/src/store/updates.ts:23); nothing is scheduled or blocked, so only the pending part exists.",
 				"renovate": "The Dependency Dashboard issue (lib/config/options/index.ts:904) lists pending approval, awaiting schedule, rate-limited, errored, pending status checks and open updates (lib/workers/repository/dependency-dashboard.ts:500-610).",
@@ -4113,7 +4127,9 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqTokens"
-				}
+				},
+				"spec": "openspec/specs/pat-management",
+				"requirement": "Background jobs use only tokens shared with all admins (change retro-enabled-state-and-unattended-tokens)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4872,7 +4888,7 @@
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "The advisory feed address can point at an internal mirror from the Settings tab (http or https), so an instance without internet access can check advisories against a mirror it hosts. There is no bundled or importable local database, so this stays partial. Building (30 Oct): the missing half the board draws is planned in change sources-trust-audit-and-offline-feed.",
+			"note": "The advisory feed address can point at an internal mirror from the Settings tab (http or https), so an instance without internet access can check advisories against a mirror it hosts. There is no bundled or importable local database, so this stays partial. Building (30 Oct): the missing half the board draws is planned in change sources-trust-audit-and-offline-feed. Delivered half: requirement 'Instance settings on a page (advisory.feed_base mirror)' in openspec/specs/audit-trail.",
 			"evidence": {
 				"nextcloud": "The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
 				"renovate": "@renovatebot/osv-offline downloads the whole OSV database and queries it locally (vulnerabilities.ts:54-56), but it fetches the database from the internet.",
@@ -4893,7 +4909,7 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "lib/Controller/ApiController.php:157, src/App.vue:724, src/App.vue:1980, lib/BackgroundJob/AdvisoryRefreshJob.php:95",
 				"reachedOn": "Apps tab, advisory freshness line",
 				"owner": "ConductionNL/versioniq",
@@ -4901,13 +4917,15 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"change": "inventory-pins-checks-and-pending",
+				"requirement": "The check line says whether the last sweep succeeded"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "The Apps tab says when the last sweep completed, but not whether it succeeded: a failed or partial feed read and per-app errors are only logged (the Integrations tab shows feed health only when integriq is installed).",
+			"note": "The Apps tab says when the last sweep completed, but not whether it succeeded: a failed or partial feed read and per-app errors are only logged (the Integrations tab shows feed health only when integriq is installed). Building (30 Oct): the missing half the board draws is planned in change inventory-pins-checks-and-pending.",
 			"evidence": {
 				"nextcloud": "The overview shows when the server update check last ran (apps/updatenotification/lib/Settings/Admin.php:44-45,74), which is an update check, not an advisory check. The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
 				"renovate": "not checked: no last-checked timestamp found on the dashboard vulnerabilities section.",
@@ -5542,7 +5560,9 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"spec": "openspec/specs/pat-management",
+				"requirement": "Authenticated GitHub fetches"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5682,7 +5702,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
-				}
+				},
+				"requirement": "Instance settings on a page (appstore.api_base, forge.github.api_base)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6034,7 +6055,9 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqTokens"
-				}
+				},
+				"spec": "openspec/specs/pat-management",
+				"requirement": "PAT management API (token creation deeplink)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6324,7 +6347,7 @@
 			"providerHow": "read-from-code",
 			"feature": "audit-trail",
 			"featureConfidence": "high",
-			"note": "History is readable as paginated JSON through the admin API; there is no export button or file format. Building (30 Oct): the missing half the board draws is planned in change audit-security-reports.",
+			"note": "History is readable as paginated JSON through the admin API; there is no export button or file format. Building (30 Oct): the missing half the board draws is planned in change audit-security-reports. Delivered half: requirement 'Audit entries are immutable and admin-readable (API read only, no export)' in openspec/specs/audit-trail.",
 			"evidence": {
 				"nextcloud": "The audit log is a JSON-lines file or syslog stream that can be copied (apps/admin_audit/lib/AuditLogger.php:24-34); no export action.",
 				"renovate": "History is exportable through git log and the forge API; the experimental JSON report (lib/config/options/index.ts:534) covers the current state, not history.",
@@ -6534,7 +6557,9 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
-				}
+				},
+				"spec": "openspec/specs/version-management",
+				"requirement": "Debug Mode (specs/version-management); Last-known-good version record (specs/migration-safety)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6630,11 +6655,12 @@
 				"evidence": "lib/Controller/ApiController.php:246, lib/Controller/ApiController.php:456, src/ocs.ts:70, src/App.vue:1080",
 				"reachedOn": "every write action (bind, install, pin, policy, tokens, cache)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/version-management",
+				"spec": "openspec/specs/version-pinning",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqVersieTerugzetten"
-				}
+				},
+				"requirement": "Pin an installed app to its current version (password confirmation, stated per write route)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6973,11 +6999,12 @@
 				"evidence": "appinfo/info.xml:11, lib/Service/Source/ForgeRegistry.php:78",
 				"reachedOn": "whole app",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none",
 				"screen": {
 					"board": null,
 					"reason": "A property of how the app runs (fully on premises), not a screen."
-				}
+				},
+				"change": "platform-properties",
+				"requirement": "Versioniq runs inside the Nextcloud instance with no SaaS dependency"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7043,11 +7070,12 @@
 				"evidence": "appinfo/info.xml:11",
 				"reachedOn": "whole app",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none",
 				"screen": {
 					"board": null,
 					"reason": "Every feature is free; a property of the app, not a screen."
-				}
+				},
+				"change": "platform-properties",
+				"requirement": "Every feature is available without a paid plan"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -8272,7 +8300,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "List Installed Apps (scenario one-click enable)"
 			},
 			"feature": "app-inventory",
 			"source": "spec-round-2026-10-07"
