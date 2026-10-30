@@ -59,7 +59,7 @@ class AvailabilityResultStore {
 
 	/**
 	 * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
-	 * @return array{updates: array<array-key, mixed>, checkedAt: ?int}
+	 * @return array{updates: array<string, mixed>, checkedAt: ?int}
 	 */
 	public function read(): array {
 		$raw = $this->config->getValueString(Application::APP_ID, self::KEY, '');
@@ -83,6 +83,10 @@ class AvailabilityResultStore {
 
 		$checkedAt = $this->config->getValueInt(Application::APP_ID, self::KEY_CHECKED_AT, 0);
 
-		return ['updates' => $decoded, 'checkedAt' => $checkedAt > 0 ? $checkedAt : null];
+		// json_decode yields array-key keys; the keys we wrote are app ids.
+		/** @var array<string, mixed> $updates */
+		$updates = $decoded;
+
+		return ['updates' => $updates, 'checkedAt' => $checkedAt > 0 ? $checkedAt : null];
 	}
 }

@@ -1,5 +1,12 @@
 [
   {
+    "slug": "admin-api",
+    "title": "Admin API",
+    "summary": "Everything an administrator does on the Versioniq page can also be done by a script or another system.",
+    "status": "stable",
+    "docsUrl": "openspec/specs/admin-api/spec.md"
+  },
+  {
     "slug": "app-discovery",
     "title": "App Discovery",
     "summary": "A multi-source search aggregator that lets admins find Nextcloud apps to install across the App Store, their PAT-visible private GitHub repos, and (opt-in) public GitHub topic search.",
@@ -54,6 +61,13 @@
     "summary": "Encrypted Personal Access Token storage for the Versioniq app, so admins can install apps from private GitHub repositories.",
     "status": "stable",
     "docsUrl": "openspec/specs/pat-management/spec.md"
+  },
+  {
+    "slug": "pending-updates",
+    "title": "Pending Updates",
+    "summary": "An admin sees on one screen which apps run which version, which have a newer one, and which fell behind the agreed limit.",
+    "status": "stable",
+    "docsUrl": "openspec/specs/pending-updates/spec.md"
   },
   {
     "slug": "version-management",

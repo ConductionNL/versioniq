@@ -163,7 +163,7 @@ class ApiController extends OCSController {
 	 * Like /api/advisories it reads what AvailabilityRefreshJob stored and
 	 * never calls a source (issue #160).
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{updates: array<array-key, mixed>, checkedAt: ?int, maxLinesBehind: ?int}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{updates: array<string, mixed>, checkedAt: ?int, maxLinesBehind: ?int}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Stored pending updates returned
 	 * 403: Caller is not an administrator
