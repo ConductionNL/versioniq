@@ -965,7 +965,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "The app card shows shipped apps and the bound source"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2294,7 +2295,9 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
-				}
+				},
+				"spec": "openspec/specs/version-management",
+				"requirement": "Install Specific Version (change retro-enabled-state-and-unattended-tokens adds the enabled-state SHALL)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2918,7 +2921,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "List Installed Apps (core apps distinguished)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4113,7 +4117,9 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqTokens"
-				}
+				},
+				"spec": "openspec/specs/pat-management",
+				"requirement": "Background jobs use only tokens shared with all admins (change retro-enabled-state-and-unattended-tokens)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4864,7 +4870,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
-				}
+				},
+				"requirement": "Instance settings on a page (advisory.feed_base mirror)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5540,7 +5547,9 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"spec": "openspec/specs/pat-management",
+				"requirement": "Authenticated GitHub fetches"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5680,7 +5689,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
-				}
+				},
+				"requirement": "Instance settings on a page (appstore.api_base, forge.github.api_base)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6031,7 +6041,9 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqTokens"
-				}
+				},
+				"spec": "openspec/specs/pat-management",
+				"requirement": "PAT management API (token creation deeplink)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6312,7 +6324,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqHistorie"
-				}
+				},
+				"requirement": "Audit entries are immutable and admin-readable (API read only, no export)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6528,7 +6541,9 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
-				}
+				},
+				"spec": "openspec/specs/version-management",
+				"requirement": "Debug Mode (specs/version-management); Last-known-good version record (specs/migration-safety)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6624,11 +6639,12 @@
 				"evidence": "lib/Controller/ApiController.php:246, lib/Controller/ApiController.php:456, src/ocs.ts:70, src/App.vue:1080",
 				"reachedOn": "every write action (bind, install, pin, policy, tokens, cache)",
 				"owner": "ConductionNL/versioniq",
-				"spec": "openspec/specs/version-management",
+				"spec": "openspec/specs/version-pinning",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqVersieTerugzetten"
-				}
+				},
+				"requirement": "Pin an installed app to its current version (password confirmation, stated per write route)"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -8266,7 +8282,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "List Installed Apps (scenario one-click enable)"
 			},
 			"feature": "app-inventory",
 			"source": "spec-round-2026-10-07"
