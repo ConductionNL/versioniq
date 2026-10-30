@@ -1,3 +1,4 @@
 # Screens
 
-- No screen: Server-side archive cache used as install fallback.
+- VqAppVersies https://identity.conduction.nl/screens/board?id=versioniq/VqAppVersies
+- VqInstellingen https://identity.conduction.nl/screens/board?id=versioniq/VqInstellingen
