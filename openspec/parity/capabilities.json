@@ -6967,11 +6967,12 @@
 				"evidence": "appinfo/info.xml:11, lib/Service/Source/ForgeRegistry.php:78",
 				"reachedOn": "whole app",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none",
 				"screen": {
 					"board": null,
 					"reason": "A property of how the app runs (fully on premises), not a screen."
-				}
+				},
+				"change": "platform-properties",
+				"requirement": "Versioniq runs inside the Nextcloud instance with no SaaS dependency"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7037,11 +7038,12 @@
 				"evidence": "appinfo/info.xml:11",
 				"reachedOn": "whole app",
 				"owner": "ConductionNL/versioniq",
-				"spec": "none",
 				"screen": {
 					"board": null,
 					"reason": "Every feature is free; a property of the app, not a screen."
-				}
+				},
+				"change": "platform-properties",
+				"requirement": "Every feature is available without a paid plan"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
