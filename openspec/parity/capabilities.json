@@ -814,21 +814,22 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "src/components/AppSourceBadges.vue:29, src/App.vue:2195, src/components/SourcesPanel.vue:160, lib/Service/InstallerService.php:162",
 				"reachedOn": "Apps tab (every app card) and Sources tab",
 				"owner": "ConductionNL/versioniq",
-				"change": "surface-external-sources-ui",
+				"change": "inventory-pins-checks-and-pending",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "The card names where the installed version came from"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "app-inventory",
 			"featureConfidence": "high",
-			"note": "Every app card names its bound source (App Store, github:owner/repo, forgejo:owner/repo) from boundSourceId in the list payload. It is the binding, not provenance: an unbound app reads App Store even if it was installed by hand or from git, and manual upload is not a source kind.",
+			"note": "Every app card names its bound source (App Store, github:owner/repo, forgejo:owner/repo) from boundSourceId in the list payload. It is the binding, not provenance: an unbound app reads App Store even if it was installed by hand or from git, and manual upload is not a source kind. Building (30 Oct): the missing half the board draws is planned in change inventory-pins-checks-and-pending.",
 			"evidence": {
 				"nextcloud": "The table row shows name, version, level and groups only (apps/appstore/src/components/AppTable/AppTableRow.vue:62-110); the store/git distinction exists internally (apps/appstore/lib/Controller/ApiController.php:341, lib/private/Installer.php:407) but is never shown. Nextcloud has only one install source, the app store.",
 				"renovate": "Every dependency carries a datasource (lib/modules/datasource/types.ts), shown in the deprecations table (lib/workers/repository/dependency-dashboard.ts:476) and PR tables, but the detected-dependencies list groups by manager and file, not by source.",
@@ -3428,21 +3429,22 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "lib/Controller/ApiController.php:539, src/App.vue:781, src/App.vue:2150",
 				"reachedOn": "Apps tab (pin badges on app cards)",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-version-pinning",
+				"change": "inventory-pins-checks-and-pending",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "The app list filters to pinned apps"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "version-pinning",
 			"featureConfidence": "high",
-			"note": "All pins are fetched and shown as badges on the app cards, but there is no dedicated list or 'pinned only' filter; the admin scans the full app list.",
+			"note": "All pins are fetched and shown as badges on the app cards, but there is no dedicated list or 'pinned only' filter; the admin scans the full app list. Building (30 Oct): the missing half the board draws is planned in change inventory-pins-checks-and-pending.",
 			"evidence": {
 				"nextcloud": "No pin exists (lib/private/Installer.php:361-400).",
 				"renovate": "Frozen dependencies are listed in the config file (ignoreDeps, packageRules); the dashboard shows closed and ignored updates but no list of pins.",
@@ -4080,7 +4082,7 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "src/components/AutoUpdateOverview.vue:76, src/components/AutoUpdateOverview.vue:86, src/App.vue:2067, lib/Controller/ApiController.php:724",
 				"reachedOn": "Apps tab, Automatic updates section (Scheduled and blocked updates)",
 				"owner": "ConductionNL/versioniq",
@@ -4088,13 +4090,15 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"change": "inventory-pins-checks-and-pending",
+				"requirement": "The overview lists the updates that are pending now"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "auto-update-policies",
 			"featureConfidence": "high",
-			"note": "One overview lists every app with an auto-update policy (level and window) and every version an earlier automatic attempt failed on, with Retry. Pending updates (a newer version available now) are not listed: the page has no per-app availability without querying every source. Added in #438.",
+			"note": "One overview lists every app with an auto-update policy (level and window) and every version an earlier automatic attempt failed on, with Retry. Pending updates (a newer version available now) are not listed: the page has no per-app availability without querying every source. Added in #438. Building (30 Oct): the missing half the board draws is planned in change inventory-pins-checks-and-pending.",
 			"evidence": {
 				"nextcloud": "The Updates category lists pending updates with a counter (apps/appstore/src/views/AppstoreManage.vue:39, apps/appstore/src/store/updates.ts:23); nothing is scheduled or blocked, so only the pending part exists.",
 				"renovate": "The Dependency Dashboard issue (lib/config/options/index.ts:904) lists pending approval, awaiting schedule, rate-limited, errored, pending status checks and open updates (lib/workers/repository/dependency-dashboard.ts:500-610).",
@@ -4904,7 +4908,7 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "built",
+				"state": "building",
 				"evidence": "lib/Controller/ApiController.php:157, src/App.vue:724, src/App.vue:1980, lib/BackgroundJob/AdvisoryRefreshJob.php:95",
 				"reachedOn": "Apps tab, advisory freshness line",
 				"owner": "ConductionNL/versioniq",
@@ -4912,13 +4916,15 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"change": "inventory-pins-checks-and-pending",
+				"requirement": "The check line says whether the last sweep succeeded"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
 			"feature": "security-advisory-correlation",
 			"featureConfidence": "high",
-			"note": "The Apps tab says when the last sweep completed, but not whether it succeeded: a failed or partial feed read and per-app errors are only logged (the Integrations tab shows feed health only when integriq is installed).",
+			"note": "The Apps tab says when the last sweep completed, but not whether it succeeded: a failed or partial feed read and per-app errors are only logged (the Integrations tab shows feed health only when integriq is installed). Building (30 Oct): the missing half the board draws is planned in change inventory-pins-checks-and-pending.",
 			"evidence": {
 				"nextcloud": "The overview shows when the server update check last ran (apps/updatenotification/lib/Settings/Admin.php:44-45,74), which is an update check, not an advisory check. The server has no advisory matching code: a search of apps, core and lib for 'advisor' finds only the security.txt acknowledgement (apps/settings/lib/WellKnown/SecurityTxtHandler.php:28) and one hardcoded 2019 advisory link (core/Notification/CoreNotifier.php:59).",
 				"renovate": "not checked: no last-checked timestamp found on the dashboard vulnerabilities section.",
