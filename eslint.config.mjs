@@ -67,6 +67,34 @@
 import { recommended } from '@nextcloud/eslint-config'
 import eslintConfigPrettier from 'eslint-config-prettier'
 
+/**
+ * `no-unused-vars` options for a deliberate throwaway binding. vars/caught:
+ * UNDERSCORES ONLY, so a real name that merely starts with `_` is still
+ * reported. args: leading underscore, which is what NC's own TypeScript block
+ * uses (`argsIgnorePattern: '^_'`): a positional parameter often has to keep
+ * a descriptive name to document the signature even when the body ignores it.
+ */
+const THROWAWAY_BINDINGS = {
+	varsIgnorePattern: '^_+$',
+	caughtErrors: 'all',
+	caughtErrorsIgnorePattern: '^_+$',
+	argsIgnorePattern: '^_',
+	ignoreRestSiblings: true,
+}
+
+/**
+ * The Node globals every script under `scripts/` and every `.mjs` test sees.
+ */
+const NODE_GLOBALS = {
+	process: 'readonly',
+	console: 'readonly',
+	Buffer: 'readonly',
+	global: 'readonly',
+	URL: 'readonly',
+	TextEncoder: 'readonly',
+	TextDecoder: 'readonly',
+}
+
 export default [
 	...recommended,
 
@@ -170,22 +198,7 @@ export default [
 		// it back on. TypeScript files are handled by the block below.
 		files: ['tests/**/*.js', 'tests/**/*.mjs'],
 		rules: {
-			'no-unused-vars': [
-				'error',
-				{
-					// vars/caught: UNDERSCORES ONLY, so a real name that merely
-					// starts with `_` is still reported.
-					varsIgnorePattern: '^_+$',
-					caughtErrors: 'all',
-					caughtErrorsIgnorePattern: '^_+$',
-					// args: leading underscore, which is what NC's own TypeScript
-					// block uses (`argsIgnorePattern: '^_'`) — a positional
-					// parameter often has to keep a descriptive name to document
-					// the signature even when the body ignores it.
-					argsIgnorePattern: '^_',
-					ignoreRestSiblings: true,
-				},
-			],
+			'no-unused-vars': ['error', THROWAWAY_BINDINGS],
 		},
 	},
 
@@ -196,16 +209,7 @@ export default [
 		// genuinely dead local is still reported.
 		files: ['tests/**/*.ts', 'tests/**/*.tsx'],
 		rules: {
-			'@typescript-eslint/no-unused-vars': [
-				'error',
-				{
-					varsIgnorePattern: '^_+$',
-					caughtErrors: 'all',
-					caughtErrorsIgnorePattern: '^_+$',
-					argsIgnorePattern: '^_',
-					ignoreRestSiblings: true,
-				},
-			],
+			'@typescript-eslint/no-unused-vars': ['error', THROWAWAY_BINDINGS],
 		},
 	},
 
@@ -248,15 +252,9 @@ export default [
 				require: 'readonly',
 				module: 'writable',
 				exports: 'writable',
-				process: 'readonly',
 				__dirname: 'readonly',
 				__filename: 'readonly',
-				console: 'readonly',
-				Buffer: 'readonly',
-				global: 'readonly',
-				URL: 'readonly',
-				TextEncoder: 'readonly',
-				TextDecoder: 'readonly',
+				...NODE_GLOBALS,
 			},
 		},
 		rules: {
@@ -273,15 +271,7 @@ export default [
 		// not match.
 		files: ['scripts/**/*.mjs', 'tests/**/*.mjs'],
 		languageOptions: {
-			globals: {
-				process: 'readonly',
-				console: 'readonly',
-				Buffer: 'readonly',
-				global: 'readonly',
-				URL: 'readonly',
-				TextEncoder: 'readonly',
-				TextDecoder: 'readonly',
-			},
+			globals: NODE_GLOBALS,
 		},
 		rules: {
 			'no-console': 'off',
