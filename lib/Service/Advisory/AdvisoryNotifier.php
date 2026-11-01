@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Advisory;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\ResolvesAdminUids;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IAppConfig;
 use OCP\IGroupManager;
@@ -33,6 +34,8 @@ use Psr\Log\LoggerInterface;
  * @psalm-api
  */
 class AdvisoryNotifier {
+	use ResolvesAdminUids;
+
 	private const CONFIG_KEY = 'advisory.notified';
 
 	public function __construct(
@@ -106,18 +109,6 @@ class AdvisoryNotifier {
 				'message' => $error->getMessage(),
 			]);
 		}
-	}
-
-	/**
-	 * @return list<string>
-	 */
-	private function adminUids(): array {
-		$uids = [];
-		foreach ($this->groupManager->get('admin')?->getUsers() ?? [] as $user) {
-			$uids[] = $user->getUID();
-		}
-
-		return array_values(array_unique($uids));
 	}
 
 	/**

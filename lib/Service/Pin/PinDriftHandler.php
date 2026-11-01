@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Pin;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\ResolvesAdminUids;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IGroupManager;
 use OCP\IURLGenerator;
@@ -34,6 +35,8 @@ use Psr\Log\LoggerInterface;
  * @psalm-api
  */
 class PinDriftHandler {
+	use ResolvesAdminUids;
+
 	public function __construct(
 		private PinStore $pinStore,
 		private IManager $notificationManager,
@@ -105,17 +108,5 @@ class PinDriftHandler {
 				]);
 			}
 		}
-	}
-
-	/**
-	 * @return list<string>
-	 */
-	private function adminUids(): array {
-		$uids = [];
-		foreach ($this->groupManager->get('admin')?->getUsers() ?? [] as $user) {
-			$uids[] = $user->getUID();
-		}
-
-		return array_values(array_unique($uids));
 	}
 }
