@@ -67,11 +67,7 @@ class AttemptLedger {
 			$entries = array_slice($entries, -self::MAX_ENTRIES, null, true);
 		}
 
-		$this->config->setValueString(
-			Application::APP_ID,
-			self::KEY_PREFIX . $appId,
-			json_encode($entries, JSON_THROW_ON_ERROR)
-		);
+		$this->store($appId, $entries);
 	}
 
 	/**
@@ -111,14 +107,23 @@ class AttemptLedger {
 		if ($entries === []) {
 			$this->config->deleteKey(Application::APP_ID, self::KEY_PREFIX . $appId);
 		} else {
-			$this->config->setValueString(
-				Application::APP_ID,
-				self::KEY_PREFIX . $appId,
-				json_encode($entries, JSON_THROW_ON_ERROR)
-			);
+			$this->store($appId, $entries);
 		}
 
 		return true;
+	}
+
+	/**
+	 * Writes an app's ledger as JSON.
+	 *
+	 * @param array<string, array{at:string, outcome:string}> $entries
+	 */
+	private function store(string $appId, array $entries): void {
+		$this->config->setValueString(
+			Application::APP_ID,
+			self::KEY_PREFIX . $appId,
+			json_encode($entries, JSON_THROW_ON_ERROR)
+		);
 	}
 
 	/**
