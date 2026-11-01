@@ -1506,12 +1506,13 @@ function versionRangeText (summary: VersionRangeInfo | null): string {
 // consistent with a server-side diff failure — it never blocks the downgrade.
 /**
  *
- * @param appId
- * @param version
+ * @param appId The app to preview.
+ * @param version The lower version it would go to.
+ * @spec openspec/specs/migration-safety/spec.md
  */
 async function fetchDowngradePreview (appId: string, version: string): Promise<string[] | null> {
 	try {
-		const { payload } = await requestInstall(appId, version, undefined, false, false, false, true)
+		const { payload } = await requestInstall({ appId, version, forceDryRun: true })
 
 		return Array.isArray(payload.orphanedMigrations) ? payload.orphanedMigrations : null
 	} catch {
@@ -1589,23 +1590,24 @@ type InstallApiPayload = {
 	servedFromCache?: boolean
 }
 
+type InstallRequest = {
+	appId: string
+	version: string
+	overridePin?: 'repin' | 'unpin'
+	pinRequested?: boolean
+	acceptNewSha?: boolean
+	allowDowngrade?: boolean
+	forceDryRun?: boolean
+}
+
 /**
+ * Posts one install of an app version; each flag the request sets becomes a query parameter.
  *
- * @param appId
- * @param version
- * @param overridePin
- * @param pinRequested
- * @param acceptNewSha
- * @param allowDowngrade
- * @param forceDryRun
+ * @param request The app, the target version and the install flags.
+ * @spec openspec/specs/version-management/spec.md
  */
-async function requestInstall (appId: string,
-	version: string,
-	overridePin?: 'repin' | 'unpin',
-	pinRequested = false,
-	acceptNewSha = false,
-	allowDowngrade = false,
-	forceDryRun = false): Promise<{ payload: InstallApiPayload, metaMessage?: string }> {
+async function requestInstall (request: InstallRequest): Promise<{ payload: InstallApiPayload, metaMessage?: string }> {
+	const { appId, version, overridePin, pinRequested = false, acceptNewSha = false, allowDowngrade = false, forceDryRun = false } = request
 	// dryRun is sent explicitly and independently of debug — see MODIFIED
 	// "Debug Mode". debug now controls diagnostic verbosity only.
 	const query: Record<string, string> = withSourceOverride({
@@ -1719,8 +1721,9 @@ function onShaMismatchResolve (accept: boolean): void {
 // needed: the target equals the pin's own version.
 /**
  *
- * @param appId
- * @param version
+ * @param appId The pinned app.
+ * @param version The version its pin holds.
+ * @spec openspec/specs/version-pinning/spec.md
  */
 async function onRepinRequested (appId: string, version: string): Promise<void> {
 	if (isInstallingVersion.value) {
@@ -1734,7 +1737,7 @@ async function onRepinRequested (appId: string, version: string): Promise<void> 
 		// through the same dialog as the version list and send allowDowngrade
 		// once confirmed, or the server refuses it with 409 (#431).
 		const { metaMessage } = await repinApp(appId, version, pinFor(appId)?.driftedTo ?? '', {
-			requestInstall: (id, target, allowDowngrade) => requestInstall(id, target, undefined, false, false, allowDowngrade),
+			requestInstall: (id, target, allowDowngrade) => requestInstall({ appId: id, version: target, allowDowngrade }),
 			confirmDowngrade,
 		})
 		if (metaMessage) {
@@ -1753,6 +1756,7 @@ async function onRepinRequested (appId: string, version: string): Promise<void> 
 
 /**
  *
+ * @spec openspec/specs/version-management/spec.md
  */
 async function performInstall (): Promise<void> {
 	if (!selectedApp.value || !selectedVersion.value || isInstallingVersion.value) {
@@ -1787,7 +1791,7 @@ async function performInstall (): Promise<void> {
 		// Acknowledged above via confirmDowngrade(); carried on every retry
 		// below so a pin-override or SHA-accept round trip doesn't re-trip the
 		// server-side downgrade guard — see "Server-side downgrade guard".
-		let installResponse = await requestInstall(selectedAppValue, selectedVersionValue, undefined, false, false, isDowngrade)
+		let installResponse = await requestInstall({ appId: selectedAppValue, version: selectedVersionValue, allowDowngrade: isDowngrade })
 
 		if (installResponse.metaMessage && installResponse.payload?.category === 'pinned') {
 			const choice = await confirmPinOverride(selectedAppValue, installResponse.payload.pinnedVersion || '', selectedVersionValue)
@@ -1795,7 +1799,7 @@ async function performInstall (): Promise<void> {
 				hasInstallResult.value = false
 				return
 			}
-			installResponse = await requestInstall(selectedAppValue, selectedVersionValue, choice, false, false, isDowngrade)
+			installResponse = await requestInstall({ appId: selectedAppValue, version: selectedVersionValue, overridePin: choice, allowDowngrade: isDowngrade })
 		}
 
 		if (installResponse.metaMessage && installResponse.payload?.code === 'sha_mismatch') {
@@ -1809,7 +1813,7 @@ async function performInstall (): Promise<void> {
 				hasInstallResult.value = false
 				return
 			}
-			installResponse = await requestInstall(selectedAppValue, selectedVersionValue, undefined, false, true, isDowngrade)
+			installResponse = await requestInstall({ appId: selectedAppValue, version: selectedVersionValue, acceptNewSha: true, allowDowngrade: isDowngrade })
 		}
 
 		const { payload, metaMessage } = installResponse
