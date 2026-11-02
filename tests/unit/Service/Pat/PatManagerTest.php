@@ -47,6 +47,7 @@ final class PatManagerTest extends TestCase {
 		$this->assertSame('ghp_...7890', $pat->getTokenHint());
 		$this->assertSame('admin', $pat->getOwnerUid());
 		$this->assertSame('ConductionNL/*', $pat->getTargetPattern());
+		$this->assertSame('github', $pat->getForge());
 		$this->assertFalse($pat->getSharedWithAdmins());
 
 		$validated = json_decode($pat->getLastValidatedScopes() ?? '{}', true);
