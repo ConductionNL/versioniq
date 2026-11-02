@@ -54,6 +54,8 @@ use OCP\IUserSession;
  *     external installer (GitHub releases), then writes the binding on success.
  *
  * @psalm-api
+ * @psalm-type AppLists = array{enabled: array<string>, versions: array<string, string>, core: array<string>, info: array<string, array<string, mixed>>}
+ * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string}}
  */
 class InstallerService {
 	/** Server-side changelog size cap; see "Version listings carry release notes". */
@@ -101,92 +103,169 @@ class InstallerService {
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @spec openspec/specs/migration-safety/spec.md
-	 * @return list<array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string}}>
+	 * @return list<InstalledAppCard>
 	 */
 	public function getInstalledApps(): array {
-		// Enabled apps, installed-but-disabled apps (Nextcloud keeps their
-		// installed version) and apps bound to a source but not installed yet,
-		// so every one of them can be picked and installed from the page; see
-		// "List Installed Apps".
-		$enabledApps = $this->appManager->getEnabledApps();
-		$installedVersions = $this->appManager->getAppInstalledVersions(false);
-		$installedApps = array_values(array_unique(array_filter(
-			array_merge($enabledApps, array_keys($installedVersions), $this->bindingStore->listBoundAppIds()),
+		$enabled = $this->appManager->getEnabledApps();
+		$versions = $this->appManager->getAppInstalledVersions(false);
+		$appIds = $this->listedAppIds($enabled, $versions);
+		$lists = [
+			'enabled' => $enabled,
+			'versions' => $versions,
+			'core' => $this->appManager->getAlwaysEnabledApps(),
+			'info' => self::appInfoById(),
+		];
+
+		return array_map(
+			fn (string $appId): array => $this->appCard($appId, $lists),
+			$appIds
+		);
+	}
+
+	/**
+	 * Enabled apps, installed-but-disabled apps (Nextcloud keeps their
+	 * installed version) and apps bound to a source but not installed yet,
+	 * so every one of them can be picked and installed from the page; see
+	 * "List Installed Apps". Versioniq itself is left out.
+	 *
+	 * @param array<string> $enabled
+	 * @param array<string, string> $versions
+	 * @return list<string>
+	 */
+	private function listedAppIds(array $enabled, array $versions): array {
+		$appIds = array_values(array_unique(array_filter(
+			array_merge($enabled, array_keys($versions), $this->bindingStore->listBoundAppIds()),
 			fn (string $appId): bool => !$this->isSelfManagedApp($appId)
 		)));
-		sort($installedApps);
-		$alwaysEnabledApps = $this->appManager->getAlwaysEnabledApps();
-		$appList = [];
+		sort($appIds);
+
+		return $appIds;
+	}
+
+	/**
+	 * The server's app info, keyed by app id.
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	private static function appInfoById(): array {
+		$appInfo = [];
 		foreach ((new \OC_App())->listAllApps() as $app) {
 			if (!isset($app['id']) || !is_string($app['id'])) {
 				continue;
 			}
-			$appList[$app['id']] = $app;
+			$appInfo[$app['id']] = $app;
 		}
 
-		$bindingStore = $this->bindingStore;
-		$appManager = $this->appManager;
-		$environmentCheck = $this->environmentCheck;
-		$lkgStore = $this->lkgStore;
+		return $appInfo;
+	}
 
-		return array_map(
-			static function (string $appId) use ($appList, $alwaysEnabledApps, $bindingStore, $appManager, $environmentCheck, $lkgStore, $enabledApps, $installedVersions): array {
-				$app = $appList[$appId] ?? [];
-				$name = isset($app['name']) && is_string($app['name']) && trim($app['name']) !== ''
-					? trim($app['name'])
-					: $appId;
-				$description = isset($app['description']) && is_string($app['description']) ? trim($app['description']) : '';
-				$summary = isset($app['summary']) && is_string($app['summary']) ? trim($app['summary']) : '';
-				$preview = isset($app['preview']) && is_string($app['preview']) ? trim($app['preview']) : '';
-				$binding = $bindingStore->get($appId);
+	/**
+	 * One app's card for the Apps tab.
+	 *
+	 * @param AppLists $lists
+	 * @return InstalledAppCard
+	 */
+	private function appCard(string $appId, array $lists): array {
+		return [
+			'id' => $appId,
+			...self::appTexts($lists['info'][$appId] ?? [], $appId),
+			...$this->appStatus($appId, $lists),
+		];
+	}
 
-				// Proactively flag apps whose folder cannot be managed here
-				// (e.g. a bind-mounted dev checkout that is not writable).
-				$env = ['manageable' => true, 'warning' => null];
-				try {
-					$env = $environmentCheck->inspect($appManager->getAppPath($appId));
-				} catch (\Throwable) {
-					// Path unknown — leave defaults; install-time guard still applies.
-				}
+	/**
+	 * The app's name, description, summary and preview from its app info,
+	 * trimmed; the name falls back to the app id.
+	 *
+	 * @param array<string, mixed> $app
+	 * @return array{label: string, description: string, summary: string, preview: string}
+	 */
+	private static function appTexts(array $app, string $appId): array {
+		$name = self::trimmedText($app, 'name');
 
-				if (in_array($appId, $enabledApps, true)) {
-					$state = 'enabled';
-				} elseif (isset($installedVersions[$appId])) {
-					$state = 'disabled';
-				} else {
-					$state = 'notInstalled';
-				}
+		return [
+			'label' => $name !== '' ? $name : $appId,
+			'description' => self::trimmedText($app, 'description'),
+			'summary' => self::trimmedText($app, 'summary'),
+			'preview' => self::trimmedText($app, 'preview'),
+		];
+	}
 
-				$installedVersion = '';
-				if ($state !== 'notInstalled') {
-					try {
-						$installedVersion = $appManager->getAppVersion($appId, false);
-					} catch (Exception) {
-						$installedVersion = '';
-					}
-					if ($installedVersion === '') {
-						$installedVersion = $installedVersions[$appId] ?? '';
-					}
-				}
+	/**
+	 * @param array<string, mixed> $app
+	 */
+	private static function trimmedText(array $app, string $key): string {
+		return isset($app[$key]) && is_string($app[$key]) ? trim($app[$key]) : '';
+	}
 
-				return [
-					'id' => $appId,
-					'label' => $name,
-					'description' => $description,
-					'summary' => $summary,
-					'preview' => $preview,
-					'isCore' => in_array($appId, $alwaysEnabledApps, true),
-					'isShipped' => $appManager->isShipped($appId),
-					'boundSourceId' => $binding?->getId(),
-					'manageable' => $env['manageable'],
-					'warning' => $env['warning'],
-					'installedVersion' => $installedVersion === '' ? null : $installedVersion,
-					'state' => $state,
-					'lkg' => $lkgStore->get($appId)?->toArray(),
-				];
-			},
-			$installedApps
-		);
+	/**
+	 * The app's binding, environment, state, installed version and
+	 * last-known-good record for its card.
+	 *
+	 * @param AppLists $lists
+	 * @return array{isCore: bool, isShipped: bool, boundSourceId: ?string, manageable: bool, warning: ?string, installedVersion: ?string, state: 'enabled'|'disabled'|'notInstalled', lkg: ?array{version: string, recordedAt: string, sourceId: ?string}}
+	 */
+	private function appStatus(string $appId, array $lists): array {
+		$binding = $this->bindingStore->get($appId);
+		$env = $this->appEnvironment($appId);
+		$installedVersion = $this->installedVersion($appId, $lists);
+
+		return [
+			'isCore' => in_array($appId, $lists['core'], true),
+			'isShipped' => $this->appManager->isShipped($appId),
+			'boundSourceId' => $binding?->getId(),
+			'manageable' => $env['manageable'],
+			'warning' => $env['warning'],
+			'installedVersion' => $installedVersion === '' ? null : $installedVersion,
+			'state' => self::appState($appId, $lists),
+			'lkg' => $this->lkgStore->get($appId)?->toArray(),
+		];
+	}
+
+	/**
+	 * Whether the app's folder can be managed here (a bind-mounted dev
+	 * checkout that is not writable cannot). When the path is unknown the
+	 * defaults stand; the install-time guard still applies.
+	 *
+	 * @return array{manageable: bool, warning: ?string}
+	 */
+	private function appEnvironment(string $appId): array {
+		try {
+			return $this->environmentCheck->inspect($this->appManager->getAppPath($appId));
+		} catch (\Throwable) {
+			return ['manageable' => true, 'warning' => null];
+		}
+	}
+
+	/**
+	 * @param AppLists $lists
+	 * @return 'enabled'|'disabled'|'notInstalled'
+	 */
+	private static function appState(string $appId, array $lists): string {
+		if (in_array($appId, $lists['enabled'], true)) {
+			return 'enabled';
+		}
+
+		return isset($lists['versions'][$appId]) ? 'disabled' : 'notInstalled';
+	}
+
+	/**
+	 * The installed version of an installed app, from the app manager or else
+	 * from Nextcloud's record of installed versions; '' when there is none.
+	 *
+	 * @param AppLists $lists
+	 */
+	private function installedVersion(string $appId, array $lists): string {
+		if (self::appState($appId, $lists) === 'notInstalled') {
+			return '';
+		}
+		try {
+			$version = $this->appManager->getAppVersion($appId, false);
+		} catch (Exception) {
+			$version = '';
+		}
+
+		return $version !== '' ? $version : ($lists['versions'][$appId] ?? '');
 	}
 
 	/**
