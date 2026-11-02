@@ -12,7 +12,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Pin;
 
-use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\AdminNotice;
+use OCA\Versioniq\Service\NotifiesAdmins;
 use OCA\Versioniq\Service\ResolvesAdminUids;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IGroupManager;
@@ -35,6 +36,7 @@ use Psr\Log\LoggerInterface;
  * @psalm-api
  */
 class PinDriftHandler {
+	use NotifiesAdmins;
 	use ResolvesAdminUids;
 
 	public function __construct(
@@ -75,38 +77,21 @@ class PinDriftHandler {
 			return;
 		}
 
-		$this->notifyAdmins($appId, $pin->version, $installedVersion);
+		$this->notifyAdmins($this->driftNotice($appId, [
+			'pinnedVersion' => $pin->version,
+			'observedVersion' => $installedVersion,
+		]));
 	}
 
-	private function notifyAdmins(string $appId, string $pinnedVersion, string $observedVersion): void {
-		// Links into the Versioniq admin settings page; see "Admins are notified".
-		$link = $this->urlGenerator->linkToRouteAbsolute(
-			'settings.AdminSettings.index',
-			['section' => Application::APP_ID],
-		);
-
-		foreach ($this->adminUids() as $uid) {
-			try {
-				$notification = $this->notificationManager->createNotification();
-				$notification
-					->setApp(Application::APP_ID)
-					->setUser($uid)
-					->setDateTime($this->timeFactory->getDateTime())
-					->setObject('pin_drift', $appId)
-					->setSubject('pin_drift', [
-						'app' => $appId,
-						'pinnedVersion' => $pinnedVersion,
-						'observedVersion' => $observedVersion,
-					])
-					->setLink($link);
-				$this->notificationManager->notify($notification);
-			} catch (\Throwable $error) {
-				$this->logger->warning('PinDriftHandler: failed to raise drift notification', [
-					'appId' => $appId,
-					'uid' => $uid,
-					'message' => $error->getMessage(),
-				]);
-			}
-		}
+	/**
+	 * The `pin_drift` notice for an app; see "Admins are notified".
+	 *
+	 * @param array{pinnedVersion: string, observedVersion: string} $versions
+	 */
+	private function driftNotice(string $appId, array $versions): AdminNotice {
+		return (new AdminNotice())
+			->withObject('pin_drift', $appId)
+			->withSubject('pin_drift', ['app' => $appId] + $versions)
+			->loggedAs('PinDriftHandler: failed to raise drift notification', ['appId' => $appId]);
 	}
 }

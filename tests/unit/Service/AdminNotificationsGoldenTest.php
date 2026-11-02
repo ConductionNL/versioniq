@@ -30,6 +30,8 @@ use RuntimeException;
  *
  * @covers \OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier
  * @covers \OCA\Versioniq\Service\Pin\PinDriftHandler
+ * @uses \OCA\Versioniq\Service\AdminNotice
+ * @uses \OCA\Versioniq\Service\NotifiesAdmins
  * @uses \OCA\Versioniq\Service\Pin\Pin
  * @uses \OCA\Versioniq\Service\Pin\PinDrift
  */
