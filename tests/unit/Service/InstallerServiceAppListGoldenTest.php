@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service;
 
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+
 use Exception;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\ExternalReleaseInstallerService;
@@ -18,6 +20,7 @@ use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceRegistry;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\AppPathNotFoundException;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -47,6 +50,8 @@ use RuntimeException;
  * @uses \OCA\Versioniq\Service\Source\SourceBinding
  */
 final class InstallerServiceAppListGoldenTest extends TestCase {
+	use BuildsByParameterName;
+
 	private const FIXTURE = __DIR__ . '/fixtures/installed-apps.golden.json';
 
 	private const BASE = [
@@ -159,24 +164,24 @@ final class InstallerServiceAppListGoldenTest extends TestCase {
 	 * @param array<string, mixed> $case
 	 */
 	private function service(array $case): InstallerService {
-		$service = new InstallerService(
-			$this->appManager($case),
-			$this->createMock(IConfig::class),
-			$this->createMock(IAppConfig::class),
-			$this->createMock(SourceRegistry::class),
-			$this->bindingStore($case),
-			$this->createMock(TrustedSourceList::class),
-			$this->createMock(SelectedReleaseInstallerService::class),
-			$this->createMock(ExternalReleaseInstallerService::class),
-			new FailureClassifier($this->createMock(IFactory::class)),
-			$this->environmentCheck($case),
-			$this->createMock(PinStore::class),
-			$this->createMock(IUserSession::class),
-			$this->createMock(ITimeFactory::class),
-			$this->lkgStore($case),
-			$this->createMock(ArtifactCache::class),
-			$this->createMock(IEventDispatcher::class),
-		);
+		$service = $this->buildByName(InstallerService::class, [
+			'appManager' => $this->appManager($case),
+			'config' => $this->createMock(IConfig::class),
+			'appConfig' => $this->createMock(IAppConfig::class),
+			'sourceRegistry' => $this->createMock(SourceRegistry::class),
+			'bindingStore' => $this->bindingStore($case),
+			'trustedSources' => $this->createMock(TrustedSourceList::class),
+			'signedInstaller' => $this->createMock(SelectedReleaseInstallerService::class),
+			'externalInstaller' => $this->createMock(ExternalReleaseInstallerService::class),
+			'failureClassifier' => new FailureClassifier($this->createMock(IFactory::class)),
+			'environmentCheck' => $this->environmentCheck($case),
+			'pinStore' => $this->createMock(PinStore::class),
+			'userSession' => $this->createMock(IUserSession::class),
+			'timeFactory' => $this->createMock(ITimeFactory::class),
+			'lkgStore' => $this->lkgStore($case),
+			'artifactCache' => $this->createMock(ArtifactCache::class),
+			'eventDispatcher' => $this->createMock(IEventDispatcher::class),
+		]);
 
 		return $service;
 	}

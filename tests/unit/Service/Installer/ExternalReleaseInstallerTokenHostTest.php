@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Installer;
 
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
+
 use Exception;
 use OCA\Versioniq\Db\Pat;
 use OCA\Versioniq\Db\PatMapper;
@@ -17,6 +19,7 @@ use OCA\Versioniq\Service\Pat\PatResolver;
 use OCA\Versioniq\Service\Source\ForgeRegistry;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
 use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
@@ -37,6 +40,8 @@ use Throwable;
  * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-1.3
  */
 final class ExternalReleaseInstallerTokenHostTest extends TestCase {
+	use BuildsByParameterName;
+
 	/** @var list<array{url: string, authorization: ?string}> */
 	private array $requests = [];
 	private string $tempDir;
@@ -100,23 +105,23 @@ final class ExternalReleaseInstallerTokenHostTest extends TestCase {
 		$artifactCache = $this->createMock(ArtifactCache::class);
 		$artifactCache->method('fetch')->willReturn(['content' => 'not an archive']);
 
-		$installer = new ExternalReleaseInstallerService(
-			$clientService,
-			$tempManager,
-			$this->createMock(IAppManager::class),
-			$this->createMock(IConfig::class),
-			$this->createMock(IAppConfig::class),
-			$this->createMock(InstallFinalizer::class),
-			$this->createMock(TrustedSourceList::class),
-			$this->createMock(LoggerInterface::class),
-			new PatResolver($mapper),
-			$patManager,
-			$userSession,
-			$this->createMock(AuditLogger::class),
-			$this->createMock(MigrationDiffer::class),
-			$artifactCache,
-			new ForgeRegistry($this->createMock(IAppConfig::class)),
-		);
+		$installer = $this->buildByName(ExternalReleaseInstallerService::class, [
+			'clientService' => $clientService,
+			'tempManager' => $tempManager,
+			'appManager' => $this->createMock(IAppManager::class),
+			'config' => $this->createMock(IConfig::class),
+			'appConfig' => $this->createMock(IAppConfig::class),
+			'finalizer' => $this->createMock(InstallFinalizer::class),
+			'trustedSources' => $this->createMock(TrustedSourceList::class),
+			'logger' => $this->createMock(LoggerInterface::class),
+			'patResolver' => new PatResolver($mapper),
+			'patManager' => $patManager,
+			'userSession' => $userSession,
+			'auditLogger' => $this->createMock(AuditLogger::class),
+			'migrationDiffer' => $this->createMock(MigrationDiffer::class),
+			'artifactCache' => $artifactCache,
+			'forgeRegistry' => new ForgeRegistry($this->createMock(IAppConfig::class)),
+		]);
 
 		try {
 			$installer->installFromExternalRelease('privateapp', '1.2.0', $release, SourceBinding::github('ConductionNL', 'privateapp'));

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service;
 
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+
 use Exception;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
@@ -20,6 +22,7 @@ use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\SourceRegistry;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -33,6 +36,8 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 final class InstallerServiceTest extends TestCase {
+	use BuildsByParameterName;
+
 	private IAppManager&MockObject $appManager;
 	private IConfig&MockObject $config;
 	private IAppConfig&MockObject $appConfig;
@@ -92,24 +97,24 @@ final class InstallerServiceTest extends TestCase {
 	}
 
 	private function service(): InstallerService {
-		return new InstallerService(
-			$this->appManager,
-			$this->config,
-			$this->appConfig,
-			$this->sourceRegistry,
-			$this->bindingStore,
-			$this->trustedSources,
-			$this->signedInstaller,
-			$this->externalInstaller,
-			$this->failureClassifier,
-			$this->environmentCheck,
-			$this->pinStore,
-			$this->userSession,
-			$this->timeFactory,
-			$this->lkgStore,
-			$this->artifactCache,
-			$this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
-		);
+		return $this->buildByName(InstallerService::class, [
+			'appManager' => $this->appManager,
+			'config' => $this->config,
+			'appConfig' => $this->appConfig,
+			'sourceRegistry' => $this->sourceRegistry,
+			'bindingStore' => $this->bindingStore,
+			'trustedSources' => $this->trustedSources,
+			'signedInstaller' => $this->signedInstaller,
+			'externalInstaller' => $this->externalInstaller,
+			'failureClassifier' => $this->failureClassifier,
+			'environmentCheck' => $this->environmentCheck,
+			'pinStore' => $this->pinStore,
+			'userSession' => $this->userSession,
+			'timeFactory' => $this->timeFactory,
+			'lkgStore' => $this->lkgStore,
+			'artifactCache' => $this->artifactCache,
+			'eventDispatcher' => $this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
+		]);
 	}
 
 	private function stubSignedSourceReturning(): SourceInterface&MockObject {

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service;
 
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\Service\ExternalReleaseInstallerService;
 use OCA\Versioniq\Service\Installer\EnvironmentCheck;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
@@ -16,6 +18,7 @@ use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\SourceRegistry;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -36,6 +39,8 @@ use PHPUnit\Framework\TestCase;
  * @spec openspec/specs/external-sources/spec.md
  */
 final class InstallerServiceShaPinningTest extends TestCase {
+	use BuildsByParameterName;
+
 	private const SHA_A = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 	private const SHA_B = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 
@@ -98,24 +103,24 @@ final class InstallerServiceShaPinningTest extends TestCase {
 	}
 
 	private function service(): InstallerService {
-		return new InstallerService(
-			$this->appManager,
-			$this->config,
-			$this->appConfig,
-			$this->sourceRegistry,
-			$this->bindingStore,
-			$this->trustedSources,
-			$this->signedInstaller,
-			$this->externalInstaller,
-			$this->failureClassifier,
-			$this->environmentCheck,
-			$this->createMock(PinStore::class),
-			$this->userSession,
-			$this->createMock(ITimeFactory::class),
-			$this->createMock(\OCA\Versioniq\Service\Lkg\LkgStore::class),
-			$this->createMock(\OCA\Versioniq\Service\Cache\ArtifactCache::class),
-			$this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
-		);
+		return $this->buildByName(InstallerService::class, [
+			'appManager' => $this->appManager,
+			'config' => $this->config,
+			'appConfig' => $this->appConfig,
+			'sourceRegistry' => $this->sourceRegistry,
+			'bindingStore' => $this->bindingStore,
+			'trustedSources' => $this->trustedSources,
+			'signedInstaller' => $this->signedInstaller,
+			'externalInstaller' => $this->externalInstaller,
+			'failureClassifier' => $this->failureClassifier,
+			'environmentCheck' => $this->environmentCheck,
+			'pinStore' => $this->createMock(PinStore::class),
+			'userSession' => $this->userSession,
+			'timeFactory' => $this->createMock(ITimeFactory::class),
+			'lkgStore' => $this->createMock(\OCA\Versioniq\Service\Lkg\LkgStore::class),
+			'artifactCache' => $this->createMock(\OCA\Versioniq\Service\Cache\ArtifactCache::class),
+			'eventDispatcher' => $this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
+		]);
 	}
 
 	public function testSuccessfulExternalInstallPersistsTheUpdatedBindingReturnedByTheInstaller(): void {

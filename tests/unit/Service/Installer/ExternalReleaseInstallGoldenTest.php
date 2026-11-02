@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Installer;
 
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
+
 use Error;
 use Exception;
 use OC\Files\FilenameValidator;
@@ -20,6 +22,7 @@ use OCA\Versioniq\Service\Source\ForgeRegistry;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
 use OCA\Versioniq\Service\Source\UntrustedSourceException;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\AppPathNotFoundException;
 use OCP\App\IAppManager;
 use OCP\Http\Client\IClient;
@@ -67,6 +70,8 @@ require_once __DIR__ . '/InstallerGoldenSupport.php';
  * @uses \OCA\Versioniq\Service\Source\UntrustedSourceException
  */
 final class ExternalReleaseInstallGoldenTest extends TestCase {
+	use BuildsByParameterName;
+
 	private const FIXTURE = __DIR__ . '/../fixtures/external-release-install.golden.json';
 
 	private const DOWNLOAD = 'https://github.com/acme/someapp/releases/download/v2.0.0/someapp.tar.gz';
@@ -541,23 +546,23 @@ final class ExternalReleaseInstallGoldenTest extends TestCase {
 			$this->record('cache.store', [$appId, $version, $path, $meta, is_file($path) ? hash_file('sha256', $path) : 'missing']);
 		});
 
-		return new ExternalReleaseInstallerService(
-			$this->clientService($s),
-			$tempManager,
-			$this->appManager($s),
-			$config,
-			$appConfig,
-			$this->finalizer($s),
-			$trusted,
-			$logger,
-			$resolver,
-			$patManager,
-			$userSession,
-			$audit,
-			$differ,
-			$cache,
-			new ForgeRegistry($this->createMock(IAppConfig::class)),
-		);
+		return $this->buildByName(ExternalReleaseInstallerService::class, [
+			'clientService' => $this->clientService($s),
+			'tempManager' => $tempManager,
+			'appManager' => $this->appManager($s),
+			'config' => $config,
+			'appConfig' => $appConfig,
+			'finalizer' => $this->finalizer($s),
+			'trustedSources' => $trusted,
+			'logger' => $logger,
+			'patResolver' => $resolver,
+			'patManager' => $patManager,
+			'userSession' => $userSession,
+			'auditLogger' => $audit,
+			'migrationDiffer' => $differ,
+			'artifactCache' => $cache,
+			'forgeRegistry' => new ForgeRegistry($this->createMock(IAppConfig::class)),
+		]);
 	}
 
 	/**
