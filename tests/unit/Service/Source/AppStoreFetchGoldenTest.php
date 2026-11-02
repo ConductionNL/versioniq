@@ -26,6 +26,7 @@ use ReflectionProperty;
  * fixtures/appstore-fetch.golden.json. Set RECORD_GOLDEN=1 to rewrite it.
  *
  * @covers \OCA\Versioniq\Service\Source\AppStoreSource
+ * @uses \OCA\Versioniq\Service\Source\CatalogueQuery
  */
 final class AppStoreFetchGoldenTest extends TestCase {
 	private const FIXTURE = __DIR__ . '/fixtures/appstore-fetch.golden.json';
