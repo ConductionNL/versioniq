@@ -1043,21 +1043,14 @@ function resetSelectedAppState (): void {
 }
 
 /**
+ * Reloads the selected app's versions, clearing the previous list and, unless
+ * asked to keep it, the last install result.
  *
- * @param preserveInstallResult
+ * @param preserveInstallResult keep the last install result on screen
  */
 async function checkVersions (preserveInstallResult = false): Promise<void> {
 	const appId = selectedApp.value.trim()
-	versions.value = []
-	selectedVersion.value = ''
-	versionFilter.value = ''
-	hasCheckedVersions.value = false
-	if (!preserveInstallResult) {
-		lastInstallDebug.value = []
-		lastInstallResult.value = null
-		hasInstallResult.value = false
-	}
-
+	resetVersionList(preserveInstallResult)
 	if (!appId) {
 		return
 	}
@@ -1068,27 +1061,63 @@ async function checkVersions (preserveInstallResult = false): Promise<void> {
 	installedVersion.value = ''
 
 	try {
-		const url = withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/versions`, withSourceOverride({}, sourceOverride.value))
-		const response = await fetch(apiUrl(url), { headers: { ...ocsHeaders, Accept: 'application/json' } })
-		const payload = await unwrapOcsResponse<{
-			availableVersions?: AppVersion[]
-			versions?: AppVersion[]
-			installedVersion: string | null
-			source?: string
-			sourceId?: string
-			error?: string
-		}>(response)
-		versions.value = payload.availableVersions || payload.versions || []
-		installedVersion.value = payload.installedVersion || ''
-		availableSource.value = payload.sourceId || payload.source || ''
-		errorMessage.value = payload.error ?? ''
-		hasCheckedVersions.value = true
+		applyVersionsPayload(await fetchVersionsPayload(appId))
 	} catch (error) {
 		errorMessage.value = error instanceof Error ? error.message : 'Could not fetch app versions.'
 		availableSource.value = ''
 	} finally {
 		isCheckingVersions.value = false
 	}
+}
+
+type VersionsPayload = {
+	availableVersions?: AppVersion[]
+	versions?: AppVersion[]
+	installedVersion: string | null
+	source?: string
+	sourceId?: string
+	error?: string
+}
+
+/**
+ * Clears the version list and selection, and the last install result unless it is kept.
+ *
+ * @param preserveInstallResult keep the last install result on screen
+ */
+function resetVersionList (preserveInstallResult: boolean): void {
+	versions.value = []
+	selectedVersion.value = ''
+	versionFilter.value = ''
+	hasCheckedVersions.value = false
+	if (!preserveInstallResult) {
+		lastInstallDebug.value = []
+		lastInstallResult.value = null
+		hasInstallResult.value = false
+	}
+}
+
+/**
+ * Fetches the versions of one app, with the source override when one is set.
+ *
+ * @param appId the app to list versions for
+ */
+async function fetchVersionsPayload (appId: string): Promise<VersionsPayload> {
+	const url = withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/versions`, withSourceOverride({}, sourceOverride.value))
+	const response = await fetch(apiUrl(url), { headers: { ...ocsHeaders, Accept: 'application/json' } })
+	return unwrapOcsResponse<VersionsPayload>(response)
+}
+
+/**
+ * Shows a versions answer: the list, the installed version, the source and any error.
+ *
+ * @param payload the versions answer
+ */
+function applyVersionsPayload (payload: VersionsPayload): void {
+	versions.value = payload.availableVersions || payload.versions || []
+	installedVersion.value = payload.installedVersion || ''
+	availableSource.value = payload.sourceId || payload.source || ''
+	errorMessage.value = payload.error ?? ''
+	hasCheckedVersions.value = true
 }
 
 /**
@@ -1312,70 +1341,62 @@ function debugValueToString (value: unknown): string {
 }
 
 /**
+ * The debug value as indented text lines, one per scalar, nesting objects and arrays two spaces deeper.
  *
- * @param value
- * @param depth
+ * @param value the debug value
+ * @param depth the nesting depth of `value`
  */
 function formatDebugLines (value: unknown, depth = 0): string[] {
-	const indent = ' '.repeat(depth * 2)
-	const lines: string[] = []
-
 	if (value === null || value === undefined) {
-		lines.push(`${indent}—`)
-		return lines
-	}
-
-	if (Array.isArray(value)) {
-		if (value.length === 0) {
-			lines.push(`${indent}[]`)
-			return lines
-		}
-
-		value.forEach((entry, index) => {
-			if (entry === null || entry === undefined) {
-				lines.push(`${indent}[${index}]: —`)
-				return
-			}
-
-			if (typeof entry === 'object') {
-				lines.push(`${indent}[${index}]:`)
-				lines.push(...formatDebugLines(entry, depth + 1))
-			} else {
-				lines.push(`${indent}[${index}]: ${debugValueToString(entry)}`)
-			}
-		})
-
-		return lines
+		return [`${' '.repeat(depth * 2)}—`]
 	}
 
 	if (typeof value === 'object') {
-		const objectValue = value as Record<string, unknown>
-		const keys = Object.keys(objectValue)
-		if (keys.length === 0) {
-			lines.push(`${indent}{}`)
-			return lines
-		}
-
-		for (const key of keys) {
-			const nested = objectValue[key]
-			if (nested === null || nested === undefined) {
-				lines.push(`${indent}${key}: —`)
-				continue
-			}
-
-			if (typeof nested === 'object') {
-				lines.push(`${indent}${key}:`)
-				lines.push(...formatDebugLines(nested, depth + 1))
-				continue
-			}
-
-			lines.push(`${indent}${key}: ${debugValueToString(nested)}`)
-		}
-		return lines
+		return formatDebugCollection(value, depth)
 	}
 
-	lines.push(`${indent}${debugValueToString(value)}`)
-	return lines
+	return [`${' '.repeat(depth * 2)}${debugValueToString(value)}`]
+}
+
+/**
+ * The lines of an array (entries labelled by index) or an object (labelled by key); `[]` or `{}` when it is empty.
+ *
+ * @param value the array or object
+ * @param depth the nesting depth of `value`
+ */
+function formatDebugCollection (value: object, depth: number): string[] {
+	const isList = Array.isArray(value)
+	const entries: Array<[string, unknown]> = isList
+		? value.map((entry: unknown, index: number): [string, unknown] => [`[${index}]`, entry])
+		: Object.entries(value)
+	if (entries.length === 0) {
+		return [`${' '.repeat(depth * 2)}${isList ? '[]' : '{}'}`]
+	}
+
+	return entries.flatMap(([label, entry]) => formatDebugEntry(entry, { label, depth }))
+}
+
+/**
+ * One labelled entry of an array or object: a dash for an empty value, the
+ * nested lines for an object or array, else the value after the label.
+ *
+ * @param entry the entry's value
+ * @param at the entry's label and the depth of its parent
+ * @param at.label the array index in brackets, or the object key
+ * @param at.depth the nesting depth of the parent
+ */
+function formatDebugEntry (entry: unknown, at: { label: string, depth: number }): string[] {
+	const prefix = ' '.repeat(at.depth * 2) + at.label
+
+	if (entry === null || entry === undefined) {
+		return [`${prefix}: —`]
+	}
+
+	if (typeof entry === 'object') {
+		return [`${prefix}:`, ...formatDebugLines(entry, at.depth + 1)]
+	}
+
+	return [`${prefix}: ${debugValueToString(entry)}`]
 }
 
 /**
@@ -1408,62 +1429,83 @@ function debugToTextLines (value: unknown): string[] {
 }
 
 /**
+ * How far apart two versions are, counted over the known releases between
+ * them, and in which direction; null when either is missing or both are equal.
  *
- * @param from
- * @param to
+ * @param from the version installed now
+ * @param to the version to install
  */
 function getVersionRangeSummary (from: string, to: string): VersionRangeInfo | null {
 	if (!from || !to || from === to) {
 		return null
 	}
 
-	const direction = compareVersions(to, from)
-	const comparison = direction === 0 ? 0 : (direction > 0 ? 1 : -1)
-	const low = comparison <= 0 ? to : from
-	const high = comparison <= 0 ? from : to
+	const range = orderVersions(from, to)
 
-	const inRange = versions.value.filter((entry) => {
-		return compareVersions(entry.version, low) >= 0 && compareVersions(entry.version, high) <= 0
-	})
+	return { ...rangeSteps(range, releaseSpan(range)), direction: range.comparison > 0 ? 'upgrade' : 'degrade', from, to }
+}
 
-	const majors = new Set<number>()
-	const minors = new Set<string>()
-	for (const entry of inRange) {
-		const parsed = parseVersionCore(entry.version)
-		majors.add(parsed.major)
-		minors.add(`${parsed.major}.${parsed.minor}`)
-	}
-
-	const fromParsed = parseVersionCore(low)
-	const toParsed = parseVersionCore(high)
-	const patch = fromParsed.major === toParsed.major && fromParsed.minor === toParsed.minor
-		? Math.abs(toParsed.patch - fromParsed.patch)
-		: 0
-
-	if (majors.size === 0) {
-		const major = Math.abs(toParsed.major - fromParsed.major)
-		const minor = comparison === 0
-			? 0
-			: (toParsed.major === fromParsed.major ? Math.abs(toParsed.minor - fromParsed.minor) : Math.abs(toParsed.minor - fromParsed.minor))
-
+/**
+ * The major, minor and patch steps of an ordered range: counted over the
+ * known releases in it when there are any, else from the two versions.
+ *
+ * @param range the ordered range
+ * @param range.comparison the sign of the target compared to the installed version
+ * @param range.low the lower version
+ * @param range.high the higher version
+ * @param span the distinct majors and major.minor lines of the known releases in the range
+ * @param span.majors the number of distinct majors
+ * @param span.minors the number of distinct major.minor lines
+ */
+function rangeSteps (range: { comparison: number, low: string, high: string }, span: { majors: number, minors: number }): { major: number, minor: number, patch: number } {
+	const low = parseVersionCore(range.low)
+	const high = parseVersionCore(range.high)
+	const patch = low.major === high.major && low.minor === high.minor ? Math.abs(high.patch - low.patch) : 0
+	if (span.majors === 0) {
 		return {
-			major,
-			minor,
+			major: Math.abs(high.major - low.major),
+			minor: range.comparison === 0 ? 0 : Math.abs(high.minor - low.minor),
 			patch,
-			direction: comparison > 0 ? 'upgrade' : 'degrade',
-			from,
-			to,
 		}
 	}
 
-	return {
-		major: Math.max(0, majors.size - 1),
-		minor: Math.max(0, minors.size - 1),
-		patch,
-		direction: comparison > 0 ? 'upgrade' : 'degrade',
-		from,
-		to,
+	return { major: Math.max(0, span.majors - 1), minor: Math.max(0, span.minors - 1), patch }
+}
+
+/**
+ * The two versions in ascending order, with the sign of `to` compared to `from`.
+ *
+ * @param from the version installed now
+ * @param to the version to install
+ */
+function orderVersions (from: string, to: string): { comparison: number, low: string, high: string } {
+	const direction = compareVersions(to, from)
+	const comparison = direction === 0 ? 0 : (direction > 0 ? 1 : -1)
+
+	return comparison <= 0
+		? { comparison, low: to, high: from }
+		: { comparison, low: from, high: to }
+}
+
+/**
+ * How many distinct majors and major.minor lines the known releases in the range cover.
+ *
+ * @param range the ordered range
+ * @param range.low the lower version
+ * @param range.high the higher version
+ */
+function releaseSpan (range: { low: string, high: string }): { majors: number, minors: number } {
+	const majors = new Set<number>()
+	const minors = new Set<string>()
+	for (const entry of versions.value) {
+		if (compareVersions(entry.version, range.low) >= 0 && compareVersions(entry.version, range.high) <= 0) {
+			const parsed = parseVersionCore(entry.version)
+			majors.add(parsed.major)
+			minors.add(`${parsed.major}.${parsed.minor}`)
+		}
 	}
+
+	return { majors: majors.size, minors: minors.size }
 }
 
 const selectedVersionRange = computed(() => {
