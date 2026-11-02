@@ -69,7 +69,11 @@ class PatValidator {
 	 *
 	 * @spec openspec/specs/pat-management/spec.md
 	 */
-	public function validate(string $token, string $forge = ForgeRegistry::FORGE_GITHUB): ValidationResult {
+	public function validate(
+		#[\SensitiveParameter]
+		string $token,
+		string $forge = ForgeRegistry::FORGE_GITHUB,
+	): ValidationResult {
 		// Fail closed on an unknown forge: ForgeRegistry::get() throws
 		// InvalidArgumentException, which the OCS base controller does not catch
 		// and would surface as an HTTP 500. Reject in-band instead (-> HTTP 400).

@@ -174,4 +174,11 @@ final class PatValidatorTest extends TestCase {
 		$this->assertFalse($result->ok);
 		$this->assertSame('Token is invalid or revoked.', $result->error);
 	}
+
+	public function testValidateKeepsTheTokenOutOfStackTraces(): void {
+		$token = (new \ReflectionMethod(PatValidator::class, 'validate'))->getParameters()[0];
+
+		$this->assertSame('token', $token->getName());
+		$this->assertCount(1, $token->getAttributes(\SensitiveParameter::class));
+	}
 }
