@@ -27,9 +27,9 @@ use OCA\Versioniq\Service\Connection\ConnectionReportService;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
 use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
 use OCA\Versioniq\Service\InstallerService;
+use OCA\Versioniq\Service\Pat\NewPat;
 use OCA\Versioniq\Service\Pat\PatDeeplinkBuilder;
 use OCA\Versioniq\Service\Pat\PatExpiryEvaluator;
-use OCA\Versioniq\Service\Pat\NewPat;
 use OCA\Versioniq\Service\Pat\PatManager;
 use OCA\Versioniq\Service\Pat\PatValidator;
 use OCA\Versioniq\Service\Pin\Pin;
@@ -1106,9 +1106,7 @@ class ApiController extends OCSController {
 		}
 
 		// Forgejo and Gitea tokens are opaque; GitHub tokens are classified by prefix.
-		$kind = $params['forge'] !== SourceBinding::FORGE_GITHUB
-			? Pat::KIND_FORGE_TOKEN
-			: $this->patValidator->detectKind($params['token']);
+		$kind = $params['forge'] !== SourceBinding::FORGE_GITHUB ? Pat::KIND_FORGE_TOKEN : $this->patValidator->detectKind($params['token']);
 		$new = (new NewPat($user->getUID(), $result))
 			->withForge($params['forge'])
 			->describedAs($params['label'], $params['targetPattern'])
