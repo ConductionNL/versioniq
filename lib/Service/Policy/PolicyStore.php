@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Policy;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Settings\AppConfigJsonRecords;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
 
@@ -26,7 +27,13 @@ use Psr\Log\LoggerInterface;
  * @psalm-api
  */
 class PolicyStore {
+	/** @use AppConfigJsonRecords<Policy> */
+	use AppConfigJsonRecords;
+
 	private const KEY_PREFIX = 'policy.';
+	private const JSON_DEPTH = 8;
+	private const MALFORMED_LOG = 'PolicyStore: malformed policy JSON, treating as none';
+	private const INVALID_LOG = 'PolicyStore: invalid policy payload, treating as none';
 
 	public function __construct(
 		private IAppConfig $config,
@@ -40,12 +47,7 @@ class PolicyStore {
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 */
 	public function get(string $appId): ?Policy {
-		$raw = $this->config->getValueString(Application::APP_ID, $this->key($appId), '');
-		if ($raw === '') {
-			return null;
-		}
-
-		return $this->decode($appId, $raw);
+		return $this->readRecord($appId);
 	}
 
 	/**
@@ -66,26 +68,7 @@ class PolicyStore {
 	 * @return array<string, Policy>
 	 */
 	public function all(): array {
-		$values = $this->config->getAllValues(Application::APP_ID, self::KEY_PREFIX);
-		$policies = [];
-		foreach ($values as $key => $value) {
-			if (!str_starts_with($key, self::KEY_PREFIX)) {
-				continue;
-			}
-			if (!is_string($value) || $value === '') {
-				continue;
-			}
-			$appId = substr($key, strlen(self::KEY_PREFIX));
-			if ($appId === '') {
-				continue;
-			}
-			$policy = $this->decode($appId, $value);
-			if ($policy !== null) {
-				$policies[$appId] = $policy;
-			}
-		}
-
-		return $policies;
+		return $this->readAllRecords();
 	}
 
 	/**
@@ -94,11 +77,7 @@ class PolicyStore {
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 */
 	public function set(string $appId, Policy $policy): void {
-		$this->config->setValueString(
-			Application::APP_ID,
-			$this->key($appId),
-			json_encode($policy->toArray(), JSON_THROW_ON_ERROR)
-		);
+		$this->writeRecord($appId, $policy->toArray());
 	}
 
 	/**
@@ -110,35 +89,10 @@ class PolicyStore {
 		$this->config->deleteKey(Application::APP_ID, $this->key($appId));
 	}
 
-	private function decode(string $appId, string $raw): ?Policy {
-		try {
-			$decoded = json_decode($raw, true, 8, JSON_THROW_ON_ERROR);
-		} catch (\JsonException $error) {
-			$this->logger->warning('PolicyStore: malformed policy JSON, treating as none', [
-				'appId' => $appId,
-				'message' => $error->getMessage(),
-			]);
-
-			return null;
-		}
-
-		if (!is_array($decoded)) {
-			return null;
-		}
-
-		try {
-			return Policy::fromArray($decoded);
-		} catch (\InvalidArgumentException $error) {
-			$this->logger->warning('PolicyStore: invalid policy payload, treating as none', [
-				'appId' => $appId,
-				'message' => $error->getMessage(),
-			]);
-
-			return null;
-		}
-	}
-
-	private function key(string $appId): string {
-		return self::KEY_PREFIX . $appId;
+	/**
+	 * @param array<array-key, mixed> $payload
+	 */
+	private function hydrate(array $payload): Policy {
+		return Policy::fromArray($payload);
 	}
 }
