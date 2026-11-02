@@ -51,8 +51,15 @@ require_once __DIR__ . '/InstallerGoldenSupport.php';
  *
  * @covers \OCA\Versioniq\Service\ExternalReleaseInstallerService
  * @uses \OCA\Versioniq\Db\Pat
+ * @uses \OCA\Versioniq\Service\Installer\ArchiveCheck
+ * @uses \OCA\Versioniq\Service\Installer\ExternalInstall
+ * @uses \OCA\Versioniq\Service\Installer\ExternalInstallOptions
+ * @uses \OCA\Versioniq\Service\Installer\ExternalInstallRequest
+ * @uses \OCA\Versioniq\Service\Installer\ExternalInstallRun
  * @uses \OCA\Versioniq\Service\Installer\InstallFailure
+ * @uses \OCA\Versioniq\Service\Installer\ReleaseDownload
  * @uses \OCA\Versioniq\Service\Installer\ShaMismatchException
+ * @uses \OCA\Versioniq\Service\Installer\StagedRelease
  * @uses \OCA\Versioniq\Service\Source\ForgeRegistry
  * @uses \OCA\Versioniq\Service\Source\Forge
  * @uses \OCA\Versioniq\Service\Source\SourceBinding

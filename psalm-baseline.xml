@@ -129,13 +129,6 @@
       <code><![CDATA[$projected[$field]]]></code>
     </MixedAssignment>
   </file>
-  <file src="lib/Service/ExternalReleaseInstallerService.php">
-    <RedundantCondition>
-      <code><![CDATA[$this->lastArchiveMeta !== null]]></code>
-      <code><![CDATA[$this->lastArchivePath !== null]]></code>
-      <code><![CDATA[$this->lastArchivePath !== null && $this->lastArchiveMeta !== null]]></code>
-    </RedundantCondition>
-  </file>
   <file src="lib/Service/Installer/FailureClassifier.php">
     <RedundantCast>
       <code><![CDATA[(string)$this->l10n()->t(
