@@ -14,7 +14,6 @@ namespace OCA\Versioniq\Service;
 
 use Exception;
 use OC\Archive\TAR;
-use OC\Files\FilenameValidator;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
@@ -23,6 +22,7 @@ use OCA\Versioniq\Service\Installer\InstallFailure;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
 use OCA\Versioniq\Service\Installer\MigrationDiffer;
 use OCA\Versioniq\Service\Installer\ReleaseTarget;
+use OCA\Versioniq\Service\Installer\ReplacesAppFolder;
 use OCA\Versioniq\Service\Installer\SignedInstall;
 use OCA\Versioniq\Service\Installer\SignedRelease;
 use OCA\Versioniq\Service\Installer\SignedReleaseRun;
@@ -45,6 +45,8 @@ use phpseclib3\File\X509 as X509V3;
  * @psalm-api
  */
 class SelectedReleaseInstallerService {
+	use ReplacesAppFolder;
+
 	/** @var array<int, mixed> */
 	private array $debug = [];
 
@@ -769,24 +771,6 @@ class SelectedReleaseInstallerService {
 		$this->markFilesystemUpdated($destination);
 	}
 
-	private function revertCopy(string $destination, ?string $backupDestination): void {
-		if ($backupDestination !== null) {
-			$this->restoreFromBackup($destination, $backupDestination);
-		} elseif (is_dir($destination)) {
-			$this->rmdirr($destination);
-		}
-	}
-
-	/**
-	 * Clears the opcode cache so the new app files load, and logs the swap.
-	 */
-	private function markFilesystemUpdated(string $destination): void {
-		if (function_exists('opcache_reset')) {
-			opcache_reset();
-		}
-		$this->addDebug('filesystem-updated', ['destination' => $destination]);
-	}
-
 	/**
 	 * Moves the live app folder aside before the new files are copied in.
 	 *
@@ -806,129 +790,6 @@ class SelectedReleaseInstallerService {
 			return null;
 		}
 
-		if (!is_dir($destination)) {
-			return null;
-		}
-
-		$backupDestination = $destination . '.appversion-backup';
-		if (!rename($destination, $backupDestination)) {
-			throw new Exception('Could not backup existing app folder before replacement.');
-		}
-
-		return $backupDestination;
-	}
-
-	/**
-	 * Restores the previous app files from the retained backup after a post-swap
-	 * failure. Returns whether the restore completed cleanly.
-	 */
-	private function restoreFromBackup(string $destination, ?string $backupDestination): bool {
-		if ($backupDestination === null || !is_dir($backupDestination)) {
-			return false;
-		}
-		try {
-			if (is_dir($destination)) {
-				$this->rmdirr($destination);
-			}
-
-			return rename($backupDestination, $destination);
-		} catch (\Throwable) {
-			return false;
-		}
-	}
-
-	/**
-	 * Finds the single top-level folder inside a TAR extraction path.
-	 *
-	 * @param string $path
-	 * @return string|null
-	 */
-	private function findSingleDirectory(string $path): ?string {
-		$entries = scandir($path);
-		if (!is_array($entries)) {
-			return null;
-		}
-
-		$dirs = array_values(array_filter(
-			$entries,
-			static fn (string $entry): bool => $entry !== '.' && $entry !== '..' && is_dir($path . '/' . $entry)
-		));
-
-		if (count($dirs) !== 1) {
-			return null;
-		}
-
-		return $path . '/' . $dirs[0];
-	}
-
-	/**
-	 * Recursively copies extracted app files to destination.
-	 *
-	 * @param string $source
-	 * @param string $destination
-	 * @throws Exception
-	 */
-	private function copyRecursive(string $source, string $destination): void {
-		if (!is_dir($source)) {
-			throw new Exception('Invalid extracted app source folder.');
-		}
-
-		if (!mkdir($destination, 0777, true) && !is_dir($destination)) {
-			throw new Exception('Could not create destination folder.');
-		}
-
-		$items = scandir($source);
-		if (!is_array($items)) {
-			throw new Exception('Could not read extracted folder contents.');
-		}
-
-		$filenameValidator = Server::get(FilenameValidator::class);
-		foreach ($items as $item) {
-			if ($item === '.' || $item === '..') {
-				continue;
-			}
-
-			$sourceItem = $source . '/' . $item;
-			$destinationItem = $destination . '/' . $item;
-			if (is_dir($sourceItem)) {
-				$this->copyRecursive($sourceItem, $destinationItem);
-			} elseif (is_file($sourceItem)) {
-				if (!$filenameValidator->isForbidden($sourceItem)) {
-					if (!copy($sourceItem, $destinationItem)) {
-						throw new Exception('Could not copy app file "' . $item . '".');
-					}
-				}
-			}
-		}
-	}
-
-	/**
-	 * Recursively deletes a directory on the local filesystem (temp/backup dirs),
-	 * replacing the deprecated \OCP\Files::rmdirr helper.
-	 *
-	 * @param string $dir
-	 */
-	private function rmdirr(string $dir): void {
-		if (!is_dir($dir)) {
-			if (file_exists($dir) || is_link($dir)) {
-				@unlink($dir);
-			}
-
-			return;
-		}
-
-		/** @var \Iterator<string, \SplFileInfo> $iterator */
-		$iterator = new \RecursiveIteratorIterator(
-			new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
-			\RecursiveIteratorIterator::CHILD_FIRST
-		);
-		foreach ($iterator as $item) {
-			if ($item->isDir() && !$item->isLink()) {
-				@rmdir($item->getPathname());
-			} else {
-				@unlink($item->getPathname());
-			}
-		}
-		@rmdir($dir);
+		return $this->backupExisting($destination);
 	}
 }

@@ -50,6 +50,7 @@ require_once __DIR__ . '/InstallerGoldenSupport.php';
  * rewrite the fixture.
  *
  * @covers \OCA\Versioniq\Service\ExternalReleaseInstallerService
+ * @covers \OCA\Versioniq\Service\Installer\ReplacesAppFolder
  * @uses \OCA\Versioniq\Db\Pat
  * @uses \OCA\Versioniq\Service\Installer\ArchiveCheck
  * @uses \OCA\Versioniq\Service\Installer\ExternalInstall

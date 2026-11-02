@@ -45,6 +45,7 @@ require_once __DIR__ . '/InstallerGoldenSupport.php';
  * Set RECORD_GOLDEN=1 to rewrite the fixture.
  *
  * @covers \OCA\Versioniq\Service\SelectedReleaseInstallerService
+ * @covers \OCA\Versioniq\Service\Installer\ReplacesAppFolder
  * @uses \OCA\Versioniq\Service\Installer\InstalledFolder
  * @uses \OCA\Versioniq\Service\Installer\InstallFailure
  * @uses \OCA\Versioniq\Service\Installer\ReleaseTarget
@@ -254,6 +255,77 @@ final class SelectedReleaseInstallGoldenTest extends TestCase {
 				"scenario {$name}",
 			);
 		}
+	}
+
+	/**
+	 * @return array<string, array{0: array<string, mixed>, 1: array{outcome: string, apps: array<string, ?string>}}>
+	 */
+	public static function staleBackupCases(): array {
+		$old = ['someapp' => null, 'someapp/lib' => null, 'someapp/lib/Plugin.php' => "<?php // old\n", 'someapp/old.txt' => 'old'];
+		$new = [
+			'someapp' => null,
+			'someapp/appinfo' => null,
+			'someapp/appinfo/info.xml' => "<?xml version=\"1.0\"?>\n<info><id>someapp</id><version>2.0.0</version><name>Some App</name></info>\n",
+			'someapp/lib' => null,
+			'someapp/lib/Plugin.php' => "<?php // new\n",
+			'someapp/lib/forbidden.txt' => 'skip me',
+		];
+
+		return [
+			'install succeeds' => [[], ['outcome' => 'installed', 'apps' => $new]],
+			'copy fails' => [['copy' => 'throw'], ['outcome' => 'reverted', 'apps' => $old]],
+			'finalize fails' => [['finalize' => 'exception'], ['outcome' => 'installed-but-broken', 'apps' => $old]],
+		];
+	}
+
+	/**
+	 * A backup folder left behind by an earlier run is removed before the live
+	 * folder is moved aside: the install goes ahead, a failure restores the
+	 * previous files (not the stale ones), and no backup folder remains.
+	 *
+	 * @dataProvider staleBackupCases
+	 * @param array<string, mixed> $over
+	 * @param array{outcome: string, apps: array<string, ?string>} $expected
+	 */
+	public function testAStaleBackupFolderIsReplaced(array $over, array $expected): void {
+		if (!InstallerGoldenSupport::isUnitOnly()) {
+			$this->markTestSkipped('The golden runs on the unit-only bootstrap, whose archive, X509 classes and server container it controls.');
+		}
+
+		$case = $this->runScenario(array_replace(self::BASE, ['backupExists' => true], $over));
+
+		$outcome = $case['result']['status'] ?? $case['error']['outcome'] ?? $case['error']['message'];
+		self::assertSame($expected['outcome'], $outcome);
+		self::assertSame($expected['apps'], $case['apps']);
+		self::assertStringNotContainsString('stale.txt', (string)json_encode($case['calls']));
+		if (isset($case['error'])) {
+			self::assertSame('clean', $case['error']['restore']);
+		}
+	}
+
+	/**
+	 * openssl_verify() returns -1, not 0, when it cannot check a signature at
+	 * all (here: bytes that are no DER signature, under an EC certificate).
+	 * Only 1 means verified, so the install stops and the old files stay.
+	 */
+	public function testASignatureCheckErrorIsNotAccepted(): void {
+		if (!InstallerGoldenSupport::isUnitOnly()) {
+			$this->markTestSkipped('The golden runs on the unit-only bootstrap, whose archive, X509 classes and server container it controls.');
+		}
+		$key = openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1']);
+		self::assertInstanceOf(\OpenSSLAsymmetricKey::class, $key);
+		$csr = openssl_csr_new(['commonName' => 'someapp'], $key, ['digest_alg' => 'sha256']);
+		self::assertNotFalse($csr);
+		$cert = openssl_csr_sign($csr, null, $key, 1, ['digest_alg' => 'sha256']);
+		self::assertNotFalse($cert);
+		openssl_x509_export($cert, $pem);
+		self::assertSame(-1, openssl_verify('probe', 'xx', (string)$pem, OPENSSL_ALGO_SHA512));
+
+		$release = ['certificate' => (string)$pem, 'signature' => base64_encode('xx')] + self::BASE['release'];
+		$case = $this->runScenario(array_replace(self::BASE, ['release' => $release]));
+
+		self::assertSame('Release signature verification failed.', $case['error']['message'] ?? null);
+		self::assertSame(['someapp' => null, 'someapp/lib' => null, 'someapp/lib/Plugin.php' => "<?php // old\n", 'someapp/old.txt' => 'old'], $case['apps']);
 	}
 
 	/**
