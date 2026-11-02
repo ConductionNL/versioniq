@@ -8,6 +8,7 @@ use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Lkg\Lkg;
 use OCA\Versioniq\Service\Lkg\LkgStore;
 use OCA\Versioniq\Service\Pin\Pin;
+use OCA\Versioniq\Service\Pin\PinDrift;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyStore;
@@ -28,6 +29,8 @@ use Psr\Log\LoggerInterface;
  * @covers \OCA\Versioniq\Service\Policy\PolicyStore
  * @uses \OCA\Versioniq\Service\Lkg\Lkg
  * @uses \OCA\Versioniq\Service\Pin\Pin
+ * @uses \OCA\Versioniq\Service\Pin\PinDrift
+ * @uses \OCA\Versioniq\Service\Settings\AppConfigJsonRecords
  * @uses \OCA\Versioniq\Service\Policy\Policy
  */
 final class JsonRecordStoresGoldenTest extends TestCase {
@@ -78,8 +81,8 @@ final class JsonRecordStoresGoldenTest extends TestCase {
 			$cases["policy levelFor $appId"] = static fn (self $t): mixed => $t->policy()->levelFor($appId);
 			$cases["pin clear $appId"] = static fn (self $t): mixed => $t->pin()->clear($appId, 'bob');
 			$cases["policy clear $appId"] = static fn (self $t): mixed => $t->policy()->clear($appId);
-			$cases["pin markDrift $appId"] = static fn (self $t): mixed => $t->pin()->markDrift($appId, '2.4.0', '2026-07-01T00:00:00+00:00');
-			$cases["pin markDrift new $appId"] = static fn (self $t): mixed => $t->pin()->markDrift($appId, '2.6.0', '2026-07-02T00:00:00+00:00');
+			$cases["pin markDrift $appId"] = static fn (self $t): mixed => $t->pin()->markDrift($appId, new PinDrift('2.4.0', '2026-07-01T00:00:00+00:00'));
+			$cases["pin markDrift new $appId"] = static fn (self $t): mixed => $t->pin()->markDrift($appId, new PinDrift('2.6.0', '2026-07-02T00:00:00+00:00'));
 		}
 		$cases['pin all'] = static fn (self $t): mixed => $t->pin()->all();
 		$cases['policy all'] = static fn (self $t): mixed => $t->policy()->all();

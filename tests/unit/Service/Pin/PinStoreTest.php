@@ -7,6 +7,7 @@ namespace OCA\Versioniq\Tests\Unit\Service\Pin;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Pin\Pin;
+use OCA\Versioniq\Service\Pin\PinDrift;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCP\IAppConfig;
 use PHPUnit\Framework\TestCase;
@@ -165,7 +166,7 @@ final class PinStoreTest extends TestCase {
 
 		$store = new PinStore($config, $auditLogger, $this->logger());
 
-		$this->assertFalse($store->markDrift('openregister', '2.5.0', '2026-06-12T00:00:00+00:00'));
+		$this->assertFalse($store->markDrift('openregister', new PinDrift('2.5.0', '2026-06-12T00:00:00+00:00')));
 	}
 
 	public function testMarkDriftRecordsANewDriftAndAuditsAsSystem(): void {
@@ -184,7 +185,7 @@ final class PinStoreTest extends TestCase {
 
 		$store = new PinStore($config, $auditLogger, $this->logger());
 
-		$this->assertTrue($store->markDrift('openregister', '2.5.0', '2026-06-12T00:00:00+00:00'));
+		$this->assertTrue($store->markDrift('openregister', new PinDrift('2.5.0', '2026-06-12T00:00:00+00:00')));
 	}
 
 	public function testMarkDriftIsIdempotentForTheSameDriftedVersion(): void {
@@ -203,6 +204,6 @@ final class PinStoreTest extends TestCase {
 
 		$store = new PinStore($config, $auditLogger, $this->logger());
 
-		$this->assertFalse($store->markDrift('openregister', '2.5.0', '2026-06-13T00:00:00+00:00'));
+		$this->assertFalse($store->markDrift('openregister', new PinDrift('2.5.0', '2026-06-13T00:00:00+00:00')));
 	}
 }
