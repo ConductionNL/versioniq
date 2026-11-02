@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\BackgroundJob;
 
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\BackgroundJob\AutoUpdateJob;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
@@ -14,6 +16,7 @@ use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyStore;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
 use PHPUnit\Framework\TestCase;
@@ -21,6 +24,8 @@ use Psr\Log\LoggerInterface;
 use ReflectionMethod;
 
 final class AutoUpdateJobTest extends TestCase {
+	use BuildsByParameterName;
+
 	private function timeFactory(string $now = '2026-07-23T02:00:00'): ITimeFactory {
 		$time = $this->createMock(ITimeFactory::class);
 		$time->method('getDateTime')->willReturn(new \DateTime($now));
@@ -54,23 +59,26 @@ final class AutoUpdateJobTest extends TestCase {
 	 * @param array<string, mixed> $mocks
 	 */
 	private function buildJob(array $mocks, ITimeFactory $time): AutoUpdateJob {
-		return new AutoUpdateJob(
-			$time,
-			$mocks['policyStore'],
-			$mocks['pinStore'],
-			$mocks['installerService'],
-			$mocks['appManager'],
-			$mocks['candidateSelector'],
-			$mocks['attemptLedger'],
-			$mocks['settingsStore'],
-			$mocks['notifier'],
-			$mocks['logger'],
-		);
+		return $this->buildByName(AutoUpdateJob::class, [
+			'time' => $time,
+			'policyStore' => $mocks['policyStore'],
+			'pinStore' => $mocks['pinStore'],
+			'installerService' => $mocks['installerService'],
+			'appManager' => $mocks['appManager'],
+			'candidateSelector' => $mocks['candidateSelector'],
+			'attemptLedger' => $mocks['attemptLedger'],
+			'settingsStore' => $mocks['settingsStore'],
+			'notifier' => $mocks['notifier'],
+			'logger' => $mocks['logger'],
+		]);
 	}
 
 	public function testDisabledIsANoOpWithNoSourceQueries(): void {
 		$mocks = $this->mocks();
 		$mocks['settingsStore']->method('isEnabled')->willReturn(false);
+		// Inside the window, so only the switch keeps the sweep from running.
+		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$mocks['settingsStore']->expects($this->never())->method('markWindowSwept');
 		$mocks['policyStore']->expects($this->never())->method('all');
 		$mocks['installerService']->expects($this->never())->method('getAppVersions');
 

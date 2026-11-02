@@ -14,14 +14,12 @@ namespace OCA\Versioniq\BackgroundJob;
 
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
-use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\AutoUpdate\UpdateCandidates;
 use OCA\Versioniq\Service\InstallerService;
-use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\Policy;
-use OCA\Versioniq\Service\Policy\PolicyStore;
-use OCP\App\IAppManager;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
@@ -61,13 +59,9 @@ class AutoUpdateJob extends TimedJob {
 
 	public function __construct(
 		ITimeFactory $time,
-		private PolicyStore $policyStore,
-		private PinStore $pinStore,
+		private AutoUpdateStores $stores,
 		private InstallerService $installerService,
-		private IAppManager $appManager,
-		private CandidateSelector $candidateSelector,
-		private AttemptLedger $attemptLedger,
-		private AutoUpdateSettingsStore $settingsStore,
+		private UpdateCandidates $candidates,
 		private AutoUpdateNotifier $notifier,
 		private LoggerInterface $logger,
 	) {
@@ -80,15 +74,15 @@ class AutoUpdateJob extends TimedJob {
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 */
 	protected function run($argument): void {
-		if (!$this->settingsStore->isEnabled()) {
+		if (!$this->stores->settingsStore->isEnabled()) {
 			// Kill switch off — policies remain stored but inert; see "Global
 			// kill switch and window" ("Kill switch inert-but-stored").
 			return;
 		}
 
-		$zoneName = $this->settingsStore->getTimeZoneName();
+		$zoneName = $this->stores->settingsStore->getTimeZoneName();
 		$now = $this->time->getDateTime('now', new \DateTimeZone($zoneName !== '' ? $zoneName : 'UTC'));
-		$window = $this->settingsStore->getWindow();
+		$window = $this->stores->settingsStore->getWindow();
 		if (!AutoUpdateWindow::isWithin($window, $now)) {
 			// Outside the configured window — see "Disabled or outside the
 			// window is a no-op".
@@ -96,13 +90,13 @@ class AutoUpdateJob extends TimedJob {
 		}
 
 		$openingKey = AutoUpdateWindow::openingKey($window, $now);
-		if ($this->settingsStore->hasSweptWindow($openingKey)) {
+		if ($this->stores->settingsStore->hasSweptWindow($openingKey)) {
 			// Already swept this window; the job wakes every quarter hour.
 			return;
 		}
-		$this->settingsStore->markWindowSwept($openingKey);
+		$this->stores->settingsStore->markWindowSwept($openingKey);
 
-		foreach ($this->policyStore->all() as $appId => $policy) {
+		foreach ($this->stores->policyStore->all() as $appId => $policy) {
 			if ($policy->level === Policy::LEVEL_NONE) {
 				continue;
 			}
@@ -121,7 +115,7 @@ class AutoUpdateJob extends TimedJob {
 	}
 
 	private function processApp(string $appId, string $level): void {
-		if ($this->pinStore->get($appId) !== null) {
+		if ($this->stores->pinStore->get($appId) !== null) {
 			// Pinned apps are skipped entirely, before any source query; see
 			// "Pinned app skipped".
 			return;
@@ -133,7 +127,7 @@ class AutoUpdateJob extends TimedJob {
 
 		$installedVersion = null;
 		try {
-			$installed = $this->appManager->getAppVersion($appId, false);
+			$installed = $this->candidates->appManager->getAppVersion($appId, false);
 			$installedVersion = $installed !== '' ? $installed : null;
 		} catch (\Throwable) {
 			$installedVersion = null;
@@ -153,12 +147,12 @@ class AutoUpdateJob extends TimedJob {
 			$result['availableVersions'] ?? []
 		);
 
-		$candidate = $this->candidateSelector->select($installedVersion, $available, $level);
+		$candidate = $this->candidates->candidateSelector->select($installedVersion, $available, $level);
 		if ($candidate === null) {
 			return;
 		}
 
-		if ($this->attemptLedger->hasAttempted($appId, $candidate)) {
+		if ($this->stores->attemptLedger->hasAttempted($appId, $candidate)) {
 			// Never-retry — see "Failed attempt is not retried".
 			return;
 		}
@@ -184,7 +178,7 @@ class AutoUpdateJob extends TimedJob {
 		$payload = $installResult['payload'] ?? [];
 
 		if ($statusCode >= Http::STATUS_OK && $statusCode < Http::STATUS_MULTIPLE_CHOICES) {
-			$this->attemptLedger->record($appId, $candidate, AttemptLedger::OUTCOME_SUCCESS, $at);
+			$this->stores->attemptLedger->record($appId, $candidate, AttemptLedger::OUTCOME_SUCCESS, $at);
 			$toVersion = is_string($payload['installedVersion'] ?? null) && $payload['installedVersion'] !== ''
 				? $payload['installedVersion']
 				: $candidate;
@@ -193,7 +187,7 @@ class AutoUpdateJob extends TimedJob {
 			return;
 		}
 
-		$this->attemptLedger->record($appId, $candidate, AttemptLedger::OUTCOME_FAILURE, $at);
+		$this->stores->attemptLedger->record($appId, $candidate, AttemptLedger::OUTCOME_FAILURE, $at);
 		$category = is_string($payload['category'] ?? null) ? $payload['category'] : 'unknown';
 		$hint = is_string($payload['hint'] ?? null) ? $payload['hint'] : '';
 		$this->notifier->notifyFailure($appId, $candidate, $category, $hint);
