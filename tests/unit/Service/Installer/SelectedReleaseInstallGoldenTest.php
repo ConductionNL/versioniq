@@ -304,6 +304,31 @@ final class SelectedReleaseInstallGoldenTest extends TestCase {
 	}
 
 	/**
+	 * openssl_verify() returns -1, not 0, when it cannot check a signature at
+	 * all (here: bytes that are no DER signature, under an EC certificate).
+	 * Only 1 means verified, so the install stops and the old files stay.
+	 */
+	public function testASignatureCheckErrorIsNotAccepted(): void {
+		if (!InstallerGoldenSupport::isUnitOnly()) {
+			$this->markTestSkipped('The golden runs on the unit-only bootstrap, whose archive, X509 classes and server container it controls.');
+		}
+		$key = openssl_pkey_new(['private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1']);
+		self::assertInstanceOf(\OpenSSLAsymmetricKey::class, $key);
+		$csr = openssl_csr_new(['commonName' => 'someapp'], $key, ['digest_alg' => 'sha256']);
+		self::assertNotFalse($csr);
+		$cert = openssl_csr_sign($csr, null, $key, 1, ['digest_alg' => 'sha256']);
+		self::assertNotFalse($cert);
+		openssl_x509_export($cert, $pem);
+		self::assertSame(-1, openssl_verify('probe', 'xx', (string)$pem, OPENSSL_ALGO_SHA512));
+
+		$release = ['certificate' => (string)$pem, 'signature' => base64_encode('xx')] + self::BASE['release'];
+		$case = $this->runScenario(array_replace(self::BASE, ['release' => $release]));
+
+		self::assertSame('Release signature verification failed.', $case['error']['message'] ?? null);
+		self::assertSame(['someapp' => null, 'someapp/lib' => null, 'someapp/lib/Plugin.php' => "<?php // old\n", 'someapp/old.txt' => 'old'], $case['apps']);
+	}
+
+	/**
 	 * @param array<string, mixed> $s
 	 * @return array<string, mixed>
 	 */
