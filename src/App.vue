@@ -1754,129 +1754,249 @@ async function onRepinRequested (appId: string, version: string): Promise<void> 
 	}
 }
 
+type InstallResponse = { payload: InstallApiPayload, metaMessage?: string }
+
+/** The app and versions one install run works on, and whether it may downgrade. */
+type InstallTarget = {
+	appId: string
+	fromVersion: string
+	toVersion: string
+	allowDowngrade: boolean
+}
+
 /**
- *
- * @spec openspec/specs/version-management/spec.md
+ * Tells whether an install can start: an app and a version are selected and
+ * no install is running.
  */
-async function performInstall (): Promise<void> {
-	if (!selectedApp.value || !selectedVersion.value || isInstallingVersion.value) {
-		return
-	}
+function canStartInstall (): boolean {
+	return Boolean(selectedApp.value && selectedVersion.value && !isInstallingVersion.value)
+}
 
-	const selectedAppValue = selectedApp.value
-	const selectedVersionValue = selectedVersion.value
-	const requestedFromVersion = installedVersion.value
-	const requestedToVersion = selectedVersionValue
-	const isDowngrade = installedVersion.value !== '' && compareVersions(selectedVersionValue, installedVersion.value) < 0
+/**
+ * The selected app and versions; a target below the installed version is a downgrade.
+ */
+function selectedInstallTarget (): InstallTarget {
+	const fromVersion = installedVersion.value
+	const toVersion = selectedVersion.value
+	const allowDowngrade = fromVersion !== '' && compareVersions(toVersion, fromVersion) < 0
+	return { appId: selectedApp.value, fromVersion, toVersion, allowDowngrade }
+}
 
-	if (isDowngrade) {
-		const proceed = await confirmDowngrade(selectedAppValue, installedVersion.value, selectedVersionValue)
-
-		if (!proceed) {
-			return
-		}
-	}
-
+/**
+ * Marks an install as running and clears the previous result.
+ *
+ * @param target The install about to run.
+ */
+function startInstall (target: InstallTarget): void {
 	isInstallingVersion.value = true
 	errorMessage.value = ''
 	hasInstallResult.value = false
 	lastInstallResult.value = null
 	lastInstallDebug.value = []
-	installRequestFromVersion.value = requestedFromVersion
-	installRequestToVersion.value = requestedToVersion
+	installRequestFromVersion.value = target.fromVersion
+	installRequestToVersion.value = target.toVersion
+}
 
+/**
+ * Retries a pin-refused install with the admin's pin choice.
+ *
+ * @param request The install request that was refused.
+ * @param response The installer's answer to it.
+ * @return The final answer, or null when the admin cancelled.
+ */
+async function retryPinnedInstall (request: InstallRequest, response: InstallResponse): Promise<InstallResponse | null> {
+	if (!response.metaMessage || response.payload?.category !== 'pinned') {
+		return response
+	}
+	const choice = await confirmPinOverride(request.appId, response.payload.pinnedVersion || '', request.version)
+	if (choice === 'cancel') {
+		return null
+	}
+	return requestInstall({ ...request, overridePin: choice })
+}
+
+/**
+ * Retries a checksum-refused install once the admin accepts the new checksum.
+ *
+ * @param request The install request that was refused.
+ * @param response The installer's answer to it.
+ * @return The final answer, or null when the admin declined.
+ */
+async function retryShaMismatchInstall (request: InstallRequest, response: InstallResponse): Promise<InstallResponse | null> {
+	if (!response.metaMessage || response.payload?.code !== 'sha_mismatch') {
+		return response
+	}
+	const accept = await confirmShaMismatch(
+		request.appId,
+		request.version,
+		response.payload.expectedSha || '',
+		response.payload.actualSha || '',
+	)
+	if (!accept) {
+		return null
+	}
+	return requestInstall({ ...request, acceptNewSha: true })
+}
+
+/**
+ * Sends the install and its pin-override and checksum-accept retries. The
+ * downgrade acknowledgement is carried on every retry, so a retry doesn't
+ * re-trip the server-side downgrade guard (see "Server-side downgrade guard").
+ *
+ * @param request The install request.
+ * @return The final answer, or null when the admin cancelled a retry.
+ */
+async function requestInstallWithRetries (request: InstallRequest): Promise<InstallResponse | null> {
+	const pinResolved = await retryPinnedInstall(request, await requestInstall(request))
+	return pinResolved === null ? null : retryShaMismatchInstall(request, pinResolved)
+}
+
+/**
+ * The target version to show: the requested one when the installer reports
+ * the version it started from, otherwise the installer's, or the requested one.
+ *
+ * @param result The normalized install result.
+ */
+function shownTargetVersion (result: InstallResult): string {
+	const requestedFrom = installRequestFromVersion.value
+	const requestedTo = installRequestToVersion.value
+	const reportsStartVersion = requestedTo !== '' && result.toVersion === requestedFrom && requestedTo !== requestedFrom
+	return reportsStartVersion ? requestedTo : result.toVersion || requestedTo
+}
+
+/**
+ * Fills the versions the installer left out with the requested ones.
+ *
+ * @param result The normalized install result.
+ */
+function withRequestedVersions (result: InstallResult): InstallResult {
+	const requestedFrom = installRequestFromVersion.value
+	return {
+		...result,
+		fromVersion: result.fromVersion ?? requestedFrom,
+		toVersion: shownTargetVersion(result),
+		installedVersion: result.installedVersion ?? requestedFrom,
+	}
+}
+
+/**
+ * The backend's own failure message, or '' when it sent only the default.
+ *
+ * @param result The install result.
+ */
+function backendFailureMessage (result: InstallResult): string {
+	return result.message && result.message !== 'Install completed.' ? result.message : ''
+}
+
+/**
+ * Shows a failed install. The structured backend payload wins over the
+ * generic OCS meta message: the actionable hint first, then the "what
+ * happened" message, and the meta message only when the backend supplied
+ * neither. The backend installStatus (e.g. reverted / installed-but-broken)
+ * is kept instead of forcing failed.
+ *
+ * @param result The install result.
+ * @param metaMessage The OCS meta message.
+ */
+function showInstallFailure (result: InstallResult, metaMessage: string): void {
+	const backendMessage = backendFailureMessage(result)
+	errorMessage.value = result.hint || backendMessage || metaMessage
+	lastInstallResult.value = {
+		...result,
+		message: backendMessage || metaMessage,
+		installStatus: result.installStatus || 'failed',
+	}
+}
+
+/**
+ * Clears the selection after a successful install and reloads the versions,
+ * the pins and the app list, so a disabled or not-installed app shows its new
+ * state.
+ */
+async function refreshAfterInstall (): Promise<void> {
+	selectedApp.value = ''
+	installedVersion.value = ''
+	availableSource.value = ''
+	sourceOverride.value = ''
+	selectedVersion.value = ''
+	await checkVersions(true)
+	await loadPins()
+	await loadApps()
+}
+
+/**
+ * Shows the installer's final answer: the result panel, then the failure or
+ * the refreshed lists. A cancelled retry (null) shows no result.
+ *
+ * @param response The final answer, or null.
+ */
+async function applyInstallResponse (response: InstallResponse | null): Promise<void> {
+	if (response === null) {
+		hasInstallResult.value = false
+		return
+	}
+	const result = withRequestedVersions(normalizeInstallResult(response.payload))
+	lastInstallResult.value = result
+	lastInstallDebug.value = result.debug ?? []
+	hasInstallResult.value = true
+	if (response.metaMessage) {
+		showInstallFailure(result, response.metaMessage)
+		return
+	}
+	await refreshAfterInstall()
+}
+
+/**
+ * Shows an install that threw before the installer answered.
+ *
+ * @param error What was thrown.
+ * @param target The install that was running.
+ */
+function showInstallError (error: unknown, target: InstallTarget): void {
+	errorMessage.value = error instanceof Error ? error.message : 'Could not install selected version.'
+	hasInstallResult.value = true
+	lastInstallResult.value = {
+		appId: target.appId,
+		fromVersion: target.fromVersion || null,
+		toVersion: target.toVersion,
+		message: errorMessage.value,
+		dryRun: false,
+		installStatus: 'failed',
+		updateType: 'none',
+	}
+}
+
+/**
+ * Runs one install after any downgrade was confirmed.
+ *
+ * @param target The install to run.
+ */
+async function runInstall (target: InstallTarget): Promise<void> {
+	startInstall(target)
 	try {
 		await ensurePasswordConfirmation()
-
-		// Acknowledged above via confirmDowngrade(); carried on every retry
-		// below so a pin-override or SHA-accept round trip doesn't re-trip the
-		// server-side downgrade guard — see "Server-side downgrade guard".
-		let installResponse = await requestInstall({ appId: selectedAppValue, version: selectedVersionValue, allowDowngrade: isDowngrade })
-
-		if (installResponse.metaMessage && installResponse.payload?.category === 'pinned') {
-			const choice = await confirmPinOverride(selectedAppValue, installResponse.payload.pinnedVersion || '', selectedVersionValue)
-			if (choice === 'cancel') {
-				hasInstallResult.value = false
-				return
-			}
-			installResponse = await requestInstall({ appId: selectedAppValue, version: selectedVersionValue, overridePin: choice, allowDowngrade: isDowngrade })
-		}
-
-		if (installResponse.metaMessage && installResponse.payload?.code === 'sha_mismatch') {
-			const accept = await confirmShaMismatch(
-				selectedAppValue,
-				selectedVersionValue,
-				installResponse.payload.expectedSha || '',
-				installResponse.payload.actualSha || '',
-			)
-			if (!accept) {
-				hasInstallResult.value = false
-				return
-			}
-			installResponse = await requestInstall({ appId: selectedAppValue, version: selectedVersionValue, acceptNewSha: true, allowDowngrade: isDowngrade })
-		}
-
-		const { payload, metaMessage } = installResponse
-		const result = normalizeInstallResult(payload)
-		const requestedFrom = installRequestFromVersion.value
-		const requestedTo = installRequestToVersion.value
-		lastInstallResult.value = {
-			...result,
-			fromVersion: result.fromVersion ?? requestedFrom,
-			toVersion: result.toVersion && requestedTo && result.toVersion === requestedFrom && requestedTo !== requestedFrom
-				? requestedTo
-				: result.toVersion || requestedTo,
-			installedVersion: result.installedVersion ?? requestedFrom,
-		}
-		lastInstallDebug.value = result.debug ?? []
-		hasInstallResult.value = true
-
-		if (metaMessage) {
-			// Failure: prefer the structured backend payload over the generic
-			// OCS meta message. Show the actionable hint first, then the
-			// "what happened" message; fall back to metaMessage only when the
-			// backend supplied neither. Preserve the backend installStatus
-			// (e.g. reverted / installed-but-broken) instead of forcing failed.
-			const structured = lastInstallResult.value
-			const backendMessage = structured && structured.message && structured.message !== 'Install completed.'
-				? structured.message
-				: ''
-			const hint = structured?.hint || ''
-			errorMessage.value = hint || backendMessage || metaMessage
-			if (structured) {
-				lastInstallResult.value = {
-					...structured,
-					message: backendMessage || metaMessage,
-					installStatus: structured.installStatus || 'failed',
-				}
-			}
-		} else {
-			selectedApp.value = ''
-			installedVersion.value = ''
-			availableSource.value = ''
-			sourceOverride.value = ''
-			selectedVersion.value = ''
-			await checkVersions(true)
-			await loadPins()
-			// Refresh the list so a disabled or not-installed app shows its
-			// new state after the install.
-			await loadApps()
-		}
+		await applyInstallResponse(await requestInstallWithRetries({ appId: target.appId, version: target.toVersion, allowDowngrade: target.allowDowngrade }))
 	} catch (error) {
-		errorMessage.value = error instanceof Error ? error.message : 'Could not install selected version.'
-		hasInstallResult.value = true
-		lastInstallResult.value = {
-			appId: selectedAppValue,
-			fromVersion: requestedFromVersion || null,
-			toVersion: requestedToVersion,
-			message: errorMessage.value,
-			dryRun: false,
-			installStatus: 'failed',
-			updateType: 'none',
-		}
+		showInstallError(error, target)
 	} finally {
 		isInstallingVersion.value = false
 	}
+}
+
+/**
+ * Installs the selected version, after the admin confirmed a downgrade.
+ *
+ * @spec openspec/specs/version-management/spec.md
+ */
+async function performInstall (): Promise<void> {
+	if (!canStartInstall()) {
+		return
+	}
+	const target = selectedInstallTarget()
+	if (target.allowDowngrade && !(await confirmDowngrade(target.appId, target.fromVersion, target.toVersion))) {
+		return
+	}
+	await runInstall(target)
 }
 
 // "Roll back to last known good" — pure client routing through the standard
