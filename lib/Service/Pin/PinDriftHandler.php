@@ -58,13 +58,10 @@ class PinDriftHandler {
 	 */
 	public function handle(string $appId, string $installedVersion): void {
 		$pin = $this->pinStore->get($appId);
-		if ($pin === null) {
-			return;
-		}
-		if ($pin->version === $installedVersion) {
-			// Matches the pin — nothing drifted (also covers the "adjusted before
-			// finalize" self-install case: the pin was already moved to this
-			// version, so this compares equal and never raises a false alarm).
+		if ($pin === null || $pin->version === $installedVersion) {
+			// No pin, or it matches — nothing drifted (also covers the "adjusted
+			// before finalize" self-install case: the pin was already moved to
+			// this version, so this compares equal and never raises a false alarm).
 			return;
 		}
 
