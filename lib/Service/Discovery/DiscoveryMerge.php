@@ -36,7 +36,9 @@ final class DiscoveryMerge {
 	}
 
 	/**
-	 * Adds one provider's result: its error, if any, then each of its hits.
+	 * Adds one provider's result: its error, if any, then each of its hits; see "Result aggregation".
+	 *
+	 * @spec openspec/specs/app-discovery/spec.md
 	 */
 	public function add(string $providerId, DiscoveryResult $result): void {
 		if ($result->error !== null) {
@@ -49,8 +51,9 @@ final class DiscoveryMerge {
 	}
 
 	/**
-	 * The merged results, installed apps first, then by name.
+	 * The merged results, installed apps first, then by name; see "Result aggregation".
 	 *
+	 * @spec openspec/specs/app-discovery/spec.md
 	 * @return list<Group>
 	 */
 	public function results(bool $installedOnly): array {
@@ -65,6 +68,9 @@ final class DiscoveryMerge {
 	}
 
 	/**
+	 * The provider errors in provider order; see "Result aggregation".
+	 *
+	 * @spec openspec/specs/app-discovery/spec.md
 	 * @return list<array{providerId: string, message: string}>
 	 */
 	public function errors(): array {
