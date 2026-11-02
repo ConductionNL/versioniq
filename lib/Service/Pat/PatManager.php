@@ -42,35 +42,18 @@ class PatManager {
 	 * Encrypts and persists a new PAT with hint + validated scopes; see "PAT storage" and "Encryption at rest".
 	 *
 	 * @spec openspec/specs/pat-management/spec.md
-	 * @param list<string> $scopes
-	 * @param list<string> $warnings
 	 */
 	public function create(
-		string $ownerUid,
-		string $label,
-		string $kind,
-		string $targetPattern,
+		NewPat $new,
+		#[\SensitiveParameter]
 		string $plaintextToken,
-		array $scopes,
-		array $warnings,
-		?string $expiresAt,
-		string $forge = 'github',
 	): Pat {
 		$pat = new Pat();
-		$pat->setOwnerUid($ownerUid);
-		$pat->setLabel($label);
-		$pat->setKind($kind);
-		$pat->setForge($forge);
-		$pat->setTargetPattern($targetPattern);
+		$new->describe($pat);
 		$pat->setEncryptedToken($this->crypto->encrypt($plaintextToken));
 		$pat->setTokenHint(self::buildHint($plaintextToken));
 		$pat->setSharedWithAdmins(false);
-		$pat->setLastValidatedScopes(json_encode([
-			'scopes' => $scopes,
-			'warnings' => $warnings,
-			'validatedAt' => $this->nowString(),
-		], JSON_THROW_ON_ERROR));
-		$pat->setExpiresAt($expiresAt);
+		$new->recordValidation($pat, $this->nowString());
 		$pat->setCreatedAt($this->nowString());
 
 		return $this->mapper->insert($pat);

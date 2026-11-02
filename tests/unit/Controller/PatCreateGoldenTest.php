@@ -46,6 +46,7 @@ use ReflectionClass;
  *
  * @covers \OCA\Versioniq\Controller\ApiController
  * @covers \OCA\Versioniq\Service\Pat\PatManager
+ * @uses \OCA\Versioniq\Service\Pat\NewPat
  * @uses \OCA\Versioniq\Service\Pat\ValidationResult
  * @uses \OCA\Versioniq\Db\Pat
  */

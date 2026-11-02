@@ -29,6 +29,7 @@ use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pat\PatDeeplinkBuilder;
 use OCA\Versioniq\Service\Pat\PatExpiryEvaluator;
+use OCA\Versioniq\Service\Pat\NewPat;
 use OCA\Versioniq\Service\Pat\PatManager;
 use OCA\Versioniq\Service\Pat\PatValidator;
 use OCA\Versioniq\Service\Pin\Pin;
@@ -1087,17 +1088,11 @@ class ApiController extends OCSController {
 			? Pat::KIND_FORGE_TOKEN
 			: $this->patValidator->detectKind($token);
 
-		$pat = $this->patManager->create(
-			$user->getUID(),
-			$label,
-			$kind,
-			$targetPattern,
-			$token,
-			$result->scopes,
-			$result->warnings,
-			$result->expiresAt,
-			$forge,
-		);
+		$new = (new NewPat($user->getUID(), $result))
+			->withForge($forge)
+			->describedAs($label, $targetPattern)
+			->ofKind($kind);
+		$pat = $this->patManager->create($new, $token);
 		$this->connectionReports?->forgeTokenSaved($forge);
 
 		return new DataResponse(['pat' => $this->serializePat($pat), 'warnings' => $result->warnings]);
