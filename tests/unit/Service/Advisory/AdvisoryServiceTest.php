@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Advisory;
 
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\Service\Advisory\AdvisoryService;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
 use OCA\Versioniq\Service\Advisory\BranchAwareRange;
@@ -21,21 +23,24 @@ use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\SourceRegistry;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 final class AdvisoryServiceTest extends TestCase {
+	use BuildsByParameterName;
+
 	private function service(): AdvisoryService {
-		return new AdvisoryService(
-			$this->createMock(SourceRegistry::class),
-			$this->createMock(SourceBindingStore::class),
-			$this->createMock(IAppManager::class),
-			$this->quietFeed(),
-			new BranchAwareRange(),
-			$this->createMock(ServerVersionProvider::class),
-			$this->createMock(LoggerInterface::class),
-		);
+		return $this->buildByName(AdvisoryService::class, [
+			'sourceRegistry' => $this->createMock(SourceRegistry::class),
+			'bindingStore' => $this->createMock(SourceBindingStore::class),
+			'appManager' => $this->createMock(IAppManager::class),
+			'advisoryFeed' => $this->quietFeed(),
+			'branchRange' => new BranchAwareRange(),
+			'serverVersion' => $this->createMock(ServerVersionProvider::class),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 	}
 
 	/**
@@ -79,15 +84,15 @@ final class AdvisoryServiceTest extends TestCase {
 		$provider = $this->createMock(ServerVersionProvider::class);
 		$provider->method('current')->willReturn($serverVersion);
 
-		return new AdvisoryService(
-			$registry,
-			$bindingStore,
-			$appManager,
-			$feed,
-			new BranchAwareRange(),
-			$provider,
-			$this->createMock(LoggerInterface::class),
-		);
+		return $this->buildByName(AdvisoryService::class, [
+			'sourceRegistry' => $registry,
+			'bindingStore' => $bindingStore,
+			'appManager' => $appManager,
+			'advisoryFeed' => $feed,
+			'branchRange' => new BranchAwareRange(),
+			'serverVersion' => $provider,
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 	}
 
 	/**
@@ -226,7 +231,15 @@ final class AdvisoryServiceTest extends TestCase {
 		$appManager = $this->createMock(IAppManager::class);
 		$appManager->method('getAppVersion')->willReturn('1.0.5');
 
-		$service = new AdvisoryService($registry, $bindingStore, $appManager, $this->quietFeed(), new BranchAwareRange(), $this->createMock(ServerVersionProvider::class), $this->createMock(LoggerInterface::class));
+		$service = $this->buildByName(AdvisoryService::class, [
+			'sourceRegistry' => $registry,
+			'bindingStore' => $bindingStore,
+			'appManager' => $appManager,
+			'advisoryFeed' => $this->quietFeed(),
+			'branchRange' => new BranchAwareRange(),
+			'serverVersion' => $this->createMock(ServerVersionProvider::class),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 		$result = $service->correlate('someapp');
 
 		$this->assertSame('someapp', $result['appId']);
@@ -234,6 +247,37 @@ final class AdvisoryServiceTest extends TestCase {
 		$this->assertSame(AdvisoryService::STATE_VULNERABLE, $result['state']);
 		$this->assertSame('1.2.3', $result['recommendedVersion']);
 		$this->assertNull($result['error']);
+	}
+
+	/**
+	 * The source is looked up through the binding stored for the app, not
+	 * through the App Store default.
+	 */
+	public function testCorrelateAsksTheRegistryForTheAppsOwnBinding(): void {
+		$binding = SourceBinding::github('acme', 'tool');
+
+		$bindingStore = $this->createMock(SourceBindingStore::class);
+		$bindingStore->expects($this->once())->method('get')->with('someapp')->willReturn($binding);
+
+		$registry = $this->createMock(SourceRegistry::class);
+		$registry->expects($this->once())
+			->method('get')
+			->with($this->identicalTo($binding))
+			->willReturn($this->createMock(SourceInterface::class));
+
+		$appManager = $this->createMock(IAppManager::class);
+		$appManager->method('getAppVersion')->willReturn('1.0.5');
+
+		$service = $this->buildByName(AdvisoryService::class, [
+			'sourceRegistry' => $registry,
+			'bindingStore' => $bindingStore,
+			'appManager' => $appManager,
+			'advisoryFeed' => $this->quietFeed(),
+			'branchRange' => new BranchAwareRange(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
+
+		$this->assertSame(AdvisoryService::STATE_NONE, $service->correlate('someapp')['state']);
 	}
 
 	public function testCorrelateReturnsNoneWhenSourceCannotAnswerAdvisories(): void {
@@ -251,7 +295,15 @@ final class AdvisoryServiceTest extends TestCase {
 		$appManager = $this->createMock(IAppManager::class);
 		$appManager->method('getAppVersion')->willReturn('1.0.0');
 
-		$service = new AdvisoryService($registry, $bindingStore, $appManager, $this->quietFeed(), new BranchAwareRange(), $this->createMock(ServerVersionProvider::class), $this->createMock(LoggerInterface::class));
+		$service = $this->buildByName(AdvisoryService::class, [
+			'sourceRegistry' => $registry,
+			'bindingStore' => $bindingStore,
+			'appManager' => $appManager,
+			'advisoryFeed' => $this->quietFeed(),
+			'branchRange' => new BranchAwareRange(),
+			'serverVersion' => $this->createMock(ServerVersionProvider::class),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 		$result = $service->correlate('plainapp');
 
 		$this->assertSame(AdvisoryService::STATE_NONE, $result['state']);

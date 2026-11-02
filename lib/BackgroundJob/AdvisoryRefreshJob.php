@@ -12,9 +12,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\BackgroundJob;
 
-use OCA\Versioniq\Service\Advisory\AdvisoryDigestNotifier;
 use OCA\Versioniq\Service\Advisory\AdvisoryNotifier;
-use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisoryService;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -48,10 +46,7 @@ class AdvisoryRefreshJob extends TimedJob {
 
 	public function __construct(
 		ITimeFactory $time,
-		private AdvisoryService $advisoryService,
-		private AdvisoryNotifier $advisoryNotifier,
-		private AdvisoryDigestNotifier $digestNotifier,
-		private AdvisoryResultStore $resultStore,
+		private AdvisoryRefreshSteps $steps,
 		// NOT promoted to a property: the interval is read exactly once, here.
 		// TimedJob fixes its interval at construction, so keeping a reference
 		// would suggest the job can re-read the setting mid-life, which it
@@ -80,13 +75,13 @@ class AdvisoryRefreshJob extends TimedJob {
 			// here would clip this job to the first handful of apps and make
 			// the stored snapshot — and the notifications derived from it —
 			// quietly incomplete.
-			$correlations = $this->advisoryService->correlateAll(self::SWEEP_BUDGET_SECONDS);
+			$correlations = $this->steps->advisoryService->correlateAll(self::SWEEP_BUDGET_SECONDS);
 
 			// Persist BEFORE notifying. Notification is the more failure-prone
 			// half (it talks to the notifications app), and a snapshot the
 			// admin UI can render is worth keeping even if the notification
 			// half then throws.
-			$this->resultStore->save($correlations, $this->time->getTime());
+			$this->steps->resultStore->save($correlations, $this->time->getTime());
 
 			$unreached = count(array_filter(
 				$correlations,
@@ -102,7 +97,7 @@ class AdvisoryRefreshJob extends TimedJob {
 				]);
 			}
 
-			$fired = $this->advisoryNotifier->notifyNewAdvisories($correlations);
+			$fired = $this->steps->advisoryNotifier->notifyNewAdvisories($correlations);
 			if ($fired > 0) {
 				$this->logger->info('AdvisoryRefreshJob: raised advisory notifications', ['count' => $fired]);
 			}
@@ -111,7 +106,7 @@ class AdvisoryRefreshJob extends TimedJob {
 			// limits itself, so calling it on every sweep is correct — the
 			// sweep runs up to 24 times a day and the digest still sends once
 			// a week.
-			$digested = $this->digestNotifier->sendIfDue($correlations, $this->time->getTime());
+			$digested = $this->steps->digestNotifier->sendIfDue($correlations, $this->time->getTime());
 			if ($digested > 0) {
 				$this->logger->info('AdvisoryRefreshJob: sent the weekly advisory digest', ['recipients' => $digested]);
 			}
