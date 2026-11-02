@@ -1,0 +1,2444 @@
+{
+    "base": {
+        "apps": [
+            {
+                "id": "qfalpha",
+                "label": "qfalpha",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": true,
+                "isShipped": false,
+                "boundSourceId": "appstore",
+                "manageable": false,
+                "warning": "Not writable.",
+                "installedVersion": "1.0.1",
+                "state": "enabled",
+                "lkg": {
+                    "version": "1.0.0",
+                    "recordedAt": "2026-01-01T00:00:00+00:00",
+                    "sourceId": "appstore"
+                }
+            },
+            {
+                "id": "qfbeta",
+                "label": "qfbeta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "2.0.0",
+                "state": "disabled",
+                "lkg": null
+            },
+            {
+                "id": "qfcore",
+                "label": "qfcore",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": true,
+                "isShipped": true,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "enabled",
+                "lkg": null
+            },
+            {
+                "id": "qfdelta",
+                "label": "qfdelta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": "github:ConductionNL/qfdelta",
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "notInstalled",
+                "lkg": null
+            },
+            {
+                "id": "qfepsilon",
+                "label": "qfepsilon",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "notInstalled",
+                "lkg": null
+            },
+            {
+                "id": "qfgamma",
+                "label": "qfgamma",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": true,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": "Mounted.",
+                "installedVersion": "3.0.0",
+                "state": "disabled",
+                "lkg": {
+                    "version": "2.9.0",
+                    "recordedAt": "2026-02-02T00:00:00+00:00",
+                    "sourceId": null
+                }
+            },
+            {
+                "id": "qfzeta",
+                "label": "qfzeta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": "default for /apps/qfzeta",
+                "installedVersion": "0.1.0",
+                "state": "enabled",
+                "lkg": null
+            }
+        ],
+        "calls": [
+            [
+                "getEnabledApps"
+            ],
+            [
+                "getAppInstalledVersions",
+                false
+            ],
+            [
+                "listBoundAppIds"
+            ],
+            [
+                "getAlwaysEnabledApps"
+            ],
+            [
+                "binding",
+                "qfalpha"
+            ],
+            [
+                "getAppPath",
+                "qfalpha"
+            ],
+            [
+                "inspect",
+                "/apps/qfalpha"
+            ],
+            [
+                "getAppVersion",
+                "qfalpha",
+                false
+            ],
+            [
+                "isShipped",
+                "qfalpha"
+            ],
+            [
+                "lkg",
+                "qfalpha"
+            ],
+            [
+                "binding",
+                "qfbeta"
+            ],
+            [
+                "getAppPath",
+                "qfbeta"
+            ],
+            [
+                "inspect",
+                "/apps/qfbeta"
+            ],
+            [
+                "getAppVersion",
+                "qfbeta",
+                false
+            ],
+            [
+                "isShipped",
+                "qfbeta"
+            ],
+            [
+                "lkg",
+                "qfbeta"
+            ],
+            [
+                "binding",
+                "qfcore"
+            ],
+            [
+                "getAppPath",
+                "qfcore"
+            ],
+            [
+                "getAppVersion",
+                "qfcore",
+                false
+            ],
+            [
+                "isShipped",
+                "qfcore"
+            ],
+            [
+                "lkg",
+                "qfcore"
+            ],
+            [
+                "binding",
+                "qfdelta"
+            ],
+            [
+                "getAppPath",
+                "qfdelta"
+            ],
+            [
+                "isShipped",
+                "qfdelta"
+            ],
+            [
+                "lkg",
+                "qfdelta"
+            ],
+            [
+                "binding",
+                "qfepsilon"
+            ],
+            [
+                "getAppPath",
+                "qfepsilon"
+            ],
+            [
+                "isShipped",
+                "qfepsilon"
+            ],
+            [
+                "lkg",
+                "qfepsilon"
+            ],
+            [
+                "binding",
+                "qfgamma"
+            ],
+            [
+                "getAppPath",
+                "qfgamma"
+            ],
+            [
+                "inspect",
+                "/apps/qfgamma"
+            ],
+            [
+                "getAppVersion",
+                "qfgamma",
+                false
+            ],
+            [
+                "isShipped",
+                "qfgamma"
+            ],
+            [
+                "lkg",
+                "qfgamma"
+            ],
+            [
+                "binding",
+                "qfzeta"
+            ],
+            [
+                "getAppPath",
+                "qfzeta"
+            ],
+            [
+                "inspect",
+                "/apps/qfzeta"
+            ],
+            [
+                "getAppVersion",
+                "qfzeta",
+                false
+            ],
+            [
+                "isShipped",
+                "qfzeta"
+            ],
+            [
+                "lkg",
+                "qfzeta"
+            ]
+        ]
+    },
+    "nothing installed": {
+        "apps": [],
+        "calls": [
+            [
+                "getEnabledApps"
+            ],
+            [
+                "getAppInstalledVersions",
+                false
+            ],
+            [
+                "listBoundAppIds"
+            ],
+            [
+                "getAlwaysEnabledApps"
+            ]
+        ]
+    },
+    "only self": {
+        "apps": [],
+        "calls": [
+            [
+                "getEnabledApps"
+            ],
+            [
+                "getAppInstalledVersions",
+                false
+            ],
+            [
+                "listBoundAppIds"
+            ],
+            [
+                "getAlwaysEnabledApps"
+            ]
+        ]
+    },
+    "no environment, no versions": {
+        "apps": [
+            {
+                "id": "qfalpha",
+                "label": "qfalpha",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": true,
+                "isShipped": false,
+                "boundSourceId": "appstore",
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "1.0.0",
+                "state": "enabled",
+                "lkg": {
+                    "version": "1.0.0",
+                    "recordedAt": "2026-01-01T00:00:00+00:00",
+                    "sourceId": "appstore"
+                }
+            },
+            {
+                "id": "qfbeta",
+                "label": "qfbeta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "2.0.0",
+                "state": "disabled",
+                "lkg": null
+            },
+            {
+                "id": "qfcore",
+                "label": "qfcore",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": true,
+                "isShipped": true,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "enabled",
+                "lkg": null
+            },
+            {
+                "id": "qfdelta",
+                "label": "qfdelta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": "github:ConductionNL/qfdelta",
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "notInstalled",
+                "lkg": null
+            },
+            {
+                "id": "qfepsilon",
+                "label": "qfepsilon",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "notInstalled",
+                "lkg": null
+            },
+            {
+                "id": "qfgamma",
+                "label": "qfgamma",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": true,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "3.0.0",
+                "state": "disabled",
+                "lkg": {
+                    "version": "2.9.0",
+                    "recordedAt": "2026-02-02T00:00:00+00:00",
+                    "sourceId": null
+                }
+            },
+            {
+                "id": "qfzeta",
+                "label": "qfzeta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "0.1.0",
+                "state": "enabled",
+                "lkg": null
+            }
+        ],
+        "calls": [
+            [
+                "getEnabledApps"
+            ],
+            [
+                "getAppInstalledVersions",
+                false
+            ],
+            [
+                "listBoundAppIds"
+            ],
+            [
+                "getAlwaysEnabledApps"
+            ],
+            [
+                "binding",
+                "qfalpha"
+            ],
+            [
+                "getAppPath",
+                "qfalpha"
+            ],
+            [
+                "getAppVersion",
+                "qfalpha",
+                false
+            ],
+            [
+                "isShipped",
+                "qfalpha"
+            ],
+            [
+                "lkg",
+                "qfalpha"
+            ],
+            [
+                "binding",
+                "qfbeta"
+            ],
+            [
+                "getAppPath",
+                "qfbeta"
+            ],
+            [
+                "getAppVersion",
+                "qfbeta",
+                false
+            ],
+            [
+                "isShipped",
+                "qfbeta"
+            ],
+            [
+                "lkg",
+                "qfbeta"
+            ],
+            [
+                "binding",
+                "qfcore"
+            ],
+            [
+                "getAppPath",
+                "qfcore"
+            ],
+            [
+                "getAppVersion",
+                "qfcore",
+                false
+            ],
+            [
+                "isShipped",
+                "qfcore"
+            ],
+            [
+                "lkg",
+                "qfcore"
+            ],
+            [
+                "binding",
+                "qfdelta"
+            ],
+            [
+                "getAppPath",
+                "qfdelta"
+            ],
+            [
+                "isShipped",
+                "qfdelta"
+            ],
+            [
+                "lkg",
+                "qfdelta"
+            ],
+            [
+                "binding",
+                "qfepsilon"
+            ],
+            [
+                "getAppPath",
+                "qfepsilon"
+            ],
+            [
+                "isShipped",
+                "qfepsilon"
+            ],
+            [
+                "lkg",
+                "qfepsilon"
+            ],
+            [
+                "binding",
+                "qfgamma"
+            ],
+            [
+                "getAppPath",
+                "qfgamma"
+            ],
+            [
+                "getAppVersion",
+                "qfgamma",
+                false
+            ],
+            [
+                "isShipped",
+                "qfgamma"
+            ],
+            [
+                "lkg",
+                "qfgamma"
+            ],
+            [
+                "binding",
+                "qfzeta"
+            ],
+            [
+                "getAppPath",
+                "qfzeta"
+            ],
+            [
+                "getAppVersion",
+                "qfzeta",
+                false
+            ],
+            [
+                "isShipped",
+                "qfzeta"
+            ],
+            [
+                "lkg",
+                "qfzeta"
+            ]
+        ]
+    },
+    "every path inspected": {
+        "apps": [
+            {
+                "id": "qfalpha",
+                "label": "qfalpha",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": true,
+                "isShipped": false,
+                "boundSourceId": "appstore",
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "1.0.1",
+                "state": "enabled",
+                "lkg": {
+                    "version": "1.0.0",
+                    "recordedAt": "2026-01-01T00:00:00+00:00",
+                    "sourceId": "appstore"
+                }
+            },
+            {
+                "id": "qfbeta",
+                "label": "qfbeta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "2.0.0",
+                "state": "disabled",
+                "lkg": null
+            },
+            {
+                "id": "qfcore",
+                "label": "qfcore",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": true,
+                "isShipped": true,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "enabled",
+                "lkg": null
+            },
+            {
+                "id": "qfdelta",
+                "label": "qfdelta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": "github:ConductionNL/qfdelta",
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "notInstalled",
+                "lkg": null
+            },
+            {
+                "id": "qfepsilon",
+                "label": "qfepsilon",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "notInstalled",
+                "lkg": null
+            },
+            {
+                "id": "qfgamma",
+                "label": "qfgamma",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": true,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "3.0.0",
+                "state": "disabled",
+                "lkg": {
+                    "version": "2.9.0",
+                    "recordedAt": "2026-02-02T00:00:00+00:00",
+                    "sourceId": null
+                }
+            },
+            {
+                "id": "qfzeta",
+                "label": "qfzeta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "0.1.0",
+                "state": "enabled",
+                "lkg": null
+            }
+        ],
+        "calls": [
+            [
+                "getEnabledApps"
+            ],
+            [
+                "getAppInstalledVersions",
+                false
+            ],
+            [
+                "listBoundAppIds"
+            ],
+            [
+                "getAlwaysEnabledApps"
+            ],
+            [
+                "binding",
+                "qfalpha"
+            ],
+            [
+                "getAppPath",
+                "qfalpha"
+            ],
+            [
+                "inspect",
+                "/p"
+            ],
+            [
+                "getAppVersion",
+                "qfalpha",
+                false
+            ],
+            [
+                "isShipped",
+                "qfalpha"
+            ],
+            [
+                "lkg",
+                "qfalpha"
+            ],
+            [
+                "binding",
+                "qfbeta"
+            ],
+            [
+                "getAppPath",
+                "qfbeta"
+            ],
+            [
+                "inspect",
+                "/p"
+            ],
+            [
+                "getAppVersion",
+                "qfbeta",
+                false
+            ],
+            [
+                "isShipped",
+                "qfbeta"
+            ],
+            [
+                "lkg",
+                "qfbeta"
+            ],
+            [
+                "binding",
+                "qfcore"
+            ],
+            [
+                "getAppPath",
+                "qfcore"
+            ],
+            [
+                "inspect",
+                "/p"
+            ],
+            [
+                "getAppVersion",
+                "qfcore",
+                false
+            ],
+            [
+                "isShipped",
+                "qfcore"
+            ],
+            [
+                "lkg",
+                "qfcore"
+            ],
+            [
+                "binding",
+                "qfdelta"
+            ],
+            [
+                "getAppPath",
+                "qfdelta"
+            ],
+            [
+                "inspect",
+                "/p"
+            ],
+            [
+                "isShipped",
+                "qfdelta"
+            ],
+            [
+                "lkg",
+                "qfdelta"
+            ],
+            [
+                "binding",
+                "qfepsilon"
+            ],
+            [
+                "getAppPath",
+                "qfepsilon"
+            ],
+            [
+                "inspect",
+                "/p"
+            ],
+            [
+                "isShipped",
+                "qfepsilon"
+            ],
+            [
+                "lkg",
+                "qfepsilon"
+            ],
+            [
+                "binding",
+                "qfgamma"
+            ],
+            [
+                "getAppPath",
+                "qfgamma"
+            ],
+            [
+                "inspect",
+                "/p"
+            ],
+            [
+                "getAppVersion",
+                "qfgamma",
+                false
+            ],
+            [
+                "isShipped",
+                "qfgamma"
+            ],
+            [
+                "lkg",
+                "qfgamma"
+            ],
+            [
+                "binding",
+                "qfzeta"
+            ],
+            [
+                "getAppPath",
+                "qfzeta"
+            ],
+            [
+                "inspect",
+                "/p"
+            ],
+            [
+                "getAppVersion",
+                "qfzeta",
+                false
+            ],
+            [
+                "isShipped",
+                "qfzeta"
+            ],
+            [
+                "lkg",
+                "qfzeta"
+            ]
+        ]
+    },
+    "version read throws an error": {
+        "threw": "Error",
+        "message": "error qfalpha",
+        "calls": [
+            [
+                "getEnabledApps"
+            ],
+            [
+                "getAppInstalledVersions",
+                false
+            ],
+            [
+                "listBoundAppIds"
+            ],
+            [
+                "getAlwaysEnabledApps"
+            ],
+            [
+                "binding",
+                "qfalpha"
+            ],
+            [
+                "getAppPath",
+                "qfalpha"
+            ],
+            [
+                "inspect",
+                "/apps/qfalpha"
+            ],
+            [
+                "getAppVersion",
+                "qfalpha",
+                false
+            ]
+        ]
+    },
+    "path read throws an error": {
+        "apps": [
+            {
+                "id": "qfalpha",
+                "label": "qfalpha",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": true,
+                "isShipped": false,
+                "boundSourceId": "appstore",
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "1.0.1",
+                "state": "enabled",
+                "lkg": {
+                    "version": "1.0.0",
+                    "recordedAt": "2026-01-01T00:00:00+00:00",
+                    "sourceId": "appstore"
+                }
+            },
+            {
+                "id": "qfbeta",
+                "label": "qfbeta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "2.0.0",
+                "state": "disabled",
+                "lkg": null
+            },
+            {
+                "id": "qfcore",
+                "label": "qfcore",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": true,
+                "isShipped": true,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "enabled",
+                "lkg": null
+            },
+            {
+                "id": "qfdelta",
+                "label": "qfdelta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": "github:ConductionNL/qfdelta",
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "notInstalled",
+                "lkg": null
+            },
+            {
+                "id": "qfepsilon",
+                "label": "qfepsilon",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "notInstalled",
+                "lkg": null
+            },
+            {
+                "id": "qfgamma",
+                "label": "qfgamma",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": true,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "3.0.0",
+                "state": "disabled",
+                "lkg": {
+                    "version": "2.9.0",
+                    "recordedAt": "2026-02-02T00:00:00+00:00",
+                    "sourceId": null
+                }
+            },
+            {
+                "id": "qfzeta",
+                "label": "qfzeta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "0.1.0",
+                "state": "enabled",
+                "lkg": null
+            }
+        ],
+        "calls": [
+            [
+                "getEnabledApps"
+            ],
+            [
+                "getAppInstalledVersions",
+                false
+            ],
+            [
+                "listBoundAppIds"
+            ],
+            [
+                "getAlwaysEnabledApps"
+            ],
+            [
+                "binding",
+                "qfalpha"
+            ],
+            [
+                "getAppPath",
+                "qfalpha"
+            ],
+            [
+                "getAppVersion",
+                "qfalpha",
+                false
+            ],
+            [
+                "isShipped",
+                "qfalpha"
+            ],
+            [
+                "lkg",
+                "qfalpha"
+            ],
+            [
+                "binding",
+                "qfbeta"
+            ],
+            [
+                "getAppPath",
+                "qfbeta"
+            ],
+            [
+                "getAppVersion",
+                "qfbeta",
+                false
+            ],
+            [
+                "isShipped",
+                "qfbeta"
+            ],
+            [
+                "lkg",
+                "qfbeta"
+            ],
+            [
+                "binding",
+                "qfcore"
+            ],
+            [
+                "getAppPath",
+                "qfcore"
+            ],
+            [
+                "getAppVersion",
+                "qfcore",
+                false
+            ],
+            [
+                "isShipped",
+                "qfcore"
+            ],
+            [
+                "lkg",
+                "qfcore"
+            ],
+            [
+                "binding",
+                "qfdelta"
+            ],
+            [
+                "getAppPath",
+                "qfdelta"
+            ],
+            [
+                "isShipped",
+                "qfdelta"
+            ],
+            [
+                "lkg",
+                "qfdelta"
+            ],
+            [
+                "binding",
+                "qfepsilon"
+            ],
+            [
+                "getAppPath",
+                "qfepsilon"
+            ],
+            [
+                "isShipped",
+                "qfepsilon"
+            ],
+            [
+                "lkg",
+                "qfepsilon"
+            ],
+            [
+                "binding",
+                "qfgamma"
+            ],
+            [
+                "getAppPath",
+                "qfgamma"
+            ],
+            [
+                "getAppVersion",
+                "qfgamma",
+                false
+            ],
+            [
+                "isShipped",
+                "qfgamma"
+            ],
+            [
+                "lkg",
+                "qfgamma"
+            ],
+            [
+                "binding",
+                "qfzeta"
+            ],
+            [
+                "getAppPath",
+                "qfzeta"
+            ],
+            [
+                "getAppVersion",
+                "qfzeta",
+                false
+            ],
+            [
+                "isShipped",
+                "qfzeta"
+            ],
+            [
+                "lkg",
+                "qfzeta"
+            ]
+        ]
+    },
+    "installed version listed under numeric-looking id": {
+        "apps": [
+            {
+                "id": "123",
+                "label": "123",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "1.0.0",
+                "state": "enabled",
+                "lkg": null
+            }
+        ],
+        "calls": [
+            [
+                "getEnabledApps"
+            ],
+            [
+                "getAppInstalledVersions",
+                false
+            ],
+            [
+                "listBoundAppIds"
+            ],
+            [
+                "getAlwaysEnabledApps"
+            ],
+            [
+                "binding",
+                "123"
+            ],
+            [
+                "getAppPath",
+                "123"
+            ],
+            [
+                "getAppVersion",
+                "123",
+                false
+            ],
+            [
+                "isShipped",
+                "123"
+            ],
+            [
+                "lkg",
+                "123"
+            ]
+        ]
+    },
+    "numeric-looking ids compare as text": {
+        "apps": [
+            {
+                "id": "1e1",
+                "label": "1e1",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "2.0.0",
+                "state": "enabled",
+                "lkg": null
+            },
+            {
+                "id": "10",
+                "label": "10",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "1.0.0",
+                "state": "disabled",
+                "lkg": null
+            }
+        ],
+        "calls": [
+            [
+                "getEnabledApps"
+            ],
+            [
+                "getAppInstalledVersions",
+                false
+            ],
+            [
+                "listBoundAppIds"
+            ],
+            [
+                "getAlwaysEnabledApps"
+            ],
+            [
+                "binding",
+                "1e1"
+            ],
+            [
+                "getAppPath",
+                "1e1"
+            ],
+            [
+                "getAppVersion",
+                "1e1",
+                false
+            ],
+            [
+                "isShipped",
+                "1e1"
+            ],
+            [
+                "lkg",
+                "1e1"
+            ],
+            [
+                "binding",
+                "10"
+            ],
+            [
+                "getAppPath",
+                "10"
+            ],
+            [
+                "getAppVersion",
+                "10",
+                false
+            ],
+            [
+                "isShipped",
+                "10"
+            ],
+            [
+                "lkg",
+                "10"
+            ]
+        ]
+    },
+    "metadata": {
+        "apps": [
+            {
+                "id": "qfalpha",
+                "label": "Alpha",
+                "description": "Long text",
+                "summary": "Short",
+                "preview": "https://example.test/a.png",
+                "isCore": true,
+                "isShipped": false,
+                "boundSourceId": "appstore",
+                "manageable": false,
+                "warning": "Not writable.",
+                "installedVersion": "1.0.1",
+                "state": "enabled",
+                "lkg": {
+                    "version": "1.0.0",
+                    "recordedAt": "2026-01-01T00:00:00+00:00",
+                    "sourceId": "appstore"
+                }
+            },
+            {
+                "id": "qfbeta",
+                "label": "qfbeta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "2.0.0",
+                "state": "disabled",
+                "lkg": null
+            },
+            {
+                "id": "qfcore",
+                "label": "qfcore",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": true,
+                "isShipped": true,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "enabled",
+                "lkg": null
+            },
+            {
+                "id": "qfdelta",
+                "label": "qfdelta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": "github:ConductionNL/qfdelta",
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "notInstalled",
+                "lkg": null
+            },
+            {
+                "id": "qfepsilon",
+                "label": "qfepsilon",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "notInstalled",
+                "lkg": null
+            },
+            {
+                "id": "qfgamma",
+                "label": "qfgamma",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": true,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": "Mounted.",
+                "installedVersion": "3.0.0",
+                "state": "disabled",
+                "lkg": {
+                    "version": "2.9.0",
+                    "recordedAt": "2026-02-02T00:00:00+00:00",
+                    "sourceId": null
+                }
+            },
+            {
+                "id": "qfzeta",
+                "label": "Zeta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": "default for /apps/qfzeta",
+                "installedVersion": "0.1.0",
+                "state": "enabled",
+                "lkg": null
+            }
+        ],
+        "calls": [
+            [
+                "getEnabledApps"
+            ],
+            [
+                "getAppInstalledVersions",
+                false
+            ],
+            [
+                "listBoundAppIds"
+            ],
+            [
+                "getAlwaysEnabledApps"
+            ],
+            [
+                "binding",
+                "qfalpha"
+            ],
+            [
+                "getAppPath",
+                "qfalpha"
+            ],
+            [
+                "inspect",
+                "/apps/qfalpha"
+            ],
+            [
+                "getAppVersion",
+                "qfalpha",
+                false
+            ],
+            [
+                "isShipped",
+                "qfalpha"
+            ],
+            [
+                "lkg",
+                "qfalpha"
+            ],
+            [
+                "binding",
+                "qfbeta"
+            ],
+            [
+                "getAppPath",
+                "qfbeta"
+            ],
+            [
+                "inspect",
+                "/apps/qfbeta"
+            ],
+            [
+                "getAppVersion",
+                "qfbeta",
+                false
+            ],
+            [
+                "isShipped",
+                "qfbeta"
+            ],
+            [
+                "lkg",
+                "qfbeta"
+            ],
+            [
+                "binding",
+                "qfcore"
+            ],
+            [
+                "getAppPath",
+                "qfcore"
+            ],
+            [
+                "getAppVersion",
+                "qfcore",
+                false
+            ],
+            [
+                "isShipped",
+                "qfcore"
+            ],
+            [
+                "lkg",
+                "qfcore"
+            ],
+            [
+                "binding",
+                "qfdelta"
+            ],
+            [
+                "getAppPath",
+                "qfdelta"
+            ],
+            [
+                "isShipped",
+                "qfdelta"
+            ],
+            [
+                "lkg",
+                "qfdelta"
+            ],
+            [
+                "binding",
+                "qfepsilon"
+            ],
+            [
+                "getAppPath",
+                "qfepsilon"
+            ],
+            [
+                "isShipped",
+                "qfepsilon"
+            ],
+            [
+                "lkg",
+                "qfepsilon"
+            ],
+            [
+                "binding",
+                "qfgamma"
+            ],
+            [
+                "getAppPath",
+                "qfgamma"
+            ],
+            [
+                "inspect",
+                "/apps/qfgamma"
+            ],
+            [
+                "getAppVersion",
+                "qfgamma",
+                false
+            ],
+            [
+                "isShipped",
+                "qfgamma"
+            ],
+            [
+                "lkg",
+                "qfgamma"
+            ],
+            [
+                "binding",
+                "qfzeta"
+            ],
+            [
+                "getAppPath",
+                "qfzeta"
+            ],
+            [
+                "inspect",
+                "/apps/qfzeta"
+            ],
+            [
+                "getAppVersion",
+                "qfzeta",
+                false
+            ],
+            [
+                "isShipped",
+                "qfzeta"
+            ],
+            [
+                "lkg",
+                "qfzeta"
+            ]
+        ]
+    },
+    "metadata, nothing enabled": {
+        "apps": [
+            {
+                "id": "qfalpha",
+                "label": "Alpha",
+                "description": "Long text",
+                "summary": "Short",
+                "preview": "https://example.test/a.png",
+                "isCore": true,
+                "isShipped": false,
+                "boundSourceId": "appstore",
+                "manageable": false,
+                "warning": "Not writable.",
+                "installedVersion": "1.0.1",
+                "state": "disabled",
+                "lkg": {
+                    "version": "1.0.0",
+                    "recordedAt": "2026-01-01T00:00:00+00:00",
+                    "sourceId": "appstore"
+                }
+            },
+            {
+                "id": "qfbeta",
+                "label": "qfbeta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "2.0.0",
+                "state": "disabled",
+                "lkg": null
+            },
+            {
+                "id": "qfdelta",
+                "label": "qfdelta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": "github:ConductionNL/qfdelta",
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "notInstalled",
+                "lkg": null
+            },
+            {
+                "id": "qfepsilon",
+                "label": "qfepsilon",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "notInstalled",
+                "lkg": null
+            },
+            {
+                "id": "qfgamma",
+                "label": "qfgamma",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": true,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": "Mounted.",
+                "installedVersion": "3.0.0",
+                "state": "disabled",
+                "lkg": {
+                    "version": "2.9.0",
+                    "recordedAt": "2026-02-02T00:00:00+00:00",
+                    "sourceId": null
+                }
+            },
+            {
+                "id": "qfzeta",
+                "label": "Zeta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": "default for /apps/qfzeta",
+                "installedVersion": "0.1.0",
+                "state": "disabled",
+                "lkg": null
+            }
+        ],
+        "calls": [
+            [
+                "getEnabledApps"
+            ],
+            [
+                "getAppInstalledVersions",
+                false
+            ],
+            [
+                "listBoundAppIds"
+            ],
+            [
+                "getAlwaysEnabledApps"
+            ],
+            [
+                "binding",
+                "qfalpha"
+            ],
+            [
+                "getAppPath",
+                "qfalpha"
+            ],
+            [
+                "inspect",
+                "/apps/qfalpha"
+            ],
+            [
+                "getAppVersion",
+                "qfalpha",
+                false
+            ],
+            [
+                "isShipped",
+                "qfalpha"
+            ],
+            [
+                "lkg",
+                "qfalpha"
+            ],
+            [
+                "binding",
+                "qfbeta"
+            ],
+            [
+                "getAppPath",
+                "qfbeta"
+            ],
+            [
+                "inspect",
+                "/apps/qfbeta"
+            ],
+            [
+                "getAppVersion",
+                "qfbeta",
+                false
+            ],
+            [
+                "isShipped",
+                "qfbeta"
+            ],
+            [
+                "lkg",
+                "qfbeta"
+            ],
+            [
+                "binding",
+                "qfdelta"
+            ],
+            [
+                "getAppPath",
+                "qfdelta"
+            ],
+            [
+                "isShipped",
+                "qfdelta"
+            ],
+            [
+                "lkg",
+                "qfdelta"
+            ],
+            [
+                "binding",
+                "qfepsilon"
+            ],
+            [
+                "getAppPath",
+                "qfepsilon"
+            ],
+            [
+                "isShipped",
+                "qfepsilon"
+            ],
+            [
+                "lkg",
+                "qfepsilon"
+            ],
+            [
+                "binding",
+                "qfgamma"
+            ],
+            [
+                "getAppPath",
+                "qfgamma"
+            ],
+            [
+                "inspect",
+                "/apps/qfgamma"
+            ],
+            [
+                "getAppVersion",
+                "qfgamma",
+                false
+            ],
+            [
+                "isShipped",
+                "qfgamma"
+            ],
+            [
+                "lkg",
+                "qfgamma"
+            ],
+            [
+                "binding",
+                "qfzeta"
+            ],
+            [
+                "getAppPath",
+                "qfzeta"
+            ],
+            [
+                "inspect",
+                "/apps/qfzeta"
+            ],
+            [
+                "getAppVersion",
+                "qfzeta",
+                false
+            ],
+            [
+                "isShipped",
+                "qfzeta"
+            ],
+            [
+                "lkg",
+                "qfzeta"
+            ]
+        ]
+    },
+    "metadata, numeric app id": {
+        "apps": [
+            {
+                "id": "42",
+                "label": "42",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "enabled",
+                "lkg": null
+            },
+            {
+                "id": "qfalpha",
+                "label": "Alpha",
+                "description": "Long text",
+                "summary": "Short",
+                "preview": "https://example.test/a.png",
+                "isCore": true,
+                "isShipped": false,
+                "boundSourceId": "appstore",
+                "manageable": false,
+                "warning": "Not writable.",
+                "installedVersion": "1.0.1",
+                "state": "disabled",
+                "lkg": {
+                    "version": "1.0.0",
+                    "recordedAt": "2026-01-01T00:00:00+00:00",
+                    "sourceId": "appstore"
+                }
+            },
+            {
+                "id": "qfbeta",
+                "label": "qfbeta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "2.0.0",
+                "state": "disabled",
+                "lkg": null
+            },
+            {
+                "id": "qfdelta",
+                "label": "qfdelta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": "github:ConductionNL/qfdelta",
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "notInstalled",
+                "lkg": null
+            },
+            {
+                "id": "qfepsilon",
+                "label": "qfepsilon",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "notInstalled",
+                "lkg": null
+            },
+            {
+                "id": "qfgamma",
+                "label": "qfgamma",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": true,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": "Mounted.",
+                "installedVersion": "3.0.0",
+                "state": "disabled",
+                "lkg": {
+                    "version": "2.9.0",
+                    "recordedAt": "2026-02-02T00:00:00+00:00",
+                    "sourceId": null
+                }
+            },
+            {
+                "id": "qfzeta",
+                "label": "Zeta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": "default for /apps/qfzeta",
+                "installedVersion": "0.1.0",
+                "state": "disabled",
+                "lkg": null
+            }
+        ],
+        "calls": [
+            [
+                "getEnabledApps"
+            ],
+            [
+                "getAppInstalledVersions",
+                false
+            ],
+            [
+                "listBoundAppIds"
+            ],
+            [
+                "getAlwaysEnabledApps"
+            ],
+            [
+                "binding",
+                "42"
+            ],
+            [
+                "getAppPath",
+                "42"
+            ],
+            [
+                "getAppVersion",
+                "42",
+                false
+            ],
+            [
+                "isShipped",
+                "42"
+            ],
+            [
+                "lkg",
+                "42"
+            ],
+            [
+                "binding",
+                "qfalpha"
+            ],
+            [
+                "getAppPath",
+                "qfalpha"
+            ],
+            [
+                "inspect",
+                "/apps/qfalpha"
+            ],
+            [
+                "getAppVersion",
+                "qfalpha",
+                false
+            ],
+            [
+                "isShipped",
+                "qfalpha"
+            ],
+            [
+                "lkg",
+                "qfalpha"
+            ],
+            [
+                "binding",
+                "qfbeta"
+            ],
+            [
+                "getAppPath",
+                "qfbeta"
+            ],
+            [
+                "inspect",
+                "/apps/qfbeta"
+            ],
+            [
+                "getAppVersion",
+                "qfbeta",
+                false
+            ],
+            [
+                "isShipped",
+                "qfbeta"
+            ],
+            [
+                "lkg",
+                "qfbeta"
+            ],
+            [
+                "binding",
+                "qfdelta"
+            ],
+            [
+                "getAppPath",
+                "qfdelta"
+            ],
+            [
+                "isShipped",
+                "qfdelta"
+            ],
+            [
+                "lkg",
+                "qfdelta"
+            ],
+            [
+                "binding",
+                "qfepsilon"
+            ],
+            [
+                "getAppPath",
+                "qfepsilon"
+            ],
+            [
+                "isShipped",
+                "qfepsilon"
+            ],
+            [
+                "lkg",
+                "qfepsilon"
+            ],
+            [
+                "binding",
+                "qfgamma"
+            ],
+            [
+                "getAppPath",
+                "qfgamma"
+            ],
+            [
+                "inspect",
+                "/apps/qfgamma"
+            ],
+            [
+                "getAppVersion",
+                "qfgamma",
+                false
+            ],
+            [
+                "isShipped",
+                "qfgamma"
+            ],
+            [
+                "lkg",
+                "qfgamma"
+            ],
+            [
+                "binding",
+                "qfzeta"
+            ],
+            [
+                "getAppPath",
+                "qfzeta"
+            ],
+            [
+                "inspect",
+                "/apps/qfzeta"
+            ],
+            [
+                "getAppVersion",
+                "qfzeta",
+                false
+            ],
+            [
+                "isShipped",
+                "qfzeta"
+            ],
+            [
+                "lkg",
+                "qfzeta"
+            ]
+        ]
+    },
+    "metadata, an app listed twice": {
+        "apps": [
+            {
+                "id": "qfalpha",
+                "label": "Second entry",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": true,
+                "isShipped": false,
+                "boundSourceId": "appstore",
+                "manageable": false,
+                "warning": "Not writable.",
+                "installedVersion": "1.0.1",
+                "state": "enabled",
+                "lkg": {
+                    "version": "1.0.0",
+                    "recordedAt": "2026-01-01T00:00:00+00:00",
+                    "sourceId": "appstore"
+                }
+            },
+            {
+                "id": "qfbeta",
+                "label": "qfbeta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "2.0.0",
+                "state": "disabled",
+                "lkg": null
+            },
+            {
+                "id": "qfcore",
+                "label": "qfcore",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": true,
+                "isShipped": true,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "enabled",
+                "lkg": null
+            },
+            {
+                "id": "qfdelta",
+                "label": "qfdelta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": "github:ConductionNL/qfdelta",
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "notInstalled",
+                "lkg": null
+            },
+            {
+                "id": "qfepsilon",
+                "label": "qfepsilon",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "notInstalled",
+                "lkg": null
+            },
+            {
+                "id": "qfgamma",
+                "label": "qfgamma",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": true,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": "Mounted.",
+                "installedVersion": "3.0.0",
+                "state": "disabled",
+                "lkg": {
+                    "version": "2.9.0",
+                    "recordedAt": "2026-02-02T00:00:00+00:00",
+                    "sourceId": null
+                }
+            },
+            {
+                "id": "qfzeta",
+                "label": "Zeta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": "default for /apps/qfzeta",
+                "installedVersion": "0.1.0",
+                "state": "enabled",
+                "lkg": null
+            }
+        ],
+        "calls": [
+            [
+                "getEnabledApps"
+            ],
+            [
+                "getAppInstalledVersions",
+                false
+            ],
+            [
+                "listBoundAppIds"
+            ],
+            [
+                "getAlwaysEnabledApps"
+            ],
+            [
+                "binding",
+                "qfalpha"
+            ],
+            [
+                "getAppPath",
+                "qfalpha"
+            ],
+            [
+                "inspect",
+                "/apps/qfalpha"
+            ],
+            [
+                "getAppVersion",
+                "qfalpha",
+                false
+            ],
+            [
+                "isShipped",
+                "qfalpha"
+            ],
+            [
+                "lkg",
+                "qfalpha"
+            ],
+            [
+                "binding",
+                "qfbeta"
+            ],
+            [
+                "getAppPath",
+                "qfbeta"
+            ],
+            [
+                "inspect",
+                "/apps/qfbeta"
+            ],
+            [
+                "getAppVersion",
+                "qfbeta",
+                false
+            ],
+            [
+                "isShipped",
+                "qfbeta"
+            ],
+            [
+                "lkg",
+                "qfbeta"
+            ],
+            [
+                "binding",
+                "qfcore"
+            ],
+            [
+                "getAppPath",
+                "qfcore"
+            ],
+            [
+                "getAppVersion",
+                "qfcore",
+                false
+            ],
+            [
+                "isShipped",
+                "qfcore"
+            ],
+            [
+                "lkg",
+                "qfcore"
+            ],
+            [
+                "binding",
+                "qfdelta"
+            ],
+            [
+                "getAppPath",
+                "qfdelta"
+            ],
+            [
+                "isShipped",
+                "qfdelta"
+            ],
+            [
+                "lkg",
+                "qfdelta"
+            ],
+            [
+                "binding",
+                "qfepsilon"
+            ],
+            [
+                "getAppPath",
+                "qfepsilon"
+            ],
+            [
+                "isShipped",
+                "qfepsilon"
+            ],
+            [
+                "lkg",
+                "qfepsilon"
+            ],
+            [
+                "binding",
+                "qfgamma"
+            ],
+            [
+                "getAppPath",
+                "qfgamma"
+            ],
+            [
+                "inspect",
+                "/apps/qfgamma"
+            ],
+            [
+                "getAppVersion",
+                "qfgamma",
+                false
+            ],
+            [
+                "isShipped",
+                "qfgamma"
+            ],
+            [
+                "lkg",
+                "qfgamma"
+            ],
+            [
+                "binding",
+                "qfzeta"
+            ],
+            [
+                "getAppPath",
+                "qfzeta"
+            ],
+            [
+                "inspect",
+                "/apps/qfzeta"
+            ],
+            [
+                "getAppVersion",
+                "qfzeta",
+                false
+            ],
+            [
+                "isShipped",
+                "qfzeta"
+            ],
+            [
+                "lkg",
+                "qfzeta"
+            ]
+        ]
+    }
+}
