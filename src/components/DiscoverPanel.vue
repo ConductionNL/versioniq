@@ -8,6 +8,7 @@ import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { ocsGet } from '../ocs.ts'
+import { errorMessage } from '../utils/errorMessage.ts'
 
 type DiscoverySourceBinding = {
 	kind?: string
@@ -144,9 +145,66 @@ function resetToIdle (): void {
 }
 
 /**
+ * The query parameters of one search: the text, the installed-only switch and
+ * the selected sources.
+ *
+ * @param trimmedQuery the search text
+ */
+function searchParams (trimmedQuery: string): Record<string, string | number | boolean> {
+	const params: Record<string, string | number | boolean> = {
+		q: trimmedQuery,
+		installedOnly: installedOnly.value ? '1' : '0',
+	}
+	if (sourceFilter.value.length > 0) {
+		params.sources = sourceFilter.value.join(',')
+	}
+	return params
+}
+
+/**
+ * Shows a search answer; a list missing from the payload shows as empty (the
+ * providers keep their last known list).
+ *
+ * @param payload the search answer
+ */
+function showSearchPayload (payload: DiscoverResponsePayload): void {
+	results.value = Array.isArray(payload.results) ? payload.results : []
+	providers.value = Array.isArray(payload.providers) ? payload.providers : providers.value
+	providerErrors.value = Array.isArray(payload.errors) ? payload.errors : []
+	dismissedProviderIds.value = new Set()
+	requestError.value = ''
+}
+
+/**
+ * Shows a refused search: the message and no results.
+ *
+ * @param message the refusal message
+ */
+function showSearchError (message: string): void {
+	requestError.value = message
+	results.value = []
+	providerErrors.value = []
+}
+
+/**
+ * Shows a search that threw; an aborted request shows nothing.
+ *
+ * @param caught what the request threw
+ */
+function showSearchFailure (caught: unknown): void {
+	if (caught instanceof DOMException && caught.name === 'AbortError') {
+		return
+	}
+	requestError.value = errorMessage(caught, t('versioniq', 'Could not search for apps.'))
+	results.value = []
+	hasSearched.value = true
+}
+
+/**
  * Runs the debounced, abortable search against `GET /api/discover`; see
  * "Discover tab surfaces multi-source search" ("Search renders multi-source
- * hits") and "Partial provider failure stays usable".
+ * hits") and "Partial provider failure stays usable". A search superseded by a
+ * newer one leaves no trace.
  *
  * @param trimmedQuery
  * @spec openspec/specs/app-discovery/spec.md
@@ -156,39 +214,19 @@ async function runSearch (trimmedQuery: string): Promise<void> {
 	const controller = new AbortController()
 	abortController = controller
 
-	const params: Record<string, string | number | boolean> = {
-		q: trimmedQuery,
-		installedOnly: installedOnly.value ? '1' : '0',
-	}
-	if (sourceFilter.value.length > 0) {
-		params.sources = sourceFilter.value.join(',')
-	}
-
 	try {
-		const { payload, error } = await ocsGet<DiscoverResponsePayload>(DISCOVER, params, controller.signal)
+		const { payload, error } = await ocsGet<DiscoverResponsePayload>(DISCOVER, searchParams(trimmedQuery), controller.signal)
 		if (controller.signal.aborted) {
 			return
 		}
-
 		if (error) {
-			requestError.value = error
-			results.value = []
-			providerErrors.value = []
+			showSearchError(error)
 		} else {
-			results.value = Array.isArray(payload.results) ? payload.results : []
-			providers.value = Array.isArray(payload.providers) ? payload.providers : providers.value
-			providerErrors.value = Array.isArray(payload.errors) ? payload.errors : []
-			dismissedProviderIds.value = new Set()
-			requestError.value = ''
+			showSearchPayload(payload)
 		}
 		hasSearched.value = true
 	} catch (caught) {
-		if (caught instanceof DOMException && caught.name === 'AbortError') {
-			return
-		}
-		requestError.value = caught instanceof Error ? caught.message : t('versioniq', 'Could not search for apps.')
-		results.value = []
-		hasSearched.value = true
+		showSearchFailure(caught)
 	} finally {
 		if (!controller.signal.aborted) {
 			isLoading.value = false

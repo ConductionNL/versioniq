@@ -6,6 +6,7 @@ import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { ocsGet, ocsWrite } from '../ocs.ts'
+import { errorMessage } from '../utils/errorMessage.ts'
 import { FORGE_FORGEJO, forgeOf, isRetiredForge, forgeOptions as offeredForges } from '../utils/forges.ts'
 
 type AppOption = { id: string, label: string }
@@ -88,7 +89,7 @@ async function loadForgejoHost (): Promise<void> {
 		forgejoHost.value = payload.host ?? ''
 		forgejoConfigured.value = payload.configured === true
 	} catch (e) {
-		hostError.value = e instanceof Error ? e.message : t('versioniq', 'Could not load the self-hosted forge host.')
+		hostError.value = errorMessage(e, t('versioniq', 'Could not load the self-hosted forge host.'))
 	}
 }
 
@@ -117,7 +118,7 @@ async function saveForgejoHost (): Promise<void> {
 			? t('versioniq', 'Self-hosted forge host saved.')
 			: t('versioniq', 'Self-hosted forge host cleared.')
 	} catch (e) {
-		hostError.value = e instanceof Error ? e.message : t('versioniq', 'Could not save the self-hosted forge host.')
+		hostError.value = errorMessage(e, t('versioniq', 'Could not save the self-hosted forge host.'))
 	} finally {
 		loading.value = false
 	}
@@ -140,7 +141,7 @@ async function loadBinding (appId: string): Promise<void> {
 		)
 		currentBinding.value = { sourceId: payload.sourceId }
 	} catch (e) {
-		error.value = e instanceof Error ? e.message : t('versioniq', 'Could not load the current binding.')
+		error.value = errorMessage(e, t('versioniq', 'Could not load the current binding.'))
 	}
 }
 
@@ -176,9 +177,37 @@ async function removeBinding (): Promise<void> {
 		notice.value = t('versioniq', 'Binding removed. {appId} reads its versions from the App Store again.', { appId: selectedAppId.value })
 		emit('bound', selectedAppId.value)
 	} catch (e) {
-		error.value = e instanceof Error ? e.message : t('versioniq', 'Could not remove the binding.')
+		error.value = errorMessage(e, t('versioniq', 'Could not remove the binding.'))
 	} finally {
 		loading.value = false
+	}
+}
+
+const forgejoHostMissing = computed(() => forge.value === FORGE_FORGEJO && !forgejoConfigured.value)
+
+/**
+ * Why the bind form cannot be sent yet, or an empty string when it can.
+ */
+function bindFormError (): string {
+	if (!selectedAppId.value) {
+		return t('versioniq', 'Select an app first.')
+	}
+	if (!owner.value.trim() || !repo.value.trim()) {
+		return t('versioniq', 'Owner and repository are required.')
+	}
+	return forgejoHostMissing.value ? t('versioniq', 'Set the self-hosted Forgejo or Gitea host below first.') : ''
+}
+
+/**
+ * The bind request body from the form, with the default asset pattern when none is given.
+ */
+function bindRequestBody (): Record<string, unknown> {
+	return {
+		kind: 'github-release',
+		forge: forge.value,
+		owner: owner.value.trim(),
+		repo: repo.value.trim(),
+		assetPattern: assetPattern.value.trim() || '*.tar.gz',
 	}
 }
 
@@ -186,18 +215,9 @@ async function removeBinding (): Promise<void> {
  *
  */
 async function bind (): Promise<void> {
-	error.value = ''
 	notice.value = ''
-	if (!selectedAppId.value) {
-		error.value = t('versioniq', 'Select an app first.')
-		return
-	}
-	if (!owner.value.trim() || !repo.value.trim()) {
-		error.value = t('versioniq', 'Owner and repository are required.')
-		return
-	}
-	if (forge.value === FORGE_FORGEJO && !forgejoConfigured.value) {
-		error.value = t('versioniq', 'Set the self-hosted Forgejo or Gitea host below first.')
+	error.value = bindFormError()
+	if (error.value) {
 		return
 	}
 	loading.value = true
@@ -205,13 +225,7 @@ async function bind (): Promise<void> {
 		const { payload, error: apiError } = await ocsWrite<{ sourceId?: string }>(
 			'POST',
 			`/ocs/v2.php/apps/versioniq/api/source/${encodeURIComponent(selectedAppId.value)}/bind`,
-			{
-				kind: 'github-release',
-				forge: forge.value,
-				owner: owner.value.trim(),
-				repo: repo.value.trim(),
-				assetPattern: assetPattern.value.trim() || '*.tar.gz',
-			},
+			bindRequestBody(),
 		)
 		if (apiError) {
 			error.value = apiError
@@ -221,7 +235,7 @@ async function bind (): Promise<void> {
 		notice.value = t('versioniq', 'Bound to {source}', { source: payload.sourceId ?? '' })
 		emit('bound', selectedAppId.value)
 	} catch (e) {
-		error.value = e instanceof Error ? e.message : t('versioniq', 'Could not bind the source.')
+		error.value = errorMessage(e, t('versioniq', 'Could not bind the source.'))
 	} finally {
 		loading.value = false
 	}

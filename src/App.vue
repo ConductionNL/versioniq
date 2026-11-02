@@ -498,26 +498,19 @@ const installStatusTone = computed<'success' | 'warning' | 'error' | 'info'>(() 
 	return 'success'
 })
 
-const installStatusLabel = computed(() => {
-	const status = lastInstallResult.value?.installStatus
-	if (status === 'dry-run') {
-		return 'Dry run'
-	}
-	if (status === 'reverted') {
-		return 'Reverted'
-	}
-	if (status === 'installed-but-broken') {
-		return 'Installed but broken'
-	}
-	switch (installStatusTone.value) {
-	case 'warning':
-		return 'Dry run'
-	case 'error':
-		return 'Failed'
-	default:
-		return 'Done'
-	}
-})
+const INSTALL_STATUS_LABELS = new Map<string | undefined, string>([
+	['dry-run', 'Dry run'],
+	['reverted', 'Reverted'],
+	['installed-but-broken', 'Installed but broken'],
+])
+const INSTALL_TONE_LABELS = new Map<string, string>([
+	['warning', 'Dry run'],
+	['error', 'Failed'],
+])
+
+const installStatusLabel = computed(() => INSTALL_STATUS_LABELS.get(lastInstallResult.value?.installStatus)
+	?? INSTALL_TONE_LABELS.get(installStatusTone.value)
+	?? 'Done')
 
 /**
  *
@@ -1642,6 +1635,47 @@ type InstallRequest = {
 	forceDryRun?: boolean
 }
 
+const INSTALL_FLAG_PARAMS: Array<[keyof InstallRequest, string]> = [
+	['pinRequested', 'pin'],
+	['acceptNewSha', 'acceptNewSha'],
+	['allowDowngrade', 'allowDowngrade'],
+]
+
+/**
+ * The query of one install: debug, dry run, target version and source
+ * override, then the pin override and each install flag the request sets.
+ *
+ * @param request The app, the target version and the install flags.
+ */
+function installQuery (request: InstallRequest): Record<string, string> {
+	// dryRun is sent explicitly and independently of debug — see MODIFIED
+	// "Debug Mode". debug now controls diagnostic verbosity only.
+	const query: Record<string, string> = withSourceOverride({
+		debug: includeDebug.value ? '1' : '0',
+		dryRun: (request.forceDryRun || dryRunRequested.value) ? '1' : '0',
+		targetVersion: request.version,
+	}, sourceOverride.value)
+	return addInstallFlags(query, request)
+}
+
+/**
+ * Adds the pin override and every install flag the request sets to the query.
+ *
+ * @param query The install query so far.
+ * @param request The app, the target version and the install flags.
+ */
+function addInstallFlags (query: Record<string, string>, request: InstallRequest): Record<string, string> {
+	if (request.overridePin) {
+		query.overridePin = request.overridePin
+	}
+	for (const [flag, param] of INSTALL_FLAG_PARAMS) {
+		if (request[flag]) {
+			query[param] = '1'
+		}
+	}
+	return query
+}
+
 /**
  * Posts one install of an app version; each flag the request sets becomes a query parameter.
  *
@@ -1649,29 +1683,10 @@ type InstallRequest = {
  * @spec openspec/specs/version-management/spec.md
  */
 async function requestInstall (request: InstallRequest): Promise<{ payload: InstallApiPayload, metaMessage?: string }> {
-	const { appId, version, overridePin, pinRequested = false, acceptNewSha = false, allowDowngrade = false, forceDryRun = false } = request
-	// dryRun is sent explicitly and independently of debug — see MODIFIED
-	// "Debug Mode". debug now controls diagnostic verbosity only.
-	const query: Record<string, string> = withSourceOverride({
-		debug: includeDebug.value ? '1' : '0',
-		dryRun: (forceDryRun || dryRunRequested.value) ? '1' : '0',
-		targetVersion: version,
-	}, sourceOverride.value)
-	if (overridePin) {
-		query.overridePin = overridePin
-	}
-	if (pinRequested) {
-		query.pin = '1'
-	}
-	if (acceptNewSha) {
-		query.acceptNewSha = '1'
-	}
-	if (allowDowngrade) {
-		query.allowDowngrade = '1'
-	}
+	const { appId, version } = request
 	const endpoint = withOcsJson(
 		`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/versions/${encodeURIComponent(version)}/install`,
-		query,
+		installQuery(request),
 	)
 	const response = await fetch(apiUrl(endpoint), {
 		method: 'POST',

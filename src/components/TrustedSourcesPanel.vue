@@ -7,6 +7,7 @@ import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { ocsGet, ocsWrite } from '../ocs.ts'
+import { errorMessage } from '../utils/errorMessage.ts'
 import { forgeOf, isRetiredForge, forgeOptions as offeredForges } from '../utils/forges.ts'
 
 type SelectOption = { id: string, label: string }
@@ -34,42 +35,63 @@ async function loadPatterns (): Promise<void> {
 		const { payload } = await ocsGet<{ trustedPatterns?: string[] }>(SOURCES)
 		patterns.value = Array.isArray(payload.trustedPatterns) ? payload.trustedPatterns : []
 	} catch (e) {
-		error.value = e instanceof Error ? e.message : t('versioniq', 'Could not load trusted sources.')
+		error.value = errorMessage(e, t('versioniq', 'Could not load trusted sources.'))
 	}
+}
+
+/**
+ * Why the trust form cannot be sent yet, or an empty string when it can.
+ */
+function trustFormError (): string {
+	if (!owner.value.trim()) {
+		return t('versioniq', 'An owner/organisation is required.')
+	}
+	return confirmTrust.value ? '' : t('versioniq', 'Please confirm you trust this source before adding it.')
+}
+
+/**
+ * The trust request body from the form; the repository is left out when empty.
+ */
+function trustRequestBody (): Record<string, unknown> {
+	const body: Record<string, unknown> = { forge: forge.value, owner: owner.value.trim() }
+	if (repo.value.trim()) {
+		body.repo = repo.value.trim()
+	}
+	return body
+}
+
+/**
+ * Shows the pattern list after an add, confirms the added pattern and clears the form.
+ *
+ * @param trustedPatterns the list the server answered with, if any
+ */
+function showPatternAdded (trustedPatterns: string[] | undefined): void {
+	patterns.value = Array.isArray(trustedPatterns) ? trustedPatterns : patterns.value
+	notice.value = t('versioniq', 'Trusted {pattern}', { pattern: `${forge.value}:${owner.value.trim()}/${repo.value.trim() || '*'}` })
+	owner.value = ''
+	repo.value = ''
+	confirmTrust.value = false
 }
 
 /**
  *
  */
 async function addPattern (): Promise<void> {
-	error.value = ''
 	notice.value = ''
-	if (!owner.value.trim()) {
-		error.value = t('versioniq', 'An owner/organisation is required.')
-		return
-	}
-	if (!confirmTrust.value) {
-		error.value = t('versioniq', 'Please confirm you trust this source before adding it.')
+	error.value = trustFormError()
+	if (error.value) {
 		return
 	}
 	loading.value = true
 	try {
-		const body: Record<string, unknown> = { forge: forge.value, owner: owner.value.trim() }
-		if (repo.value.trim()) {
-			body.repo = repo.value.trim()
-		}
-		const { payload, error: apiError } = await ocsWrite<{ trustedPatterns?: string[] }>('POST', TRUSTED, body)
+		const { payload, error: apiError } = await ocsWrite<{ trustedPatterns?: string[] }>('POST', TRUSTED, trustRequestBody())
 		if (apiError) {
 			error.value = apiError
 			return
 		}
-		patterns.value = Array.isArray(payload.trustedPatterns) ? payload.trustedPatterns : patterns.value
-		notice.value = t('versioniq', 'Trusted {pattern}', { pattern: `${forge.value}:${owner.value.trim()}/${repo.value.trim() || '*'}` })
-		owner.value = ''
-		repo.value = ''
-		confirmTrust.value = false
+		showPatternAdded(payload.trustedPatterns)
 	} catch (e) {
-		error.value = e instanceof Error ? e.message : t('versioniq', 'Could not add the trusted source.')
+		error.value = errorMessage(e, t('versioniq', 'Could not add the trusted source.'))
 	} finally {
 		loading.value = false
 	}
@@ -94,7 +116,7 @@ async function removePattern (pattern: string): Promise<void> {
 		}
 		patterns.value = Array.isArray(payload.trustedPatterns) ? payload.trustedPatterns : patterns.value
 	} catch (e) {
-		error.value = e instanceof Error ? e.message : t('versioniq', 'Could not remove the trusted source.')
+		error.value = errorMessage(e, t('versioniq', 'Could not remove the trusted source.'))
 	} finally {
 		loading.value = false
 	}
