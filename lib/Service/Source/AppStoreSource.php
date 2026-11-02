@@ -17,6 +17,7 @@ use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Advisory\AdvisorySeverity;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
+use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
 use OCP\IAppConfig;
 use OCP\IConfig;
@@ -352,81 +353,91 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	private function fetchAppPayloadUncached(string $appId): ?array {
 		$client = $this->clientService->newClient();
 
-		for ($page = 1; $page <= self::MAX_PAGES; $page++) {
-			$endpoint = $this->apiBase() . '/apps.json?filter=' . rawurlencode($appId) . '&page=' . $page;
-			try {
-				$response = $client->get($endpoint, ['timeout' => self::FETCH_TIMEOUT_SECONDS]);
-				if ($response->getStatusCode() !== 200) {
-					$this->noteCatalogueFailure('HTTP ' . $response->getStatusCode());
-					continue;
-				}
-				$body = trim((string)$response->getBody());
-				if ($body === '') {
-					$this->noteCatalogueFailure('an empty body');
-					return null;
-				}
-				/** @var mixed $decoded */
-				$decoded = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
-				if (!is_array($decoded)) {
-					$this->noteCatalogueFailure('an unexpected payload');
-					return null;
-				}
-				$this->catalogueOutcome['answered'] = true;
-				// The whole catalogue arrived regardless of the filter; keep it.
-				$this->cacheCatalogueEntries($decoded);
-				$appPayload = $this->extractAppPayload($decoded, $appId);
-				if (is_array($appPayload)) {
-					return $appPayload;
-				}
-				if (!$this->hasPossibleNextPage($decoded, $page)) {
-					break;
-				}
-			} catch (Exception) {
-				$this->noteCatalogueFailure('no readable answer');
-				continue;
-			}
+		$filteredQuery = new CatalogueQuery(
+			$appId,
+			fn (int $page): string => $this->apiBase() . '/apps.json?filter=' . rawurlencode($appId) . '&page=' . $page,
+		);
+		$filteredQuery->stopOnBadBody = true;
+		$filtered = $this->searchCatalogue($client, $filteredQuery);
+		if ($filtered !== null) {
+			return $filtered === false ? null : $filtered;
 		}
 
 		$platformVersion = $this->getPlatformVersion();
 		$platformEndpoint = $this->apiBase() . '/platform/' . rawurlencode($platformVersion) . '/apps.json';
 
+		// Same reasoning as the filtered endpoint: each response is the whole
+		// platform catalogue, so every page is indexed.
+		$platform = $this->searchCatalogue($client, new CatalogueQuery(
+			$appId,
+			static fn (int $page): string => $platformEndpoint . '?page=' . $page,
+		));
+
+		return $platform === false ? null : $platform;
+	}
+
+	/**
+	 * Walks the query's pages until the app turns up or no next page can
+	 * exist. Returns the app payload, null when it was not found, or false
+	 * when a bad body ends the lookup.
+	 *
+	 * @return array<array-key, mixed>|false|null
+	 */
+	private function searchCatalogue(IClient $client, CatalogueQuery $query): array|false|null {
 		for ($page = 1; $page <= self::MAX_PAGES; $page++) {
-			$endpoint = $platformEndpoint . '?page=' . $page;
-			try {
-				$response = $client->get($endpoint, ['timeout' => self::FETCH_TIMEOUT_SECONDS]);
-				if ($response->getStatusCode() !== 200) {
-					$this->noteCatalogueFailure('HTTP ' . $response->getStatusCode());
-					continue;
-				}
-				$body = trim((string)$response->getBody());
-				if ($body === '') {
-					$this->noteCatalogueFailure('an empty body');
-					continue;
-				}
-				/** @var mixed $decoded */
-				$decoded = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
-				if (!is_array($decoded)) {
-					$this->noteCatalogueFailure('an unexpected payload');
-					continue;
-				}
-				$this->catalogueOutcome['answered'] = true;
-				// Same reasoning as the filtered endpoint above: this response
-				// is the whole platform catalogue, so index all of it.
-				$this->cacheCatalogueEntries($decoded);
-				$appPayload = $this->extractAppPayload($decoded, $appId);
-				if (is_array($appPayload)) {
-					return $appPayload;
-				}
-				if (!$this->hasPossibleNextPage($decoded, $page)) {
-					break;
-				}
-			} catch (Exception) {
-				$this->noteCatalogueFailure('no readable answer');
+			$decoded = $this->readCataloguePage($client, ($query->endpoint)($page));
+			if ($decoded === null || ($decoded === false && !$query->stopOnBadBody)) {
 				continue;
+			}
+			if ($decoded === false) {
+				return false;
+			}
+			$this->catalogueOutcome['answered'] = true;
+			// The whole catalogue arrived regardless of the filter; keep it.
+			$this->cacheCatalogueEntries($decoded);
+			$appPayload = $this->extractAppPayload($decoded, $query->appId);
+			if (is_array($appPayload)) {
+				return $appPayload;
+			}
+			if (!$this->hasPossibleNextPage($decoded, $page)) {
+				break;
 			}
 		}
 
 		return null;
+	}
+
+	/**
+	 * Fetches and decodes one catalogue page, noting each failure for the
+	 * connection report. Null skips the page (an error status or no readable
+	 * answer); false is an empty or non-array body.
+	 *
+	 * @return array<array-key, mixed>|false|null
+	 */
+	private function readCataloguePage(IClient $client, string $endpoint): array|false|null {
+		try {
+			$response = $client->get($endpoint, ['timeout' => self::FETCH_TIMEOUT_SECONDS]);
+			if ($response->getStatusCode() !== 200) {
+				$this->noteCatalogueFailure('HTTP ' . $response->getStatusCode());
+				return null;
+			}
+			$body = trim((string)$response->getBody());
+			if ($body === '') {
+				$this->noteCatalogueFailure('an empty body');
+				return false;
+			}
+			/** @var mixed $decoded */
+			$decoded = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+			if (!is_array($decoded)) {
+				$this->noteCatalogueFailure('an unexpected payload');
+				return false;
+			}
+
+			return $decoded;
+		} catch (Exception) {
+			$this->noteCatalogueFailure('no readable answer');
+			return null;
+		}
 	}
 
 	/**
