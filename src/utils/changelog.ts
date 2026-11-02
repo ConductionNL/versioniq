@@ -85,6 +85,7 @@ function rangeOrder(ascending: boolean): (a: ChangelogRangeEntry, b: ChangelogRa
  *
  * @param endpoints The installed and the target version.
  * @param versions The fetched releases.
+ * @spec openspec/specs/changelog-visibility/spec.md
  */
 export function buildChangelogRange(endpoints: ChangelogEndpoints, versions: ChangelogSource[]): ChangelogRangeEntry[] {
 	const bounds = versionWindow(endpoints)
