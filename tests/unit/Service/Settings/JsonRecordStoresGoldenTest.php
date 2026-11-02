@@ -50,6 +50,7 @@ final class JsonRecordStoresGoldenTest extends TestCase {
 		'pin.scalar' => '"text"',
 		'pin.' => '{"version":"9.9.9","pinnedBy":"x","pinnedAt":"2026-01-01T00:00:00+00:00"}',
 		'pin.empty' => '',
+		'pin.late' => '{"version":"4.0.0","pinnedBy":"erin","pinnedAt":"2026-03-01T00:00:00+00:00"}',
 		'pin.number' => 7,
 		'pinx.other' => '{"version":"1.0.0","pinnedBy":"x","pinnedAt":"2026-01-01T00:00:00+00:00"}',
 		'policy.good' => '{"level":"patch","setBy":"admin","setAt":"2026-06-01T00:00:00+00:00"}',
@@ -59,6 +60,7 @@ final class JsonRecordStoresGoldenTest extends TestCase {
 		'policy.deep' => '[[[[[[[[[1]]]]]]]]]',
 		'policy.' => '{"level":"minor","setBy":"admin","setAt":"2026-06-01T00:00:00+00:00"}',
 		'policy.null' => null,
+		'policy.late' => '{"level":"none","setBy":"admin","setAt":"2026-06-01T00:00:00+00:00"}',
 	];
 
 	/** @var list<array<string, mixed>> */
@@ -66,6 +68,9 @@ final class JsonRecordStoresGoldenTest extends TestCase {
 
 	/** @var array<string, mixed> */
 	private array $stored = [];
+
+	/** When set, getAllValues() ignores its prefix argument. */
+	public bool $unfiltered = false;
 
 	private const APP_IDS = ['good', 'bare', 'broken', 'scalar', 'invalid', 'deep', 'drifted', 'wrong', 'missing', 'empty', 'number', 'null', ''];
 
@@ -86,6 +91,16 @@ final class JsonRecordStoresGoldenTest extends TestCase {
 		}
 		$cases['pin all'] = static fn (self $t): mixed => $t->pin()->all();
 		$cases['policy all'] = static fn (self $t): mixed => $t->policy()->all();
+		$cases['pin all unfiltered'] = static function (self $t): mixed {
+			$t->unfiltered = true;
+
+			return $t->pin()->all();
+		};
+		$cases['policy all unfiltered'] = static function (self $t): mixed {
+			$t->unfiltered = true;
+
+			return $t->policy()->all();
+		};
 		$cases['lkg set'] = static fn (self $t): mixed => $t->lkg()->set('fresh', new Lkg('3.0.0', '2026-08-01T00:00:00+00:00', 'github:o/r'));
 		$cases['lkg set no source'] = static fn (self $t): mixed => $t->lkg()->set('good', new Lkg('3.0.0', '2026-08-01T00:00:00+00:00'));
 		$cases['pin set'] = static fn (self $t): mixed => $t->pin()->set('fresh', new Pin('1.2.3', 'carol', '2026-08-01T00:00:00+00:00', 'freeze', '1.3.0', '2026-08-02T00:00:00+00:00'));
@@ -117,6 +132,10 @@ final class JsonRecordStoresGoldenTest extends TestCase {
 		});
 		$config->method('getAllValues')->willReturnCallback(function (string $app, string $prefix = ''): array {
 			$this->calls[] = ['config.getAllValues', $app, $prefix];
+
+			if ($this->unfiltered) {
+				return $this->stored;
+			}
 
 			return array_filter($this->stored, static fn (string $key): bool => str_starts_with($key, $prefix), ARRAY_FILTER_USE_KEY);
 		});
@@ -178,6 +197,7 @@ final class JsonRecordStoresGoldenTest extends TestCase {
 	 */
 	public function testCase(string $name): void {
 		$this->stored = self::STORED;
+		$this->unfiltered = false;
 		$this->calls = [];
 		try {
 			$result = self::export((self::cases()[$name])($this));
