@@ -6,7 +6,9 @@ namespace OCA\Versioniq\Tests\Unit\Service\Pat;
 
 use OCA\Versioniq\Db\Pat;
 use OCA\Versioniq\Db\PatMapper;
+use OCA\Versioniq\Service\Pat\NewPat;
 use OCA\Versioniq\Service\Pat\PatManager;
+use OCA\Versioniq\Service\Pat\ValidationResult;
 use OCP\Security\ICrypto;
 use PHPUnit\Framework\TestCase;
 
@@ -35,20 +37,17 @@ final class PatManagerTest extends TestCase {
 		$manager = new PatManager($mapper, $crypto);
 
 		$pat = $manager->create(
-			'admin',
-			'My PAT',
-			Pat::KIND_CLASSIC,
-			'ConductionNL/*',
+			(new NewPat('admin', ValidationResult::accepted(['repo'], [], null)))
+				->describedAs('My PAT', 'ConductionNL/*')
+				->ofKind(Pat::KIND_CLASSIC),
 			'ghp_secrettoken1234567890abcdef1234567890',
-			['repo'],
-			[],
-			null,
 		);
 
 		$this->assertSame('encrypted-blob', $pat->getEncryptedToken());
 		$this->assertSame('ghp_...7890', $pat->getTokenHint());
 		$this->assertSame('admin', $pat->getOwnerUid());
 		$this->assertSame('ConductionNL/*', $pat->getTargetPattern());
+		$this->assertSame('github', $pat->getForge());
 		$this->assertFalse($pat->getSharedWithAdmins());
 
 		$validated = json_decode($pat->getLastValidatedScopes() ?? '{}', true);
