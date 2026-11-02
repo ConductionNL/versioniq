@@ -18,11 +18,18 @@ use OC\Archive\ZIP;
 use OC\Files\FilenameValidator;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
+use OCA\Versioniq\Service\Installer\ArchiveCheck;
+use OCA\Versioniq\Service\Installer\ExternalInstall;
+use OCA\Versioniq\Service\Installer\ExternalInstallOptions;
+use OCA\Versioniq\Service\Installer\ExternalInstallRequest;
+use OCA\Versioniq\Service\Installer\ExternalInstallRun;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFailure;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
 use OCA\Versioniq\Service\Installer\MigrationDiffer;
+use OCA\Versioniq\Service\Installer\ReleaseDownload;
 use OCA\Versioniq\Service\Installer\ShaMismatchException;
+use OCA\Versioniq\Service\Installer\StagedRelease;
 use OCA\Versioniq\Service\Pat\PatManager;
 use OCA\Versioniq\Service\Pat\PatResolver;
 use OCA\Versioniq\Service\Source\ForgeRegistry;
@@ -125,304 +132,444 @@ class ExternalReleaseInstallerService {
 		bool $dryRun = false,
 		bool $acceptNewSha = false,
 	): array {
-		$this->resetDebug();
-		$this->addDebug('requested-install', [
-			'appId' => $appId,
-			'version' => $version,
-			'sourceId' => $binding->getId(),
-			'dryRun' => $dryRun,
-		]);
+		$request = new ExternalInstallRequest($appId, $version, $release, new ExternalInstallOptions($dryRun, $acceptNewSha));
+		$this->beginRun($request, $binding);
+		$run = new ExternalInstallRun($request, $binding, $this->installedVersionOf($appId));
 
 		try {
-			$installedVersion = $this->appManager->getAppVersion($appId);
-		} catch (Exception) {
-			$installedVersion = '';
-		}
-
-		try {
-			if (!preg_match('/^[a-z][a-z0-9_\-]*$/', $appId)) {
-				throw new Exception('Invalid app id.');
-			}
-
-			$this->trustedSources->assertBindingAllowed($binding);
-
-			$downloadUrl = isset($release['download']) && is_string($release['download']) ? $release['download'] : '';
-			$shaUrl = isset($release['sha256Url']) && is_string($release['sha256Url']) && $release['sha256Url'] !== ''
-				? $release['sha256Url']
-				: null;
-			if ($downloadUrl === '') {
-				throw new Exception('No download URL found for the selected release.');
-			}
-
-			$previousEnabled = $this->appConfig->getValueString($appId, 'enabled', 'no');
-
-			$tempFile = $this->tempManager->getTemporaryFile('.tar.gz');
-			$tempFolder = $this->tempManager->getTemporaryFolder('app-version-external');
-			if (!is_string($tempFile) || !is_string($tempFolder)) {
-				throw new Exception('Could not allocate temporary download paths.');
-			}
-
-			$authResolution = $this->resolveAuth($binding);
-			$this->addDebug('auth-resolution', ['hasPat' => $authResolution !== null]);
-
-			try {
-				$this->authenticatedDownload($downloadUrl, $tempFile, $this->patForUrl($downloadUrl, $binding, $authResolution));
-			} catch (Exception $error) {
-				// Download failed (network error, dead URL, deleted release
-				// asset): fall back to a cached artifact for this exact
-				// appId+version, if one exists — see "Cached fallback with
-				// full re-verification". The allowlist gate already ran
-				// above (line ~133), so a cache hit for an untrusted source
-				// is unreachable here. The recorded-SHA (TOFU) and sibling
-				// `.sha256` checks below run against the cache-served bytes
-				// exactly as they would a fresh download.
-				$cached = $this->artifactCache->fetch($appId, $version);
-				if ($cached === null || file_put_contents($tempFile, $cached['content']) === false) {
-					throw new Exception('Could not download selected release: ' . $error->getMessage());
-				}
-				$this->servedFromCache = true;
-				$this->addDebug('served-from-cache', ['appId' => $appId, 'version' => $version]);
-			}
-			$this->addDebug('downloaded', ['tempFile' => $tempFile, 'sourceUrl' => $downloadUrl, 'servedFromCache' => $this->servedFromCache]);
-
-			// Hash the downloaded archive exactly once; both the recorded-digest
-			// (TOFU) check below and the sibling `.sha256` verification reuse
-			// this value — see design.md "Enforcement point".
-			$actualSha = hash_file('sha256', $tempFile);
-			if ($actualSha === false) {
-				throw new Exception('Could not compute SHA-256 of downloaded archive.');
-			}
-			$actualSha = strtolower($actualSha);
-
-			// Trust-on-first-use enforcement: a digest recorded from a previous
-			// successful install of this (appId, version, source) outranks
-			// whatever the source serves now, including a co-published,
-			// possibly-rewritten `.sha256` sibling — see "Recorded SHA-256
-			// enforced on reinstall". Checked before extraction/backup: no
-			// filesystem change happens on mismatch.
-			$recordedSha = $binding->getRecordedSha($version);
-			$recordedShaMatched = $recordedSha !== null && hash_equals($recordedSha, $actualSha);
-			if ($recordedSha !== null && !$acceptNewSha && !$recordedShaMatched) {
-				throw new ShaMismatchException($appId, $version, $recordedSha, $actualSha);
-			}
-			$this->addDebug('recorded-sha-check', [
-				'recordedSha' => $recordedSha,
-				'actualSha' => $actualSha,
-				'matched' => $recordedShaMatched,
-				'acceptNewSha' => $acceptNewSha,
-			]);
-
-			$integrityWarning = $this->verifyChecksum(
-				$actualSha,
-				$shaUrl,
-				$shaUrl === null ? null : $this->patForUrl($shaUrl, $binding, $authResolution),
-			);
-			$this->addDebug('checksum', ['shaUrl' => $shaUrl, 'integrityWarning' => $integrityWarning]);
-
-			// Captured for the caller to persist via ArtifactCache::store()
-			// once finalize() succeeds — see "Persist verified artifacts on
-			// successful install".
-			$this->lastArchivePath = $tempFile;
-			$this->lastArchiveMeta = [
-				'sha256' => $actualSha,
-				'sourceId' => $binding->getId(),
-				'installerKind' => SourceInterface::INSTALLER_EXTERNAL,
-			];
-
-			$archivePath = $this->extractArchive($tempFile, $tempFolder);
-			$this->addDebug('archive-extracted', ['extractedRoot' => $archivePath]);
-
-			$info = $this->parseAndValidateInfoXml($archivePath, $appId, $version);
-			$this->addDebug('info-validated', [
-				'appId' => $info['id'],
-				'archiveVersion' => $info['version'],
-			]);
-
-			try {
-				$previousPath = $this->appManager->getAppPath($appId);
-			} catch (AppPathNotFoundException) {
-				$previousPath = null;
-			}
-
-			$destination = $previousPath !== null ? $previousPath : $this->getInstallPath() . '/' . $appId;
-
-			if (!is_dir(dirname($destination))) {
-				throw new Exception('Could not resolve app install folder.');
-			}
-
-			// Migration diff (downgrade only, acknowledged or dry-run): compare
-			// the installed copy's migration steps against the just-extracted
-			// target archive before any file swap — see "Migration diff on
-			// downgrade". A diff failure degrades to `null` (generic warning);
-			// it never blocks the downgrade itself.
-			$isDowngrade = $installedVersion !== '' && version_compare($version, $installedVersion, '<');
-			$orphanedMigrations = $isDowngrade
-				? $this->migrationDiffer->diff($previousPath, $archivePath)
-				: null;
-			if ($isDowngrade) {
-				$this->addDebug('migration-diff', ['orphanedMigrations' => $orphanedMigrations]);
-			}
-
-			if ($dryRun) {
-				$this->addDebug('dry-run-skip-filesystem', ['destination' => $destination]);
-
-				return [
-					'status' => 'dry-run',
-					'installedVersionBefore' => $installedVersion === '' ? null : $installedVersion,
-					'integrityWarning' => $integrityWarning,
-					'dryRun' => true,
-					'debug' => $this->debug,
-					'binding' => $binding,
-					'recordedShaMatched' => $recordedShaMatched,
-					'servedFromCache' => $this->servedFromCache,
-				] + ($isDowngrade ? ['orphanedMigrations' => $orphanedMigrations] : []);
-			}
-
-			$backupDestination = null;
-			if (is_dir($destination)) {
-				$backupDestination = $destination . '.appversion-backup';
-				if (is_dir($backupDestination)) {
-					$this->rmdirr($backupDestination);
-				}
-				if (!rename($destination, $backupDestination)) {
-					throw new Exception('Could not backup existing app folder before replacement.');
-				}
-			}
-
-			try {
-				if (!mkdir($destination, 0777, true) && !is_dir($destination)) {
-					throw new Exception('Could not create app destination folder.');
-				}
-				$this->copyRecursive($archivePath, $destination);
-			} catch (Exception $error) {
-				// Pre-finalize failure: restore the previous files and report a clean
-				// revert (the previously installed version is intact). For a fresh
-				// install (no backup) there is nothing to restore — remove the
-				// partially-copied new files so we don't leave a broken app folder.
-				if ($backupDestination === null) {
-					if (is_dir($destination)) {
-						$this->rmdirr($destination);
-					}
-				} else {
-					$this->restoreFromBackup($destination, $backupDestination);
-				}
-				throw InstallFailure::reverted($error->getMessage(), 'copy', $error);
-			}
-
-			if (function_exists('opcache_reset')) {
-				opcache_reset();
-			}
-			$this->addDebug('filesystem-updated', ['destination' => $destination]);
-
-			$enabled = $installedVersion === '' ? 'no' : $previousEnabled;
-
-			// Finalize (migrations + repair steps) is the last, unrecoverable phase.
-			// Keep the backup until it succeeds; on failure restore the previous
-			// files and report installed-but-broken.
-			try {
-				$installedApp = $this->finalizer->finalize($destination, $info, $enabled, null, $binding->getId());
-			} catch (\Throwable $finalizeError) {
-				// Throwable, not just Exception: a finalize-phase Error (e.g. a
-				// core API removed between releases) must still restore the
-				// previous files and report installed-but-broken, never surface
-				// as an uncaught fatal that leaves the app half-swapped.
-				$restoreState = $backupDestination === null
-					? FailureClassifier::RESTORE_NONE
-					: ($this->restoreFromBackup($destination, $backupDestination) ? FailureClassifier::RESTORE_CLEAN : FailureClassifier::RESTORE_FAILED);
-				throw InstallFailure::finalizeFailed($finalizeError->getMessage(), $restoreState, $finalizeError);
-			}
-
-			// Finalize succeeded — now it is safe to drop the backup.
-			if ($backupDestination !== null && is_dir($backupDestination)) {
-				$this->rmdirr($backupDestination);
-			}
-			$this->addDebug('finalized', ['appId' => $installedApp, 'enabled' => $enabled]);
-
-			// Persist the just-verified archive for future rollback; see
-			// "Persist verified artifacts on successful install". Only
-			// reached after finalize() succeeded, so a failed install never
-			// populates the cache.
-			if ($this->lastArchivePath !== null && $this->lastArchiveMeta !== null) {
-				$this->artifactCache->store($appId, $version, $this->lastArchivePath, $this->lastArchiveMeta);
-			}
-
-			// Record the observed digest only now that the install fully
-			// succeeded (never on a failure path) — see "SHA-256 recorded on
-			// first successful external install". Sibling-verified or locally
-			// computed, the value is the same: verifyChecksum() above already
-			// threw if a sibling digest existed and disagreed with $actualSha.
-			$updatedBinding = $binding->withRecordedSha($version, $actualSha);
-			$shaAccepted = $recordedSha !== null && !$recordedShaMatched;
-			$auditMessage = $integrityWarning;
-			if ($shaAccepted) {
-				$this->logger->warning('ExternalReleaseInstallerService: accepted a new SHA-256 for a previously recorded version (acceptNewSha override)', [
-					'appId' => $appId,
-					'version' => $version,
-					'previousSha' => $recordedSha,
-					'newSha' => $actualSha,
-				]);
-				$shaAcceptNote = sprintf(
-					'SHA-256 override accepted for %s@%s: previous %s, new %s.',
-					$appId,
-					$version,
-					$recordedSha,
-					$actualSha,
-				);
-				$auditMessage = $auditMessage !== null ? $auditMessage . ' ' . $shaAcceptNote : $shaAcceptNote;
-			}
-
-			$this->recordInstallAudit($appId, $binding, $installedVersion, $version, AuditLogger::STATUS_SUCCESS, $auditMessage);
-
-			return [
-				'status' => 'installed',
-				'installedVersionBefore' => $installedVersion === '' ? null : $installedVersion,
-				'installedApp' => $installedApp,
-				'integrityWarning' => $integrityWarning,
-				'dryRun' => false,
-				'debug' => $this->debug,
-				'binding' => $updatedBinding,
-				'recordedShaMatched' => $recordedShaMatched,
-				'servedFromCache' => $this->servedFromCache,
-			] + ($isDowngrade ? ['orphanedMigrations' => $orphanedMigrations] : []);
+			return $this->runInstall($run);
 		} catch (\Throwable $error) {
-			// Best-effort audit write on the failure path, before the exception
-			// propagates up to the caller's error mapping; see "Failed install
-			// is recorded with the failure reason". Dry runs change nothing, so
-			// they are not audited (mirrors the success path above).
-			if (!$dryRun) {
-				$this->recordInstallAudit($appId, $binding, $installedVersion, $version, AuditLogger::STATUS_FAILURE, null, $error->getMessage());
-			}
+			$this->auditFailure($run, $error);
 
 			throw $error;
 		}
 	}
 
+	private function beginRun(ExternalInstallRequest $request, SourceBinding $binding): void {
+		$this->resetDebug();
+		$this->addDebug('requested-install', [
+			'appId' => $request->appId,
+			'version' => $request->version,
+			'sourceId' => $binding->getId(),
+			'dryRun' => $request->options->dryRun,
+		]);
+	}
+
+	/**
+	 * Best-effort audit write on the failure path, before the exception
+	 * propagates up to the caller's error mapping; see "Failed install is
+	 * recorded with the failure reason". Dry runs change nothing, so they are
+	 * not audited (mirrors the success path).
+	 */
+	private function auditFailure(ExternalInstallRun $run, \Throwable $error): void {
+		if (!$run->request->options->dryRun) {
+			$this->recordInstallAudit($run, [AuditLogger::STATUS_FAILURE, $error->getMessage()]);
+		}
+	}
+
+	/**
+	 * The version the app manager reports for `$appId`, or an empty string when it is not installed.
+	 */
+	private function installedVersionOf(string $appId): string {
+		try {
+			return $this->appManager->getAppVersion($appId);
+		} catch (Exception) {
+			return '';
+		}
+	}
+
+	/**
+	 * Runs the install steps in order: guards, download and integrity checks,
+	 * staging, then either the dry-run report or the file swap and finalize.
+	 *
+	 * @return array{status: string, installedVersionBefore: ?string, installedApp?: string, integrityWarning: ?string, dryRun: bool, debug: list<array{stage: string, data: mixed}>, binding: SourceBinding, recordedShaMatched: bool, servedFromCache: bool, orphanedMigrations?: list<string>|null}
+	 */
+	private function runInstall(ExternalInstallRun $run): array {
+		$this->assertInstallable($run);
+		$download = $this->prepareDownload($run);
+		$check = $this->fetchVerifiedArchive($run, $download);
+		$staged = $this->stageRelease($run, $download);
+		$install = new ExternalInstall($run, $check, $staged, $this->orphanedMigrations($run, $staged));
+
+		if ($run->request->options->dryRun) {
+			$this->addDebug('dry-run-skip-filesystem', ['destination' => $staged->destination]);
+
+			return $this->resultEnvelope($install, ['binding' => $run->binding]);
+		}
+
+		return $this->swapAndFinalize($install);
+	}
+
+	/**
+	 * Rejects a malformed app id and a source outside the trusted-source allowlist.
+	 */
+	private function assertInstallable(ExternalInstallRun $run): void {
+		if (!preg_match('/^[a-z][a-z0-9_\-]*$/', $run->request->appId)) {
+			throw new Exception('Invalid app id.');
+		}
+
+		$this->trustedSources->assertBindingAllowed($run->binding);
+	}
+
+	/**
+	 * Checks the release has an archive URL, reads the app's enabled value and
+	 * allocates the temporary paths, then resolves the stored token.
+	 */
+	private function prepareDownload(ExternalInstallRun $run): ReleaseDownload {
+		if ($run->request->downloadUrl() === '') {
+			throw new Exception('No download URL found for the selected release.');
+		}
+
+		$run->previousEnabled = $this->appConfig->getValueString($run->request->appId, 'enabled', 'no');
+
+		$tempFile = $this->tempManager->getTemporaryFile('.tar.gz');
+		$tempFolder = $this->tempManager->getTemporaryFolder('app-version-external');
+		if (!is_string($tempFile) || !is_string($tempFolder)) {
+			throw new Exception('Could not allocate temporary download paths.');
+		}
+
+		$token = $this->resolveAuth($run->binding);
+		$this->addDebug('auth-resolution', ['hasPat' => $token !== null]);
+
+		return new ReleaseDownload($tempFile, $tempFolder, $token);
+	}
+
+	/**
+	 * Downloads the archive (or falls back to the cache), hashes it once, and
+	 * checks the hash against the recorded digest and the sibling `.sha256`.
+	 */
+	private function fetchVerifiedArchive(ExternalInstallRun $run, ReleaseDownload $download): ArchiveCheck {
+		$this->downloadArchive($run, $download);
+
+		// Hash the downloaded archive exactly once; both the recorded-digest
+		// (TOFU) check and the sibling `.sha256` verification reuse this
+		// value — see design.md "Enforcement point".
+		$actualSha = $this->hashArchive($download->tempFile);
+		$recordedShaMatched = $this->checkRecordedSha($run, $actualSha);
+
+		$shaUrl = $run->request->shaUrl();
+		$integrityWarning = $this->verifyChecksum(
+			$actualSha,
+			$shaUrl,
+			$shaUrl === null ? null : $this->patForUrl($shaUrl, $run->binding, $download->token),
+		);
+		$this->addDebug('checksum', ['shaUrl' => $shaUrl, 'integrityWarning' => $integrityWarning]);
+
+		// Captured for persisting via ArtifactCache::store() once finalize()
+		// succeeds — see "Persist verified artifacts on successful install".
+		$this->lastArchivePath = $download->tempFile;
+		$this->lastArchiveMeta = [
+			'sha256' => $actualSha,
+			'sourceId' => $run->binding->getId(),
+			'installerKind' => SourceInterface::INSTALLER_EXTERNAL,
+		];
+
+		return new ArchiveCheck($actualSha, $recordedShaMatched, $integrityWarning);
+	}
+
+	private function downloadArchive(ExternalInstallRun $run, ReleaseDownload $download): void {
+		$downloadUrl = $run->request->downloadUrl();
+		try {
+			$this->authenticatedDownload($downloadUrl, $download->tempFile, $this->patForUrl($downloadUrl, $run->binding, $download->token));
+		} catch (Exception $error) {
+			// Download failed (network error, dead URL, deleted release
+			// asset): fall back to a cached artifact for this exact
+			// appId+version, if one exists — see "Cached fallback with
+			// full re-verification". The allowlist gate already ran, so a
+			// cache hit for an untrusted source is unreachable here. The
+			// recorded-SHA (TOFU) and sibling `.sha256` checks run against
+			// the cache-served bytes exactly as they would a fresh download.
+			if (!$this->restoreFromCache($run->request, $download->tempFile)) {
+				throw new Exception('Could not download selected release: ' . $error->getMessage());
+			}
+		}
+		$this->addDebug('downloaded', ['tempFile' => $download->tempFile, 'sourceUrl' => $downloadUrl, 'servedFromCache' => $this->servedFromCache]);
+	}
+
+	/**
+	 * Writes the cached artifact for the requested app and version to `$tempFile`; false when there is none.
+	 */
+	private function restoreFromCache(ExternalInstallRequest $request, string $tempFile): bool {
+		$cached = $this->artifactCache->fetch($request->appId, $request->version);
+		if ($cached === null || file_put_contents($tempFile, $cached['content']) === false) {
+			return false;
+		}
+		$this->servedFromCache = true;
+		$this->addDebug('served-from-cache', ['appId' => $request->appId, 'version' => $request->version]);
+
+		return true;
+	}
+
+	private function hashArchive(string $tempFile): string {
+		$actualSha = hash_file('sha256', $tempFile);
+		if ($actualSha === false) {
+			throw new Exception('Could not compute SHA-256 of downloaded archive.');
+		}
+
+		return strtolower($actualSha);
+	}
+
+	/**
+	 * Trust-on-first-use enforcement: a digest recorded from a previous
+	 * successful install of this (appId, version, source) outranks whatever
+	 * the source serves now, including a co-published, possibly-rewritten
+	 * `.sha256` sibling — see "Recorded SHA-256 enforced on reinstall".
+	 * Checked before extraction/backup: no filesystem change happens on
+	 * mismatch. Returns whether the recorded digest matched.
+	 */
+	private function checkRecordedSha(ExternalInstallRun $run, string $actualSha): bool {
+		$recordedSha = $run->recordedSha();
+		$recordedShaMatched = $recordedSha !== null && hash_equals($recordedSha, $actualSha);
+		if ($recordedSha !== null && !$run->request->options->acceptNewSha && !$recordedShaMatched) {
+			throw new ShaMismatchException($run->request->appId, $run->request->version, $recordedSha, $actualSha);
+		}
+		$this->addDebug('recorded-sha-check', [
+			'recordedSha' => $recordedSha,
+			'actualSha' => $actualSha,
+			'matched' => $recordedShaMatched,
+			'acceptNewSha' => $run->request->options->acceptNewSha,
+		]);
+
+		return $recordedShaMatched;
+	}
+
+	/**
+	 * Extracts the archive, validates its app info and resolves the folder the app goes to.
+	 */
+	private function stageRelease(ExternalInstallRun $run, ReleaseDownload $download): StagedRelease {
+		$archivePath = $this->extractArchive($download->tempFile, $download->tempFolder);
+		$this->addDebug('archive-extracted', ['extractedRoot' => $archivePath]);
+
+		$info = $this->parseAndValidateInfoXml($archivePath, $run->request->appId, $run->request->version);
+		$this->addDebug('info-validated', [
+			'appId' => $info['id'],
+			'archiveVersion' => $info['version'],
+		]);
+
+		$previousPath = $this->previousAppPath($run->request->appId);
+		$destination = $previousPath ?? $this->getInstallPath() . '/' . $run->request->appId;
+
+		if (!is_dir(dirname($destination))) {
+			throw new Exception('Could not resolve app install folder.');
+		}
+
+		return new StagedRelease($archivePath, $info, $previousPath, $destination);
+	}
+
+	private function previousAppPath(string $appId): ?string {
+		try {
+			return $this->appManager->getAppPath($appId);
+		} catch (AppPathNotFoundException) {
+			return null;
+		}
+	}
+
+	/**
+	 * Migration diff (downgrade only, acknowledged or dry-run): compares the
+	 * installed copy's migration steps against the just-extracted target
+	 * archive before any file swap — see "Migration diff on downgrade". A diff
+	 * failure degrades to `null` (generic warning); it never blocks the
+	 * downgrade itself.
+	 *
+	 * @return list<string>|null
+	 */
+	private function orphanedMigrations(ExternalInstallRun $run, StagedRelease $staged): ?array {
+		if (!$run->isDowngrade()) {
+			return null;
+		}
+		$orphanedMigrations = $this->migrationDiffer->diff($staged->previousPath, $staged->root);
+		$this->addDebug('migration-diff', ['orphanedMigrations' => $orphanedMigrations]);
+
+		return $orphanedMigrations;
+	}
+
+	/**
+	 * Swaps the app files, finalizes, drops the backup, persists the archive and records the success.
+	 *
+	 * @return array{status: string, installedVersionBefore: ?string, installedApp?: string, integrityWarning: ?string, dryRun: bool, debug: list<array{stage: string, data: mixed}>, binding: SourceBinding, recordedShaMatched: bool, servedFromCache: bool, orphanedMigrations?: list<string>|null}
+	 */
+	private function swapAndFinalize(ExternalInstall $install): array {
+		$backupDestination = $this->backupExisting($install->staged->destination);
+		$this->copyIntoPlace($install->staged, $backupDestination);
+		$installedApp = $this->finalizeInstall($install, $backupDestination);
+
+		// Finalize succeeded — now it is safe to drop the backup.
+		if ($backupDestination !== null && is_dir($backupDestination)) {
+			$this->rmdirr($backupDestination);
+		}
+		$this->addDebug('finalized', ['appId' => $installedApp, 'enabled' => $install->run->enabledAfter()]);
+
+		// Persist the just-verified archive for future rollback; see
+		// "Persist verified artifacts on successful install". Only reached
+		// after finalize() succeeded, so a failed install never populates
+		// the cache.
+		if ($this->lastArchivePath !== null && $this->lastArchiveMeta !== null) {
+			$this->artifactCache->store($install->run->request->appId, $install->run->request->version, $this->lastArchivePath, $this->lastArchiveMeta);
+		}
+
+		// Record the observed digest only now that the install fully
+		// succeeded (never on a failure path) — see "SHA-256 recorded on
+		// first successful external install". Sibling-verified or locally
+		// computed, the value is the same: verifyChecksum() already threw if
+		// a sibling digest existed and disagreed with the computed one.
+		$updatedBinding = $install->run->binding->withRecordedSha($install->run->request->version, $install->check->sha);
+		$this->recordInstallAudit($install->run, [AuditLogger::STATUS_SUCCESS, $this->successAuditMessage($install)]);
+
+		return $this->resultEnvelope($install, ['binding' => $updatedBinding, 'installedApp' => $installedApp]);
+	}
+
+	/**
+	 * Moves the live app folder aside, replacing a stale backup; null when there is no live folder.
+	 */
+	private function backupExisting(string $destination): ?string {
+		if (!is_dir($destination)) {
+			return null;
+		}
+		$backupDestination = $destination . '.appversion-backup';
+		if (is_dir($backupDestination)) {
+			$this->rmdirr($backupDestination);
+		}
+		if (!rename($destination, $backupDestination)) {
+			throw new Exception('Could not backup existing app folder before replacement.');
+		}
+
+		return $backupDestination;
+	}
+
+	/**
+	 * Copies the staged release into its folder. A failure here is pre-finalize:
+	 * the previous files are restored and the outcome is a clean revert. For a
+	 * fresh install (no backup) the partially-copied files are removed so no
+	 * broken app folder is left behind.
+	 */
+	private function copyIntoPlace(StagedRelease $staged, ?string $backupDestination): void {
+		$destination = $staged->destination;
+		try {
+			if (!mkdir($destination, 0777, true) && !is_dir($destination)) {
+				throw new Exception('Could not create app destination folder.');
+			}
+			$this->copyRecursive($staged->root, $destination);
+		} catch (Exception $error) {
+			$this->revertCopy($destination, $backupDestination);
+			throw InstallFailure::reverted($error->getMessage(), 'copy', $error);
+		}
+		$this->markFilesystemUpdated($destination);
+	}
+
+	/**
+	 * Clears the opcode cache so the new app files load, and logs the swap.
+	 */
+	private function markFilesystemUpdated(string $destination): void {
+		if (function_exists('opcache_reset')) {
+			opcache_reset();
+		}
+		$this->addDebug('filesystem-updated', ['destination' => $destination]);
+	}
+
+	private function revertCopy(string $destination, ?string $backupDestination): void {
+		if ($backupDestination !== null) {
+			$this->restoreFromBackup($destination, $backupDestination);
+		} elseif (is_dir($destination)) {
+			$this->rmdirr($destination);
+		}
+	}
+
+	/**
+	 * Finalize (migrations + repair steps) is the last, unrecoverable phase.
+	 * On a failure the previous files are restored and the outcome is
+	 * installed-but-broken. Throwable, not just Exception: a finalize-phase
+	 * Error (e.g. a core API removed between releases) must still restore the
+	 * previous files, never surface as an uncaught fatal that leaves the app
+	 * half-swapped.
+	 */
+	private function finalizeInstall(ExternalInstall $install, ?string $backupDestination): string {
+		$destination = $install->staged->destination;
+		try {
+			return $this->finalizer->finalize($destination, $install->staged->info, $install->run->enabledAfter(), null, $install->run->binding->getId());
+		} catch (\Throwable $finalizeError) {
+			$restoreState = $backupDestination === null
+				? FailureClassifier::RESTORE_NONE
+				: ($this->restoreFromBackup($destination, $backupDestination) ? FailureClassifier::RESTORE_CLEAN : FailureClassifier::RESTORE_FAILED);
+			throw InstallFailure::finalizeFailed($finalizeError->getMessage(), $restoreState, $finalizeError);
+		}
+	}
+
+	/**
+	 * The audit message of a successful install: the integrity warning, plus a
+	 * note (and a logged warning) when a new SHA-256 replaced a recorded one.
+	 */
+	private function successAuditMessage(ExternalInstall $install): ?string {
+		$integrityWarning = $install->check->integrityWarning;
+		$recordedSha = $install->run->recordedSha();
+		if ($recordedSha === null || $install->check->recordedShaMatched) {
+			return $integrityWarning;
+		}
+
+		$appId = $install->run->request->appId;
+		$version = $install->run->request->version;
+		$actualSha = $install->check->sha;
+		$this->logger->warning('ExternalReleaseInstallerService: accepted a new SHA-256 for a previously recorded version (acceptNewSha override)', [
+			'appId' => $appId,
+			'version' => $version,
+			'previousSha' => $recordedSha,
+			'newSha' => $actualSha,
+		]);
+		$shaAcceptNote = sprintf(
+			'SHA-256 override accepted for %s@%s: previous %s, new %s.',
+			$appId,
+			$version,
+			$recordedSha,
+			$actualSha,
+		);
+
+		return $integrityWarning !== null ? $integrityWarning . ' ' . $shaAcceptNote : $shaAcceptNote;
+	}
+
+	/**
+	 * The envelope returned for a dry run (no `installedApp`) or a completed install.
+	 *
+	 * @param array{binding: SourceBinding, installedApp?: string} $outcome
+	 * @return array{status: string, installedVersionBefore: ?string, installedApp?: string, integrityWarning: ?string, dryRun: bool, debug: list<array{stage: string, data: mixed}>, binding: SourceBinding, recordedShaMatched: bool, servedFromCache: bool, orphanedMigrations?: list<string>|null}
+	 */
+	private function resultEnvelope(ExternalInstall $install, array $outcome): array {
+		$dryRun = !isset($outcome['installedApp']);
+		$result = [
+			'status' => $dryRun ? 'dry-run' : 'installed',
+			'installedVersionBefore' => $install->run->fromVersion(),
+		];
+		if (isset($outcome['installedApp'])) {
+			$result['installedApp'] = $outcome['installedApp'];
+		}
+
+		return $result + [
+			'integrityWarning' => $install->check->integrityWarning,
+			'dryRun' => $dryRun,
+			'debug' => $this->debug,
+			'binding' => $outcome['binding'],
+			'recordedShaMatched' => $install->check->recordedShaMatched,
+			'servedFromCache' => $this->servedFromCache,
+		] + ($install->run->isDowngrade() ? ['orphanedMigrations' => $install->orphanedMigrations] : []);
+	}
+
 	/**
 	 * Records one `install` audit entry for the external (GitHub/Codeberg
-	 * release) installer, including the integrity-warning text on success;
-	 * see "Version operations are recorded".
+	 * release) installer: the failure reason, or on success the integrity
+	 * warning; see "Version operations are recorded".
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
+	 * @param array{0: string, 1: ?string} $outcome Status and message.
 	 */
-	private function recordInstallAudit(
-		string $appId,
-		SourceBinding $binding,
-		string $installedVersionBefore,
-		string $requestedVersion,
-		string $status,
-		?string $integrityWarning = null,
-		?string $failureMessage = null,
-	): void {
+	private function recordInstallAudit(ExternalInstallRun $run, array $outcome): void {
 		$actorUid = $this->userSession->getUser()?->getUID() ?? 'system';
 		$this->auditLogger->record(
 			$actorUid,
-			$appId,
+			$run->request->appId,
 			AuditLogger::OPERATION_INSTALL,
-			$installedVersionBefore === '' ? null : $installedVersionBefore,
-			$requestedVersion,
-			$binding->getId(),
-			$status,
-			$failureMessage ?? $integrityWarning,
+			$run->fromVersion(),
+			$run->request->version,
+			$run->binding->getId(),
+			$outcome[0],
+			$outcome[1],
 		);
 	}
 

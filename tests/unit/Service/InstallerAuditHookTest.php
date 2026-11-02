@@ -6,6 +6,9 @@ namespace OCA\Versioniq\Tests\Unit\Service;
 
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\ExternalReleaseInstallerService;
+use OCA\Versioniq\Service\Installer\ExternalInstallOptions;
+use OCA\Versioniq\Service\Installer\ExternalInstallRequest;
+use OCA\Versioniq\Service\Installer\ExternalInstallRun;
 use OCA\Versioniq\Service\SelectedReleaseInstallerService;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCP\IUser;
@@ -135,18 +138,10 @@ final class InstallerAuditHookTest extends TestCase {
 
 		$method = (new ReflectionClass(ExternalReleaseInstallerService::class))->getMethod('recordInstallAudit');
 		$method->setAccessible(true);
-		$method->invoke(
-			$instance,
-			'openregister',
-			SourceBinding::github('ConductionNL', 'openregister'),
-			'2.5.0',
-			'2.3.0',
-			AuditLogger::STATUS_SUCCESS,
-			'No SHA-256 checksum available for this artifact.',
-		);
+		$method->invoke($instance, $this->externalRun(), [AuditLogger::STATUS_SUCCESS, 'No SHA-256 checksum available for this artifact.']);
 	}
 
-	public function testExternalInstallerRecordsFailureAndPrefersFailureMessageOverIntegrityWarning(): void {
+	public function testExternalInstallerRecordsFailureWithTheFailureMessage(): void {
 		$auditLogger = $this->createMock(AuditLogger::class);
 		$auditLogger->expects($this->once())
 			->method('record')
@@ -165,16 +160,7 @@ final class InstallerAuditHookTest extends TestCase {
 
 		$method = (new ReflectionClass(ExternalReleaseInstallerService::class))->getMethod('recordInstallAudit');
 		$method->setAccessible(true);
-		$method->invoke(
-			$instance,
-			'openregister',
-			SourceBinding::github('ConductionNL', 'openregister'),
-			'2.5.0',
-			'2.3.0',
-			AuditLogger::STATUS_FAILURE,
-			null,
-			'SHA-256 mismatch — expected aaa, got bbb.',
-		);
+		$method->invoke($instance, $this->externalRun(), [AuditLogger::STATUS_FAILURE, 'SHA-256 mismatch — expected aaa, got bbb.']);
 	}
 
 	/**
@@ -207,19 +193,19 @@ final class InstallerAuditHookTest extends TestCase {
 
 		$method = (new ReflectionClass(ExternalReleaseInstallerService::class))->getMethod('recordInstallAudit');
 		$method->setAccessible(true);
-		$method->invoke(
-			$instance,
-			'openregister',
-			SourceBinding::github('ConductionNL', 'openregister'),
-			'2.5.0',
-			'2.3.0',
-			AuditLogger::STATUS_FAILURE,
-			null,
-			'Could not download selected release: connection reset',
-		);
+		$method->invoke($instance, $this->externalRun(), [AuditLogger::STATUS_FAILURE, 'Could not download selected release: connection reset']);
 
 		$this->assertIsString($capturedMessage);
 		$this->assertStringNotContainsString('Authorization', $capturedMessage);
 		$this->assertStringNotContainsString('Bearer', $capturedMessage);
+	}
+
+	/**
+	 * An external install of openregister 2.3.0 from GitHub over installed 2.5.0.
+	 */
+	private function externalRun(): ExternalInstallRun {
+		$request = new ExternalInstallRequest('openregister', '2.3.0', [], new ExternalInstallOptions(false, false));
+
+		return new ExternalInstallRun($request, SourceBinding::github('ConductionNL', 'openregister'), '2.5.0');
 	}
 }
