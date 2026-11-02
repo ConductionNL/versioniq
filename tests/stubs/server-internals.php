@@ -167,23 +167,43 @@ namespace phpseclib\File {
 
 // Nextcloud 35 bundles phpseclib 3 instead of 2; same calls, new namespace.
 namespace phpseclib3\File {
+	/**
+	 * Under the unit-only bootstrap every call goes to `$handler`, which a test
+	 * sets: it receives the instance, the method name and the arguments.
+	 */
 	class X509 {
+		/** @var ?\Closure(self, string, array<int, mixed>): mixed */
+		public static ?\Closure $handler = null;
+
 		public function loadCA(string $cert): mixed {
+			return $this->handle(__FUNCTION__, [$cert]);
 		}
 
 		/**
 		 * @return array<string, mixed>|false
 		 */
 		public function loadX509(string $cert): array|false {
+			/** @var array<string, mixed>|false */
+			return $this->handle(__FUNCTION__, [$cert]);
 		}
 
 		public function loadCRL(string $crl): mixed {
+			return $this->handle(__FUNCTION__, [$crl]);
 		}
 
 		public function validateSignature(): bool {
+			return (bool)$this->handle(__FUNCTION__, []);
 		}
 
 		public function getRevoked(string $serial): mixed {
+			return $this->handle(__FUNCTION__, [$serial]);
+		}
+
+		/**
+		 * @param array<int, mixed> $args
+		 */
+		private function handle(string $method, array $args): mixed {
+			return self::$handler === null ? null : (self::$handler)($this, $method, $args);
 		}
 	}
 }
