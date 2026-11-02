@@ -1521,7 +1521,7 @@ const downgradeVersionRange = computed(() => getVersionRangeSummary(downgradeCon
 // Aggregate "changes between installed → target" panel — reuses the
 // already-fetched `versions` array, zero extra requests; see "Aggregate
 // range changelog on target selection".
-const changelogRange = computed(() => buildChangelogRange(installedVersion.value, selectedVersion.value, versions.value))
+const changelogRange = computed(() => buildChangelogRange({ installed: installedVersion.value, target: selectedVersion.value }, versions.value))
 
 /**
  *

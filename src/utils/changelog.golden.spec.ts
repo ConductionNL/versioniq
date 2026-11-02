@@ -43,7 +43,7 @@ const LISTS: Record<string, ChangelogSource[]> = {
 }
 
 function run (installed: string, target: string, versions: ChangelogSource[]): ChangelogRangeEntry[] {
-	return buildChangelogRange(installed, target, versions)
+	return buildChangelogRange({ installed, target }, versions)
 }
 
 function record (): Record<string, ChangelogRangeEntry[]> {
