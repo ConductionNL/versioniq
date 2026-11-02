@@ -26,6 +26,9 @@ namespace {
 		/** @var string */
 		public static $SERVERROOT;
 
+		/** @var mixed */
+		public static $server;
+
 		/** @var array<int, array{path: string, url: string, writable: bool}> */
 		public static $APPSROOTS;
 	}
@@ -64,21 +67,49 @@ namespace {
 }
 
 namespace OC\Archive {
+	/**
+	 * Under the unit-only bootstrap, TAR extracts gzip tarballs and ZIP extracts
+	 * zip files with PHP's own Phar and Zip extensions.
+	 */
 	class Archive {
-		public function __construct(string $source) {
+		public function __construct(
+			protected string $source,
+		) {
 		}
 
 		public function extract(string $dest): bool {
+			return false;
 		}
 
 		public function getError(): \PEAR_Error|false {
+			return false;
 		}
 	}
 
 	class TAR extends Archive {
+		public function extract(string $dest): bool {
+			if (@file_get_contents($this->source, false, null, 0, 2) !== "\x1f\x8b") {
+				return false;
+			}
+			try {
+				return (new \PharData($this->source))->extractTo($dest, null, true);
+			} catch (\Throwable) {
+				return false;
+			}
+		}
 	}
 
 	class ZIP extends Archive {
+		public function extract(string $dest): bool {
+			$zip = new \ZipArchive();
+			if ($zip->open($this->source) !== true) {
+				return false;
+			}
+			$result = $zip->extractTo($dest);
+			$zip->close();
+
+			return $result;
+		}
 	}
 }
 
