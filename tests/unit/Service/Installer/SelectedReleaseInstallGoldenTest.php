@@ -45,6 +45,7 @@ require_once __DIR__ . '/InstallerGoldenSupport.php';
  * Set RECORD_GOLDEN=1 to rewrite the fixture.
  *
  * @covers \OCA\Versioniq\Service\SelectedReleaseInstallerService
+ * @covers \OCA\Versioniq\Service\Installer\ReplacesAppFolder
  * @uses \OCA\Versioniq\Service\Installer\InstalledFolder
  * @uses \OCA\Versioniq\Service\Installer\InstallFailure
  * @uses \OCA\Versioniq\Service\Installer\ReleaseTarget
