@@ -6,6 +6,7 @@ namespace OCA\Versioniq\Tests\Unit\Service\Discovery;
 
 use OCA\Versioniq\Service\Discovery\AppStoreDiscovery;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
+use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
 use OCA\Versioniq\Service\Discovery\DiscoveryHit;
 use OCA\Versioniq\Service\Discovery\DiscoveryResult;
 use OCA\Versioniq\Service\Discovery\GithubPrivateDiscovery;
@@ -113,7 +114,7 @@ final class DiscoveryAggregatorTest extends TestCase {
 				$this->makeHit(AppStoreDiscovery::ID, 'opencatalogi', 'Open Catalogi'),
 			]),
 			installedApps: ['openregister' => '0.2.13']
-		)->search('open', null, true);
+		)->search('open', new DiscoveryFilter(null, true));
 
 		$this->assertCount(1, $result['results']);
 		$this->assertSame('openregister', $result['results'][0]['appId']);
@@ -125,7 +126,7 @@ final class DiscoveryAggregatorTest extends TestCase {
 			githubPrivate: new DiscoveryResult([$this->makeHit(GithubPrivateDiscovery::ID, 'private_app', 'private-app',
 				binding: ['kind' => SourceBinding::KIND_GITHUB_RELEASE, 'owner' => 'me', 'repo' => 'private-app']
 			)]),
-		)->search('register', [AppStoreDiscovery::ID]);
+		)->search('register', new DiscoveryFilter([AppStoreDiscovery::ID]));
 
 		$this->assertCount(1, $result['results']);
 		$this->assertSame('openregister', $result['results'][0]['appId']);
