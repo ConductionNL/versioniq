@@ -811,6 +811,9 @@ class SelectedReleaseInstallerService {
 		}
 
 		$backupDestination = $destination . '.appversion-backup';
+		if (is_dir($backupDestination)) {
+			$this->rmdirr($backupDestination);
+		}
 		if (!rename($destination, $backupDestination)) {
 			throw new Exception('Could not backup existing app folder before replacement.');
 		}
