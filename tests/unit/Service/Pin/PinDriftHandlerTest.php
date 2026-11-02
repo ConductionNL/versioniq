@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\Service\Pin;
 
 use OCA\Versioniq\Service\Pin\Pin;
+use OCA\Versioniq\Service\Pin\PinDrift;
 use OCA\Versioniq\Service\Pin\PinDriftHandler;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -94,7 +95,7 @@ final class PinDriftHandlerTest extends TestCase {
 		$pinStore->method('get')->willReturn(new Pin('2.3.0', 'alice', '2026-06-11T12:00:00+00:00'));
 		$pinStore->expects($this->once())
 			->method('markDrift')
-			->with('openregister', '2.5.0', '2026-06-12T00:00:00+00:00')
+			->with('openregister', new PinDrift('2.5.0', '2026-06-12T00:00:00+00:00'))
 			->willReturn(true);
 
 		$notification = $this->createMock(INotification::class);

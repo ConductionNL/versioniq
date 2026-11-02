@@ -5,6 +5,7 @@ import NcButton from '@nextcloud/vue/components/NcButton'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import { ocsGet } from '../ocs.ts'
+import { errorMessage } from '../utils/errorMessage.ts'
 
 type AuditEntry = {
 	id: number
@@ -59,10 +60,11 @@ function versionTransition (entry: AuditEntry): string {
 const isFailure = (entry: AuditEntry): boolean => entry.status !== 'success'
 
 /**
+ * Marks a first page or a next page as loading; a first page starts again at offset 0.
  *
- * @param reset
+ * @param reset whether this loads the first page
  */
-async function load (reset: boolean): Promise<void> {
+function startLoading (reset: boolean): void {
 	if (reset) {
 		isLoading.value = true
 		offset.value = 0
@@ -70,26 +72,51 @@ async function load (reset: boolean): Promise<void> {
 		isLoadingMore.value = true
 	}
 	error.value = ''
+}
 
+/**
+ * The audit query for the next page, scoped to the panel's app when it has one.
+ *
+ * @param reset whether this loads the first page
+ */
+function pageQuery (reset: boolean): Record<string, string | number> {
+	const query: Record<string, string | number> = {
+		limit: PAGE_SIZE,
+		offset: reset ? 0 : offset.value,
+	}
+	if (props.appId) {
+		query.appId = props.appId
+	}
+	return query
+}
+
+/**
+ * Shows a loaded page: a first page replaces the list, a next page extends it.
+ *
+ * @param page the entries of the page
+ * @param reset whether this is the first page
+ */
+function showPage (page: AuditEntry[], reset: boolean): void {
+	entries.value = reset ? page : [...entries.value, ...page]
+	offset.value = (reset ? 0 : offset.value) + page.length
+	hasMore.value = page.length === PAGE_SIZE
+}
+
+/**
+ *
+ * @param reset
+ */
+async function load (reset: boolean): Promise<void> {
+	startLoading(reset)
 	try {
-		const query: Record<string, string | number> = {
-			limit: PAGE_SIZE,
-			offset: reset ? 0 : offset.value,
-		}
-		if (props.appId) {
-			query.appId = props.appId
-		}
-		const { payload, error: apiError } = await ocsGet<{ entries?: AuditEntry[], limit?: number, offset?: number }>(AUDIT_ENDPOINT, query)
+		const { payload, error: apiError } = await ocsGet<{ entries?: AuditEntry[], limit?: number, offset?: number }>(AUDIT_ENDPOINT, pageQuery(reset))
 		if (apiError) {
 			error.value = apiError
 			return
 		}
-		const page = Array.isArray(payload.entries) ? payload.entries : []
-		entries.value = reset ? page : [...entries.value, ...page]
-		offset.value = (reset ? 0 : offset.value) + page.length
-		hasMore.value = page.length === PAGE_SIZE
+		showPage(Array.isArray(payload.entries) ? payload.entries : [], reset)
 	} catch (e) {
-		error.value = e instanceof Error ? e.message : t('versioniq', 'Could not load the history.')
+		error.value = errorMessage(e, t('versioniq', 'Could not load the history.'))
 	} finally {
 		isLoading.value = false
 		isLoadingMore.value = false

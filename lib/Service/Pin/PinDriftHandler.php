@@ -67,7 +67,7 @@ class PinDriftHandler {
 		}
 
 		$driftedAt = $this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM);
-		$newlyDrifted = $this->pinStore->markDrift($appId, $installedVersion, $driftedAt);
+		$newlyDrifted = $this->pinStore->markDrift($appId, new PinDrift($installedVersion, $driftedAt));
 		if (!$newlyDrifted) {
 			// Either already recorded for this exact drifted version, or the
 			// pin disappeared between get() and markDrift() — either way, no

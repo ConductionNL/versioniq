@@ -1,0 +1,3603 @@
+{
+	"env 0 flags 0": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 1": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 2": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 3": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 4": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 5": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 6": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 7": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 8": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 9": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 10": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 11": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 12": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 13": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 14": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 15": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 16": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 17": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 18": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 19": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 20": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 21": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 22": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 23": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 24": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 25": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 26": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 27": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 28": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 29": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 30": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 0 flags 31": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 0": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 1": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 2": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 3": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 4": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 5": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 6": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 7": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 8": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 9": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 10": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 11": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 12": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 13": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 14": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 15": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 16": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 17": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 18": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 19": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 20": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 21": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 22": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 23": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 24": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 25": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 26": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 27": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 28": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 29": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 30": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 1 flags 31": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 0": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 1": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 2": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 3": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 4": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 5": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 6": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 7": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 8": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 9": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 10": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 11": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 12": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 13": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 14": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 15": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 16": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 17": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 18": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 19": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 20": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 21": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 22": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 23": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 24": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 25": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 26": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 27": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 28": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 29": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 30": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 2 flags 31": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 0": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 1": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 2": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 3": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 4": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 5": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 6": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 7": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 8": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 9": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 10": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 11": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 12": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 13": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 14": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 15": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 16": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 17": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 18": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 19": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 20": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 21": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 22": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 23": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 24": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 25": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 26": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 27": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 28": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 29": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 30": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 3 flags 31": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&overridePin=1.0.0&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 0": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 1": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 2": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 3": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 4": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 5": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 6": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 7": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 8": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 9": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 10": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 11": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 12": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 13": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 14": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 15": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 16": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 17": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 18": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 19": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 20": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 21": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 22": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 23": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 24": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 25": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 26": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 27": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 28": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 29": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 30": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 4 flags 31": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 0": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 1": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 2": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 3": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 4": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 5": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 6": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 7": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 8": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 9": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 10": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 11": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 12": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 13": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 14": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 15": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=0&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 16": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 17": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 18": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 19": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 20": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 21": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 22": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 23": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 24": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 25": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 26": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 27": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 28": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 29": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 30": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 5 flags 31": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 0": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 1": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 2": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 3": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 4": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 5": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 6": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 7": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 8": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 9": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 10": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 11": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 12": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 13": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 14": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 15": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 16": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 17": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 18": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 19": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 20": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 21": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 22": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 23": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 24": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 25": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 26": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 27": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 28": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 29": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 30": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 6 flags 31": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=0&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 0": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 1": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 2": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 3": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 4": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 5": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 6": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 7": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 8": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 9": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 10": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 11": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 12": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 13": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 14": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 15": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 16": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 17": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 18": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 19": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 20": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 21": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 22": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 23": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&acceptNewSha=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 24": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 25": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 26": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 27": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 28": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 29": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 30": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"env 7 flags 31": {
+		"installs": [
+			{
+				"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/my%20app/versions/1.2.0-beta%2B1/install?debug=1&dryRun=1&targetVersion=1.2.0-beta%2B1&source=https%3A%2F%2Fexample.test%2Fapp.tar.gz&overridePin=1.0.0&pin=1&acceptNewSha=1&allowDowngrade=1&format=json",
+				"method": "POST",
+				"body": "{\"version\":\"1.2.0-beta+1\"}"
+			}
+		],
+		"result": {
+			"payload": {
+				"installStatus": "installed"
+			}
+		}
+	},
+	"explicit false": [
+		{
+			"url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/deck/versions/2.0.0/install?debug=0&dryRun=0&targetVersion=2.0.0&format=json",
+			"method": "POST",
+			"body": "{\"version\":\"2.0.0\"}"
+		}
+	],
+	"label null": "Done",
+	"label dry-run": "Dry run",
+	"label reverted": "Reverted",
+	"label installed-but-broken": "Installed but broken",
+	"label failed": "Failed",
+	"label error": "Failed",
+	"label installed": "Done",
+	"label constructor": "Done",
+	"label ": "Done",
+	"label undefined": "Done"
+}
