@@ -49,6 +49,7 @@ use OCP\AppFramework\OCSController;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IGroupManager;
 use OCP\IRequest;
+use OCP\IUser;
 use OCP\IUserSession;
 use OCP\ServerVersion;
 
@@ -1067,33 +1068,53 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$label = $this->stringParam('label', '');
-		$targetPattern = $this->stringParam('targetPattern', '');
-		$token = $this->stringParam('token', '');
-		$forge = $this->stringParam('forge', SourceBinding::FORGE_GITHUB);
-		if ($label === '' || $targetPattern === '' || $token === '') {
-			return new DataResponse(
-				['message' => 'label, targetPattern and token are required.'],
-				Http::STATUS_BAD_REQUEST
-			);
+		$params = $this->newPatParams();
+		if ($params === null) {
+			return new DataResponse(['message' => 'label, targetPattern and token are required.'], Http::STATUS_BAD_REQUEST);
 		}
 
-		$result = $this->patValidator->validate($token, $forge);
+		return $this->storePat($user, $params);
+	}
+
+	/**
+	 * The label, target pattern, token and forge of a PAT upload, or null when
+	 * the label, target pattern or token is missing.
+	 *
+	 * @return array{label: string, targetPattern: string, token: string, forge: string}|null
+	 */
+	private function newPatParams(): ?array {
+		$params = [
+			'label' => $this->stringParam('label', ''),
+			'targetPattern' => $this->stringParam('targetPattern', ''),
+			'token' => $this->stringParam('token', ''),
+			'forge' => $this->stringParam('forge', SourceBinding::FORGE_GITHUB),
+		];
+
+		return in_array('', [$params['label'], $params['targetPattern'], $params['token']], true) ? null : $params;
+	}
+
+	/**
+	 * Validates an uploaded PAT and stores it for `$user` when the forge accepts it.
+	 *
+	 * @param array{label: string, targetPattern: string, token: string, forge: string} $params
+	 * @return DataResponse<Http::STATUS_OK, array{pat: array<string, mixed>, warnings: list<string>}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>
+	 */
+	private function storePat(IUser $user, array $params): DataResponse {
+		$result = $this->patValidator->validate($params['token'], $params['forge']);
 		if (!$result->ok) {
 			return new DataResponse(['message' => $result->error ?? 'PAT validation failed.'], Http::STATUS_BAD_REQUEST);
 		}
 
 		// Forgejo and Gitea tokens are opaque; GitHub tokens are classified by prefix.
-		$kind = $forge !== SourceBinding::FORGE_GITHUB
+		$kind = $params['forge'] !== SourceBinding::FORGE_GITHUB
 			? Pat::KIND_FORGE_TOKEN
-			: $this->patValidator->detectKind($token);
-
+			: $this->patValidator->detectKind($params['token']);
 		$new = (new NewPat($user->getUID(), $result))
-			->withForge($forge)
-			->describedAs($label, $targetPattern)
+			->withForge($params['forge'])
+			->describedAs($params['label'], $params['targetPattern'])
 			->ofKind($kind);
-		$pat = $this->patManager->create($new, $token);
-		$this->connectionReports?->forgeTokenSaved($forge);
+		$pat = $this->patManager->create($new, $params['token']);
+		$this->connectionReports?->forgeTokenSaved($params['forge']);
 
 		return new DataResponse(['pat' => $this->serializePat($pat), 'warnings' => $result->warnings]);
 	}
