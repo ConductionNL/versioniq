@@ -40,9 +40,10 @@ use ReflectionClass;
  * text, with fixtures/pat-create.golden.json. Set RECORD_GOLDEN=1 to rewrite
  * the fixture.
  *
- * The session user is `admin`, and the group manager answers true only for
- * that uid; a forged `ownerUid`/`userId` request parameter must not change
- * the stored owner.
+ * The session user is `admin` unless a case names another uid, and the group
+ * manager answers true only for the case's admin uids; a forged
+ * `ownerUid`/`userId` request parameter must not change the stored owner, and
+ * a non-admin session stores nothing.
  *
  * @covers \OCA\Versioniq\Controller\ApiController
  * @covers \OCA\Versioniq\Service\Pat\PatManager
@@ -74,6 +75,8 @@ final class PatCreateGoldenTest extends TestCase {
 			'missing label' => ['params' => ['label' => ''] + $base, 'result' => $accepted, 'kind' => Pat::KIND_CLASSIC],
 			'missing token' => ['params' => ['token' => ''] + $base, 'result' => $accepted, 'kind' => Pat::KIND_CLASSIC],
 			'rejected' => ['params' => $base, 'result' => ValidationResult::rejected('Token is invalid or revoked.'), 'kind' => Pat::KIND_CLASSIC],
+			'session user is not an admin' => ['params' => $base, 'result' => $accepted, 'kind' => Pat::KIND_CLASSIC, 'uid' => 'bob', 'admins' => ['admin']],
+			'session user alice is the admin' => ['params' => $base, 'result' => $accepted, 'kind' => Pat::KIND_CLASSIC, 'uid' => 'alice', 'admins' => ['alice']],
 		];
 	}
 
@@ -117,12 +120,14 @@ final class PatCreateGoldenTest extends TestCase {
 		$params = $spec['params'];
 		$request = $this->createMock(IRequest::class);
 		$request->method('getParam')->willReturnCallback(static fn (string $key, mixed $default = null): mixed => $params[$key] ?? $default);
+		$uid = $spec['uid'] ?? 'admin';
+		$admins = $spec['admins'] ?? ['admin'];
 		$user = $this->createMock(IUser::class);
-		$user->method('getUID')->willReturn('admin');
+		$user->method('getUID')->willReturn($uid);
 		$session = $this->createMock(IUserSession::class);
 		$session->method('getUser')->willReturn($user);
 		$groupManager = $this->createMock(IGroupManager::class);
-		$groupManager->method('isAdmin')->willReturnCallback(static fn (string $uid): bool => $uid === 'admin');
+		$groupManager->method('isAdmin')->willReturnCallback(static fn (string $candidate): bool => in_array($candidate, $admins, true));
 
 		$validator = $this->createMock(PatValidator::class);
 		$validator->method('validate')->willReturnCallback(function (string $token, string $forge) use ($spec): ValidationResult {
