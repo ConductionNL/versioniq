@@ -62,30 +62,6 @@
       <code><![CDATA[!is_string($raw)]]></code>
     </TypeDoesNotContainType>
   </file>
-  <file src="lib/Notification/Notifier.php">
-    <MixedArgument>
-      <code><![CDATA[$days]]></code>
-    </MixedArgument>
-    <MixedAssignment>
-      <code><![CDATA[$advisory]]></code>
-      <code><![CDATA[$app]]></code>
-      <code><![CDATA[$app]]></code>
-      <code><![CDATA[$app]]></code>
-      <code><![CDATA[$app]]></code>
-      <code><![CDATA[$days]]></code>
-      <code><![CDATA[$forge]]></code>
-      <code><![CDATA[$forge]]></code>
-      <code><![CDATA[$fromVersion]]></code>
-      <code><![CDATA[$hint]]></code>
-      <code><![CDATA[$label]]></code>
-      <code><![CDATA[$label]]></code>
-      <code><![CDATA[$observedVersion]]></code>
-      <code><![CDATA[$pinnedVersion]]></code>
-      <code><![CDATA[$targetVersion]]></code>
-      <code><![CDATA[$toVersion]]></code>
-      <code><![CDATA[$version]]></code>
-    </MixedAssignment>
-  </file>
   <file src="lib/Service/Advisory/AdvisoryNotifier.php">
     <MixedAssignment>
       <code><![CDATA[$key]]></code>

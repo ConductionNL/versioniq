@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Notification;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCP\IL10N;
 use OCP\L10N\IFactory;
 use OCP\Notification\INotification;
 use OCP\Notification\INotifier;
@@ -61,137 +62,147 @@ class Notifier implements INotifier {
 
 		$l = $this->l10nFactory->get(Application::APP_ID, $languageCode);
 
-		if ($notification->getSubject() === 'pinned_to_vulnerable') {
-			$parameters = $notification->getSubjectParameters();
-			$app = is_string($parameters['app'] ?? null) ? $parameters['app'] : '';
-			$version = is_string($parameters['version'] ?? null) ? $parameters['version'] : '';
-			$advisory = is_string($parameters['advisory'] ?? null) ? $parameters['advisory'] : '';
-
-			$notification
-				->setParsedSubject(
-					$l->t('Security advisory affects a pinned app version')
-				)
-				->setParsedMessage(
-					$l->t('%1$s is on version %2$s, which is affected by advisory %3$s. Review and update to a safe version.', [$app, $version, $advisory])
-				);
-
-			return $notification;
-		}
-
-		if ($notification->getSubject() === 'pat_expiring') {
-			$parameters = $notification->getSubjectParameters();
-			$label = is_string($parameters['label'] ?? null) ? $parameters['label'] : '';
-			$forge = is_string($parameters['forge'] ?? null) ? $parameters['forge'] : '';
-			$days = is_int($parameters['daysRemaining'] ?? null) ? $parameters['daysRemaining'] : 0;
-
-			$notification
-				->setParsedSubject(
-					$l->t('Access token expires soon')
-				)
-				->setParsedMessage(
-					$l->n(
-						'"%1$s" (%2$s) expires in %3$d day. Renew it before it lapses.',
-						'"%1$s" (%2$s) expires in %3$d days. Renew it before it lapses.',
-						$days,
-						[$label, $forge, $days]
-					)
-				);
-
-			return $notification;
-		}
-
-		if ($notification->getSubject() === 'pin_drift') {
-			$parameters = $notification->getSubjectParameters();
-			$app = is_string($parameters['app'] ?? null) ? $parameters['app'] : '';
-			$pinnedVersion = is_string($parameters['pinnedVersion'] ?? null) ? $parameters['pinnedVersion'] : '';
-			$observedVersion = is_string($parameters['observedVersion'] ?? null) ? $parameters['observedVersion'] : '';
-
-			$notification
-				->setParsedSubject(
-					$l->t('A pinned app was updated outside Versioniq')
-				)
-				->setParsedMessage(
-					$l->t('%1$s is pinned to %2$s but is now running %3$s. Re-pin to restore the pinned version, or accept the change.', [$app, $pinnedVersion, $observedVersion])
-				);
-
-			return $notification;
-		}
-
-		if ($notification->getSubject() === 'pat_expired') {
-			$parameters = $notification->getSubjectParameters();
-			$label = is_string($parameters['label'] ?? null) ? $parameters['label'] : '';
-			$forge = is_string($parameters['forge'] ?? null) ? $parameters['forge'] : '';
-
-			$notification
-				->setParsedSubject(
-					$l->t('Access token expired')
-				)
-				->setParsedMessage(
-					$l->t('"%1$s" (%2$s) has expired. Create a new token to keep private installs and discovery working.', [$label, $forge])
-				);
-
-			return $notification;
-		}
-
-		if ($notification->getSubject() === 'auto_update_success') {
-			$parameters = $notification->getSubjectParameters();
-			$app = is_string($parameters['app'] ?? null) ? $parameters['app'] : '';
-			$fromVersion = is_string($parameters['fromVersion'] ?? null) ? $parameters['fromVersion'] : '';
-			$toVersion = is_string($parameters['toVersion'] ?? null) ? $parameters['toVersion'] : '';
-
-			$notification
-				->setParsedSubject(
-					$l->t('App automatically updated')
-				)
-				->setParsedMessage(
-					$fromVersion !== ''
-						? $l->t('%1$s was automatically updated from %2$s to %3$s.', [$app, $fromVersion, $toVersion])
-						: $l->t('%1$s was automatically installed at %2$s.', [$app, $toVersion])
-				);
-
-			return $notification;
-		}
-
-		if ($notification->getSubject() === 'auto_update_failure') {
-			$parameters = $notification->getSubjectParameters();
-			$app = is_string($parameters['app'] ?? null) ? $parameters['app'] : '';
-			$targetVersion = is_string($parameters['targetVersion'] ?? null) ? $parameters['targetVersion'] : '';
-			$hint = is_string($parameters['hint'] ?? null) ? $parameters['hint'] : '';
-
-			$notification
-				->setParsedSubject(
-					$l->t('Automatic update failed')
-				)
-				->setParsedMessage(
-					$l->t('%1$s could not be automatically updated to %2$s. %3$s', [$app, $targetVersion, $hint])
-				);
-
-			return $notification;
-		}
-
-		if ($notification->getSubject() === 'advisory_digest') {
+		$render = match ($notification->getSubject()) {
+			'pinned_to_vulnerable' => $this->renderPinnedToVulnerable(...),
+			'pat_expiring' => $this->renderPatExpiring(...),
+			'pin_drift' => $this->renderPinDrift(...),
+			'pat_expired' => $this->renderPatExpired(...),
+			'auto_update_success' => $this->renderAutoUpdateSuccess(...),
+			'auto_update_failure' => $this->renderAutoUpdateFailure(...),
 			// Sent weekly by AdvisoryDigestNotifier. Without this branch the
 			// digest was stored but skipped by the bell every time (#428).
-			$parameters = $notification->getSubjectParameters();
-			$apps = isset($parameters['apps']) && is_int($parameters['apps']) ? $parameters['apps'] : 0;
-			$advisories = isset($parameters['advisories']) && is_int($parameters['advisories']) ? $parameters['advisories'] : 0;
+			'advisory_digest' => $this->renderAdvisoryDigest(...),
+			default => throw new UnknownNotificationException(),
+		};
+		$render($notification, $l);
 
-			$notification
-				->setParsedSubject(
-					$l->t('Weekly security advisory digest')
+		return $notification;
+	}
+
+	private function renderPinnedToVulnerable(INotification $notification, IL10N $l): void {
+		$app = $this->stringParameter($notification, 'app');
+		$version = $this->stringParameter($notification, 'version');
+		$advisory = $this->stringParameter($notification, 'advisory');
+
+		$notification
+			->setParsedSubject(
+				$l->t('Security advisory affects a pinned app version')
+			)
+			->setParsedMessage(
+				$l->t('%1$s is on version %2$s, which is affected by advisory %3$s. Review and update to a safe version.', [$app, $version, $advisory])
+			);
+	}
+
+	private function renderPatExpiring(INotification $notification, IL10N $l): void {
+		$label = $this->stringParameter($notification, 'label');
+		$forge = $this->stringParameter($notification, 'forge');
+		$days = $this->intParameter($notification, 'daysRemaining');
+
+		$notification
+			->setParsedSubject(
+				$l->t('Access token expires soon')
+			)
+			->setParsedMessage(
+				$l->n(
+					'"%1$s" (%2$s) expires in %3$d day. Renew it before it lapses.',
+					'"%1$s" (%2$s) expires in %3$d days. Renew it before it lapses.',
+					$days,
+					[$label, $forge, $days]
 				)
-				->setParsedMessage(
-					$l->n(
-						'%1$d installed app has published security advisories (%2$d in total) that do not affect the installed version. Review them on the Versioniq Apps tab.',
-						'%1$d installed apps have published security advisories (%2$d in total) that do not affect the installed versions. Review them on the Versioniq Apps tab.',
-						$apps,
-						[$apps, $advisories]
-					)
-				);
+			);
+	}
 
-			return $notification;
-		}
+	private function renderPinDrift(INotification $notification, IL10N $l): void {
+		$app = $this->stringParameter($notification, 'app');
+		$pinnedVersion = $this->stringParameter($notification, 'pinnedVersion');
+		$observedVersion = $this->stringParameter($notification, 'observedVersion');
 
-		throw new UnknownNotificationException();
+		$notification
+			->setParsedSubject(
+				$l->t('A pinned app was updated outside Versioniq')
+			)
+			->setParsedMessage(
+				$l->t('%1$s is pinned to %2$s but is now running %3$s. Re-pin to restore the pinned version, or accept the change.', [$app, $pinnedVersion, $observedVersion])
+			);
+	}
+
+	private function renderPatExpired(INotification $notification, IL10N $l): void {
+		$label = $this->stringParameter($notification, 'label');
+		$forge = $this->stringParameter($notification, 'forge');
+
+		$notification
+			->setParsedSubject(
+				$l->t('Access token expired')
+			)
+			->setParsedMessage(
+				$l->t('"%1$s" (%2$s) has expired. Create a new token to keep private installs and discovery working.', [$label, $forge])
+			);
+	}
+
+	private function renderAutoUpdateSuccess(INotification $notification, IL10N $l): void {
+		$app = $this->stringParameter($notification, 'app');
+		$fromVersion = $this->stringParameter($notification, 'fromVersion');
+		$toVersion = $this->stringParameter($notification, 'toVersion');
+
+		$notification
+			->setParsedSubject(
+				$l->t('App automatically updated')
+			)
+			->setParsedMessage(
+				$fromVersion !== ''
+					? $l->t('%1$s was automatically updated from %2$s to %3$s.', [$app, $fromVersion, $toVersion])
+					: $l->t('%1$s was automatically installed at %2$s.', [$app, $toVersion])
+			);
+	}
+
+	private function renderAutoUpdateFailure(INotification $notification, IL10N $l): void {
+		$app = $this->stringParameter($notification, 'app');
+		$targetVersion = $this->stringParameter($notification, 'targetVersion');
+		$hint = $this->stringParameter($notification, 'hint');
+
+		$notification
+			->setParsedSubject(
+				$l->t('Automatic update failed')
+			)
+			->setParsedMessage(
+				$l->t('%1$s could not be automatically updated to %2$s. %3$s', [$app, $targetVersion, $hint])
+			);
+	}
+
+	private function renderAdvisoryDigest(INotification $notification, IL10N $l): void {
+		$apps = $this->intParameter($notification, 'apps');
+		$advisories = $this->intParameter($notification, 'advisories');
+
+		$notification
+			->setParsedSubject(
+				$l->t('Weekly security advisory digest')
+			)
+			->setParsedMessage(
+				$l->n(
+					'%1$d installed app has published security advisories (%2$d in total) that do not affect the installed version. Review them on the Versioniq Apps tab.',
+					'%1$d installed apps have published security advisories (%2$d in total) that do not affect the installed versions. Review them on the Versioniq Apps tab.',
+					$apps,
+					[$apps, $advisories]
+				)
+			);
+	}
+
+	/**
+	 * The named subject parameter as its string value, or ''.
+	 */
+	private function stringParameter(INotification $notification, string $key): string {
+		/** @var mixed $value */
+		$value = $notification->getSubjectParameters()[$key] ?? null;
+
+		return is_string($value) ? $value : '';
+	}
+
+	/**
+	 * The named subject parameter as its int value, or 0.
+	 */
+	private function intParameter(INotification $notification, string $key): int {
+		$parameters = $notification->getSubjectParameters();
+
+		return isset($parameters[$key]) && is_int($parameters[$key]) ? $parameters[$key] : 0;
 	}
 }
