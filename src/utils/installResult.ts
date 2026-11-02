@@ -47,6 +47,73 @@ export type InstallPayload = {
 }
 
 /**
+ * Tells whether the payload's target version is below its source version.
+ *
+ * @param payload The install endpoint's payload.
+ */
+function versionDropped (payload: InstallPayload): boolean {
+	const from = payload.fromVersion ?? null
+	const to = payload.toVersion || ''
+	return from !== null && to !== '' && compareVersions(to, from) < 0
+}
+
+/**
+ * The message to show: the installer's own, with "App updated." reworded for
+ * a downgrade.
+ *
+ * @param payload The install endpoint's payload.
+ */
+function installMessage (payload: InstallPayload): string {
+	const message = payload.message || 'Install completed.'
+	const downgrade = payload.updateType === 'downgrade' || versionDropped(payload)
+	return downgrade && message === 'App updated.' ? 'App downgraded.' : message
+}
+
+/**
+ * The version fields of the result.
+ *
+ * @param payload The install endpoint's payload.
+ */
+function versionFields (payload: InstallPayload): Pick<InstallResult, 'fromVersion' | 'toVersion' | 'installedVersion' | 'updateType'> {
+	return {
+		fromVersion: payload.fromVersion ?? null,
+		toVersion: payload.toVersion || '',
+		installedVersion: payload.installedVersion ?? null,
+		updateType: payload.updateType ?? 'none',
+	}
+}
+
+/**
+ * The status fields of the result: dry run, status, stage, category and hint.
+ *
+ * @param payload The install endpoint's payload.
+ */
+function statusFields (payload: InstallPayload): Pick<InstallResult, 'dryRun' | 'installStatus' | 'stage' | 'category' | 'hint'> {
+	return {
+		dryRun: Boolean(payload.dryRun),
+		installStatus: payload.installStatus || 'failed',
+		stage: payload.stage ?? null,
+		category: payload.category ?? null,
+		hint: payload.hint ?? null,
+	}
+}
+
+/**
+ * The evidence fields of the result: debug log, checksum match, integrity
+ * warning and cache origin.
+ *
+ * @param payload The install endpoint's payload.
+ */
+function evidenceFields (payload: InstallPayload): Pick<InstallResult, 'debug' | 'recordedShaMatched' | 'integrityWarning' | 'servedFromCache'> {
+	return {
+		debug: Array.isArray(payload.debug) ? payload.debug as InstallDebugEntry[] : [],
+		recordedShaMatched: payload.recordedShaMatched ?? null,
+		integrityWarning: typeof payload.integrityWarning === 'string' && payload.integrityWarning !== '' ? payload.integrityWarning : null,
+		servedFromCache: payload.servedFromCache === true,
+	}
+}
+
+/**
  * Turns the installer's payload into the shape the result panel renders. It
  * keeps `integrityWarning` and `servedFromCache`: both were in the payload and
  * dropped here, so an unverified install looked like a verified one (#438).
@@ -56,34 +123,12 @@ export type InstallPayload = {
  * @spec openspec/specs/external-sources/spec.md
  */
 export function normalizeInstallResult (payload: InstallPayload): InstallResult {
-	const normalizedUpdateType = payload.updateType ?? 'none'
-	const normalizedFrom = payload.fromVersion ?? null
-	const normalizedTo = payload.toVersion || ''
-	const resolvedMessage = payload.message || 'Install completed.'
-	const shouldForceDowngradeMessage = normalizedUpdateType === 'downgrade'
-		|| (normalizedFrom !== null && normalizedTo !== '' && compareVersions(normalizedTo, normalizedFrom) < 0)
-	const finalMessage = shouldForceDowngradeMessage
-		? (resolvedMessage === 'App updated.'
-			? 'App downgraded.'
-			: resolvedMessage)
-		: resolvedMessage
-
 	return {
 		appId: payload.appId || '',
-		fromVersion: normalizedFrom,
-		toVersion: normalizedTo,
-		installedVersion: payload.installedVersion ?? null,
-		updateType: normalizedUpdateType,
-		message: finalMessage,
-		dryRun: Boolean(payload.dryRun),
-		installStatus: payload.installStatus || 'failed',
-		stage: payload.stage ?? null,
-		category: payload.category ?? null,
-		hint: payload.hint ?? null,
-		debug: Array.isArray(payload.debug) ? payload.debug as InstallDebugEntry[] : [],
-		recordedShaMatched: payload.recordedShaMatched ?? null,
-		integrityWarning: typeof payload.integrityWarning === 'string' && payload.integrityWarning !== '' ? payload.integrityWarning : null,
-		servedFromCache: payload.servedFromCache === true,
+		...versionFields(payload),
+		message: installMessage(payload),
+		...statusFields(payload),
+		...evidenceFields(payload),
 	}
 }
 
