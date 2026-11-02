@@ -173,8 +173,9 @@ final class NotifierTest extends TestCase {
 			}
 			$code = (string)file_get_contents($file->getPathname());
 			preg_match_all("/->setSubject\\(\\s*'([a-z_]+)'/", $code, $direct);
-			preg_match_all("/fireAll\\([^;]*?'([a-z_]+)',\\s*\\[/s", $code, $viaHelper);
-			foreach ([...$direct[1], ...$viaHelper[1]] as $subject) {
+			preg_match_all("/->withSubject\\(\\s*'([a-z_]+)'/", $code, $viaNotice);
+			preg_match_all("/->notice\\(\\s*'([a-z_]+)',\\s*\\[/", $code, $viaHelper);
+			foreach ([...$direct[1], ...$viaNotice[1], ...$viaHelper[1]] as $subject) {
 				$subjects[$subject] = [$subject];
 			}
 		}
