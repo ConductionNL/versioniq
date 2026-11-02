@@ -45,7 +45,13 @@ require_once __DIR__ . '/InstallerGoldenSupport.php';
  * Set RECORD_GOLDEN=1 to rewrite the fixture.
  *
  * @covers \OCA\Versioniq\Service\SelectedReleaseInstallerService
+ * @uses \OCA\Versioniq\Service\Installer\InstalledFolder
  * @uses \OCA\Versioniq\Service\Installer\InstallFailure
+ * @uses \OCA\Versioniq\Service\Installer\ReleaseTarget
+ * @uses \OCA\Versioniq\Service\Installer\SignedInstall
+ * @uses \OCA\Versioniq\Service\Installer\SignedRelease
+ * @uses \OCA\Versioniq\Service\Installer\SignedReleaseRun
+ * @uses \OCA\Versioniq\Service\Installer\TempArchive
  * @uses \OCA\Versioniq\Service\Source\SourceBinding
  */
 final class SelectedReleaseInstallGoldenTest extends TestCase {

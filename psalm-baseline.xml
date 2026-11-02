@@ -176,17 +176,6 @@
       <code><![CDATA[is_string($appInfo['version'])]]></code>
     </RedundantConditionGivenDocblockType>
   </file>
-  <file src="lib/Service/SelectedReleaseInstallerService.php">
-    <MixedArgument>
-      <code><![CDATA[$cachedCertificate]]></code>
-      <code><![CDATA[$signature]]></code>
-    </MixedArgument>
-    <MixedAssignment>
-      <code><![CDATA[$cachedCertificate]]></code>
-      <code><![CDATA[$cachedSignature]]></code>
-      <code><![CDATA[$signature]]></code>
-    </MixedAssignment>
-  </file>
   <file src="lib/Service/Source/AppStoreSource.php">
     <MixedAssignment>
       <code><![CDATA[$summary]]></code>

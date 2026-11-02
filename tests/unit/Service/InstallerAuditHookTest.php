@@ -78,7 +78,7 @@ final class InstallerAuditHookTest extends TestCase {
 
 		$method = (new ReflectionClass(SelectedReleaseInstallerService::class))->getMethod('recordInstallAudit');
 		$method->setAccessible(true);
-		$method->invoke($instance, 'openregister', '2.5.0', '2.3.0', AuditLogger::STATUS_SUCCESS);
+		$method->invoke($instance, $this->signedInstall('2.5.0'), [AuditLogger::STATUS_SUCCESS, null]);
 	}
 
 	public function testSelectedInstallerRecordsFailureWithMessageAndNullFromVersionOnFreshInstall(): void {
@@ -100,7 +100,7 @@ final class InstallerAuditHookTest extends TestCase {
 
 		$method = (new ReflectionClass(SelectedReleaseInstallerService::class))->getMethod('recordInstallAudit');
 		$method->setAccessible(true);
-		$method->invoke($instance, 'openregister', '', '2.3.0', AuditLogger::STATUS_FAILURE, 'Could not download selected release: HTTP 404');
+		$method->invoke($instance, $this->signedInstall(''), [AuditLogger::STATUS_FAILURE, 'Could not download selected release: HTTP 404']);
 	}
 
 	public function testSelectedInstallerFallsBackToSystemActorWhenNoUserInSession(): void {
@@ -113,7 +113,14 @@ final class InstallerAuditHookTest extends TestCase {
 
 		$method = (new ReflectionClass(SelectedReleaseInstallerService::class))->getMethod('recordInstallAudit');
 		$method->setAccessible(true);
-		$method->invoke($instance, 'openregister', '', '2.3.0', AuditLogger::STATUS_SUCCESS);
+		$method->invoke($instance, $this->signedInstall(''), [AuditLogger::STATUS_SUCCESS, null]);
+	}
+
+	/**
+	 * An App Store install of openregister 2.3.0 over `$installedVersion` ('' for a fresh install).
+	 */
+	private function signedInstall(string $installedVersion): \OCA\Versioniq\Service\Installer\SignedInstall {
+		return new \OCA\Versioniq\Service\Installer\SignedInstall('openregister', ['version' => '2.3.0'], $installedVersion, 'yes');
 	}
 
 	public function testExternalInstallerRecordsSuccessWithBindingSourceIdAndIntegrityWarning(): void {
