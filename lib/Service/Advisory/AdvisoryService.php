@@ -13,8 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Advisory;
 
 use OCA\Versioniq\Service\Source\SourceBinding;
-use OCA\Versioniq\Service\Source\SourceBindingStore;
-use OCA\Versioniq\Service\Source\SourceRegistry;
+use OCA\Versioniq\Service\Source\SourceLookup;
 use OCP\App\IAppManager;
 use Psr\Log\LoggerInterface;
 
@@ -79,12 +78,9 @@ class AdvisoryService {
 	public const SERVER_KEY = AdvisoryPackageMap::SERVER;
 
 	public function __construct(
-		private SourceRegistry $sourceRegistry,
-		private SourceBindingStore $bindingStore,
+		private SourceLookup $sources,
 		private IAppManager $appManager,
-		private NextcloudAdvisoryFeed $advisoryFeed,
-		private BranchAwareRange $branchRange,
-		private ServerVersionProvider $serverVersion,
+		private AdvisoryMatching $matching,
 		private LoggerInterface $logger,
 	) {
 	}
@@ -104,8 +100,8 @@ class AdvisoryService {
 	public function correlate(string $appId, array $feedAdvisories = []): array {
 		$installedVersion = $this->installedVersion($appId);
 
-		$binding = $this->bindingStore->get($appId) ?? SourceBinding::appStore();
-		$source = $this->sourceRegistry->get($binding);
+		$binding = $this->sources->bindingStore->get($appId) ?? SourceBinding::appStore();
+		$source = $this->sources->sourceRegistry->get($binding);
 
 		if ($installedVersion === null) {
 			return $this->emptyResult($appId, null);
@@ -163,7 +159,7 @@ class AdvisoryService {
 		// ONE fetch for the whole sweep. The advisories that actually exist are
 		// published centrally, not per app, so asking each app's own source was
 		// asking 87 of 88 apps a question their source cannot answer (#166).
-		$feed = $this->advisoryFeed->fetchAll();
+		$feed = $this->matching->advisoryFeed->fetchAll();
 		$feedAdvisories = $feed['advisories'];
 		if ($feed['error'] !== null) {
 			$this->logger->warning('AdvisoryService: the Nextcloud advisory feed could not be read in full', [
@@ -217,7 +213,7 @@ class AdvisoryService {
 		// and an administrator on a vulnerable server has to be told.
 		$serverAdvisories = $feedAdvisories[self::SERVER_KEY] ?? [];
 		if ($serverAdvisories !== []) {
-			$installed = $this->serverVersion->current();
+			$installed = $this->matching->serverVersion->current();
 			$evaluated = $this->evaluate($installed, $serverAdvisories, []);
 			$evaluated['appId'] = self::SERVER_KEY;
 			$evaluated['error'] = null;
@@ -271,7 +267,7 @@ class AdvisoryService {
 		foreach ($advisories as $advisory) {
 			$patchedVersions = $advisory['patchedVersions'] ?? [];
 			if ($patchedVersions !== []) {
-				$patch = $this->branchRange->resolvePatch($installedVersion, $patchedVersions);
+				$patch = $this->matching->branchRange->resolvePatch($installedVersion, $patchedVersions);
 				if ($patch !== null) {
 					$active[] = $advisory;
 					$branchPatches[] = $patch;

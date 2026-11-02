@@ -4,17 +4,22 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\BackgroundJob;
 
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\BackgroundJob\AdvisoryRefreshJob;
 use OCA\Versioniq\Service\Advisory\AdvisoryDigestNotifier;
 use OCA\Versioniq\Service\Advisory\AdvisoryNotifier;
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisoryService;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\AppFramework\Utility\ITimeFactory;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 final class AdvisoryRefreshJobTest extends TestCase {
+	use BuildsByParameterName;
+
 	private function correlation(string $appId, ?string $error = null): array {
 		return [
 			'appId' => $appId,
@@ -32,6 +37,7 @@ final class AdvisoryRefreshJobTest extends TestCase {
 		?AdvisoryNotifier $notifier = null,
 		?LoggerInterface $logger = null,
 		int $now = 1_700_000_000,
+		?AdvisoryDigestNotifier $digestNotifier = null,
 	): void {
 		$time = $this->createMock(ITimeFactory::class);
 		$time->method('getTime')->willReturn($now);
@@ -39,15 +45,15 @@ final class AdvisoryRefreshJobTest extends TestCase {
 		$settings = $this->createMock(AdvisorySettingsStore::class);
 		$settings->method('getIntervalSeconds')->willReturn(6 * 3600);
 
-		$job = new AdvisoryRefreshJob(
-			$time,
-			$service,
-			$notifier ?? $this->createMock(AdvisoryNotifier::class),
-			$this->createMock(AdvisoryDigestNotifier::class),
-			$store,
-			$settings,
-			$logger ?? $this->createMock(LoggerInterface::class),
-		);
+		$job = $this->buildByName(AdvisoryRefreshJob::class, [
+			'time' => $time,
+			'advisoryService' => $service,
+			'advisoryNotifier' => $notifier ?? $this->createMock(AdvisoryNotifier::class),
+			'digestNotifier' => $digestNotifier ?? $this->createMock(AdvisoryDigestNotifier::class),
+			'resultStore' => $store,
+			'settings' => $settings,
+			'logger' => $logger ?? $this->createMock(LoggerInterface::class),
+		]);
 
 		// run() is protected — this job is invoked by the cron runner, and the
 		// test drives it the same way the runner does.
@@ -73,6 +79,25 @@ final class AdvisoryRefreshJobTest extends TestCase {
 			->with($correlations, 1_700_000_000);
 
 		$this->runJob($service, $store, now: 1_700_000_000);
+	}
+
+	/**
+	 * Every sweep offers the correlations to the weekly digest, with the
+	 * sweep time; the digest decides itself whether one is due.
+	 */
+	public function testOffersTheCorrelationsToTheDigestWithTheSweepTime(): void {
+		$correlations = ['notes' => $this->correlation('notes')];
+
+		$service = $this->createMock(AdvisoryService::class);
+		$service->method('correlateAll')->willReturn($correlations);
+
+		$digest = $this->createMock(AdvisoryDigestNotifier::class);
+		$digest->expects($this->once())
+			->method('sendIfDue')
+			->with($correlations, 1_700_000_000)
+			->willReturn(0);
+
+		$this->runJob($service, $this->createMock(AdvisoryResultStore::class), now: 1_700_000_000, digestNotifier: $digest);
 	}
 
 	/**
