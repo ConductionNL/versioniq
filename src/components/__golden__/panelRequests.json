@@ -1,0 +1,2479 @@
+{
+	"discover/full payload": {
+		"state": {
+			"results": [
+				{
+					"appId": "deck",
+					"name": "Deck",
+					"summary": "",
+					"iconUrl": null,
+					"homepageUrl": null,
+					"installedVersion": null,
+					"sourceCandidates": []
+				}
+			],
+			"providers": [
+				{
+					"id": "appstore",
+					"label": "App Store",
+					"enabled": true
+				}
+			],
+			"providerErrors": [
+				{
+					"providerId": "gh",
+					"message": "down"
+				}
+			],
+			"dismissedProviderIds": [],
+			"requestError": "",
+			"hasSearched": true,
+			"isLoading": false
+		},
+		"calls": [
+			[
+				"/ocs/v2.php/apps/versioniq/api/discover",
+				{
+					"q": "deck",
+					"installedOnly": "0"
+				},
+				{
+					"signalAborted": false
+				}
+			]
+		]
+	},
+	"discover/payload without arrays": {
+		"state": {
+			"results": [],
+			"providers": [
+				{
+					"id": "old",
+					"label": "Old",
+					"enabled": true
+				}
+			],
+			"providerErrors": [],
+			"dismissedProviderIds": [],
+			"requestError": "",
+			"hasSearched": true,
+			"isLoading": false
+		},
+		"calls": [
+			[
+				"/ocs/v2.php/apps/versioniq/api/discover",
+				{
+					"q": "deck",
+					"installedOnly": "1",
+					"sources": "appstore,gh"
+				},
+				{
+					"signalAborted": false
+				}
+			]
+		]
+	},
+	"discover/empty payload": {
+		"state": {
+			"results": [],
+			"providers": [
+				{
+					"id": "old",
+					"label": "Old",
+					"enabled": true
+				}
+			],
+			"providerErrors": [],
+			"dismissedProviderIds": [],
+			"requestError": "",
+			"hasSearched": true,
+			"isLoading": false
+		},
+		"calls": [
+			[
+				"/ocs/v2.php/apps/versioniq/api/discover",
+				{
+					"q": "deck",
+					"installedOnly": "0",
+					"sources": "gh"
+				},
+				{
+					"signalAborted": false
+				}
+			]
+		]
+	},
+	"discover/ocs error": {
+		"state": {
+			"results": [],
+			"providers": [
+				{
+					"id": "old",
+					"label": "Old",
+					"enabled": true
+				}
+			],
+			"providerErrors": [],
+			"dismissedProviderIds": [
+				"stale"
+			],
+			"requestError": "Refused by the server.",
+			"hasSearched": true,
+			"isLoading": false
+		},
+		"calls": [
+			[
+				"/ocs/v2.php/apps/versioniq/api/discover",
+				{
+					"q": "deck",
+					"installedOnly": "1"
+				},
+				{
+					"signalAborted": false
+				}
+			]
+		]
+	},
+	"discover/thrown Error": {
+		"state": {
+			"results": [],
+			"providers": [
+				{
+					"id": "old",
+					"label": "Old",
+					"enabled": true
+				}
+			],
+			"providerErrors": [
+				{
+					"providerId": "stale",
+					"message": "stale"
+				}
+			],
+			"dismissedProviderIds": [
+				"stale"
+			],
+			"requestError": "Network down.",
+			"hasSearched": true,
+			"isLoading": false
+		},
+		"calls": [
+			[
+				"/ocs/v2.php/apps/versioniq/api/discover",
+				{
+					"q": "deck",
+					"installedOnly": "0"
+				},
+				{
+					"signalAborted": false
+				}
+			]
+		]
+	},
+	"discover/thrown non-Error": {
+		"state": {
+			"results": [],
+			"providers": [
+				{
+					"id": "old",
+					"label": "Old",
+					"enabled": true
+				}
+			],
+			"providerErrors": [
+				{
+					"providerId": "stale",
+					"message": "stale"
+				}
+			],
+			"dismissedProviderIds": [
+				"stale"
+			],
+			"requestError": "Could not search for apps.",
+			"hasSearched": true,
+			"isLoading": false
+		},
+		"calls": [
+			[
+				"/ocs/v2.php/apps/versioniq/api/discover",
+				{
+					"q": "deck",
+					"installedOnly": "0"
+				},
+				{
+					"signalAborted": false
+				}
+			]
+		]
+	},
+	"discover/abort error": {
+		"state": {
+			"results": [
+				{
+					"appId": "stale",
+					"name": "Deck",
+					"summary": "",
+					"iconUrl": null,
+					"homepageUrl": null,
+					"installedVersion": null,
+					"sourceCandidates": []
+				}
+			],
+			"providers": [
+				{
+					"id": "old",
+					"label": "Old",
+					"enabled": true
+				}
+			],
+			"providerErrors": [
+				{
+					"providerId": "stale",
+					"message": "stale"
+				}
+			],
+			"dismissedProviderIds": [
+				"stale"
+			],
+			"requestError": "stale error",
+			"hasSearched": false,
+			"isLoading": false
+		},
+		"calls": [
+			[
+				"/ocs/v2.php/apps/versioniq/api/discover",
+				{
+					"q": "deck",
+					"installedOnly": "0"
+				},
+				{
+					"signalAborted": false
+				}
+			]
+		]
+	},
+	"discover/other DOMException": {
+		"state": {
+			"results": [],
+			"providers": [
+				{
+					"id": "old",
+					"label": "Old",
+					"enabled": true
+				}
+			],
+			"providerErrors": [
+				{
+					"providerId": "stale",
+					"message": "stale"
+				}
+			],
+			"dismissedProviderIds": [
+				"stale"
+			],
+			"requestError": "Could not search for apps.",
+			"hasSearched": true,
+			"isLoading": false
+		},
+		"calls": [
+			[
+				"/ocs/v2.php/apps/versioniq/api/discover",
+				{
+					"q": "deck",
+					"installedOnly": "0"
+				},
+				{
+					"signalAborted": false
+				}
+			]
+		]
+	},
+	"discover/superseded": {
+		"state": {
+			"results": [
+				{
+					"appId": "deck",
+					"name": "Deck",
+					"summary": "",
+					"iconUrl": null,
+					"homepageUrl": null,
+					"installedVersion": null,
+					"sourceCandidates": []
+				}
+			],
+			"providers": [],
+			"providerErrors": [],
+			"dismissedProviderIds": [],
+			"requestError": "",
+			"hasSearched": true,
+			"isLoading": true
+		},
+		"calls": [
+			[
+				"/ocs/v2.php/apps/versioniq/api/discover",
+				{
+					"q": "dec",
+					"installedOnly": "0"
+				},
+				{
+					"signalAborted": true
+				}
+			],
+			[
+				"/ocs/v2.php/apps/versioniq/api/discover",
+				{
+					"q": "deck",
+					"installedOnly": "0"
+				},
+				{
+					"signalAborted": false
+				}
+			]
+		]
+	},
+	"discover/superseded failure": {
+		"state": {
+			"results": [],
+			"providers": [],
+			"providerErrors": [],
+			"dismissedProviderIds": [],
+			"requestError": "",
+			"hasSearched": true,
+			"isLoading": true
+		},
+		"calls": [
+			[
+				"/ocs/v2.php/apps/versioniq/api/discover",
+				{
+					"q": "dec",
+					"installedOnly": "0"
+				},
+				{
+					"signalAborted": true
+				}
+			],
+			[
+				"/ocs/v2.php/apps/versioniq/api/discover",
+				{
+					"q": "deck",
+					"installedOnly": "0"
+				},
+				{
+					"signalAborted": false
+				}
+			]
+		]
+	},
+	"sources/no app": {
+		"state": {
+			"error": "Select an app first.",
+			"notice": "",
+			"loading": false,
+			"currentBinding": null,
+			"owner": " Conduction ",
+			"repo": " deck ",
+			"assetPattern": " *.zip "
+		},
+		"writes": [],
+		"emitted": []
+	},
+	"sources/no owner": {
+		"state": {
+			"error": "Owner and repository are required.",
+			"notice": "",
+			"loading": false,
+			"currentBinding": {
+				"sourceId": "(undefined)"
+			},
+			"owner": "  ",
+			"repo": " deck ",
+			"assetPattern": " *.zip "
+		},
+		"writes": [],
+		"emitted": []
+	},
+	"sources/no repo": {
+		"state": {
+			"error": "Owner and repository are required.",
+			"notice": "",
+			"loading": false,
+			"currentBinding": {
+				"sourceId": "(undefined)"
+			},
+			"owner": " Conduction ",
+			"repo": "",
+			"assetPattern": " *.zip "
+		},
+		"writes": [],
+		"emitted": []
+	},
+	"sources/forgejo without host": {
+		"state": {
+			"error": "Set the self-hosted Forgejo or Gitea host below first.",
+			"notice": "",
+			"loading": false,
+			"currentBinding": {
+				"sourceId": "(undefined)"
+			},
+			"owner": " Conduction ",
+			"repo": " deck ",
+			"assetPattern": " *.zip "
+		},
+		"writes": [],
+		"emitted": []
+	},
+	"sources/forgejo with host": {
+		"state": {
+			"error": "",
+			"notice": "Bound to forgejo:Conduction/deck",
+			"loading": false,
+			"currentBinding": {
+				"sourceId": "forgejo:Conduction/deck"
+			},
+			"owner": " Conduction ",
+			"repo": " deck ",
+			"assetPattern": " *.zip "
+		},
+		"writes": [
+			[
+				"POST",
+				"/ocs/v2.php/apps/versioniq/api/source/deck/bind",
+				{
+					"kind": "github-release",
+					"forge": "forgejo",
+					"owner": "Conduction",
+					"repo": "deck",
+					"assetPattern": "*.zip"
+				}
+			]
+		],
+		"emitted": [
+			[
+				"deck"
+			]
+		]
+	},
+	"sources/bound": {
+		"state": {
+			"error": "",
+			"notice": "Bound to github:Conduction/deck",
+			"loading": false,
+			"currentBinding": {
+				"sourceId": "github:Conduction/deck"
+			},
+			"owner": " Conduction ",
+			"repo": " deck ",
+			"assetPattern": " *.zip "
+		},
+		"writes": [
+			[
+				"POST",
+				"/ocs/v2.php/apps/versioniq/api/source/deck/bind",
+				{
+					"kind": "github-release",
+					"forge": "github",
+					"owner": "Conduction",
+					"repo": "deck",
+					"assetPattern": "*.zip"
+				}
+			]
+		],
+		"emitted": [
+			[
+				"deck"
+			]
+		]
+	},
+	"sources/bound, empty pattern, no source id": {
+		"state": {
+			"error": "",
+			"notice": "Bound to ",
+			"loading": false,
+			"currentBinding": {
+				"sourceId": "(undefined)"
+			},
+			"owner": " Conduction ",
+			"repo": " deck ",
+			"assetPattern": "  "
+		},
+		"writes": [
+			[
+				"POST",
+				"/ocs/v2.php/apps/versioniq/api/source/deck/bind",
+				{
+					"kind": "github-release",
+					"forge": "github",
+					"owner": "Conduction",
+					"repo": "deck",
+					"assetPattern": "*.tar.gz"
+				}
+			]
+		],
+		"emitted": [
+			[
+				"deck"
+			]
+		]
+	},
+	"sources/ocs error": {
+		"state": {
+			"error": "Refused by the server.",
+			"notice": "",
+			"loading": false,
+			"currentBinding": {
+				"sourceId": "(undefined)"
+			},
+			"owner": " Conduction ",
+			"repo": " deck ",
+			"assetPattern": " *.zip "
+		},
+		"writes": [
+			[
+				"POST",
+				"/ocs/v2.php/apps/versioniq/api/source/deck/bind",
+				{
+					"kind": "github-release",
+					"forge": "github",
+					"owner": "Conduction",
+					"repo": "deck",
+					"assetPattern": "*.zip"
+				}
+			]
+		],
+		"emitted": []
+	},
+	"sources/thrown Error": {
+		"state": {
+			"error": "Network down.",
+			"notice": "",
+			"loading": false,
+			"currentBinding": {
+				"sourceId": "(undefined)"
+			},
+			"owner": " Conduction ",
+			"repo": " deck ",
+			"assetPattern": " *.zip "
+		},
+		"writes": [
+			[
+				"POST",
+				"/ocs/v2.php/apps/versioniq/api/source/deck/bind",
+				{
+					"kind": "github-release",
+					"forge": "github",
+					"owner": "Conduction",
+					"repo": "deck",
+					"assetPattern": "*.zip"
+				}
+			]
+		],
+		"emitted": []
+	},
+	"sources/thrown non-Error": {
+		"state": {
+			"error": "Could not bind the source.",
+			"notice": "",
+			"loading": false,
+			"currentBinding": {
+				"sourceId": "(undefined)"
+			},
+			"owner": " Conduction ",
+			"repo": " deck ",
+			"assetPattern": " *.zip "
+		},
+		"writes": [
+			[
+				"POST",
+				"/ocs/v2.php/apps/versioniq/api/source/deck/bind",
+				{
+					"kind": "github-release",
+					"forge": "github",
+					"owner": "Conduction",
+					"repo": "deck",
+					"assetPattern": "*.zip"
+				}
+			]
+		],
+		"emitted": []
+	},
+	"trusted/no owner": {
+		"state": {
+			"error": "An owner/organisation is required.",
+			"notice": "",
+			"loading": false,
+			"patterns": [
+				"github:old/*"
+			],
+			"owner": " ",
+			"repo": " deck ",
+			"confirmTrust": true
+		},
+		"writes": []
+	},
+	"trusted/not confirmed": {
+		"state": {
+			"error": "Please confirm you trust this source before adding it.",
+			"notice": "",
+			"loading": false,
+			"patterns": [
+				"github:old/*"
+			],
+			"owner": " Conduction ",
+			"repo": " deck ",
+			"confirmTrust": false
+		},
+		"writes": []
+	},
+	"trusted/added with repo": {
+		"state": {
+			"error": "",
+			"notice": "Trusted github:Conduction/deck",
+			"loading": false,
+			"patterns": [
+				"github:Conduction/deck"
+			],
+			"owner": "",
+			"repo": "",
+			"confirmTrust": false
+		},
+		"writes": [
+			[
+				"POST",
+				"/ocs/v2.php/apps/versioniq/api/trusted-sources",
+				{
+					"forge": "github",
+					"owner": "Conduction",
+					"repo": "deck"
+				}
+			]
+		]
+	},
+	"trusted/added without repo": {
+		"state": {
+			"error": "",
+			"notice": "Trusted forgejo:Conduction/*",
+			"loading": false,
+			"patterns": [
+				"forgejo:Conduction/*"
+			],
+			"owner": "",
+			"repo": "",
+			"confirmTrust": false
+		},
+		"writes": [
+			[
+				"POST",
+				"/ocs/v2.php/apps/versioniq/api/trusted-sources",
+				{
+					"forge": "forgejo",
+					"owner": "Conduction"
+				}
+			]
+		]
+	},
+	"trusted/added, no list back": {
+		"state": {
+			"error": "",
+			"notice": "Trusted github:Conduction/deck",
+			"loading": false,
+			"patterns": [
+				"github:old/*"
+			],
+			"owner": "",
+			"repo": "",
+			"confirmTrust": false
+		},
+		"writes": [
+			[
+				"POST",
+				"/ocs/v2.php/apps/versioniq/api/trusted-sources",
+				{
+					"forge": "github",
+					"owner": "Conduction",
+					"repo": "deck"
+				}
+			]
+		]
+	},
+	"trusted/ocs error": {
+		"state": {
+			"error": "Refused by the server.",
+			"notice": "",
+			"loading": false,
+			"patterns": [
+				"github:old/*"
+			],
+			"owner": " Conduction ",
+			"repo": " deck ",
+			"confirmTrust": true
+		},
+		"writes": [
+			[
+				"POST",
+				"/ocs/v2.php/apps/versioniq/api/trusted-sources",
+				{
+					"forge": "github",
+					"owner": "Conduction",
+					"repo": "deck"
+				}
+			]
+		]
+	},
+	"trusted/thrown Error": {
+		"state": {
+			"error": "Network down.",
+			"notice": "",
+			"loading": false,
+			"patterns": [
+				"github:old/*"
+			],
+			"owner": " Conduction ",
+			"repo": " deck ",
+			"confirmTrust": true
+		},
+		"writes": [
+			[
+				"POST",
+				"/ocs/v2.php/apps/versioniq/api/trusted-sources",
+				{
+					"forge": "github",
+					"owner": "Conduction",
+					"repo": "deck"
+				}
+			]
+		]
+	},
+	"trusted/thrown non-Error": {
+		"state": {
+			"error": "Could not add the trusted source.",
+			"notice": "",
+			"loading": false,
+			"patterns": [
+				"github:old/*"
+			],
+			"owner": " Conduction ",
+			"repo": " deck ",
+			"confirmTrust": true
+		},
+		"writes": [
+			[
+				"POST",
+				"/ocs/v2.php/apps/versioniq/api/trusted-sources",
+				{
+					"forge": "github",
+					"owner": "Conduction",
+					"repo": "deck"
+				}
+			]
+		]
+	},
+	"history/reset, short page": {
+		"during": {
+			"entries": [
+				{
+					"id": 9,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				}
+			],
+			"offset": 0,
+			"hasMore": true,
+			"isLoading": true,
+			"isLoadingMore": false,
+			"error": "",
+			"hasLoadedOnce": false
+		},
+		"state": {
+			"entries": [
+				{
+					"id": 1,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 2,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				}
+			],
+			"offset": 2,
+			"hasMore": false,
+			"isLoading": false,
+			"isLoadingMore": false,
+			"error": "",
+			"hasLoadedOnce": true
+		},
+		"calls": [
+			[
+				"/ocs/v2.php/apps/versioniq/api/audit",
+				{
+					"limit": 50,
+					"offset": 0
+				}
+			]
+		]
+	},
+	"history/reset, full page, scoped": {
+		"during": {
+			"entries": [
+				{
+					"id": 9,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				}
+			],
+			"offset": 0,
+			"hasMore": true,
+			"isLoading": true,
+			"isLoadingMore": false,
+			"error": "",
+			"hasLoadedOnce": false
+		},
+		"state": {
+			"entries": [
+				{
+					"id": 100,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 101,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 102,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 103,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 104,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 105,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 106,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 107,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 108,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 109,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 110,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 111,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 112,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 113,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 114,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 115,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 116,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 117,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 118,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 119,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 120,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 121,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 122,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 123,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 124,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 125,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 126,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 127,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 128,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 129,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 130,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 131,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 132,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 133,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 134,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 135,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 136,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 137,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 138,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 139,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 140,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 141,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 142,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 143,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 144,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 145,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 146,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 147,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 148,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 149,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				}
+			],
+			"offset": 50,
+			"hasMore": true,
+			"isLoading": false,
+			"isLoadingMore": false,
+			"error": "",
+			"hasLoadedOnce": true
+		},
+		"calls": [
+			[
+				"/ocs/v2.php/apps/versioniq/api/audit",
+				{
+					"limit": 50,
+					"offset": 0,
+					"appId": "deck"
+				}
+			]
+		]
+	},
+	"history/more, short page": {
+		"during": {
+			"entries": [
+				{
+					"id": 9,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				}
+			],
+			"offset": 7,
+			"hasMore": true,
+			"isLoading": false,
+			"isLoadingMore": true,
+			"error": "",
+			"hasLoadedOnce": false
+		},
+		"state": {
+			"entries": [
+				{
+					"id": 9,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 3,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				}
+			],
+			"offset": 8,
+			"hasMore": false,
+			"isLoading": false,
+			"isLoadingMore": false,
+			"error": "",
+			"hasLoadedOnce": true
+		},
+		"calls": [
+			[
+				"/ocs/v2.php/apps/versioniq/api/audit",
+				{
+					"limit": 50,
+					"offset": 7
+				}
+			]
+		]
+	},
+	"history/more, full page, scoped": {
+		"during": {
+			"entries": [
+				{
+					"id": 9,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				}
+			],
+			"offset": 7,
+			"hasMore": true,
+			"isLoading": false,
+			"isLoadingMore": true,
+			"error": "",
+			"hasLoadedOnce": false
+		},
+		"state": {
+			"entries": [
+				{
+					"id": 9,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 100,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 101,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 102,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 103,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 104,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 105,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 106,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 107,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 108,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 109,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 110,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 111,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 112,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 113,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 114,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 115,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 116,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 117,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 118,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 119,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 120,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 121,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 122,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 123,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 124,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 125,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 126,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 127,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 128,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 129,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 130,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 131,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 132,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 133,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 134,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 135,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 136,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 137,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 138,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 139,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 140,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 141,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 142,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 143,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 144,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 145,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 146,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 147,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 148,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				},
+				{
+					"id": 149,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				}
+			],
+			"offset": 57,
+			"hasMore": true,
+			"isLoading": false,
+			"isLoadingMore": false,
+			"error": "",
+			"hasLoadedOnce": true
+		},
+		"calls": [
+			[
+				"/ocs/v2.php/apps/versioniq/api/audit",
+				{
+					"limit": 50,
+					"offset": 7,
+					"appId": "deck"
+				}
+			]
+		]
+	},
+	"history/more, no entries list": {
+		"during": {
+			"entries": [
+				{
+					"id": 9,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				}
+			],
+			"offset": 7,
+			"hasMore": true,
+			"isLoading": false,
+			"isLoadingMore": true,
+			"error": "",
+			"hasLoadedOnce": false
+		},
+		"state": {
+			"entries": [
+				{
+					"id": 9,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				}
+			],
+			"offset": 7,
+			"hasMore": false,
+			"isLoading": false,
+			"isLoadingMore": false,
+			"error": "",
+			"hasLoadedOnce": true
+		},
+		"calls": [
+			[
+				"/ocs/v2.php/apps/versioniq/api/audit",
+				{
+					"limit": 50,
+					"offset": 7
+				}
+			]
+		]
+	},
+	"history/reset, ocs error": {
+		"during": {
+			"entries": [
+				{
+					"id": 9,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				}
+			],
+			"offset": 0,
+			"hasMore": true,
+			"isLoading": true,
+			"isLoadingMore": false,
+			"error": "",
+			"hasLoadedOnce": false
+		},
+		"state": {
+			"entries": [
+				{
+					"id": 9,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				}
+			],
+			"offset": 0,
+			"hasMore": true,
+			"isLoading": false,
+			"isLoadingMore": false,
+			"error": "Refused by the server.",
+			"hasLoadedOnce": true
+		},
+		"calls": [
+			[
+				"/ocs/v2.php/apps/versioniq/api/audit",
+				{
+					"limit": 50,
+					"offset": 0
+				}
+			]
+		]
+	},
+	"history/more, ocs error": {
+		"during": {
+			"entries": [
+				{
+					"id": 9,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				}
+			],
+			"offset": 7,
+			"hasMore": true,
+			"isLoading": false,
+			"isLoadingMore": true,
+			"error": "",
+			"hasLoadedOnce": false
+		},
+		"state": {
+			"entries": [
+				{
+					"id": 9,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				}
+			],
+			"offset": 7,
+			"hasMore": true,
+			"isLoading": false,
+			"isLoadingMore": false,
+			"error": "Refused by the server.",
+			"hasLoadedOnce": true
+		},
+		"calls": [
+			[
+				"/ocs/v2.php/apps/versioniq/api/audit",
+				{
+					"limit": 50,
+					"offset": 7
+				}
+			]
+		]
+	},
+	"history/reset, thrown Error": {
+		"during": {
+			"entries": [
+				{
+					"id": 9,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				}
+			],
+			"offset": 0,
+			"hasMore": true,
+			"isLoading": true,
+			"isLoadingMore": false,
+			"error": "",
+			"hasLoadedOnce": false
+		},
+		"state": {
+			"entries": [
+				{
+					"id": 9,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				}
+			],
+			"offset": 0,
+			"hasMore": true,
+			"isLoading": false,
+			"isLoadingMore": false,
+			"error": "Network down.",
+			"hasLoadedOnce": true
+		},
+		"calls": [
+			[
+				"/ocs/v2.php/apps/versioniq/api/audit",
+				{
+					"limit": 50,
+					"offset": 0
+				}
+			]
+		]
+	},
+	"history/more, thrown non-Error": {
+		"during": {
+			"entries": [
+				{
+					"id": 9,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				}
+			],
+			"offset": 7,
+			"hasMore": true,
+			"isLoading": false,
+			"isLoadingMore": true,
+			"error": "",
+			"hasLoadedOnce": false
+		},
+		"state": {
+			"entries": [
+				{
+					"id": 9,
+					"actorUid": "admin",
+					"appId": "deck",
+					"operation": "install",
+					"fromVersion": null,
+					"toVersion": "1.0.0",
+					"sourceId": null,
+					"status": "success",
+					"message": null,
+					"createdAt": "2026-01-01 10:00:00"
+				}
+			],
+			"offset": 7,
+			"hasMore": true,
+			"isLoading": false,
+			"isLoadingMore": false,
+			"error": "Could not load the history.",
+			"hasLoadedOnce": true
+		},
+		"calls": [
+			[
+				"/ocs/v2.php/apps/versioniq/api/audit",
+				{
+					"limit": 50,
+					"offset": 7
+				}
+			]
+		]
+	}
+}
