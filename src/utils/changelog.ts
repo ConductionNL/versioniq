@@ -14,6 +14,58 @@ export type ChangelogRangeEntry = {
 	changelog: string | null
 }
 
+export type ChangelogEndpoints = {
+	installed: string
+	target: string
+}
+
+type VersionWindow = {
+	low: string
+	high: string
+	ascending: boolean
+}
+
+/**
+ * The versions a range spans: above `low`, up to and including `high`, listed
+ * ascending for an upgrade. Null when an endpoint is missing or both are equal.
+ *
+ * @param endpoints The installed and the target version.
+ * @param endpoints.installed The installed version.
+ * @param endpoints.target The target version.
+ */
+function versionWindow({ installed, target }: ChangelogEndpoints): VersionWindow | null {
+	if (!installed || !target || installed === target) {
+		return null
+	}
+
+	const ascending = compareVersions(target, installed) > 0
+	return ascending
+		? { low: installed, high: target, ascending }
+		: { low: target, high: installed, ascending }
+}
+
+/**
+ * Whether a version lies above the window's low end and at or below its high end.
+ *
+ * @param bounds The version window.
+ * @param version The version to test.
+ */
+function inWindow(bounds: VersionWindow, version: string): boolean {
+	return compareVersions(version, bounds.low) > 0 && compareVersions(version, bounds.high) <= 0
+}
+
+/**
+ * The sort order of the range: ascending, or newest first.
+ *
+ * @param ascending Whether the range lists oldest first.
+ */
+function rangeOrder(ascending: boolean): (a: ChangelogRangeEntry, b: ChangelogRangeEntry) => number {
+	if (ascending) {
+		return (a, b) => compareVersions(a.version, b.version)
+	}
+	return (a, b) => compareVersions(b.version, a.version)
+}
+
 /**
  * Builds the ordered list of intermediate releases between the installed
  * version and the selected target, for the aggregate "changes between
@@ -31,28 +83,18 @@ export type ChangelogRangeEntry = {
  * (no range to show). Reuses the already-fetched `versions` list — this
  * function issues zero requests.
  *
- * @param installedVersion
- * @param targetVersion
- * @param versions
+ * @param endpoints The installed and the target version.
+ * @param versions The fetched releases.
+ * @spec openspec/specs/changelog-visibility/spec.md
  */
-export function buildChangelogRange(
-	installedVersion: string,
-	targetVersion: string,
-	versions: ChangelogSource[],
-): ChangelogRangeEntry[] {
-	if (!installedVersion || !targetVersion || installedVersion === targetVersion) {
+export function buildChangelogRange(endpoints: ChangelogEndpoints, versions: ChangelogSource[]): ChangelogRangeEntry[] {
+	const bounds = versionWindow(endpoints)
+	if (bounds === null) {
 		return []
 	}
 
-	const isUpgrade = compareVersions(targetVersion, installedVersion) > 0
-	const low = isUpgrade ? installedVersion : targetVersion
-	const high = isUpgrade ? targetVersion : installedVersion
-
-	const entries: ChangelogRangeEntry[] = versions
-		.filter((entry) => compareVersions(entry.version, low) > 0 && compareVersions(entry.version, high) <= 0)
+	return versions
+		.filter((entry) => inWindow(bounds, entry.version))
 		.map((entry) => ({ version: entry.version, changelog: entry.changelog ?? null }))
-
-	entries.sort((a, b) => (isUpgrade ? compareVersions(a.version, b.version) : compareVersions(b.version, a.version)))
-
-	return entries
+		.sort(rangeOrder(bounds.ascending))
 }
