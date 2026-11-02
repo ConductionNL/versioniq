@@ -14,8 +14,10 @@ namespace OCA\Versioniq\Service\Pat;
 
 use Exception;
 use OCA\Versioniq\Db\Pat;
+use OCA\Versioniq\Service\Source\Forge;
 use OCA\Versioniq\Service\Source\ForgeRegistry;
 use OCP\Http\Client\IClientService;
+use OCP\Http\Client\IResponse;
 use OCP\IConfig;
 use Psr\Log\LoggerInterface;
 
@@ -76,45 +78,15 @@ class PatValidator {
 		}
 		$f = $this->forgeRegistry->get($forge);
 		$kind = $this->detectKind($token);
-		$client = $this->clientService->newClient();
 
-		$headers = [
-			'Authorization' => $f->authHeaderValue($token),
-			'Accept' => 'application/json',
-			'User-Agent' => self::USER_AGENT,
-		];
-		if ($f->id === ForgeRegistry::FORGE_GITHUB) {
-			$headers['Accept'] = 'application/vnd.github+json';
-			$headers['X-GitHub-Api-Version'] = '2022-11-28';
+		$response = $this->probe($f, $token);
+		if ($response instanceof ValidationResult) {
+			return $response;
 		}
 
-		$host = parse_url($f->apiBaseUrl, PHP_URL_HOST);
-		$hostLabel = is_string($host) ? $host : $f->id;
-
-		try {
-			$response = $client->get($f->userEndpoint(), [
-				'headers' => $headers,
-				'timeout' => 30,
-				// IClient (Guzzle) throws on 4xx by default; we want to inspect
-				// the status ourselves so we can produce a useful error message.
-				'http_errors' => false,
-				'nextcloud' => ['allow_local_address' => $this->config->getSystemValueBool('allow_local_remote_servers', false)],
-			]);
-		} catch (Exception $error) {
-			$this->logger->warning('PatValidator: probe failed', ['forge' => $f->id, 'errorMessage' => $error->getMessage()]);
-
-			return ValidationResult::rejected(sprintf('Could not reach %s — check network connectivity.', $hostLabel));
-		}
-
-		$status = $response->getStatusCode();
-		if ($status === 401) {
-			return ValidationResult::rejected('Token is invalid or revoked.');
-		}
-		if ($status === 403) {
-			return ValidationResult::rejected('The rate limit was exceeded — try again later.');
-		}
-		if ($status !== 200) {
-			return ValidationResult::rejected(sprintf('%s returned HTTP %d.', $hostLabel, $status));
+		$rejection = $this->statusRejection($f, $response->getStatusCode());
+		if ($rejection !== null) {
+			return $rejection;
 		}
 
 		// Forges that do not expose token scopes to the holder (e.g.
@@ -128,33 +100,110 @@ class PatValidator {
 			);
 		}
 
-		$headers = $response->getHeaders();
+		return $this->scopeResult($kind, $response->getHeaders());
+	}
+
+	/**
+	 * Calls the forge's user endpoint with the token; a rejection when the forge cannot be reached.
+	 */
+	private function probe(Forge $f, string $token): IResponse|ValidationResult {
+		$client = $this->clientService->newClient();
+
+		try {
+			return $client->get($f->userEndpoint(), [
+				'headers' => $this->probeHeaders($f, $token),
+				'timeout' => 30,
+				// IClient (Guzzle) throws on 4xx by default; we want to inspect
+				// the status ourselves so we can produce a useful error message.
+				'http_errors' => false,
+				'nextcloud' => ['allow_local_address' => $this->config->getSystemValueBool('allow_local_remote_servers', false)],
+			]);
+		} catch (Exception $error) {
+			$this->logger->warning('PatValidator: probe failed', ['forge' => $f->id, 'errorMessage' => $error->getMessage()]);
+
+			return ValidationResult::rejected(sprintf('Could not reach %s — check network connectivity.', $this->hostLabel($f)));
+		}
+	}
+
+	/**
+	 * @return array<string, string>
+	 */
+	private function probeHeaders(Forge $f, string $token): array {
+		$headers = [
+			'Authorization' => $f->authHeaderValue($token),
+			'Accept' => 'application/json',
+			'User-Agent' => self::USER_AGENT,
+		];
+		if ($f->id === ForgeRegistry::FORGE_GITHUB) {
+			$headers['Accept'] = 'application/vnd.github+json';
+			$headers['X-GitHub-Api-Version'] = '2022-11-28';
+		}
+
+		return $headers;
+	}
+
+	private function hostLabel(Forge $f): string {
+		$host = parse_url($f->apiBaseUrl, PHP_URL_HOST);
+
+		return is_string($host) ? $host : $f->id;
+	}
+
+	/**
+	 * The rejection for a probe status other than 200, else null.
+	 */
+	private function statusRejection(Forge $f, int $status): ?ValidationResult {
+		if ($status === 401) {
+			return ValidationResult::rejected('Token is invalid or revoked.');
+		}
+		if ($status === 403) {
+			return ValidationResult::rejected('The rate limit was exceeded — try again later.');
+		}
+		if ($status !== 200) {
+			return ValidationResult::rejected(sprintf('%s returned HTTP %d.', $this->hostLabel($f), $status));
+		}
+
+		return null;
+	}
+
+	/**
+	 * Enforces least privilege from the scope header for a classic token; a
+	 * fine-grained token is accepted with a warning, as GitHub does not expose
+	 * its permissions.
+	 *
+	 * @param array<array-key, mixed> $headers
+	 */
+	private function scopeResult(string $kind, array $headers): ValidationResult {
 		$scopesHeader = $this->headerValue($headers, 'X-OAuth-Scopes');
 		$expiresAt = $this->parseExpires($this->headerValue($headers, 'github-authentication-token-expiration'));
 
 		if ($kind === Pat::KIND_CLASSIC) {
-			$scopes = $this->parseScopes($scopesHeader);
-			$disallowed = array_values(array_filter(
-				$scopes,
-				static fn (string $scope): bool => !in_array($scope, self::ALLOWED_CLASSIC_SCOPES, true)
-			));
-			if ($disallowed !== []) {
-				return ValidationResult::rejected(sprintf(
-					'PAT has scopes beyond what Versioniq needs (%s). Recreate with %s only.',
-					implode(', ', $disallowed),
-					implode(' or ', self::ALLOWED_CLASSIC_SCOPES)
-				));
-			}
-
-			return ValidationResult::accepted($scopes, [], $expiresAt);
+			return $this->classicScopeResult($this->parseScopes($scopesHeader), $expiresAt);
 		}
 
-		// Fine-grained PAT
 		return ValidationResult::accepted(
 			[],
 			['unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only).'],
 			$expiresAt
 		);
+	}
+
+	/**
+	 * @param list<string> $scopes
+	 */
+	private function classicScopeResult(array $scopes, ?string $expiresAt): ValidationResult {
+		$disallowed = array_values(array_filter(
+			$scopes,
+			static fn (string $scope): bool => !in_array($scope, self::ALLOWED_CLASSIC_SCOPES, true)
+		));
+		if ($disallowed !== []) {
+			return ValidationResult::rejected(sprintf(
+				'PAT has scopes beyond what Versioniq needs (%s). Recreate with %s only.',
+				implode(', ', $disallowed),
+				implode(' or ', self::ALLOWED_CLASSIC_SCOPES)
+			));
+		}
+
+		return ValidationResult::accepted($scopes, [], $expiresAt);
 	}
 
 	/**

@@ -1,0 +1,4479 @@
+{
+    "plain": {
+        "result": {
+            "ok": true,
+            "scopes": [
+                "repo"
+            ],
+            "warnings": [],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "github classic probe throw": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Could not reach api.github.com — check network connectivity."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ],
+            [
+                "logger.warning",
+                "PatValidator: probe failed",
+                {
+                    "forge": "github",
+                    "errorMessage": "Connection refused."
+                }
+            ]
+        ]
+    },
+    "github classic probe 401": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Token is invalid or revoked."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "github classic probe 403": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "The rate limit was exceeded — try again later."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "github classic probe 404": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "api.github.com returned HTTP 404."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "github classic probe 500": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "api.github.com returned HTTP 500."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "github classic probe 200": {
+        "result": {
+            "ok": true,
+            "scopes": [
+                "repo"
+            ],
+            "warnings": [],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "github fine-grained probe throw": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Could not reach api.github.com — check network connectivity."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ],
+            [
+                "logger.warning",
+                "PatValidator: probe failed",
+                {
+                    "forge": "github",
+                    "errorMessage": "Connection refused."
+                }
+            ]
+        ]
+    },
+    "github fine-grained probe 401": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Token is invalid or revoked."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "github fine-grained probe 403": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "The rate limit was exceeded — try again later."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "github fine-grained probe 404": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "api.github.com returned HTTP 404."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "github fine-grained probe 500": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "api.github.com returned HTTP 500."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "github fine-grained probe 200": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "github other probe throw": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Could not reach api.github.com — check network connectivity."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ],
+            [
+                "logger.warning",
+                "PatValidator: probe failed",
+                {
+                    "forge": "github",
+                    "errorMessage": "Connection refused."
+                }
+            ]
+        ]
+    },
+    "github other probe 401": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Token is invalid or revoked."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "github other probe 403": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "The rate limit was exceeded — try again later."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "github other probe 404": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "api.github.com returned HTTP 404."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "github other probe 500": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "api.github.com returned HTTP 500."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "github other probe 200": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "codeberg classic probe throw": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Could not reach codeberg.org — check network connectivity."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://codeberg.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token ghp_classic123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ],
+            [
+                "logger.warning",
+                "PatValidator: probe failed",
+                {
+                    "forge": "codeberg",
+                    "errorMessage": "Connection refused."
+                }
+            ]
+        ]
+    },
+    "codeberg classic probe 401": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Token is invalid or revoked."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://codeberg.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token ghp_classic123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "codeberg classic probe 403": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "The rate limit was exceeded — try again later."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://codeberg.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token ghp_classic123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "codeberg classic probe 404": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "codeberg.org returned HTTP 404."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://codeberg.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token ghp_classic123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "codeberg classic probe 500": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "codeberg.org returned HTTP 500."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://codeberg.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token ghp_classic123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "codeberg classic probe 200": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: Codeberg does not expose token permissions to the holder; please verify the token is read-only (repository contents read access only)."
+            ],
+            "expiresAt": null,
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://codeberg.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token ghp_classic123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "codeberg fine-grained probe throw": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Could not reach codeberg.org — check network connectivity."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://codeberg.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token github_pat_fine123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ],
+            [
+                "logger.warning",
+                "PatValidator: probe failed",
+                {
+                    "forge": "codeberg",
+                    "errorMessage": "Connection refused."
+                }
+            ]
+        ]
+    },
+    "codeberg fine-grained probe 401": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Token is invalid or revoked."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://codeberg.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token github_pat_fine123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "codeberg fine-grained probe 403": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "The rate limit was exceeded — try again later."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://codeberg.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token github_pat_fine123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "codeberg fine-grained probe 404": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "codeberg.org returned HTTP 404."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://codeberg.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token github_pat_fine123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "codeberg fine-grained probe 500": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "codeberg.org returned HTTP 500."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://codeberg.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token github_pat_fine123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "codeberg fine-grained probe 200": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: Codeberg does not expose token permissions to the holder; please verify the token is read-only (repository contents read access only)."
+            ],
+            "expiresAt": null,
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://codeberg.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token github_pat_fine123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "codeberg other probe throw": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Could not reach codeberg.org — check network connectivity."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://codeberg.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token glpat-other",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ],
+            [
+                "logger.warning",
+                "PatValidator: probe failed",
+                {
+                    "forge": "codeberg",
+                    "errorMessage": "Connection refused."
+                }
+            ]
+        ]
+    },
+    "codeberg other probe 401": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Token is invalid or revoked."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://codeberg.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token glpat-other",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "codeberg other probe 403": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "The rate limit was exceeded — try again later."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://codeberg.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token glpat-other",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "codeberg other probe 404": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "codeberg.org returned HTTP 404."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://codeberg.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token glpat-other",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "codeberg other probe 500": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "codeberg.org returned HTTP 500."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://codeberg.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token glpat-other",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "codeberg other probe 200": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: Codeberg does not expose token permissions to the holder; please verify the token is read-only (repository contents read access only)."
+            ],
+            "expiresAt": null,
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://codeberg.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token glpat-other",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "forgejo classic probe throw": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Could not reach git.example.org — check network connectivity."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://git.example.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token ghp_classic123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ],
+            [
+                "logger.warning",
+                "PatValidator: probe failed",
+                {
+                    "forge": "forgejo",
+                    "errorMessage": "Connection refused."
+                }
+            ]
+        ]
+    },
+    "forgejo classic probe 401": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Token is invalid or revoked."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://git.example.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token ghp_classic123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "forgejo classic probe 403": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "The rate limit was exceeded — try again later."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://git.example.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token ghp_classic123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "forgejo classic probe 404": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "git.example.org returned HTTP 404."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://git.example.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token ghp_classic123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "forgejo classic probe 500": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "git.example.org returned HTTP 500."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://git.example.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token ghp_classic123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "forgejo classic probe 200": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: Forgejo does not expose token permissions to the holder; please verify the token is read-only (repository contents read access only)."
+            ],
+            "expiresAt": null,
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://git.example.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token ghp_classic123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "forgejo fine-grained probe throw": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Could not reach git.example.org — check network connectivity."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://git.example.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token github_pat_fine123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ],
+            [
+                "logger.warning",
+                "PatValidator: probe failed",
+                {
+                    "forge": "forgejo",
+                    "errorMessage": "Connection refused."
+                }
+            ]
+        ]
+    },
+    "forgejo fine-grained probe 401": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Token is invalid or revoked."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://git.example.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token github_pat_fine123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "forgejo fine-grained probe 403": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "The rate limit was exceeded — try again later."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://git.example.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token github_pat_fine123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "forgejo fine-grained probe 404": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "git.example.org returned HTTP 404."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://git.example.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token github_pat_fine123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "forgejo fine-grained probe 500": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "git.example.org returned HTTP 500."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://git.example.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token github_pat_fine123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "forgejo fine-grained probe 200": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: Forgejo does not expose token permissions to the holder; please verify the token is read-only (repository contents read access only)."
+            ],
+            "expiresAt": null,
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://git.example.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token github_pat_fine123",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "forgejo other probe throw": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Could not reach git.example.org — check network connectivity."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://git.example.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token glpat-other",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ],
+            [
+                "logger.warning",
+                "PatValidator: probe failed",
+                {
+                    "forge": "forgejo",
+                    "errorMessage": "Connection refused."
+                }
+            ]
+        ]
+    },
+    "forgejo other probe 401": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Token is invalid or revoked."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://git.example.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token glpat-other",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "forgejo other probe 403": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "The rate limit was exceeded — try again later."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://git.example.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token glpat-other",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "forgejo other probe 404": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "git.example.org returned HTTP 404."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://git.example.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token glpat-other",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "forgejo other probe 500": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "git.example.org returned HTTP 500."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://git.example.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token glpat-other",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "forgejo other probe 200": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: Forgejo does not expose token permissions to the holder; please verify the token is read-only (repository contents read access only)."
+            ],
+            "expiresAt": null,
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://git.example.org/api/v1/user",
+                {
+                    "headers": {
+                        "Authorization": "token glpat-other",
+                        "Accept": "application/json",
+                        "User-Agent": "Nextcloud-Versioniq"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "nope classic probe throw": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"nope\"."
+        },
+        "calls": []
+    },
+    "nope classic probe 401": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"nope\"."
+        },
+        "calls": []
+    },
+    "nope classic probe 403": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"nope\"."
+        },
+        "calls": []
+    },
+    "nope classic probe 404": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"nope\"."
+        },
+        "calls": []
+    },
+    "nope classic probe 500": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"nope\"."
+        },
+        "calls": []
+    },
+    "nope classic probe 200": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"nope\"."
+        },
+        "calls": []
+    },
+    "nope fine-grained probe throw": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"nope\"."
+        },
+        "calls": []
+    },
+    "nope fine-grained probe 401": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"nope\"."
+        },
+        "calls": []
+    },
+    "nope fine-grained probe 403": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"nope\"."
+        },
+        "calls": []
+    },
+    "nope fine-grained probe 404": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"nope\"."
+        },
+        "calls": []
+    },
+    "nope fine-grained probe 500": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"nope\"."
+        },
+        "calls": []
+    },
+    "nope fine-grained probe 200": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"nope\"."
+        },
+        "calls": []
+    },
+    "nope other probe throw": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"nope\"."
+        },
+        "calls": []
+    },
+    "nope other probe 401": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"nope\"."
+        },
+        "calls": []
+    },
+    "nope other probe 403": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"nope\"."
+        },
+        "calls": []
+    },
+    "nope other probe 404": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"nope\"."
+        },
+        "calls": []
+    },
+    "nope other probe 500": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"nope\"."
+        },
+        "calls": []
+    },
+    "nope other probe 200": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"nope\"."
+        },
+        "calls": []
+    },
+    " classic probe throw": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"\"."
+        },
+        "calls": []
+    },
+    " classic probe 401": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"\"."
+        },
+        "calls": []
+    },
+    " classic probe 403": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"\"."
+        },
+        "calls": []
+    },
+    " classic probe 404": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"\"."
+        },
+        "calls": []
+    },
+    " classic probe 500": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"\"."
+        },
+        "calls": []
+    },
+    " classic probe 200": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"\"."
+        },
+        "calls": []
+    },
+    " fine-grained probe throw": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"\"."
+        },
+        "calls": []
+    },
+    " fine-grained probe 401": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"\"."
+        },
+        "calls": []
+    },
+    " fine-grained probe 403": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"\"."
+        },
+        "calls": []
+    },
+    " fine-grained probe 404": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"\"."
+        },
+        "calls": []
+    },
+    " fine-grained probe 500": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"\"."
+        },
+        "calls": []
+    },
+    " fine-grained probe 200": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"\"."
+        },
+        "calls": []
+    },
+    " other probe throw": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"\"."
+        },
+        "calls": []
+    },
+    " other probe 401": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"\"."
+        },
+        "calls": []
+    },
+    " other probe 403": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"\"."
+        },
+        "calls": []
+    },
+    " other probe 404": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"\"."
+        },
+        "calls": []
+    },
+    " other probe 500": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"\"."
+        },
+        "calls": []
+    },
+    " other probe 200": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"\"."
+        },
+        "calls": []
+    },
+    "forgejo not configured": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "Unknown forge \"forgejo\"."
+        },
+        "calls": []
+    },
+    "allow local addresses": {
+        "result": {
+            "ok": true,
+            "scopes": [
+                "repo"
+            ],
+            "warnings": [],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": true
+                    }
+                }
+            ]
+        ]
+    },
+    "classic, no headers": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "classic, empty scopes": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "classic, blank scopes": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "classic, public_repo": {
+        "result": {
+            "ok": true,
+            "scopes": [
+                "public_repo"
+            ],
+            "warnings": [],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "classic, repo and public_repo": {
+        "result": {
+            "ok": true,
+            "scopes": [
+                "repo",
+                "public_repo"
+            ],
+            "warnings": [],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "classic, extra scope": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "PAT has scopes beyond what Versioniq needs (read:org). Recreate with repo or public_repo only."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "classic, two extra scopes": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "PAT has scopes beyond what Versioniq needs (admin:org, delete_repo). Recreate with repo or public_repo only."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "classic, string header": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "PAT has scopes beyond what Versioniq needs (gist). Recreate with repo or public_repo only."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "classic, lowercase header": {
+        "result": {
+            "ok": false,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": null,
+            "error": "PAT has scopes beyond what Versioniq needs (gist). Recreate with repo or public_repo only."
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "classic, empty header list": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "classic, non-string header value": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "classic, numeric header": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "classic, other header first": {
+        "result": {
+            "ok": true,
+            "scopes": [
+                "repo"
+            ],
+            "warnings": [],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "classic, expiry missing": {
+        "result": {
+            "ok": true,
+            "scopes": [
+                "repo"
+            ],
+            "warnings": [],
+            "expiresAt": null,
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "classic, expiry blank": {
+        "result": {
+            "ok": true,
+            "scopes": [
+                "repo"
+            ],
+            "warnings": [],
+            "expiresAt": null,
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "classic, expiry invalid": {
+        "result": {
+            "ok": true,
+            "scopes": [
+                "repo"
+            ],
+            "warnings": [],
+            "expiresAt": null,
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "classic, expiry string": {
+        "result": {
+            "ok": true,
+            "scopes": [
+                "repo"
+            ],
+            "warnings": [],
+            "expiresAt": "2027-01-02 03:04:05",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "classic, expiry uppercase key": {
+        "result": {
+            "ok": true,
+            "scopes": [
+                "repo"
+            ],
+            "warnings": [],
+            "expiresAt": "2027-05-06 07:08:09",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer ghp_classic123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "fine-grained, no headers": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "fine-grained, empty scopes": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "fine-grained, blank scopes": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "fine-grained, public_repo": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "fine-grained, repo and public_repo": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "fine-grained, extra scope": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "fine-grained, two extra scopes": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "fine-grained, string header": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "fine-grained, lowercase header": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "fine-grained, empty header list": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "fine-grained, non-string header value": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "fine-grained, numeric header": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "fine-grained, other header first": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "fine-grained, expiry missing": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": null,
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "fine-grained, expiry blank": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": null,
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "fine-grained, expiry invalid": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": null,
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "fine-grained, expiry string": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2027-01-02 03:04:05",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "fine-grained, expiry uppercase key": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2027-05-06 07:08:09",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer github_pat_fine123",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "other, no headers": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "other, empty scopes": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "other, blank scopes": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "other, public_repo": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "other, repo and public_repo": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "other, extra scope": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "other, two extra scopes": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "other, string header": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "other, lowercase header": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "other, empty header list": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "other, non-string header value": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "other, numeric header": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "other, other header first": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2026-12-01 10:00:00",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "other, expiry missing": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": null,
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "other, expiry blank": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": null,
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "other, expiry invalid": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": null,
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "other, expiry string": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2027-01-02 03:04:05",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    },
+    "other, expiry uppercase key": {
+        "result": {
+            "ok": true,
+            "scopes": [],
+            "warnings": [
+                "unverifiable_scope: GitHub did not expose configured permissions; please verify they are read-only (Contents: Read-only, Metadata: Read-only)."
+            ],
+            "expiresAt": "2027-05-06 07:08:09",
+            "error": null
+        },
+        "calls": [
+            [
+                "http.newClient"
+            ],
+            [
+                "config.bool",
+                "allow_local_remote_servers",
+                false
+            ],
+            [
+                "http.get",
+                "https://api.github.com/user",
+                {
+                    "headers": {
+                        "Authorization": "Bearer glpat-other",
+                        "Accept": "application/vnd.github+json",
+                        "User-Agent": "Nextcloud-Versioniq",
+                        "X-GitHub-Api-Version": "2022-11-28"
+                    },
+                    "timeout": 30,
+                    "http_errors": false,
+                    "nextcloud": {
+                        "allow_local_address": false
+                    }
+                }
+            ]
+        ]
+    }
+}
