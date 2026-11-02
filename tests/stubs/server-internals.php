@@ -35,10 +35,17 @@ namespace {
 
 	class OC_App {
 		/**
+		 * What listAllApps() returns; unit tests set it.
+		 *
+		 * @var array<int, array<string, mixed>>
+		 */
+		public static array $allApps = [];
+
+		/**
 		 * @return array<int, array<string, mixed>>
 		 */
 		public static function listAllApps(): array {
-			return [];
+			return self::$allApps;
 		}
 
 		/**
