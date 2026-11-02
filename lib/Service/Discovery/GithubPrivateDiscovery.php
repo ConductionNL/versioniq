@@ -18,6 +18,7 @@ use OCA\Versioniq\Db\PatMapper;
 use OCA\Versioniq\Service\Pat\PatManager;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
 use OCP\Http\Client\IClientService;
+use OCP\Http\Client\IResponse;
 use OCP\IUserSession;
 use Psr\Log\LoggerInterface;
 
@@ -136,7 +137,8 @@ class GithubPrivateDiscovery implements DiscoveryProviderInterface {
 
 	/**
 	 * The result items of one authenticated search, or null when the request
-	 * fails, answers other than 200 or returns no `items` list.
+	 * fails, answers other than 200, or returns malformed JSON or no `items`
+	 * list. An error reading the status or the body propagates.
 	 *
 	 * @return list<array<array-key, mixed>>|null
 	 */
@@ -145,13 +147,28 @@ class GithubPrivateDiscovery implements DiscoveryProviderInterface {
 		#[\SensitiveParameter]
 		string $token,
 	): ?array {
-		try {
-			$response = $this->clientService->newClient()->get($url, $this->searchOptions(['Authorization' => 'Bearer ' . $token]));
-			if ($response->getStatusCode() !== 200) {
-				return null;
-			}
+		$response = $this->send($url, $token);
+		if ($response === null || $response->getStatusCode() !== 200) {
+			return null;
+		}
 
+		try {
 			return $this->decodeItems((string)$response->getBody());
+		} catch (\JsonException) {
+			return null;
+		}
+	}
+
+	/**
+	 * The response of one authenticated search request, or null when the request fails.
+	 */
+	private function send(
+		string $url,
+		#[\SensitiveParameter]
+		string $token,
+	): ?IResponse {
+		try {
+			return $this->clientService->newClient()->get($url, $this->searchOptions(['Authorization' => 'Bearer ' . $token]));
 		} catch (Exception) {
 			return null;
 		}

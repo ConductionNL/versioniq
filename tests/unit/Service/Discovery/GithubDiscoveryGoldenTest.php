@@ -20,6 +20,7 @@ use OCP\IUser;
 use OCP\IUserSession;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 
 /**
  * Golden test for GithubSearchDiscovery::search() and
@@ -76,6 +77,9 @@ final class GithubDiscoveryGoldenTest extends TestCase {
 			'server error' => [[500, $items]],
 			'redirect' => [[301, $items]],
 			'unreachable' => ['throw'],
+			'status unreadable' => ['statusThrow'],
+			'body unreadable' => ['bodyThrow'],
+			'client error' => ['error'],
 		];
 		$cases = [];
 		$cases['search disabled'] = ['search', ['enabled' => 'false', 'query' => 'calendar', 'http' => [[200, $items]]]];
@@ -98,6 +102,7 @@ final class GithubDiscoveryGoldenTest extends TestCase {
 		$cases['private token failure only'] = ['private', ['pats' => ['Fail/*'], 'query' => 'x', 'http' => []]];
 		$cases['private token failure and hits'] = ['private', ['pats' => ['Fail/*', 'Trusted/*'], 'query' => 'x', 'http' => [[200, $items]]]];
 		$cases['private token failure and none'] = ['private', ['pats' => ['Trusted/*', 'Fail/*'], 'query' => 'x', 'http' => [[200, '{"items":[]}']]]];
+		$cases['private second pat body unreadable'] = ['private', ['pats' => ['Trusted/*', 'Other/*'], 'query' => 'x', 'http' => [[200, $items], 'bodyThrow']]];
 		$cases['private second pat fails http'] = ['private', ['pats' => ['Trusted/*', 'Other/*'], 'query' => 'x', 'http' => [[200, $items], 'throw']]];
 
 		return $cases;
@@ -123,10 +128,14 @@ final class GithubDiscoveryGoldenTest extends TestCase {
 		$this->calls = [];
 		$this->responses = $spec['http'];
 		$query = $spec['query'] ?? 'calendar';
-		$result = $provider === 'search'
-			? $this->searchDiscovery(array_key_exists('enabled', $spec) ? $spec['enabled'] : 'true')->search($query)
-			: $this->privateDiscovery($spec)->search($query);
-		$actual = json_encode(['result' => self::export($result), 'calls' => $this->calls], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+		try {
+			$result = self::export($provider === 'search'
+				? $this->searchDiscovery(array_key_exists('enabled', $spec) ? $spec['enabled'] : 'true')->search($query)
+				: $this->privateDiscovery($spec)->search($query));
+		} catch (\Throwable $error) {
+			$result = ['threw' => $error::class, 'message' => $error->getMessage()];
+		}
+		$actual = json_encode(['result' => $result, 'calls' => $this->calls], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
 
 		$fixture = is_file(self::FIXTURE) ? (array)json_decode((string)file_get_contents(self::FIXTURE), true, 512, JSON_THROW_ON_ERROR) : [];
 		if (getenv('RECORD_GOLDEN') === '1') {
@@ -217,9 +226,19 @@ final class GithubDiscoveryGoldenTest extends TestCase {
 			if ($next === 'throw') {
 				throw new Exception('connection refused');
 			}
+			if ($next === 'error') {
+				throw new \Error('client broken');
+			}
 			$response = $this->createMock(IResponse::class);
-			$response->method('getStatusCode')->willReturn($next[0]);
-			$response->method('getBody')->willReturn($next[1]);
+			if ($next === 'statusThrow') {
+				$response->method('getStatusCode')->willThrowException(new Exception('status unreadable'));
+			} elseif ($next === 'bodyThrow') {
+				$response->method('getStatusCode')->willReturn(200);
+				$response->method('getBody')->willThrowException(new RuntimeException('body unreadable'));
+			} else {
+				$response->method('getStatusCode')->willReturn($next[0]);
+				$response->method('getBody')->willReturn($next[1]);
+			}
 
 			return $response;
 		});
