@@ -74,6 +74,7 @@ final class DiscoveryAggregatorGoldenTest extends TestCase {
 		$cases['runtime exception is caught too'] = ['providers' => [$store, ['throwError', [], 'boom'], $public], 'installed' => $installed, 'ids' => null, 'installedOnly' => false];
 		$cases['nothing installed'] = ['providers' => [$store, $private, $public], 'installed' => [], 'ids' => null, 'installedOnly' => true];
 		$cases['no hits'] = ['providers' => [['ok', [], null], ['ok', [], 'failed'], ['ok', [], null]], 'installed' => $installed, 'ids' => null, 'installedOnly' => false];
+		$cases['store duplicates'] = ['providers' => [['ok', [['dup', 'First', 'first', 'https://icon/1.png', true], ['dup', 'Second', 'second', 'https://icon/2.png', false], ['dup', 'Third', '', null, true]], null], ['ok', [['dup', 'Private', 'private', null, true]], null], ['disabled', [], null]], 'installed' => [], 'ids' => null, 'installedOnly' => false];
 		$cases['same name ordering'] = ['providers' => [['ok', [['b', 'Same', '', null, true], ['a', 'Same', '', null, true], ['c', '10', '', null, true], ['d', '9', '', null, true]], null], ['disabled', [], null], ['disabled', [], null]], 'installed' => ['c' => ''], 'ids' => null, 'installedOnly' => false];
 
 		return $cases;
