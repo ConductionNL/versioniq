@@ -28,32 +28,98 @@ export function parseVersionCore (version: string): VersionCore {
 }
 
 /**
- * Compares two version strings, returning >0 when `left` is newer than
- * `right`, <0 when older, 0 when equal. Handles a `-prerelease` suffix with
- * basic semver precedence rules (numeric identifiers compare numerically,
- * a version without a prerelease suffix outranks one with).
+ * Orders two numbers or two strings: 1 when `left` is greater, -1 when it is
+ * smaller, 0 otherwise (also when either side is NaN).
  *
- * @param left
- * @param right
+ * @param left The left value.
+ * @param right The right value.
  */
-export function compareVersions (left: string, right: string): number {
-	const [leftCore, leftPre = ''] = left.split('-', 2)
-	const [rightCore, rightPre = ''] = right.split('-', 2)
-	const leftParts = leftCore.split('.').map((part) => Number(part || '0'))
-	const rightParts = rightCore.split('.').map((part) => Number(part || '0'))
+function compareOrdered (left: number | string, right: number | string): number {
+	if (left > right) {
+		return 1
+	}
+	if (left < right) {
+		return -1
+	}
+	return 0
+}
+
+/**
+ * Splits a version core into its numeric parts; an empty part counts as 0.
+ *
+ * @param core The part of a version before its `-prerelease` suffix.
+ */
+function coreParts (core: string): number[] {
+	return core.split('.').map((part) => Number(part || '0'))
+}
+
+/**
+ * Compares two version cores part by part; a missing part counts as 0.
+ *
+ * @param leftCore The left version core.
+ * @param rightCore The right version core.
+ */
+function compareCores (leftCore: string, rightCore: string): number {
+	const leftParts = coreParts(leftCore)
+	const rightParts = coreParts(rightCore)
 
 	for (let index = 0; index < Math.max(leftParts.length, rightParts.length); index++) {
-		const leftPart = leftParts[index] ?? 0
-		const rightPart = rightParts[index] ?? 0
-
-		if (leftPart > rightPart) {
-			return 1
-		}
-		if (leftPart < rightPart) {
-			return -1
+		const order = compareOrdered(leftParts[index] ?? 0, rightParts[index] ?? 0)
+		if (order !== 0) {
+			return order
 		}
 	}
+	return 0
+}
 
+/**
+ * Compares two prerelease identifiers that are both present: numeric ones
+ * numerically, a numeric one below an alphanumeric one, the rest as text.
+ *
+ * @param left The left identifier.
+ * @param right The right identifier.
+ */
+function compareIdentifiers (left: string, right: string): number {
+	const leftNumeric = /^\d+$/.test(left)
+	const rightNumeric = /^\d+$/.test(right)
+
+	if (leftNumeric && rightNumeric) {
+		return compareOrdered(Number(left), Number(right))
+	}
+	if (leftNumeric) {
+		return -1
+	}
+	if (rightNumeric) {
+		return 1
+	}
+	return compareOrdered(left, right)
+}
+
+/**
+ * Compares two dot-separated prerelease identifier lists; the shorter list
+ * ranks lower when all its identifiers equal the other's.
+ *
+ * @param leftParts The left identifiers.
+ * @param rightParts The right identifiers.
+ */
+function compareIdentifierLists (leftParts: string[], rightParts: string[]): number {
+	const shared = Math.min(leftParts.length, rightParts.length)
+	for (let index = 0; index < shared; index++) {
+		const order = compareIdentifiers(leftParts[index] as string, rightParts[index] as string)
+		if (order !== 0) {
+			return order
+		}
+	}
+	return compareOrdered(leftParts.length, rightParts.length)
+}
+
+/**
+ * Compares two prerelease suffixes; no suffix outranks any suffix.
+ *
+ * @param leftPre The left suffix, or '' for none.
+ * @param rightPre The right suffix, or '' for none.
+ */
+function comparePrerelease (leftPre: string, rightPre: string): number {
 	if (leftPre === rightPre) {
 		return 0
 	}
@@ -63,49 +129,23 @@ export function compareVersions (left: string, right: string): number {
 	if (!rightPre) {
 		return -1
 	}
+	return compareIdentifierLists(leftPre.split('.'), rightPre.split('.'))
+}
 
-	const leftPreParts = leftPre.split('.')
-	const rightPreParts = rightPre.split('.')
-	for (let index = 0; index < Math.max(leftPreParts.length, rightPreParts.length); index++) {
-		const leftPart = leftPreParts[index]
-		const rightPart = rightPreParts[index]
+/**
+ * Compares two version strings, returning >0 when `left` is newer than
+ * `right`, <0 when older, 0 when equal. Handles a `-prerelease` suffix with
+ * basic semver precedence rules (numeric identifiers compare numerically,
+ * a version without a prerelease suffix outranks one with).
+ *
+ * @param left The left version.
+ * @param right The right version.
+ * @spec openspec/specs/auto-update-policies/spec.md
+ */
+export function compareVersions (left: string, right: string): number {
+	const [leftCore, leftPre = ''] = left.split('-', 2)
+	const [rightCore, rightPre = ''] = right.split('-', 2)
+	const coreOrder = compareCores(leftCore, rightCore)
 
-		if (leftPart === undefined) {
-			return -1
-		}
-		if (rightPart === undefined) {
-			return 1
-		}
-
-		const leftNumeric = /^\d+$/.test(leftPart)
-		const rightNumeric = /^\d+$/.test(rightPart)
-
-		if (leftNumeric && rightNumeric) {
-			const leftNum = Number(leftPart)
-			const rightNum = Number(rightPart)
-			if (leftNum > rightNum) {
-				return 1
-			}
-			if (leftNum < rightNum) {
-				return -1
-			}
-			continue
-		}
-
-		if (leftNumeric) {
-			return -1
-		}
-		if (rightNumeric) {
-			return 1
-		}
-
-		if (leftPart > rightPart) {
-			return 1
-		}
-		if (leftPart < rightPart) {
-			return -1
-		}
-	}
-
-	return 0
+	return coreOrder !== 0 ? coreOrder : comparePrerelease(leftPre, rightPre)
 }
