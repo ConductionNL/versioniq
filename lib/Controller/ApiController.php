@@ -25,6 +25,7 @@ use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
+use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pat\PatDeeplinkBuilder;
 use OCA\Versioniq\Service\Pat\PatExpiryEvaluator;
@@ -1242,7 +1243,7 @@ class ApiController extends OCSController {
 		// which is what the frontend sends; only the local flag is renamed.
 		$installedOnlyFlag = $this->readBinaryBool($installedOnly, false);
 
-		$result = $this->discoveryAggregator->search($query, $sourceIds, $installedOnlyFlag);
+		$result = $this->discoveryAggregator->search($query, new DiscoveryFilter($sourceIds, $installedOnlyFlag));
 
 		return new DataResponse($result);
 	}

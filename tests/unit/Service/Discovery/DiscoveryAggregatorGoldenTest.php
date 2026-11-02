@@ -7,6 +7,7 @@ namespace OCA\Versioniq\Tests\Unit\Service\Discovery;
 use Exception;
 use OCA\Versioniq\Service\Discovery\AppStoreDiscovery;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
+use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
 use OCA\Versioniq\Service\Discovery\DiscoveryHit;
 use OCA\Versioniq\Service\Discovery\DiscoveryProviderInterface;
 use OCA\Versioniq\Service\Discovery\DiscoveryResult;
@@ -24,7 +25,9 @@ use RuntimeException;
  * RECORD_GOLDEN=1 to rewrite the fixture.
  *
  * @covers \OCA\Versioniq\Service\Discovery\DiscoveryAggregator
+ * @uses \OCA\Versioniq\Service\Discovery\DiscoveryFilter
  * @uses \OCA\Versioniq\Service\Discovery\DiscoveryHit
+ * @uses \OCA\Versioniq\Service\Discovery\DiscoveryMerge
  * @uses \OCA\Versioniq\Service\Discovery\DiscoveryResult
  */
 final class DiscoveryAggregatorGoldenTest extends TestCase {
@@ -93,7 +96,7 @@ final class DiscoveryAggregatorGoldenTest extends TestCase {
 	 * @return array<string, mixed>
 	 */
 	private function runSearch(DiscoveryAggregator $aggregator, ?array $sourceIds, bool $installedOnly): array {
-		return $aggregator->search('needle', $sourceIds, $installedOnly);
+		return $aggregator->search('needle', new DiscoveryFilter($sourceIds, $installedOnly));
 	}
 
 	/**

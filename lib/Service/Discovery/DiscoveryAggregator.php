@@ -62,82 +62,32 @@ class DiscoveryAggregator {
 	 * see "Result aggregation".
 	 *
 	 * @spec openspec/specs/app-discovery/spec.md
-	 * @param list<string>|null $sourceIds when null, all enabled providers run
 	 * @return array{results: list<array<string, mixed>>, providers: list<array{id: string, label: string, enabled: bool}>, errors: list<array{providerId: string, message: string}>}
 	 */
-	public function search(string $query, ?array $sourceIds = null, bool $installedOnly = false): array {
-		$active = $this->resolveActive($sourceIds);
-		$installed = $this->snapshotInstalled();
-
-		$grouped = [];
-		$errors = [];
+	public function search(string $query, DiscoveryFilter $filter = new DiscoveryFilter()): array {
+		$active = $this->resolveActive($filter->sourceIds);
+		$merge = new DiscoveryMerge($this->snapshotInstalled());
 
 		foreach ($active as $provider) {
-			try {
-				$result = $provider->search($query);
-			} catch (Exception $error) {
-				$errors[] = ['providerId' => $provider->getId(), 'message' => $error->getMessage()];
-				continue;
-			}
-
-			if ($result->error !== null) {
-				$errors[] = ['providerId' => $provider->getId(), 'message' => $result->error];
-			}
-
-			foreach ($result->hits as $hit) {
-				$key = $hit->appId;
-				if (!isset($grouped[$key])) {
-					$grouped[$key] = [
-						'appId' => $hit->appId,
-						'name' => $hit->name,
-						'summary' => $hit->summary,
-						'iconUrl' => $hit->iconUrl,
-						'homepageUrl' => $hit->homepageUrl,
-						'installedVersion' => $installed[$hit->appId] ?? null,
-						'sourceCandidates' => [],
-					];
-				}
-
-				// Prefer App Store summary/icon when present (best metadata) but never overwrite to empty.
-				if ($hit->sourceProviderId === AppStoreDiscovery::ID) {
-					if ($hit->summary !== '') {
-						$grouped[$key]['summary'] = $hit->summary;
-					}
-					if ($hit->iconUrl !== null) {
-						$grouped[$key]['iconUrl'] = $hit->iconUrl;
-					}
-				}
-
-				$grouped[$key]['sourceCandidates'][] = [
-					'providerId' => $hit->sourceProviderId,
-					'sourceBinding' => $hit->sourceBinding,
-					'installable' => $hit->installable,
-					'installableReason' => $hit->installableReason,
-				];
-			}
+			$merge->add($provider->getId(), $this->runProvider($provider, $query));
 		}
-
-		$results = array_values($grouped);
-
-		if ($installedOnly) {
-			$results = array_values(array_filter($results, static fn (array $r): bool => $r['installedVersion'] !== null));
-		}
-
-		usort($results, static function (array $a, array $b): int {
-			$aInstalled = $a['installedVersion'] !== null ? 1 : 0;
-			$bInstalled = $b['installedVersion'] !== null ? 1 : 0;
-			if ($aInstalled !== $bInstalled) {
-				return $bInstalled - $aInstalled;
-			}
-
-			return strcmp((string)$a['name'], (string)$b['name']);
-		});
 
 		return [
-			'results' => $results,
+			'results' => $merge->results($filter->installedOnly),
 			'providers' => $this->listProviders(),
-			'errors' => $errors,
+			'errors' => $merge->errors(),
 		];
+	}
+
+	/**
+	 * The provider's result, or a failed result carrying the message when it throws.
+	 */
+	private function runProvider(DiscoveryProviderInterface $provider, string $query): DiscoveryResult {
+		try {
+			return $provider->search($query);
+		} catch (Exception $error) {
+			return DiscoveryResult::failed($error->getMessage());
+		}
 	}
 
 	/**
