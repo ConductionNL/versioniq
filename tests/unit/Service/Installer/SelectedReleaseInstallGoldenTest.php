@@ -257,6 +257,52 @@ final class SelectedReleaseInstallGoldenTest extends TestCase {
 	}
 
 	/**
+	 * @return array<string, array{0: array<string, mixed>, 1: array{outcome: string, apps: array<string, ?string>}}>
+	 */
+	public static function staleBackupCases(): array {
+		$old = ['someapp' => null, 'someapp/lib' => null, 'someapp/lib/Plugin.php' => "<?php // old\n", 'someapp/old.txt' => 'old'];
+		$new = [
+			'someapp' => null,
+			'someapp/appinfo' => null,
+			'someapp/appinfo/info.xml' => "<?xml version=\"1.0\"?>\n<info><id>someapp</id><version>2.0.0</version><name>Some App</name></info>\n",
+			'someapp/lib' => null,
+			'someapp/lib/Plugin.php' => "<?php // new\n",
+			'someapp/lib/forbidden.txt' => 'skip me',
+		];
+
+		return [
+			'install succeeds' => [[], ['outcome' => 'installed', 'apps' => $new]],
+			'copy fails' => [['copy' => 'throw'], ['outcome' => 'reverted', 'apps' => $old]],
+			'finalize fails' => [['finalize' => 'exception'], ['outcome' => 'installed-but-broken', 'apps' => $old]],
+		];
+	}
+
+	/**
+	 * A backup folder left behind by an earlier run is removed before the live
+	 * folder is moved aside: the install goes ahead, a failure restores the
+	 * previous files (not the stale ones), and no backup folder remains.
+	 *
+	 * @dataProvider staleBackupCases
+	 * @param array<string, mixed> $over
+	 * @param array{outcome: string, apps: array<string, ?string>} $expected
+	 */
+	public function testAStaleBackupFolderIsReplaced(array $over, array $expected): void {
+		if (!InstallerGoldenSupport::isUnitOnly()) {
+			$this->markTestSkipped('The golden runs on the unit-only bootstrap, whose archive, X509 classes and server container it controls.');
+		}
+
+		$case = $this->runScenario(array_replace(self::BASE, ['backupExists' => true], $over));
+
+		$outcome = $case['result']['status'] ?? $case['error']['outcome'] ?? $case['error']['message'];
+		self::assertSame($expected['outcome'], $outcome);
+		self::assertSame($expected['apps'], $case['apps']);
+		self::assertStringNotContainsString('stale.txt', (string)json_encode($case['calls']));
+		if (isset($case['error'])) {
+			self::assertSame('clean', $case['error']['restore']);
+		}
+	}
+
+	/**
 	 * @param array<string, mixed> $s
 	 * @return array<string, mixed>
 	 */
