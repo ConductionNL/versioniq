@@ -13,45 +13,27 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
-use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Db\Pat;
-use OCA\Versioniq\Db\PatMapper;
-use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
-use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
-use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
+use OCA\Versioniq\Service\Api\AccessCollaborators;
+use OCA\Versioniq\Service\Api\InstallCollaborators;
+use OCA\Versioniq\Service\Api\ReportCollaborators;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
-use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
-use OCA\Versioniq\Service\Cache\ArtifactCache;
-use OCA\Versioniq\Service\Connection\ConnectionReportService;
-use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
 use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
-use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pat\NewPat;
-use OCA\Versioniq\Service\Pat\PatDeeplinkBuilder;
-use OCA\Versioniq\Service\Pat\PatExpiryEvaluator;
-use OCA\Versioniq\Service\Pat\PatManager;
-use OCA\Versioniq\Service\Pat\PatValidator;
 use OCA\Versioniq\Service\Pin\Pin;
-use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\Policy;
-use OCA\Versioniq\Service\Policy\PolicyStore;
-use OCA\Versioniq\Service\Settings\InstanceSettings;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\UntrustedSourceException;
-use OCP\App\IAppManager;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\OCSController;
-use OCP\AppFramework\Utility\ITimeFactory;
-use OCP\IGroupManager;
 use OCP\IRequest;
 use OCP\IUser;
-use OCP\IUserSession;
-use OCP\ServerVersion;
 
 /**
  * @psalm-suppress UnusedClass
@@ -63,36 +45,10 @@ class ApiController extends OCSController {
 	public function __construct(
 		string $appName,
 		IRequest $request,
-		private InstallerService $installerService,
-		private IGroupManager $groupManager,
-		private IUserSession $userSession,
-		private ServerVersion $serverVersion,
-		private PatMapper $patMapper,
-		private PatManager $patManager,
-		private PatValidator $patValidator,
-		private PatDeeplinkBuilder $deeplinkBuilder,
-		private PatExpiryEvaluator $patExpiryEvaluator,
-		private DiscoveryAggregator $discoveryAggregator,
-		private AdvisoryResultStore $advisoryResultStore,
-		private AdvisorySettingsStore $advisorySettingsStore,
-		private AuditEntryMapper $auditEntryMapper,
-		private PinStore $pinStore,
-		private IAppManager $appManager,
-		private ITimeFactory $timeFactory,
-		private PolicyStore $policyStore,
-		private AutoUpdateSettingsStore $autoUpdateSettingsStore,
-		private ArtifactCache $artifactCache,
-		// Asks integriq to look again after a token save or removal
-		// (adopt-connection-registry). Optional and last, so every existing
-		// caller and test keeps working.
-		private ?ConnectionReportService $connectionReports = null,
-		// Lists and clears blocked automatic-update versions (#438). Optional
-		// and last for the same reason as the one above.
-		private ?AttemptLedger $attemptLedger = null,
-		// The pending-updates snapshot and the lag limit
-		// (inventory-pending-updates). Optional and last for the same reason.
-		private ?AvailabilityResultStore $availabilityResultStore = null,
-		private ?InstanceSettings $instanceSettings = null,
+		private AccessCollaborators $access,
+		private InstallCollaborators $install,
+		private AutoUpdateStores $autoUpdate,
+		private ReportCollaborators $reports,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -113,7 +69,7 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		return new DataResponse(['apps' => $this->installerService->getInstalledApps()]);
+		return new DataResponse(['apps' => $this->install->installerService->getInstalledApps()]);
 	}
 
 	/**
@@ -149,7 +105,7 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$snapshot = $this->advisoryResultStore->read();
+		$snapshot = $this->reports->stores->advisoryResultStore->read();
 
 		return new DataResponse([
 			'advisories' => $snapshot['advisories'],
@@ -179,12 +135,12 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$snapshot = $this->availabilityResultStore?->read() ?? ['updates' => [], 'checkedAt' => null];
+		$snapshot = $this->reports->stores->availabilityResultStore?->read() ?? ['updates' => [], 'checkedAt' => null];
 
 		return new DataResponse([
 			'updates' => $snapshot['updates'],
 			'checkedAt' => $snapshot['checkedAt'],
-			'maxLinesBehind' => $this->instanceSettings?->maxLinesBehind(),
+			'maxLinesBehind' => $this->reports->stores->instanceSettings?->maxLinesBehind(),
 		]);
 	}
 
@@ -205,7 +161,7 @@ class ApiController extends OCSController {
 		}
 
 		return new DataResponse([
-			'updateChannel' => $this->serverVersion->getChannel(),
+			'updateChannel' => $this->install->serverVersion->getChannel(),
 		]);
 	}
 
@@ -226,8 +182,8 @@ class ApiController extends OCSController {
 		}
 
 		return new DataResponse([
-			'sources' => $this->installerService->getSourceRegistry()->listAvailable(),
-			'trustedPatterns' => $this->installerService->getTrustedSources()->getPatterns(),
+			'sources' => $this->install->installerService->getSourceRegistry()->listAvailable(),
+			'trustedPatterns' => $this->install->installerService->getTrustedSources()->getPatterns(),
 		]);
 	}
 
@@ -251,7 +207,7 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$binding = $this->installerService->getBinding($appId);
+		$binding = $this->install->installerService->getBinding($appId);
 
 		return new DataResponse([
 			'appId' => $appId,
@@ -280,7 +236,7 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$this->installerService->clearBinding($appId);
+		$this->install->installerService->clearBinding($appId);
 
 		return new DataResponse(['appId' => $appId, 'sourceId' => 'appstore']);
 	}
@@ -325,7 +281,7 @@ class ApiController extends OCSController {
 		}
 
 		try {
-			$this->installerService->bindSource($appId, $binding);
+			$this->install->installerService->bindSource($appId, $binding);
 		} catch (UntrustedSourceException $error) {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_FORBIDDEN);
 		}
@@ -334,7 +290,7 @@ class ApiController extends OCSController {
 		// preserves any previously recorded SHA-256 digests, so the response
 		// should reflect what was actually written, not the pre-write value —
 		// see "Recorded digests are binding-scoped and surfaced".
-		$persisted = $this->installerService->getBinding($appId);
+		$persisted = $this->install->installerService->getBinding($appId);
 
 		return new DataResponse([
 			'appId' => $appId,
@@ -380,7 +336,7 @@ class ApiController extends OCSController {
 		$repo = ($repo !== null && trim($repo) !== '') ? trim($repo) : null;
 
 		try {
-			$patterns = $this->installerService->addTrustedPattern($forge, $owner, $repo);
+			$patterns = $this->install->installerService->addTrustedPattern($forge, $owner, $repo);
 		} catch (InvalidArgumentException $error) {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_UNPROCESSABLE_ENTITY);
 		}
@@ -414,7 +370,7 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'A pattern is required.'], Http::STATUS_BAD_REQUEST);
 		}
 
-		$patterns = $this->installerService->removeTrustedPattern($pattern);
+		$patterns = $this->install->installerService->removeTrustedPattern($pattern);
 
 		return new DataResponse(['trustedPatterns' => $patterns]);
 	}
@@ -454,7 +410,7 @@ class ApiController extends OCSController {
 
 		$sourceOverride = ($source !== null && trim($source) !== '') ? trim($source) : null;
 
-		$result = $this->installerService->getAppVersions($appId, $sourceOverride);
+		$result = $this->install->installerService->getAppVersions($appId, $sourceOverride);
 		$statusCode = $result['statusCode'] ?? Http::STATUS_OK;
 		unset($result['statusCode'], $result['hasError']);
 
@@ -551,7 +507,7 @@ class ApiController extends OCSController {
 		$acceptNewShaFlag = $this->readBinaryBool($acceptNewSha, false);
 		$allowDowngradeFlag = $this->readBinaryBool($allowDowngrade, false);
 
-		$result = $this->installerService->installAppVersion(
+		$result = $this->install->installerService->installAppVersion(
 			$appId,
 			$requestedVersion,
 			$includeDebug,
@@ -595,9 +551,9 @@ class ApiController extends OCSController {
 		}
 
 		$pins = [];
-		foreach ($this->pinStore->all() as $appId => $pin) {
+		foreach ($this->autoUpdate->pinStore->all() as $appId => $pin) {
 			try {
-				$installed = $this->appManager->getAppVersion($appId, false);
+				$installed = $this->install->appManager->getAppVersion($appId, false);
 				$installedVersion = $installed !== '' ? $installed : null;
 			} catch (\Exception) {
 				$installedVersion = null;
@@ -634,13 +590,13 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$user = $this->userSession->getUser();
+		$user = $this->access->caller->userSession->getUser();
 		if ($user === null) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
 		try {
-			$installedVersion = $this->appManager->getAppVersion($appId, false);
+			$installedVersion = $this->install->appManager->getAppVersion($appId, false);
 		} catch (\Exception) {
 			$installedVersion = '';
 		}
@@ -662,14 +618,14 @@ class ApiController extends OCSController {
 			$pin = new Pin(
 				$installedVersion,
 				$user->getUID(),
-				$this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
+				$this->access->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
 				$reason === '' ? null : $reason,
 			);
 		} catch (InvalidArgumentException $error) {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
 
-		$this->pinStore->set($appId, $pin);
+		$this->autoUpdate->pinStore->set($appId, $pin);
 
 		return new DataResponse([
 			'appId' => $appId,
@@ -697,12 +653,12 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$user = $this->userSession->getUser();
+		$user = $this->access->caller->userSession->getUser();
 		if ($user === null) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$this->pinStore->clear($appId, $user->getUID());
+		$this->autoUpdate->pinStore->clear($appId, $user->getUID());
 
 		return new DataResponse(['appId' => $appId, 'unpinned' => true]);
 	}
@@ -730,7 +686,7 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		if ($this->attemptLedger?->forget($appId, $version) !== true) {
+		if ($this->autoUpdate->attemptLedger->forget($appId, $version) !== true) {
 			return new DataResponse(['message' => 'No automatic update attempt is recorded for that version.'], Http::STATUS_NOT_FOUND);
 		}
 
@@ -756,20 +712,20 @@ class ApiController extends OCSController {
 		}
 
 		$policies = [];
-		foreach ($this->policyStore->all() as $appId => $policy) {
+		foreach ($this->autoUpdate->policyStore->all() as $appId => $policy) {
 			$policies[] = $policy->toArray() + [
 				'appId' => $appId,
 				// Versions whose automatic update failed and are skipped until
 				// the admin retries them (#438).
-				'blockedVersions' => $this->attemptLedger?->blockedVersions($appId) ?? [],
+				'blockedVersions' => $this->autoUpdate->attemptLedger->blockedVersions($appId),
 			];
 		}
 
 		return new DataResponse([
 			'policies' => $policies,
-			'autoUpdateEnabled' => $this->autoUpdateSettingsStore->isEnabled(),
-			'autoUpdateWindow' => $this->autoUpdateSettingsStore->getWindow(),
-			'autoUpdateTimeZone' => $this->autoUpdateSettingsStore->getTimeZoneName(),
+			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
+			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
+			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
 		]);
 	}
 
@@ -794,7 +750,7 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$user = $this->userSession->getUser();
+		$user = $this->access->caller->userSession->getUser();
 		if ($user === null) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
@@ -810,9 +766,9 @@ class ApiController extends OCSController {
 		$policy = new Policy(
 			$level,
 			$user->getUID(),
-			$this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
+			$this->access->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
 		);
-		$this->policyStore->set($appId, $policy);
+		$this->autoUpdate->policyStore->set($appId, $policy);
 
 		return new DataResponse(['appId' => $appId, 'policy' => $policy->toArray()]);
 	}
@@ -837,7 +793,7 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$this->policyStore->clear($appId);
+		$this->autoUpdate->policyStore->clear($appId);
 
 		return new DataResponse(['appId' => $appId, 'cleared' => true]);
 	}
@@ -887,16 +843,16 @@ class ApiController extends OCSController {
 		}
 
 		if ($enabledParam !== null) {
-			$this->autoUpdateSettingsStore->setEnabled($this->readBinaryBool($enabledParam, $this->autoUpdateSettingsStore->isEnabled()));
+			$this->autoUpdate->settingsStore->setEnabled($this->readBinaryBool($enabledParam, $this->autoUpdate->settingsStore->isEnabled()));
 		}
 		if ($windowParam !== '') {
-			$this->autoUpdateSettingsStore->setWindow($windowParam);
+			$this->autoUpdate->settingsStore->setWindow($windowParam);
 		}
 
 		return new DataResponse([
-			'autoUpdateEnabled' => $this->autoUpdateSettingsStore->isEnabled(),
-			'autoUpdateWindow' => $this->autoUpdateSettingsStore->getWindow(),
-			'autoUpdateTimeZone' => $this->autoUpdateSettingsStore->getTimeZoneName(),
+			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
+			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
+			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
 		]);
 	}
 
@@ -922,10 +878,10 @@ class ApiController extends OCSController {
 		}
 
 		return new DataResponse([
-			'intervalHours' => $this->advisorySettingsStore->getIntervalHours(),
+			'intervalHours' => $this->reports->stores->advisorySettingsStore->getIntervalHours(),
 			'minIntervalHours' => AdvisorySettingsStore::MIN_INTERVAL_HOURS,
 			'maxIntervalHours' => AdvisorySettingsStore::MAX_INTERVAL_HOURS,
-			'digestEnabled' => $this->advisorySettingsStore->isDigestEnabled(),
+			'digestEnabled' => $this->reports->stores->advisorySettingsStore->isDigestEnabled(),
 		]);
 	}
 
@@ -972,23 +928,23 @@ class ApiController extends OCSController {
 					Http::STATUS_BAD_REQUEST
 				);
 			}
-			$this->advisorySettingsStore->setIntervalHours($hours);
+			$this->reports->stores->advisorySettingsStore->setIntervalHours($hours);
 		}
 
 		// Same empty-string-is-an-explicit-false handling as the auto-update
 		// kill switch above: PHP casts a JSON `false` to "", not "0".
 		if ($digestEnabled !== null) {
 			$digestParam = ($digestEnabled === '') ? '0' : $digestEnabled;
-			$this->advisorySettingsStore->setDigestEnabled(
-				$this->readBinaryBool($digestParam, $this->advisorySettingsStore->isDigestEnabled()),
+			$this->reports->stores->advisorySettingsStore->setDigestEnabled(
+				$this->readBinaryBool($digestParam, $this->reports->stores->advisorySettingsStore->isDigestEnabled()),
 			);
 		}
 
 		return new DataResponse([
-			'intervalHours' => $this->advisorySettingsStore->getIntervalHours(),
+			'intervalHours' => $this->reports->stores->advisorySettingsStore->getIntervalHours(),
 			'minIntervalHours' => AdvisorySettingsStore::MIN_INTERVAL_HOURS,
 			'maxIntervalHours' => AdvisorySettingsStore::MAX_INTERVAL_HOURS,
-			'digestEnabled' => $this->advisorySettingsStore->isDigestEnabled(),
+			'digestEnabled' => $this->reports->stores->advisorySettingsStore->isDigestEnabled(),
 		]);
 	}
 
@@ -1010,12 +966,12 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$user = $this->userSession->getUser();
+		$user = $this->access->caller->userSession->getUser();
 		if ($user === null) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$pats = $this->patMapper->findVisibleTo($user->getUID());
+		$pats = $this->access->pats->patMapper->findVisibleTo($user->getUID());
 		$payload = array_map(
 			fn (Pat $pat): array => $this->serializePat($pat),
 			$pats
@@ -1032,7 +988,7 @@ class ApiController extends OCSController {
 	 * @return array<string, mixed>
 	 */
 	private function serializePat(Pat $pat): array {
-		$expiry = $this->patExpiryEvaluator->evaluate($pat->getExpiresAt());
+		$expiry = $this->access->pats->patExpiryEvaluator->evaluate($pat->getExpiresAt());
 
 		return $pat->toRedacted() + [
 			'expiryState' => $expiry['state'],
@@ -1063,7 +1019,7 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$user = $this->userSession->getUser();
+		$user = $this->access->caller->userSession->getUser();
 		if ($user === null) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
@@ -1100,19 +1056,19 @@ class ApiController extends OCSController {
 	 * @return DataResponse<Http::STATUS_OK, array{pat: array<string, mixed>, warnings: list<string>}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>
 	 */
 	private function storePat(IUser $user, array $params): DataResponse {
-		$result = $this->patValidator->validate($params['token'], $params['forge']);
+		$result = $this->access->pats->patValidator->validate($params['token'], $params['forge']);
 		if (!$result->ok) {
 			return new DataResponse(['message' => $result->error ?? 'PAT validation failed.'], Http::STATUS_BAD_REQUEST);
 		}
 
 		// Forgejo and Gitea tokens are opaque; GitHub tokens are classified by prefix.
-		$kind = $params['forge'] !== SourceBinding::FORGE_GITHUB ? Pat::KIND_FORGE_TOKEN : $this->patValidator->detectKind($params['token']);
+		$kind = $params['forge'] !== SourceBinding::FORGE_GITHUB ? Pat::KIND_FORGE_TOKEN : $this->access->pats->patValidator->detectKind($params['token']);
 		$new = (new NewPat($user->getUID(), $result))
 			->withForge($params['forge'])
 			->describedAs($params['label'], $params['targetPattern'])
 			->ofKind($kind);
-		$pat = $this->patManager->create($new, $params['token']);
-		$this->connectionReports?->forgeTokenSaved($params['forge']);
+		$pat = $this->access->pats->patManager->create($new, $params['token']);
+		$this->access->connectionReports?->forgeTokenSaved($params['forge']);
 
 		return new DataResponse(['pat' => $this->serializePat($pat), 'warnings' => $result->warnings]);
 	}
@@ -1139,13 +1095,13 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$user = $this->userSession->getUser();
+		$user = $this->access->caller->userSession->getUser();
 		if ($user === null) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
 		try {
-			$pat = $this->patMapper->findById($id);
+			$pat = $this->access->pats->patMapper->findById($id);
 		} catch (DoesNotExistException) {
 			return new DataResponse(['message' => 'PAT not found.'], Http::STATUS_NOT_FOUND);
 		}
@@ -1166,7 +1122,7 @@ class ApiController extends OCSController {
 			$pat->setSharedWithAdmins($this->readBinaryBool($sharedWithAdmins, $pat->getSharedWithAdmins()));
 		}
 
-		return new DataResponse(['pat' => $this->serializePat($this->patManager->update($pat))]);
+		return new DataResponse(['pat' => $this->serializePat($this->access->pats->patManager->update($pat))]);
 	}
 
 	/**
@@ -1193,13 +1149,13 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$user = $this->userSession->getUser();
+		$user = $this->access->caller->userSession->getUser();
 		if ($user === null) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
 		try {
-			$pat = $this->patMapper->findById($id);
+			$pat = $this->access->pats->patMapper->findById($id);
 		} catch (DoesNotExistException) {
 			return new DataResponse(['message' => 'PAT not found.'], Http::STATUS_NOT_FOUND);
 		}
@@ -1208,8 +1164,8 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Only the PAT owner can delete it.'], Http::STATUS_FORBIDDEN);
 		}
 
-		$this->patManager->delete($pat);
-		$this->connectionReports?->forgeTokenRemoved($pat->getForge());
+		$this->access->pats->patManager->delete($pat);
+		$this->access->connectionReports?->forgeTokenRemoved($pat->getForge());
 
 		return new DataResponse(['deleted' => $id]);
 	}
@@ -1257,7 +1213,7 @@ class ApiController extends OCSController {
 		// which is what the frontend sends; only the local flag is renamed.
 		$installedOnlyFlag = $this->readBinaryBool($installedOnly, false);
 
-		$result = $this->discoveryAggregator->search($query, new DiscoveryFilter($sourceIds, $installedOnlyFlag));
+		$result = $this->reports->discoveryAggregator->search($query, new DiscoveryFilter($sourceIds, $installedOnlyFlag));
 
 		return new DataResponse($result);
 	}
@@ -1287,7 +1243,7 @@ class ApiController extends OCSController {
 			? Pat::KIND_FORGE_TOKEN
 			: $this->stringParam('kind', Pat::KIND_FINE_GRAINED);
 		try {
-			return new DataResponse($this->deeplinkBuilder->build($kind, $forge));
+			return new DataResponse($this->access->deeplinkBuilder->build($kind, $forge));
 		} catch (InvalidArgumentException $error) {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
@@ -1317,7 +1273,7 @@ class ApiController extends OCSController {
 		$limit = max(1, min($limit, 200));
 		$offset = max(0, $this->intParam('offset', 0));
 
-		$entries = $this->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset);
+		$entries = $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset);
 
 		return new DataResponse([
 			'entries' => $entries,
@@ -1343,7 +1299,7 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		return new DataResponse($this->artifactCache->summary());
+		return new DataResponse($this->install->artifactCache->summary());
 	}
 
 	/**
@@ -1366,9 +1322,9 @@ class ApiController extends OCSController {
 		}
 
 		$appId = $this->stringParam('appId', '');
-		$this->artifactCache->clear($appId !== '' ? $appId : null);
+		$this->install->artifactCache->clear($appId !== '' ? $appId : null);
 
-		return new DataResponse($this->artifactCache->summary());
+		return new DataResponse($this->install->artifactCache->summary());
 	}
 
 	private function intParam(string $name, int $default): int {
@@ -1436,11 +1392,11 @@ class ApiController extends OCSController {
 	}
 
 	private function isAdmin(): bool {
-		$user = $this->userSession->getUser();
+		$user = $this->access->caller->userSession->getUser();
 		if ($user === null) {
 			return false;
 		}
 
-		return $this->groupManager->isAdmin($user->getUID());
+		return $this->access->caller->groupManager->isAdmin($user->getUID());
 	}
 }
