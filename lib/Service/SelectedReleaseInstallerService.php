@@ -658,23 +658,38 @@ class SelectedReleaseInstallerService {
 		if ($cached === null) {
 			return null;
 		}
-		$cachedCertificate = $cached['meta']['certificate'] ?? null;
-		$cachedSignature = $cached['meta']['signature'] ?? null;
-		if (!is_string($cachedCertificate) || !is_string($cachedSignature)) {
-			return null;
-		}
-		try {
-			$this->verifyCertificate($run->appId, $cachedCertificate);
-		} catch (Exception) {
+		$materials = $this->verifiedMaterials($run->appId, $cached['meta']);
+		if ($materials === null) {
 			return null;
 		}
 		if (file_put_contents($run->temp->file, $cached['content']) === false) {
 			return null;
 		}
 
-		return $run->release->withStoredMaterials($cachedCertificate, $cachedSignature);
+		return $run->release->withStoredMaterials($materials['certificate'], $materials['signature']);
 	}
 
+	/**
+	 * The certificate and signature stored with a cached archive, when both
+	 * are strings and the certificate still verifies for the app.
+	 *
+	 * @param array<string, mixed> $meta
+	 * @return ?array{certificate: string, signature: string}
+	 */
+	private function verifiedMaterials(string $appId, array $meta): ?array {
+		$certificate = $meta['certificate'] ?? null;
+		$signature = $meta['signature'] ?? null;
+		if (!is_string($certificate) || !is_string($signature)) {
+			return null;
+		}
+		try {
+			$this->verifyCertificate($appId, $certificate);
+		} catch (Exception) {
+			return null;
+		}
+
+		return ['certificate' => $certificate, 'signature' => $signature];
+	}
 	/**
 	 * Extracts the archive, checks its info.xml against the request and
 	 * verifies the release signature; returns the extracted app root.
