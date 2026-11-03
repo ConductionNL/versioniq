@@ -34,6 +34,7 @@ use UnexpectedValueException;
  * to `SelectedReleaseInstallerService`, not the external installer.
  *
  * @psalm-api
+ * @psalm-type VersionEntry = array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string}
  */
 class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	public const DEFAULT_API_BASE = 'https://garm3.nextcloud.com/api/v1';
@@ -612,65 +613,82 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 * @return list<array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string}>
 	 */
 	private function normalizeVersions(array $releases): array {
-		/** @var array<string, ?string> $changelogsByVersion */
-		$changelogsByVersion = [];
-		/** @var array<string, ?bool> $compatibleByVersion */
-		$compatibleByVersion = [];
-		/** @var array<string, ?string> $releasedAtByVersion */
-		$releasedAtByVersion = [];
 		$serverVersion = $this->getServerVersion();
-		$order = [];
+		/** @var array<string, VersionEntry> $byVersion */
+		$byVersion = [];
 		/** @var mixed $release */
 		foreach ($releases as $release) {
-			$compatible = null;
-			$releasedAt = null;
-			if (is_string($release)) {
-				$version = $release;
-				$changelog = null;
-			} elseif (is_array($release)) {
-				/** @var mixed $version */
-				$version = $release['version'] ?? $release['ver'] ?? $release['name'] ?? $release['tag_name'] ?? null;
-				if (!is_string($version) || $version === '') {
-					continue;
-				}
-				$changelog = $this->extractChangelog($release);
-				/** @var mixed $spec */
-				$spec = $release['platformVersionSpec'] ?? null;
-				$compatible = is_string($spec) ? self::satisfiesPlatformSpec($serverVersion, $spec) : null;
-				$releasedAt = ReleaseDate::normalize($release['created'] ?? null);
-			} else {
-				continue;
-			}
-
-			if (!array_key_exists($version, $changelogsByVersion)) {
-				$order[] = $version;
-				$changelogsByVersion[$version] = $changelog;
-				$compatibleByVersion[$version] = $compatible;
-				$releasedAtByVersion[$version] = $releasedAt;
-			} else {
-				if ($changelogsByVersion[$version] === null && $changelog !== null) {
-					$changelogsByVersion[$version] = $changelog;
-				}
-				if ($compatibleByVersion[$version] === null && $compatible !== null) {
-					$compatibleByVersion[$version] = $compatible;
-				}
-				if ($releasedAtByVersion[$version] === null && $releasedAt !== null) {
-					$releasedAtByVersion[$version] = $releasedAt;
-				}
+			$entry = $this->releaseEntry($release, $serverVersion);
+			if ($entry !== null) {
+				$byVersion[$entry['version']] = self::mergeEntry($byVersion[$entry['version']] ?? null, $entry);
 			}
 		}
 
-		usort($order, static fn (string $a, string $b): int => version_compare($b, $a));
+		$entries = array_values($byVersion);
+		usort($entries, self::newestFirst(...));
 
-		return array_map(
-			static fn (string $version): array => [
-				'version' => $version,
-				'changelog' => $changelogsByVersion[$version],
-				'serverCompatible' => $compatibleByVersion[$version],
-				'releasedAt' => $releasedAtByVersion[$version],
-			],
-			$order
-		);
+		return $entries;
+	}
+
+	/**
+	 * One release entry as a version row, or null when it names no version.
+	 * A bare string is the version itself, with nothing else known.
+	 *
+	 * @return VersionEntry|null
+	 */
+	private function releaseEntry(mixed $release, string $serverVersion): ?array {
+		if (is_string($release)) {
+			return ['version' => $release, 'changelog' => null, 'serverCompatible' => null, 'releasedAt' => null];
+		}
+
+		return is_array($release) ? $this->arrayReleaseEntry($release, $serverVersion) : null;
+	}
+
+	/**
+	 * @return VersionEntry|null
+	 */
+	private function arrayReleaseEntry(array $release, string $serverVersion): ?array {
+		/** @var mixed $version */
+		$version = $release['version'] ?? $release['ver'] ?? $release['name'] ?? $release['tag_name'] ?? null;
+		if (!is_string($version) || $version === '') {
+			return null;
+		}
+		/** @var mixed $spec */
+		$spec = $release['platformVersionSpec'] ?? null;
+
+		return [
+			'version' => $version,
+			'changelog' => $this->extractChangelog($release),
+			'serverCompatible' => is_string($spec) ? self::satisfiesPlatformSpec($serverVersion, $spec) : null,
+			'releasedAt' => ReleaseDate::normalize($release['created'] ?? null),
+		];
+	}
+
+	/**
+	 * @param VersionEntry $a
+	 * @param VersionEntry $b
+	 */
+	private static function newestFirst(array $a, array $b): int {
+		return version_compare($b['version'], $a['version']);
+	}
+
+	/**
+	 * The row for a version listed more than once: the first value of each
+	 * field wins, and a later entry only fills fields still unknown.
+	 *
+	 * @param VersionEntry|null $known
+	 * @param VersionEntry $entry
+	 * @return VersionEntry
+	 */
+	private static function mergeEntry(?array $known, array $entry): array {
+		if ($known === null) {
+			return $entry;
+		}
+		$known['changelog'] ??= $entry['changelog'];
+		$known['serverCompatible'] ??= $entry['serverCompatible'];
+		$known['releasedAt'] ??= $entry['releasedAt'];
+
+		return $known;
 	}
 
 	/**
