@@ -73,11 +73,6 @@
       <code><![CDATA[array_values]]></code>
     </RedundantFunctionCall>
   </file>
-  <file src="lib/Service/AutoUpdate/AttemptLedger.php">
-    <MixedAssignment>
-      <code><![CDATA[$entry]]></code>
-    </MixedAssignment>
-  </file>
   <file src="lib/Service/Cache/ArtifactCache.php">
     <DocblockTypeContradiction>
       <code><![CDATA['']]></code>

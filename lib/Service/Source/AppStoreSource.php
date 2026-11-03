@@ -513,35 +513,35 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 * @param array<array-key, mixed> $decoded A decoded catalogue response.
 	 */
 	private function cacheCatalogueEntries(array $decoded): void {
-		$entries = null;
+		/** @var mixed $entry */
+		foreach ($this->catalogueEntries($decoded) ?? [] as $entry) {
+			/** @var mixed $id */
+			$id = is_array($entry) ? ($entry['id'] ?? null) : null;
+			if (is_string($id) && $id !== '') {
+				/** @var array<array-key, mixed> $entry */
+				$this->writeCachedPayload($id, $entry);
+			}
+		}
+	}
+
+	/**
+	 * The app list of a catalogue response: its `data` list, the response
+	 * itself when it is a list, or its `apps` list; null when it has none.
+	 *
+	 * @param array<array-key, mixed> $decoded
+	 * @return list<mixed>|null
+	 */
+	private function catalogueEntries(array $decoded): ?array {
 		$data = $this->arrayField($decoded, 'data');
 		if ($data !== null && array_is_list($data)) {
-			$entries = $data;
-		} elseif (array_is_list($decoded)) {
-			$entries = $decoded;
-		} else {
-			$apps = $this->arrayField($decoded, 'apps');
-			if ($apps !== null && array_is_list($apps)) {
-				$entries = $apps;
-			}
+			return $data;
 		}
+		if (array_is_list($decoded)) {
+			return $decoded;
+		}
+		$apps = $this->arrayField($decoded, 'apps');
 
-		if ($entries === null) {
-			return;
-		}
-
-		/** @var mixed $entry */
-		foreach ($entries as $entry) {
-			if (!is_array($entry)) {
-				continue;
-			}
-			/** @var mixed $id */
-			$id = $entry['id'] ?? null;
-			if (!is_string($id) || $id === '') {
-				continue;
-			}
-			$this->writeCachedPayload($id, $entry);
-		}
+		return $apps !== null && array_is_list($apps) ? $apps : null;
 	}
 
 	private function findById(array $entries, string $appId): ?array {
@@ -565,6 +565,17 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 				return false;
 			}
 		}
+
+		return self::statedNextPage($payload) ?? $this->hasEntries($payload);
+	}
+
+	/**
+	 * What the response itself says about a next page, in the shapes the App
+	 * Store and its mirrors use; null when it says nothing.
+	 *
+	 * @param array<array-key, mixed> $payload
+	 */
+	private static function statedNextPage(array $payload): ?bool {
 		if (isset($payload['pages']['next']) && is_bool($payload['pages']['next'])) {
 			return $payload['pages']['next'];
 		}
@@ -574,16 +585,23 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 		if (isset($payload['nextPage']) && is_string($payload['nextPage'])) {
 			return $payload['nextPage'] !== '';
 		}
+
+		return null;
+	}
+
+	/**
+	 * Whether the page carried any apps, which is the only hint left.
+	 *
+	 * @param array<array-key, mixed> $payload
+	 */
+	private function hasEntries(array $payload): bool {
 		$apps = $this->arrayField($payload, 'apps');
 		if ($apps !== null) {
 			return count($apps) > 0;
 		}
 		$data = $this->arrayField($payload, 'data');
-		if ($data !== null) {
-			return count($data) > 0;
-		}
 
-		return false;
+		return $data !== null && count($data) > 0;
 	}
 
 	private function getPlatformVersion(): string {
