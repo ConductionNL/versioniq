@@ -55,6 +55,9 @@ class ArtifactCache {
 
 	private const VERSION_PATTERN = '/^[A-Za-z0-9][A-Za-z0-9.\-+_]{0,63}$/';
 
+	/** The string metadata fields store() keeps, with their default when missing or not a string. */
+	private const META_DEFAULTS = ['sourceId' => null, 'installerKind' => '', 'signature' => null, 'certificate' => null];
+
 	private ?IAppData $appData = null;
 
 	public function __construct(
@@ -88,37 +91,15 @@ class ArtifactCache {
 	 * @param array{sha256?: string, sourceId?: ?string, installerKind?: string, signature?: ?string, certificate?: ?string} $meta
 	 */
 	public function store(string $appId, string $version, string $archivePath, array $meta): void {
-		if ($this->getKeep() <= 0) {
-			return;
-		}
-		if (!$this->isValidAppId($appId) || !$this->isValidVersion($version)) {
-			$this->logger->warning('ArtifactCache: refused to store artifact with an invalid appId/version', [
-				'appId' => $appId,
-				'version' => $version,
-			]);
-
+		if (!$this->acceptsStore($appId, $version)) {
 			return;
 		}
 
 		try {
-			$content = file_get_contents($archivePath);
-			if ($content === false) {
-				throw new \RuntimeException('Could not read archive at "' . $archivePath . '" for caching.');
-			}
-
+			$content = self::readArchive($archivePath);
 			$folder = $this->getOrCreateAppFolder($appId);
 			$this->writeFile($folder, $this->archiveFilename($version), $content);
-
-			$fullMeta = [
-				'sha256' => isset($meta['sha256']) && is_string($meta['sha256']) ? strtolower($meta['sha256']) : strtolower(hash('sha256', $content)),
-				'sourceId' => isset($meta['sourceId']) && is_string($meta['sourceId']) ? $meta['sourceId'] : null,
-				'installerKind' => isset($meta['installerKind']) && is_string($meta['installerKind']) ? $meta['installerKind'] : '',
-				'signature' => isset($meta['signature']) && is_string($meta['signature']) ? $meta['signature'] : null,
-				'certificate' => isset($meta['certificate']) && is_string($meta['certificate']) ? $meta['certificate'] : null,
-				'cachedAt' => $this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
-				'size' => strlen($content),
-			];
-			$this->writeFile($folder, $this->metaFilename($version), json_encode($fullMeta, JSON_THROW_ON_ERROR));
+			$this->writeFile($folder, $this->metaFilename($version), json_encode($this->storedMeta($meta, $content), JSON_THROW_ON_ERROR));
 
 			$this->prune($folder, $this->getKeep());
 		} catch (\Throwable $error) {
@@ -134,6 +115,61 @@ class ArtifactCache {
 	}
 
 	/**
+	 * Whether store() writes anything: caching is on, and the app id and
+	 * version are safe file names (a refusal of those is logged).
+	 */
+	private function acceptsStore(string $appId, string $version): bool {
+		if ($this->getKeep() <= 0) {
+			return false;
+		}
+		if ($this->isValidAppId($appId) && $this->isValidVersion($version)) {
+			return true;
+		}
+		$this->logger->warning('ArtifactCache: refused to store artifact with an invalid appId/version', [
+			'appId' => $appId,
+			'version' => $version,
+		]);
+
+		return false;
+	}
+
+	/**
+	 * @throws \RuntimeException when the archive cannot be read
+	 */
+	private static function readArchive(string $archivePath): string {
+		$content = file_get_contents($archivePath);
+		if ($content === false) {
+			throw new \RuntimeException('Could not read archive at "' . $archivePath . '" for caching.');
+		}
+
+		return $content;
+	}
+
+	/**
+	 * The metadata stored next to an archive: the given SHA-256 (lower-cased;
+	 * computed from the content when none is given), the string fields of
+	 * `$meta` (defaults for missing or non-string ones), when it was cached
+	 * and its size.
+	 *
+	 * @param array<string, mixed> $meta
+	 * @return array<string, mixed>
+	 */
+	private function storedMeta(array $meta, string $content): array {
+		/** @var mixed $sha256 */
+		$sha256 = $meta['sha256'] ?? null;
+		$fields = ['sha256' => strtolower(is_string($sha256) ? $sha256 : hash('sha256', $content))];
+		foreach (self::META_DEFAULTS as $key => $default) {
+			/** @var mixed $value */
+			$value = $meta[$key] ?? null;
+			$fields[$key] = is_string($value) ? $value : $default;
+		}
+
+		return $fields + [
+			'cachedAt' => $this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
+			'size' => strlen($content),
+		];
+	}
+	/**
 	 * Returns the cached archive content + metadata for `$appId`/`$version`,
 	 * or `null` when no cache entry exists. Re-verifies the archive's
 	 * SHA-256 against the stored metadata before returning anything — a
@@ -144,40 +180,12 @@ class ArtifactCache {
 	 * @return ?array{content: string, meta: array<string, mixed>}
 	 */
 	public function fetch(string $appId, string $version): ?array {
-		if ($this->getKeep() <= 0) {
-			return null;
-		}
-		if (!$this->isValidAppId($appId) || !$this->isValidVersion($version)) {
+		if (!$this->servesFetch($appId, $version)) {
 			return null;
 		}
 
 		try {
-			$folder = $this->getAppFolder($appId);
-			if ($folder === null) {
-				return null;
-			}
-
-			$metaFile = $folder->getFile($this->metaFilename($version));
-			$archiveFile = $folder->getFile($this->archiveFilename($version));
-			$meta = json_decode($metaFile->getContent(), true, 16, JSON_THROW_ON_ERROR);
-			if (!is_array($meta) || !isset($meta['sha256']) || !is_string($meta['sha256']) || $meta['sha256'] === '') {
-				return null;
-			}
-
-			$content = $archiveFile->getContent();
-			$actualSha = hash('sha256', $content);
-			if (!hash_equals(strtolower($meta['sha256']), strtolower($actualSha))) {
-				$this->logger->warning('ArtifactCache: cached artifact failed SHA-256 re-verification, discarding', [
-					'appId' => $appId,
-					'version' => $version,
-				]);
-				$this->deleteVersion($folder, $version);
-
-				return null;
-			}
-
-			/** @var array<string, mixed> $meta */
-			return ['content' => $content, 'meta' => $meta];
+			return $this->readVerified($appId, $version);
 		} catch (NotFoundException) {
 			return null;
 		} catch (\Throwable $error) {
@@ -191,6 +199,64 @@ class ArtifactCache {
 		}
 	}
 
+	/**
+	 * Whether fetch() reads the cache: caching is on, and the app id and
+	 * version are safe file names.
+	 */
+	private function servesFetch(string $appId, string $version): bool {
+		return $this->getKeep() > 0 && $this->isValidAppId($appId) && $this->isValidVersion($version);
+	}
+
+	/**
+	 * The cached archive and its metadata, or null when there is no entry,
+	 * its metadata records no SHA-256, or the archive no longer matches it
+	 * (then both files are discarded).
+	 *
+	 * @return ?array{content: string, meta: array<string, mixed>}
+	 * @throws NotFoundException when a file of the entry is missing
+	 */
+	private function readVerified(string $appId, string $version): ?array {
+		$folder = $this->getAppFolder($appId);
+		if ($folder === null) {
+			return null;
+		}
+
+		$metaFile = $folder->getFile($this->metaFilename($version));
+		$archiveFile = $folder->getFile($this->archiveFilename($version));
+		/** @var mixed $meta */
+		$meta = json_decode($metaFile->getContent(), true, 16, JSON_THROW_ON_ERROR);
+		$recordedSha = self::recordedSha($meta);
+		if ($recordedSha === null) {
+			return null;
+		}
+
+		$content = $archiveFile->getContent();
+		if (!hash_equals(strtolower($recordedSha), strtolower(hash('sha256', $content)))) {
+			$this->logger->warning('ArtifactCache: cached artifact failed SHA-256 re-verification, discarding', [
+				'appId' => $appId,
+				'version' => $version,
+			]);
+			$this->deleteVersion($folder, $version);
+
+			return null;
+		}
+
+		/** @var array<string, mixed> $meta */
+		return ['content' => $content, 'meta' => $meta];
+	}
+
+	/**
+	 * The non-empty `sha256` string of decoded metadata, or null.
+	 */
+	private static function recordedSha(mixed $meta): ?string {
+		if (!is_array($meta)) {
+			return null;
+		}
+		/** @var mixed $sha256 */
+		$sha256 = $meta['sha256'] ?? null;
+
+		return is_string($sha256) && $sha256 !== '' ? $sha256 : null;
+	}
 	/**
 	 * The server range a cached version declares in its own
 	 * `appinfo/info.xml` (`<dependencies><nextcloud min-version max-version>`),
