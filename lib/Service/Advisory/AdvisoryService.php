@@ -240,75 +240,93 @@ class AdvisoryService {
 	 */
 	public function evaluate(string $installedVersion, array $advisories, array $availableVersions): array {
 		if ($advisories === []) {
-			return [
-				'appId' => '',
-				'installedVersion' => $installedVersion,
-				'state' => self::STATE_NONE,
-				'advisories' => [],
-				'recommendedVersion' => null,
-				'error' => null,
-			];
+			return self::evaluation($installedVersion, self::STATE_NONE);
 		}
 
-		// Two evaluation paths, chosen by what the record carries.
-		//
-		// A record with `patchedVersions` came from the Nextcloud feed, which
-		// describes several maintenance branches per advisory. Its comma-
-		// separated range CANNOT be read as a boolean: measured over the
-		// published corpus, 66.5% of entries are multiple lower bounds with no
-		// upper bound, which ANDed collapse to the highest and clear a
-		// genuinely vulnerable instance. BranchAwareRange resolves those from
-		// the patch list instead.
-		//
-		// A record without it came from a forge source in the older shape, and
-		// keeps the original clause semantics.
-		$active = [];
-		$branchPatches = [];
-		foreach ($advisories as $advisory) {
-			$patchedVersions = $advisory['patchedVersions'] ?? [];
-			if ($patchedVersions !== []) {
-				$patch = $this->matching->branchRange->resolvePatch($installedVersion, $patchedVersions);
-				if ($patch !== null) {
-					$active[] = $advisory;
-					$branchPatches[] = $patch;
-				}
-				continue;
-			}
-
-			if ($this->isAffected($installedVersion, $advisory['affected'])) {
-				$active[] = $advisory;
-			}
-		}
-
+		[$active, $branchPatches] = $this->activeAdvisories($installedVersion, $advisories);
 		if ($active === []) {
 			// The app has advisories, but none affect the installed version:
 			// the installed version is already safe.
-			return [
-				'appId' => '',
-				'installedVersion' => $installedVersion,
-				'state' => self::STATE_AVAILABLE,
-				'advisories' => $this->summarise($advisories),
-				'recommendedVersion' => null,
-				'error' => null,
-			];
+			return array_replace(self::evaluation($installedVersion, self::STATE_AVAILABLE), ['advisories' => $this->summarise($advisories)]);
 		}
 
 		// The advisory's own patch beats a guess from the version list: it is
 		// the version the publisher states resolves the issue on THIS branch,
 		// whereas nearestResolving() infers one from whatever the source
 		// happens to offer.
-		$recommended = $branchPatches !== []
-			? $this->lowestVersion($branchPatches)
-			: $this->nearestResolving($installedVersion, $active, $availableVersions);
+		return array_replace(self::evaluation($installedVersion, self::STATE_VULNERABLE), [
+			'advisories' => $this->summarise($active),
+			'recommendedVersion' => $branchPatches !== [] ? $this->lowestVersion($branchPatches) : $this->nearestResolving($installedVersion, $active, $availableVersions),
+		]);
+	}
 
+	/**
+	 * An evaluation result with no advisories and no recommendation yet.
+	 *
+	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}
+	 */
+	private static function evaluation(string $installedVersion, string $state): array {
 		return [
 			'appId' => '',
 			'installedVersion' => $installedVersion,
-			'state' => self::STATE_VULNERABLE,
-			'advisories' => $this->summarise($active),
-			'recommendedVersion' => $recommended,
+			'state' => $state,
+			'advisories' => [],
+			'recommendedVersion' => null,
 			'error' => null,
 		];
+	}
+
+	/**
+	 * The advisories that affect the installed version, and the branch patch
+	 * of each one that carries a patch list.
+	 *
+	 * Two evaluation paths, chosen by what the record carries.
+	 *
+	 * A record with `patchedVersions` came from the Nextcloud feed, which
+	 * describes several maintenance branches per advisory. Its comma-
+	 * separated range CANNOT be read as a boolean: measured over the
+	 * published corpus, 66.5% of entries are multiple lower bounds with no
+	 * upper bound, which ANDed collapse to the highest and clear a
+	 * genuinely vulnerable instance. BranchAwareRange resolves those from
+	 * the patch list instead.
+	 *
+	 * A record without it came from a forge source in the older shape, and
+	 * keeps the original clause semantics.
+	 *
+	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>}> $advisories
+	 * @return array{0: list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>}>, 1: list<string>}
+	 */
+	private function activeAdvisories(string $installedVersion, array $advisories): array {
+		$active = [];
+		$branchPatches = [];
+		foreach ($advisories as $advisory) {
+			[$affects, $patch] = $this->assess($installedVersion, $advisory);
+			if ($affects) {
+				$active[] = $advisory;
+			}
+			if ($patch !== null) {
+				$branchPatches[] = $patch;
+			}
+		}
+
+		return [$active, $branchPatches];
+	}
+
+	/**
+	 * Whether one advisory affects the installed version, and its branch
+	 * patch when it carries a patch list.
+	 *
+	 * @param array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>} $advisory
+	 * @return array{0: bool, 1: ?string}
+	 */
+	private function assess(string $installedVersion, array $advisory): array {
+		$patchedVersions = $advisory['patchedVersions'] ?? [];
+		if ($patchedVersions === []) {
+			return [$this->isAffected($installedVersion, $advisory['affected']), null];
+		}
+		$patch = $this->matching->branchRange->resolvePatch($installedVersion, $patchedVersions);
+
+		return [$patch !== null, $patch];
 	}
 
 	/**
@@ -422,37 +440,62 @@ class AdvisoryService {
 	 * @param list<string> $availableVersions
 	 */
 	private function nearestResolving(string $installedVersion, array $active, array $availableVersions): ?string {
-		$candidates = [];
-		foreach ($availableVersions as $candidate) {
-			if (version_compare($candidate, $installedVersion, '>')) {
-				$candidates[] = $candidate;
-			}
-		}
 		// Fold in any published first-patched versions the source named, even
 		// if they were not in the available-versions list.
-		foreach ($active as $advisory) {
-			$patched = $advisory['firstPatchedVersion'];
-			if (is_string($patched) && $patched !== '' && version_compare($patched, $installedVersion, '>')) {
-				$candidates[] = $patched;
-			}
-		}
-		$candidates = array_values(array_unique($candidates));
-		usort($candidates, static fn (string $a, string $b): int => version_compare($a, $b));
-
-		foreach ($candidates as $candidate) {
-			$stillVulnerable = false;
-			foreach ($active as $advisory) {
-				if ($this->isAffected($candidate, $advisory['affected'])) {
-					$stillVulnerable = true;
-					break;
-				}
-			}
-			if (!$stillVulnerable) {
+		$offered = [...$availableVersions, ...self::firstPatchedVersions($active)];
+		foreach (self::upgradeCandidates($installedVersion, $offered) as $candidate) {
+			if (!$this->affectedByAny($candidate, $active)) {
 				return $candidate;
 			}
 		}
 
 		return null;
+	}
+
+	/**
+	 * The non-empty first-patched versions the advisories publish.
+	 *
+	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>}> $active
+	 * @return list<string>
+	 */
+	private static function firstPatchedVersions(array $active): array {
+		$patched = [];
+		foreach ($active as $advisory) {
+			if (is_string($advisory['firstPatchedVersion']) && $advisory['firstPatchedVersion'] !== '') {
+				$patched[] = $advisory['firstPatchedVersion'];
+			}
+		}
+
+		return $patched;
+	}
+
+	/**
+	 * The distinct versions newer than the installed one, ascending.
+	 *
+	 * @param list<string> $versions
+	 * @return list<string>
+	 */
+	private static function upgradeCandidates(string $installedVersion, array $versions): array {
+		$candidates = array_values(array_unique(array_filter(
+			$versions,
+			static fn (string $candidate): bool => version_compare($candidate, $installedVersion, '>'),
+		)));
+		usort($candidates, static fn (string $a, string $b): int => version_compare($a, $b));
+
+		return $candidates;
+	}
+
+	/**
+	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>}> $active
+	 */
+	private function affectedByAny(string $version, array $active): bool {
+		foreach ($active as $advisory) {
+			if ($this->isAffected($version, $advisory['affected'])) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	private function installedVersion(string $appId): ?string {

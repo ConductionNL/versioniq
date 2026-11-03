@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Audit;
 
+require_once __DIR__ . '/../../Support/AuditArgs.php';
+
 use OCA\Versioniq\Db\AuditEntry;
 use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Service\Audit\AuditLogger;
+use OCA\Versioniq\Tests\Unit\Support\AuditArgs;
 use OCP\AppFramework\Utility\ITimeFactory;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -30,7 +33,7 @@ final class AuditLoggerTest extends TestCase {
 			}));
 
 		$logger = new AuditLogger($mapper, $this->timeFactory(), $this->createMock(LoggerInterface::class));
-		$logger->record(
+		AuditArgs::call($logger,
 			'alice',
 			'openregister',
 			AuditLogger::OPERATION_INSTALL,
@@ -63,7 +66,7 @@ final class AuditLoggerTest extends TestCase {
 		$auditLogger = new AuditLogger($mapper, $this->timeFactory(), $logger);
 
 		// Must not throw.
-		$auditLogger->record('alice', 'openregister', AuditLogger::OPERATION_INSTALL, null, '2.3.0', 'appstore', AuditLogger::STATUS_SUCCESS);
+		AuditArgs::call($auditLogger, 'alice', 'openregister', AuditLogger::OPERATION_INSTALL, null, '2.3.0', 'appstore', AuditLogger::STATUS_SUCCESS);
 		$this->addToAssertionCount(1);
 	}
 
@@ -78,7 +81,7 @@ final class AuditLoggerTest extends TestCase {
 		$logger->expects($this->once())->method('warning');
 
 		$auditLogger = new AuditLogger($mapper, $this->timeFactory(), $logger);
-		$auditLogger->record('alice', 'openregister', $operation, null, '2.3.0', 'appstore', AuditLogger::STATUS_SUCCESS);
+		AuditArgs::call($auditLogger, 'alice', 'openregister', $operation, null, '2.3.0', 'appstore', AuditLogger::STATUS_SUCCESS);
 	}
 
 	/**
@@ -102,7 +105,7 @@ final class AuditLoggerTest extends TestCase {
 		});
 
 		$logger = new AuditLogger($mapper, $this->timeFactory(), $this->createMock(LoggerInterface::class));
-		$logger->record(
+		AuditArgs::call($logger,
 			'alice',
 			'openregister',
 			AuditLogger::OPERATION_INSTALL,
@@ -127,7 +130,7 @@ final class AuditLoggerTest extends TestCase {
 		});
 
 		$logger = new AuditLogger($mapper, $this->timeFactory(), $this->createMock(LoggerInterface::class));
-		$logger->record(
+		AuditArgs::call($logger,
 			'alice',
 			'openregister',
 			AuditLogger::OPERATION_INSTALL,
@@ -154,7 +157,7 @@ final class AuditLoggerTest extends TestCase {
 		});
 
 		$logger = new AuditLogger($mapper, $this->timeFactory(), $this->createMock(LoggerInterface::class));
-		$logger->record('alice', 'openregister', AuditLogger::OPERATION_BIND_SOURCE, '', '', 'appstore', AuditLogger::STATUS_SUCCESS, '');
+		AuditArgs::call($logger, 'alice', 'openregister', AuditLogger::OPERATION_BIND_SOURCE, '', '', 'appstore', AuditLogger::STATUS_SUCCESS, '');
 
 		$this->assertInstanceOf(AuditEntry::class, $captured);
 		$this->assertNull($captured->getFromVersion());

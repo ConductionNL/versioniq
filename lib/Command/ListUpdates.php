@@ -59,37 +59,89 @@ class ListUpdates extends Command {
 	 * @spec openspec/specs/cli-commands/spec.md#requirement-list-pending-updates-from-the-cli
 	 */
 	protected function execute(InputInterface $input, OutputInterface $output): int {
+		$this->refreshIfAsked($input);
+		$snapshot = $this->resultStore->read();
+		if ($snapshot['checkedAt'] === null) {
+			return $this->neverChecked($output);
+		}
+
+		$view = $this->view($snapshot, (bool)$input->getOption('outside-policy'));
+		if ((bool)$input->getOption('json')) {
+			$output->writeln(json_encode($view, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+		} else {
+			$this->printTable($output, $view);
+		}
+
+		return 0;
+	}
+
+	/**
+	 * Sweeps and stores a fresh snapshot first when --refresh is given.
+	 */
+	private function refreshIfAsked(InputInterface $input): void {
 		if ((bool)$input->getOption('refresh')) {
 			$this->resultStore->save($this->availabilityService->sweep(self::REFRESH_BUDGET_SECONDS), $this->time->getTime());
 		}
+	}
 
-		$snapshot = $this->resultStore->read();
-		if ($snapshot['checkedAt'] === null) {
-			$this->errorOutput($output)->writeln('<error>No update check has run yet. Run with --refresh, or wait for the background job.</error>');
+	/**
+	 * Says no update check has run yet; returns the exit code for that.
+	 */
+	private function neverChecked(OutputInterface $output): int {
+		$this->errorOutput($output)->writeln('<error>No update check has run yet. Run with --refresh, or wait for the background job.</error>');
 
-			return 1;
-		}
+		return 1;
+	}
 
+	/**
+	 * What the command prints: the snapshot time, the lag limit and the
+	 * apps, only those past the limit when $outsidePolicy is set.
+	 *
+	 * @param array{updates: array<string, mixed>, checkedAt: int} $snapshot
+	 * @return array{checkedAt: int, maxLinesBehind: ?int, updates: array<string, array<string, mixed>>}
+	 */
+	private function view(array $snapshot, bool $outsidePolicy): array {
 		$limit = $this->instanceSettings->maxLinesBehind();
 		/** @var array<string, array<string, mixed>> $updates */
 		$updates = $snapshot['updates'];
-		if ((bool)$input->getOption('outside-policy')) {
-			$updates = array_filter(
-				$updates,
-				static fn (array $entry): bool => $limit !== null && (int)($entry['linesBehind'] ?? 0) > $limit,
-			);
-		}
 
-		if ((bool)$input->getOption('json')) {
-			$output->writeln(json_encode(
-				['checkedAt' => $snapshot['checkedAt'], 'maxLinesBehind' => $limit, 'updates' => $updates],
-				JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES,
-			));
+		return [
+			'checkedAt' => $snapshot['checkedAt'],
+			'maxLinesBehind' => $limit,
+			'updates' => $outsidePolicy ? self::outsidePolicy($updates, $limit) : $updates,
+		];
+	}
 
-			return 0;
-		}
+	/**
+	 * The apps more release lines behind than the limit; none when the
+	 * check is off.
+	 *
+	 * @param array<string, array<string, mixed>> $updates
+	 * @return array<string, array<string, mixed>>
+	 */
+	private static function outsidePolicy(array $updates, ?int $limit): array {
+		return array_filter(
+			$updates,
+			static fn (array $entry): bool => $limit !== null && (int)($entry['linesBehind'] ?? 0) > $limit,
+		);
+	}
 
-		$output->writeln(sprintf('Last checked: %s', gmdate('Y-m-d H:i', $snapshot['checkedAt']) . ' UTC'));
+	/**
+	 * @param array{checkedAt: int, maxLinesBehind: ?int, updates: array<string, array<string, mixed>>} $view
+	 */
+	private function printTable(OutputInterface $output, array $view): void {
+		$output->writeln(sprintf('Last checked: %s', gmdate('Y-m-d H:i', $view['checkedAt']) . ' UTC'));
+		$table = new Table($output);
+		$table->setHeaders(['App', 'Installed', 'Newest this server runs', 'Releases behind', 'Pin']);
+		$table->setRows($this->rows($view['updates']));
+		$table->render();
+	}
+
+	/**
+	 * @param array<string, array<string, mixed>> $updates
+	 * @return list<list<string>>
+	 */
+	private function rows(array $updates): array {
 		$rows = [];
 		foreach ($updates as $appId => $entry) {
 			$rows[] = [
@@ -100,12 +152,8 @@ class ListUpdates extends Command {
 				($entry['pinned'] ?? false) === true ? 'pinned' : '',
 			];
 		}
-		$table = new Table($output);
-		$table->setHeaders(['App', 'Installed', 'Newest this server runs', 'Releases behind', 'Pin']);
-		$table->setRows($rows);
-		$table->render();
 
-		return 0;
+		return $rows;
 	}
 
 	/**

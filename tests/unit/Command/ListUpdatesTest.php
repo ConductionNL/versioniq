@@ -85,4 +85,23 @@ final class ListUpdatesTest extends TestCase {
 		self::assertSame(0, $tester->execute(['--outside-policy' => true, '--json' => true]));
 		self::assertSame(['openregister'], array_keys(json_decode($tester->getDisplay(), true)['updates']));
 	}
+
+	public function testOutsidePolicyWithTheCheckOffListsNothing(): void {
+		$tester = $this->tester(['updates' => self::SNAPSHOT, 'checkedAt' => 1_790_000_000]);
+
+		self::assertSame(0, $tester->execute(['--outside-policy' => true, '--json' => true]));
+		$decoded = json_decode($tester->getDisplay(), true, 512, JSON_THROW_ON_ERROR);
+		self::assertSame([], $decoded['updates']);
+		self::assertNull($decoded['maxLinesBehind']);
+	}
+
+	public function testJsonCarriesTheLagLimitAndTheTableTheLinesBehind(): void {
+		$json = $this->tester(['updates' => self::SNAPSHOT, 'checkedAt' => 1_790_000_000], null, null, 3);
+		self::assertSame(0, $json->execute(['--json' => true]));
+		self::assertSame(3, json_decode($json->getDisplay(), true, 512, JSON_THROW_ON_ERROR)['maxLinesBehind']);
+
+		$table = $this->tester(['updates' => ['openregister' => ['linesBehind' => 7] + self::SNAPSHOT['openregister']], 'checkedAt' => 1_790_000_000]);
+		self::assertSame(0, $table->execute([]));
+		self::assertMatchesRegularExpression('/openregister.*\|\s+7\s+\|/', $table->getDisplay());
+	}
 }

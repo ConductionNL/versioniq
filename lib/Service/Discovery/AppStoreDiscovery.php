@@ -139,26 +139,9 @@ class AppStoreDiscovery implements DiscoveryProviderInterface {
 	 */
 	private function loadCatalog(): ?array {
 		$now = $this->timeFactory->getTime();
-		$cachedTs = $this->config->getValueInt(Application::APP_ID, self::CACHE_TS_KEY, 0);
-		if ($cachedTs > 0 && ($now - $cachedTs) < self::CACHE_TTL_SECONDS) {
-			$cached = $this->config->getValueString(Application::APP_ID, self::CACHE_KEY, '');
-			if (strlen($cached) > self::MAX_CACHE_BYTES) {
-				// Written by an older build that cached the unprojected catalogue.
-				// Drop it rather than keep paying for it on every config read.
-				$this->discardOversizedCache(strlen($cached));
-				$cached = '';
-			}
-			if ($cached !== '') {
-				try {
-					/** @var mixed $decoded */
-					$decoded = json_decode($cached, true, 32, JSON_THROW_ON_ERROR);
-					if (is_array($decoded)) {
-						return array_values(array_filter($decoded, 'is_array'));
-					}
-				} catch (\JsonException) {
-					// fall through to refetch
-				}
-			}
+		$cached = $this->freshCachedCatalog($now);
+		if ($cached !== null) {
+			return $cached;
 		}
 
 		$catalog = $this->fetchCatalog();
@@ -168,22 +151,71 @@ class AppStoreDiscovery implements DiscoveryProviderInterface {
 
 		// Only the fields discovery reads are kept — see CACHED_FIELDS.
 		$projected = array_map([$this, 'projectForCache'], $catalog);
-
-		try {
-			$encoded = json_encode($projected, JSON_THROW_ON_ERROR);
-			if (strlen($encoded) <= self::MAX_CACHE_BYTES) {
-				$this->config->setValueString(Application::APP_ID, self::CACHE_KEY, $encoded);
-				$this->config->setValueInt(Application::APP_ID, self::CACHE_TS_KEY, $now);
-			} else {
-				$this->logger->warning('AppStoreDiscovery: catalog projection too large to cache', [
-					'bytes' => strlen($encoded),
-				]);
-			}
-		} catch (\JsonException $error) {
-			$this->logger->warning('AppStoreDiscovery: could not cache catalog', ['errorMessage' => $error->getMessage()]);
-		}
+		$this->storeCatalog($projected, $now);
 
 		return $projected;
+	}
+
+	/**
+	 * The cached catalogue when it is younger than the TTL and readable,
+	 * otherwise null.
+	 *
+	 * @return list<array<array-key, mixed>>|null
+	 */
+	private function freshCachedCatalog(int $now): ?array {
+		$cachedTs = $this->config->getValueInt(Application::APP_ID, self::CACHE_TS_KEY, 0);
+		if ($cachedTs <= 0 || ($now - $cachedTs) >= self::CACHE_TTL_SECONDS) {
+			return null;
+		}
+		$cached = $this->config->getValueString(Application::APP_ID, self::CACHE_KEY, '');
+		if (strlen($cached) > self::MAX_CACHE_BYTES) {
+			// Written by an older build that cached the unprojected catalogue.
+			// Drop it rather than keep paying for it on every config read.
+			$this->discardOversizedCache(strlen($cached));
+
+			return null;
+		}
+
+		return $cached === '' ? null : self::decodeCachedCatalog($cached);
+	}
+
+	/**
+	 * @return list<array<array-key, mixed>>|null
+	 */
+	private static function decodeCachedCatalog(string $cached): ?array {
+		try {
+			/** @var mixed $decoded */
+			$decoded = json_decode($cached, true, 32, JSON_THROW_ON_ERROR);
+		} catch (\JsonException) {
+			// refetch
+			return null;
+		}
+
+		return is_array($decoded) ? array_values(array_filter($decoded, 'is_array')) : null;
+	}
+
+	/**
+	 * Caches the projected catalogue with its time, unless it is too large.
+	 *
+	 * @param list<array<array-key, mixed>> $projected
+	 */
+	private function storeCatalog(array $projected, int $now): void {
+		try {
+			$encoded = json_encode($projected, JSON_THROW_ON_ERROR);
+		} catch (\JsonException $error) {
+			$this->logger->warning('AppStoreDiscovery: could not cache catalog', ['errorMessage' => $error->getMessage()]);
+
+			return;
+		}
+		if (strlen($encoded) > self::MAX_CACHE_BYTES) {
+			$this->logger->warning('AppStoreDiscovery: catalog projection too large to cache', [
+				'bytes' => strlen($encoded),
+			]);
+
+			return;
+		}
+		$this->config->setValueString(Application::APP_ID, self::CACHE_KEY, $encoded);
+		$this->config->setValueInt(Application::APP_ID, self::CACHE_TS_KEY, $now);
 	}
 
 	/**
@@ -253,32 +285,29 @@ class AppStoreDiscovery implements DiscoveryProviderInterface {
 			return null;
 		}
 
-		if ($response->getStatusCode() !== 200) {
-			return null;
-		}
+		return $response->getStatusCode() === 200 ? self::catalogFrom((string)$response->getBody()) : null;
+	}
 
+	/**
+	 * The apps in a catalogue body: a list of apps, or an envelope that holds
+	 * them under `apps` or `data`. Null for any other body.
+	 *
+	 * @return list<array<array-key, mixed>>|null
+	 */
+	private static function catalogFrom(string $body): ?array {
 		try {
-			$decoded = json_decode((string)$response->getBody(), true, 32, JSON_THROW_ON_ERROR);
+			/** @var mixed $decoded */
+			$decoded = json_decode($body, true, 32, JSON_THROW_ON_ERROR);
 		} catch (\JsonException) {
 			return null;
 		}
-
 		if (!is_array($decoded)) {
 			return null;
 		}
+		/** @var mixed $apps */
+		$apps = array_is_list($decoded) ? $decoded : (is_array($decoded['apps'] ?? null) ? $decoded['apps'] : ($decoded['data'] ?? null));
 
-		// The endpoint returns either a list of apps or an envelope; flatten both shapes.
-		if (array_is_list($decoded)) {
-			return array_values(array_filter($decoded, 'is_array'));
-		}
-		if (isset($decoded['apps']) && is_array($decoded['apps'])) {
-			return array_values(array_filter($decoded['apps'], 'is_array'));
-		}
-		if (isset($decoded['data']) && is_array($decoded['data'])) {
-			return array_values(array_filter($decoded['data'], 'is_array'));
-		}
-
-		return null;
+		return is_array($apps) ? array_values(array_filter($apps, 'is_array')) : null;
 	}
 
 	/**

@@ -13,7 +13,9 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Pin;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Audit\AuditLogger;
+use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCA\Versioniq\Service\Settings\AppConfigJsonRecords;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
@@ -78,12 +80,8 @@ class PinStore {
 		$this->writeRecord($appId, $pin->withoutDrift()->toArray());
 
 		$this->auditLogger->record(
-			$pin->pinnedBy,
-			$appId,
-			AuditLogger::OPERATION_PIN,
-			null,
-			$pin->version,
-			null,
+			new AuditSubject($pin->pinnedBy, $appId, AuditLogger::OPERATION_PIN),
+			new AuditedVersions(null, $pin->version, null),
 			AuditLogger::STATUS_SUCCESS,
 			$pin->reason,
 		);
@@ -106,12 +104,8 @@ class PinStore {
 		$this->config->deleteKey(Application::APP_ID, $this->key($appId));
 
 		$this->auditLogger->record(
-			$actorUid,
-			$appId,
-			AuditLogger::OPERATION_UNPIN,
-			$previous->version,
-			null,
-			null,
+			new AuditSubject($actorUid, $appId, AuditLogger::OPERATION_UNPIN),
+			new AuditedVersions($previous->version, null, null),
 			AuditLogger::STATUS_SUCCESS,
 			null,
 		);
@@ -147,12 +141,8 @@ class PinStore {
 		$this->writeRecord($appId, $drifted->toArray());
 
 		$this->auditLogger->record(
-			'system',
-			$appId,
-			AuditLogger::OPERATION_PIN_DRIFT,
-			$drifted->version,
-			$drifted->driftedTo,
-			null,
+			new AuditSubject('system', $appId, AuditLogger::OPERATION_PIN_DRIFT),
+			new AuditedVersions($drifted->version, $drifted->driftedTo, null),
 			AuditLogger::STATUS_SUCCESS,
 			null,
 		);

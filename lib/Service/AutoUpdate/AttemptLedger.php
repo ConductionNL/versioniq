@@ -136,6 +136,7 @@ class AttemptLedger {
 		}
 
 		try {
+			/** @var mixed $decoded */
 			$decoded = json_decode($raw, true, 8, JSON_THROW_ON_ERROR);
 		} catch (\JsonException $error) {
 			$this->logger->warning('AttemptLedger: malformed ledger JSON, treating as empty', [
@@ -146,22 +147,31 @@ class AttemptLedger {
 			return [];
 		}
 
-		if (!is_array($decoded)) {
-			return [];
-		}
+		return is_array($decoded) ? self::entriesFrom($decoded) : [];
+	}
 
+	/**
+	 * The well-formed entries of a decoded ledger, by version.
+	 *
+	 * @param array<array-key, mixed> $decoded
+	 * @return array<string, array{at: string, outcome: string}>
+	 */
+	private static function entriesFrom(array $decoded): array {
 		$entries = [];
+		/** @var mixed $entry */
 		foreach ($decoded as $version => $entry) {
-			if (
-				is_string($version) && $version !== ''
-				&& is_array($entry)
-				&& isset($entry['at'], $entry['outcome'])
-				&& is_string($entry['at']) && is_string($entry['outcome'])
-			) {
+			if (is_string($version) && $version !== '' && self::isEntry($entry)) {
+				/** @var array{at: string, outcome: string} $entry */
 				$entries[$version] = ['at' => $entry['at'], 'outcome' => $entry['outcome']];
 			}
 		}
 
 		return $entries;
+	}
+
+	private static function isEntry(mixed $entry): bool {
+		return is_array($entry)
+			&& isset($entry['at'], $entry['outcome'])
+			&& is_string($entry['at']) && is_string($entry['outcome']);
 	}
 }

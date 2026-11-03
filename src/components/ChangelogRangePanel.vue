@@ -40,6 +40,8 @@ defineProps<{
 	</div>
 </template>
 
+<style module src="../styles/changelogText.module.css"></style>
+
 <style module>
 .panel {
 	margin-top: 10px;
@@ -82,22 +84,4 @@ defineProps<{
 	margin-bottom: 2px;
 }
 
-.text {
-	margin: 0;
-	white-space: pre-wrap;
-	/* `word-break: break-word` is deprecated. `overflow-wrap: anywhere` is its
-	   behavioural equivalent: it breaks an otherwise-unbreakable run (a long
-	   URL or commit hash in a changelog line) without breaking ordinary words
-	   mid-character the way `word-break: break-all` would. */
-	overflow-wrap: anywhere;
-	font-size: 12px;
-	line-height: 1.4;
-}
-
-.placeholder {
-	margin: 0;
-	font-size: 12px;
-	font-style: italic;
-	color: var(--color-text-maxcontrast);
-}
 </style>

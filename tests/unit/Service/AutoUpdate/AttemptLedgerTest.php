@@ -138,4 +138,26 @@ final class AttemptLedgerTest extends TestCase {
 
 		$this->assertSame([['version' => '2.3.4', 'at' => '2026-07-22T02:00:00+00:00']], $ledger->blockedVersions('openregister'));
 	}
+
+	/**
+	 * Entries without a version, or without a string time and outcome, are
+	 * not counted as attempts.
+	 */
+	public function testMalformedEntriesAreIgnored(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getValueString')->willReturn(json_encode([
+			'' => ['at' => '2026-07-22T02:00:00+00:00', 'outcome' => 'failure'],
+			'1.0.0' => 'failure',
+			'2.0.0' => ['at' => '2026-07-22T02:00:00+00:00'],
+			'3.0.0' => ['at' => '2026-07-22T02:00:00+00:00', 'outcome' => 7],
+			'4.0.0' => ['at' => '2026-07-23T02:00:00+00:00', 'outcome' => 'failure'],
+		], JSON_THROW_ON_ERROR));
+
+		$ledger = new AttemptLedger($config, $this->logger());
+
+		$this->assertSame([['version' => '4.0.0', 'at' => '2026-07-23T02:00:00+00:00']], $ledger->blockedVersions('openregister'));
+		$this->assertFalse($ledger->hasAttempted('openregister', ''));
+		$this->assertFalse($ledger->hasAttempted('openregister', '3.0.0'));
+		$this->assertTrue($ledger->hasAttempted('openregister', '4.0.0'));
+	}
 }
