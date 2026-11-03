@@ -32,6 +32,10 @@ final class AppStoreNextPageTest extends TestCase {
 	public static function payloads(): array {
 		return [
 			'pagination with a next page' => [['pagination' => ['next_page' => 3]], true],
+			'pagination says there is no next page' => [['pagination' => ['next_page' => null], 'apps' => [['id' => 'x']]], false],
+			'pagination says there is no next page, data on the page' => [['pagination' => ['next_page' => null], 'data' => [['id' => 'x']]], false],
+			'pagination without next_page falls back to the apps' => [['pagination' => ['total' => 3], 'apps' => [['id' => 'x']]], true],
+			'pagination that is no object falls back to the apps' => [['pagination' => null, 'apps' => [['id' => 'x']]], true],
 			'pages says no' => [['pages' => ['next' => false], 'apps' => [['id' => 'x']]], false],
 			'apps on the page' => [['apps' => [['id' => 'x']]], true],
 			'no apps on the page' => [['apps' => [], 'data' => [['id' => 'x']]], false],

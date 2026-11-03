@@ -579,8 +579,11 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 		if (isset($payload['pages']['next']) && is_bool($payload['pages']['next'])) {
 			return $payload['pages']['next'];
 		}
-		if (isset($payload['pagination']['next_page'])) {
-			return $payload['pagination']['next_page'] !== null;
+		// An explicit `next_page: null` is the App Store saying this is the last page.
+		/** @var mixed $pagination */
+		$pagination = $payload['pagination'] ?? null;
+		if (is_array($pagination) && array_key_exists('next_page', $pagination)) {
+			return $pagination['next_page'] !== null;
 		}
 		if (isset($payload['nextPage']) && is_string($payload['nextPage'])) {
 			return $payload['nextPage'] !== '';
