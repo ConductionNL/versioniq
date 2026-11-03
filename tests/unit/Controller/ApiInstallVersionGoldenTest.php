@@ -13,10 +13,12 @@ namespace OCA\Versioniq\Tests\Unit\Controller;
 
 require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 require_once __DIR__ . '/../Support/InstallArgs.php';
+require_once __DIR__ . '/../Support/DispatchesLikeNextcloud.php';
 
 use OCA\Versioniq\Controller\ApiController;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
+use OCA\Versioniq\Tests\Unit\Support\DispatchesLikeNextcloud;
 use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\IGroupManager;
 use OCP\IRequest;
@@ -26,38 +28,54 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Golden over POST /api/app/{appId}/versions/{version}/install: for each set
- * of request values, the install the controller asks for (the nine install
- * values, with a dry run left out shown as the debug flag it falls back to)
- * and the response, compared with fixtures/api-install-version.golden.json.
- * Set RECORD_GOLDEN=1 to rewrite the fixture.
+ * of request values, dispatched the way Nextcloud does, the install the
+ * controller asks for (the nine install values, with a dry run left out shown
+ * as the debug flag it falls back to) and the response, compared with
+ * fixtures/api-install-version.golden.json. Set RECORD_GOLDEN=1 to rewrite
+ * the fixture.
  *
  * @covers \OCA\Versioniq\Controller\ApiController
  */
 final class ApiInstallVersionGoldenTest extends TestCase {
 	use BuildsByParameterName;
+	use DispatchesLikeNextcloud;
 
 	private const FIXTURE = __DIR__ . '/fixtures/api-install-version.golden.json';
+
+	private const ROUTE = ['appId' => 'notes', 'version' => '2.0.0'];
 
 	/** @var list<array<string, mixed>> */
 	private array $installs = [];
 
 	/**
-	 * @return array<string, array{args: list<mixed>, params?: array<string, mixed>}>
+	 * @return array<string, array{params: array<string, mixed>, uid?: string}>
 	 */
 	private static function cases(): array {
 		return [
-			'route values only' => ['args' => ['notes', '2.0.0']],
-			'target version param wins' => ['args' => ['notes', '2.0.0'], 'params' => ['targetVersion' => '2.1.0', 'version' => '2.2.0']],
-			'version param' => ['args' => ['notes', '2.0.0'], 'params' => ['version' => '2.2.0']],
-			'source trimmed' => ['args' => ['notes', '2.0.0', ' github:acme/notes ']],
-			'blank source' => ['args' => ['notes', '2.0.0', '  ']],
-			'debug implies dry run' => ['args' => ['notes', '2.0.0', null, '1']],
-			'debug with explicit real run' => ['args' => ['notes', '2.0.0', null, '1', '0']],
-			'dry run' => ['args' => ['notes', '2.0.0', null, '0', 'true']],
-			'pin with override' => ['args' => ['notes', '2.0.0', null, '0', null, '1'], 'params' => ['overridePin' => '1.9.0']],
-			'accept new sha' => ['args' => ['notes', '2.0.0', null, '0', null, '0', '1']],
-			'allow downgrade' => ['args' => ['notes', '2.0.0', null, '0', null, '0', '0', 'true']],
-			'everything' => ['args' => ['notes', '2.0.0', 'codeberg:acme/notes', 'true', '1', 'true', 'true', '1'], 'params' => ['overridePin' => '1.0.0']],
+			'route values only' => ['params' => []],
+			'target version param wins' => ['params' => ['targetVersion' => '2.1.0']],
+			'blank target version keeps the route version' => ['params' => ['targetVersion' => '  ']],
+			'source trimmed' => ['params' => ['source' => ' github:acme/notes ']],
+			'blank source' => ['params' => ['source' => '  ']],
+			'debug implies dry run' => ['params' => ['debug' => '1']],
+			'debug with explicit real run' => ['params' => ['debug' => '1', 'dryRun' => '0']],
+			'dry run' => ['params' => ['dryRun' => 'true']],
+			'dry run that is no flag' => ['params' => ['debug' => '1', 'dryRun' => 'maybe']],
+			'pin with override' => ['params' => ['pin' => '1', 'overridePin' => '1.9.0']],
+			'accept new sha' => ['params' => ['acceptNewSha' => '1']],
+			'allow downgrade' => ['params' => ['allowDowngrade' => 'true']],
+			'flags spelled false' => ['params' => ['debug' => 'false', 'pin' => 'FALSE', 'acceptNewSha' => '0', 'allowDowngrade' => 'no']],
+			'every default spelled out' => ['params' => ['source' => null, 'debug' => '0', 'dryRun' => null, 'pin' => '0', 'acceptNewSha' => '0', 'allowDowngrade' => '0']],
+			'unknown parameter ignored' => ['params' => ['force' => '1']],
+			'everything' => ['params' => ['source' => 'codeberg:acme/notes', 'debug' => 'true', 'dryRun' => '1', 'pin' => 'true', 'acceptNewSha' => 'true', 'allowDowngrade' => '1', 'overridePin' => '1.0.0', 'targetVersion' => '2.2.0']],
+			'not an admin' => ['params' => ['debug' => '1'], 'uid' => 'alice'],
+			'debug as a boolean' => ['params' => ['debug' => true]],
+			'dry run as a number' => ['params' => ['dryRun' => 1]],
+			'source as a list' => ['params' => ['source' => ['github:acme/notes']]],
+			'pin as a boolean' => ['params' => ['pin' => false]],
+			'accept new sha as a number' => ['params' => ['acceptNewSha' => 1.0]],
+			'allow downgrade as a boolean' => ['params' => ['allowDowngrade' => true]],
+			'wrong type from a non-admin' => ['params' => ['debug' => true], 'uid' => 'alice'],
 		];
 	}
 
@@ -79,8 +97,9 @@ final class ApiInstallVersionGoldenTest extends TestCase {
 	public function testCase(string $name): void {
 		$case = self::cases()[$name];
 		$this->installs = [];
-		$response = $this->controller($case['params'] ?? [])->installVersion(...$case['args']);
-		$actual = json_encode(['status' => $response->getStatus(), 'data' => $response->getData(), 'installs' => $this->installs], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+		$request = $this->requestWith(self::ROUTE + $case['params']);
+		$response = $this->dispatch($this->controller($request, $case['uid'] ?? 'admin'), 'installVersion', $request);
+		$actual = json_encode(self::describe($response) + ['installs' => $this->installs], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
 
 		$fixture = is_file(self::FIXTURE) ? (array)json_decode((string)file_get_contents(self::FIXTURE), true, 512, JSON_THROW_ON_ERROR) : [];
 		if (getenv('RECORD_GOLDEN') === '1') {
@@ -93,14 +112,9 @@ final class ApiInstallVersionGoldenTest extends TestCase {
 		$this->assertSame($fixture[$name], $actual);
 	}
 
-	/**
-	 * @param array<string, mixed> $params
-	 */
-	private function controller(array $params): ApiController {
-		$request = $this->createMock(IRequest::class);
-		$request->method('getParam')->willReturnCallback(static fn (string $key, mixed $default = null): mixed => $params[$key] ?? $default);
+	private function controller(IRequest $request, string $uid): ApiController {
 		$user = $this->createMock(IUser::class);
-		$user->method('getUID')->willReturn('admin');
+		$user->method('getUID')->willReturn($uid);
 		$session = $this->createMock(IUserSession::class);
 		$session->method('getUser')->willReturn($user);
 		$groupManager = $this->createMock(IGroupManager::class);
