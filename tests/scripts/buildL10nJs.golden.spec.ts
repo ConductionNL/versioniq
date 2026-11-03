@@ -162,6 +162,10 @@ function runCase(spec: Case): object {
 	}
 }
 
+// Each case spawns the script in a child process; on a loaded machine the
+// cases together can take longer than vitest's 5 s default.
+const GOLDEN_TIMEOUT_MS = 60_000
+
 describe('scripts/build-l10n-js.cjs (golden)', () => {
 	it('matches the recorded runs byte for byte', () => {
 		const actual = Object.fromEntries(
@@ -171,5 +175,5 @@ describe('scripts/build-l10n-js.cjs (golden)', () => {
 			fs.writeFileSync(GOLDEN, JSON.stringify(actual, null, '\t') + '\n')
 		}
 		expect(actual).toEqual(JSON.parse(fs.readFileSync(GOLDEN, 'utf8')))
-	})
+	}, GOLDEN_TIMEOUT_MS)
 })

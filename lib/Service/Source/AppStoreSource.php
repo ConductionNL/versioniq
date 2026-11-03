@@ -14,6 +14,7 @@ namespace OCA\Versioniq\Service\Source;
 
 use Exception;
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Advisory\AdvisoryClauses;
 use OCA\Versioniq\Service\Advisory\AdvisorySeverity;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
@@ -34,6 +35,7 @@ use UnexpectedValueException;
  * to `SelectedReleaseInstallerService`, not the external installer.
  *
  * @psalm-api
+ * @psalm-type VersionEntry = array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string}
  */
 class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	public const DEFAULT_API_BASE = 'https://garm3.nextcloud.com/api/v1';
@@ -204,44 +206,39 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 		$advisories = [];
 		/** @var mixed $entry */
 		foreach ($raw as $entry) {
-			if (!is_array($entry)) {
-				continue;
+			$advisory = is_array($entry) ? self::advisoryFrom($entry) : null;
+			if ($advisory !== null) {
+				$advisories[] = $advisory;
 			}
-			/** @var mixed $id */
-			$id = $entry['id'] ?? $entry['ghsa_id'] ?? null;
-			if (!is_string($id) || $id === '') {
-				continue;
-			}
-			/** @var mixed $severity */
-			$severity = $entry['severity'] ?? null;
-			$summary = $entry['summary'] ?? ($entry['title'] ?? '');
-			$affected = [];
-			/** @var mixed $affectedRaw */
-			$affectedRaw = $entry['affected'] ?? $entry['affectedVersions'] ?? [];
-			if (is_string($affectedRaw)) {
-				$affectedRaw = array_map('trim', explode(',', $affectedRaw));
-			}
-			if (is_array($affectedRaw)) {
-				/** @var mixed $clause */
-				foreach ($affectedRaw as $clause) {
-					if (is_string($clause) && trim($clause) !== '') {
-						$affected[] = trim($clause);
-					}
-				}
-			}
-			/** @var mixed $patched */
-			$patched = $entry['firstPatchedVersion'] ?? $entry['first_patched_version'] ?? null;
-
-			$advisories[] = [
-				'id' => $id,
-				'severity' => AdvisorySeverity::normalize($severity),
-				'summary' => is_string($summary) ? $summary : '',
-				'affected' => $affected,
-				'firstPatchedVersion' => is_string($patched) && $patched !== '' ? $patched : null,
-			];
 		}
 
 		return $advisories;
+	}
+
+	/**
+	 * One App Store advisory entry as an advisory record, or null without an id.
+	 *
+	 * @param array<array-key, mixed> $entry
+	 * @return array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string}|null
+	 */
+	private static function advisoryFrom(array $entry): ?array {
+		/** @var mixed $id */
+		$id = $entry['id'] ?? $entry['ghsa_id'] ?? null;
+		if (!is_string($id) || $id === '') {
+			return null;
+		}
+		/** @var mixed $summary */
+		$summary = $entry['summary'] ?? ($entry['title'] ?? '');
+		/** @var mixed $patched */
+		$patched = $entry['firstPatchedVersion'] ?? $entry['first_patched_version'] ?? null;
+
+		return [
+			'id' => $id,
+			'severity' => AdvisorySeverity::normalize($entry['severity'] ?? null),
+			'summary' => is_string($summary) ? $summary : '',
+			'affected' => AdvisoryClauses::from($entry['affected'] ?? $entry['affectedVersions'] ?? []),
+			'firstPatchedVersion' => is_string($patched) && $patched !== '' ? $patched : null,
+		];
 	}
 
 	/**
@@ -516,35 +513,35 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 * @param array<array-key, mixed> $decoded A decoded catalogue response.
 	 */
 	private function cacheCatalogueEntries(array $decoded): void {
-		$entries = null;
+		/** @var mixed $entry */
+		foreach ($this->catalogueEntries($decoded) ?? [] as $entry) {
+			/** @var mixed $id */
+			$id = is_array($entry) ? ($entry['id'] ?? null) : null;
+			if (is_string($id) && $id !== '') {
+				/** @var array<array-key, mixed> $entry */
+				$this->writeCachedPayload($id, $entry);
+			}
+		}
+	}
+
+	/**
+	 * The app list of a catalogue response: its `data` list, the response
+	 * itself when it is a list, or its `apps` list; null when it has none.
+	 *
+	 * @param array<array-key, mixed> $decoded
+	 * @return list<mixed>|null
+	 */
+	private function catalogueEntries(array $decoded): ?array {
 		$data = $this->arrayField($decoded, 'data');
 		if ($data !== null && array_is_list($data)) {
-			$entries = $data;
-		} elseif (array_is_list($decoded)) {
-			$entries = $decoded;
-		} else {
-			$apps = $this->arrayField($decoded, 'apps');
-			if ($apps !== null && array_is_list($apps)) {
-				$entries = $apps;
-			}
+			return $data;
 		}
+		if (array_is_list($decoded)) {
+			return $decoded;
+		}
+		$apps = $this->arrayField($decoded, 'apps');
 
-		if ($entries === null) {
-			return;
-		}
-
-		/** @var mixed $entry */
-		foreach ($entries as $entry) {
-			if (!is_array($entry)) {
-				continue;
-			}
-			/** @var mixed $id */
-			$id = $entry['id'] ?? null;
-			if (!is_string($id) || $id === '') {
-				continue;
-			}
-			$this->writeCachedPayload($id, $entry);
-		}
+		return $apps !== null && array_is_list($apps) ? $apps : null;
 	}
 
 	private function findById(array $entries, string $appId): ?array {
@@ -568,6 +565,17 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 				return false;
 			}
 		}
+
+		return self::statedNextPage($payload) ?? $this->hasEntries($payload);
+	}
+
+	/**
+	 * What the response itself says about a next page, in the shapes the App
+	 * Store and its mirrors use; null when it says nothing.
+	 *
+	 * @param array<array-key, mixed> $payload
+	 */
+	private static function statedNextPage(array $payload): ?bool {
 		if (isset($payload['pages']['next']) && is_bool($payload['pages']['next'])) {
 			return $payload['pages']['next'];
 		}
@@ -577,16 +585,23 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 		if (isset($payload['nextPage']) && is_string($payload['nextPage'])) {
 			return $payload['nextPage'] !== '';
 		}
+
+		return null;
+	}
+
+	/**
+	 * Whether the page carried any apps, which is the only hint left.
+	 *
+	 * @param array<array-key, mixed> $payload
+	 */
+	private function hasEntries(array $payload): bool {
 		$apps = $this->arrayField($payload, 'apps');
 		if ($apps !== null) {
 			return count($apps) > 0;
 		}
 		$data = $this->arrayField($payload, 'data');
-		if ($data !== null) {
-			return count($data) > 0;
-		}
 
-		return false;
+		return $data !== null && count($data) > 0;
 	}
 
 	private function getPlatformVersion(): string {
@@ -612,65 +627,82 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 * @return list<array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string}>
 	 */
 	private function normalizeVersions(array $releases): array {
-		/** @var array<string, ?string> $changelogsByVersion */
-		$changelogsByVersion = [];
-		/** @var array<string, ?bool> $compatibleByVersion */
-		$compatibleByVersion = [];
-		/** @var array<string, ?string> $releasedAtByVersion */
-		$releasedAtByVersion = [];
 		$serverVersion = $this->getServerVersion();
-		$order = [];
+		/** @var array<string, VersionEntry> $byVersion */
+		$byVersion = [];
 		/** @var mixed $release */
 		foreach ($releases as $release) {
-			$compatible = null;
-			$releasedAt = null;
-			if (is_string($release)) {
-				$version = $release;
-				$changelog = null;
-			} elseif (is_array($release)) {
-				/** @var mixed $version */
-				$version = $release['version'] ?? $release['ver'] ?? $release['name'] ?? $release['tag_name'] ?? null;
-				if (!is_string($version) || $version === '') {
-					continue;
-				}
-				$changelog = $this->extractChangelog($release);
-				/** @var mixed $spec */
-				$spec = $release['platformVersionSpec'] ?? null;
-				$compatible = is_string($spec) ? self::satisfiesPlatformSpec($serverVersion, $spec) : null;
-				$releasedAt = ReleaseDate::normalize($release['created'] ?? null);
-			} else {
-				continue;
-			}
-
-			if (!array_key_exists($version, $changelogsByVersion)) {
-				$order[] = $version;
-				$changelogsByVersion[$version] = $changelog;
-				$compatibleByVersion[$version] = $compatible;
-				$releasedAtByVersion[$version] = $releasedAt;
-			} else {
-				if ($changelogsByVersion[$version] === null && $changelog !== null) {
-					$changelogsByVersion[$version] = $changelog;
-				}
-				if ($compatibleByVersion[$version] === null && $compatible !== null) {
-					$compatibleByVersion[$version] = $compatible;
-				}
-				if ($releasedAtByVersion[$version] === null && $releasedAt !== null) {
-					$releasedAtByVersion[$version] = $releasedAt;
-				}
+			$entry = $this->releaseEntry($release, $serverVersion);
+			if ($entry !== null) {
+				$byVersion[$entry['version']] = self::mergeEntry($byVersion[$entry['version']] ?? null, $entry);
 			}
 		}
 
-		usort($order, static fn (string $a, string $b): int => version_compare($b, $a));
+		$entries = array_values($byVersion);
+		usort($entries, self::newestFirst(...));
 
-		return array_map(
-			static fn (string $version): array => [
-				'version' => $version,
-				'changelog' => $changelogsByVersion[$version],
-				'serverCompatible' => $compatibleByVersion[$version],
-				'releasedAt' => $releasedAtByVersion[$version],
-			],
-			$order
-		);
+		return $entries;
+	}
+
+	/**
+	 * One release entry as a version row, or null when it names no version.
+	 * A bare string is the version itself, with nothing else known.
+	 *
+	 * @return VersionEntry|null
+	 */
+	private function releaseEntry(mixed $release, string $serverVersion): ?array {
+		if (is_string($release)) {
+			return ['version' => $release, 'changelog' => null, 'serverCompatible' => null, 'releasedAt' => null];
+		}
+
+		return is_array($release) ? $this->arrayReleaseEntry($release, $serverVersion) : null;
+	}
+
+	/**
+	 * @return VersionEntry|null
+	 */
+	private function arrayReleaseEntry(array $release, string $serverVersion): ?array {
+		/** @var mixed $version */
+		$version = $release['version'] ?? $release['ver'] ?? $release['name'] ?? $release['tag_name'] ?? null;
+		if (!is_string($version) || $version === '') {
+			return null;
+		}
+		/** @var mixed $spec */
+		$spec = $release['platformVersionSpec'] ?? null;
+
+		return [
+			'version' => $version,
+			'changelog' => $this->extractChangelog($release),
+			'serverCompatible' => is_string($spec) ? self::satisfiesPlatformSpec($serverVersion, $spec) : null,
+			'releasedAt' => ReleaseDate::normalize($release['created'] ?? null),
+		];
+	}
+
+	/**
+	 * @param VersionEntry $a
+	 * @param VersionEntry $b
+	 */
+	private static function newestFirst(array $a, array $b): int {
+		return version_compare($b['version'], $a['version']);
+	}
+
+	/**
+	 * The row for a version listed more than once: the first value of each
+	 * field wins, and a later entry only fills fields still unknown.
+	 *
+	 * @param VersionEntry|null $known
+	 * @param VersionEntry $entry
+	 * @return VersionEntry
+	 */
+	private static function mergeEntry(?array $known, array $entry): array {
+		if ($known === null) {
+			return $entry;
+		}
+		$known['changelog'] ??= $entry['changelog'];
+		$known['serverCompatible'] ??= $entry['serverCompatible'];
+		$known['releasedAt'] ??= $entry['releasedAt'];
+
+		return $known;
 	}
 
 	/**

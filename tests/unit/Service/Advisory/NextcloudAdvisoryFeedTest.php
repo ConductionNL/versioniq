@@ -164,6 +164,23 @@ final class NextcloudAdvisoryFeedTest extends TestCase {
 		self::assertSame(['< 21.0.0', '>= 22.0.0'], $entry['affected']);
 	}
 
+	/**
+	 * A repeated target that brings the first patch fills in the first
+	 * patched version; the summary is carried over as published.
+	 */
+	public function testARepeatedTargetFillsTheFirstPatchedVersion(): void {
+		$body = json_encode([
+			$this->advisory('GHSA-eeee', [
+				['package' => 'Server', 'range' => '< 21.0.0'],
+				['package' => 'Server', 'range' => '>= 22.0.0', 'patched' => '22.2.10'],
+			], 'high', 'Leaks a share link'),
+		], JSON_THROW_ON_ERROR);
+
+		$entry = $this->feed([['body' => $body]])->fetchAll()['advisories'][AdvisoryPackageMap::SERVER][0];
+		self::assertSame('22.2.10', $entry['firstPatchedVersion']);
+		self::assertSame('Leaks a share link', $entry['summary']);
+	}
+
 	// ── Failure modes: an unreachable feed must never read as "nothing found" ──
 
 	public function testReportsAnHttpFailureRatherThanReturningSilence(): void {
@@ -178,6 +195,13 @@ final class NextcloudAdvisoryFeedTest extends TestCase {
 
 		self::assertNotNull($result['error']);
 		self::assertStringContainsString('invalid JSON', $result['error']);
+	}
+
+	public function testReportsAPayloadThatIsNotARecordList(): void {
+		$result = $this->feed([['body' => '"not a list"']])->fetchAll();
+
+		self::assertNotNull($result['error']);
+		self::assertStringContainsString('unexpected payload shape', $result['error']);
 	}
 
 	/**

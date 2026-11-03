@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Installer;
 
+require_once __DIR__ . '/../../Support/AuditArgs.php';
+
 use Error;
 use Exception;
 use OC\Files\FilenameValidator;
@@ -13,6 +15,7 @@ use OCA\Versioniq\Service\Installer\InstallFailure;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
 use OCA\Versioniq\Service\Installer\MigrationDiffer;
 use OCA\Versioniq\Service\SelectedReleaseInstallerService;
+use OCA\Versioniq\Tests\Unit\Support\AuditArgs;
 use OCP\App\AppPathNotFoundException;
 use OCP\App\IAppManager;
 use OCP\Http\Client\IClient;
@@ -727,7 +730,7 @@ final class SelectedReleaseInstallGoldenTest extends TestCase {
 
 		$audit = $this->createMock(AuditLogger::class);
 		$audit->method('record')->willReturnCallback(function (mixed ...$args): void {
-			$this->record('audit.record', $args);
+			$this->record('audit.record', AuditArgs::flatten($args));
 		});
 
 		$differ = $this->createMock(MigrationDiffer::class);

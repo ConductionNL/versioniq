@@ -28,6 +28,7 @@ use Psr\Log\LoggerInterface;
  * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
  *
  * @psalm-api
+ * @psalm-import-type InstalledAppCard from InstallerService
  */
 class AvailabilityService {
 	/** Plain major.minor.patch, the rule CandidateSelector applies. */
@@ -54,86 +55,140 @@ class AvailabilityService {
 		$results = [];
 
 		foreach ($this->installerService->getInstalledApps() as $app) {
-			$appId = $app['id'] ?? '';
-			$installedVersion = $app['installedVersion'] ?? null;
-			if ($appId === '' || ($app['state'] ?? '') === 'notInstalled' || !is_string($installedVersion) || $installedVersion === '') {
+			$installedVersion = $this->checkableVersion($app);
+			if ($installedVersion === null) {
 				continue;
 			}
-			if (!$this->installerService->isManageableApp($appId)) {
-				continue;
-			}
-
-			$pinned = $this->pinStore->get($appId) !== null;
+			$appId = $app['id'];
 			$boundSourceId = is_string($app['boundSourceId'] ?? null) ? $app['boundSourceId'] : null;
-
-			if (microtime(true) >= $deadline) {
-				$results[$appId] = $this->entry($installedVersion, [], $pinned, $boundSourceId, 'The update check ran out of time before it reached this app.');
-				continue;
-			}
-
-			try {
-				$listing = $this->installerService->getAppVersions($appId);
-			} catch (\Throwable $error) {
-				$this->logger->warning('AvailabilityService: listing versions failed', ['app' => $appId, 'message' => $error->getMessage()]);
-				$results[$appId] = $this->entry($installedVersion, [], $pinned, $boundSourceId, $error->getMessage());
-				continue;
-			}
-
-			$sourceId = is_string($listing['sourceId'] ?? null) ? $listing['sourceId'] : $boundSourceId;
-			$error = ($listing['hasError'] ?? false) === true
-				? ($listing['error'] ?? 'The source did not answer.')
-				: null;
-			$versions = $error === null && is_array($listing['availableVersions'] ?? null) ? $listing['availableVersions'] : [];
-
-			$results[$appId] = $this->entry($installedVersion, $versions, $pinned, $sourceId, $error);
+			$check = new AppVersionCheck($installedVersion, $this->pinStore->get($appId) !== null, $boundSourceId);
+			$results[$appId] = microtime(true) >= $deadline
+				? $this->entry($check, [], 'The update check ran out of time before it reached this app.')
+				: $this->listedEntry($appId, $check);
 		}
 
 		return $results;
 	}
 
 	/**
+	 * The installed version of an app the sweep checks, or null for an app
+	 * it skips: not installed, without a version, or not manageable.
+	 *
+	 * @param InstalledAppCard $app
+	 */
+	private function checkableVersion(array $app): ?string {
+		$appId = $app['id'] ?? '';
+		$installedVersion = $app['installedVersion'] ?? null;
+		if ($appId === '' || ($app['state'] ?? '') === 'notInstalled' || !is_string($installedVersion) || $installedVersion === '') {
+			return null;
+		}
+
+		return $this->installerService->isManageableApp($appId) ? $installedVersion : null;
+	}
+
+	/**
+	 * The row for an app from its source's version listing; a listing that
+	 * fails or reports an error is recorded as that error.
+	 *
+	 * @return array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string}
+	 */
+	private function listedEntry(string $appId, AppVersionCheck $check): array {
+		try {
+			$listing = $this->installerService->getAppVersions($appId);
+		} catch (\Throwable $error) {
+			$this->logger->warning('AvailabilityService: listing versions failed', ['app' => $appId, 'message' => $error->getMessage()]);
+
+			return $this->entry($check, [], $error->getMessage());
+		}
+
+		$error = ($listing['hasError'] ?? false) === true
+			? ($listing['error'] ?? 'The source did not answer.')
+			: null;
+		$versions = $error === null && is_array($listing['availableVersions'] ?? null) ? $listing['availableVersions'] : [];
+		$sourceId = is_string($listing['sourceId'] ?? null) ? $listing['sourceId'] : $check->sourceId;
+
+		return $this->entry($check->withSource($sourceId), $versions, $error);
+	}
+
+	/**
 	 * @param list<array<string, mixed>> $versions
 	 * @return array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string}
 	 */
-	private function entry(string $installedVersion, array $versions, bool $pinned, ?string $sourceId, ?string $error): array {
+	private function entry(AppVersionCheck $check, array $versions, ?string $error): array {
+		$installedParts = $this->parse($check->installedVersion);
+		[$newest, $newestCompatible, $linesBehind] = $this->scanVersions($versions, $installedParts);
+
+		return [
+			'installedVersion' => $check->installedVersion,
+			'newestVersion' => $newest,
+			'newestCompatibleVersion' => $newestCompatible,
+			'linesBehind' => $linesBehind,
+			'updateAvailable' => $installedParts !== null && $newestCompatible !== null && version_compare($newestCompatible, $check->installedVersion, '>'),
+			'pinned' => $check->pinned,
+			'sourceId' => $check->sourceId,
+			'error' => $error,
+		];
+	}
+
+	/**
+	 * The newest version, the newest the server can run, and how many release
+	 * lines newer than the installed one the compatible versions span.
+	 *
+	 * @param list<array<string, mixed>> $versions
+	 * @param array{0: int, 1: int, 2: int}|null $installedParts
+	 * @return array{0: ?string, 1: ?string, 2: int}
+	 */
+	private function scanVersions(array $versions, ?array $installedParts): array {
 		$newest = null;
 		$newestCompatible = null;
 		/** @var array<string, true> $lines */
 		$lines = [];
-		$installedParts = $this->parse($installedVersion);
-
-		foreach ($versions as $entry) {
-			$version = is_string($entry['version'] ?? null) ? trim((string)$entry['version']) : '';
-			$parts = $this->parse($version);
-			if ($parts === null) {
-				continue;
-			}
-			if ($newest === null || version_compare($version, $newest, '>')) {
-				$newest = $version;
-			}
+		foreach ($this->parsedVersions($versions) as [$version, $parts, $compatible]) {
+			$newest = self::newer($version, $newest);
 			// A version the server cannot run is never an update: installing
 			// it would be refused (SelectedReleaseInstallerService checks it).
-			if (($entry['serverCompatible'] ?? null) === false) {
+			if (!$compatible) {
 				continue;
 			}
-			if ($newestCompatible === null || version_compare($version, $newestCompatible, '>')) {
-				$newestCompatible = $version;
-			}
-			if ($installedParts !== null && ($parts[0] > $installedParts[0] || ($parts[0] === $installedParts[0] && $parts[1] > $installedParts[1]))) {
+			$newestCompatible = self::newer($version, $newestCompatible);
+			if (self::isNewerLine($parts, $installedParts)) {
 				$lines[$parts[0] . '.' . $parts[1]] = true;
 			}
 		}
 
-		return [
-			'installedVersion' => $installedVersion,
-			'newestVersion' => $newest,
-			'newestCompatibleVersion' => $newestCompatible,
-			'linesBehind' => count($lines),
-			'updateAvailable' => $installedParts !== null && $newestCompatible !== null && version_compare($newestCompatible, $installedVersion, '>'),
-			'pinned' => $pinned,
-			'sourceId' => $sourceId,
-			'error' => $error,
-		];
+		return [$newest, $newestCompatible, count($lines)];
+	}
+
+	/**
+	 * Each listed version that parses, with its parts and whether the server
+	 * may run it (unknown counts as yes), in listing order.
+	 *
+	 * @param list<array<string, mixed>> $versions
+	 * @return list<array{0: string, 1: array{0: int, 1: int, 2: int}, 2: bool}>
+	 */
+	private function parsedVersions(array $versions): array {
+		$parsed = [];
+		foreach ($versions as $entry) {
+			$version = is_string($entry['version'] ?? null) ? trim((string)$entry['version']) : '';
+			$parts = $this->parse($version);
+			if ($parts !== null) {
+				$parsed[] = [$version, $parts, ($entry['serverCompatible'] ?? null) !== false];
+			}
+		}
+
+		return $parsed;
+	}
+
+	private static function newer(string $version, ?string $current): string {
+		return $current === null || version_compare($version, $current, '>') ? $version : $current;
+	}
+
+	/**
+	 * @param array{0: int, 1: int, 2: int} $parts
+	 * @param array{0: int, 1: int, 2: int}|null $installed
+	 */
+	private static function isNewerLine(array $parts, ?array $installed): bool {
+		return $installed !== null && ($parts[0] > $installed[0] || ($parts[0] === $installed[0] && $parts[1] > $installed[1]));
 	}
 
 	/**

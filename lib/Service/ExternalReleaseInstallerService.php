@@ -15,7 +15,9 @@ namespace OCA\Versioniq\Service;
 use Exception;
 use OC\Archive\TAR;
 use OC\Archive\ZIP;
+use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Audit\AuditLogger;
+use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCA\Versioniq\Service\Installer\ArchiveCheck;
@@ -514,12 +516,8 @@ class ExternalReleaseInstallerService {
 	private function recordInstallAudit(ExternalInstallRun $run, array $outcome): void {
 		$actorUid = $this->pats->userSession->getUser()?->getUID() ?? 'system';
 		$this->steps->auditLogger->record(
-			$actorUid,
-			$run->request->appId,
-			AuditLogger::OPERATION_INSTALL,
-			$run->fromVersion(),
-			$run->request->version,
-			$run->binding->getId(),
+			new AuditSubject($actorUid, $run->request->appId, AuditLogger::OPERATION_INSTALL),
+			new AuditedVersions($run->fromVersion(), $run->request->version, $run->binding->getId()),
 			$outcome[0],
 			$outcome[1],
 		);

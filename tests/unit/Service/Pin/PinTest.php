@@ -100,4 +100,12 @@ final class PinTest extends TestCase {
 		$this->expectException(InvalidArgumentException::class);
 		Pin::fromArray(['version' => '2.3.0']);
 	}
+
+	public function testFromArrayReadsEmptyOptionalFieldsAsUnset(): void {
+		$pin = Pin::fromArray(['version' => '2.3.0', 'pinnedBy' => 'admin', 'pinnedAt' => '2026-07-01T00:00:00+00:00', 'reason' => '', 'driftedTo' => '', 'driftedAt' => '']);
+
+		$this->assertNull($pin->reason);
+		$this->assertNull($pin->driftedTo);
+		$this->assertNull($pin->driftedAt);
+	}
 }

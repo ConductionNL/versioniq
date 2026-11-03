@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Controller;
 
+require_once __DIR__ . '/../Support/AuditArgs.php';
 require_once __DIR__ . '/../Support/DispatchesLikeNextcloud.php';
 
 use OCA\Versioniq\Controller\SettingsController;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Settings\InstanceSettings;
+use OCA\Versioniq\Tests\Unit\Support\AuditArgs;
 use OCA\Versioniq\Tests\Unit\Support\DispatchesLikeNextcloud;
 use OCP\IAppConfig;
 use OCP\IGroupManager;
@@ -80,7 +82,7 @@ final class SettingsControllerTest extends TestCase {
 
 	public function testUpdateStoresAndAuditsTheChange(): void {
 		$audit = $this->createMock(AuditLogger::class);
-		$audit->expects(self::once())->method('record')->with('admin', 'versioniq', AuditLogger::OPERATION_SETTINGS);
+		$audit->expects(self::once())->method('record')->with(...AuditArgs::expected('admin', 'versioniq', AuditLogger::OPERATION_SETTINGS));
 
 		$request = $this->requestWith(['auditRetentionDays' => '90']);
 		$response = $this->dispatch($this->controller(true, $audit, $request), 'updateInstanceSettings', $request);

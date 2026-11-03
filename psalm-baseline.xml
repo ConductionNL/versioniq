@@ -73,11 +73,6 @@
       <code><![CDATA[array_values]]></code>
     </RedundantFunctionCall>
   </file>
-  <file src="lib/Service/AutoUpdate/AttemptLedger.php">
-    <MixedAssignment>
-      <code><![CDATA[$entry]]></code>
-    </MixedAssignment>
-  </file>
   <file src="lib/Service/Cache/ArtifactCache.php">
     <DocblockTypeContradiction>
       <code><![CDATA['']]></code>
@@ -144,11 +139,6 @@
       <code><![CDATA[is_array($appInfo) && isset($appInfo['version']) && is_string($appInfo['version'])]]></code>
       <code><![CDATA[is_string($appInfo['version'])]]></code>
     </RedundantConditionGivenDocblockType>
-  </file>
-  <file src="lib/Service/Source/AppStoreSource.php">
-    <MixedAssignment>
-      <code><![CDATA[$summary]]></code>
-    </MixedAssignment>
   </file>
   <file src="lib/Service/Source/ForgeReleaseSource.php">
     <MixedAssignment>

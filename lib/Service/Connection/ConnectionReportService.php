@@ -124,23 +124,30 @@ class ConnectionReportService {
 		if ($httpStatus === null) {
 			return ['error', 'Versioniq could not reach ' . $host . '.'];
 		}
-		if ($httpStatus === 200 && $readable) {
-			return ['configured', $host . ' answered the last request.'];
-		}
 		if ($httpStatus === 200) {
-			return ['error', $host . ' answered with a body Versioniq could not read.'];
+			return $readable
+				? ['configured', $host . ' answered the last request.']
+				: ['error', $host . ' answered with a body Versioniq could not read.'];
 		}
+
+		return self::describeRefusal($host, $httpStatus);
+	}
+
+	/**
+	 * The status and message for a forge answer other than 200; null for a
+	 * 404, which says nothing about the connection.
+	 *
+	 * @return array{0: string, 1: string}|null
+	 */
+	private static function describeRefusal(string $host, int $httpStatus): ?array {
 		if ($httpStatus === 401) {
 			return ['limited', $host . ' refused a saved token. Public repositories still answer without one.'];
 		}
 		if ($httpStatus === 403 || $httpStatus === 429) {
 			return ['limited', $host . ' refused the last request with HTTP ' . $httpStatus . ', usually a rate limit. A token raises the limit.'];
 		}
-		if ($httpStatus === 404) {
-			return null;
-		}
 
-		return ['error', $host . ' answered HTTP ' . $httpStatus . '.'];
+		return $httpStatus === 404 ? null : ['error', $host . ' answered HTTP ' . $httpStatus . '.'];
 	}
 
 	/**

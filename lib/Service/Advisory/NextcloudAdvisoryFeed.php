@@ -14,7 +14,9 @@ namespace OCA\Versioniq\Service\Advisory;
 
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
+use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
+use OCP\Http\Client\IResponse;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -93,64 +95,97 @@ class NextcloudAdvisoryFeed {
 	public function fetchAll(): array {
 		$client = $this->clientService->newClient();
 		$url = $this->feedUrl() . '?per_page=' . self::PER_PAGE;
+		$collected = new FeedCollection();
 
-		$byTarget = [];
-		$seen = [];
-		$pages = 0;
-
-		while ($url !== null && $pages < self::MAX_PAGES) {
-			$pages++;
-			try {
-				$response = $client->get($url, [
-					'timeout' => self::FETCH_TIMEOUT_SECONDS,
-					'headers' => ['Accept' => 'application/vnd.github+json'],
-				]);
-			} catch (Throwable $error) {
-				return $this->partial($byTarget, count($seen), 'Could not read the Nextcloud advisory feed: ' . $error->getMessage());
+		for ($pages = 0; $url !== null && $pages < self::MAX_PAGES; $pages++) {
+			$page = $this->readPage($client, $url);
+			if (is_string($page)) {
+				return $this->partial($collected->byTarget, count($collected->seen), $page);
 			}
-
-			if ($response->getStatusCode() !== 200) {
-				return $this->partial($byTarget, count($seen), 'The Nextcloud advisory feed returned HTTP ' . $response->getStatusCode() . '.');
-			}
-
-			try {
-				/** @var mixed $decoded */
-				$decoded = json_decode((string)$response->getBody(), true, 512, JSON_THROW_ON_ERROR);
-			} catch (\JsonException $error) {
-				return $this->partial($byTarget, count($seen), 'The Nextcloud advisory feed returned invalid JSON: ' . $error->getMessage());
-			}
-			if (!is_array($decoded)) {
-				return $this->partial($byTarget, count($seen), 'The Nextcloud advisory feed returned an unexpected payload shape.');
-			}
-
-			$fresh = 0;
-			/** @var mixed $record */
-			foreach ($decoded as $record) {
-				if (!is_array($record)) {
-					continue;
-				}
-				/** @var mixed $ghsa */
-				$ghsa = $record['ghsa_id'] ?? null;
-				if (!is_string($ghsa) || $ghsa === '' || isset($seen[$ghsa])) {
-					continue;
-				}
-				$seen[$ghsa] = true;
-				$fresh++;
-				foreach ($this->targetsFor($record, $ghsa) as $target => $advisory) {
-					$byTarget[$target][] = $advisory;
-				}
-			}
-
-			$next = $this->nextCursorUrl($response->getHeader('Link'));
+			$fresh = $this->collect($collected, $page[0]);
 			// A page that produced nothing new means the cursor is not moving.
 			// Stopping is what keeps a server-side pagination change from
 			// spinning until MAX_PAGES.
-			$url = ($fresh > 0) ? $next : null;
+			$url = ($fresh > 0) ? $this->nextCursorUrl($page[1]->getHeader('Link')) : null;
 		}
 
-		$this->connectionReports?->advisoryFeedRead(count($seen), null);
+		$this->connectionReports?->advisoryFeedRead(count($collected->seen), null);
 
-		return ['advisories' => $byTarget, 'error' => null];
+		return ['advisories' => $collected->byTarget, 'error' => null];
+	}
+
+	/**
+	 * One page of the feed and its response, or why it could not be read.
+	 *
+	 * @return array{0: array<array-key, mixed>, 1: IResponse}|string
+	 */
+	private function readPage(IClient $client, string $url): array|string {
+		$response = $this->fetchPage($client, $url);
+		if (is_string($response)) {
+			return $response;
+		}
+		$records = $this->decodePage($response);
+
+		return is_string($records) ? $records : [$records, $response];
+	}
+
+	/**
+	 * The response for one page URL, or why the request failed.
+	 */
+	private function fetchPage(IClient $client, string $url): IResponse|string {
+		try {
+			$response = $client->get($url, [
+				'timeout' => self::FETCH_TIMEOUT_SECONDS,
+				'headers' => ['Accept' => 'application/vnd.github+json'],
+			]);
+		} catch (Throwable $error) {
+			return 'Could not read the Nextcloud advisory feed: ' . $error->getMessage();
+		}
+
+		return $response->getStatusCode() === 200
+			? $response
+			: 'The Nextcloud advisory feed returned HTTP ' . $response->getStatusCode() . '.';
+	}
+
+	/**
+	 * The records of one page body, or why the body is not a record list.
+	 *
+	 * @return array<array-key, mixed>|string
+	 */
+	private function decodePage(IResponse $response): array|string {
+		try {
+			/** @var mixed $decoded */
+			$decoded = json_decode((string)$response->getBody(), true, 512, JSON_THROW_ON_ERROR);
+		} catch (\JsonException $error) {
+			return 'The Nextcloud advisory feed returned invalid JSON: ' . $error->getMessage();
+		}
+
+		return is_array($decoded) ? $decoded : 'The Nextcloud advisory feed returned an unexpected payload shape.';
+	}
+
+	/**
+	 * Adds the page's records not seen before to $collected; returns how
+	 * many were new.
+	 *
+	 * @param array<array-key, mixed> $records
+	 */
+	private function collect(FeedCollection $collected, array $records): int {
+		$fresh = 0;
+		/** @var array<array-key, mixed> $record */
+		foreach (array_filter($records, is_array(...)) as $record) {
+			/** @var mixed $ghsa */
+			$ghsa = $record['ghsa_id'] ?? null;
+			if (!is_string($ghsa) || $ghsa === '' || isset($collected->seen[$ghsa])) {
+				continue;
+			}
+			$collected->seen[$ghsa] = true;
+			$fresh++;
+			foreach ($this->targetsFor($record, $ghsa) as $target => $advisory) {
+				$collected->byTarget[$target][] = $advisory;
+			}
+		}
+
+		return $fresh;
 	}
 
 	/**
@@ -170,52 +205,92 @@ class NextcloudAdvisoryFeed {
 			return [];
 		}
 
-		$severity = AdvisorySeverity::normalize($record['severity'] ?? null);
-		$summary = is_string($record['summary'] ?? null) ? (string)$record['summary'] : '';
-
+		$advisory = self::advisoryHeader($record, $ghsa);
 		$targets = [];
 		/** @var mixed $vulnerability */
 		foreach ($vulnerabilities as $vulnerability) {
-			if (!is_array($vulnerability)) {
+			$entry = $this->vulnerabilityEntry($vulnerability);
+			if ($entry === null) {
 				continue;
 			}
-			$package = $vulnerability['package'] ?? null;
-			if (!is_array($package) || !is_string($package['name'] ?? null)) {
-				continue;
-			}
-
-			$target = $this->packageMap->resolve((string)$package['name']);
-			if ($target === null) {
-				continue;
-			}
-
-			$patched = $this->splitList(is_string($vulnerability['patched_versions'] ?? null) ? (string)$vulnerability['patched_versions'] : '');
-			$affected = $this->splitList(is_string($vulnerability['vulnerable_version_range'] ?? null) ? (string)$vulnerability['vulnerable_version_range'] : '');
-
-			if (isset($targets[$target])) {
-				// Same advisory, same target, listed twice: merge the version
-				// information rather than letting the second entry replace the
-				// first and silently drop a branch.
-				$targets[$target]['patchedVersions'] = array_values(array_unique([...$targets[$target]['patchedVersions'], ...$patched]));
-				$targets[$target]['affected'] = array_values(array_unique([...$targets[$target]['affected'], ...$affected]));
-				$targets[$target]['firstPatchedVersion'] = $targets[$target]['patchedVersions'][0] ?? null;
-				continue;
-			}
-
-			$targets[$target] = [
-				'id' => $ghsa,
-				'severity' => $severity,
-				'summary' => $summary,
-				'affected' => $affected,
-				// Kept for the existing contract; `patchedVersions` is what
-				// BranchAwareRange actually evaluates, because one advisory
-				// carries a separate patch per maintenance branch.
-				'firstPatchedVersion' => $patched[0] ?? null,
-				'patchedVersions' => $patched,
-			];
+			$target = $entry['target'];
+			$targets[$target] = isset($targets[$target]) ? self::mergeVersions($targets[$target], $entry) : self::newTarget($advisory, $entry);
 		}
 
 		return $targets;
+	}
+
+	/**
+	 * The target and version lists one vulnerability entry names, or null
+	 * when it names no package this instance can act on.
+	 *
+	 * @return array{target: string, affected: list<string>, patched: list<string>}|null
+	 */
+	private function vulnerabilityEntry(mixed $vulnerability): ?array {
+		$package = is_array($vulnerability) ? ($vulnerability['package'] ?? null) : null;
+		if (!is_array($package) || !is_string($package['name'] ?? null)) {
+			return null;
+		}
+		$target = $this->packageMap->resolve((string)$package['name']);
+		if ($target === null) {
+			return null;
+		}
+		/** @var array<array-key, mixed> $vulnerability */
+
+		return [
+			'target' => $target,
+			'affected' => $this->splitList(is_string($vulnerability['vulnerable_version_range'] ?? null) ? (string)$vulnerability['vulnerable_version_range'] : ''),
+			'patched' => $this->splitList(is_string($vulnerability['patched_versions'] ?? null) ? (string)$vulnerability['patched_versions'] : ''),
+		];
+	}
+
+	/**
+	 * The id, severity and summary every target of one GHSA record shares.
+	 *
+	 * @param array<array-key, mixed> $record
+	 * @return array{id: string, severity: string, summary: string}
+	 */
+	private static function advisoryHeader(array $record, string $ghsa): array {
+		return [
+			'id' => $ghsa,
+			'severity' => AdvisorySeverity::normalize($record['severity'] ?? null),
+			'summary' => is_string($record['summary'] ?? null) ? (string)$record['summary'] : '',
+		];
+	}
+
+	/**
+	 * The advisory record for a target named once so far.
+	 *
+	 * @param array{id: string, severity: string, summary: string} $advisory
+	 * @param array{target: string, affected: list<string>, patched: list<string>} $entry
+	 * @return array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}
+	 */
+	private static function newTarget(array $advisory, array $entry): array {
+		return $advisory + [
+			'affected' => $entry['affected'],
+			// Kept for the existing contract; `patchedVersions` is what
+			// BranchAwareRange actually evaluates, because one advisory
+			// carries a separate patch per maintenance branch.
+			'firstPatchedVersion' => $entry['patched'][0] ?? null,
+			'patchedVersions' => $entry['patched'],
+		];
+	}
+
+	/**
+	 * Same advisory, same target, listed twice: the version information is
+	 * merged rather than the second entry replacing the first and silently
+	 * dropping a branch.
+	 *
+	 * @param array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>} $known
+	 * @param array{target: string, affected: list<string>, patched: list<string>} $entry
+	 * @return array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}
+	 */
+	private static function mergeVersions(array $known, array $entry): array {
+		$known['patchedVersions'] = array_values(array_unique([...$known['patchedVersions'], ...$entry['patched']]));
+		$known['affected'] = array_values(array_unique([...$known['affected'], ...$entry['affected']]));
+		$known['firstPatchedVersion'] = $known['patchedVersions'][0] ?? null;
+
+		return $known;
 	}
 
 	/**

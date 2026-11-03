@@ -77,6 +77,36 @@ class FailureClassifier {
 	public const STAGE_FILESYSTEM_UPDATED = 'filesystem-updated';
 	public const STAGE_FINALIZE = 'finalize';
 
+	/**
+	 * Message phrases per category, checked in this order; the first phrase
+	 * found in the (lower-cased) message decides.
+	 *
+	 * Filesystem-operation failures (backup rename, destination mkdir) happen
+	 * *after* the pre-flight writability guard already passed, so they come
+	 * after the permission phrases and are not reported as a preflight
+	 * permission problem: that would tell the admin to fix permissions the
+	 * guard already confirmed are correct.
+	 */
+	private const MESSAGE_CATEGORIES = [
+		[self::CATEGORY_INCOMPATIBLE, ['not compatible']],
+		[self::CATEGORY_APPID_MISMATCH, ['app id', 'appid']],
+		[self::CATEGORY_VERSION_MISMATCH, ['version does not match', 'declares version', 'version is missing']],
+		[self::CATEGORY_CHECKSUM_MISMATCH, ['sha-256', 'checksum']],
+		[self::CATEGORY_DOWNLOAD, ['download']],
+		[self::CATEGORY_EXTRACT, ['extract']],
+		[self::CATEGORY_PREFLIGHT_PERMISSION, ['permission', 'not writable', 'cannot write']],
+		[self::CATEGORY_FILESYSTEM, ['backup existing app folder', 'create app destination folder', 'resolve app install folder']],
+	];
+
+	/** The category for an opaque message, by the last stage reached. */
+	private const STAGE_CATEGORIES = [
+		self::STAGE_REQUESTED => self::CATEGORY_DOWNLOAD,
+		self::STAGE_DOWNLOADED => self::CATEGORY_CHECKSUM_MISMATCH,
+		self::STAGE_CHECKSUM => self::CATEGORY_EXTRACT,
+		self::STAGE_FILESYSTEM_UPDATED => self::CATEGORY_FINALIZE,
+		self::STAGE_FINALIZE => self::CATEGORY_FINALIZE,
+	];
+
 	private ?IL10N $l = null;
 
 	public function __construct(
@@ -115,47 +145,21 @@ class FailureClassifier {
 	 *
 	 * Message inspection is primary because the installers throw consistent,
 	 * descriptive messages; the breadcrumb stage is a secondary tie-breaker.
+	 *
+	 * @spec openspec/specs/version-management/spec.md
 	 */
 	public function categoryFor(Throwable $error, ?string $lastStage = null): string {
 		$message = strtolower($error->getMessage());
-
-		if (str_contains($message, 'not compatible')) {
-			return self::CATEGORY_INCOMPATIBLE;
-		}
-		if (str_contains($message, 'app id') || str_contains($message, 'appid')) {
-			return self::CATEGORY_APPID_MISMATCH;
-		}
-		if (str_contains($message, 'version does not match') || str_contains($message, 'declares version') || str_contains($message, 'version is missing')) {
-			return self::CATEGORY_VERSION_MISMATCH;
-		}
-		if (str_contains($message, 'sha-256') || str_contains($message, 'checksum')) {
-			return self::CATEGORY_CHECKSUM_MISMATCH;
-		}
-		if (str_contains($message, 'download')) {
-			return self::CATEGORY_DOWNLOAD;
-		}
-		if (str_contains($message, 'extract')) {
-			return self::CATEGORY_EXTRACT;
-		}
-		if (str_contains($message, 'permission') || str_contains($message, 'not writable') || str_contains($message, 'cannot write')) {
-			return self::CATEGORY_PREFLIGHT_PERMISSION;
-		}
-		// Filesystem-operation failures (backup rename, destination mkdir) happen
-		// *after* the pre-flight writability guard already passed, so they must not
-		// be reported as a preflight-permission problem — that would tell the admin
-		// to fix permissions the guard already confirmed are correct.
-		if (str_contains($message, 'backup existing app folder') || str_contains($message, 'create app destination folder') || str_contains($message, 'resolve app install folder')) {
-			return self::CATEGORY_FILESYSTEM;
+		foreach (self::MESSAGE_CATEGORIES as [$category, $phrases]) {
+			foreach ($phrases as $phrase) {
+				if (str_contains($message, $phrase)) {
+					return $category;
+				}
+			}
 		}
 
 		// Fall back to the last reached stage when the message is opaque.
-		return match ($lastStage) {
-			self::STAGE_REQUESTED => self::CATEGORY_DOWNLOAD,
-			self::STAGE_DOWNLOADED => self::CATEGORY_CHECKSUM_MISMATCH,
-			self::STAGE_CHECKSUM => self::CATEGORY_EXTRACT,
-			self::STAGE_FILESYSTEM_UPDATED, self::STAGE_FINALIZE => self::CATEGORY_FINALIZE,
-			default => self::CATEGORY_UNKNOWN,
-		};
+		return self::STAGE_CATEGORIES[$lastStage ?? ''] ?? self::CATEGORY_UNKNOWN;
 	}
 
 	/**

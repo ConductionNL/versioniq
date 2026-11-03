@@ -57,19 +57,15 @@ class AuditLogger {
 	 * @spec openspec/specs/version-pinning/spec.md
 	 */
 	public function record(
-		string $actorUid,
-		string $appId,
-		string $operation,
-		?string $fromVersion,
-		?string $toVersion,
-		?string $sourceId,
+		AuditSubject $subject,
+		AuditedVersions $versions,
 		string $status,
 		?string $message = null,
 	): void {
-		if (preg_match(self::OPERATION_PATTERN, $operation) !== 1) {
+		if (preg_match(self::OPERATION_PATTERN, $subject->operation) !== 1) {
 			$this->logger->warning('AuditLogger: rejected malformed operation name, entry not recorded', [
-				'appId' => $appId,
-				'operation' => $operation,
+				'appId' => $subject->appId,
+				'operation' => $subject->operation,
 			]);
 
 			return;
@@ -77,12 +73,12 @@ class AuditLogger {
 
 		try {
 			$entry = new AuditEntry();
-			$entry->setActorUid($actorUid);
-			$entry->setAppId($appId);
-			$entry->setOperation($operation);
-			$entry->setFromVersion($fromVersion === '' ? null : $fromVersion);
-			$entry->setToVersion($toVersion === '' ? null : $toVersion);
-			$entry->setSourceId($sourceId === '' ? null : $sourceId);
+			$entry->setActorUid($subject->actorUid);
+			$entry->setAppId($subject->appId);
+			$entry->setOperation($subject->operation);
+			$entry->setFromVersion($versions->fromVersion === '' ? null : $versions->fromVersion);
+			$entry->setToVersion($versions->toVersion === '' ? null : $versions->toVersion);
+			$entry->setSourceId($versions->sourceId === '' ? null : $versions->sourceId);
 			$entry->setStatus($status);
 			$entry->setMessage($this->sanitizeMessage($message));
 			$entry->setCreatedAt($this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'));
@@ -94,8 +90,8 @@ class AuditLogger {
 			// bug into an outage. See design.md "Write path: best-effort by
 			// construction".
 			$this->logger->error('AuditLogger: failed to record audit entry', [
-				'appId' => $appId,
-				'operation' => $operation,
+				'appId' => $subject->appId,
+				'operation' => $subject->operation,
 				'message' => $error->getMessage(),
 			]);
 		}

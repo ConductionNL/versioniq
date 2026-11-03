@@ -109,6 +109,53 @@ class InstanceSettings {
 	 * @throws InvalidArgumentException when any field is out of range or not an acceptable URL
 	 */
 	public function update(array $fields): array {
+		// Every field is validated before anything is written, so a refusal
+		// leaves the stored settings as they were.
+		$ints = $this->validatedInts($fields);
+		$lagLimit = $this->validatedLagLimit($fields);
+		$urls = $this->validatedUrls($fields);
+
+		$this->storeInts($ints);
+		if ($lagLimit !== null) {
+			$this->storeOrClear(self::KEY_MAX_LINES_BEHIND, $lagLimit);
+		}
+		foreach ($urls as $key => $value) {
+			$this->storeOrClear($key, $value);
+		}
+
+		return self::appliedFields($fields);
+	}
+
+	/**
+	 * The names of the known fields present in $fields, in form order.
+	 *
+	 * @param array<string, string> $fields
+	 * @return list<string>
+	 */
+	private static function appliedFields(array $fields): array {
+		return array_values(array_filter(
+			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS)],
+			static fn (string $field): bool => isset($fields[$field]),
+		));
+	}
+
+	/**
+	 * @param array<string, int> $ints
+	 */
+	private function storeInts(array $ints): void {
+		foreach ($ints as $key => $value) {
+			$this->config->setValueInt(Application::APP_ID, $key, $value);
+		}
+	}
+
+	/**
+	 * The integer settings among $fields, by config key.
+	 *
+	 * @param array<string, string> $fields
+	 * @return array<string, int>
+	 * @throws InvalidArgumentException when a value is out of range
+	 */
+	private function validatedInts(array $fields): array {
 		$ints = [];
 		if (isset($fields['auditRetentionDays'])) {
 			$ints[PruneAuditJob::CONFIG_KEY_RETENTION_DAYS] = $this->intInRange(
@@ -122,13 +169,33 @@ class InstanceSettings {
 			$ints[ArtifactCache::CONFIG_KEEP] = $this->intInRange($fields['artifactCacheKeep'], 0, self::MAX_CACHE_KEEP, 'The number of cached versions');
 		}
 
-		$lagLimit = null;
-		if (isset($fields['maxLinesBehind'])) {
-			$lagLimit = trim($fields['maxLinesBehind']) === ''
-				? ''
-				: (string)$this->intInRange($fields['maxLinesBehind'], 0, self::MAX_LINES_BEHIND, 'The number of releases an app may fall behind');
+		return $ints;
+	}
+
+	/**
+	 * The lag limit to store, '' to clear it, or null when it is not given.
+	 *
+	 * @param array<string, string> $fields
+	 * @throws InvalidArgumentException when the value is out of range
+	 */
+	private function validatedLagLimit(array $fields): ?string {
+		if (!isset($fields['maxLinesBehind'])) {
+			return null;
 		}
 
+		return trim($fields['maxLinesBehind']) === ''
+			? ''
+			: (string)$this->intInRange($fields['maxLinesBehind'], 0, self::MAX_LINES_BEHIND, 'The number of releases an app may fall behind');
+	}
+
+	/**
+	 * The URL overrides among $fields, by config key; '' clears one.
+	 *
+	 * @param array<string, string> $fields
+	 * @return array<string, string>
+	 * @throws InvalidArgumentException when a value is not an acceptable URL
+	 */
+	private function validatedUrls(array $fields): array {
 		$urls = [];
 		foreach (self::URL_FIELDS as $field => [$key, $httpsOnly]) {
 			if (isset($fields[$field])) {
@@ -136,26 +203,18 @@ class InstanceSettings {
 			}
 		}
 
-		foreach ($ints as $key => $value) {
-			$this->config->setValueInt(Application::APP_ID, $key, $value);
-		}
-		if ($lagLimit === '') {
-			$this->config->deleteKey(Application::APP_ID, self::KEY_MAX_LINES_BEHIND);
-		} elseif ($lagLimit !== null) {
-			$this->config->setValueString(Application::APP_ID, self::KEY_MAX_LINES_BEHIND, $lagLimit);
-		}
-		foreach ($urls as $key => $value) {
-			if ($value === '') {
-				$this->config->deleteKey(Application::APP_ID, $key);
-			} else {
-				$this->config->setValueString(Application::APP_ID, $key, $value);
-			}
-		}
+		return $urls;
+	}
 
-		return array_values(array_filter(
-			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS)],
-			static fn (string $field): bool => isset($fields[$field]),
-		));
+	/**
+	 * Stores $value under $key, or deletes the key when $value is ''.
+	 */
+	private function storeOrClear(string $key, string $value): void {
+		if ($value === '') {
+			$this->config->deleteKey(Application::APP_ID, $key);
+		} else {
+			$this->config->setValueString(Application::APP_ID, $key, $value);
+		}
 	}
 
 	/**
