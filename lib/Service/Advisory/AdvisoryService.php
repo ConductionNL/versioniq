@@ -440,37 +440,62 @@ class AdvisoryService {
 	 * @param list<string> $availableVersions
 	 */
 	private function nearestResolving(string $installedVersion, array $active, array $availableVersions): ?string {
-		$candidates = [];
-		foreach ($availableVersions as $candidate) {
-			if (version_compare($candidate, $installedVersion, '>')) {
-				$candidates[] = $candidate;
-			}
-		}
 		// Fold in any published first-patched versions the source named, even
 		// if they were not in the available-versions list.
-		foreach ($active as $advisory) {
-			$patched = $advisory['firstPatchedVersion'];
-			if (is_string($patched) && $patched !== '' && version_compare($patched, $installedVersion, '>')) {
-				$candidates[] = $patched;
-			}
-		}
-		$candidates = array_values(array_unique($candidates));
-		usort($candidates, static fn (string $a, string $b): int => version_compare($a, $b));
-
-		foreach ($candidates as $candidate) {
-			$stillVulnerable = false;
-			foreach ($active as $advisory) {
-				if ($this->isAffected($candidate, $advisory['affected'])) {
-					$stillVulnerable = true;
-					break;
-				}
-			}
-			if (!$stillVulnerable) {
+		$offered = [...$availableVersions, ...self::firstPatchedVersions($active)];
+		foreach (self::upgradeCandidates($installedVersion, $offered) as $candidate) {
+			if (!$this->affectedByAny($candidate, $active)) {
 				return $candidate;
 			}
 		}
 
 		return null;
+	}
+
+	/**
+	 * The non-empty first-patched versions the advisories publish.
+	 *
+	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>}> $active
+	 * @return list<string>
+	 */
+	private static function firstPatchedVersions(array $active): array {
+		$patched = [];
+		foreach ($active as $advisory) {
+			if (is_string($advisory['firstPatchedVersion']) && $advisory['firstPatchedVersion'] !== '') {
+				$patched[] = $advisory['firstPatchedVersion'];
+			}
+		}
+
+		return $patched;
+	}
+
+	/**
+	 * The distinct versions newer than the installed one, ascending.
+	 *
+	 * @param list<string> $versions
+	 * @return list<string>
+	 */
+	private static function upgradeCandidates(string $installedVersion, array $versions): array {
+		$candidates = array_values(array_unique(array_filter(
+			$versions,
+			static fn (string $candidate): bool => version_compare($candidate, $installedVersion, '>'),
+		)));
+		usort($candidates, static fn (string $a, string $b): int => version_compare($a, $b));
+
+		return $candidates;
+	}
+
+	/**
+	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>}> $active
+	 */
+	private function affectedByAny(string $version, array $active): bool {
+		foreach ($active as $advisory) {
+			if ($this->isAffected($version, $advisory['affected'])) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	private function installedVersion(string $appId): ?string {
