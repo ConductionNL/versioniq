@@ -68,7 +68,7 @@ final class ExternalReleaseInstallerTokenHostTest extends TestCase {
 	 *
 	 * @param array<string, string> $release The resolved release payload.
 	 */
-	private function install(array $release): void {
+	private function install(array $release, string $forge = 'github'): void {
 		$client = $this->createMock(IClient::class);
 		$client->method('get')->willReturnCallback(function (string $url, array $options): never {
 			$this->requests[] = ['url' => $url, 'authorization' => $options['headers']['Authorization'] ?? null];
@@ -88,7 +88,7 @@ final class ExternalReleaseInstallerTokenHostTest extends TestCase {
 		$pat->setId(7);
 		$pat->setOwnerUid('admin');
 		$pat->setTargetPattern('ConductionNL/*');
-		$pat->setForge('github');
+		$pat->setForge($forge);
 		$mapper = $this->createMock(PatMapper::class);
 		$mapper->method('findVisibleTo')->willReturn([$pat]);
 
@@ -124,7 +124,7 @@ final class ExternalReleaseInstallerTokenHostTest extends TestCase {
 		]);
 
 		try {
-			$installer->installFromExternalRelease('privateapp', '1.2.0', $release, SourceBinding::github('ConductionNL', 'privateapp'));
+			$installer->installFromExternalRelease('privateapp', '1.2.0', $release, SourceBinding::release($forge, 'ConductionNL', 'privateapp'));
 		} catch (Throwable) {
 			// Expected: the install stops after the requests under test.
 		}
@@ -186,5 +186,19 @@ final class ExternalReleaseInstallerTokenHostTest extends TestCase {
 		$auth = $this->authByUrl();
 		$this->assertSame('Bearer forge-secret', $auth['https://github.com/ConductionNL/privateapp/releases/download/v1.2.0/privateapp.tar.gz'] ?? 'not requested');
 		$this->assertSame('Bearer forge-secret', $auth['https://github.com/ConductionNL/privateapp/releases/download/v1.2.0/privateapp.tar.gz.sha256'] ?? 'not requested');
+	}
+
+	/**
+	 * A binding on a forge that is not configured has no host to compare the
+	 * URL with, so its token is never sent and the asset is fetched without it.
+	 */
+	public function testAnUnconfiguredForgeFetchesWithoutTheToken(): void {
+		$this->install([
+			'download' => 'https://git.example.org/ConductionNL/privateapp/releases/download/v1.2.0/privateapp.tar.gz',
+		], 'forgejo');
+
+		$auth = $this->authByUrl();
+		$this->assertArrayHasKey('https://git.example.org/ConductionNL/privateapp/releases/download/v1.2.0/privateapp.tar.gz', $auth, 'the asset was never requested');
+		$this->assertNull($auth['https://git.example.org/ConductionNL/privateapp/releases/download/v1.2.0/privateapp.tar.gz']);
 	}
 }
