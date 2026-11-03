@@ -491,16 +491,19 @@ class ApiController extends OCSController {
 		$source = $fields->source;
 		$sourceOverride = ($source !== null && trim($source) !== '') ? trim($source) : null;
 
+		// Read as false, an unknown debug or dryRun would turn a requested dry run into a real install.
+		foreach (['debug' => $fields->debug, 'dryRun' => $fields->dryRun] as $flag => $value) {
+			if ($value !== null && !in_array(strtolower(trim($value)), self::BINARY_FLAGS, true)) {
+				/** @psalm-suppress InvalidReturnStatement Status passthrough, as for the installer's own refusals. */
+				return new DataResponse(['message' => $flag . ' must be 1, true, 0 or false.'], Http::STATUS_BAD_REQUEST);
+			}
+		}
+
 		$includeDebug = $this->readBinaryBool($fields->debug, false);
 
 		// `dryRun` is independent of `debug` — see MODIFIED "Debug Mode". Null
 		// means the caller left it out; see InstallVersionFields::$dryRun.
 		$dryRunSupplied = $fields->dryRun !== null;
-		if ($dryRunSupplied && !in_array(strtolower(trim($fields->dryRun)), self::BINARY_FLAGS, true)) {
-			// Read as false, an unknown value would turn a requested dry run into a real install.
-			/** @psalm-suppress InvalidReturnStatement Status passthrough, as for the installer's own refusals. */
-			return new DataResponse(['message' => 'dryRun must be 1, true, 0 or false.'], Http::STATUS_BAD_REQUEST);
-		}
 		$dryRunFlag = $dryRunSupplied ? $this->readBinaryBool($fields->dryRun, false) : null;
 
 		$overridePinRaw = $this->stringParam('overridePin', '');

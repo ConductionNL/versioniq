@@ -14,6 +14,10 @@ namespace OCA\Versioniq\Http;
 /**
  * The request fields of PUT /api/instance-settings; a field left out (null)
  * leaves that setting alone.
+ *
+ * RequestFields reads the properties by reflection.
+ *
+ * @psalm-api
  */
 final class InstanceSettingsFields extends RequestFields {
 	/** @var string|null Days of history to keep, 30 to 3650 */
