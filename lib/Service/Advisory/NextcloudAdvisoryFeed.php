@@ -14,7 +14,9 @@ namespace OCA\Versioniq\Service\Advisory;
 
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
+use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
+use OCP\Http\Client\IResponse;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -93,64 +95,97 @@ class NextcloudAdvisoryFeed {
 	public function fetchAll(): array {
 		$client = $this->clientService->newClient();
 		$url = $this->feedUrl() . '?per_page=' . self::PER_PAGE;
+		$collected = new FeedCollection();
 
-		$byTarget = [];
-		$seen = [];
-		$pages = 0;
-
-		while ($url !== null && $pages < self::MAX_PAGES) {
-			$pages++;
-			try {
-				$response = $client->get($url, [
-					'timeout' => self::FETCH_TIMEOUT_SECONDS,
-					'headers' => ['Accept' => 'application/vnd.github+json'],
-				]);
-			} catch (Throwable $error) {
-				return $this->partial($byTarget, count($seen), 'Could not read the Nextcloud advisory feed: ' . $error->getMessage());
+		for ($pages = 0; $url !== null && $pages < self::MAX_PAGES; $pages++) {
+			$page = $this->readPage($client, $url);
+			if (is_string($page)) {
+				return $this->partial($collected->byTarget, count($collected->seen), $page);
 			}
-
-			if ($response->getStatusCode() !== 200) {
-				return $this->partial($byTarget, count($seen), 'The Nextcloud advisory feed returned HTTP ' . $response->getStatusCode() . '.');
-			}
-
-			try {
-				/** @var mixed $decoded */
-				$decoded = json_decode((string)$response->getBody(), true, 512, JSON_THROW_ON_ERROR);
-			} catch (\JsonException $error) {
-				return $this->partial($byTarget, count($seen), 'The Nextcloud advisory feed returned invalid JSON: ' . $error->getMessage());
-			}
-			if (!is_array($decoded)) {
-				return $this->partial($byTarget, count($seen), 'The Nextcloud advisory feed returned an unexpected payload shape.');
-			}
-
-			$fresh = 0;
-			/** @var mixed $record */
-			foreach ($decoded as $record) {
-				if (!is_array($record)) {
-					continue;
-				}
-				/** @var mixed $ghsa */
-				$ghsa = $record['ghsa_id'] ?? null;
-				if (!is_string($ghsa) || $ghsa === '' || isset($seen[$ghsa])) {
-					continue;
-				}
-				$seen[$ghsa] = true;
-				$fresh++;
-				foreach ($this->targetsFor($record, $ghsa) as $target => $advisory) {
-					$byTarget[$target][] = $advisory;
-				}
-			}
-
-			$next = $this->nextCursorUrl($response->getHeader('Link'));
+			$fresh = $this->collect($collected, $page[0]);
 			// A page that produced nothing new means the cursor is not moving.
 			// Stopping is what keeps a server-side pagination change from
 			// spinning until MAX_PAGES.
-			$url = ($fresh > 0) ? $next : null;
+			$url = ($fresh > 0) ? $this->nextCursorUrl($page[1]->getHeader('Link')) : null;
 		}
 
-		$this->connectionReports?->advisoryFeedRead(count($seen), null);
+		$this->connectionReports?->advisoryFeedRead(count($collected->seen), null);
 
-		return ['advisories' => $byTarget, 'error' => null];
+		return ['advisories' => $collected->byTarget, 'error' => null];
+	}
+
+	/**
+	 * One page of the feed and its response, or why it could not be read.
+	 *
+	 * @return array{0: array<array-key, mixed>, 1: IResponse}|string
+	 */
+	private function readPage(IClient $client, string $url): array|string {
+		$response = $this->fetchPage($client, $url);
+		if (is_string($response)) {
+			return $response;
+		}
+		$records = $this->decodePage($response);
+
+		return is_string($records) ? $records : [$records, $response];
+	}
+
+	/**
+	 * The response for one page URL, or why the request failed.
+	 */
+	private function fetchPage(IClient $client, string $url): IResponse|string {
+		try {
+			$response = $client->get($url, [
+				'timeout' => self::FETCH_TIMEOUT_SECONDS,
+				'headers' => ['Accept' => 'application/vnd.github+json'],
+			]);
+		} catch (Throwable $error) {
+			return 'Could not read the Nextcloud advisory feed: ' . $error->getMessage();
+		}
+
+		return $response->getStatusCode() === 200
+			? $response
+			: 'The Nextcloud advisory feed returned HTTP ' . $response->getStatusCode() . '.';
+	}
+
+	/**
+	 * The records of one page body, or why the body is not a record list.
+	 *
+	 * @return array<array-key, mixed>|string
+	 */
+	private function decodePage(IResponse $response): array|string {
+		try {
+			/** @var mixed $decoded */
+			$decoded = json_decode((string)$response->getBody(), true, 512, JSON_THROW_ON_ERROR);
+		} catch (\JsonException $error) {
+			return 'The Nextcloud advisory feed returned invalid JSON: ' . $error->getMessage();
+		}
+
+		return is_array($decoded) ? $decoded : 'The Nextcloud advisory feed returned an unexpected payload shape.';
+	}
+
+	/**
+	 * Adds the page's records not seen before to $collected; returns how
+	 * many were new.
+	 *
+	 * @param array<array-key, mixed> $records
+	 */
+	private function collect(FeedCollection $collected, array $records): int {
+		$fresh = 0;
+		/** @var array<array-key, mixed> $record */
+		foreach (array_filter($records, is_array(...)) as $record) {
+			/** @var mixed $ghsa */
+			$ghsa = $record['ghsa_id'] ?? null;
+			if (!is_string($ghsa) || $ghsa === '' || isset($collected->seen[$ghsa])) {
+				continue;
+			}
+			$collected->seen[$ghsa] = true;
+			$fresh++;
+			foreach ($this->targetsFor($record, $ghsa) as $target => $advisory) {
+				$collected->byTarget[$target][] = $advisory;
+			}
+		}
+
+		return $fresh;
 	}
 
 	/**

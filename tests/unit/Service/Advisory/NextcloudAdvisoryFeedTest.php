@@ -180,6 +180,13 @@ final class NextcloudAdvisoryFeedTest extends TestCase {
 		self::assertStringContainsString('invalid JSON', $result['error']);
 	}
 
+	public function testReportsAPayloadThatIsNotARecordList(): void {
+		$result = $this->feed([['body' => '"not a list"']])->fetchAll();
+
+		self::assertNotNull($result['error']);
+		self::assertStringContainsString('unexpected payload shape', $result['error']);
+	}
+
 	/**
 	 * A failure on page two must keep page one AND report the error. Throwing
 	 * the partial away would turn a half-read feed into "no advisories".
