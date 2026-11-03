@@ -266,16 +266,9 @@ class InstallerService {
 	 */
 	public function getAppVersions(string $appId, ?string $sourceOverride = null): array {
 		$appId = trim($appId);
-		if ($appId === '') {
-			return $this->errorEnvelope('Missing app id.', Http::STATUS_BAD_REQUEST);
-		}
-		if (!$this->isManageableApp($appId)) {
-			return $this->errorEnvelope(
-				$this->isCoreProtectedApp($appId)
-					? 'This core app cannot be managed from Versioniq.'
-					: 'This app cannot be managed from Versioniq.',
-				Http::STATUS_FORBIDDEN
-			);
+		$refusal = $this->versionsRefusal($appId);
+		if ($refusal !== null) {
+			return $refusal;
 		}
 
 		try {
@@ -286,47 +279,90 @@ class InstallerService {
 			return $this->errorEnvelope($error->getMessage(), Http::STATUS_FORBIDDEN);
 		}
 
-		$source = $this->sources->sourceRegistry->get($binding);
-		$result = $source->listVersions($appId, $binding);
-
-		// Shipped apps (bundled with the server release) are never published to
-		// the App Store, so a store miss is expected — explain it instead of
-		// surfacing a generic "not available" error.
-		if ($result['error'] === 'App is not available in the Nextcloud App Store.'
-			&& $this->server->appManager->isShipped($appId)
-		) {
-			$result['error'] = 'This app ships with Nextcloud itself: its version follows the server release and it is not distributed via the App Store. Bind a forge source to manage it from a repository instead.';
-		}
-
-		$installedVersion = null;
-		try {
-			$installed = $this->server->appManager->getAppVersion($appId);
-			if ($installed !== '') {
-				$installedVersion = $installed;
-			}
-		} catch (Exception) {
-			$installedVersion = null;
-		}
+		$result = $this->listSourceVersions($appId, $binding);
+		$installedVersion = $this->installedVersionOrNull($appId);
 
 		$versions = $this->applyChangelogTruncation($result['versions']);
 		$versions = $this->applyRecordedSha($versions, $binding);
 		$versions = $this->applyCachedOffline($versions, $appId);
 		$versions = $this->applyCachedServerCompatibility($versions, $appId);
 
-		$envelope = [
+		return [
 			'installedVersion' => $installedVersion,
 			'availableVersions' => $versions,
 			'versions' => $versions,
 			'source' => $binding->kind,
 			'sourceId' => $binding->getId(),
 			'statusCode' => Http::STATUS_OK,
-			'hasError' => $result['error'] !== null && $result['versions'] === [],
-		];
-		if ($result['error'] !== null) {
-			$envelope['error'] = $result['error'];
+		] + self::listingErrorFields($result);
+	}
+
+	/**
+	 * The error envelope for an app id that cannot be listed: blank (400), or
+	 * Versioniq itself or a core app (403).
+	 *
+	 * @return array{installedVersion: null, availableVersions: list<never>, versions: list<never>, source: string, sourceId: string, statusCode: int, hasError: bool, error: string}|null
+	 */
+	private function versionsRefusal(string $appId): ?array {
+		if ($appId === '') {
+			return $this->errorEnvelope('Missing app id.', Http::STATUS_BAD_REQUEST);
+		}
+		if ($this->isManageableApp($appId)) {
+			return null;
 		}
 
-		return $envelope;
+		return $this->errorEnvelope(
+			$this->isCoreProtectedApp($appId)
+				? 'This core app cannot be managed from Versioniq.'
+				: 'This app cannot be managed from Versioniq.',
+			Http::STATUS_FORBIDDEN
+		);
+	}
+
+	/**
+	 * Lists the versions of the bound source. Shipped apps (bundled with the
+	 * server release) are never published to the App Store, so a store miss
+	 * for one is explained instead of surfacing a generic "not available".
+	 *
+	 * @return array{versions: list<array{version: string, changelog?: ?string, serverCompatible?: ?bool, releasedAt?: ?string}>, error: ?string}
+	 */
+	private function listSourceVersions(string $appId, SourceBinding $binding): array {
+		$result = $this->sources->sourceRegistry->get($binding)->listVersions($appId, $binding);
+		if ($result['error'] === 'App is not available in the Nextcloud App Store.'
+			&& $this->server->appManager->isShipped($appId)
+		) {
+			$result['error'] = 'This app ships with Nextcloud itself: its version follows the server release and it is not distributed via the App Store. Bind a forge source to manage it from a repository instead.';
+		}
+
+		return $result;
+	}
+
+	/**
+	 * The installed version of an app, or null when it is blank or unreadable.
+	 */
+	private function installedVersionOrNull(string $appId): ?string {
+		try {
+			$installed = $this->server->appManager->getAppVersion($appId);
+		} catch (Exception) {
+			return null;
+		}
+
+		return $installed !== '' ? $installed : null;
+	}
+
+	/**
+	 * `hasError` (an error and no versions) and, when the listing has one,
+	 * its `error`.
+	 *
+	 * @param array{versions: list<mixed>, error: ?string} $result
+	 * @return array{hasError: bool, error?: string}
+	 */
+	private static function listingErrorFields(array $result): array {
+		if ($result['error'] === null) {
+			return ['hasError' => false];
+		}
+
+		return ['hasError' => $result['versions'] === [], 'error' => $result['error']];
 	}
 
 	/**
