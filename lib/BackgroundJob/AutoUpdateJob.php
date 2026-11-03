@@ -18,6 +18,10 @@ use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\Installer\InstallOptions;
+use OCA\Versioniq\Service\Installer\InstallRequest;
+use OCA\Versioniq\Service\Installer\InstallTarget;
+use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCP\AppFramework\Http;
 use OCP\BackgroundJob\TimedJob;
@@ -160,17 +164,11 @@ class AutoUpdateJob extends TimedJob {
 	}
 
 	private function attemptInstall(string $appId, string $installedVersion, string $candidate): void {
-		$installResult = $this->install->installerService->installAppVersion(
-			$appId,
-			$candidate,
-			false,
-			null,
-			null,
-			false,
-			false,
-			false,
-			false,
-		);
+		$installResult = $this->install->installerService->installAppVersion(new InstallRequest(
+			new InstallTarget($appId, $candidate, null),
+			new InstallOptions(false, false, false, false),
+			new PinChoice(null, false),
+		));
 
 		$at = $this->time->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM);
 		$statusCode = $installResult['statusCode'] ?? Http::STATUS_INTERNAL_SERVER_ERROR;
