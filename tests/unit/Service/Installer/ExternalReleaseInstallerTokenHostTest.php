@@ -68,7 +68,7 @@ final class ExternalReleaseInstallerTokenHostTest extends TestCase {
 	 *
 	 * @param array<string, string> $release The resolved release payload.
 	 */
-	private function install(array $release, string $forge = 'github'): void {
+	private function install(array $release, string $forge = 'github', string $forgejoWeb = ''): void {
 		$client = $this->createMock(IClient::class);
 		$client->method('get')->willReturnCallback(function (string $url, array $options): never {
 			$this->requests[] = ['url' => $url, 'authorization' => $options['headers']['Authorization'] ?? null];
@@ -105,6 +105,11 @@ final class ExternalReleaseInstallerTokenHostTest extends TestCase {
 		$artifactCache = $this->createMock(ArtifactCache::class);
 		$artifactCache->method('fetch')->willReturn(['content' => 'not an archive']);
 
+		$forgeConfig = $this->createMock(IAppConfig::class);
+		$forgeConfig->method('getValueString')->willReturnCallback(
+			static fn (string $app, string $key, string $default = ''): string => $key === 'forge.forgejo.web_base' ? $forgejoWeb : $default
+		);
+
 		$installer = $this->buildByName(ExternalReleaseInstallerService::class, [
 			'clientService' => $clientService,
 			'tempManager' => $tempManager,
@@ -120,7 +125,7 @@ final class ExternalReleaseInstallerTokenHostTest extends TestCase {
 			'auditLogger' => $this->createMock(AuditLogger::class),
 			'migrationDiffer' => $this->createMock(MigrationDiffer::class),
 			'artifactCache' => $artifactCache,
-			'forgeRegistry' => new ForgeRegistry($this->createMock(IAppConfig::class)),
+			'forgeRegistry' => new ForgeRegistry($forgeConfig),
 		]);
 
 		try {
@@ -186,6 +191,68 @@ final class ExternalReleaseInstallerTokenHostTest extends TestCase {
 		$auth = $this->authByUrl();
 		$this->assertSame('Bearer forge-secret', $auth['https://github.com/ConductionNL/privateapp/releases/download/v1.2.0/privateapp.tar.gz'] ?? 'not requested');
 		$this->assertSame('Bearer forge-secret', $auth['https://github.com/ConductionNL/privateapp/releases/download/v1.2.0/privateapp.tar.gz.sha256'] ?? 'not requested');
+	}
+
+	/**
+	 * The token only travels over https to the forge's own port.
+	 *
+	 * @dataProvider urlsOnTheForgeHostThatMustNotGetTheToken
+	 */
+	public function testTheForgeHostAloneDoesNotGetTheToken(string $url): void {
+		$this->install(['download' => $url]);
+
+		$auth = $this->authByUrl();
+		$this->assertArrayHasKey($url, $auth, 'the asset was never requested');
+		$this->assertNull($auth[$url]);
+	}
+
+	/**
+	 * @return array<string, array{0: string}>
+	 */
+	public static function urlsOnTheForgeHostThatMustNotGetTheToken(): array {
+		return [
+			'plain http' => ['http://github.com/ConductionNL/privateapp/privateapp.tar.gz'],
+			'plain http on the https port' => ['http://github.com:443/ConductionNL/privateapp/privateapp.tar.gz'],
+			'another port' => ['https://github.com:8443/ConductionNL/privateapp/privateapp.tar.gz'],
+			'no scheme' => ['//github.com/ConductionNL/privateapp/privateapp.tar.gz'],
+		];
+	}
+
+	/**
+	 * @dataProvider urlsOnTheForgeThatKeepTheToken
+	 */
+	public function testTheForgeKeepsTheTokenOverHttpsOnItsOwnPort(string $url): void {
+		$this->install(['download' => $url]);
+
+		$this->assertSame('Bearer forge-secret', $this->authByUrl()[$url] ?? 'not requested');
+	}
+
+	/**
+	 * @return array<string, array{0: string}>
+	 */
+	public static function urlsOnTheForgeThatKeepTheToken(): array {
+		return [
+			'web host' => ['https://github.com/ConductionNL/privateapp/privateapp.tar.gz'],
+			'api host' => ['https://api.github.com/ConductionNL/privateapp/privateapp.tar.gz'],
+			'explicit https port' => ['https://github.com:443/ConductionNL/privateapp/privateapp.tar.gz'],
+			'upper case' => ['HTTPS://GitHub.com/ConductionNL/privateapp/privateapp.tar.gz'],
+		];
+	}
+
+	/**
+	 * A self-hosted forge on its own port: that port gets the token and the
+	 * default https port of the same host does not.
+	 */
+	public function testASelfHostedForgeKeepsTheTokenOnItsOwnPortOnly(): void {
+		$own = 'https://git.example.org:8443/ConductionNL/privateapp/privateapp.tar.gz';
+		$other = 'https://git.example.org/ConductionNL/privateapp/privateapp.tar.gz';
+
+		$this->install(['download' => $own, 'sha256Url' => $other], 'forgejo', 'https://git.example.org:8443');
+
+		$auth = $this->authByUrl();
+		$this->assertSame('Bearer forge-secret', $auth[$own] ?? 'not requested');
+		$this->assertArrayHasKey($other, $auth, 'the checksum was never requested');
+		$this->assertNull($auth[$other]);
 	}
 
 	/**
