@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service;
 
+require_once __DIR__ . '/../Support/AuditArgs.php';
+
 require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 
 use OCA\Versioniq\Service\Audit\AuditLogger;
@@ -13,6 +15,7 @@ use OCA\Versioniq\Service\Installer\ExternalInstallRequest;
 use OCA\Versioniq\Service\Installer\ExternalInstallRun;
 use OCA\Versioniq\Service\SelectedReleaseInstallerService;
 use OCA\Versioniq\Service\Source\SourceBinding;
+use OCA\Versioniq\Tests\Unit\Support\AuditArgs;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\IUser;
 use OCP\IUserSession;
@@ -60,7 +63,7 @@ final class InstallerAuditHookTest extends TestCase {
 		$auditLogger = $this->createMock(AuditLogger::class);
 		$auditLogger->expects($this->once())
 			->method('record')
-			->with(
+			->with(...AuditArgs::expected(
 				'alice',
 				'openregister',
 				AuditLogger::OPERATION_INSTALL,
@@ -69,7 +72,7 @@ final class InstallerAuditHookTest extends TestCase {
 				'appstore',
 				AuditLogger::STATUS_SUCCESS,
 				null,
-			);
+			));
 
 		$instance = $this->instanceWithInjectedDeps(SelectedReleaseInstallerService::class, $auditLogger, $this->userSession());
 
@@ -82,7 +85,7 @@ final class InstallerAuditHookTest extends TestCase {
 		$auditLogger = $this->createMock(AuditLogger::class);
 		$auditLogger->expects($this->once())
 			->method('record')
-			->with(
+			->with(...AuditArgs::expected(
 				'alice',
 				'openregister',
 				AuditLogger::OPERATION_INSTALL,
@@ -91,7 +94,7 @@ final class InstallerAuditHookTest extends TestCase {
 				'appstore',
 				AuditLogger::STATUS_FAILURE,
 				'Could not download selected release: HTTP 404',
-			);
+			));
 
 		$instance = $this->instanceWithInjectedDeps(SelectedReleaseInstallerService::class, $auditLogger, $this->userSession());
 
@@ -104,7 +107,7 @@ final class InstallerAuditHookTest extends TestCase {
 		$auditLogger = $this->createMock(AuditLogger::class);
 		$auditLogger->expects($this->once())
 			->method('record')
-			->with('system', 'openregister', AuditLogger::OPERATION_INSTALL, null, '2.3.0', 'appstore', AuditLogger::STATUS_SUCCESS, null);
+			->with(...AuditArgs::expected('system', 'openregister', AuditLogger::OPERATION_INSTALL, null, '2.3.0', 'appstore', AuditLogger::STATUS_SUCCESS, null));
 
 		$instance = $this->instanceWithInjectedDeps(SelectedReleaseInstallerService::class, $auditLogger, $this->anonymousSession());
 
@@ -124,7 +127,7 @@ final class InstallerAuditHookTest extends TestCase {
 		$auditLogger = $this->createMock(AuditLogger::class);
 		$auditLogger->expects($this->once())
 			->method('record')
-			->with(
+			->with(...AuditArgs::expected(
 				'alice',
 				'openregister',
 				AuditLogger::OPERATION_INSTALL,
@@ -133,7 +136,7 @@ final class InstallerAuditHookTest extends TestCase {
 				'github:ConductionNL/openregister',
 				AuditLogger::STATUS_SUCCESS,
 				'No SHA-256 checksum available for this artifact.',
-			);
+			));
 
 		$instance = $this->instanceWithInjectedDeps(ExternalReleaseInstallerService::class, $auditLogger, $this->userSession());
 
@@ -146,7 +149,7 @@ final class InstallerAuditHookTest extends TestCase {
 		$auditLogger = $this->createMock(AuditLogger::class);
 		$auditLogger->expects($this->once())
 			->method('record')
-			->with(
+			->with(...AuditArgs::expected(
 				'alice',
 				'openregister',
 				AuditLogger::OPERATION_INSTALL,
@@ -155,7 +158,7 @@ final class InstallerAuditHookTest extends TestCase {
 				'github:ConductionNL/openregister',
 				AuditLogger::STATUS_FAILURE,
 				'SHA-256 mismatch — expected aaa, got bbb.',
-			);
+			));
 
 		$instance = $this->instanceWithInjectedDeps(ExternalReleaseInstallerService::class, $auditLogger, $this->userSession());
 
@@ -176,17 +179,8 @@ final class InstallerAuditHookTest extends TestCase {
 		$auditLogger = $this->createMock(AuditLogger::class);
 		$capturedMessage = null;
 		$auditLogger->method('record')->willReturnCallback(
-			function (
-				string $actorUid,
-				string $appId,
-				string $operation,
-				?string $fromVersion,
-				?string $toVersion,
-				?string $sourceId,
-				string $status,
-				?string $message = null,
-			) use (&$capturedMessage): void {
-				$capturedMessage = $message;
+			function (mixed ...$args) use (&$capturedMessage): void {
+				$capturedMessage = AuditArgs::flatten($args)[7] ?? null;
 			}
 		);
 

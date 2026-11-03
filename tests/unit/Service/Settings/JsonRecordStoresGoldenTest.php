@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Settings;
 
+require_once __DIR__ . '/../../Support/AuditArgs.php';
+
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Lkg\Lkg;
 use OCA\Versioniq\Service\Lkg\LkgStore;
@@ -12,6 +14,7 @@ use OCA\Versioniq\Service\Pin\PinDrift;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyStore;
+use OCA\Versioniq\Tests\Unit\Support\AuditArgs;
 use OCP\IAppConfig;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -163,7 +166,7 @@ final class JsonRecordStoresGoldenTest extends TestCase {
 	private function auditLogger(): AuditLogger {
 		$audit = $this->createMock(AuditLogger::class);
 		$audit->method('record')->willReturnCallback(function (mixed ...$args): void {
-			$this->calls[] = ['audit.record', ...$args];
+			$this->calls[] = ['audit.record', ...AuditArgs::flatten($args)];
 		});
 
 		return $audit;

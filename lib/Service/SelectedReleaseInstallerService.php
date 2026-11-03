@@ -14,7 +14,9 @@ namespace OCA\Versioniq\Service;
 
 use Exception;
 use OC\Archive\TAR;
+use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Audit\AuditLogger;
+use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstalledFolder;
@@ -506,12 +508,8 @@ class SelectedReleaseInstallerService {
 	private function recordInstallAudit(SignedInstall $install, array $outcome): void {
 		$actorUid = $this->userSession->getUser()?->getUID() ?? 'system';
 		$this->auditLogger->record(
-			$actorUid,
-			$install->appId,
-			AuditLogger::OPERATION_INSTALL,
-			$install->fromVersion(),
-			$install->requestedVersion(),
-			SourceBinding::appStore()->getId(),
+			new AuditSubject($actorUid, $install->appId, AuditLogger::OPERATION_INSTALL),
+			new AuditedVersions($install->fromVersion(), $install->requestedVersion(), SourceBinding::appStore()->getId()),
 			$outcome[0],
 			$outcome[1],
 		);
