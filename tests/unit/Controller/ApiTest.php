@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Controller;
 
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\Controller\ApiController;
 use OCA\Versioniq\Db\AuditEntry;
 use OCA\Versioniq\Db\AuditEntryMapper;
@@ -22,6 +24,7 @@ use OCA\Versioniq\Service\Pat\PatValidator;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\PolicyStore;
 use OCA\Versioniq\Service\Source\SourceBinding;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IGroupManager;
@@ -34,6 +37,8 @@ use ReflectionClass;
 use ReflectionMethod;
 
 final class ApiTest extends TestCase {
+	use BuildsByParameterName;
+
 	private function fakeServerVersion(): ServerVersion {
 		// ServerVersion is `readonly` and cannot be mocked; bypass the
 		// constructor to get an inert instance for tests that don't touch it.
@@ -57,31 +62,32 @@ final class ApiTest extends TestCase {
 		?ArtifactCache $artifactCache = null,
 		?AttemptLedger $attemptLedger = null,
 	): ApiController {
-		return new ApiController(
-			'versioniq',
-			$request ?? $this->createMock(IRequest::class),
-			$this->createMock(InstallerService::class),
-			$this->createMock(IGroupManager::class),
-			$this->createMock(IUserSession::class),
-			$this->fakeServerVersion(),
-			$this->createMock(PatMapper::class),
-			$this->createMock(PatManager::class),
-			$this->createMock(PatValidator::class),
-			$this->createMock(PatDeeplinkBuilder::class),
-			$this->createMock(PatExpiryEvaluator::class),
-			$this->createMock(DiscoveryAggregator::class),
-			$this->createMock(AdvisoryResultStore::class),
-			$this->createMock(AdvisorySettingsStore::class),
-			$auditEntryMapper ?? $this->createMock(AuditEntryMapper::class),
-			$pinStore ?? $this->createMock(PinStore::class),
-			$appManager ?? $this->createMock(IAppManager::class),
-			$this->fakeTimeFactory(),
-			$policyStore ?? $this->createMock(PolicyStore::class),
-			$autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
-			$artifactCache ?? $this->createMock(ArtifactCache::class),
-			null,
-			$attemptLedger ?? $this->createMock(AttemptLedger::class),
-		);
+		return $this->buildByName(ApiController::class, [
+			'appName' => 'versioniq',
+			'request' => $request ?? $this->createMock(IRequest::class),
+			'installerService' => $this->createMock(InstallerService::class),
+			'groupManager' => $this->createMock(IGroupManager::class),
+			'userSession' => $this->createMock(IUserSession::class),
+			'serverVersion' => $this->fakeServerVersion(),
+			'patMapper' => $this->createMock(PatMapper::class),
+			'patManager' => $this->createMock(PatManager::class),
+			'patValidator' => $this->createMock(PatValidator::class),
+			'deeplinkBuilder' => $this->createMock(PatDeeplinkBuilder::class),
+			'patExpiryEvaluator' => $this->createMock(PatExpiryEvaluator::class),
+			'discoveryAggregator' => $this->createMock(DiscoveryAggregator::class),
+			'advisoryResultStore' => $this->createMock(AdvisoryResultStore::class),
+			'advisorySettingsStore' => $this->createMock(AdvisorySettingsStore::class),
+			'auditEntryMapper' => $auditEntryMapper ?? $this->createMock(AuditEntryMapper::class),
+			'pinStore' => $pinStore ?? $this->createMock(PinStore::class),
+			'appManager' => $appManager ?? $this->createMock(IAppManager::class),
+			'timeFactory' => $this->fakeTimeFactory(),
+			'policyStore' => $policyStore ?? $this->createMock(PolicyStore::class),
+			'autoUpdateSettingsStore' => $autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
+			'settingsStore' => $autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
+			'artifactCache' => $artifactCache ?? $this->createMock(ArtifactCache::class),
+			'connectionReports' => null,
+			'attemptLedger' => $attemptLedger ?? $this->createMock(AttemptLedger::class),
+		]);
 	}
 
 	/**
@@ -107,31 +113,32 @@ final class ApiTest extends TestCase {
 		$groupManager = $this->createMock(IGroupManager::class);
 		$groupManager->method('isAdmin')->with($uid)->willReturn(true);
 
-		return new ApiController(
-			'versioniq',
-			$request,
-			$installer,
-			$groupManager,
-			$session,
-			$this->fakeServerVersion(),
-			$this->createMock(PatMapper::class),
-			$this->createMock(PatManager::class),
-			$this->createMock(PatValidator::class),
-			$this->createMock(PatDeeplinkBuilder::class),
-			$this->createMock(PatExpiryEvaluator::class),
-			$this->createMock(DiscoveryAggregator::class),
-			$this->createMock(AdvisoryResultStore::class),
-			$this->createMock(AdvisorySettingsStore::class),
-			$auditEntryMapper ?? $this->createMock(AuditEntryMapper::class),
-			$pinStore ?? $this->createMock(PinStore::class),
-			$appManager ?? $this->createMock(IAppManager::class),
-			$this->fakeTimeFactory(),
-			$policyStore ?? $this->createMock(PolicyStore::class),
-			$autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
-			$artifactCache ?? $this->createMock(ArtifactCache::class),
-			null,
-			$attemptLedger ?? $this->createMock(AttemptLedger::class),
-		);
+		return $this->buildByName(ApiController::class, [
+			'appName' => 'versioniq',
+			'request' => $request,
+			'installerService' => $installer,
+			'groupManager' => $groupManager,
+			'userSession' => $session,
+			'serverVersion' => $this->fakeServerVersion(),
+			'patMapper' => $this->createMock(PatMapper::class),
+			'patManager' => $this->createMock(PatManager::class),
+			'patValidator' => $this->createMock(PatValidator::class),
+			'deeplinkBuilder' => $this->createMock(PatDeeplinkBuilder::class),
+			'patExpiryEvaluator' => $this->createMock(PatExpiryEvaluator::class),
+			'discoveryAggregator' => $this->createMock(DiscoveryAggregator::class),
+			'advisoryResultStore' => $this->createMock(AdvisoryResultStore::class),
+			'advisorySettingsStore' => $this->createMock(AdvisorySettingsStore::class),
+			'auditEntryMapper' => $auditEntryMapper ?? $this->createMock(AuditEntryMapper::class),
+			'pinStore' => $pinStore ?? $this->createMock(PinStore::class),
+			'appManager' => $appManager ?? $this->createMock(IAppManager::class),
+			'timeFactory' => $this->fakeTimeFactory(),
+			'policyStore' => $policyStore ?? $this->createMock(PolicyStore::class),
+			'autoUpdateSettingsStore' => $autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
+			'settingsStore' => $autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
+			'artifactCache' => $artifactCache ?? $this->createMock(ArtifactCache::class),
+			'connectionReports' => null,
+			'attemptLedger' => $attemptLedger ?? $this->createMock(AttemptLedger::class),
+		]);
 	}
 
 	public function testReadBinaryBoolAcceptsCommonTruthyAndFalsyValues(): void {
