@@ -57,6 +57,12 @@ final class PatExpiryWarningJobTest extends TestCase {
 		$method->invoke($job, null);
 	}
 
+	public function testSweepsOnceADay(): void {
+		$job = $this->job($this->createMock(PatMapper::class), $this->createMock(PatExpiryEvaluator::class), $this->createMock(PatExpiryNotifier::class));
+
+		$this->assertSame(24 * 60 * 60, $job->getInterval());
+	}
+
 	public function testUnknownExpiryIsNeverProbedOrNotified(): void {
 		$mapper = $this->createMock(PatMapper::class);
 		$mapper->method('findAll')->willReturn([$this->pat(1, null)]);
