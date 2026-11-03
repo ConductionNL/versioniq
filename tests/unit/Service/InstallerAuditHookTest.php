@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service;
 
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\ExternalReleaseInstallerService;
 use OCA\Versioniq\Service\Installer\ExternalInstallOptions;
@@ -11,6 +13,7 @@ use OCA\Versioniq\Service\Installer\ExternalInstallRequest;
 use OCA\Versioniq\Service\Installer\ExternalInstallRun;
 use OCA\Versioniq\Service\SelectedReleaseInstallerService;
 use OCA\Versioniq\Service\Source\SourceBinding;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\IUser;
 use OCP\IUserSession;
 use PHPUnit\Framework\TestCase;
@@ -26,6 +29,8 @@ use ReflectionClass;
  * helpers touch are injected directly.
  */
 final class InstallerAuditHookTest extends TestCase {
+	use BuildsByParameterName;
+
 	private function userSession(string $uid = 'alice'): IUserSession {
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn($uid);
@@ -48,18 +53,7 @@ final class InstallerAuditHookTest extends TestCase {
 	 * @return T
 	 */
 	private function instanceWithInjectedDeps(string $class, AuditLogger $auditLogger, IUserSession $userSession): object {
-		$reflection = new ReflectionClass($class);
-		$instance = $reflection->newInstanceWithoutConstructor();
-
-		$auditLoggerProp = $reflection->getProperty('auditLogger');
-		$auditLoggerProp->setAccessible(true);
-		$auditLoggerProp->setValue($instance, $auditLogger);
-
-		$userSessionProp = $reflection->getProperty('userSession');
-		$userSessionProp->setAccessible(true);
-		$userSessionProp->setValue($instance, $userSession);
-
-		return $instance;
+		return $this->buildByName($class, ['auditLogger' => $auditLogger, 'userSession' => $userSession]);
 	}
 
 	public function testSelectedInstallerRecordsSuccessAgainstAppStore(): void {

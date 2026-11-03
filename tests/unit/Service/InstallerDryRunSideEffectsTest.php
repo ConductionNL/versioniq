@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service;
 
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\ExternalReleaseInstallerService;
@@ -19,6 +21,7 @@ use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\SourceRegistry;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IAppConfig;
@@ -35,6 +38,8 @@ use ReflectionMethod;
  * to rename the live app folder aside and back.
  */
 final class InstallerDryRunSideEffectsTest extends TestCase {
+	use BuildsByParameterName;
+
 	/** @var list<array{0: string, 1: mixed}> */
 	private array $systemWrites = [];
 
@@ -72,24 +77,24 @@ final class InstallerDryRunSideEffectsTest extends TestCase {
 		$factory = $this->createMock(IFactory::class);
 		$factory->method('get')->willReturn($l);
 
-		return new InstallerService(
-			$appManager,
-			$config,
-			$this->createMock(IAppConfig::class),
-			$registry,
-			$this->createMock(SourceBindingStore::class),
-			$this->createMock(TrustedSourceList::class),
-			$signed,
-			$this->createMock(ExternalReleaseInstallerService::class),
-			new FailureClassifier($factory),
-			$environment,
-			$this->createMock(PinStore::class),
-			$this->createMock(IUserSession::class),
-			$timeFactory,
-			$this->createMock(LkgStore::class),
-			$this->createMock(ArtifactCache::class),
-			$this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
-		);
+		return $this->buildByName(InstallerService::class, [
+			'appManager' => $appManager,
+			'config' => $config,
+			'appConfig' => $this->createMock(IAppConfig::class),
+			'sourceRegistry' => $registry,
+			'bindingStore' => $this->createMock(SourceBindingStore::class),
+			'trustedSources' => $this->createMock(TrustedSourceList::class),
+			'signedInstaller' => $signed,
+			'externalInstaller' => $this->createMock(ExternalReleaseInstallerService::class),
+			'failureClassifier' => new FailureClassifier($factory),
+			'environmentCheck' => $environment,
+			'pinStore' => $this->createMock(PinStore::class),
+			'userSession' => $this->createMock(IUserSession::class),
+			'timeFactory' => $timeFactory,
+			'lkgStore' => $this->createMock(LkgStore::class),
+			'artifactCache' => $this->createMock(ArtifactCache::class),
+			'eventDispatcher' => $this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
+		]);
 	}
 
 	public function testDryRunNeverTakesMaintenanceMode(): void {

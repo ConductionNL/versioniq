@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service;
 
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+
 use DateTime;
 use Exception;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
@@ -23,6 +25,7 @@ use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\SourceRegistry;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
 use OCA\Versioniq\Service\Source\UntrustedSourceException;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\EventDispatcher\IEventDispatcher;
@@ -60,6 +63,8 @@ use RuntimeException;
  * @uses \OCA\Versioniq\Service\Source\UntrustedSourceException
  */
 final class InstallerServiceInstallGoldenTest extends TestCase {
+	use BuildsByParameterName;
+
 	private const FIXTURE = __DIR__ . '/fixtures/install-app-version.golden.json';
 
 	private const BASE = [
@@ -489,24 +494,24 @@ final class InstallerServiceInstallGoldenTest extends TestCase {
 			$this->log('eventDispatcher.dispatchTyped', func_get_args());
 		});
 
-		return new InstallerService(
-			$appManager,
-			$config,
-			$appConfig,
-			$sourceRegistry,
-			$bindingStore,
-			$trustedSources,
-			$signedInstaller,
-			$externalInstaller,
-			new FailureClassifier($factory),
-			$environmentCheck,
-			$pinStore,
-			$userSession,
-			$timeFactory,
-			$this->createMock(LkgStore::class),
-			$this->createMock(ArtifactCache::class),
-			$eventDispatcher,
-		);
+		return $this->buildByName(InstallerService::class, [
+			'appManager' => $appManager,
+			'config' => $config,
+			'appConfig' => $appConfig,
+			'sourceRegistry' => $sourceRegistry,
+			'bindingStore' => $bindingStore,
+			'trustedSources' => $trustedSources,
+			'signedInstaller' => $signedInstaller,
+			'externalInstaller' => $externalInstaller,
+			'failureClassifier' => new FailureClassifier($factory),
+			'environmentCheck' => $environmentCheck,
+			'pinStore' => $pinStore,
+			'userSession' => $userSession,
+			'timeFactory' => $timeFactory,
+			'lkgStore' => $this->createMock(LkgStore::class),
+			'artifactCache' => $this->createMock(ArtifactCache::class),
+			'eventDispatcher' => $eventDispatcher,
+		]);
 	}
 
 	public function testInstallAppVersionMatchesTheGoldenFixture(): void {
