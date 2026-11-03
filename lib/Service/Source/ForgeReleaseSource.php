@@ -19,6 +19,7 @@ use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
 use OCA\Versioniq\Service\Pat\PatAccess;
 use OCP\Http\Client\IClientService;
+use OCP\Http\Client\IResponse;
 use OCP\IConfig;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -40,6 +41,13 @@ use UnexpectedValueException;
  */
 class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	private const USER_AGENT = 'Nextcloud-Versioniq';
+
+	/** Error text after the forge name, per HTTP status. */
+	private const STATUS_ERRORS = [
+		404 => ' repository not found.',
+		401 => ' authentication failed — the configured PAT may be revoked or expired.',
+		403 => ' rate limit exceeded — try again later, or configure a PAT.',
+	];
 
 	/**
 	 * @spec openspec/specs/external-sources/spec.md
@@ -94,23 +102,27 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 
 		$result = $this->fetchReleases($forge, $ownerRepo);
 		if ($result['ok'] === false) {
-			$error = $result['error'] ?? $this->forgeName($forge) . ' API request failed.';
-
-			return ['versions' => [], 'error' => $error];
+			return ['versions' => [], 'error' => $result['error'] ?? $this->forgeName($forge) . ' API request failed.'];
 		}
 
-		$releases = $result['releases'] ?? [];
+		return ['versions' => $this->dedupeAndSort($this->versionEntries($result['releases'] ?? [])), 'error' => null];
+	}
 
+	/**
+	 * One version entry per release with a non-empty tag.
+	 *
+	 * @param array<array-key, mixed> $releases
+	 * @return list<array{version: string, changelog: ?string, releasedAt: ?string}>
+	 */
+	private function versionEntries(array $releases): array {
 		$versions = [];
 		/** @var mixed $release */
 		foreach ($releases as $release) {
-			if (!is_array($release)) {
+			$tag = self::releaseTag($release);
+			if ($tag === null) {
 				continue;
 			}
-			$tag = $release['tag_name'] ?? null;
-			if (!is_string($tag) || $tag === '') {
-				continue;
-			}
+			/** @var array<array-key, mixed> $release */
 			$versions[] = [
 				'version' => $this->normalizeVersion($tag),
 				'changelog' => $this->extractChangelog($release),
@@ -119,48 +131,71 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			];
 		}
 
-		return ['versions' => $this->dedupeAndSort($versions), 'error' => null];
+		return $versions;
 	}
 
+	/**
+	 * A release's non-empty `tag_name`, or null.
+	 */
+	private static function releaseTag(mixed $release): ?string {
+		return is_array($release) ? self::nonEmptyString($release['tag_name'] ?? null) : null;
+	}
 	/**
 	 * Resolves a release into a download payload, enforcing unambiguous asset selection; see "External install integrity checks".
 	 *
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
 	public function resolveRelease(string $appId, string $version, SourceBinding $binding): ?array {
+		$release = $this->findRelease($this->releasesOf($binding) ?? [], $version);
+
+		return $release === null ? null : $this->buildReleasePayload($release, $binding->getAssetPattern());
+	}
+
+	/**
+	 * The releases of a forge binding, or null when the binding is not a
+	 * forge binding or the request fails.
+	 *
+	 * @return array<array-key, mixed>|null
+	 */
+	private function releasesOf(SourceBinding $binding): ?array {
 		$ownerRepo = $binding->getOwnerRepo();
 		if ($ownerRepo === null) {
 			return null;
 		}
-		$forge = $this->forgeRegistry->get($binding->getForge());
 
-		$result = $this->fetchReleases($forge, $ownerRepo);
+		$result = $this->fetchReleases($this->forgeRegistry->get($binding->getForge()), $ownerRepo);
 		if ($result['ok'] === false) {
 			return null;
 		}
 
-		$releases = $result['releases'] ?? [];
+		return $result['releases'] ?? [];
+	}
 
-		$assetPattern = $binding->getAssetPattern();
+	/**
+	 * The first release whose tag is the version, with or without its
+	 * leading v.
+	 *
+	 * @param array<array-key, mixed> $releases
+	 * @return array<array-key, mixed>|null
+	 */
+	private function findRelease(array $releases, string $version): ?array {
 		/** @var mixed $release */
 		foreach ($releases as $release) {
-			if (!is_array($release)) {
-				continue;
+			if ($this->tagMatches($release, $version)) {
+				/** @var array<array-key, mixed> $release */
+				return $release;
 			}
-			$tag = $release['tag_name'] ?? null;
-			if (!is_string($tag)) {
-				continue;
-			}
-			if ($this->normalizeVersion($tag) !== $version && $tag !== $version) {
-				continue;
-			}
-
-			return $this->buildReleasePayload($release, $assetPattern);
 		}
 
 		return null;
 	}
 
+	private function tagMatches(mixed $release, string $version): bool {
+		/** @var mixed $tag */
+		$tag = is_array($release) ? ($release['tag_name'] ?? null) : null;
+
+		return is_string($tag) && ($this->normalizeVersion($tag) === $version || $tag === $version);
+	}
 	/**
 	 * Lists published security advisories for the bound `owner/repo` from the
 	 * forge's `/security-advisories` endpoint (GitHub GHSA / Forgejo), reusing
@@ -184,28 +219,34 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			return ['advisories' => [], 'error' => $result['error'] ?? $this->forgeName($forge) . ' advisory request failed.'];
 		}
 
-		$advisories = [];
 		// `releases` is present on every ok:true branch of performFetch, but the
 		// union narrows to optional keys through useToken's generic, so Psalm
 		// sees `releases?:` and a possible null. Reading it defensively is
 		// cheaper than a baseline entry and is correct either way: a body that
 		// arrives without the key yields no advisories rather than a
 		// foreach-over-null warning.
-		$releases = ($result['releases'] ?? []);
+		return ['advisories' => $this->advisoriesIn($result['releases'] ?? []), 'error' => null];
+	}
+
+	/**
+	 * The normalised advisories among the entries, skipping any that is not an
+	 * object or has no id.
+	 *
+	 * @param array<array-key, mixed> $entries
+	 * @return list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string}>
+	 */
+	private function advisoriesIn(array $entries): array {
+		$advisories = [];
 		/** @var mixed $entry */
-		foreach ($releases as $entry) {
-			if (!is_array($entry)) {
-				continue;
-			}
-			$normalized = $this->normalizeAdvisory($entry);
+		foreach ($entries as $entry) {
+			$normalized = is_array($entry) ? $this->normalizeAdvisory($entry) : null;
 			if ($normalized !== null) {
 				$advisories[] = $normalized;
 			}
 		}
 
-		return ['advisories' => $advisories, 'error' => null];
+		return $advisories;
 	}
-
 	/**
 	 * Normalizes a forge (GHSA-shaped) advisory record into the correlation
 	 * record. Reads the affected version range and first-patched version from
@@ -243,22 +284,33 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * @return array{0: list<string>, 1: ?string}
 	 */
 	private function firstVulnerability(mixed $vulnerabilities): array {
+		/** @var mixed $vuln */
 		$vuln = is_array($vulnerabilities) ? ($vulnerabilities[0] ?? null) : null;
 		if (!is_array($vuln)) {
 			return [[], null];
 		}
-		/** @var mixed $patched */
-		$patched = $vuln['first_patched_version'] ?? null;
-		if (is_array($patched)) {
-			$patched = $patched['identifier'] ?? null;
-		}
 
 		return [
 			AdvisoryClauses::from($vuln['vulnerable_version_range'] ?? null),
-			is_string($patched) && $patched !== '' ? $this->normalizeVersion($patched) : null,
+			$this->patchedVersion($vuln),
 		];
 	}
 
+	/**
+	 * The normalised first patched version of a vulnerability (a string, or
+	 * an object with an `identifier`), or null when it has none.
+	 *
+	 * @param array<array-key, mixed> $vuln
+	 */
+	private function patchedVersion(array $vuln): ?string {
+		$patched = self::nonEmptyString(self::patchedIdentifier($vuln['first_patched_version'] ?? null));
+
+		return $patched === null ? null : $this->normalizeVersion($patched);
+	}
+
+	private static function patchedIdentifier(mixed $patched): mixed {
+		return is_array($patched) ? ($patched['identifier'] ?? null) : $patched;
+	}
 	/**
 	 * @return array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string}
 	 */
@@ -304,22 +356,9 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * @return array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string}
 	 */
 	private function performFetch(Forge $forge, string $endpoint, ?string $token): array {
-		$headers = [
-			'Accept' => 'application/json',
-			'User-Agent' => self::USER_AGENT,
-		];
-		// GitHub-specific content negotiation; harmless to omit on Forgejo.
-		if ($forge->id === ForgeRegistry::FORGE_GITHUB) {
-			$headers['Accept'] = 'application/vnd.github+json';
-			$headers['X-GitHub-Api-Version'] = '2022-11-28';
-		}
-		if ($token !== null) {
-			$headers['Authorization'] = $forge->authHeaderValue($token);
-		}
-
 		try {
 			$response = $this->clientService->newClient()->get($endpoint, [
-				'headers' => $headers,
+				'headers' => $this->requestHeaders($forge, $token),
 				'timeout' => 30,
 				// IClient throws on 4xx by default; we want to inspect the
 				// status code ourselves to produce useful errors.
@@ -340,22 +379,42 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			return ['ok' => false, 'error' => $this->humanizeError($forge, $error->getMessage())];
 		}
 
+		return $this->readReleaseList($forge, $response);
+	}
+
+	/**
+	 * Request headers for one forge call: GitHub gets its own content
+	 * negotiation, and a token goes in the forge's auth scheme.
+	 *
+	 * @return array<string, string>
+	 */
+	private function requestHeaders(Forge $forge, ?string $token): array {
+		$headers = [
+			'Accept' => 'application/json',
+			'User-Agent' => self::USER_AGENT,
+		];
+		if ($forge->id === ForgeRegistry::FORGE_GITHUB) {
+			$headers['Accept'] = 'application/vnd.github+json';
+			$headers['X-GitHub-Api-Version'] = '2022-11-28';
+		}
+		if ($token !== null) {
+			$headers['Authorization'] = $forge->authHeaderValue($token);
+		}
+
+		return $headers;
+	}
+
+	/**
+	 * Reads a forge answer as a release list, and tells integriq what it met.
+	 *
+	 * @return array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string}
+	 */
+	private function readReleaseList(Forge $forge, IResponse $response): array {
 		$status = $response->getStatusCode();
-		$name = $this->forgeName($forge);
 		if ($status !== 200) {
 			$this->connectionReports?->forgeAnswered($forge->id, $forge->apiBaseUrl, $status);
-		}
-		if ($status === 404) {
-			return ['ok' => false, 'error' => $name . ' repository not found.'];
-		}
-		if ($status === 401) {
-			return ['ok' => false, 'error' => $name . ' authentication failed — the configured PAT may be revoked or expired.'];
-		}
-		if ($status === 403) {
-			return ['ok' => false, 'error' => $name . ' rate limit exceeded — try again later, or configure a PAT.'];
-		}
-		if ($status !== 200) {
-			return ['ok' => false, 'error' => sprintf('%s API returned HTTP %d.', $name, $status)];
+
+			return ['ok' => false, 'error' => $this->statusError($forge, $status)];
 		}
 
 		try {
@@ -363,18 +422,30 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		} catch (\JsonException) {
 			$this->connectionReports?->forgeAnswered($forge->id, $forge->apiBaseUrl, $status, false);
 
-			return ['ok' => false, 'error' => $name . ' API returned malformed JSON.'];
+			return ['ok' => false, 'error' => $this->forgeName($forge) . ' API returned malformed JSON.'];
 		}
 
 		if (!is_array($decoded) || !array_is_list($decoded)) {
 			$this->connectionReports?->forgeAnswered($forge->id, $forge->apiBaseUrl, $status, false);
 
-			return ['ok' => false, 'error' => $name . ' API returned an unexpected payload shape.'];
+			return ['ok' => false, 'error' => $this->forgeName($forge) . ' API returned an unexpected payload shape.'];
 		}
 
 		$this->connectionReports?->forgeAnswered($forge->id, $forge->apiBaseUrl, $status);
 
 		return ['ok' => true, 'releases' => $decoded];
+	}
+
+	/**
+	 * The error text for a forge answer that is not HTTP 200.
+	 */
+	private function statusError(Forge $forge, int $status): string {
+		$suffix = self::STATUS_ERRORS[$status] ?? null;
+		if ($suffix !== null) {
+			return $this->forgeName($forge) . $suffix;
+		}
+
+		return sprintf('%s API returned HTTP %d.', $this->forgeName($forge), $status);
 	}
 
 	/**
@@ -388,58 +459,105 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			return null;
 		}
 
-		$matchingAssets = [];
-		$shaUrl = null;
-		/** @var mixed $asset */
-		foreach ($assets as $asset) {
-			if (!is_array($asset)) {
-				continue;
-			}
-			/** @var mixed $name */
-			$name = $asset['name'] ?? '';
-			/** @var mixed $url */
-			$url = $asset['browser_download_url'] ?? '';
-			if (!is_string($name) || !is_string($url) || $name === '' || $url === '') {
-				continue;
-			}
-			if (fnmatch($assetPattern, $name, FNM_NOESCAPE)) {
-				$matchingAssets[] = ['name' => $name, 'url' => $url];
-			}
-			// Capture .sha256 sibling if present anywhere in the release.
-			if (str_ends_with($name, '.sha256')) {
-				$shaUrl = $url;
-			}
+		[$matchingAssets, $shaUrl] = $this->scanAssets($assets, $assetPattern);
+		$error = $this->assetMatchError($matchingAssets, $assetPattern);
+		if ($error !== null) {
+			return ['error' => $error];
 		}
-
-		if (count($matchingAssets) === 0) {
-			return [
-				'error' => sprintf('No release asset matches pattern "%s".', $assetPattern),
-			];
-		}
-
-		if (count($matchingAssets) > 1) {
-			$names = array_map(static fn (array $a): string => $a['name'], $matchingAssets);
-
-			return [
-				'error' => sprintf(
-					'Multiple matching assets for pattern "%s" (%s) — set explicit assetPattern.',
-					$assetPattern,
-					implode(', ', $names)
-				),
-			];
-		}
-
-		/** @var mixed $tag */
-		$tag = $release['tag_name'] ?? '';
 
 		return [
 			'kind' => 'github-release',
 			'download' => $matchingAssets[0]['url'],
 			'assetName' => $matchingAssets[0]['name'],
 			'sha256Url' => $shaUrl,
-			'version' => is_string($tag) ? $this->normalizeVersion($tag) : '',
-			'tagName' => is_string($tag) ? $tag : '',
-		];
+		] + $this->tagFields($release);
+	}
+
+	/**
+	 * The assets whose name matches the pattern, and the URL of the last
+	 * `.sha256` asset anywhere in the release.
+	 *
+	 * @param list<mixed> $assets
+	 * @return array{0: list<array{name: string, url: string}>, 1: ?string}
+	 */
+	private function scanAssets(array $assets, string $assetPattern): array {
+		$matchingAssets = [];
+		$shaUrl = null;
+		/** @var mixed $asset */
+		foreach ($assets as $asset) {
+			$named = $this->namedAsset($asset);
+			if ($named === null) {
+				continue;
+			}
+			if (fnmatch($assetPattern, $named['name'], FNM_NOESCAPE)) {
+				$matchingAssets[] = $named;
+			}
+			if (str_ends_with($named['name'], '.sha256')) {
+				$shaUrl = $named['url'];
+			}
+		}
+
+		return [$matchingAssets, $shaUrl];
+	}
+
+	/**
+	 * An asset's name and download URL, or null when either is missing,
+	 * empty or not a string.
+	 *
+	 * @return array{name: string, url: string}|null
+	 */
+	private function namedAsset(mixed $asset): ?array {
+		if (!is_array($asset)) {
+			return null;
+		}
+		$name = self::nonEmptyString($asset['name'] ?? null);
+		$url = self::nonEmptyString($asset['browser_download_url'] ?? null);
+		if ($name === null || $url === null) {
+			return null;
+		}
+
+		return ['name' => $name, 'url' => $url];
+	}
+
+	private static function nonEmptyString(mixed $value): ?string {
+		return is_string($value) && $value !== '' ? $value : null;
+	}
+
+	/**
+	 * Why the matching assets cannot be installed: none, or more than one.
+	 *
+	 * @param list<array{name: string, url: string}> $matchingAssets
+	 */
+	private function assetMatchError(array $matchingAssets, string $assetPattern): ?string {
+		if (count($matchingAssets) === 0) {
+			return sprintf('No release asset matches pattern "%s".', $assetPattern);
+		}
+		if (count($matchingAssets) === 1) {
+			return null;
+		}
+		$names = array_map(static fn (array $a): string => $a['name'], $matchingAssets);
+
+		return sprintf(
+			'Multiple matching assets for pattern "%s" (%s) — set explicit assetPattern.',
+			$assetPattern,
+			implode(', ', $names)
+		);
+	}
+
+	/**
+	 * The release's version (tag without a leading v) and raw tag name.
+	 *
+	 * @param array<array-key, mixed> $release
+	 * @return array{version: string, tagName: string}
+	 */
+	private function tagFields(array $release): array {
+		/** @var mixed $tag */
+		$tag = $release['tag_name'] ?? '';
+		if (!is_string($tag)) {
+			return ['version' => '', 'tagName' => ''];
+		}
+
+		return ['version' => $this->normalizeVersion($tag), 'tagName' => $tag];
 	}
 
 	private function normalizeVersion(string $tag): string {
@@ -459,20 +577,15 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		/** @var list<array{version: string, changelog: ?string, releasedAt: ?string}> $unique */
 		$unique = [];
 		foreach ($versions as $entry) {
-			if (!isset($seenAt[$entry['version']])) {
+			$index = $seenAt[$entry['version']] ?? null;
+			if ($index === null) {
 				$seenAt[$entry['version']] = count($unique);
 				$unique[] = $entry;
 				continue;
 			}
 			// Duplicate tag (e.g. re-listed across pagination); keep the
-			// first-seen entry but backfill its changelog if it was empty.
-			$index = $seenAt[$entry['version']];
-			if ($unique[$index]['changelog'] === null && $entry['changelog'] !== null) {
-				$unique[$index]['changelog'] = $entry['changelog'];
-			}
-			if ($unique[$index]['releasedAt'] === null && $entry['releasedAt'] !== null) {
-				$unique[$index]['releasedAt'] = $entry['releasedAt'];
-			}
+			// first-seen entry but backfill what it was missing.
+			$unique[$index] = self::backfill($unique[$index], $entry);
 		}
 
 		usort(
@@ -487,6 +600,20 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		return $unique;
 	}
 
+	/**
+	 * The kept entry with its empty changelog and release date taken from a
+	 * duplicate.
+	 *
+	 * @param array{version: string, changelog: ?string, releasedAt: ?string} $kept
+	 * @param array{version: string, changelog: ?string, releasedAt: ?string} $entry
+	 * @return array{version: string, changelog: ?string, releasedAt: ?string}
+	 */
+	private static function backfill(array $kept, array $entry): array {
+		$kept['changelog'] ??= $entry['changelog'];
+		$kept['releasedAt'] ??= $entry['releasedAt'];
+
+		return $kept;
+	}
 	/**
 	 * Maps a forge release's `body` (release notes markdown) into the
 	 * changelog field. Fail-soft: any mapping failure is caught and yields

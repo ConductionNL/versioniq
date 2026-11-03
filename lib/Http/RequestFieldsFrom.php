@@ -18,6 +18,10 @@ use Attribute;
  * its request parameters. The patched openapi-extractor (see
  * vendor-bin/openapi-extractor/patches) documents each property as if the
  * method declared it.
+ *
+ * Only that extractor reads `$fields`.
+ *
+ * @psalm-api
  */
 #[Attribute(Attribute::TARGET_METHOD)]
 final class RequestFieldsFrom {

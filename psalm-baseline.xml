@@ -66,26 +66,10 @@
     </RedundantFunctionCall>
   </file>
   <file src="lib/Service/Cache/ArtifactCache.php">
-    <DocblockTypeContradiction>
-      <code><![CDATA['']]></code>
-      <code><![CDATA[strtolower(hash('sha256', $content))]]></code>
-    </DocblockTypeContradiction>
     <MixedAssignment>
       <code><![CDATA[$cachedAt]]></code>
       <code><![CDATA[$meta]]></code>
     </MixedAssignment>
-    <RedundantConditionGivenDocblockType>
-      <code><![CDATA[is_string($meta['certificate'])]]></code>
-      <code><![CDATA[is_string($meta['installerKind'])]]></code>
-      <code><![CDATA[is_string($meta['sha256'])]]></code>
-      <code><![CDATA[is_string($meta['signature'])]]></code>
-      <code><![CDATA[is_string($meta['sourceId'])]]></code>
-      <code><![CDATA[isset($meta['certificate']) && is_string($meta['certificate'])]]></code>
-      <code><![CDATA[isset($meta['installerKind']) && is_string($meta['installerKind'])]]></code>
-      <code><![CDATA[isset($meta['sha256']) && is_string($meta['sha256'])]]></code>
-      <code><![CDATA[isset($meta['signature']) && is_string($meta['signature'])]]></code>
-      <code><![CDATA[isset($meta['sourceId']) && is_string($meta['sourceId'])]]></code>
-    </RedundantConditionGivenDocblockType>
   </file>
   <file src="lib/Service/Discovery/AppStoreDiscovery.php">
     <MixedAssignment>
@@ -107,35 +91,13 @@
     </RedundantConditionGivenDocblockType>
   </file>
   <file src="lib/Service/InstallerService.php">
-    <InvalidReturnStatement>
-      <code><![CDATA[$this->errorEnvelope(
-				$this->isCoreProtectedApp($appId)
-					? 'This core app cannot be managed from Versioniq.'
-					: 'This app cannot be managed from Versioniq.',
-				Http::STATUS_FORBIDDEN
-			)]]></code>
-      <code><![CDATA[$this->errorEnvelope($error->getMessage(), Http::STATUS_BAD_REQUEST)]]></code>
-      <code><![CDATA[$this->errorEnvelope($error->getMessage(), Http::STATUS_FORBIDDEN)]]></code>
-      <code><![CDATA[$this->errorEnvelope('Missing app id.', Http::STATUS_BAD_REQUEST)]]></code>
-    </InvalidReturnStatement>
-    <LessSpecificReturnStatement>
-      <code><![CDATA[$envelope]]></code>
-    </LessSpecificReturnStatement>
     <MixedArrayOffset>
       <code><![CDATA[$cachedVersions[$entry['version']]]]></code>
     </MixedArrayOffset>
-    <MoreSpecificReturnType>
-      <code><![CDATA[array{installedVersion: ?string, availableVersions: list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool}>, versions: list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool}>, source: string, sourceId: string, statusCode: int, hasError: bool, error?: string}]]></code>
-    </MoreSpecificReturnType>
     <RedundantConditionGivenDocblockType>
       <code><![CDATA[is_array($appInfo) && isset($appInfo['version']) && is_string($appInfo['version'])]]></code>
       <code><![CDATA[is_string($appInfo['version'])]]></code>
     </RedundantConditionGivenDocblockType>
-  </file>
-  <file src="lib/Service/Source/ForgeReleaseSource.php">
-    <MixedAssignment>
-      <code><![CDATA[$patched]]></code>
-    </MixedAssignment>
   </file>
   <file src="lib/Service/Source/SourceBinding.php">
     <RedundantConditionGivenDocblockType>

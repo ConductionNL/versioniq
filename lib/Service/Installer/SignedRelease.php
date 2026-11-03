@@ -21,6 +21,14 @@ use Exception;
  * @spec openspec/specs/version-management/spec.md
  */
 final class SignedRelease {
+	/** The release fields, in constructor order, and the error when one is missing or empty. */
+	private const REQUIRED_FIELDS = [
+		'download' => 'No download URL found for the selected release.',
+		'signature' => 'No signature found for the selected release.',
+		'certificate' => 'No app certificate found for the selected app.',
+		'version' => 'Selected release version is missing.',
+	];
+
 	public function __construct(
 		public readonly string $download,
 		public readonly string $signature,
@@ -37,27 +45,18 @@ final class SignedRelease {
 	 * @throws Exception
 	 */
 	public static function fromRelease(array $release): self {
-		$download = $release['download'] ?? '';
-		$signature = $release['signature'] ?? '';
-		$certificate = $release['certificate'] ?? '';
-		$version = $release['version'] ?? null;
-
-		if (!is_string($download) || $download === '') {
-			throw new Exception('No download URL found for the selected release.');
-		}
-		if (!is_string($signature) || $signature === '') {
-			throw new Exception('No signature found for the selected release.');
-		}
-		if (!is_string($certificate) || $certificate === '') {
-			throw new Exception('No app certificate found for the selected app.');
-		}
-		if (!is_string($version) || $version === '') {
-			throw new Exception('Selected release version is missing.');
+		$fields = [];
+		foreach (self::REQUIRED_FIELDS as $key => $missing) {
+			/** @var mixed $value */
+			$value = $release[$key] ?? '';
+			if (!is_string($value) || $value === '') {
+				throw new Exception($missing);
+			}
+			$fields[] = $value;
 		}
 
-		return new self($download, $signature, $certificate, $version);
+		return new self(...$fields);
 	}
-
 	/**
 	 * A copy that verifies against the certificate and signature stored with a cached artifact.
 	 *

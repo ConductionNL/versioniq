@@ -180,7 +180,7 @@ final class ExternalReleaseInstallGoldenTest extends TestCase {
 				}
 			}
 		}
-		foreach (['throw', 'status404', 'bad', 'named', 'upper'] as $sha) {
+		foreach (['throw', 'status404', 'bad', 'named', 'upper', 'padded', 'long', 'prefixed'] as $sha) {
 			$list["sha {$sha}"] = ['sha' => $sha];
 			$list["sha {$sha}, no pat"] = ['sha' => $sha, 'pat' => false];
 		}
@@ -602,6 +602,9 @@ final class ExternalReleaseInstallGoldenTest extends TestCase {
 			'bad' => 'not-a-digest',
 			'named' => $sha . '  someapp.tar.gz' . "\n",
 			'upper' => strtoupper($sha),
+			'padded' => "\n\t " . $sha . "  someapp.tar.gz\n",
+			'long' => $sha . 'a',
+			'prefixed' => 'x' . $sha,
 			default => $sha,
 		};
 		$response = $this->createMock(IResponse::class);
