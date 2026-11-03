@@ -40,6 +40,7 @@ use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceInterface;
 use OCP\App\AppPathNotFoundException;
 use OCP\App\IAppManager;
+use OCP\Http\Client\IResponse;
 use OCP\L10N\IFactory;
 use OCP\Server;
 use Psr\Log\LoggerInterface;
@@ -606,6 +607,14 @@ class ExternalReleaseInstallerService {
 			return 'No SHA-256 checksum available for this artifact.';
 		}
 
+		return self::checksumOutcome($this->fetchChecksumFile($shaUrl, $pat), $actualSha);
+	}
+
+	/**
+	 * Fetches the `.sha256` asset, with the PAT when there is one; null (and
+	 * a warning in the log) when the request fails.
+	 */
+	private function fetchChecksumFile(string $shaUrl, ?\OCA\Versioniq\Db\Pat $pat): ?IResponse {
 		$options = [
 			'timeout' => 30,
 			'headers' => ['User-Agent' => 'Nextcloud-Versioniq'],
@@ -615,45 +624,70 @@ class ExternalReleaseInstallerService {
 
 		try {
 			if ($pat === null) {
-				$response = $this->download->clientService->newClient()->get($shaUrl, $options);
-			} else {
-				$response = $this->pats->patManager->useToken($pat, function (string $token) use ($shaUrl, $options) {
-					$options['headers']['Authorization'] = 'Bearer ' . $token;
-
-					return $this->download->clientService->newClient()->get($shaUrl, $options);
-				});
+				return $this->download->clientService->newClient()->get($shaUrl, $options);
 			}
+
+			return $this->pats->patManager->useToken($pat, function (string $token) use ($shaUrl, $options) {
+				$options['headers']['Authorization'] = 'Bearer ' . $token;
+
+				return $this->download->clientService->newClient()->get($shaUrl, $options);
+			});
 		} catch (Exception $error) {
 			$this->logger->warning('External installer: could not fetch .sha256', [
 				'shaUrl' => $shaUrl,
 				'message' => $error->getMessage(),
 			]);
 
+			return null;
+		}
+	}
+
+	/**
+	 * The integrity warning for a fetched `.sha256` answer, or null when it
+	 * matches the archive.
+	 *
+	 * @throws Exception when the advertised digest differs from the archive's
+	 */
+	private static function checksumOutcome(?IResponse $response, string $actualSha): ?string {
+		if (!self::answeredOk($response)) {
 			return 'Failed to fetch advertised SHA-256; install proceeded without verification.';
 		}
 
-		if ($response->getStatusCode() !== 200) {
-			return 'Failed to fetch advertised SHA-256; install proceeded without verification.';
-		}
-
-		$body = trim((string)$response->getBody());
-		// Accept both raw hash and `<hash>  <filename>` forms.
-		$expected = preg_split('/\s+/', $body)[0] ?? '';
-		if (!preg_match('/^[a-f0-9]{64}$/i', $expected)) {
+		$expected = self::advertisedSha((string)$response->getBody());
+		if ($expected === null) {
 			return 'SHA-256 file format unrecognized; install proceeded without verification.';
 		}
 
-		if (!hash_equals(strtolower($expected), $actualSha)) {
-			throw new Exception(sprintf(
-				'SHA-256 mismatch — expected %s, got %s.',
-				strtolower($expected),
-				$actualSha
-			));
-		}
+		self::assertDigestMatches($expected, $actualSha);
 
 		return null;
 	}
 
+	/**
+	 * @throws Exception when the advertised digest differs from the archive's
+	 */
+	private static function assertDigestMatches(string $expected, string $actualSha): void {
+		if (!hash_equals($expected, $actualSha)) {
+			throw new Exception(sprintf('SHA-256 mismatch — expected %s, got %s.', $expected, $actualSha));
+		}
+	}
+
+	/**
+	 * @psalm-assert-if-true IResponse $response
+	 */
+	private static function answeredOk(?IResponse $response): bool {
+		return $response !== null && $response->getStatusCode() === 200;
+	}
+
+	/**
+	 * The lower-cased digest a `.sha256` body advertises, as a raw hash or as
+	 * `<hash>  <filename>`, or null when it is not 64 hex characters.
+	 */
+	private static function advertisedSha(string $body): ?string {
+		$expected = preg_split('/\s+/', trim($body))[0] ?? '';
+
+		return preg_match('/^[a-f0-9]{64}$/i', $expected) === 1 ? strtolower($expected) : null;
+	}
 	private function extractArchive(string $archiveFile, string $destFolder): string {
 		// Try TAR first (most Nextcloud apps publish .tar.gz), fall back to ZIP.
 		$archive = new TAR($archiveFile);
