@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Advisory;
 
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\Service\Advisory\AdvisoryPackageMap;
 use OCA\Versioniq\Service\Advisory\NextcloudAdvisoryFeed;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
 use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
@@ -15,6 +18,8 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 final class NextcloudAdvisoryFeedTest extends TestCase {
+	use BuildsByParameterName;
+
 	/**
 	 * @param list<array{body: string, link?: string, status?: int}> $pages
 	 * @param list<string> $installedApps
@@ -47,12 +52,12 @@ final class NextcloudAdvisoryFeedTest extends TestCase {
 
 		$logger = $this->createMock(LoggerInterface::class);
 
-		return new NextcloudAdvisoryFeed(
-			$clientService,
-			$config,
-			new AdvisoryPackageMap($appManager, $logger),
-			$logger,
-		);
+		return $this->buildByName(NextcloudAdvisoryFeed::class, [
+			'clientService' => $clientService,
+			'config' => $config,
+			'packageMap' => new AdvisoryPackageMap($appManager, $logger),
+			'logger' => $logger,
+		]);
 	}
 
 	/**

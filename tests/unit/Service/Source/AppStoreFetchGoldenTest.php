@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Source;
 
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
+
 use Exception;
 use OCA\Versioniq\Service\Source\AppStoreSource;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
 use OCP\Http\Client\IResponse;
@@ -29,6 +32,8 @@ use ReflectionProperty;
  * @uses \OCA\Versioniq\Service\Source\CatalogueQuery
  */
 final class AppStoreFetchGoldenTest extends TestCase {
+	use BuildsByParameterName;
+
 	private const FIXTURE = __DIR__ . '/fixtures/appstore-fetch.golden.json';
 
 	/** @var list<array<int, mixed>> */
@@ -171,7 +176,12 @@ final class AppStoreFetchGoldenTest extends TestCase {
 			return true;
 		});
 
-		$source = new AppStoreSource($clientService, $config, $appConfig, $this->createMock(IFactory::class));
+		$source = $this->buildByName(AppStoreSource::class, [
+			'clientService' => $clientService,
+			'config' => $config,
+			'appConfig' => $appConfig,
+			'l10nFactory' => $this->createMock(IFactory::class),
+		]);
 		$result = (new ReflectionMethod($source, 'fetchAppPayloadUncached'))->invoke($source, 'someapp');
 		$outcome = (new ReflectionProperty($source, 'catalogueOutcome'))->getValue($source);
 
