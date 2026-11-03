@@ -60,6 +60,7 @@ final class AppStoreFetchGoldenTest extends TestCase {
 			'other-next' => [200, $json(['data' => [['id' => 'other']], 'pages' => ['next' => true]])],
 			'other-end' => [200, $json(['data' => [['id' => 'other']], 'pages' => ['next' => false]])],
 			'other-pagination' => [200, $json(['data' => [['id' => 'other']], 'pagination' => ['next_page' => 3]])],
+			'other-pagination-end' => [200, $json(['data' => [['id' => 'other']], 'pagination' => ['next_page' => null]])],
 			'other-nextpage' => [200, $json(['apps' => [['id' => 'other']], 'nextPage' => ''])],
 			'other-wrongpage' => [200, $json(['data' => [['id' => 'other']], 'page' => 9, 'pages' => ['next' => true]])],
 			'empty' => [200, '[]'],
@@ -88,6 +89,7 @@ final class AppStoreFetchGoldenTest extends TestCase {
 		$add('filtered errors forever', ['throw'], ['500']);
 		$add('filtered non-200 forever then found', ['500'], ['found']);
 		$add('found on page three', ['other-next', 'other-pagination', 'found'], ['other-end']);
+		$add('pagination ends before the app', ['other-pagination-end', 'found'], ['other-end']);
 		$add('platform found on page two', ['other-end'], ['other-next', 'found-list']);
 		$add('odd server version', ['other-end'], ['found'], 'abc');
 		$add('short server version', ['other-end'], ['found'], '34');
