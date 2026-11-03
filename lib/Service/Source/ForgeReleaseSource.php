@@ -17,7 +17,6 @@ use OCA\Versioniq\Service\Advisory\AdvisorySeverity;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
 use OCA\Versioniq\Service\Pat\PatAccess;
-use OCA\Versioniq\Service\Pat\PatResolver;
 use OCP\Http\Client\IClientService;
 use OCP\IConfig;
 use Psr\Log\LoggerInterface;

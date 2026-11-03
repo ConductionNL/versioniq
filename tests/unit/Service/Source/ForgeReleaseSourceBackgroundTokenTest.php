@@ -148,4 +148,35 @@ final class ForgeReleaseSourceBackgroundTokenTest extends TestCase {
 		$this->assertSame('Bearer alice-secret', $this->sentHeaders[0]['Authorization'] ?? null);
 		$this->assertSame('Bearer alice-secret', $this->sentHeaders[1]['Authorization'] ?? null);
 	}
+
+	/**
+	 * The token lookup names the binding's own forge, not GitHub.
+	 */
+	public function testTheLookupNamesTheBindingsForge(): void {
+		$resolver = $this->createMock(PatResolver::class);
+		$resolver->expects(self::exactly(2))
+			->method('findFor')
+			->with('codeberg', 'ConductionNL/private-app', 'alice')
+			->willReturn(null);
+		$user = $this->createMock(\OCP\IUser::class);
+		$user->method('getUID')->willReturn('alice');
+		$userSession = $this->createMock(IUserSession::class);
+		$userSession->method('getUser')->willReturn($user);
+		$response = $this->createMock(IResponse::class);
+		$response->method('getStatusCode')->willReturn(200);
+		$response->method('getBody')->willReturn('[]');
+		$client = $this->createMock(IClient::class);
+		$client->method('get')->willReturn($response);
+		$clientService = $this->createMock(IClientService::class);
+		$clientService->method('newClient')->willReturn($client);
+
+		$source = $this->buildByName(ForgeReleaseSource::class, [
+			'clientService' => $clientService,
+			'patResolver' => $resolver,
+			'userSession' => $userSession,
+			'forgeRegistry' => new ForgeRegistry($this->createMock(\OCP\IAppConfig::class)),
+		]);
+		$source->listVersions('private-app', SourceBinding::codeberg('ConductionNL', 'private-app'));
+		$source->listAdvisories('private-app', SourceBinding::codeberg('ConductionNL', 'private-app'));
+	}
 }
