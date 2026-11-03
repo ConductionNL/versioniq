@@ -180,7 +180,7 @@ final class ExternalReleaseInstallGoldenTest extends TestCase {
 				}
 			}
 		}
-		foreach (['throw', 'status404', 'bad', 'named', 'upper', 'padded', 'long', 'prefixed'] as $sha) {
+		foreach (['throw', 'status404', 'bad', 'named', 'upper', 'padded', 'long', 'prefixed', 'tail', 'status204'] as $sha) {
 			$list["sha {$sha}"] = ['sha' => $sha];
 			$list["sha {$sha}, no pat"] = ['sha' => $sha, 'pat' => false];
 		}
@@ -605,10 +605,11 @@ final class ExternalReleaseInstallGoldenTest extends TestCase {
 			'padded' => "\n\t " . $sha . "  someapp.tar.gz\n",
 			'long' => $sha . 'a',
 			'prefixed' => 'x' . $sha,
+			'tail' => substr($sha, 0, 63) . ($sha[63] === '0' ? '1' : '0'),
 			default => $sha,
 		};
 		$response = $this->createMock(IResponse::class);
-		$response->method('getStatusCode')->willReturn($shape === 'status404' ? 404 : 200);
+		$response->method('getStatusCode')->willReturn(['status404' => 404, 'status204' => 204][$shape] ?? 200);
 		$response->method('getBody')->willReturn($body);
 
 		return $response;

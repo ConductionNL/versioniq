@@ -133,6 +133,7 @@ final class ForgeFetchGoldenTest extends TestCase {
 			'sha sibling' => [['assets' => [$asset('a.tar.gz', 'u1'), $asset('a.tar.gz.sha256', 'u2')], 'tag_name' => 'v1'], '*.tar.gz'],
 			'sha last wins' => [['assets' => [$asset('x.sha256', 's1'), $asset('a.tar.gz', 'u1'), $asset('y.sha256', 's2')], 'tag_name' => 'v1'], 'a.*'],
 			'sha also matches' => [['assets' => [$asset('a.sha256', 's1')], 'tag_name' => 'v1'], '*'],
+			'sha in the middle of a name' => [['assets' => [$asset('a.tar.gz', 'u1'), $asset('x.sha256.txt', 's1')], 'tag_name' => 'v1'], '*.tar.gz'],
 			'sha only' => [['assets' => [$asset('a.sha256', 's1')], 'tag_name' => 'v1'], '*.tar.gz'],
 			'junk assets' => [['assets' => ['str', 5, null, [], $asset(''), $asset('a.tar.gz', ''), $asset(7), $asset('a.tar.gz', 9), ['name' => 'a.tar.gz'], ['browser_download_url' => 'u'], $asset('ok.tar.gz', 'u9')], 'tag_name' => 'v1'], '*.tar.gz'],
 			'junk sha' => [['assets' => [$asset('a.sha256', ''), $asset('b.tar.gz', 'u')], 'tag_name' => 'v1'], '*.tar.gz'],

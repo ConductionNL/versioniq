@@ -77,6 +77,38 @@ final class ArtifactCacheReadGoldenTest extends TestCase {
 		}
 	}
 
+	/**
+	 * An archive that decompresses far past the 256 MiB limit is not read, even
+	 * when its info.xml comes first and an unlimited read would find it.
+	 */
+	public function testAnArchivePastTheDecompressionLimitIsNotRead(): void {
+		$tar = self::tar(['appinfo/info.xml' => self::info('30', '32')]);
+		// gzdecode() can hold about twice the limit before it gives up.
+		$memoryLimit = (string)ini_get('memory_limit');
+		ini_set('memory_limit', '1200M');
+
+		try {
+			self::assertSame('>=30 <=32', $this->runSpec(self::gzipWithPadding($tar, 1))['result']);
+			self::assertNull($this->runSpec(self::gzipWithPadding($tar, 400))['result']);
+		} finally {
+			ini_set('memory_limit', $memoryLimit);
+		}
+	}
+
+	/**
+	 * The gzipped tar followed by the given MiB of zero bytes.
+	 */
+	private static function gzipWithPadding(string $tar, int $mebibytes): string {
+		$context = deflate_init(ZLIB_ENCODING_GZIP);
+		$out = (string)deflate_add($context, $tar, ZLIB_NO_FLUSH);
+		$chunk = str_repeat("\0", 1048576);
+		for ($i = 0; $i < $mebibytes; $i++) {
+			$out .= (string)deflate_add($context, $chunk, ZLIB_NO_FLUSH);
+		}
+
+		return $out . (string)deflate_add($context, '', ZLIB_FINISH);
+	}
+
 	private static function info(?string $min, ?string $max): string {
 		$attrs = ($min === null ? '' : ' min-version="' . $min . '"') . ($max === null ? '' : ' max-version="' . $max . '"');
 
