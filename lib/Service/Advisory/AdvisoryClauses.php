@@ -20,6 +20,7 @@ final class AdvisoryClauses {
 	 * The trimmed, non-empty clauses in $raw; none for any other value.
 	 *
 	 * @return list<string>
+	 * @spec openspec/specs/security-advisory-correlation/spec.md
 	 */
 	public static function from(mixed $raw): array {
 		if (is_string($raw)) {

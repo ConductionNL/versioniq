@@ -145,6 +145,8 @@ class FailureClassifier {
 	 *
 	 * Message inspection is primary because the installers throw consistent,
 	 * descriptive messages; the breadcrumb stage is a secondary tie-breaker.
+	 *
+	 * @spec openspec/specs/version-management/spec.md
 	 */
 	public function categoryFor(Throwable $error, ?string $lastStage = null): string {
 		$message = strtolower($error->getMessage());

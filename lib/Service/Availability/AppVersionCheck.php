@@ -23,6 +23,11 @@ final class AppVersionCheck {
 	) {
 	}
 
+	/**
+	 * The same check against another source.
+	 *
+	 * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
+	 */
 	public function withSource(?string $sourceId): self {
 		return new self($this->installedVersion, $this->pinned, $sourceId);
 	}
