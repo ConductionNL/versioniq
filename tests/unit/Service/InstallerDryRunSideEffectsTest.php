@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service;
 
+require_once __DIR__ . '/../Support/InstallArgs.php';
+
 require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 
 use OCA\Versioniq\Service\Audit\AuditLogger;
@@ -22,6 +24,7 @@ use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\SourceRegistry;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
+use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IAppConfig;
@@ -98,14 +101,14 @@ final class InstallerDryRunSideEffectsTest extends TestCase {
 	}
 
 	public function testDryRunNeverTakesMaintenanceMode(): void {
-		$this->service()->installAppVersion('someapp', '1.0.0', false, dryRun: true);
+		InstallArgs::call($this->service(), 'someapp', '1.0.0', false, dryRun: true);
 
 		$maintenanceWrites = array_filter($this->systemWrites, static fn (array $w): bool => $w[0] === 'maintenance');
 		self::assertSame([], array_values($maintenanceWrites), 'a dry run switched maintenance mode');
 	}
 
 	public function testRealRunStillTakesAndReleasesMaintenanceMode(): void {
-		$this->service()->installAppVersion('someapp', '1.0.0', false, allowDowngrade: true, dryRun: false);
+		InstallArgs::call($this->service(), 'someapp', '1.0.0', false, allowDowngrade: true, dryRun: false);
 
 		self::assertSame([['maintenance', true], ['maintenance', false]], $this->systemWrites);
 	}
