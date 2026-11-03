@@ -159,16 +159,7 @@ class SelectedReleaseInstallerService {
 	 * @throws Exception
 	 */
 	private function verifyCertificate(string $appId, string $certificate): void {
-		$rootCrt = file_get_contents(\OC::$SERVERROOT . '/resources/codesigning/root.crt');
-		$rootCrl = file_get_contents(\OC::$SERVERROOT . '/resources/codesigning/root.crl');
-		if ($rootCrt === false) {
-			throw new Exception('Unable to load Nextcloud root certificate chain.');
-		}
-
-		if ($rootCrl === false) {
-			throw new Exception('Unable to load Nextcloud certificate revocation list.');
-		}
-
+		[$rootCrt, $rootCrl] = self::codeSigningRoots();
 		$x509 = $this->newX509();
 		$rootCrtList = $this->splitCerts($rootCrt);
 		foreach ($rootCrtList as $rootCertificate) {
@@ -180,6 +171,51 @@ class SelectedReleaseInstallerService {
 			throw new Exception('Could not parse app certificate.');
 		}
 
+		$crl = $this->validatedCrl($rootCrtList, $rootCrl);
+		$serial = self::serialNumberOf($loadedCertificate);
+		$revoked = $crl->getRevoked($serial);
+		if ($revoked !== false) {
+			throw new Exception(sprintf('Certificate "%s" has been revoked', $serial));
+		}
+
+		if ($x509->validateSignature() !== true) {
+			throw new Exception(sprintf('App with id %s has a certificate not issued by a trusted Code Signing Authority', $appId));
+		}
+
+		self::assertIssuedTo($appId, $certificate);
+
+		$this->addDebug('certificate-validated', ['appId' => $appId, 'serial' => $serial]);
+	}
+
+	/**
+	 * The server's code-signing root certificates and revocation list.
+	 *
+	 * @return array{0: string, 1: string}
+	 * @throws Exception when either cannot be read
+	 */
+	private static function codeSigningRoots(): array {
+		$rootCrt = file_get_contents(\OC::$SERVERROOT . '/resources/codesigning/root.crt');
+		$rootCrl = file_get_contents(\OC::$SERVERROOT . '/resources/codesigning/root.crl');
+		if ($rootCrt === false) {
+			throw new Exception('Unable to load Nextcloud root certificate chain.');
+		}
+
+		if ($rootCrl === false) {
+			throw new Exception('Unable to load Nextcloud certificate revocation list.');
+		}
+
+		return [$rootCrt, $rootCrl];
+	}
+
+	/**
+	 * The revocation list, loaded against the root certificates, once its
+	 * signature validates.
+	 *
+	 * @param array<int, string> $rootCrtList
+	 * @return X509V3|X509V2
+	 * @throws Exception when the signature does not validate
+	 */
+	private function validatedCrl(array $rootCrtList, string $rootCrl): X509V3|X509V2 {
 		$crl = $this->newX509();
 		foreach ($rootCrtList as $rootCertificate) {
 			$crl->loadCA($rootCertificate);
@@ -190,26 +226,33 @@ class SelectedReleaseInstallerService {
 			throw new Exception('Could not validate CRL signature');
 		}
 
+		return $crl;
+	}
+
+	/**
+	 * The serial number of a certificate phpseclib has loaded.
+	 *
+	 * @param array<array-key, mixed> $loadedCertificate
+	 * @throws Exception when it has none that converts to a string
+	 */
+	private static function serialNumberOf(array $loadedCertificate): string {
 		$tbsCertificate = (array)($loadedCertificate['tbsCertificate'] ?? []);
 		$serialNumber = $tbsCertificate['serialNumber'] ?? null;
 		if (!is_object($serialNumber) || !method_exists($serialNumber, 'toString')) {
 			throw new Exception('Could not read certificate serial number.');
 		}
+
 		// External-API mismatch: phpseclib X509::loadX509() returns untyped arrays, so the
 		// serialNumber BigInteger's ->toString() is not statically known despite the method_exists guard above.
 		/** @psalm-suppress MixedMethodCall */
-		$serial = (string)$serialNumber->toString();
-		$revoked = $crl->getRevoked($serial);
-		if ($revoked !== false) {
-			throw new Exception(sprintf('Certificate "%s" has been revoked', $serial));
-		}
+		return (string)$serialNumber->toString();
+	}
 
-		if ($x509->validateSignature() !== true) {
-			throw new Exception(sprintf('App with id %s has a certificate not issued by a trusted Code Signing Authority', $appId));
-		}
-
-		$certInfo = openssl_x509_parse($certificate);
-		$subject = is_array($certInfo) && is_array($certInfo['subject'] ?? null) ? $certInfo['subject'] : [];
+	/**
+	 * @throws Exception when the certificate's common name is missing or is not the app id
+	 */
+	private static function assertIssuedTo(string $appId, string $certificate): void {
+		$subject = self::subjectOf($certificate);
 		if (!isset($subject['CN'])) {
 			throw new Exception(sprintf('App with id %s has a cert with no CN', $appId));
 		}
@@ -218,8 +261,19 @@ class SelectedReleaseInstallerService {
 		if ($commonName !== $appId) {
 			throw new Exception(sprintf('App with id %s has a cert issued to %s', $appId, $commonName));
 		}
+	}
 
-		$this->addDebug('certificate-validated', ['appId' => $appId, 'serial' => $serial]);
+	/**
+	 * The subject fields OpenSSL reads from a PEM certificate, or none.
+	 *
+	 * @return array<array-key, mixed>
+	 */
+	private static function subjectOf(string $certificate): array {
+		$certInfo = openssl_x509_parse($certificate);
+		/** @var mixed $subject */
+		$subject = is_array($certInfo) ? ($certInfo['subject'] ?? null) : null;
+
+		return is_array($subject) ? $subject : [];
 	}
 
 	/**
