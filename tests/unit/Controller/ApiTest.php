@@ -720,6 +720,25 @@ final class ApiTest extends TestCase {
 	}
 
 	/**
+	 * A debug that is not 1, true, 0 or false is refused: read as false,
+	 * `debug=yes` without dryRun would be a real install instead of the
+	 * dry run that debug implies.
+	 *
+	 * @dataProvider unrecognisedDryRuns
+	 */
+	public function testInstallVersionRefusesAnUnrecognisedDebug(string $debug): void {
+		$request = $this->requestWith(['appId' => 'openregister', 'version' => '2.3.0', 'debug' => $debug]);
+
+		$installer = $this->createMock(InstallerService::class);
+		$installer->expects($this->never())->method('installAppVersion');
+
+		$response = $this->dispatch($this->buildAdminController($installer, $request), 'installVersion', $request);
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertSame(['message' => 'debug must be 1, true, 0 or false.'], $response->getData());
+	}
+
+	/**
 	 * Issue #437: a bind request for the self-hosted Forgejo or Gitea forge
 	 * used to fall through to a GitHub binding, because only `codeberg` was
 	 * recognised and everything else became `github`.
