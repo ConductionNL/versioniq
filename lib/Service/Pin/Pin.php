@@ -123,16 +123,22 @@ final class Pin {
 			throw new InvalidArgumentException('Pin payload missing required string fields');
 		}
 
-		$reason = isset($payload['reason']) && is_string($payload['reason']) && $payload['reason'] !== ''
-			? $payload['reason']
-			: null;
-		$driftedTo = isset($payload['driftedTo']) && is_string($payload['driftedTo']) && $payload['driftedTo'] !== ''
-			? $payload['driftedTo']
-			: null;
-		$driftedAt = isset($payload['driftedAt']) && is_string($payload['driftedAt']) && $payload['driftedAt'] !== ''
-			? $payload['driftedAt']
-			: null;
+		return new self(
+			$version,
+			$pinnedBy,
+			$pinnedAt,
+			self::optionalString($payload, 'reason'),
+			self::optionalString($payload, 'driftedTo'),
+			self::optionalString($payload, 'driftedAt'),
+		);
+	}
 
-		return new self($version, $pinnedBy, $pinnedAt, $reason, $driftedTo, $driftedAt);
+	/**
+	 * The non-empty string under $key, or null.
+	 *
+	 * @param array<array-key, mixed> $payload
+	 */
+	private static function optionalString(array $payload, string $key): ?string {
+		return isset($payload[$key]) && is_string($payload[$key]) && $payload[$key] !== '' ? $payload[$key] : null;
 	}
 }
