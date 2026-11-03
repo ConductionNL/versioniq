@@ -15,6 +15,7 @@ namespace OCA\Versioniq\Service;
 use Exception;
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFailure;
 use OCA\Versioniq\Service\Installer\InstallRequest;
@@ -558,6 +559,9 @@ class InstallerService {
 		$target = $request->target;
 		if ($target->appId === '' || $target->version === '') {
 			return $this->installEnvelope(Http::STATUS_BAD_REQUEST, ['message' => 'Missing app id or version.']);
+		}
+		if (!AppIdFormat::isValid($target->appId)) {
+			return $this->installEnvelope(Http::STATUS_BAD_REQUEST, ['appId' => $target->appId, 'message' => 'Not a valid app id.']);
 		}
 		if (!$this->isManageableApp($target->appId)) {
 			return $this->installEnvelope(Http::STATUS_FORBIDDEN, [

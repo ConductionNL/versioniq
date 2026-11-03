@@ -12,7 +12,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\Support;
 
 use OCA\Versioniq\Service\InstallerService;
-use PHPUnit\Framework\Constraint\IsEqual;
+use PHPUnit\Framework\Constraint\Callback;
 use ReflectionMethod;
 use ReflectionNamedType;
 
@@ -39,7 +39,7 @@ final class InstallArgs {
 	}
 
 	/**
-	 * with() arguments for installAppVersion() matching the nine values.
+	 * with() arguments for installAppVersion() matching the nine values strictly.
 	 *
 	 * @return list<mixed>
 	 */
@@ -48,7 +48,10 @@ final class InstallArgs {
 			return array_values($args);
 		}
 
-		return [new IsEqual(self::request(self::named($args)))];
+		// Compared value by value with ===: IsEqual would take null and '' (or 0 and false) for the same.
+		$expected = self::named([self::request(self::named($args))]);
+
+		return [new Callback(static fn (mixed $actual): bool => is_object($actual) && $actual::class === self::REQUEST && self::named([$actual]) === $expected)];
 	}
 
 	/**

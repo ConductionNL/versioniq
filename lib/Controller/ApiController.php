@@ -14,6 +14,8 @@ namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
 use OCA\Versioniq\Db\Pat;
+use OCA\Versioniq\Http\InstallVersionFields;
+use OCA\Versioniq\Http\RequestFieldsFrom;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\Api\AccessCollaborators;
 use OCA\Versioniq\Service\Api\InstallCollaborators;
@@ -35,6 +37,7 @@ use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
 use OCP\AppFramework\Http\DataResponse;
+use OCP\AppFramework\Http\Response;
 use OCP\AppFramework\OCSController;
 use OCP\IRequest;
 use OCP\IUser;
@@ -43,6 +46,9 @@ use OCP\IUser;
  * @psalm-suppress UnusedClass
  */
 class ApiController extends OCSController {
+	/** The spellings readBinaryBool() understands. */
+	private const BINARY_FLAGS = ['1', 'true', '0', 'false'];
+
 	/**
 	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
 	 */
@@ -439,12 +445,6 @@ class ApiController extends OCSController {
 	 *
 	 * @param string $appId The app to install a version of
 	 * @param string $version The target version, overridable by a `targetVersion` or `version` body parameter
-	 * @param string|null $source Override the bound source for this install only
-	 * @param string $debug `1` to include debug output; on its own it still implies a dry run (deprecated)
-	 * @param string|null $dryRun `1` to simulate, `0` to install for real. OMITTED is distinct from `0`: only when omitted does `debug=1` still imply a dry run
-	 * @param string $pin `1` to pin the app to this version after installing
-	 * @param string $acceptNewSha `1` to accept a changed SHA-256 once and replace the recorded digest
-	 * @param string $allowDowngrade `1` to permit installing a version older than the installed one
 	 *
 	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_FORBIDDEN|Http::STATUS_INTERNAL_SERVER_ERROR, array<string, mixed>, array{}>
 	 *
@@ -467,16 +467,15 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'POST', url: '/api/app/{appId}/versions/{version}/install')]
-	public function installVersion(
-		string $appId,
-		string $version,
-		?string $source = null,
-		string $debug = '0',
-		?string $dryRun = null,
-		string $pin = '0',
-		string $acceptNewSha = '0',
-		string $allowDowngrade = '0',
-	): DataResponse {
+	#[RequestFieldsFrom(InstallVersionFields::class)]
+	public function installVersion(string $appId, string $version): Response {
+		// The optional fields are declared in InstallVersionFields; one that is
+		// not text gets the empty 400 the Dispatcher gives a mistyped parameter.
+		$fields = InstallVersionFields::fromRequest($this->request);
+		if ($fields === null) {
+			/** @psalm-suppress LessSpecificReturnStatement Kept out of the documented contract, as before. */
+			return new Response(Http::STATUS_BAD_REQUEST);
+		}
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
@@ -489,27 +488,26 @@ class ApiController extends OCSController {
 			$requestedVersion = $version;
 		}
 
+		$source = $fields->source;
 		$sourceOverride = ($source !== null && trim($source) !== '') ? trim($source) : null;
 
-		$includeDebug = $this->readBinaryBool($debug, false);
+		$includeDebug = $this->readBinaryBool($fields->debug, false);
 
-		// `dryRun` is independent of `debug` — see MODIFIED "Debug Mode".
-		// THE NULL DEFAULT IS LOAD-BEARING. A `?string` defaulting to null is
-		// still null when the caller omitted the parameter entirely, which is
-		// how we distinguish "not supplied" (legacy `debug`-implies-dry-run
-		// fallback still applies) from an explicit `dryRun=0` (a real install
-		// regardless of `debug`). This is exactly what `getParam('dryRun')`
-		// with no default used to give us; declaring it as a typed parameter
-		// changes the spelling, not the semantics. Give it a '0' default and
-		// the legacy fallback silently dies.
-		$dryRunSupplied = $dryRun !== null;
-		$dryRunFlag = $dryRunSupplied ? $this->readBinaryBool($dryRun, false) : null;
+		// `dryRun` is independent of `debug` — see MODIFIED "Debug Mode". Null
+		// means the caller left it out; see InstallVersionFields::$dryRun.
+		$dryRunSupplied = $fields->dryRun !== null;
+		if ($dryRunSupplied && !in_array(strtolower(trim($fields->dryRun)), self::BINARY_FLAGS, true)) {
+			// Read as false, an unknown value would turn a requested dry run into a real install.
+			/** @psalm-suppress InvalidReturnStatement Status passthrough, as for the installer's own refusals. */
+			return new DataResponse(['message' => 'dryRun must be 1, true, 0 or false.'], Http::STATUS_BAD_REQUEST);
+		}
+		$dryRunFlag = $dryRunSupplied ? $this->readBinaryBool($fields->dryRun, false) : null;
 
 		$overridePinRaw = $this->stringParam('overridePin', '');
 		$overridePin = $overridePinRaw === '' ? null : $overridePinRaw;
-		$pinRequested = $this->readBinaryBool($pin, false);
-		$acceptNewShaFlag = $this->readBinaryBool($acceptNewSha, false);
-		$allowDowngradeFlag = $this->readBinaryBool($allowDowngrade, false);
+		$pinRequested = $this->readBinaryBool($fields->pin, false);
+		$acceptNewShaFlag = $this->readBinaryBool($fields->acceptNewSha, false);
+		$allowDowngradeFlag = $this->readBinaryBool($fields->allowDowngrade, false);
 
 		$result = $this->install->installerService->installAppVersion(new InstallRequest(
 			new InstallTarget($appId, $requestedVersion, $sourceOverride),
@@ -1378,11 +1376,8 @@ class ApiController extends OCSController {
 		}
 		if (is_string($value)) {
 			$normalized = strtolower(trim($value));
-			if (in_array($normalized, ['1', 'true'], true)) {
-				return true;
-			}
-			if (in_array($normalized, ['0', 'false'], true)) {
-				return false;
+			if (in_array($normalized, self::BINARY_FLAGS, true)) {
+				return in_array($normalized, ['1', 'true'], true);
 			}
 		}
 

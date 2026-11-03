@@ -13,12 +13,15 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
+use OCA\Versioniq\Http\InstanceSettingsFields;
+use OCA\Versioniq\Http\RequestFieldsFrom;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Settings\InstanceSettings;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
 use OCP\AppFramework\Http\DataResponse;
+use OCP\AppFramework\Http\Response;
 use OCP\AppFramework\OCSController;
 use OCP\IGroupManager;
 use OCP\IRequest;
@@ -71,47 +74,33 @@ class SettingsController extends OCSController {
 	/**
 	 * Updates the instance settings (password-confirmed); an omitted field is left alone
 	 *
-	 * @param string|null $auditRetentionDays Days of history to keep, 30 to 3650
-	 * @param string|null $artifactCacheKeep Archives kept per app, 0 to 20 (0 turns the cache off)
-	 * @param string|null $appStoreApiBase App Store API base URL; blank uses the public store
-	 * @param string|null $githubApiBase GitHub API base URL (https); blank uses api.github.com
-	 * @param string|null $githubWebBase GitHub web base URL (https); blank uses github.com
-	 * @param string|null $advisoryFeedUrl Advisory feed URL; blank uses the published Nextcloud feed
-	 * @param string|null $maxLinesBehind Release lines an app may fall behind, 0 to 10; blank turns the check off
-	 *
 	 * @return DataResponse<Http::STATUS_OK, array<string, int|string|null>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: The settings after the change
 	 * 400: A value is out of range or not an acceptable URL; nothing was changed
 	 * 403: Caller is not an administrator
 	 *
+	 * @psalm-suppress MoreSpecificReturnType The empty 400 for a mistyped field stays out of the documented contract.
+	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PUT', url: '/api/instance-settings')]
-	public function updateInstanceSettings(
-		?string $auditRetentionDays = null,
-		?string $artifactCacheKeep = null,
-		?string $appStoreApiBase = null,
-		?string $githubApiBase = null,
-		?string $githubWebBase = null,
-		?string $advisoryFeedUrl = null,
-		?string $maxLinesBehind = null,
-	): DataResponse {
+	#[RequestFieldsFrom(InstanceSettingsFields::class)]
+	public function updateInstanceSettings(): Response {
+		// The fields are declared in InstanceSettingsFields; one that is not
+		// text gets the empty 400 the Dispatcher gives a mistyped parameter.
+		$sent = InstanceSettingsFields::fromRequest($this->request);
+		if ($sent === null) {
+			/** @psalm-suppress LessSpecificReturnStatement Kept out of the documented contract, as before. */
+			return new Response(Http::STATUS_BAD_REQUEST);
+		}
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$fields = array_filter([
-			'auditRetentionDays' => $auditRetentionDays,
-			'artifactCacheKeep' => $artifactCacheKeep,
-			'appStoreApiBase' => $appStoreApiBase,
-			'githubApiBase' => $githubApiBase,
-			'githubWebBase' => $githubWebBase,
-			'advisoryFeedUrl' => $advisoryFeedUrl,
-			'maxLinesBehind' => $maxLinesBehind,
-		], static fn (?string $value): bool => $value !== null);
+		$fields = $sent->sent();
 
 		try {
 			$applied = $this->settings->update($fields);

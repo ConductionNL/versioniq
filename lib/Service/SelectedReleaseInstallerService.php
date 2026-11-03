@@ -16,6 +16,7 @@ use Exception;
 use OC\Archive\TAR;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
+use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstalledFolder;
 use OCA\Versioniq\Service\Installer\InstallFailure;
@@ -319,7 +320,7 @@ class SelectedReleaseInstallerService {
 			'dryRun' => $dryRun,
 		]);
 
-		if (!preg_match('/^[a-z][a-z0-9_\-]*$/', $appId)) {
+		if (!AppIdFormat::isValid($appId)) {
 			throw new Exception('Invalid app id.');
 		}
 

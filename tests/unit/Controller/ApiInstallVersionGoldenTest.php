@@ -48,7 +48,7 @@ final class ApiInstallVersionGoldenTest extends TestCase {
 	private array $installs = [];
 
 	/**
-	 * @return array<string, array{params: array<string, mixed>, uid?: string}>
+	 * @return array<string, array{params: array<string, mixed>, uid?: string|null}>
 	 */
 	private static function cases(): array {
 		return [
@@ -60,6 +60,8 @@ final class ApiInstallVersionGoldenTest extends TestCase {
 			'debug implies dry run' => ['params' => ['debug' => '1']],
 			'debug with explicit real run' => ['params' => ['debug' => '1', 'dryRun' => '0']],
 			'dry run' => ['params' => ['dryRun' => 'true']],
+			'dry run spelled false, padded' => ['params' => ['debug' => '1', 'dryRun' => ' FALSE ']],
+			'dry run spelled with capitals' => ['params' => ['dryRun' => 'True']],
 			'dry run that is no flag' => ['params' => ['debug' => '1', 'dryRun' => 'maybe']],
 			'pin with override' => ['params' => ['pin' => '1', 'overridePin' => '1.9.0']],
 			'accept new sha' => ['params' => ['acceptNewSha' => '1']],
@@ -69,6 +71,7 @@ final class ApiInstallVersionGoldenTest extends TestCase {
 			'unknown parameter ignored' => ['params' => ['force' => '1']],
 			'everything' => ['params' => ['source' => 'codeberg:acme/notes', 'debug' => 'true', 'dryRun' => '1', 'pin' => 'true', 'acceptNewSha' => 'true', 'allowDowngrade' => '1', 'overridePin' => '1.0.0', 'targetVersion' => '2.2.0']],
 			'not an admin' => ['params' => ['debug' => '1'], 'uid' => 'alice'],
+			'no user' => ['params' => ['debug' => '1'], 'uid' => null],
 			'debug as a boolean' => ['params' => ['debug' => true]],
 			'dry run as a number' => ['params' => ['dryRun' => 1]],
 			'source as a list' => ['params' => ['source' => ['github:acme/notes']]],
@@ -98,7 +101,7 @@ final class ApiInstallVersionGoldenTest extends TestCase {
 		$case = self::cases()[$name];
 		$this->installs = [];
 		$request = $this->requestWith(self::ROUTE + $case['params']);
-		$response = $this->dispatch($this->controller($request, $case['uid'] ?? 'admin'), 'installVersion', $request);
+		$response = $this->dispatch($this->controller($request, array_key_exists('uid', $case) ? $case['uid'] : 'admin'), 'installVersion', $request);
 		$actual = json_encode(self::describe($response) + ['installs' => $this->installs], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
 
 		$fixture = is_file(self::FIXTURE) ? (array)json_decode((string)file_get_contents(self::FIXTURE), true, 512, JSON_THROW_ON_ERROR) : [];
@@ -112,9 +115,12 @@ final class ApiInstallVersionGoldenTest extends TestCase {
 		$this->assertSame($fixture[$name], $actual);
 	}
 
-	private function controller(IRequest $request, string $uid): ApiController {
-		$user = $this->createMock(IUser::class);
-		$user->method('getUID')->willReturn($uid);
+	private function controller(IRequest $request, ?string $uid): ApiController {
+		$user = null;
+		if ($uid !== null) {
+			$user = $this->createMock(IUser::class);
+			$user->method('getUID')->willReturn($uid);
+		}
 		$session = $this->createMock(IUserSession::class);
 		$session->method('getUser')->willReturn($user);
 		$groupManager = $this->createMock(IGroupManager::class);

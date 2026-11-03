@@ -109,6 +109,10 @@ final class InstallerServiceInstallGoldenTest extends TestCase {
 		$list['trimmed ids'] = ['args' => $args([0 => ' someapp ', 1 => ' 2.0.0 '])];
 		$list['self managed'] = ['args' => $args([0 => 'versioniq'])];
 		$list['core app'] = ['args' => $args([0 => 'core'])];
+		$list['path-like app id'] = ['args' => $args([0 => '../someapp'])];
+		$list['app id walking into versioniq'] = ['args' => $args([0 => 'someapp/../versioniq'])];
+		$list['app id with capitals'] = ['args' => $args([0 => 'SomeApp'])];
+		$list['app id with an inner space'] = ['args' => $args([0 => ' some app '])];
 		$list['bad override pin'] = ['args' => $args([4 => 'bogus'])];
 		$list['bad override pin on core app'] = ['args' => $args([0 => 'core', 4 => 'bogus'])];
 
@@ -515,6 +519,21 @@ final class InstallerServiceInstallGoldenTest extends TestCase {
 			'artifactCache' => $this->createMock(ArtifactCache::class),
 			'eventDispatcher' => $eventDispatcher,
 		]);
+	}
+
+	/**
+	 * An app id that is not a Nextcloud app id is refused before the
+	 * self/core guard and before any path lookup.
+	 */
+	public function testAnAppIdThatIsNoAppIdIsRefusedBeforeAnyLookup(): void {
+		foreach (['../someapp', 'someapp/../versioniq', '../../etc/passwd', 'SomeApp', 'some app', '1app'] as $appId) {
+			$result = json_decode($this->runCase(['args' => array_replace(self::BASE['args'], [0 => $appId])]), true, 512, JSON_THROW_ON_ERROR);
+
+			$this->assertSame(400, $result['result']['statusCode'], $appId);
+			$this->assertSame(['appId' => $appId, 'message' => 'Not a valid app id.'], $result['result']['payload'], $appId);
+			$this->assertSame([], $result['calls'], $appId);
+			$this->assertFalse($this->installerRan, $appId);
+		}
 	}
 
 	public function testInstallAppVersionMatchesTheGoldenFixture(): void {
