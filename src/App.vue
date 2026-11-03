@@ -74,7 +74,6 @@ type AppVersion = {
 	releasedAt?: string | null
 }
 
-
 const isLoading = ref(true)
 const apps = ref<AppOption[]>([])
 const advisories = ref<Record<string, AdvisoryCorrelation>>({})
@@ -479,7 +478,6 @@ async function unwrapOcsResponseWithMeta <T, >(response: Response): Promise<{ pa
 
 	return { payload: data }
 }
-
 
 const installStatusTone = computed<'success' | 'warning' | 'error' | 'info'>(() => {
 	const result = lastInstallResult.value
@@ -2922,6 +2920,8 @@ watch(dryRunEnabled, () => {
 	</div>
 </template>
 
+<style module src="./styles/versionChip.module.css"></style>
+
 <style module>
 .section {
 	display: block;
@@ -3479,7 +3479,8 @@ watch(dryRunEnabled, () => {
 	overflow: visible;
 }
 
-.versionItemMain {
+.versionItemMain,
+.versionItemActions {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -3535,11 +3536,6 @@ watch(dryRunEnabled, () => {
 
 .versionItemActions {
 	margin-top: 8px;
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	gap: 10px;
-	width: 100%;
 }
 
 .versionSelectButton {
@@ -3753,23 +3749,6 @@ watch(dryRunEnabled, () => {
 	align-items: center;
 	gap: 8px;
 	font-size: 14px;
-}
-
-.versionChip {
-	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-	font-weight: 600;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	padding: 2px 8px;
-	border: 1px solid var(--color-border-dark);
-	border-radius: 9999px;
-	background: var(--color-main-background);
-}
-
-.versionArrow {
-	font-weight: 700;
-	color: var(--color-text-light);
 }
 
 .versionSummary {
