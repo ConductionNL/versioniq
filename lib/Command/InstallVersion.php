@@ -13,6 +13,10 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Command;
 
 use OCA\Versioniq\Service\Installer\FailureClassifier;
+use OCA\Versioniq\Service\Installer\InstallOptions;
+use OCA\Versioniq\Service\Installer\InstallRequest;
+use OCA\Versioniq\Service\Installer\InstallTarget;
+use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\InstallerService;
 use OCP\AppFramework\Http;
 use Symfony\Component\Console\Command\Command;
@@ -115,17 +119,11 @@ class InstallVersion extends Command {
 		$allowDowngrade = (bool)$input->getOption('allow-downgrade');
 		$acceptNewSha = (bool)$input->getOption('accept-new-sha');
 
-		$result = $this->installerService->installAppVersion(
-			$appId,
-			$version,
-			false,
-			$sourceOverride,
-			null,
-			false,
-			$acceptNewSha,
-			$allowDowngrade,
-			$dryRun,
-		);
+		$result = $this->installerService->installAppVersion(new InstallRequest(
+			new InstallTarget($appId, $version, $sourceOverride),
+			new InstallOptions(false, $dryRun, $acceptNewSha, $allowDowngrade),
+			new PinChoice(null, false),
+		));
 
 		$statusCode = $result['statusCode'] ?? Http::STATUS_INTERNAL_SERVER_ERROR;
 		/** @var array<string, mixed> $payload */

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service;
 
+require_once __DIR__ . '/../Support/InstallArgs.php';
+
 require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 
 use DateTime;
@@ -26,6 +28,7 @@ use OCA\Versioniq\Service\Source\SourceRegistry;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
 use OCA\Versioniq\Service\Source\UntrustedSourceException;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
+use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\EventDispatcher\IEventDispatcher;
@@ -258,7 +261,7 @@ final class InstallerServiceInstallGoldenTest extends TestCase {
 		$this->installerRan = false;
 		$case = array_replace(self::BASE, $over);
 		try {
-			$result = $this->service($case)->installAppVersion(...$case['args']);
+			$result = InstallArgs::call($this->service($case), ...$case['args']);
 		} catch (\Throwable $error) {
 			$result = ['thrown' => get_class($error), 'message' => $error->getMessage()];
 		}

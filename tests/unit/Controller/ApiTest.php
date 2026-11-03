@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Controller;
 
+require_once __DIR__ . '/../Support/InstallArgs.php';
+
 require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 
 use OCA\Versioniq\Controller\ApiController;
@@ -25,6 +27,7 @@ use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\PolicyStore;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
+use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IGroupManager;
@@ -641,7 +644,7 @@ final class ApiTest extends TestCase {
 		$installer = $this->createMock(InstallerService::class);
 		$installer->expects($this->once())
 			->method('installAppVersion')
-			->with('openregister', '2.3.0', true, null, null, false, false, false, false)
+			->with(...InstallArgs::expected('openregister', '2.3.0', true, null, null, false, false, false, false))
 			->willReturn([
 				'statusCode' => 200,
 				'payload' => ['appId' => 'openregister', 'toVersion' => '2.3.0', 'dryRun' => false],
@@ -660,7 +663,7 @@ final class ApiTest extends TestCase {
 		$installer = $this->createMock(InstallerService::class);
 		$installer->expects($this->once())
 			->method('installAppVersion')
-			->with('openregister', '2.3.0', false, null, null, false, false, false, true)
+			->with(...InstallArgs::expected('openregister', '2.3.0', false, null, null, false, false, false, true))
 			->willReturn([
 				'statusCode' => 200,
 				'payload' => ['appId' => 'openregister', 'toVersion' => '2.3.0', 'dryRun' => true],
@@ -683,7 +686,7 @@ final class ApiTest extends TestCase {
 		$installer = $this->createMock(InstallerService::class);
 		$installer->expects($this->once())
 			->method('installAppVersion')
-			->with('openregister', '2.3.0', true, null, null, false, false, false, null)
+			->with(...InstallArgs::expected('openregister', '2.3.0', true, null, null, false, false, false, null))
 			->willReturn([
 				'statusCode' => 200,
 				'payload' => ['appId' => 'openregister', 'toVersion' => '2.3.0', 'dryRun' => true],

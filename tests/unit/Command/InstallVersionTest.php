@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Command;
 
+require_once __DIR__ . '/../Support/InstallArgs.php';
+
 use OCA\Versioniq\Command\InstallVersion;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\InstallerService;
+use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\AppFramework\Http;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -32,7 +35,7 @@ final class InstallVersionTest extends TestCase {
 		$installer->method('isManageableApp')->willReturn(true);
 		$installer->expects(self::once())
 			->method('installAppVersion')
-			->with('openregister', '2.3.0', false, null, null, false, false, false, false)
+			->with(...InstallArgs::expected('openregister', '2.3.0', false, null, null, false, false, false, false))
 			->willReturn([
 				'statusCode' => Http::STATUS_OK,
 				'payload' => [
@@ -56,17 +59,8 @@ final class InstallVersionTest extends TestCase {
 		$installer = $this->createMock(InstallerService::class);
 		$installer->method('isManageableApp')->willReturn(true);
 		$installer->method('installAppVersion')->willReturnCallback(
-			static function (
-				string $appId,
-				string $version,
-				bool $includeDebug,
-				?string $source,
-				?string $overridePin,
-				bool $pinRequested,
-				bool $acceptNewSha,
-				bool $allowDowngrade,
-				?bool $dryRun,
-			): array {
+			static function (mixed ...$args): array {
+				['appId' => $appId, 'targetVersion' => $version, 'allowDowngrade' => $allowDowngrade] = InstallArgs::named($args);
 				if (!$allowDowngrade) {
 					return [
 						'statusCode' => Http::STATUS_CONFLICT,
@@ -111,12 +105,30 @@ final class InstallVersionTest extends TestCase {
 		self::assertSame(0, $acknowledgedExit);
 	}
 
+	/**
+	 * The source and the accept-new-SHA flag reach the installer; the source
+	 * trimmed.
+	 */
+	public function testSourceAndAcceptNewShaReachTheInstaller(): void {
+		$installer = $this->createMock(InstallerService::class);
+		$installer->method('isManageableApp')->willReturn(true);
+		$installer->expects(self::once())
+			->method('installAppVersion')
+			->with(...InstallArgs::expected('openregister', '2.3.0', false, 'github:acme/openregister', null, false, true, false, false))
+			->willReturn(['statusCode' => Http::STATUS_OK, 'payload' => ['installStatus' => 'installed']]);
+
+		$tester = new CommandTester(new InstallVersion($installer));
+		$exitCode = $tester->execute(['appId' => 'openregister', 'version' => '2.3.0', '--source' => ' github:acme/openregister ', '--accept-new-sha' => true]);
+
+		self::assertSame(0, $exitCode);
+	}
+
 	public function testDryRunLeavesTheInstanceUntouchedAndReportsUpdateTypeAsJson(): void {
 		$installer = $this->createMock(InstallerService::class);
 		$installer->method('isManageableApp')->willReturn(true);
 		$installer->expects(self::once())
 			->method('installAppVersion')
-			->with('openregister', '2.3.0', false, null, null, false, false, false, true)
+			->with(...InstallArgs::expected('openregister', '2.3.0', false, null, null, false, false, false, true))
 			->willReturn([
 				'statusCode' => Http::STATUS_OK,
 				'payload' => [

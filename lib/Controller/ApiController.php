@@ -21,6 +21,10 @@ use OCA\Versioniq\Service\Api\ReportCollaborators;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
+use OCA\Versioniq\Service\Installer\InstallOptions;
+use OCA\Versioniq\Service\Installer\InstallRequest;
+use OCA\Versioniq\Service\Installer\InstallTarget;
+use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Pat\NewPat;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Policy\Policy;
@@ -507,17 +511,11 @@ class ApiController extends OCSController {
 		$acceptNewShaFlag = $this->readBinaryBool($acceptNewSha, false);
 		$allowDowngradeFlag = $this->readBinaryBool($allowDowngrade, false);
 
-		$result = $this->install->installerService->installAppVersion(
-			$appId,
-			$requestedVersion,
-			$includeDebug,
-			$sourceOverride,
-			$overridePin,
-			$pinRequested,
-			$acceptNewShaFlag,
-			$allowDowngradeFlag,
-			$dryRunFlag,
-		);
+		$result = $this->install->installerService->installAppVersion(new InstallRequest(
+			new InstallTarget($appId, $requestedVersion, $sourceOverride),
+			new InstallOptions($includeDebug, $dryRunFlag ?? $includeDebug, $acceptNewShaFlag, $allowDowngradeFlag),
+			new PinChoice($overridePin, $pinRequested),
+		));
 		$result['payload']['requestedVersion'] = $requestedVersion;
 		$result['payload']['routeVersion'] = $version;
 		if (!$dryRunSupplied && $includeDebug) {
