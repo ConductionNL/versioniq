@@ -14,6 +14,7 @@ namespace OCA\Versioniq\Service\Source;
 
 use Exception;
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Advisory\AdvisoryClauses;
 use OCA\Versioniq\Service\Advisory\AdvisorySeverity;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
@@ -205,44 +206,39 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 		$advisories = [];
 		/** @var mixed $entry */
 		foreach ($raw as $entry) {
-			if (!is_array($entry)) {
-				continue;
+			$advisory = is_array($entry) ? self::advisoryFrom($entry) : null;
+			if ($advisory !== null) {
+				$advisories[] = $advisory;
 			}
-			/** @var mixed $id */
-			$id = $entry['id'] ?? $entry['ghsa_id'] ?? null;
-			if (!is_string($id) || $id === '') {
-				continue;
-			}
-			/** @var mixed $severity */
-			$severity = $entry['severity'] ?? null;
-			$summary = $entry['summary'] ?? ($entry['title'] ?? '');
-			$affected = [];
-			/** @var mixed $affectedRaw */
-			$affectedRaw = $entry['affected'] ?? $entry['affectedVersions'] ?? [];
-			if (is_string($affectedRaw)) {
-				$affectedRaw = array_map('trim', explode(',', $affectedRaw));
-			}
-			if (is_array($affectedRaw)) {
-				/** @var mixed $clause */
-				foreach ($affectedRaw as $clause) {
-					if (is_string($clause) && trim($clause) !== '') {
-						$affected[] = trim($clause);
-					}
-				}
-			}
-			/** @var mixed $patched */
-			$patched = $entry['firstPatchedVersion'] ?? $entry['first_patched_version'] ?? null;
-
-			$advisories[] = [
-				'id' => $id,
-				'severity' => AdvisorySeverity::normalize($severity),
-				'summary' => is_string($summary) ? $summary : '',
-				'affected' => $affected,
-				'firstPatchedVersion' => is_string($patched) && $patched !== '' ? $patched : null,
-			];
 		}
 
 		return $advisories;
+	}
+
+	/**
+	 * One App Store advisory entry as an advisory record, or null without an id.
+	 *
+	 * @param array<array-key, mixed> $entry
+	 * @return array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string}|null
+	 */
+	private static function advisoryFrom(array $entry): ?array {
+		/** @var mixed $id */
+		$id = $entry['id'] ?? $entry['ghsa_id'] ?? null;
+		if (!is_string($id) || $id === '') {
+			return null;
+		}
+		/** @var mixed $summary */
+		$summary = $entry['summary'] ?? ($entry['title'] ?? '');
+		/** @var mixed $patched */
+		$patched = $entry['firstPatchedVersion'] ?? $entry['first_patched_version'] ?? null;
+
+		return [
+			'id' => $id,
+			'severity' => AdvisorySeverity::normalize($entry['severity'] ?? null),
+			'summary' => is_string($summary) ? $summary : '',
+			'affected' => AdvisoryClauses::from($entry['affected'] ?? $entry['affectedVersions'] ?? []),
+			'firstPatchedVersion' => is_string($patched) && $patched !== '' ? $patched : null,
+		];
 	}
 
 	/**

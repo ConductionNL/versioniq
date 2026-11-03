@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Source;
 
 use Exception;
+use OCA\Versioniq\Service\Advisory\AdvisoryClauses;
 use OCA\Versioniq\Service\Advisory\AdvisorySeverity;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
@@ -224,30 +225,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		/** @var mixed $summary */
 		$summary = $entry['summary'] ?? ($entry['title'] ?? '');
 
-		$affected = [];
-		$firstPatched = null;
-		/** @var mixed $vulnerabilities */
-		$vulnerabilities = $entry['vulnerabilities'] ?? [];
-		if (is_array($vulnerabilities) && isset($vulnerabilities[0]) && is_array($vulnerabilities[0])) {
-			$vuln = $vulnerabilities[0];
-			/** @var mixed $range */
-			$range = $vuln['vulnerable_version_range'] ?? null;
-			if (is_string($range) && trim($range) !== '') {
-				foreach (explode(',', $range) as $clause) {
-					if (trim($clause) !== '') {
-						$affected[] = trim($clause);
-					}
-				}
-			}
-			/** @var mixed $patched */
-			$patched = $vuln['first_patched_version'] ?? null;
-			if (is_array($patched)) {
-				$patched = $patched['identifier'] ?? null;
-			}
-			if (is_string($patched) && $patched !== '') {
-				$firstPatched = $this->normalizeVersion($patched);
-			}
-		}
+		[$affected, $firstPatched] = $this->firstVulnerability($entry['vulnerabilities'] ?? []);
 
 		return [
 			'id' => $id,
@@ -255,6 +233,29 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			'summary' => is_string($summary) ? $summary : '',
 			'affected' => $affected,
 			'firstPatchedVersion' => $firstPatched,
+		];
+	}
+
+	/**
+	 * The affected clauses and first patched version of the first entry of
+	 * an advisory's vulnerability list (forge advisories list one package).
+	 *
+	 * @return array{0: list<string>, 1: ?string}
+	 */
+	private function firstVulnerability(mixed $vulnerabilities): array {
+		$vuln = is_array($vulnerabilities) ? ($vulnerabilities[0] ?? null) : null;
+		if (!is_array($vuln)) {
+			return [[], null];
+		}
+		/** @var mixed $patched */
+		$patched = $vuln['first_patched_version'] ?? null;
+		if (is_array($patched)) {
+			$patched = $patched['identifier'] ?? null;
+		}
+
+		return [
+			AdvisoryClauses::from($vuln['vulnerable_version_range'] ?? null),
+			is_string($patched) && $patched !== '' ? $this->normalizeVersion($patched) : null,
 		];
 	}
 
