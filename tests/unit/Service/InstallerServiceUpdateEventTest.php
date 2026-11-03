@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service;
 
+require_once __DIR__ . '/../Support/InstallArgs.php';
+
 require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 
 use OCA\Versioniq\AppInfo\Application;
@@ -21,6 +23,7 @@ use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\SourceRegistry;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
+use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\App\Events\AppUpdateEvent;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Http;
@@ -137,7 +140,7 @@ final class InstallerServiceUpdateEventTest extends TestCase {
 	public function testAnUpgradeDispatchesOneAppUpdateEvent(): void {
 		$this->resultingVersion('2.0.0');
 
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', false, null, null, false, false, false, false);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false, null, null, false, false, false, false);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 		$events = $this->updateEvents();
@@ -148,7 +151,7 @@ final class InstallerServiceUpdateEventTest extends TestCase {
 	public function testADryRunDispatchesNothing(): void {
 		$this->resultingVersion('1.0.0');
 
-		$this->service()->installAppVersion('someapp', '2.0.0', false, null, null, false, false, false, true);
+		InstallArgs::call($this->service(), 'someapp', '2.0.0', false, null, null, false, false, false, true);
 
 		self::assertSame([], $this->updateEvents());
 	}
@@ -158,7 +161,7 @@ final class InstallerServiceUpdateEventTest extends TestCase {
 		$this->pinStore->method('get')->willReturn(new Pin('1.0.0', 'alice', '2026-01-01T00:00:00+00:00', null, '0.9.0', '2026-02-01T00:00:00+00:00'));
 		$this->resultingVersion('1.0.0');
 
-		$this->service()->installAppVersion('someapp', '1.0.0', false, null, null, false, false, false, false);
+		InstallArgs::call($this->service(), 'someapp', '1.0.0', false, null, null, false, false, false, false);
 
 		self::assertSame([], $this->updateEvents());
 	}
@@ -167,7 +170,7 @@ final class InstallerServiceUpdateEventTest extends TestCase {
 		$this->installedBefore = '';
 		$this->resultingVersion('2.0.0');
 
-		$this->service()->installAppVersion('someapp', '2.0.0', false, null, null, false, false, false, false);
+		InstallArgs::call($this->service(), 'someapp', '2.0.0', false, null, null, false, false, false, false);
 
 		self::assertSame([], $this->updateEvents());
 	}
@@ -176,7 +179,7 @@ final class InstallerServiceUpdateEventTest extends TestCase {
 		$this->notifySwitch = false;
 		$this->resultingVersion('2.0.0');
 
-		$this->service()->installAppVersion('someapp', '2.0.0', false, null, null, false, false, false, false);
+		InstallArgs::call($this->service(), 'someapp', '2.0.0', false, null, null, false, false, false, false);
 
 		self::assertSame([], $this->updateEvents());
 	}
@@ -193,7 +196,7 @@ final class InstallerServiceUpdateEventTest extends TestCase {
 		});
 		$this->resultingVersion('2.0.0');
 
-		$this->service()->installAppVersion('someapp', '2.0.0', false, null, InstallerService::OVERRIDE_PIN_REPIN, false, false, false, false);
+		InstallArgs::call($this->service(), 'someapp', '2.0.0', false, null, InstallerService::OVERRIDE_PIN_REPIN, false, false, false, false);
 
 		self::assertSame(['pin', 'event'], $order);
 	}
