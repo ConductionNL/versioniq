@@ -4,16 +4,21 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\BackgroundJob;
 
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\BackgroundJob\PatExpiryWarningJob;
 use OCA\Versioniq\Db\Pat;
 use OCA\Versioniq\Db\PatMapper;
 use OCA\Versioniq\Service\Pat\PatExpiryEvaluator;
 use OCA\Versioniq\Service\Pat\PatExpiryNotifier;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\AppFramework\Utility\ITimeFactory;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 final class PatExpiryWarningJobTest extends TestCase {
+	use BuildsByParameterName;
+
 	private function pat(int $id, ?string $expiresAt, array $warned = []): Pat {
 		return Pat::fromRow([
 			'id' => $id,
@@ -37,13 +42,13 @@ final class PatExpiryWarningJobTest extends TestCase {
 		PatExpiryNotifier $notifier,
 		?LoggerInterface $logger = null,
 	): PatExpiryWarningJob {
-		return new PatExpiryWarningJob(
-			$this->createMock(ITimeFactory::class),
-			$mapper,
-			$evaluator,
-			$notifier,
-			$logger ?? $this->createMock(LoggerInterface::class),
-		);
+		return $this->buildByName(PatExpiryWarningJob::class, [
+			'time' => $this->createMock(ITimeFactory::class),
+			'patMapper' => $mapper,
+			'evaluator' => $evaluator,
+			'notifier' => $notifier,
+			'logger' => $logger ?? $this->createMock(LoggerInterface::class),
+		]);
 	}
 
 	private function invokeRun(PatExpiryWarningJob $job): void {
