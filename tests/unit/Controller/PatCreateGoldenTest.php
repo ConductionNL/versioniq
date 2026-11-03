@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Controller;
 
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\Controller\ApiController;
 use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Db\Pat;
@@ -21,6 +23,7 @@ use OCA\Versioniq\Service\Pat\PatValidator;
 use OCA\Versioniq\Service\Pat\ValidationResult;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\PolicyStore;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IGroupManager;
@@ -52,6 +55,8 @@ use ReflectionClass;
  * @uses \OCA\Versioniq\Db\Pat
  */
 final class PatCreateGoldenTest extends TestCase {
+	use BuildsByParameterName;
+
 	private const FIXTURE = __DIR__ . '/fixtures/pat-create.golden.json';
 
 	/** @var list<array<array-key, mixed>> */
@@ -169,28 +174,29 @@ final class PatCreateGoldenTest extends TestCase {
 		$expiry = $this->createMock(PatExpiryEvaluator::class);
 		$expiry->method('evaluate')->willReturn(['state' => 'ok', 'daysRemaining' => null]);
 
-		return new ApiController(
-			'versioniq',
-			$request,
-			$this->createMock(InstallerService::class),
-			$groupManager,
-			$session,
-			(new ReflectionClass(ServerVersion::class))->newInstanceWithoutConstructor(),
-			$this->createMock(PatMapper::class),
-			new PatManager($mapper, $crypto),
-			$validator,
-			$this->createMock(PatDeeplinkBuilder::class),
-			$expiry,
-			$this->createMock(DiscoveryAggregator::class),
-			$this->createMock(AdvisoryResultStore::class),
-			$this->createMock(AdvisorySettingsStore::class),
-			$this->createMock(AuditEntryMapper::class),
-			$this->createMock(PinStore::class),
-			$this->createMock(IAppManager::class),
-			$this->createMock(ITimeFactory::class),
-			$this->createMock(PolicyStore::class),
-			$this->createMock(AutoUpdateSettingsStore::class),
-			$this->createMock(ArtifactCache::class),
-		);
+		return $this->buildByName(ApiController::class, [
+			'appName' => 'versioniq',
+			'request' => $request,
+			'installerService' => $this->createMock(InstallerService::class),
+			'groupManager' => $groupManager,
+			'userSession' => $session,
+			'serverVersion' => (new ReflectionClass(ServerVersion::class))->newInstanceWithoutConstructor(),
+			'patMapper' => $this->createMock(PatMapper::class),
+			'patManager' => new PatManager($mapper, $crypto),
+			'patValidator' => $validator,
+			'deeplinkBuilder' => $this->createMock(PatDeeplinkBuilder::class),
+			'patExpiryEvaluator' => $expiry,
+			'discoveryAggregator' => $this->createMock(DiscoveryAggregator::class),
+			'advisoryResultStore' => $this->createMock(AdvisoryResultStore::class),
+			'advisorySettingsStore' => $this->createMock(AdvisorySettingsStore::class),
+			'auditEntryMapper' => $this->createMock(AuditEntryMapper::class),
+			'pinStore' => $this->createMock(PinStore::class),
+			'appManager' => $this->createMock(IAppManager::class),
+			'timeFactory' => $this->createMock(ITimeFactory::class),
+			'policyStore' => $this->createMock(PolicyStore::class),
+			'autoUpdateSettingsStore' => $this->createMock(AutoUpdateSettingsStore::class),
+			'settingsStore' => $this->createMock(AutoUpdateSettingsStore::class),
+			'artifactCache' => $this->createMock(ArtifactCache::class),
+		]);
 	}
 }
