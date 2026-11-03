@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Controller;
 
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\Controller\ApiController;
 use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Db\PatMapper;
@@ -22,6 +24,7 @@ use OCA\Versioniq\Service\Pat\PatValidator;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\PolicyStore;
 use OCA\Versioniq\Service\Settings\InstanceSettings;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -39,6 +42,8 @@ use PHPUnit\Framework\TestCase;
  * @spec openspec/specs/pending-updates/spec.md
  */
 final class ApiUpdatesTest extends TestCase {
+	use BuildsByParameterName;
+
 	private function controller(bool $admin, AvailabilityResultStore $store, InstanceSettings $settings, ?InstallerService $installer = null): ApiController {
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn('alice');
@@ -47,33 +52,34 @@ final class ApiUpdatesTest extends TestCase {
 		$groups = $this->createMock(IGroupManager::class);
 		$groups->method('isAdmin')->with('alice')->willReturn($admin);
 
-		return new ApiController(
-			'versioniq',
-			$this->createMock(IRequest::class),
-			$installer ?? $this->createMock(InstallerService::class),
-			$groups,
-			$session,
-			(new \ReflectionClass(ServerVersion::class))->newInstanceWithoutConstructor(),
-			$this->createMock(PatMapper::class),
-			$this->createMock(PatManager::class),
-			$this->createMock(PatValidator::class),
-			$this->createMock(PatDeeplinkBuilder::class),
-			$this->createMock(PatExpiryEvaluator::class),
-			$this->createMock(DiscoveryAggregator::class),
-			$this->createMock(AdvisoryResultStore::class),
-			$this->createMock(AdvisorySettingsStore::class),
-			$this->createMock(AuditEntryMapper::class),
-			$this->createMock(PinStore::class),
-			$this->createMock(IAppManager::class),
-			$this->createMock(ITimeFactory::class),
-			$this->createMock(PolicyStore::class),
-			$this->createMock(AutoUpdateSettingsStore::class),
-			$this->createMock(ArtifactCache::class),
-			null,
-			$this->createMock(AttemptLedger::class),
-			$store,
-			$settings,
-		);
+		return $this->buildByName(ApiController::class, [
+			'appName' => 'versioniq',
+			'request' => $this->createMock(IRequest::class),
+			'installerService' => $installer ?? $this->createMock(InstallerService::class),
+			'groupManager' => $groups,
+			'userSession' => $session,
+			'serverVersion' => (new \ReflectionClass(ServerVersion::class))->newInstanceWithoutConstructor(),
+			'patMapper' => $this->createMock(PatMapper::class),
+			'patManager' => $this->createMock(PatManager::class),
+			'patValidator' => $this->createMock(PatValidator::class),
+			'deeplinkBuilder' => $this->createMock(PatDeeplinkBuilder::class),
+			'patExpiryEvaluator' => $this->createMock(PatExpiryEvaluator::class),
+			'discoveryAggregator' => $this->createMock(DiscoveryAggregator::class),
+			'advisoryResultStore' => $this->createMock(AdvisoryResultStore::class),
+			'advisorySettingsStore' => $this->createMock(AdvisorySettingsStore::class),
+			'auditEntryMapper' => $this->createMock(AuditEntryMapper::class),
+			'pinStore' => $this->createMock(PinStore::class),
+			'appManager' => $this->createMock(IAppManager::class),
+			'timeFactory' => $this->createMock(ITimeFactory::class),
+			'policyStore' => $this->createMock(PolicyStore::class),
+			'autoUpdateSettingsStore' => $this->createMock(AutoUpdateSettingsStore::class),
+			'settingsStore' => $this->createMock(AutoUpdateSettingsStore::class),
+			'artifactCache' => $this->createMock(ArtifactCache::class),
+			'connectionReports' => null,
+			'attemptLedger' => $this->createMock(AttemptLedger::class),
+			'availabilityResultStore' => $store,
+			'instanceSettings' => $settings,
+		]);
 	}
 
 	public function testANonAdminGets403AndNoAppData(): void {
