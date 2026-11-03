@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Source;
 
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
+
 use Exception;
 use OCA\Versioniq\Service\Source\AppStoreSource;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
 use OCP\Http\Client\IResponse;
@@ -29,6 +32,8 @@ use ReflectionProperty;
  * @uses \OCA\Versioniq\Service\Source\CatalogueQuery
  */
 final class AppStoreFetchGoldenTest extends TestCase {
+	use BuildsByParameterName;
+
 	private const FIXTURE = __DIR__ . '/fixtures/appstore-fetch.golden.json';
 
 	/** @var list<array<int, mixed>> */
@@ -55,6 +60,7 @@ final class AppStoreFetchGoldenTest extends TestCase {
 			'other-next' => [200, $json(['data' => [['id' => 'other']], 'pages' => ['next' => true]])],
 			'other-end' => [200, $json(['data' => [['id' => 'other']], 'pages' => ['next' => false]])],
 			'other-pagination' => [200, $json(['data' => [['id' => 'other']], 'pagination' => ['next_page' => 3]])],
+			'other-pagination-end' => [200, $json(['data' => [['id' => 'other']], 'pagination' => ['next_page' => null]])],
 			'other-nextpage' => [200, $json(['apps' => [['id' => 'other']], 'nextPage' => ''])],
 			'other-wrongpage' => [200, $json(['data' => [['id' => 'other']], 'page' => 9, 'pages' => ['next' => true]])],
 			'empty' => [200, '[]'],
@@ -83,6 +89,7 @@ final class AppStoreFetchGoldenTest extends TestCase {
 		$add('filtered errors forever', ['throw'], ['500']);
 		$add('filtered non-200 forever then found', ['500'], ['found']);
 		$add('found on page three', ['other-next', 'other-pagination', 'found'], ['other-end']);
+		$add('pagination ends before the app', ['other-pagination-end', 'found'], ['other-end']);
 		$add('platform found on page two', ['other-end'], ['other-next', 'found-list']);
 		$add('odd server version', ['other-end'], ['found'], 'abc');
 		$add('short server version', ['other-end'], ['found'], '34');
@@ -171,7 +178,12 @@ final class AppStoreFetchGoldenTest extends TestCase {
 			return true;
 		});
 
-		$source = new AppStoreSource($clientService, $config, $appConfig, $this->createMock(IFactory::class));
+		$source = $this->buildByName(AppStoreSource::class, [
+			'clientService' => $clientService,
+			'config' => $config,
+			'appConfig' => $appConfig,
+			'l10nFactory' => $this->createMock(IFactory::class),
+		]);
 		$result = (new ReflectionMethod($source, 'fetchAppPayloadUncached'))->invoke($source, 'someapp');
 		$outcome = (new ReflectionProperty($source, 'catalogueOutcome'))->getValue($source);
 

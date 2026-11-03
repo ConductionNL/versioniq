@@ -27,6 +27,23 @@ final class InstallVersionTest extends TestCase {
 		self::assertStringContainsString('cannot be installed', $tester->getErrorOutput());
 	}
 
+	public function testARefusalIsReportedWordForWordAsTextAndAsJson(): void {
+		$installer = $this->createMock(InstallerService::class);
+		$installer->method('isManageableApp')->willReturn(false);
+		$installer->expects(self::never())->method('installAppVersion');
+		$message = '"core" cannot be installed or updated from Versioniq (it is Versioniq itself or a core/always-enabled app).';
+
+		$text = new CommandTester(new InstallVersion($installer));
+		self::assertSame(2, $text->execute(['appId' => ' core ', 'version' => ' 1.0.0 '], ['capture_stderr_separately' => true]));
+		self::assertSame('', $text->getDisplay());
+		self::assertSame($message . "\n", $text->getErrorOutput());
+
+		$json = new CommandTester(new InstallVersion($installer));
+		self::assertSame(2, $json->execute(['appId' => ' core ', 'version' => ' 1.0.0 ', '--json' => true], ['capture_stderr_separately' => true]));
+		self::assertSame('{"appId":"core","toVersion":"1.0.0","message":' . json_encode($message, JSON_UNESCAPED_SLASHES) . "}\n", $json->getDisplay());
+		self::assertSame('', $json->getErrorOutput());
+	}
+
 	public function testReproduciblePinnedInstallSucceedsWithExitZero(): void {
 		$installer = $this->createMock(InstallerService::class);
 		$installer->method('isManageableApp')->willReturn(true);

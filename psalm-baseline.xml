@@ -29,14 +29,6 @@
       <code><![CDATA[$payload['toVersion']]]></code>
       <code><![CDATA[$payload['updateType']]]></code>
     </MixedArgument>
-    <RedundantCastGivenDocblockType>
-      <code><![CDATA[(string)json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES)]]></code>
-      <code><![CDATA[(string)json_encode([
-				'appId' => $appId,
-				'toVersion' => $version,
-				'message' => $message,
-			], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES)]]></code>
-    </RedundantCastGivenDocblockType>
     <UnnecessaryVarAnnotation>
       <code><![CDATA[array<string, mixed>]]></code>
     </UnnecessaryVarAnnotation>

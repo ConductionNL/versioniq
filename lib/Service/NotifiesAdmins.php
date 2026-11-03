@@ -18,12 +18,11 @@ use OCA\Versioniq\AppInfo\Application;
  * Raises one linked notification per admin, each linking into the Versioniq
  * admin settings page; a failure for one admin is logged and does not stop
  * the others. The using class also uses ResolvesAdminUids and holds
- * `$notificationManager` (IManager), `$timeFactory` (ITimeFactory),
- * `$urlGenerator` (IURLGenerator) and `$logger` (LoggerInterface).
+ * `$admin` (AdminNotificationServices) and `$logger` (LoggerInterface).
  */
 trait NotifiesAdmins {
 	private function notifyAdmins(AdminNotice $notice): void {
-		$linked = $notice->withLink($this->urlGenerator->linkToRouteAbsolute(
+		$linked = $notice->withLink($this->admin->urlGenerator->linkToRouteAbsolute(
 			'settings.AdminSettings.index',
 			['section' => Application::APP_ID],
 		));
@@ -35,13 +34,13 @@ trait NotifiesAdmins {
 
 	private function notifyAdmin(string $uid, AdminNotice $notice): void {
 		try {
-			$notification = $this->notificationManager->createNotification();
+			$notification = $this->admin->notificationManager->createNotification();
 			$notification
 				->setApp(Application::APP_ID)
 				->setUser($uid)
-				->setDateTime($this->timeFactory->getDateTime());
+				->setDateTime($this->admin->timeFactory->getDateTime());
 			$notice->applyTo($notification);
-			$this->notificationManager->notify($notification);
+			$this->admin->notificationManager->notify($notification);
 		} catch (\Throwable $error) {
 			$this->logger->warning($notice->logMessage(), $notice->logContext($uid, $error));
 		}
