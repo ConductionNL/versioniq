@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Cache;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Files\AppData\IAppDataFactory;
 use OCP\Files\IAppData;
@@ -52,7 +53,6 @@ class ArtifactCache {
 	private const ARCHIVE_SUFFIX = '.tar.gz';
 	private const META_SUFFIX = '.meta.json';
 
-	private const APP_ID_PATTERN = '/^[a-z][a-z0-9_\-]*$/';
 	private const VERSION_PATTERN = '/^[A-Za-z0-9][A-Za-z0-9.\-+_]{0,63}$/';
 
 	private ?IAppData $appData = null;
@@ -446,7 +446,7 @@ class ArtifactCache {
 	}
 
 	private function isValidAppId(string $appId): bool {
-		return preg_match(self::APP_ID_PATTERN, $appId) === 1;
+		return AppIdFormat::isValid($appId);
 	}
 
 	private function isValidVersion(string $version): bool {

@@ -15,14 +15,13 @@ namespace OCA\Versioniq\Service;
 use Exception;
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFailure;
-use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallRun;
 use OCA\Versioniq\Service\Installer\InstallState;
 use OCA\Versioniq\Service\Installer\InstallTarget;
-use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Installer\ReleaseInstall;
 use OCA\Versioniq\Service\Installer\ReleaseInstallers;
 use OCA\Versioniq\Service\Installer\ServerAccess;
@@ -509,11 +508,9 @@ class InstallerService {
 	 * guard". Dry-run requests evaluate the same condition but are never
 	 * blocked by it.
 	 *
-	 * `$dryRun` is the explicit dry-run trigger, independent of
-	 * `$includeDebug` (which now controls diagnostic verbosity only); see
-	 * MODIFIED "Debug Mode". `null` (the default) preserves the legacy
-	 * behavior of every caller that predates this parameter: falls back to
-	 * `$includeDebug`, so `debug=1` alone still implies a dry-run.
+	 * The request's dry-run flag is independent of its debug flag (which
+	 * controls diagnostic verbosity only); see MODIFIED "Debug Mode". The
+	 * app id and version are trimmed here.
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @spec openspec/specs/version-pinning/spec.md
@@ -523,23 +520,13 @@ class InstallerService {
 	 * @spec openspec/specs/artifact-cache/spec.md
 	 * @return array{statusCode:int, payload:array<string, mixed>}
 	 */
-	public function installAppVersion(
-		string $appId,
-		string $targetVersion,
-		bool $includeDebug,
-		?string $sourceOverride = null,
-		?string $overridePin = null,
-		bool $pinRequested = false,
-		bool $acceptNewSha = false,
-		bool $allowDowngrade = false,
-		?bool $dryRun = null,
-	): array {
-		// $dryRun falls back to $includeDebug only when the caller does not
-		// pass it at all; see MODIFIED "Debug Mode" — "Legacy behavior preserved".
+	public function installAppVersion(InstallRequest $request): array {
+		$target = $request->target;
+
 		return $this->runInstall(new InstallRequest(
-			new InstallTarget(trim($appId), trim($targetVersion), $sourceOverride),
-			new InstallOptions($includeDebug, $dryRun ?? $includeDebug, $acceptNewSha, $allowDowngrade),
-			new PinChoice($overridePin, $pinRequested),
+			new InstallTarget(trim($target->appId), trim($target->version), $target->sourceOverride),
+			$request->options,
+			$request->pinChoice,
 		));
 	}
 
@@ -609,6 +596,9 @@ class InstallerService {
 		$target = $request->target;
 		if ($target->appId === '' || $target->version === '') {
 			return $this->installEnvelope(Http::STATUS_BAD_REQUEST, ['message' => 'Missing app id or version.']);
+		}
+		if (!AppIdFormat::isValid($target->appId)) {
+			return $this->installEnvelope(Http::STATUS_BAD_REQUEST, ['appId' => $target->appId, 'message' => 'Not a valid app id.']);
 		}
 		if (!$this->isManageableApp($target->appId)) {
 			return $this->installEnvelope(Http::STATUS_FORBIDDEN, [
