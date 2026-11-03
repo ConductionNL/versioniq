@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Source;
 
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
+
 use Exception;
 use OCA\Versioniq\Service\Pat\PatManager;
 use OCA\Versioniq\Service\Pat\PatResolver;
 use OCA\Versioniq\Service\Source\ForgeRegistry;
 use OCA\Versioniq\Service\Source\ForgeReleaseSource;
 use OCA\Versioniq\Service\Source\SourceBinding;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
 use OCP\Http\Client\IResponse;
@@ -18,6 +21,8 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 final class ForgeReleaseSourceTest extends TestCase {
+	use BuildsByParameterName;
+
 	private function buildSource(IClient $client): ForgeReleaseSource {
 		$clientService = $this->createMock(IClientService::class);
 		$clientService->method('newClient')->willReturn($client);
@@ -34,7 +39,15 @@ final class ForgeReleaseSourceTest extends TestCase {
 		$userSession = $this->createMock(IUserSession::class);
 		$userSession->method('getUser')->willReturn(null);
 
-		return new ForgeReleaseSource($clientService, $logger, $patResolver, $patManager, $userSession, new ForgeRegistry($this->createMock(\OCP\IAppConfig::class)), $this->createMock(\OCP\IConfig::class));
+		return $this->buildByName(ForgeReleaseSource::class, [
+			'clientService' => $clientService,
+			'logger' => $logger,
+			'patResolver' => $patResolver,
+			'patManager' => $patManager,
+			'userSession' => $userSession,
+			'forgeRegistry' => new ForgeRegistry($this->createMock(\OCP\IAppConfig::class)),
+			'config' => $this->createMock(\OCP\IConfig::class),
+		]);
 	}
 
 	private function mockResponse(int $status, string $body): IResponse {

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service;
 
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\ExternalReleaseInstallerService;
@@ -18,6 +20,7 @@ use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\SourceRegistry;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\Events\AppUpdateEvent;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Http;
@@ -41,6 +44,8 @@ use PHPUnit\Framework\TestCase;
  * @spec openspec/changes/releases-notes-reach/tasks.md#task-1.1
  */
 final class InstallerServiceUpdateEventTest extends TestCase {
+	use BuildsByParameterName;
+
 	private IAppManager&MockObject $appManager;
 	private IConfig&MockObject $config;
 	private IAppConfig&MockObject $appConfig;
@@ -98,24 +103,24 @@ final class InstallerServiceUpdateEventTest extends TestCase {
 		$factory = $this->createMock(IFactory::class);
 		$factory->method('get')->willReturn($l);
 
-		return new InstallerService(
-			$this->appManager,
-			$this->config,
-			$this->appConfig,
-			$this->sourceRegistry,
-			$this->createMock(SourceBindingStore::class),
-			$this->createMock(TrustedSourceList::class),
-			$this->signedInstaller,
-			$this->createMock(ExternalReleaseInstallerService::class),
-			new FailureClassifier($factory),
-			$this->environmentCheck,
-			$this->pinStore,
-			$userSession,
-			$timeFactory,
-			$this->createMock(LkgStore::class),
-			$this->createMock(ArtifactCache::class),
-			$this->dispatcher,
-		);
+		return $this->buildByName(InstallerService::class, [
+			'appManager' => $this->appManager,
+			'config' => $this->config,
+			'appConfig' => $this->appConfig,
+			'sourceRegistry' => $this->sourceRegistry,
+			'bindingStore' => $this->createMock(SourceBindingStore::class),
+			'trustedSources' => $this->createMock(TrustedSourceList::class),
+			'signedInstaller' => $this->signedInstaller,
+			'externalInstaller' => $this->createMock(ExternalReleaseInstallerService::class),
+			'failureClassifier' => new FailureClassifier($factory),
+			'environmentCheck' => $this->environmentCheck,
+			'pinStore' => $this->pinStore,
+			'userSession' => $userSession,
+			'timeFactory' => $timeFactory,
+			'lkgStore' => $this->createMock(LkgStore::class),
+			'artifactCache' => $this->createMock(ArtifactCache::class),
+			'eventDispatcher' => $this->dispatcher,
+		]);
 	}
 
 	/**

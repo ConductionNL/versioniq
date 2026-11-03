@@ -16,11 +16,10 @@ use Exception;
 use OCA\Versioniq\Service\Advisory\AdvisorySeverity;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
-use OCA\Versioniq\Service\Pat\PatManager;
+use OCA\Versioniq\Service\Pat\PatAccess;
 use OCA\Versioniq\Service\Pat\PatResolver;
 use OCP\Http\Client\IClientService;
 use OCP\IConfig;
-use OCP\IUserSession;
 use Psr\Log\LoggerInterface;
 use Throwable;
 use UnexpectedValueException;
@@ -49,9 +48,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	public function __construct(
 		private IClientService $clientService,
 		private LoggerInterface $logger,
-		private PatResolver $patResolver,
-		private PatManager $patManager,
-		private IUserSession $userSession,
+		private PatAccess $pats,
 		private ForgeRegistry $forgeRegistry,
 		private IConfig $config,
 		// Tells integriq what a GitHub request met (adopt-connection-registry).
@@ -268,8 +265,8 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	private function fetchAdvisories(Forge $forge, string $ownerRepo): array {
 		// No session user means a background job; the resolver then picks from
 		// tokens shared with admins instead of going anonymous (#430).
-		$uid = $this->userSession->getUser()?->getUID();
-		$pat = $this->patResolver->findFor($forge->id, $ownerRepo, $uid);
+		$uid = $this->pats->userSession->getUser()?->getUID();
+		$pat = $this->pats->patResolver->findFor($forge->id, $ownerRepo, $uid);
 
 		$endpoint = $forge->advisoriesEndpoint($ownerRepo);
 
@@ -278,7 +275,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		}
 
 		/** @var array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string} */
-		return $this->patManager->useToken($pat, fn (string $token): array => $this->performFetch($forge, $endpoint, $token));
+		return $this->pats->patManager->useToken($pat, fn (string $token): array => $this->performFetch($forge, $endpoint, $token));
 	}
 
 	/**
@@ -287,8 +284,8 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	private function fetchReleases(Forge $forge, string $ownerRepo): array {
 		// No session user means a background job; the resolver then picks from
 		// tokens shared with admins instead of going anonymous (#430).
-		$uid = $this->userSession->getUser()?->getUID();
-		$pat = $this->patResolver->findFor($forge->id, $ownerRepo, $uid);
+		$uid = $this->pats->userSession->getUser()?->getUID();
+		$pat = $this->pats->patResolver->findFor($forge->id, $ownerRepo, $uid);
 
 		$endpoint = $forge->releasesEndpoint($ownerRepo);
 
@@ -297,7 +294,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		}
 
 		/** @var array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string} */
-		return $this->patManager->useToken($pat, fn (string $token): array => $this->performFetch($forge, $endpoint, $token));
+		return $this->pats->patManager->useToken($pat, fn (string $token): array => $this->performFetch($forge, $endpoint, $token));
 	}
 
 	/**

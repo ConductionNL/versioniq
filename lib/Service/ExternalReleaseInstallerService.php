@@ -18,6 +18,7 @@ use OC\Archive\ZIP;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Installer\ArchiveCheck;
+use OCA\Versioniq\Service\Installer\ArchiveDownload;
 use OCA\Versioniq\Service\Installer\ExternalInstall;
 use OCA\Versioniq\Service\Installer\ExternalInstallOptions;
 use OCA\Versioniq\Service\Installer\ExternalInstallRequest;
@@ -25,24 +26,17 @@ use OCA\Versioniq\Service\Installer\ExternalInstallRun;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFailure;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
-use OCA\Versioniq\Service\Installer\MigrationDiffer;
+use OCA\Versioniq\Service\Installer\InstallSteps;
 use OCA\Versioniq\Service\Installer\ReleaseDownload;
 use OCA\Versioniq\Service\Installer\ReplacesAppFolder;
 use OCA\Versioniq\Service\Installer\ShaMismatchException;
 use OCA\Versioniq\Service\Installer\StagedRelease;
-use OCA\Versioniq\Service\Pat\PatManager;
-use OCA\Versioniq\Service\Pat\PatResolver;
-use OCA\Versioniq\Service\Source\ForgeRegistry;
+use OCA\Versioniq\Service\Pat\PatAccess;
+use OCA\Versioniq\Service\Settings\ConfigStores;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceInterface;
-use OCA\Versioniq\Service\Source\TrustedSourceList;
 use OCP\App\AppPathNotFoundException;
 use OCP\App\IAppManager;
-use OCP\Http\Client\IClientService;
-use OCP\IAppConfig;
-use OCP\IConfig;
-use OCP\ITempManager;
-use OCP\IUserSession;
 use OCP\L10N\IFactory;
 use OCP\Server;
 use Psr\Log\LoggerInterface;
@@ -85,21 +79,12 @@ class ExternalReleaseInstallerService {
 	private bool $servedFromCache = false;
 
 	public function __construct(
-		private IClientService $clientService,
-		private ITempManager $tempManager,
 		private IAppManager $appManager,
-		private IConfig $config,
-		private IAppConfig $appConfig,
-		private InstallFinalizer $finalizer,
-		private TrustedSourceList $trustedSources,
+		private ConfigStores $configs,
+		private ArchiveDownload $download,
+		private InstallSteps $steps,
+		private PatAccess $pats,
 		private LoggerInterface $logger,
-		private PatResolver $patResolver,
-		private PatManager $patManager,
-		private IUserSession $userSession,
-		private AuditLogger $auditLogger,
-		private MigrationDiffer $migrationDiffer,
-		private ArtifactCache $artifactCache,
-		private ForgeRegistry $forgeRegistry,
 	) {
 	}
 
@@ -210,7 +195,7 @@ class ExternalReleaseInstallerService {
 			throw new Exception('Invalid app id.');
 		}
 
-		$this->trustedSources->assertBindingAllowed($run->binding);
+		$this->steps->trustedSources->assertBindingAllowed($run->binding);
 	}
 
 	/**
@@ -222,10 +207,10 @@ class ExternalReleaseInstallerService {
 			throw new Exception('No download URL found for the selected release.');
 		}
 
-		$run->previousEnabled = $this->appConfig->getValueString($run->request->appId, 'enabled', 'no');
+		$run->previousEnabled = $this->configs->appConfig->getValueString($run->request->appId, 'enabled', 'no');
 
-		$tempFile = $this->tempManager->getTemporaryFile('.tar.gz');
-		$tempFolder = $this->tempManager->getTemporaryFolder('app-version-external');
+		$tempFile = $this->download->tempManager->getTemporaryFile('.tar.gz');
+		$tempFolder = $this->download->tempManager->getTemporaryFolder('app-version-external');
 		if (!is_string($tempFile) || !is_string($tempFolder)) {
 			throw new Exception('Could not allocate temporary download paths.');
 		}
@@ -292,7 +277,7 @@ class ExternalReleaseInstallerService {
 	 * Writes the cached artifact for the requested app and version to `$tempFile`; false when there is none.
 	 */
 	private function restoreFromCache(ExternalInstallRequest $request, string $tempFile): bool {
-		$cached = $this->artifactCache->fetch($request->appId, $request->version);
+		$cached = $this->download->artifactCache->fetch($request->appId, $request->version);
 		if ($cached === null || file_put_contents($tempFile, $cached['content']) === false) {
 			return false;
 		}
@@ -379,7 +364,7 @@ class ExternalReleaseInstallerService {
 		if (!$run->isDowngrade()) {
 			return null;
 		}
-		$orphanedMigrations = $this->migrationDiffer->diff($staged->previousPath, $staged->root);
+		$orphanedMigrations = $this->steps->migrationDiffer->diff($staged->previousPath, $staged->root);
 		$this->addDebug('migration-diff', ['orphanedMigrations' => $orphanedMigrations]);
 
 		return $orphanedMigrations;
@@ -406,7 +391,7 @@ class ExternalReleaseInstallerService {
 		// after finalize() succeeded, so a failed install never populates
 		// the cache.
 		if ($this->lastArchivePath !== null && $this->lastArchiveMeta !== null) {
-			$this->artifactCache->store($install->run->request->appId, $install->run->request->version, $this->lastArchivePath, $this->lastArchiveMeta);
+			$this->download->artifactCache->store($install->run->request->appId, $install->run->request->version, $this->lastArchivePath, $this->lastArchiveMeta);
 		}
 
 		// Record the observed digest only now that the install fully
@@ -451,7 +436,7 @@ class ExternalReleaseInstallerService {
 	private function finalizeInstall(ExternalInstall $install, ?string $backupDestination): string {
 		$destination = $install->staged->destination;
 		try {
-			return $this->finalizer->finalize($destination, $install->staged->info, $install->run->enabledAfter(), null, $install->run->binding->getId());
+			return $this->steps->finalizer->finalize($destination, $install->staged->info, $install->run->enabledAfter(), null, $install->run->binding->getId());
 		} catch (\Throwable $finalizeError) {
 			$restoreState = $backupDestination === null
 				? FailureClassifier::RESTORE_NONE
@@ -526,8 +511,8 @@ class ExternalReleaseInstallerService {
 	 * @param array{0: string, 1: ?string} $outcome Status and message.
 	 */
 	private function recordInstallAudit(ExternalInstallRun $run, array $outcome): void {
-		$actorUid = $this->userSession->getUser()?->getUID() ?? 'system';
-		$this->auditLogger->record(
+		$actorUid = $this->pats->userSession->getUser()?->getUID() ?? 'system';
+		$this->steps->auditLogger->record(
 			$actorUid,
 			$run->request->appId,
 			AuditLogger::OPERATION_INSTALL,
@@ -546,7 +531,7 @@ class ExternalReleaseInstallerService {
 		}
 		// No session user means AutoUpdateJob; the resolver then picks from
 		// tokens shared with admins instead of downloading anonymously (#430).
-		return $this->patResolver->findFor($binding->getForge(), $ownerRepo, $this->userSession->getUser()?->getUID());
+		return $this->pats->patResolver->findFor($binding->getForge(), $ownerRepo, $this->pats->userSession->getUser()?->getUID());
 	}
 
 	/**
@@ -567,11 +552,11 @@ class ExternalReleaseInstallerService {
 		}
 
 		$host = strtolower((string)parse_url($url, PHP_URL_HOST));
-		if ($host === '' || !$this->forgeRegistry->has($binding->getForge())) {
+		if ($host === '' || !$this->download->forgeRegistry->has($binding->getForge())) {
 			return null;
 		}
 
-		$forge = $this->forgeRegistry->get($binding->getForge());
+		$forge = $this->download->forgeRegistry->get($binding->getForge());
 		$forgeHosts = array_filter([
 			strtolower((string)parse_url($forge->webBaseUrl, PHP_URL_HOST)),
 			strtolower((string)parse_url($forge->apiBaseUrl, PHP_URL_HOST)),
@@ -596,18 +581,18 @@ class ExternalReleaseInstallerService {
 			// SSRF defence-in-depth: block fetches to internal addresses even
 			// though $url originates from a trusted-source GitHub release JSON.
 			// Mirrors PatValidator. See OWASP A10:2021.
-			'nextcloud' => ['allow_local_address' => $this->config->getSystemValueBool('allow_local_remote_servers', false)],
+			'nextcloud' => ['allow_local_address' => $this->configs->config->getSystemValueBool('allow_local_remote_servers', false)],
 		];
 
 		if ($pat === null) {
-			$this->clientService->newClient()->get($url, $options);
+			$this->download->clientService->newClient()->get($url, $options);
 
 			return;
 		}
 
-		$this->patManager->useToken($pat, function (string $token) use ($url, $options): void {
+		$this->pats->patManager->useToken($pat, function (string $token) use ($url, $options): void {
 			$options['headers']['Authorization'] = 'Bearer ' . $token;
-			$this->clientService->newClient()->get($url, $options);
+			$this->download->clientService->newClient()->get($url, $options);
 		});
 	}
 
@@ -626,17 +611,17 @@ class ExternalReleaseInstallerService {
 			'timeout' => 30,
 			'headers' => ['User-Agent' => 'Nextcloud-Versioniq'],
 			// SSRF defence-in-depth: same rationale as authenticatedDownload.
-			'nextcloud' => ['allow_local_address' => $this->config->getSystemValueBool('allow_local_remote_servers', false)],
+			'nextcloud' => ['allow_local_address' => $this->configs->config->getSystemValueBool('allow_local_remote_servers', false)],
 		];
 
 		try {
 			if ($pat === null) {
-				$response = $this->clientService->newClient()->get($shaUrl, $options);
+				$response = $this->download->clientService->newClient()->get($shaUrl, $options);
 			} else {
-				$response = $this->patManager->useToken($pat, function (string $token) use ($shaUrl, $options) {
+				$response = $this->pats->patManager->useToken($pat, function (string $token) use ($shaUrl, $options) {
 					$options['headers']['Authorization'] = 'Bearer ' . $token;
 
-					return $this->clientService->newClient()->get($shaUrl, $options);
+					return $this->download->clientService->newClient()->get($shaUrl, $options);
 				});
 			}
 		} catch (Exception $error) {
@@ -735,7 +720,7 @@ class ExternalReleaseInstallerService {
 		}
 		/** @var array<string, mixed> $info */
 
-		$ignoreMaxApps = (array)$this->config->getSystemValue('app_install_overwrite', []);
+		$ignoreMaxApps = (array)$this->configs->config->getSystemValue('app_install_overwrite', []);
 		$ignoreMax = in_array($expectedAppId, $ignoreMaxApps, true);
 		$serverVersion = Server::get(\OCP\ServerVersion::class)->getVersionString();
 		// Public IAppManager::isAppCompatible() (since 32, this app's floor)
@@ -749,7 +734,7 @@ class ExternalReleaseInstallerService {
 			));
 		}
 
-		\OC_App::checkAppDependencies($this->config, $l, $info, $ignoreMax);
+		\OC_App::checkAppDependencies($this->configs->config, $l, $info, $ignoreMax);
 
 		return $info;
 	}

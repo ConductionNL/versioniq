@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service;
 
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+
 use InvalidArgumentException;
 use OCA\Versioniq\Service\ExternalReleaseInstallerService;
 use OCA\Versioniq\Service\Installer\EnvironmentCheck;
@@ -11,9 +13,12 @@ use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\SelectedReleaseInstallerService;
+use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceRegistry;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
+use OCA\Versioniq\Service\Source\UntrustedSourceException;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IAppConfig;
@@ -22,6 +27,8 @@ use OCP\IUserSession;
 use PHPUnit\Framework\TestCase;
 
 final class InstallerServiceTrustedPatternTest extends TestCase {
+	use BuildsByParameterName;
+
 	/** @var list<string> */
 	private array $stored = [];
 
@@ -34,24 +41,24 @@ final class InstallerServiceTrustedPatternTest extends TestCase {
 			$this->stored = array_values($patterns);
 		});
 
-		return new InstallerService(
-			$this->createMock(IAppManager::class),
-			$this->createMock(IConfig::class),
-			$this->createMock(IAppConfig::class),
-			$this->createMock(SourceRegistry::class),
-			$this->createMock(SourceBindingStore::class),
-			$trusted,
-			$this->createMock(SelectedReleaseInstallerService::class),
-			$this->createMock(ExternalReleaseInstallerService::class),
-			$this->createMock(FailureClassifier::class),
-			$this->createMock(EnvironmentCheck::class),
-			$this->createMock(PinStore::class),
-			$this->createMock(IUserSession::class),
-			$this->createMock(ITimeFactory::class),
-			$this->createMock(\OCA\Versioniq\Service\Lkg\LkgStore::class),
-			$this->createMock(\OCA\Versioniq\Service\Cache\ArtifactCache::class),
-			$this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
-		);
+		return $this->buildByName(InstallerService::class, [
+			'appManager' => $this->createMock(IAppManager::class),
+			'config' => $this->createMock(IConfig::class),
+			'appConfig' => $this->createMock(IAppConfig::class),
+			'sourceRegistry' => $this->createMock(SourceRegistry::class),
+			'bindingStore' => $this->createMock(SourceBindingStore::class),
+			'trustedSources' => $trusted,
+			'signedInstaller' => $this->createMock(SelectedReleaseInstallerService::class),
+			'externalInstaller' => $this->createMock(ExternalReleaseInstallerService::class),
+			'failureClassifier' => $this->createMock(FailureClassifier::class),
+			'environmentCheck' => $this->createMock(EnvironmentCheck::class),
+			'pinStore' => $this->createMock(PinStore::class),
+			'userSession' => $this->createMock(IUserSession::class),
+			'timeFactory' => $this->createMock(ITimeFactory::class),
+			'lkgStore' => $this->createMock(\OCA\Versioniq\Service\Lkg\LkgStore::class),
+			'artifactCache' => $this->createMock(\OCA\Versioniq\Service\Cache\ArtifactCache::class),
+			'eventDispatcher' => $this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
+		]);
 	}
 
 	public function testCuratedAddWithRepoPersistsForgeQualifiedPattern(): void {
@@ -108,5 +115,24 @@ final class InstallerServiceTrustedPatternTest extends TestCase {
 		$result = $this->service()->addTrustedPattern('forgejo', 'acme', null);
 
 		self::assertContains('forgejo:acme/*', $result);
+	}
+
+	/**
+	 * Binding an app to a source outside the allowlist is refused before
+	 * anything is stored.
+	 */
+	public function testBindingAnUntrustedSourceStoresNothing(): void {
+		$trusted = $this->createMock(TrustedSourceList::class);
+		$trusted->method('assertBindingAllowed')->willThrowException(new UntrustedSourceException('github:evil/app'));
+		$bindingStore = $this->createMock(SourceBindingStore::class);
+		$bindingStore->expects($this->never())->method('set');
+
+		$service = $this->buildByName(InstallerService::class, [
+			'trustedSources' => $trusted,
+			'bindingStore' => $bindingStore,
+		]);
+
+		$this->expectException(UntrustedSourceException::class);
+		$service->bindSource('evilapp', SourceBinding::github('evil', 'app'));
 	}
 }
