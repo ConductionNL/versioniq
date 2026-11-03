@@ -19,6 +19,7 @@ use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
+use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCA\Versioniq\Service\Installer\ArchiveCheck;
 use OCA\Versioniq\Service\Installer\ArchiveDownload;
 use OCA\Versioniq\Service\Installer\ExternalInstall;
@@ -194,7 +195,7 @@ class ExternalReleaseInstallerService {
 	 * Rejects a malformed app id and a source outside the trusted-source allowlist.
 	 */
 	private function assertInstallable(ExternalInstallRun $run): void {
-		if (!preg_match('/^[a-z][a-z0-9_\-]*$/', $run->request->appId)) {
+		if (!AppIdFormat::isValid($run->request->appId)) {
 			throw new Exception('Invalid app id.');
 		}
 
