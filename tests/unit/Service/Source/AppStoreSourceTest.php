@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Source;
 
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\Service\Source\AppStoreSource;
 use OCA\Versioniq\Service\Source\SourceBinding;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
 use OCP\Http\Client\IResponse;
@@ -18,6 +21,8 @@ use PHPUnit\Framework\TestCase;
  * @spec openspec/specs/changelog-visibility/spec.md
  */
 final class AppStoreSourceTest extends TestCase {
+	use BuildsByParameterName;
+
 	/**
 	 * @param array<string, mixed> $appPayload
 	 */
@@ -40,7 +45,12 @@ final class AppStoreSourceTest extends TestCase {
 		$l10nFactory = $this->createMock(IFactory::class);
 		$l10nFactory->method('findLanguage')->willReturn($language);
 
-		return new AppStoreSource($clientService, $config, $appConfig, $l10nFactory);
+		return $this->buildByName(AppStoreSource::class, [
+			'clientService' => $clientService,
+			'config' => $config,
+			'appConfig' => $appConfig,
+			'l10nFactory' => $l10nFactory,
+		]);
 	}
 
 	private function binding(): SourceBinding {
@@ -252,7 +262,12 @@ final class AppStoreSourceTest extends TestCase {
 		$l10nFactory = $this->createMock(IFactory::class);
 		$l10nFactory->method('findLanguage')->willReturn('en');
 
-		$source = new AppStoreSource($clientService, $config, $appConfig, $l10nFactory);
+		$source = $this->buildByName(AppStoreSource::class, [
+			'clientService' => $clientService,
+			'config' => $config,
+			'appConfig' => $appConfig,
+			'l10nFactory' => $l10nFactory,
+		]);
 
 		$first = $source->listVersions('openregister', $this->binding());
 		$second = $source->listVersions('openregister', $this->binding());
@@ -315,7 +330,12 @@ final class AppStoreSourceTest extends TestCase {
 		$l10nFactory = $this->createMock(IFactory::class);
 		$l10nFactory->method('findLanguage')->willReturn('en');
 
-		$source = new AppStoreSource($clientService, $config, $appConfig, $l10nFactory);
+		$source = $this->buildByName(AppStoreSource::class, [
+			'clientService' => $clientService,
+			'config' => $config,
+			'appConfig' => $appConfig,
+			'l10nFactory' => $l10nFactory,
+		]);
 		$source->listVersions('openregister', $this->binding());
 		$source->listVersions('openregister', $this->binding());
 
@@ -359,7 +379,12 @@ final class AppStoreSourceTest extends TestCase {
 		$l10nFactory = $this->createMock(IFactory::class);
 		$l10nFactory->method('findLanguage')->willReturn('en');
 
-		$source = new AppStoreSource($clientService, $config, $appConfig, $l10nFactory);
+		$source = $this->buildByName(AppStoreSource::class, [
+			'clientService' => $clientService,
+			'config' => $config,
+			'appConfig' => $appConfig,
+			'l10nFactory' => $l10nFactory,
+		]);
 		$source->listVersions('openregister', $this->binding());
 		$source->listVersions('openregister', $this->binding());
 	}
@@ -410,7 +435,12 @@ final class AppStoreSourceTest extends TestCase {
 		$l10nFactory = $this->createMock(IFactory::class);
 		$l10nFactory->method('findLanguage')->willReturn('en');
 
-		$source = new AppStoreSource($clientService, $config, $appConfig, $l10nFactory);
+		$source = $this->buildByName(AppStoreSource::class, [
+			'clientService' => $clientService,
+			'config' => $config,
+			'appConfig' => $appConfig,
+			'l10nFactory' => $l10nFactory,
+		]);
 		$result = $source->listVersions('openregister', $this->binding());
 
 		$this->assertSame('2.3.0', $result['versions'][0]['version'], 'stale cache must serve during an upstream outage');
@@ -467,7 +497,12 @@ final class AppStoreSourceTest extends TestCase {
 		$l10nFactory = $this->createMock(IFactory::class);
 		$l10nFactory->method('findLanguage')->willReturn('en');
 
-		$source = new AppStoreSource($clientService, $config, $appConfig, $l10nFactory);
+		$source = $this->buildByName(AppStoreSource::class, [
+			'clientService' => $clientService,
+			'config' => $config,
+			'appConfig' => $appConfig,
+			'l10nFactory' => $l10nFactory,
+		]);
 
 		$first = $source->listVersions('notes', $this->binding());
 		$second = $source->listVersions('calendar', $this->binding());

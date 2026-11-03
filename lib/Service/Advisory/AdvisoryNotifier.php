@@ -13,11 +13,9 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Advisory;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\AdminNotificationServices;
 use OCA\Versioniq\Service\ResolvesAdminUids;
-use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IAppConfig;
-use OCP\IGroupManager;
-use OCP\Notification\IManager;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -39,10 +37,8 @@ class AdvisoryNotifier {
 	private const CONFIG_KEY = 'advisory.notified';
 
 	public function __construct(
-		private IManager $notificationManager,
+		private AdminNotificationServices $admin,
 		private IAppConfig $appConfig,
-		private IGroupManager $groupManager,
-		private ITimeFactory $timeFactory,
 		private LoggerInterface $logger,
 	) {
 	}
@@ -90,18 +86,18 @@ class AdvisoryNotifier {
 
 	private function fire(string $uid, string $appId, string $version, string $advisoryId): void {
 		try {
-			$notification = $this->notificationManager->createNotification();
+			$notification = $this->admin->notificationManager->createNotification();
 			$notification
 				->setApp(Application::APP_ID)
 				->setUser($uid)
-				->setDateTime($this->timeFactory->getDateTime())
+				->setDateTime($this->admin->timeFactory->getDateTime())
 				->setObject('advisory', $appId . ':' . $advisoryId)
 				->setSubject('pinned_to_vulnerable', [
 					'app' => $appId,
 					'version' => $version,
 					'advisory' => $advisoryId,
 				]);
-			$this->notificationManager->notify($notification);
+			$this->admin->notificationManager->notify($notification);
 		} catch (\Throwable $error) {
 			$this->logger->warning('AdvisoryNotifier: failed to raise notification', [
 				'app' => $appId,

@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service;
 
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+
 use DateTime;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinDriftHandler;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IGroup;
 use OCP\IGroupManager;
@@ -36,6 +39,8 @@ use RuntimeException;
  * @uses \OCA\Versioniq\Service\Pin\PinDrift
  */
 final class AdminNotificationsGoldenTest extends TestCase {
+	use BuildsByParameterName;
+
 	private const FIXTURE = __DIR__ . '/fixtures/admin-notifications.golden.json';
 
 	/** @var list<array<array-key, mixed>> */
@@ -116,7 +121,13 @@ final class AdminNotificationsGoldenTest extends TestCase {
 	 * @param list<string>|null $uids
 	 */
 	private function autoUpdateNotifier(?array $uids): AutoUpdateNotifier {
-		return new AutoUpdateNotifier($this->notificationManager(), $this->groupManager($uids), $this->timeFactory(), $this->urlGenerator(), $this->logger());
+		return $this->buildByName(AutoUpdateNotifier::class, [
+			'notificationManager' => $this->notificationManager(),
+			'groupManager' => $this->groupManager($uids),
+			'timeFactory' => $this->timeFactory(),
+			'urlGenerator' => $this->urlGenerator(),
+			'logger' => $this->logger(),
+		]);
 	}
 
 	/**
@@ -136,7 +147,14 @@ final class AdminNotificationsGoldenTest extends TestCase {
 			return $args['newly'];
 		});
 
-		return new PinDriftHandler($pinStore, $this->notificationManager(), $this->groupManager($uids), $this->timeFactory(), $this->urlGenerator(), $this->logger());
+		return $this->buildByName(PinDriftHandler::class, [
+			'pinStore' => $pinStore,
+			'notificationManager' => $this->notificationManager(),
+			'groupManager' => $this->groupManager($uids),
+			'timeFactory' => $this->timeFactory(),
+			'urlGenerator' => $this->urlGenerator(),
+			'logger' => $this->logger(),
+		]);
 	}
 
 	/**

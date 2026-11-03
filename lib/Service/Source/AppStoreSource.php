@@ -17,9 +17,8 @@ use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Advisory\AdvisoryClauses;
 use OCA\Versioniq\Service\Advisory\AdvisorySeverity;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
-use OCA\Versioniq\Service\Connection\ConnectionReportService;
+use OCA\Versioniq\Service\Connection\ReportedHttp;
 use OCP\Http\Client\IClient;
-use OCP\Http\Client\IClientService;
 use OCP\IAppConfig;
 use OCP\IConfig;
 use OCP\L10N\IFactory;
@@ -90,13 +89,11 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
 	 */
 	public function __construct(
-		private IClientService $clientService,
+		// Its connection report tells integriq whether the App Store answered.
+		private ReportedHttp $http,
 		private IConfig $config,
 		private IAppConfig $appConfig,
 		private IFactory $l10nFactory,
-		// Tells integriq whether the App Store answered. Optional and last, so
-		// every existing caller and test keeps working.
-		private ?ConnectionReportService $connectionReports = null,
 	) {
 	}
 
@@ -254,7 +251,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 		$payload = $this->fetchAppPayloadUncached($appId);
 		// Only an uncached fetch reaches this line, so a cache hit reports
 		// nothing and a report follows a real catalogue request.
-		$this->connectionReports?->appStoreFetched($this->catalogueOutcome['answered'], $this->catalogueOutcome['failure']);
+		$this->http->connectionReports?->appStoreFetched($this->catalogueOutcome['answered'], $this->catalogueOutcome['failure']);
 		if ($payload !== null) {
 			$this->writeCachedPayload($appId, $payload);
 
@@ -348,7 +345,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	}
 
 	private function fetchAppPayloadUncached(string $appId): ?array {
-		$client = $this->clientService->newClient();
+		$client = $this->http->clientService->newClient();
 
 		$filteredQuery = new CatalogueQuery(
 			$appId,
@@ -579,8 +576,11 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 		if (isset($payload['pages']['next']) && is_bool($payload['pages']['next'])) {
 			return $payload['pages']['next'];
 		}
-		if (isset($payload['pagination']['next_page'])) {
-			return $payload['pagination']['next_page'] !== null;
+		// An explicit `next_page: null` is the App Store saying this is the last page.
+		/** @var mixed $pagination */
+		$pagination = $payload['pagination'] ?? null;
+		if (is_array($pagination) && array_key_exists('next_page', $pagination)) {
+			return $pagination['next_page'] !== null;
 		}
 		if (isset($payload['nextPage']) && is_string($payload['nextPage'])) {
 			return $payload['nextPage'] !== '';

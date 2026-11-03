@@ -35,22 +35,33 @@ final class Pin {
 		public readonly ?string $driftedTo = null,
 		public readonly ?string $driftedAt = null,
 	) {
-		if ($version === '' || preg_match(self::VERSION_PATTERN, $version) !== 1) {
+		$this->assertValid();
+	}
+
+	/**
+	 * @throws InvalidArgumentException when a field is empty or malformed
+	 */
+	private function assertValid(): void {
+		if (!self::isVersion($this->version)) {
 			throw new InvalidArgumentException('Pin version is empty or contains invalid characters');
 		}
-		if ($pinnedBy === '') {
+		if ($this->pinnedBy === '') {
 			throw new InvalidArgumentException('Pin requires a non-empty pinnedBy');
 		}
-		if ($pinnedAt === '') {
+		if ($this->pinnedAt === '') {
 			throw new InvalidArgumentException('Pin requires a non-empty pinnedAt');
 		}
-		if ($driftedTo !== null && ($driftedTo === '' || preg_match(self::VERSION_PATTERN, $driftedTo) !== 1)) {
+		if ($this->driftedTo !== null && !self::isVersion($this->driftedTo)) {
 			throw new InvalidArgumentException('Pin driftedTo is empty or contains invalid characters');
 		}
 		// Drift markers are set together (see "Drift detection") — never one without the other.
-		if (($driftedTo === null) !== ($driftedAt === null)) {
+		if (($this->driftedTo === null) !== ($this->driftedAt === null)) {
 			throw new InvalidArgumentException('Pin driftedTo and driftedAt must both be set or both be null');
 		}
+	}
+
+	private static function isVersion(string $version): bool {
+		return $version !== '' && preg_match(self::VERSION_PATTERN, $version) === 1;
 	}
 
 	/**

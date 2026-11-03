@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Pin;
 
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinDrift;
 use OCA\Versioniq\Service\Pin\PinDriftHandler;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IGroup;
 use OCP\IGroupManager;
@@ -19,6 +22,8 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 final class PinDriftHandlerTest extends TestCase {
+	use BuildsByParameterName;
+
 	private function timeFactory(): ITimeFactory {
 		$factory = $this->createMock(ITimeFactory::class);
 		$factory->method('getDateTime')->willReturn(new \DateTime('2026-06-12T00:00:00+00:00'));
@@ -58,14 +63,14 @@ final class PinDriftHandlerTest extends TestCase {
 		$notificationManager = $this->createMock(IManager::class);
 		$notificationManager->expects($this->never())->method('notify');
 
-		$handler = new PinDriftHandler(
-			$pinStore,
-			$notificationManager,
-			$this->groupManagerWithAdmins(['admin']),
-			$this->timeFactory(),
-			$this->urlGenerator(),
-			$this->createMock(LoggerInterface::class),
-		);
+		$handler = $this->buildByName(PinDriftHandler::class, [
+			'pinStore' => $pinStore,
+			'notificationManager' => $notificationManager,
+			'groupManager' => $this->groupManagerWithAdmins(['admin']),
+			'timeFactory' => $this->timeFactory(),
+			'urlGenerator' => $this->urlGenerator(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 
 		$handler->handle('openregister', '2.3.0');
 	}
@@ -78,14 +83,14 @@ final class PinDriftHandlerTest extends TestCase {
 		$notificationManager = $this->createMock(IManager::class);
 		$notificationManager->expects($this->never())->method('notify');
 
-		$handler = new PinDriftHandler(
-			$pinStore,
-			$notificationManager,
-			$this->groupManagerWithAdmins(['admin']),
-			$this->timeFactory(),
-			$this->urlGenerator(),
-			$this->createMock(LoggerInterface::class),
-		);
+		$handler = $this->buildByName(PinDriftHandler::class, [
+			'pinStore' => $pinStore,
+			'notificationManager' => $notificationManager,
+			'groupManager' => $this->groupManagerWithAdmins(['admin']),
+			'timeFactory' => $this->timeFactory(),
+			'urlGenerator' => $this->urlGenerator(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 
 		$handler->handle('openregister', '2.5.0');
 	}
@@ -113,14 +118,14 @@ final class PinDriftHandlerTest extends TestCase {
 		$notificationManager->method('createNotification')->willReturn($notification);
 		$notificationManager->expects($this->exactly(2))->method('notify')->with($notification);
 
-		$handler = new PinDriftHandler(
-			$pinStore,
-			$notificationManager,
-			$this->groupManagerWithAdmins(['admin', 'bob']),
-			$this->timeFactory(),
-			$this->urlGenerator(),
-			$this->createMock(LoggerInterface::class),
-		);
+		$handler = $this->buildByName(PinDriftHandler::class, [
+			'pinStore' => $pinStore,
+			'notificationManager' => $notificationManager,
+			'groupManager' => $this->groupManagerWithAdmins(['admin', 'bob']),
+			'timeFactory' => $this->timeFactory(),
+			'urlGenerator' => $this->urlGenerator(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 
 		$handler->handle('openregister', '2.5.0');
 	}
@@ -133,14 +138,14 @@ final class PinDriftHandlerTest extends TestCase {
 		$notificationManager = $this->createMock(IManager::class);
 		$notificationManager->expects($this->never())->method('notify');
 
-		$handler = new PinDriftHandler(
-			$pinStore,
-			$notificationManager,
-			$this->groupManagerWithAdmins(['admin']),
-			$this->timeFactory(),
-			$this->urlGenerator(),
-			$this->createMock(LoggerInterface::class),
-		);
+		$handler = $this->buildByName(PinDriftHandler::class, [
+			'pinStore' => $pinStore,
+			'notificationManager' => $notificationManager,
+			'groupManager' => $this->groupManagerWithAdmins(['admin']),
+			'timeFactory' => $this->timeFactory(),
+			'urlGenerator' => $this->urlGenerator(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 
 		$handler->handle('openregister', '2.5.0');
 	}

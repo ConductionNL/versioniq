@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Advisory;
 
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\Service\Advisory\AdvisoryDigestNotifier;
 use OCA\Versioniq\Service\Advisory\AdvisoryService;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\IAppConfig;
 use OCP\IGroup;
 use OCP\IGroupManager;
@@ -17,6 +20,8 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 final class AdvisoryDigestNotifierTest extends TestCase {
+	use BuildsByParameterName;
+
 	private const WEEK = 7 * 24 * 60 * 60;
 
 	/** @var array<string, int|bool> */
@@ -71,13 +76,13 @@ final class AdvisoryDigestNotifierTest extends TestCase {
 		$settings = $this->createMock(AdvisorySettingsStore::class);
 		$settings->method('isDigestEnabled')->willReturn($digestEnabled);
 
-		return new AdvisoryDigestNotifier(
-			$manager,
-			$groupManager,
-			$config,
-			$settings,
-			$this->createMock(LoggerInterface::class),
-		);
+		return $this->buildByName(AdvisoryDigestNotifier::class, [
+			'notificationManager' => $manager,
+			'groupManager' => $groupManager,
+			'config' => $config,
+			'settings' => $settings,
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 	}
 
 	/**
