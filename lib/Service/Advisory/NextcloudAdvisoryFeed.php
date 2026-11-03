@@ -205,52 +205,92 @@ class NextcloudAdvisoryFeed {
 			return [];
 		}
 
-		$severity = AdvisorySeverity::normalize($record['severity'] ?? null);
-		$summary = is_string($record['summary'] ?? null) ? (string)$record['summary'] : '';
-
+		$advisory = self::advisoryHeader($record, $ghsa);
 		$targets = [];
 		/** @var mixed $vulnerability */
 		foreach ($vulnerabilities as $vulnerability) {
-			if (!is_array($vulnerability)) {
+			$entry = $this->vulnerabilityEntry($vulnerability);
+			if ($entry === null) {
 				continue;
 			}
-			$package = $vulnerability['package'] ?? null;
-			if (!is_array($package) || !is_string($package['name'] ?? null)) {
-				continue;
-			}
-
-			$target = $this->packageMap->resolve((string)$package['name']);
-			if ($target === null) {
-				continue;
-			}
-
-			$patched = $this->splitList(is_string($vulnerability['patched_versions'] ?? null) ? (string)$vulnerability['patched_versions'] : '');
-			$affected = $this->splitList(is_string($vulnerability['vulnerable_version_range'] ?? null) ? (string)$vulnerability['vulnerable_version_range'] : '');
-
-			if (isset($targets[$target])) {
-				// Same advisory, same target, listed twice: merge the version
-				// information rather than letting the second entry replace the
-				// first and silently drop a branch.
-				$targets[$target]['patchedVersions'] = array_values(array_unique([...$targets[$target]['patchedVersions'], ...$patched]));
-				$targets[$target]['affected'] = array_values(array_unique([...$targets[$target]['affected'], ...$affected]));
-				$targets[$target]['firstPatchedVersion'] = $targets[$target]['patchedVersions'][0] ?? null;
-				continue;
-			}
-
-			$targets[$target] = [
-				'id' => $ghsa,
-				'severity' => $severity,
-				'summary' => $summary,
-				'affected' => $affected,
-				// Kept for the existing contract; `patchedVersions` is what
-				// BranchAwareRange actually evaluates, because one advisory
-				// carries a separate patch per maintenance branch.
-				'firstPatchedVersion' => $patched[0] ?? null,
-				'patchedVersions' => $patched,
-			];
+			$target = $entry['target'];
+			$targets[$target] = isset($targets[$target]) ? self::mergeVersions($targets[$target], $entry) : self::newTarget($advisory, $entry);
 		}
 
 		return $targets;
+	}
+
+	/**
+	 * The target and version lists one vulnerability entry names, or null
+	 * when it names no package this instance can act on.
+	 *
+	 * @return array{target: string, affected: list<string>, patched: list<string>}|null
+	 */
+	private function vulnerabilityEntry(mixed $vulnerability): ?array {
+		$package = is_array($vulnerability) ? ($vulnerability['package'] ?? null) : null;
+		if (!is_array($package) || !is_string($package['name'] ?? null)) {
+			return null;
+		}
+		$target = $this->packageMap->resolve((string)$package['name']);
+		if ($target === null) {
+			return null;
+		}
+		/** @var array<array-key, mixed> $vulnerability */
+
+		return [
+			'target' => $target,
+			'affected' => $this->splitList(is_string($vulnerability['vulnerable_version_range'] ?? null) ? (string)$vulnerability['vulnerable_version_range'] : ''),
+			'patched' => $this->splitList(is_string($vulnerability['patched_versions'] ?? null) ? (string)$vulnerability['patched_versions'] : ''),
+		];
+	}
+
+	/**
+	 * The id, severity and summary every target of one GHSA record shares.
+	 *
+	 * @param array<array-key, mixed> $record
+	 * @return array{id: string, severity: string, summary: string}
+	 */
+	private static function advisoryHeader(array $record, string $ghsa): array {
+		return [
+			'id' => $ghsa,
+			'severity' => AdvisorySeverity::normalize($record['severity'] ?? null),
+			'summary' => is_string($record['summary'] ?? null) ? (string)$record['summary'] : '',
+		];
+	}
+
+	/**
+	 * The advisory record for a target named once so far.
+	 *
+	 * @param array{id: string, severity: string, summary: string} $advisory
+	 * @param array{target: string, affected: list<string>, patched: list<string>} $entry
+	 * @return array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}
+	 */
+	private static function newTarget(array $advisory, array $entry): array {
+		return $advisory + [
+			'affected' => $entry['affected'],
+			// Kept for the existing contract; `patchedVersions` is what
+			// BranchAwareRange actually evaluates, because one advisory
+			// carries a separate patch per maintenance branch.
+			'firstPatchedVersion' => $entry['patched'][0] ?? null,
+			'patchedVersions' => $entry['patched'],
+		];
+	}
+
+	/**
+	 * Same advisory, same target, listed twice: the version information is
+	 * merged rather than the second entry replacing the first and silently
+	 * dropping a branch.
+	 *
+	 * @param array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>} $known
+	 * @param array{target: string, affected: list<string>, patched: list<string>} $entry
+	 * @return array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}
+	 */
+	private static function mergeVersions(array $known, array $entry): array {
+		$known['patchedVersions'] = array_values(array_unique([...$known['patchedVersions'], ...$entry['patched']]));
+		$known['affected'] = array_values(array_unique([...$known['affected'], ...$entry['affected']]));
+		$known['firstPatchedVersion'] = $known['patchedVersions'][0] ?? null;
+
+		return $known;
 	}
 
 	/**
