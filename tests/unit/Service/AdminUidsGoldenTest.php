@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service;
 
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\Service\Advisory\AdvisoryDigestNotifier;
 use OCA\Versioniq\Service\Advisory\AdvisoryNotifier;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
 use OCA\Versioniq\Service\Pin\PinDriftHandler;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\IGroup;
 use OCP\IGroupManager;
 use OCP\IUser;
@@ -25,6 +28,8 @@ use PHPUnit\Framework\TestCase;
  * @covers \OCA\Versioniq\Service\ResolvesAdminUids
  */
 final class AdminUidsGoldenTest extends TestCase {
+	use BuildsByParameterName;
+
 	private const FIXTURE = __DIR__ . '/fixtures/admin-uids.golden.json';
 
 	private const CLASSES = [
@@ -73,9 +78,7 @@ final class AdminUidsGoldenTest extends TestCase {
 		foreach (self::CLASSES as $class) {
 			$reflection = new \ReflectionClass($class);
 			foreach ($this->shapes() as $name => $uids) {
-				$instance = $reflection->newInstanceWithoutConstructor();
-				$property = $reflection->getProperty('groupManager');
-				$property->setValue($instance, $this->groupManager($uids));
+				$instance = $this->buildByName($class, ['groupManager' => $this->groupManager($uids)]);
 				$method = $reflection->getMethod('adminUids');
 				$actual[$class][$name] = $method->invoke($instance);
 			}

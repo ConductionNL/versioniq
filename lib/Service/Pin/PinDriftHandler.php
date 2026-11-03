@@ -13,12 +13,9 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Pin;
 
 use OCA\Versioniq\Service\AdminNotice;
+use OCA\Versioniq\Service\AdminNotificationServices;
 use OCA\Versioniq\Service\NotifiesAdmins;
 use OCA\Versioniq\Service\ResolvesAdminUids;
-use OCP\AppFramework\Utility\ITimeFactory;
-use OCP\IGroupManager;
-use OCP\IURLGenerator;
-use OCP\Notification\IManager;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -41,10 +38,7 @@ class PinDriftHandler {
 
 	public function __construct(
 		private PinStore $pinStore,
-		private IManager $notificationManager,
-		private IGroupManager $groupManager,
-		private ITimeFactory $timeFactory,
-		private IURLGenerator $urlGenerator,
+		private AdminNotificationServices $admin,
 		private LoggerInterface $logger,
 	) {
 	}
@@ -65,7 +59,7 @@ class PinDriftHandler {
 			return;
 		}
 
-		$driftedAt = $this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM);
+		$driftedAt = $this->admin->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM);
 		$newlyDrifted = $this->pinStore->markDrift($appId, new PinDrift($installedVersion, $driftedAt));
 		if (!$newlyDrifted) {
 			// Either already recorded for this exact drifted version, or the

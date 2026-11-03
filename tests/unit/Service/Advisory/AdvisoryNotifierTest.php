@@ -12,8 +12,11 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Advisory;
 
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\Service\Advisory\AdvisoryNotifier;
 use OCA\Versioniq\Service\Advisory\AdvisoryService;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IAppConfig;
 use OCP\IGroup;
@@ -25,6 +28,8 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 final class AdvisoryNotifierTest extends TestCase {
+	use BuildsByParameterName;
+
 	/** @var array<string, string> in-memory app-config backing the dedup store */
 	private array $store = [];
 
@@ -103,13 +108,13 @@ final class AdvisoryNotifierTest extends TestCase {
 		// Exactly one notification for the single pinned-to-vulnerable app.
 		$manager->expects($this->once())->method('notify');
 
-		$notifier = new AdvisoryNotifier(
-			$manager,
-			$this->appConfig(),
-			$this->groupManagerWithAdmin(),
-			$this->timeFactory(),
-			$this->createMock(LoggerInterface::class),
-		);
+		$notifier = $this->buildByName(AdvisoryNotifier::class, [
+			'notificationManager' => $manager,
+			'appConfig' => $this->appConfig(),
+			'groupManager' => $this->groupManagerWithAdmin(),
+			'timeFactory' => $this->timeFactory(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 
 		$fired = $notifier->notifyNewAdvisories($this->vulnerableCorrelation());
 
@@ -122,13 +127,13 @@ final class AdvisoryNotifierTest extends TestCase {
 		// First run notifies once; the second run must NOT notify again.
 		$manager->expects($this->once())->method('notify');
 
-		$notifier = new AdvisoryNotifier(
-			$manager,
-			$this->appConfig(),
-			$this->groupManagerWithAdmin(),
-			$this->timeFactory(),
-			$this->createMock(LoggerInterface::class),
-		);
+		$notifier = $this->buildByName(AdvisoryNotifier::class, [
+			'notificationManager' => $manager,
+			'appConfig' => $this->appConfig(),
+			'groupManager' => $this->groupManagerWithAdmin(),
+			'timeFactory' => $this->timeFactory(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 
 		$firstRun = $notifier->notifyNewAdvisories($this->vulnerableCorrelation());
 		$secondRun = $notifier->notifyNewAdvisories($this->vulnerableCorrelation());
@@ -141,13 +146,13 @@ final class AdvisoryNotifierTest extends TestCase {
 		$manager = $this->createMock(IManager::class);
 		$manager->expects($this->never())->method('notify');
 
-		$notifier = new AdvisoryNotifier(
-			$manager,
-			$this->appConfig(),
-			$this->groupManagerWithAdmin(),
-			$this->timeFactory(),
-			$this->createMock(LoggerInterface::class),
-		);
+		$notifier = $this->buildByName(AdvisoryNotifier::class, [
+			'notificationManager' => $manager,
+			'appConfig' => $this->appConfig(),
+			'groupManager' => $this->groupManagerWithAdmin(),
+			'timeFactory' => $this->timeFactory(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 
 		$clean = [
 			'contacts' => [
