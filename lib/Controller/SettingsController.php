@@ -13,7 +13,9 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
+use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Audit\AuditLogger;
+use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCA\Versioniq\Service\Settings\InstanceSettings;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
@@ -122,12 +124,8 @@ class SettingsController extends OCSController {
 		$after = $this->settings->read();
 		if ($applied !== []) {
 			$this->auditLogger->record(
-				$this->userSession->getUser()?->getUID() ?? '',
-				'versioniq',
-				AuditLogger::OPERATION_SETTINGS,
-				null,
-				null,
-				null,
+				new AuditSubject($this->userSession->getUser()?->getUID() ?? '', 'versioniq', AuditLogger::OPERATION_SETTINGS),
+				new AuditedVersions(null, null, null),
 				AuditLogger::STATUS_SUCCESS,
 				'Settings changed: ' . implode(', ', array_map(
 					static fn (string $field): string => $field . '=' . (string)$after[$field],

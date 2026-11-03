@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Controller;
 
+require_once __DIR__ . '/../Support/AuditArgs.php';
+
 use OCA\Versioniq\Controller\SettingsController;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Settings\InstanceSettings;
+use OCA\Versioniq\Tests\Unit\Support\AuditArgs;
 use OCP\IAppConfig;
 use OCP\IGroupManager;
 use OCP\IRequest;
@@ -74,7 +77,7 @@ final class SettingsControllerTest extends TestCase {
 
 	public function testUpdateStoresAndAuditsTheChange(): void {
 		$audit = $this->createMock(AuditLogger::class);
-		$audit->expects(self::once())->method('record')->with('admin', 'versioniq', AuditLogger::OPERATION_SETTINGS);
+		$audit->expects(self::once())->method('record')->with(...AuditArgs::expected('admin', 'versioniq', AuditLogger::OPERATION_SETTINGS));
 
 		$response = $this->controller(true, $audit)->updateInstanceSettings('90');
 
