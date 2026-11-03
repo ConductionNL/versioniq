@@ -18,6 +18,7 @@ use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Files\AppData\IAppDataFactory;
 use OCP\Files\IAppData;
 use OCP\Files\NotFoundException;
+use OCP\Files\SimpleFS\ISimpleFile;
 use OCP\Files\SimpleFS\ISimpleFolder;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
@@ -207,8 +208,17 @@ class ArtifactCache {
 			return null;
 		}
 
-		$infoXml = self::infoXmlFromArchive($cached['content']);
-		if ($infoXml === null || $infoXml === '') {
+		$nextcloud = self::nextcloudElement(self::infoXmlFromArchive($cached['content']) ?? '');
+
+		return $nextcloud === null ? null : self::rangeSpec($nextcloud);
+	}
+
+	/**
+	 * The `<nextcloud>` element of an info.xml, or null when the document is
+	 * empty, does not parse or has none.
+	 */
+	private static function nextcloudElement(string $infoXml): ?\DOMElement {
+		if ($infoXml === '') {
 			return null;
 		}
 
@@ -221,10 +231,15 @@ class ArtifactCache {
 			libxml_use_internal_errors($previous);
 		}
 		$nextcloud = $loaded ? $dom->getElementsByTagName('nextcloud')->item(0) : null;
-		if (!$nextcloud instanceof \DOMElement) {
-			return null;
-		}
 
+		return $nextcloud instanceof \DOMElement ? $nextcloud : null;
+	}
+
+	/**
+	 * The element's numeric min-version and max-version as a platform spec,
+	 * or null when it has neither.
+	 */
+	private static function rangeSpec(\DOMElement $nextcloud): ?string {
 		$min = trim($nextcloud->getAttribute('min-version'));
 		$max = trim($nextcloud->getAttribute('max-version'));
 		$bounds = [];
@@ -237,7 +252,6 @@ class ArtifactCache {
 
 		return $bounds === [] ? null : implode(' ', $bounds);
 	}
-
 	/** Largest decompressed archive this will read: well above any app release. */
 	private const MAX_ARCHIVE_BYTES = 256 * 1024 * 1024;
 
@@ -247,42 +261,73 @@ class ArtifactCache {
 	 * plain tar, or null when there is none.
 	 */
 	private static function infoXmlFromArchive(string $content): ?string {
-		if (str_starts_with($content, "\x1f\x8b")) {
-			$decoded = @gzdecode($content, self::MAX_ARCHIVE_BYTES);
-			if ($decoded === false) {
-				return null;
-			}
-			$content = $decoded;
-		}
-
-		$offset = 0;
-		$length = strlen($content);
-		while ($offset + 512 <= $length) {
-			$header = substr($content, $offset, 512);
-			if (trim($header, "\0") === '') {
-				return null;
-			}
-			$name = rtrim(substr($header, 0, 100), "\0");
-			$prefix = substr($header, 257, 6) === "ustar\0" || substr($header, 257, 5) === 'ustar'
-				? rtrim(substr($header, 345, 155), "\0")
-				: '';
-			if ($prefix !== '') {
-				$name = $prefix . '/' . $name;
-			}
-			$size = octdec(trim(substr($header, 124, 12), "\0 "));
-			if (!is_int($size) || $size < 0) {
-				return null;
-			}
-			$offset += 512;
+		$tar = self::plainTar($content) ?? '';
+		foreach (self::tarEntries($tar) as [$name, $offset, $size]) {
 			if (preg_match('#^(\./)?([^/]+/)?appinfo/info\.xml$#', $name) === 1) {
-				return substr($content, $offset, $size);
+				return substr($tar, $offset, $size);
 			}
-			$offset += (int)(ceil($size / 512) * 512);
 		}
 
 		return null;
 	}
 
+	/**
+	 * The archive as a plain tar: gunzipped when it starts with the gzip
+	 * magic, or null when that fails.
+	 */
+	private static function plainTar(string $content): ?string {
+		if (!str_starts_with($content, "\x1f\x8b")) {
+			return $content;
+		}
+		$decoded = @gzdecode($content, self::MAX_ARCHIVE_BYTES);
+
+		return $decoded === false ? null : $decoded;
+	}
+
+	/**
+	 * Each tar entry as its name, content offset and size, up to the first
+	 * zero block or unreadable size.
+	 *
+	 * @return \Generator<int, array{0: string, 1: int, 2: int}>
+	 */
+	private static function tarEntries(string $tar): \Generator {
+		$offset = 0;
+		while ($offset + 512 <= strlen($tar)) {
+			$header = substr($tar, $offset, 512);
+			$size = self::tarEntrySize($header);
+			if ($size === null) {
+				return;
+			}
+			yield [self::tarEntryName($header), $offset + 512, $size];
+			$offset += 512 + (int)(ceil($size / 512) * 512);
+		}
+	}
+
+	/**
+	 * The entry size an octal tar header field gives (characters outside 0-7
+	 * are ignored, as octdec() does), or null for a zero block or a size that
+	 * is not a non-negative int.
+	 */
+	private static function tarEntrySize(string $header): ?int {
+		if (trim($header, "\0") === '') {
+			return null;
+		}
+		$size = octdec((string)preg_replace('/[^0-7]/', '', substr($header, 124, 12)));
+
+		return is_int($size) && $size >= 0 ? $size : null;
+	}
+
+	/**
+	 * The entry name of a tar header, with its ustar prefix when it has one.
+	 */
+	private static function tarEntryName(string $header): string {
+		$name = rtrim(substr($header, 0, 100), "\0");
+		$prefix = substr($header, 257, 6) === "ustar\0" || substr($header, 257, 5) === 'ustar'
+			? rtrim(substr($header, 345, 155), "\0")
+			: '';
+
+		return $prefix === '' ? $name : $prefix . '/' . $name;
+	}
 	/**
 	 * Lists the versions currently cached for `$appId` (one directory
 	 * listing, no per-version IO), used by
@@ -352,36 +397,42 @@ class ArtifactCache {
 	 * @spec openspec/specs/artifact-cache/spec.md
 	 */
 	public function clear(?string $appId = null): void {
-		if ($appId !== null) {
-			if (!$this->isValidAppId($appId)) {
-				return;
-			}
-			try {
-				$this->getAppData()->getFolder($this->folderName($appId))->delete();
-			} catch (NotFoundException) {
-				// Nothing cached for this app — already "cleared".
-			} catch (\Throwable $error) {
-				$this->logger->warning('ArtifactCache: failed to clear app cache', [
-					'appId' => $appId,
-					'message' => $error->getMessage(),
-				]);
-			}
+		if ($appId === null) {
+			$this->clearAll();
 
 			return;
 		}
+		if ($this->isValidAppId($appId)) {
+			$this->clearApp($appId);
+		}
+	}
 
+	private function clearApp(string $appId): void {
+		try {
+			$this->getAppData()->getFolder($this->folderName($appId))->delete();
+		} catch (NotFoundException) {
+			// Nothing cached for this app — already "cleared".
+		} catch (\Throwable $error) {
+			$this->logClearFailure($appId, $error);
+		}
+	}
+
+	private function clearAll(): void {
 		foreach ($this->listCacheFolders() as $cachedAppId => $folder) {
 			try {
 				$folder->delete();
 			} catch (\Throwable $error) {
-				$this->logger->warning('ArtifactCache: failed to clear app cache', [
-					'appId' => $cachedAppId,
-					'message' => $error->getMessage(),
-				]);
+				$this->logClearFailure($cachedAppId, $error);
 			}
 		}
 	}
 
+	private function logClearFailure(string $appId, \Throwable $error): void {
+		$this->logger->warning('ArtifactCache: failed to clear app cache', [
+			'appId' => $appId,
+			'message' => $error->getMessage(),
+		]);
+	}
 	private function archiveFilename(string $version): string {
 		return $version . self::ARCHIVE_SUFFIX;
 	}
@@ -472,22 +523,7 @@ class ArtifactCache {
 	 * oldest".
 	 */
 	private function prune(ISimpleFolder $folder, int $keep): void {
-		$entries = [];
-		foreach ($folder->getDirectoryListing() as $file) {
-			$name = $file->getName();
-			if (!str_ends_with($name, self::META_SUFFIX)) {
-				continue;
-			}
-			$version = substr($name, 0, -strlen(self::META_SUFFIX));
-			try {
-				$meta = json_decode($file->getContent(), true, 16, JSON_THROW_ON_ERROR);
-			} catch (\Throwable) {
-				continue;
-			}
-			$cachedAt = is_array($meta) && isset($meta['cachedAt']) && is_string($meta['cachedAt']) ? $meta['cachedAt'] : '';
-			$entries[] = ['version' => $version, 'cachedAt' => $cachedAt];
-		}
-
+		$entries = self::retentionEntries($folder);
 		usort($entries, static fn (array $a, array $b): int => $a['cachedAt'] <=> $b['cachedAt']);
 
 		$excess = count($entries) - $keep;
@@ -496,6 +532,42 @@ class ArtifactCache {
 		}
 	}
 
+	/**
+	 * Every cached version with a readable meta file, with its `cachedAt`
+	 * ('' when the meta carries none).
+	 *
+	 * @return list<array{version: string, cachedAt: string}>
+	 */
+	private static function retentionEntries(ISimpleFolder $folder): array {
+		$entries = [];
+		foreach ($folder->getDirectoryListing() as $file) {
+			$name = $file->getName();
+			if (!str_ends_with($name, self::META_SUFFIX)) {
+				continue;
+			}
+			$cachedAt = self::cachedAtOf($file);
+			if ($cachedAt !== null) {
+				$entries[] = ['version' => substr($name, 0, -strlen(self::META_SUFFIX)), 'cachedAt' => $cachedAt];
+			}
+		}
+
+		return $entries;
+	}
+
+	/**
+	 * A meta file's `cachedAt`, '' when it has none, or null when the file is
+	 * not readable JSON.
+	 */
+	private static function cachedAtOf(ISimpleFile $file): ?string {
+		try {
+			$meta = json_decode($file->getContent(), true, 16, JSON_THROW_ON_ERROR);
+		} catch (\Throwable) {
+			return null;
+		}
+		$cachedAt = is_array($meta) ? ($meta['cachedAt'] ?? '') : '';
+
+		return is_string($cachedAt) ? $cachedAt : '';
+	}
 	private function getAppFolder(string $appId): ?ISimpleFolder {
 		try {
 			return $this->getAppData()->getFolder($this->folderName($appId));
