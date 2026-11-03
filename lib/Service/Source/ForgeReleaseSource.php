@@ -102,23 +102,27 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 
 		$result = $this->fetchReleases($forge, $ownerRepo);
 		if ($result['ok'] === false) {
-			$error = $result['error'] ?? $this->forgeName($forge) . ' API request failed.';
-
-			return ['versions' => [], 'error' => $error];
+			return ['versions' => [], 'error' => $result['error'] ?? $this->forgeName($forge) . ' API request failed.'];
 		}
 
-		$releases = $result['releases'] ?? [];
+		return ['versions' => $this->dedupeAndSort($this->versionEntries($result['releases'] ?? [])), 'error' => null];
+	}
 
+	/**
+	 * One version entry per release with a non-empty tag.
+	 *
+	 * @param array<array-key, mixed> $releases
+	 * @return list<array{version: string, changelog: ?string, releasedAt: ?string}>
+	 */
+	private function versionEntries(array $releases): array {
 		$versions = [];
 		/** @var mixed $release */
 		foreach ($releases as $release) {
-			if (!is_array($release)) {
+			$tag = self::releaseTag($release);
+			if ($tag === null) {
 				continue;
 			}
-			$tag = $release['tag_name'] ?? null;
-			if (!is_string($tag) || $tag === '') {
-				continue;
-			}
+			/** @var array<array-key, mixed> $release */
 			$versions[] = [
 				'version' => $this->normalizeVersion($tag),
 				'changelog' => $this->extractChangelog($release),
@@ -127,48 +131,71 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			];
 		}
 
-		return ['versions' => $this->dedupeAndSort($versions), 'error' => null];
+		return $versions;
 	}
 
+	/**
+	 * A release's non-empty `tag_name`, or null.
+	 */
+	private static function releaseTag(mixed $release): ?string {
+		return is_array($release) ? self::nonEmptyString($release['tag_name'] ?? null) : null;
+	}
 	/**
 	 * Resolves a release into a download payload, enforcing unambiguous asset selection; see "External install integrity checks".
 	 *
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
 	public function resolveRelease(string $appId, string $version, SourceBinding $binding): ?array {
+		$release = $this->findRelease($this->releasesOf($binding) ?? [], $version);
+
+		return $release === null ? null : $this->buildReleasePayload($release, $binding->getAssetPattern());
+	}
+
+	/**
+	 * The releases of a forge binding, or null when the binding is not a
+	 * forge binding or the request fails.
+	 *
+	 * @return array<array-key, mixed>|null
+	 */
+	private function releasesOf(SourceBinding $binding): ?array {
 		$ownerRepo = $binding->getOwnerRepo();
 		if ($ownerRepo === null) {
 			return null;
 		}
-		$forge = $this->forgeRegistry->get($binding->getForge());
 
-		$result = $this->fetchReleases($forge, $ownerRepo);
+		$result = $this->fetchReleases($this->forgeRegistry->get($binding->getForge()), $ownerRepo);
 		if ($result['ok'] === false) {
 			return null;
 		}
 
-		$releases = $result['releases'] ?? [];
+		return $result['releases'] ?? [];
+	}
 
-		$assetPattern = $binding->getAssetPattern();
+	/**
+	 * The first release whose tag is the version, with or without its
+	 * leading v.
+	 *
+	 * @param array<array-key, mixed> $releases
+	 * @return array<array-key, mixed>|null
+	 */
+	private function findRelease(array $releases, string $version): ?array {
 		/** @var mixed $release */
 		foreach ($releases as $release) {
-			if (!is_array($release)) {
-				continue;
+			if ($this->tagMatches($release, $version)) {
+				/** @var array<array-key, mixed> $release */
+				return $release;
 			}
-			$tag = $release['tag_name'] ?? null;
-			if (!is_string($tag)) {
-				continue;
-			}
-			if ($this->normalizeVersion($tag) !== $version && $tag !== $version) {
-				continue;
-			}
-
-			return $this->buildReleasePayload($release, $assetPattern);
 		}
 
 		return null;
 	}
 
+	private function tagMatches(mixed $release, string $version): bool {
+		/** @var mixed $tag */
+		$tag = is_array($release) ? ($release['tag_name'] ?? null) : null;
+
+		return is_string($tag) && ($this->normalizeVersion($tag) === $version || $tag === $version);
+	}
 	/**
 	 * Lists published security advisories for the bound `owner/repo` from the
 	 * forge's `/security-advisories` endpoint (GitHub GHSA / Forgejo), reusing
@@ -192,28 +219,34 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			return ['advisories' => [], 'error' => $result['error'] ?? $this->forgeName($forge) . ' advisory request failed.'];
 		}
 
-		$advisories = [];
 		// `releases` is present on every ok:true branch of performFetch, but the
 		// union narrows to optional keys through useToken's generic, so Psalm
 		// sees `releases?:` and a possible null. Reading it defensively is
 		// cheaper than a baseline entry and is correct either way: a body that
 		// arrives without the key yields no advisories rather than a
 		// foreach-over-null warning.
-		$releases = ($result['releases'] ?? []);
+		return ['advisories' => $this->advisoriesIn($result['releases'] ?? []), 'error' => null];
+	}
+
+	/**
+	 * The normalised advisories among the entries, skipping any that is not an
+	 * object or has no id.
+	 *
+	 * @param array<array-key, mixed> $entries
+	 * @return list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string}>
+	 */
+	private function advisoriesIn(array $entries): array {
+		$advisories = [];
 		/** @var mixed $entry */
-		foreach ($releases as $entry) {
-			if (!is_array($entry)) {
-				continue;
-			}
-			$normalized = $this->normalizeAdvisory($entry);
+		foreach ($entries as $entry) {
+			$normalized = is_array($entry) ? $this->normalizeAdvisory($entry) : null;
 			if ($normalized !== null) {
 				$advisories[] = $normalized;
 			}
 		}
 
-		return ['advisories' => $advisories, 'error' => null];
+		return $advisories;
 	}
-
 	/**
 	 * Normalizes a forge (GHSA-shaped) advisory record into the correlation
 	 * record. Reads the affected version range and first-patched version from
@@ -251,22 +284,33 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * @return array{0: list<string>, 1: ?string}
 	 */
 	private function firstVulnerability(mixed $vulnerabilities): array {
+		/** @var mixed $vuln */
 		$vuln = is_array($vulnerabilities) ? ($vulnerabilities[0] ?? null) : null;
 		if (!is_array($vuln)) {
 			return [[], null];
 		}
-		/** @var mixed $patched */
-		$patched = $vuln['first_patched_version'] ?? null;
-		if (is_array($patched)) {
-			$patched = $patched['identifier'] ?? null;
-		}
 
 		return [
 			AdvisoryClauses::from($vuln['vulnerable_version_range'] ?? null),
-			is_string($patched) && $patched !== '' ? $this->normalizeVersion($patched) : null,
+			$this->patchedVersion($vuln),
 		];
 	}
 
+	/**
+	 * The normalised first patched version of a vulnerability (a string, or
+	 * an object with an `identifier`), or null when it has none.
+	 *
+	 * @param array<array-key, mixed> $vuln
+	 */
+	private function patchedVersion(array $vuln): ?string {
+		$patched = self::nonEmptyString(self::patchedIdentifier($vuln['first_patched_version'] ?? null));
+
+		return $patched === null ? null : $this->normalizeVersion($patched);
+	}
+
+	private static function patchedIdentifier(mixed $patched): mixed {
+		return is_array($patched) ? ($patched['identifier'] ?? null) : $patched;
+	}
 	/**
 	 * @return array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string}
 	 */
@@ -533,20 +577,15 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		/** @var list<array{version: string, changelog: ?string, releasedAt: ?string}> $unique */
 		$unique = [];
 		foreach ($versions as $entry) {
-			if (!isset($seenAt[$entry['version']])) {
+			$index = $seenAt[$entry['version']] ?? null;
+			if ($index === null) {
 				$seenAt[$entry['version']] = count($unique);
 				$unique[] = $entry;
 				continue;
 			}
 			// Duplicate tag (e.g. re-listed across pagination); keep the
-			// first-seen entry but backfill its changelog if it was empty.
-			$index = $seenAt[$entry['version']];
-			if ($unique[$index]['changelog'] === null && $entry['changelog'] !== null) {
-				$unique[$index]['changelog'] = $entry['changelog'];
-			}
-			if ($unique[$index]['releasedAt'] === null && $entry['releasedAt'] !== null) {
-				$unique[$index]['releasedAt'] = $entry['releasedAt'];
-			}
+			// first-seen entry but backfill what it was missing.
+			$unique[$index] = self::backfill($unique[$index], $entry);
 		}
 
 		usort(
@@ -561,6 +600,20 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		return $unique;
 	}
 
+	/**
+	 * The kept entry with its empty changelog and release date taken from a
+	 * duplicate.
+	 *
+	 * @param array{version: string, changelog: ?string, releasedAt: ?string} $kept
+	 * @param array{version: string, changelog: ?string, releasedAt: ?string} $entry
+	 * @return array{version: string, changelog: ?string, releasedAt: ?string}
+	 */
+	private static function backfill(array $kept, array $entry): array {
+		$kept['changelog'] ??= $entry['changelog'];
+		$kept['releasedAt'] ??= $entry['releasedAt'];
+
+		return $kept;
+	}
 	/**
 	 * Maps a forge release's `body` (release notes markdown) into the
 	 * changelog field. Fail-soft: any mapping failure is caught and yields

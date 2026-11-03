@@ -115,11 +115,6 @@
       <code><![CDATA[is_string($appInfo['version'])]]></code>
     </RedundantConditionGivenDocblockType>
   </file>
-  <file src="lib/Service/Source/ForgeReleaseSource.php">
-    <MixedAssignment>
-      <code><![CDATA[$patched]]></code>
-    </MixedAssignment>
-  </file>
   <file src="lib/Service/Source/SourceBinding.php">
     <RedundantConditionGivenDocblockType>
       <code><![CDATA[is_string($sha)]]></code>
