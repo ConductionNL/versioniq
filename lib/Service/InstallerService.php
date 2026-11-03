@@ -285,6 +285,7 @@ class InstallerService {
 		$versions = $this->applyChangelogTruncation($result['versions']);
 		$versions = $this->applyRecordedSha($versions, $binding);
 		$versions = $this->applyCachedOffline($versions, $appId);
+		/** @var list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool}> $versions */
 		$versions = $this->applyCachedServerCompatibility($versions, $appId);
 
 		return [
@@ -301,7 +302,7 @@ class InstallerService {
 	 * The error envelope for an app id that cannot be listed: blank (400), or
 	 * Versioniq itself or a core app (403).
 	 *
-	 * @return array{installedVersion: null, availableVersions: list<never>, versions: list<never>, source: string, sourceId: string, statusCode: int, hasError: bool, error: string}|null
+	 * @return array{installedVersion: null, availableVersions: list<never>, versions: list<never>, source: string, sourceId: string, statusCode: int, hasError: true, error: string}|null
 	 */
 	private function versionsRefusal(string $appId): ?array {
 		if ($appId === '') {
@@ -1315,7 +1316,7 @@ class InstallerService {
 	}
 
 	/**
-	 * @return array{installedVersion: ?string, availableVersions: list<array{version:string, changelog:?string, recordedSha:?string}>, versions: list<array{version:string, changelog:?string, recordedSha:?string}>, source: string, sourceId: string, statusCode: int, hasError: bool, error: string}
+	 * @return array{installedVersion: null, availableVersions: list<never>, versions: list<never>, source: string, sourceId: string, statusCode: int, hasError: true, error: string}
 	 */
 	private function errorEnvelope(string $message, int $statusCode): array {
 		return [
