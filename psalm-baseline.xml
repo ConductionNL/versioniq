@@ -66,26 +66,10 @@
     </RedundantFunctionCall>
   </file>
   <file src="lib/Service/Cache/ArtifactCache.php">
-    <DocblockTypeContradiction>
-      <code><![CDATA['']]></code>
-      <code><![CDATA[strtolower(hash('sha256', $content))]]></code>
-    </DocblockTypeContradiction>
     <MixedAssignment>
       <code><![CDATA[$cachedAt]]></code>
       <code><![CDATA[$meta]]></code>
     </MixedAssignment>
-    <RedundantConditionGivenDocblockType>
-      <code><![CDATA[is_string($meta['certificate'])]]></code>
-      <code><![CDATA[is_string($meta['installerKind'])]]></code>
-      <code><![CDATA[is_string($meta['sha256'])]]></code>
-      <code><![CDATA[is_string($meta['signature'])]]></code>
-      <code><![CDATA[is_string($meta['sourceId'])]]></code>
-      <code><![CDATA[isset($meta['certificate']) && is_string($meta['certificate'])]]></code>
-      <code><![CDATA[isset($meta['installerKind']) && is_string($meta['installerKind'])]]></code>
-      <code><![CDATA[isset($meta['sha256']) && is_string($meta['sha256'])]]></code>
-      <code><![CDATA[isset($meta['signature']) && is_string($meta['signature'])]]></code>
-      <code><![CDATA[isset($meta['sourceId']) && is_string($meta['sourceId'])]]></code>
-    </RedundantConditionGivenDocblockType>
   </file>
   <file src="lib/Service/Discovery/AppStoreDiscovery.php">
     <MixedAssignment>
