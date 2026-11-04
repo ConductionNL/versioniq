@@ -28,14 +28,20 @@ final class Forge {
 	public const SCHEME_BEARER = 'Bearer';
 	public const SCHEME_TOKEN = 'token';
 
-	public function __construct(
-		public readonly string $id,
-		public readonly string $apiBaseUrl,
-		public readonly string $webBaseUrl,
-		public readonly string $authScheme,
-		public readonly bool $exposesScopeHeader,
-		public readonly string $tokenCreateUrl,
-	) {
+	public readonly string $id;
+	public readonly string $apiBaseUrl;
+	public readonly string $webBaseUrl;
+	public readonly string $authScheme;
+	public readonly bool $exposesScopeHeader;
+	public readonly string $tokenCreateUrl;
+
+	public function __construct(string $id, ForgeUrls $urls, string $authScheme, bool $exposesScopeHeader) {
+		$this->id = $id;
+		$this->apiBaseUrl = $urls->api;
+		$this->webBaseUrl = $urls->web;
+		$this->authScheme = $authScheme;
+		$this->exposesScopeHeader = $exposesScopeHeader;
+		$this->tokenCreateUrl = $urls->tokenCreate;
 	}
 
 	/**

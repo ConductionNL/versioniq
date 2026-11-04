@@ -11,17 +11,20 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\AutoUpdate;
 
+use OCA\Versioniq\Service\InstallerService;
 use OCP\App\IAppManager;
 
 /**
- * Picks the version an automatic update moves an app to: the app manager
- * reports the installed version, the selector chooses the candidate from the
- * available ones for the app's policy level.
+ * What an automatic update finds and installs a version with: the installer
+ * service lists the available versions, says whether versioniq may manage the
+ * app and installs the chosen one; the app manager reports the installed
+ * version; the selector chooses the candidate for the app's policy level.
  *
  * @psalm-api
  */
-final class UpdateCandidates {
+final class AutoUpdateInstall {
 	public function __construct(
+		public readonly InstallerService $installerService,
 		public readonly IAppManager $appManager,
 		public readonly CandidateSelector $candidateSelector,
 	) {

@@ -6,7 +6,7 @@
   "lizard": "1.24.3"
  },
  "unit_reader": 2,
- "measured_at": "92f9b9422794218ed9f301139f3451afa8a3b945",
+ "measured_at": "8a3e548dcf9aa9989a32334e0bb1976c10658ec7",
  "checks": [
   "javascript duplication",
   "javascript unit_complexity >10",
@@ -24,6 +24,8 @@
   "php module_coupling >50",
   "php unit_complexity >10",
   "php unit_complexity >25",
+  "php unit_interfacing >4",
+  "php unit_interfacing >6",
   "php unit_size >15",
   "php unit_size >30",
   "php unit_size >60",

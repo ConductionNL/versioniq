@@ -83,11 +83,13 @@ class ForgeRegistry {
 		foreach (self::DEFAULTS as $id => $d) {
 			$this->forges[$id] = new Forge(
 				$id,
-				$this->baseUrl($id, 'api_base', $d['api']),
-				$this->baseUrl($id, 'web_base', $d['web']),
+				new ForgeUrls(
+					$this->baseUrl($id, 'api_base', $d['api']),
+					$this->baseUrl($id, 'web_base', $d['web']),
+					$d['tokenCreateUrl'],
+				),
 				$d['scheme'],
 				$d['exposesScopeHeader'],
-				$d['tokenCreateUrl'],
 			);
 		}
 		$this->registerForgejo();
@@ -106,11 +108,13 @@ class ForgeRegistry {
 
 		$this->forges[self::FORGE_FORGEJO] = new Forge(
 			self::FORGE_FORGEJO,
-			$this->baseUrl(self::FORGE_FORGEJO, 'api_base', $web . '/api/v1'),
-			$web,
+			new ForgeUrls(
+				$this->baseUrl(self::FORGE_FORGEJO, 'api_base', $web . '/api/v1'),
+				$web,
+				$web . '/user/settings/applications',
+			),
 			Forge::SCHEME_TOKEN,
 			false,
-			$web . '/user/settings/applications',
 		);
 	}
 
