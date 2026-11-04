@@ -24,14 +24,14 @@ import {
 
 async function updatesCli(
 	...args: string[]
-): Promise<{ code: number; stdout: string }> {
-	const { code, stdout } = await execInInstance([
+): Promise<{ code: number; stdout: string; stderr: string }> {
+	const { code, stdout, stderr } = await execInInstance([
 		"php",
 		"occ",
 		"versioniq:updates",
 		...args,
 	]);
-	return { code, stdout };
+	return { code, stdout, stderr };
 }
 
 function lastJson(out: string): any {
@@ -136,9 +136,9 @@ test.describe("pending updates", () => {
 			"versioniq",
 			"availability.results.checkedAt",
 		);
-		const { code, stdout } = await updatesCli();
+		const { code, stderr } = await updatesCli();
 		expect(code).toBe(1);
-		expect(stdout).toContain("No update check has run yet");
+		expect(stderr).toContain("No update check has run yet");
 
 		await openSettings(page);
 		await openTab(page, "Apps");
@@ -178,8 +178,10 @@ test.describe("pending updates", () => {
 			["php", "occ", "user:add", "--password-from-env", "updates-e2e-user"],
 			{ env: { OC_PASS: "updatesUserPass123" } },
 		);
+		// Unset explicitly: otherwise the context inherits the project's admin session.
 		const context = await playwrightRequest.newContext({
 			baseURL,
+			storageState: undefined,
 			httpCredentials: {
 				username: "updates-e2e-user",
 				password: "updatesUserPass123",

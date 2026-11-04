@@ -19,6 +19,8 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 
+require_once __DIR__ . '/InstallerGoldenSupport.php';
+
 /**
  * Golden test for InstallFinalizer::finalize(): fresh installs and upgrades,
  * every repair-step shape, background jobs, a legacy install script, info.xml
@@ -45,6 +47,10 @@ final class InstallFinalizerGoldenTest extends TestCase {
 
 	protected function setUp(): void {
 		parent::setUp();
+		if (!InstallerGoldenSupport::isUnitOnly()) {
+			$this->markTestSkipped('The golden runs on the unit-only bootstrap, whose OC_App recorder and server container it controls.');
+		}
+
 		$this->root = sys_get_temp_dir() . '/vq-finalizer-' . bin2hex(random_bytes(4));
 		mkdir($this->root . '/plain/appinfo', 0777, true);
 		mkdir($this->root . '/script/appinfo', 0777, true);
@@ -66,6 +72,12 @@ final class InstallFinalizerGoldenTest extends TestCase {
 	}
 
 	protected function tearDown(): void {
+		if (!InstallerGoldenSupport::isUnitOnly()) {
+			parent::tearDown();
+
+			return;
+		}
+
 		\OC_App::$recorder = null;
 		\OC::$server = $this->savedServer;
 		unlink($this->root . '/script/appinfo/install.php');

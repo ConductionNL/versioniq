@@ -52,6 +52,11 @@ test.describe("background jobs", () => {
 		await occ(
 			"config:app:delete",
 			"versioniq",
+			"auto_update_last_swept_window",
+		);
+		await occ(
+			"config:app:delete",
+			"versioniq",
 			`auto_attempt.${FIXTURE_APP}`,
 		);
 		await page.request
