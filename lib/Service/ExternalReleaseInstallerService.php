@@ -535,13 +535,15 @@ class ExternalReleaseInstallerService {
 	}
 
 	/**
-	 * The stored token, only when the URL is on the binding's own forge host.
+	 * The stored token, only when the URL is https on the binding's own forge
+	 * host and port.
 	 *
 	 * The asset and checksum URLs come from the release JSON, and a forge that
 	 * lets a release link an external asset would otherwise hand that host the
-	 * token. The host must equal the forge's web or API host exactly, so a
-	 * lookalike such as `github.com.example.org` does not qualify. Anything
-	 * else is fetched anonymously. The HTTP client's own redirect handling
+	 * token. The URL must be https, and its host and port must equal
+	 * the forge's web or API address exactly, so a lookalike such as
+	 * `github.com.example.org` does not qualify. Anything else is fetched
+	 * anonymously. The HTTP client's own redirect handling
 	 * already drops the header when a redirect changes host.
 	 *
 	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-1.3
@@ -557,20 +559,30 @@ class ExternalReleaseInstallerService {
 		}
 
 		$forge = $this->download->forgeRegistry->get($binding->getForge());
-		$forgeHosts = array_filter([
-			strtolower((string)parse_url($forge->webBaseUrl, PHP_URL_HOST)),
-			strtolower((string)parse_url($forge->apiBaseUrl, PHP_URL_HOST)),
-		]);
-		if (in_array($host, $forgeHosts, true)) {
+		$forgeAddresses = array_filter([self::httpsAddress($forge->webBaseUrl), self::httpsAddress($forge->apiBaseUrl)]);
+		if (in_array(self::httpsAddress($url), $forgeAddresses, true)) {
 			return $pat;
 		}
 
-		$this->logger->info('External installer: {host} is not {forge}\'s host, so the stored token is not sent there.', [
+		$this->logger->info('External installer: the stored {forge} token goes only over https to that forge\'s own host and port, so {host} does not get it.', [
 			'host' => $host,
 			'forge' => $forge->id,
 		]);
 
 		return null;
+	}
+
+	/**
+	 * An https URL's lower-cased host and port (443 when it names none), or
+	 * null for any other scheme or a URL without a host.
+	 */
+	private static function httpsAddress(string $url): ?string {
+		$parts = parse_url($url);
+		if (!is_array($parts) || strtolower($parts['scheme'] ?? '') !== 'https' || !isset($parts['host'])) {
+			return null;
+		}
+
+		return strtolower($parts['host']) . ':' . ($parts['port'] ?? 443);
 	}
 
 	private function authenticatedDownload(string $url, string $sinkPath, ?\OCA\Versioniq\Db\Pat $pat): void {

@@ -51,3 +51,9 @@ An admin MUST be able to bind an app to `gitlab:{path}`, where the path is a Git
 - **GIVEN** a GitLab release whose asset link points at `https://downloads.example.org`, and a stored GitLab token
 - **WHEN** an admin installs that release
 - **THEN** the download request to `downloads.example.org` MUST carry no `Authorization` header
+
+#### Scenario: A token only travels over https to the forge's own port
+
+- **GIVEN** a release whose asset link is `http://github.com/...` or `https://github.com:8443/...`, and a stored GitHub token
+- **WHEN** an admin installs that release
+- **THEN** the download request MUST carry no `Authorization` header
