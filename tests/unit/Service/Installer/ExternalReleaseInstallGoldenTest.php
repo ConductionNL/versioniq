@@ -592,6 +592,16 @@ final class ExternalReleaseInstallGoldenTest extends TestCase {
 		return $service;
 	}
 
+	/**
+	 * The archive's digest with only its last character changed. The archive's
+	 * bytes differ per environment, so the fixture masks it.
+	 */
+	private function digestWithAnotherLastCharacter(): string {
+		$sha = hash('sha256', $this->archiveBytes);
+
+		return substr($sha, 0, 63) . ($sha[63] === '0' ? '1' : '0');
+	}
+
 	private function checksumResponse(string $shape): IResponse {
 		$sha = hash('sha256', $this->archiveBytes);
 		if ($shape === 'throw') {
@@ -605,7 +615,7 @@ final class ExternalReleaseInstallGoldenTest extends TestCase {
 			'padded' => "\n\t " . $sha . "  someapp.tar.gz\n",
 			'long' => $sha . 'a',
 			'prefixed' => 'x' . $sha,
-			'tail' => substr($sha, 0, 63) . ($sha[63] === '0' ? '1' : '0'),
+			'tail' => $this->digestWithAnotherLastCharacter(),
 			default => $sha,
 		};
 		$response = $this->createMock(IResponse::class);
@@ -739,7 +749,11 @@ final class ExternalReleaseInstallGoldenTest extends TestCase {
 	 */
 	private function mask(array $outcome): array {
 		$json = (string)json_encode($outcome, JSON_UNESCAPED_SLASHES);
-		$json = str_replace([$this->root, hash('sha256', $this->archiveBytes), strtoupper(hash('sha256', $this->archiveBytes))], ['<root>', '<sha>', '<SHA>'], $json);
+		$json = str_replace(
+			[$this->root, hash('sha256', $this->archiveBytes), strtoupper(hash('sha256', $this->archiveBytes)), $this->digestWithAnotherLastCharacter()],
+			['<root>', '<sha>', '<SHA>', '<sha with another last character>'],
+			$json
+		);
 
 		/** @var array<string, mixed> */
 		return json_decode($json, true);
