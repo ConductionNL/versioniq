@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\Controller;
 
 require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+require_once __DIR__ . '/../Service/Installer/InstallerGoldenSupport.php';
 
 use OCA\Versioniq\Controller\ApiController;
 use OCA\Versioniq\Db\Pat;
@@ -28,6 +29,7 @@ use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyStore;
+use OCA\Versioniq\Tests\Unit\Service\Installer\InstallerGoldenSupport;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Http\DataResponse;
@@ -126,6 +128,10 @@ final class ApiReadEndpointsGoldenTest extends TestCase {
 	 * @param callable(): DataResponse $call
 	 */
 	private function withUpdaterChannel(string $channel, callable $call): DataResponse {
+		if (!InstallerGoldenSupport::isUnitOnly()) {
+			$this->markTestSkipped('A real server types OC::$server, so the container cannot be replaced.');
+		}
+
 		$config = $this->createMock(IConfig::class);
 		$config->method('getSystemValueString')->willReturn($channel);
 		$container = $this->createMock(ContainerInterface::class);
