@@ -132,6 +132,7 @@ final class ArtifactCacheStoreFetchGoldenTest extends TestCase {
 		$add('upper-case digest', ['files' => ['2.0.0.tar.gz' => self::ARCHIVE, '2.0.0.meta.json' => $meta(['sha256' => strtoupper($sha)])]]);
 		$add('keep zero', ['keep' => 0]);
 		$add('invalid app id', ['appId' => '1app']);
+		$add('invalid app id with files', ['appId' => '1app', 'folder' => 'artifact-cache-1app']);
 		$add('invalid version', ['version' => '-2.0.0']);
 		$add('invalid version with files', ['version' => '_2.0.0', 'files' => ['_2.0.0.tar.gz' => self::ARCHIVE, '_2.0.0.meta.json' => $meta(['sha256' => $sha])]]);
 		$add('no archive, broken meta', ['files' => ['2.0.0.meta.json' => '{']]);
@@ -223,7 +224,7 @@ final class ArtifactCacheStoreFetchGoldenTest extends TestCase {
 		$this->calls = [];
 		$appData = new FakeAppData();
 		if ($case['files'] !== null) {
-			$folder = $appData->newFolder('artifact-cache-someapp');
+			$folder = $appData->newFolder($case['folder'] ?? 'artifact-cache-someapp');
 			foreach ($case['files'] as $name => $content) {
 				$folder->newFile($name, $content);
 			}

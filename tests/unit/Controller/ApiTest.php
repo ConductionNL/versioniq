@@ -698,7 +698,7 @@ final class ApiTest extends TestCase {
 	 * @return array<string, array{0: string}>
 	 */
 	public static function unrecognisedDryRuns(): array {
-		return ['yes' => ['yes'], 'on' => ['on'], 'x' => ['x'], 'empty' => ['']];
+		return ['yes' => ['yes'], 'on' => ['on'], 'x' => ['x'], 'empty' => [''], 'one point zero' => ['1.0'], 'leading zero' => ['01']];
 	}
 
 	/**

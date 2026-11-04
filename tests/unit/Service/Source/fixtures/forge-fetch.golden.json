@@ -111,6 +111,7 @@
 "payload sha sibling": {"result":{"kind":"github-release","download":"u1","assetName":"a.tar.gz","sha256Url":"u2","version":"1","tagName":"v1"},"calls":[]},
 "payload sha last wins": {"result":{"kind":"github-release","download":"u1","assetName":"a.tar.gz","sha256Url":"s2","version":"1","tagName":"v1"},"calls":[]},
 "payload sha also matches": {"result":{"kind":"github-release","download":"s1","assetName":"a.sha256","sha256Url":"s1","version":"1","tagName":"v1"},"calls":[]},
+"payload sha in the middle of a name": {"result":{"kind":"github-release","download":"u1","assetName":"a.tar.gz","sha256Url":null,"version":"1","tagName":"v1"},"calls":[]},
 "payload sha only": {"result":{"error":"No release asset matches pattern \"*.tar.gz\"."},"calls":[]},
 "payload junk assets": {"result":{"kind":"github-release","download":"u9","assetName":"ok.tar.gz","sha256Url":null,"version":"1","tagName":"v1"},"calls":[]},
 "payload junk sha": {"result":{"kind":"github-release","download":"u","assetName":"b.tar.gz","sha256Url":null,"version":"1","tagName":"v1"},"calls":[]},
