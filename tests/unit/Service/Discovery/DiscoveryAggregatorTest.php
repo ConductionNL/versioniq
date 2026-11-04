@@ -8,7 +8,9 @@ use OCA\Versioniq\Service\Discovery\AppStoreDiscovery;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
 use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
 use OCA\Versioniq\Service\Discovery\DiscoveryHit;
+use OCA\Versioniq\Service\Discovery\DiscoveryListing;
 use OCA\Versioniq\Service\Discovery\DiscoveryResult;
+use OCA\Versioniq\Service\Discovery\DiscoverySource;
 use OCA\Versioniq\Service\Discovery\GithubPrivateDiscovery;
 use OCA\Versioniq\Service\Discovery\GithubSearchDiscovery;
 use OCA\Versioniq\Service\Source\SourceBinding;
@@ -19,14 +21,18 @@ final class DiscoveryAggregatorTest extends TestCase {
 	private function makeHit(string $providerId, string $appId, string $name, bool $installable = true, array $binding = []): DiscoveryHit {
 		return new DiscoveryHit(
 			appId: $appId,
-			name: $name,
-			summary: $name . ' summary',
-			iconUrl: $providerId === AppStoreDiscovery::ID ? 'https://example/icon.png' : null,
-			sourceProviderId: $providerId,
-			sourceBinding: $binding ?: ['kind' => SourceBinding::KIND_APPSTORE],
-			installable: $installable,
-			installableReason: $installable ? null : 'reason',
-			homepageUrl: null,
+			listing: new DiscoveryListing(
+				name: $name,
+				summary: $name . ' summary',
+				iconUrl: $providerId === AppStoreDiscovery::ID ? 'https://example/icon.png' : null,
+				homepageUrl: null,
+			),
+			source: new DiscoverySource(
+				providerId: $providerId,
+				binding: $binding ?: ['kind' => SourceBinding::KIND_APPSTORE],
+				installable: $installable,
+				installableReason: $installable ? null : 'reason',
+			),
 		);
 	}
 
@@ -161,14 +167,18 @@ final class DiscoveryAggregatorTest extends TestCase {
 			githubPrivate: new DiscoveryResult([
 				new DiscoveryHit(
 					appId: 'openregister',
-					name: 'openregister',
-					summary: 'github description that should NOT win',
-					iconUrl: null,
-					sourceProviderId: GithubPrivateDiscovery::ID,
-					sourceBinding: ['kind' => SourceBinding::KIND_GITHUB_RELEASE, 'owner' => 'ConductionNL', 'repo' => 'openregister'],
-					installable: true,
-					installableReason: null,
-					homepageUrl: null,
+					listing: new DiscoveryListing(
+						name: 'openregister',
+						summary: 'github description that should NOT win',
+						iconUrl: null,
+						homepageUrl: null,
+					),
+					source: new DiscoverySource(
+						providerId: GithubPrivateDiscovery::ID,
+						binding: ['kind' => SourceBinding::KIND_GITHUB_RELEASE, 'owner' => 'ConductionNL', 'repo' => 'openregister'],
+						installable: true,
+						installableReason: null,
+					),
 				),
 			]),
 		)->search('register');

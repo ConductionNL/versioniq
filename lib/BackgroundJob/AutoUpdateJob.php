@@ -13,19 +13,17 @@ declare(strict_types=1);
 namespace OCA\Versioniq\BackgroundJob;
 
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
-use OCA\Versioniq\Service\AutoUpdate\UpdateCandidates;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\PinChoice;
-use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCP\AppFramework\Http;
-use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
 use Psr\Log\LoggerInterface;
 
@@ -38,7 +36,7 @@ use Psr\Log\LoggerInterface;
  * entirely (no source query), lists versions from the app's bound source,
  * selects the highest qualifying version via {@see CandidateSelector}, and —
  * unless that exact (appId, version) was already attempted — installs it
- * through {@see InstallerService::installAppVersion()}, the same verified
+ * through {@see \OCA\Versioniq\Service\InstallerService::installAppVersion()}, the same verified
  * path (signature/integrity checks, backup/restore, structured outcomes,
  * audit trail) as every other install in this app. Every attempt is recorded
  * in the {@see AttemptLedger} (never-retry) and reported via
@@ -61,15 +59,16 @@ class AutoUpdateJob extends TimedJob {
 	 */
 	private const INTERVAL_SECONDS = 15 * 60;
 
+	private LoggerInterface $logger;
+
 	public function __construct(
-		ITimeFactory $time,
+		JobRuntime $runtime,
 		private AutoUpdateStores $stores,
-		private InstallerService $installerService,
-		private UpdateCandidates $candidates,
+		private AutoUpdateInstall $install,
 		private AutoUpdateNotifier $notifier,
-		private LoggerInterface $logger,
 	) {
-		parent::__construct($time);
+		parent::__construct($runtime->time);
+		$this->logger = $runtime->logger;
 		$this->setInterval(self::INTERVAL_SECONDS);
 	}
 
@@ -125,13 +124,13 @@ class AutoUpdateJob extends TimedJob {
 			return;
 		}
 
-		if (!$this->installerService->isManageableApp($appId)) {
+		if (!$this->install->installerService->isManageableApp($appId)) {
 			return;
 		}
 
 		$installedVersion = null;
 		try {
-			$installed = $this->candidates->appManager->getAppVersion($appId, false);
+			$installed = $this->install->appManager->getAppVersion($appId, false);
 			$installedVersion = $installed !== '' ? $installed : null;
 		} catch (\Throwable) {
 			$installedVersion = null;
@@ -140,7 +139,7 @@ class AutoUpdateJob extends TimedJob {
 			return;
 		}
 
-		$result = $this->installerService->getAppVersions($appId);
+		$result = $this->install->installerService->getAppVersions($appId);
 		if (($result['hasError'] ?? false) === true) {
 			return;
 		}
@@ -151,7 +150,7 @@ class AutoUpdateJob extends TimedJob {
 			$result['availableVersions'] ?? []
 		);
 
-		$candidate = $this->candidates->candidateSelector->select($installedVersion, $available, $level);
+		$candidate = $this->install->candidateSelector->select($installedVersion, $available, $level);
 		if ($candidate === null) {
 			return;
 		}
@@ -165,7 +164,7 @@ class AutoUpdateJob extends TimedJob {
 	}
 
 	private function attemptInstall(string $appId, string $installedVersion, string $candidate): void {
-		$installResult = $this->installerService->installAppVersion(new InstallRequest(
+		$installResult = $this->install->installerService->installAppVersion(new InstallRequest(
 			new InstallTarget($appId, $candidate, null),
 			new InstallOptions(false, false, false, false),
 			new PinChoice(null, false),
