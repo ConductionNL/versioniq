@@ -42,12 +42,20 @@
     "stylelint-config-recommended-scss": "^17.0.1",
     "stylelint-config-recommended-vue": "^1.6.1",
     "typescript": "^5.9.3",
-    "vite": "^8.2.2",
+    "vite": "8.2.4",
     "vitest": "^4.1.11",
     "vue-eslint-parser": "^10.3.0"
   },
   "engines": {
     "node": "^22.14 || ^24 || >=26",
     "npm": "^11.3.0"
+  },
+  "overrides": {
+    "brace-expansion@2": "2.1.7",
+    "brace-expansion@5": "5.0.12",
+    "dompurify": "3.4.17",
+    "follow-redirects": "1.15.11",
+    "source-map-js": "1.2.2",
+    "undici": "8.12.2"
   }
 }
