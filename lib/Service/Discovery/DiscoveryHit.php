@@ -21,20 +21,29 @@ namespace OCA\Versioniq\Service\Discovery;
  * own response.
  */
 final class DiscoveryHit {
-	/**
-	 * @param array<string, mixed> $sourceBinding
-	 */
+	public readonly string $name;
+	public readonly string $summary;
+	public readonly ?string $iconUrl;
+	public readonly string $sourceProviderId;
+	/** @var array<string, mixed> */
+	public readonly array $sourceBinding;
+	public readonly bool $installable;
+	public readonly ?string $installableReason;
+	public readonly ?string $homepageUrl;
+
 	public function __construct(
 		public readonly string $appId,
-		public readonly string $name,
-		public readonly string $summary,
-		public readonly ?string $iconUrl,
-		public readonly string $sourceProviderId,
-		public readonly array $sourceBinding,
-		public readonly bool $installable,
-		public readonly ?string $installableReason,
-		public readonly ?string $homepageUrl,
+		DiscoveryListing $listing,
+		DiscoverySource $source,
 	) {
+		$this->name = $listing->name;
+		$this->summary = $listing->summary;
+		$this->iconUrl = $listing->iconUrl;
+		$this->sourceProviderId = $source->providerId;
+		$this->sourceBinding = $source->binding;
+		$this->installable = $source->installable;
+		$this->installableReason = $source->installableReason;
+		$this->homepageUrl = $listing->homepageUrl;
 	}
 
 	/**

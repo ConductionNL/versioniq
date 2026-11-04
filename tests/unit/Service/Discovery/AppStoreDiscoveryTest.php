@@ -47,6 +47,26 @@ final class AppStoreDiscoveryTest extends TestCase {
 		return new AppStoreDiscovery($clientService, $config, $timeFactory, $this->createMock(LoggerInterface::class));
 	}
 
+	/**
+	 * Pins every field of an App Store hit, both serialised and as read by
+	 * DiscoveryMerge.
+	 */
+	public function testAHitCarriesEveryField(): void {
+		$discovery = $this->buildDiscovery([
+			['id' => 'openregister', 'name' => 'Open Register', 'summary' => 'data registers', 'preview' => 'https://img/or.png', 'website' => 'https://or.example'],
+			['id' => 'registerless', 'summary' => 'no name, preview or website'],
+		]);
+
+		$hits = $discovery->search('register')->hits;
+		$fields = static fn ($hit): array => [$hit->appId, $hit->name, $hit->summary, $hit->iconUrl, $hit->sourceProviderId, $hit->sourceBinding, $hit->installable, $hit->installableReason, $hit->homepageUrl];
+
+		$this->assertSame([
+			['appId' => 'registerless', 'name' => 'registerless', 'summary' => 'no name, preview or website', 'iconUrl' => null, 'sourceProviderId' => 'appstore', 'sourceBinding' => ['kind' => 'appstore'], 'installable' => true, 'installableReason' => null, 'homepageUrl' => null],
+			['appId' => 'openregister', 'name' => 'Open Register', 'summary' => 'data registers', 'iconUrl' => 'https://img/or.png', 'sourceProviderId' => 'appstore', 'sourceBinding' => ['kind' => 'appstore'], 'installable' => true, 'installableReason' => null, 'homepageUrl' => 'https://or.example'],
+		], array_map(static fn ($hit): array => $hit->toArray(), $hits));
+		$this->assertSame(array_map(static fn ($hit): array => array_values($hit->toArray()), $hits), array_map($fields, $hits));
+	}
+
 	public function testFetchesAndFiltersByName(): void {
 		$discovery = $this->buildDiscovery([
 			['id' => 'openregister', 'name' => 'Open Register', 'summary' => 'data registers'],

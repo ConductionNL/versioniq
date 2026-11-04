@@ -15,7 +15,6 @@ namespace OCA\Versioniq\BackgroundJob;
 use OCA\Versioniq\Service\Pin\PinDriftHandler;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCP\App\IAppManager;
-use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
 use Psr\Log\LoggerInterface;
 
@@ -37,14 +36,16 @@ use Psr\Log\LoggerInterface;
 class PinReconcileJob extends TimedJob {
 	private const INTERVAL_SECONDS = 24 * 60 * 60;
 
+	private LoggerInterface $logger;
+
 	public function __construct(
-		ITimeFactory $time,
+		JobRuntime $runtime,
 		private PinStore $pinStore,
 		private IAppManager $appManager,
 		private PinDriftHandler $driftHandler,
-		private LoggerInterface $logger,
 	) {
-		parent::__construct($time);
+		parent::__construct($runtime->time);
+		$this->logger = $runtime->logger;
 		$this->setInterval(self::INTERVAL_SECONDS);
 	}
 
