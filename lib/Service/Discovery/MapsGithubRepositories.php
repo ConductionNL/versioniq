@@ -109,14 +109,18 @@ trait MapsGithubRepositories {
 
 		return new DiscoveryHit(
 			appId: strtolower(str_replace('-', '_', $binding['repo'])),
-			name: $this->stringField($repo, 'name') ?? $binding['repo'],
-			summary: $this->stringField($repo, 'description') ?? '',
-			iconUrl: null,
-			sourceProviderId: self::ID,
-			sourceBinding: $binding,
-			installable: $installable,
-			installableReason: $installable ? null : sprintf(self::UNTRUSTED_REASON, $binding['owner']),
-			homepageUrl: $this->stringField($repo, 'html_url'),
+			listing: new DiscoveryListing(
+				name: $this->stringField($repo, 'name') ?? $binding['repo'],
+				summary: $this->stringField($repo, 'description') ?? '',
+				iconUrl: null,
+				homepageUrl: $this->stringField($repo, 'html_url'),
+			),
+			source: new DiscoverySource(
+				providerId: self::ID,
+				binding: $binding,
+				installable: $installable,
+				installableReason: $installable ? null : sprintf(self::UNTRUSTED_REASON, $binding['owner']),
+			),
 		);
 	}
 

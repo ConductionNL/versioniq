@@ -13,9 +13,8 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Advisory;
 
 use OCA\Versioniq\AppInfo\Application;
-use OCA\Versioniq\Service\Connection\ConnectionReportService;
+use OCA\Versioniq\Service\Connection\ReportedHttp;
 use OCP\Http\Client\IClient;
-use OCP\Http\Client\IClientService;
 use OCP\Http\Client\IResponse;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
@@ -66,13 +65,11 @@ class NextcloudAdvisoryFeed {
 	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
 	 */
 	public function __construct(
-		private IClientService $clientService,
+		// Its connection report tells integriq how much of the feed a check read.
+		private ReportedHttp $http,
 		private IAppConfig $config,
 		private AdvisoryPackageMap $packageMap,
 		private LoggerInterface $logger,
-		// Tells integriq how much of the feed a check read. Optional and last,
-		// so every existing caller and test keeps working.
-		private ?ConnectionReportService $connectionReports = null,
 	) {
 	}
 
@@ -93,7 +90,7 @@ class NextcloudAdvisoryFeed {
 	 * @return array{advisories: array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}>>, error: ?string}
 	 */
 	public function fetchAll(): array {
-		$client = $this->clientService->newClient();
+		$client = $this->http->clientService->newClient();
 		$url = $this->feedUrl() . '?per_page=' . self::PER_PAGE;
 		$collected = new FeedCollection();
 
@@ -109,7 +106,7 @@ class NextcloudAdvisoryFeed {
 			$url = ($fresh > 0) ? $this->nextCursorUrl($page[1]->getHeader('Link')) : null;
 		}
 
-		$this->connectionReports?->advisoryFeedRead(count($collected->seen), null);
+		$this->http->connectionReports?->advisoryFeedRead(count($collected->seen), null);
 
 		return ['advisories' => $collected->byTarget, 'error' => null];
 	}
@@ -354,7 +351,7 @@ class NextcloudAdvisoryFeed {
 	 */
 	private function partial(array $collected, int $read, string $error): array {
 		$this->logger->warning('NextcloudAdvisoryFeed: ' . $error, ['collected' => count($collected)]);
-		$this->connectionReports?->advisoryFeedRead($read, $error);
+		$this->http->connectionReports?->advisoryFeedRead($read, $error);
 
 		return ['advisories' => $collected, 'error' => $error];
 	}

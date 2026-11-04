@@ -9,8 +9,10 @@ use OCA\Versioniq\Service\Discovery\AppStoreDiscovery;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
 use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
 use OCA\Versioniq\Service\Discovery\DiscoveryHit;
+use OCA\Versioniq\Service\Discovery\DiscoveryListing;
 use OCA\Versioniq\Service\Discovery\DiscoveryProviderInterface;
 use OCA\Versioniq\Service\Discovery\DiscoveryResult;
+use OCA\Versioniq\Service\Discovery\DiscoverySource;
 use OCA\Versioniq\Service\Discovery\GithubPrivateDiscovery;
 use OCA\Versioniq\Service\Discovery\GithubSearchDiscovery;
 use OCP\App\IAppManager;
@@ -180,14 +182,18 @@ final class DiscoveryAggregatorGoldenTest extends TestCase {
 
 			return new DiscoveryResult(array_map(static fn (array $hit): DiscoveryHit => new DiscoveryHit(
 				appId: $hit[0],
-				name: $hit[1],
-				summary: $hit[2],
-				iconUrl: $hit[3],
-				sourceProviderId: $id,
-				sourceBinding: ['kind' => 'test', 'from' => $id, 'app' => $hit[0]],
-				installable: $hit[4],
-				installableReason: $hit[4] ? null : 'reason ' . $id,
-				homepageUrl: $hit[4] ? null : 'https://home/' . $hit[0],
+				listing: new DiscoveryListing(
+					name: $hit[1],
+					summary: $hit[2],
+					iconUrl: $hit[3],
+					homepageUrl: $hit[4] ? null : 'https://home/' . $hit[0],
+				),
+				source: new DiscoverySource(
+					providerId: $id,
+					binding: ['kind' => 'test', 'from' => $id, 'app' => $hit[0]],
+					installable: $hit[4],
+					installableReason: $hit[4] ? null : 'reason ' . $id,
+				),
 			), $hits), $error);
 		});
 

@@ -15,14 +15,13 @@ namespace OCA\Versioniq\Service;
 use Exception;
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFailure;
-use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallRun;
 use OCA\Versioniq\Service\Installer\InstallState;
 use OCA\Versioniq\Service\Installer\InstallTarget;
-use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Installer\ReleaseInstall;
 use OCA\Versioniq\Service\Installer\ReleaseInstallers;
 use OCA\Versioniq\Service\Installer\ServerAccess;
@@ -266,16 +265,9 @@ class InstallerService {
 	 */
 	public function getAppVersions(string $appId, ?string $sourceOverride = null): array {
 		$appId = trim($appId);
-		if ($appId === '') {
-			return $this->errorEnvelope('Missing app id.', Http::STATUS_BAD_REQUEST);
-		}
-		if (!$this->isManageableApp($appId)) {
-			return $this->errorEnvelope(
-				$this->isCoreProtectedApp($appId)
-					? 'This core app cannot be managed from Versioniq.'
-					: 'This app cannot be managed from Versioniq.',
-				Http::STATUS_FORBIDDEN
-			);
+		$refusal = $this->versionsRefusal($appId);
+		if ($refusal !== null) {
+			return $refusal;
 		}
 
 		try {
@@ -286,47 +278,91 @@ class InstallerService {
 			return $this->errorEnvelope($error->getMessage(), Http::STATUS_FORBIDDEN);
 		}
 
-		$source = $this->sources->sourceRegistry->get($binding);
-		$result = $source->listVersions($appId, $binding);
-
-		// Shipped apps (bundled with the server release) are never published to
-		// the App Store, so a store miss is expected — explain it instead of
-		// surfacing a generic "not available" error.
-		if ($result['error'] === 'App is not available in the Nextcloud App Store.'
-			&& $this->server->appManager->isShipped($appId)
-		) {
-			$result['error'] = 'This app ships with Nextcloud itself: its version follows the server release and it is not distributed via the App Store. Bind a forge source to manage it from a repository instead.';
-		}
-
-		$installedVersion = null;
-		try {
-			$installed = $this->server->appManager->getAppVersion($appId);
-			if ($installed !== '') {
-				$installedVersion = $installed;
-			}
-		} catch (Exception) {
-			$installedVersion = null;
-		}
+		$result = $this->listSourceVersions($appId, $binding);
+		$installedVersion = $this->installedVersionOrNull($appId);
 
 		$versions = $this->applyChangelogTruncation($result['versions']);
 		$versions = $this->applyRecordedSha($versions, $binding);
 		$versions = $this->applyCachedOffline($versions, $appId);
+		/** @var list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool}> $versions */
 		$versions = $this->applyCachedServerCompatibility($versions, $appId);
 
-		$envelope = [
+		return [
 			'installedVersion' => $installedVersion,
 			'availableVersions' => $versions,
 			'versions' => $versions,
 			'source' => $binding->kind,
 			'sourceId' => $binding->getId(),
 			'statusCode' => Http::STATUS_OK,
-			'hasError' => $result['error'] !== null && $result['versions'] === [],
-		];
-		if ($result['error'] !== null) {
-			$envelope['error'] = $result['error'];
+		] + self::listingErrorFields($result);
+	}
+
+	/**
+	 * The error envelope for an app id that cannot be listed: blank (400), or
+	 * Versioniq itself or a core app (403).
+	 *
+	 * @return array{installedVersion: null, availableVersions: list<never>, versions: list<never>, source: string, sourceId: string, statusCode: int, hasError: true, error: string}|null
+	 */
+	private function versionsRefusal(string $appId): ?array {
+		if ($appId === '') {
+			return $this->errorEnvelope('Missing app id.', Http::STATUS_BAD_REQUEST);
+		}
+		if ($this->isManageableApp($appId)) {
+			return null;
 		}
 
-		return $envelope;
+		return $this->errorEnvelope(
+			$this->isCoreProtectedApp($appId)
+				? 'This core app cannot be managed from Versioniq.'
+				: 'This app cannot be managed from Versioniq.',
+			Http::STATUS_FORBIDDEN
+		);
+	}
+
+	/**
+	 * Lists the versions of the bound source. Shipped apps (bundled with the
+	 * server release) are never published to the App Store, so a store miss
+	 * for one is explained instead of surfacing a generic "not available".
+	 *
+	 * @return array{versions: list<array{version: string, changelog?: ?string, serverCompatible?: ?bool, releasedAt?: ?string}>, error: ?string}
+	 */
+	private function listSourceVersions(string $appId, SourceBinding $binding): array {
+		$result = $this->sources->sourceRegistry->get($binding)->listVersions($appId, $binding);
+		if ($result['error'] === 'App is not available in the Nextcloud App Store.'
+			&& $this->server->appManager->isShipped($appId)
+		) {
+			$result['error'] = 'This app ships with Nextcloud itself: its version follows the server release and it is not distributed via the App Store. Bind a forge source to manage it from a repository instead.';
+		}
+
+		return $result;
+	}
+
+	/**
+	 * The installed version of an app, or null when it is blank or unreadable.
+	 */
+	private function installedVersionOrNull(string $appId): ?string {
+		try {
+			$installed = $this->server->appManager->getAppVersion($appId);
+		} catch (Exception) {
+			return null;
+		}
+
+		return $installed !== '' ? $installed : null;
+	}
+
+	/**
+	 * `hasError` (an error and no versions) and, when the listing has one,
+	 * its `error`.
+	 *
+	 * @param array{versions: list<mixed>, error: ?string} $result
+	 * @return array{hasError: bool, error?: string}
+	 */
+	private static function listingErrorFields(array $result): array {
+		if ($result['error'] === null) {
+			return ['hasError' => false];
+		}
+
+		return ['hasError' => $result['versions'] === [], 'error' => $result['error']];
 	}
 
 	/**
@@ -472,11 +508,9 @@ class InstallerService {
 	 * guard". Dry-run requests evaluate the same condition but are never
 	 * blocked by it.
 	 *
-	 * `$dryRun` is the explicit dry-run trigger, independent of
-	 * `$includeDebug` (which now controls diagnostic verbosity only); see
-	 * MODIFIED "Debug Mode". `null` (the default) preserves the legacy
-	 * behavior of every caller that predates this parameter: falls back to
-	 * `$includeDebug`, so `debug=1` alone still implies a dry-run.
+	 * The request's dry-run flag is independent of its debug flag (which
+	 * controls diagnostic verbosity only); see MODIFIED "Debug Mode". The
+	 * app id and version are trimmed here.
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @spec openspec/specs/version-pinning/spec.md
@@ -486,23 +520,13 @@ class InstallerService {
 	 * @spec openspec/specs/artifact-cache/spec.md
 	 * @return array{statusCode:int, payload:array<string, mixed>}
 	 */
-	public function installAppVersion(
-		string $appId,
-		string $targetVersion,
-		bool $includeDebug,
-		?string $sourceOverride = null,
-		?string $overridePin = null,
-		bool $pinRequested = false,
-		bool $acceptNewSha = false,
-		bool $allowDowngrade = false,
-		?bool $dryRun = null,
-	): array {
-		// $dryRun falls back to $includeDebug only when the caller does not
-		// pass it at all; see MODIFIED "Debug Mode" — "Legacy behavior preserved".
+	public function installAppVersion(InstallRequest $request): array {
+		$target = $request->target;
+
 		return $this->runInstall(new InstallRequest(
-			new InstallTarget(trim($appId), trim($targetVersion), $sourceOverride),
-			new InstallOptions($includeDebug, $dryRun ?? $includeDebug, $acceptNewSha, $allowDowngrade),
-			new PinChoice($overridePin, $pinRequested),
+			new InstallTarget(trim($target->appId), trim($target->version), $target->sourceOverride),
+			$request->options,
+			$request->pinChoice,
 		));
 	}
 
@@ -572,6 +596,9 @@ class InstallerService {
 		$target = $request->target;
 		if ($target->appId === '' || $target->version === '') {
 			return $this->installEnvelope(Http::STATUS_BAD_REQUEST, ['message' => 'Missing app id or version.']);
+		}
+		if (!AppIdFormat::isValid($target->appId)) {
+			return $this->installEnvelope(Http::STATUS_BAD_REQUEST, ['appId' => $target->appId, 'message' => 'Not a valid app id.']);
 		}
 		if (!$this->isManageableApp($target->appId)) {
 			return $this->installEnvelope(Http::STATUS_FORBIDDEN, [
@@ -1279,7 +1306,7 @@ class InstallerService {
 	}
 
 	/**
-	 * @return array{installedVersion: ?string, availableVersions: list<array{version:string, changelog:?string, recordedSha:?string}>, versions: list<array{version:string, changelog:?string, recordedSha:?string}>, source: string, sourceId: string, statusCode: int, hasError: bool, error: string}
+	 * @return array{installedVersion: null, availableVersions: list<never>, versions: list<never>, source: string, sourceId: string, statusCode: int, hasError: true, error: string}
 	 */
 	private function errorEnvelope(string $message, int $statusCode): array {
 		return [

@@ -114,14 +114,18 @@ class AppStoreDiscovery implements DiscoveryProviderInterface {
 
 			$hits[] = new DiscoveryHit(
 				appId: $id,
-				name: $this->stringField($app, 'name', $id),
-				summary: $this->stringField($app, 'summary', ''),
-				iconUrl: $this->stringField($app, 'preview', '') ?: null,
-				sourceProviderId: self::ID,
-				sourceBinding: ['kind' => SourceBinding::KIND_APPSTORE],
-				installable: true,
-				installableReason: null,
-				homepageUrl: $this->stringField($app, 'website', '') ?: null,
+				listing: new DiscoveryListing(
+					name: $this->stringField($app, 'name', $id),
+					summary: $this->stringField($app, 'summary', ''),
+					iconUrl: $this->stringField($app, 'preview', '') ?: null,
+					homepageUrl: $this->stringField($app, 'website', '') ?: null,
+				),
+				source: new DiscoverySource(
+					providerId: self::ID,
+					binding: ['kind' => SourceBinding::KIND_APPSTORE],
+					installable: true,
+					installableReason: null,
+				),
 			);
 
 			if (count($hits) >= 200) {

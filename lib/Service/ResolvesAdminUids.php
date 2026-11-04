@@ -14,7 +14,7 @@ namespace OCA\Versioniq\Service;
 
 /**
  * The uids of the admin group, each once, in group order. The using class
- * holds the group manager as `$this->groupManager`.
+ * holds the group manager as `$this->admin->groupManager`.
  */
 trait ResolvesAdminUids {
 	/**
@@ -22,7 +22,7 @@ trait ResolvesAdminUids {
 	 */
 	private function adminUids(): array {
 		$uids = [];
-		foreach ($this->groupManager->get('admin')?->getUsers() ?? [] as $user) {
+		foreach ($this->admin->groupManager->get('admin')?->getUsers() ?? [] as $user) {
 			$uids[] = $user->getUID();
 		}
 

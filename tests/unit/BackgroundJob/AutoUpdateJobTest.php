@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\BackgroundJob;
 
+require_once __DIR__ . '/../Support/InstallArgs.php';
+
 require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 
 use OCA\Versioniq\BackgroundJob\AutoUpdateJob;
@@ -17,6 +19,7 @@ use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyStore;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
+use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
 use PHPUnit\Framework\TestCase;
@@ -204,7 +207,7 @@ final class AutoUpdateJobTest extends TestCase {
 		$mocks['attemptLedger']->method('hasAttempted')->willReturn(false);
 		$mocks['installerService']->expects($this->once())
 			->method('installAppVersion')
-			->with('openregister', '2.3.4', false, null, null, false, false, false, false)
+			->with(...InstallArgs::expected('openregister', '2.3.4', false, null, null, false, false, false, false))
 			->willReturn([
 				'statusCode' => 200,
 				'payload' => ['installedVersion' => '2.3.4'],

@@ -13,9 +13,8 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Advisory;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\AdminNotificationServices;
 use OCP\IAppConfig;
-use OCP\IGroupManager;
-use OCP\Notification\IManager;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -42,8 +41,7 @@ class AdvisoryDigestNotifier {
 	private const DIGEST_INTERVAL_SECONDS = 7 * 24 * 60 * 60;
 
 	public function __construct(
-		private IManager $notificationManager,
-		private IGroupManager $groupManager,
+		private AdminNotificationServices $admin,
 		private IAppConfig $config,
 		private AdvisorySettingsStore $settings,
 		private LoggerInterface $logger,
@@ -108,7 +106,7 @@ class AdvisoryDigestNotifier {
 
 	private function fire(string $uid, int $appCount, int $advisoryCount): bool {
 		try {
-			$notification = $this->notificationManager->createNotification();
+			$notification = $this->admin->notificationManager->createNotification();
 			$notification->setApp(Application::APP_ID)
 				->setDateTime(new \DateTime())
 				->setUser($uid)
@@ -117,7 +115,7 @@ class AdvisoryDigestNotifier {
 					'apps' => $appCount,
 					'advisories' => $advisoryCount,
 				]);
-			$this->notificationManager->notify($notification);
+			$this->admin->notificationManager->notify($notification);
 
 			return true;
 		} catch (Throwable $error) {
@@ -135,7 +133,7 @@ class AdvisoryDigestNotifier {
 	 */
 	private function adminUids(): array {
 		$uids = [];
-		foreach ($this->groupManager->get('admin')?->getUsers() ?? [] as $user) {
+		foreach ($this->admin->groupManager->get('admin')?->getUsers() ?? [] as $user) {
 			$uids[] = $user->getUID();
 		}
 

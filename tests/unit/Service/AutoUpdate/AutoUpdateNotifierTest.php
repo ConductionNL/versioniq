@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\AutoUpdate;
 
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IGroup;
 use OCP\IGroupManager;
@@ -16,6 +19,8 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 final class AutoUpdateNotifierTest extends TestCase {
+	use BuildsByParameterName;
+
 	private function timeFactory(): ITimeFactory {
 		$factory = $this->createMock(ITimeFactory::class);
 		$factory->method('getDateTime')->willReturn(new \DateTime('2026-07-23T02:00:00+00:00'));
@@ -67,13 +72,13 @@ final class AutoUpdateNotifierTest extends TestCase {
 		$notificationManager->method('createNotification')->willReturn($notification);
 		$notificationManager->expects($this->exactly(2))->method('notify')->with($notification);
 
-		$notifier = new AutoUpdateNotifier(
-			$notificationManager,
-			$this->groupManagerWithAdmins(['admin', 'bob']),
-			$this->timeFactory(),
-			$this->urlGenerator(),
-			$this->createMock(LoggerInterface::class),
-		);
+		$notifier = $this->buildByName(AutoUpdateNotifier::class, [
+			'notificationManager' => $notificationManager,
+			'groupManager' => $this->groupManagerWithAdmins(['admin', 'bob']),
+			'timeFactory' => $this->timeFactory(),
+			'urlGenerator' => $this->urlGenerator(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 
 		$notifier->notifySuccess('openregister', '2.3.0', '2.3.4');
 	}
@@ -99,13 +104,13 @@ final class AutoUpdateNotifierTest extends TestCase {
 		$notificationManager->method('createNotification')->willReturn($notification);
 		$notificationManager->expects($this->once())->method('notify')->with($notification);
 
-		$notifier = new AutoUpdateNotifier(
-			$notificationManager,
-			$this->groupManagerWithAdmins(['admin']),
-			$this->timeFactory(),
-			$this->urlGenerator(),
-			$this->createMock(LoggerInterface::class),
-		);
+		$notifier = $this->buildByName(AutoUpdateNotifier::class, [
+			'notificationManager' => $notificationManager,
+			'groupManager' => $this->groupManagerWithAdmins(['admin']),
+			'timeFactory' => $this->timeFactory(),
+			'urlGenerator' => $this->urlGenerator(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 
 		$notifier->notifyFailure('openregister', '2.3.4', 'checksum_mismatch', 'The downloaded archive failed its integrity check.');
 	}
@@ -117,13 +122,13 @@ final class AutoUpdateNotifierTest extends TestCase {
 		$logger = $this->createMock(LoggerInterface::class);
 		$logger->expects($this->once())->method('warning');
 
-		$notifier = new AutoUpdateNotifier(
-			$notificationManager,
-			$this->groupManagerWithAdmins(['admin']),
-			$this->timeFactory(),
-			$this->urlGenerator(),
-			$logger,
-		);
+		$notifier = $this->buildByName(AutoUpdateNotifier::class, [
+			'notificationManager' => $notificationManager,
+			'groupManager' => $this->groupManagerWithAdmins(['admin']),
+			'timeFactory' => $this->timeFactory(),
+			'urlGenerator' => $this->urlGenerator(),
+			'logger' => $logger,
+		]);
 
 		$notifier->notifyFailure('openregister', '2.3.4', 'unknown', '');
 	}

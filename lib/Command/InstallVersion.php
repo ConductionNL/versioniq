@@ -13,6 +13,10 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Command;
 
 use OCA\Versioniq\Service\Installer\FailureClassifier;
+use OCA\Versioniq\Service\Installer\InstallOptions;
+use OCA\Versioniq\Service\Installer\InstallRequest;
+use OCA\Versioniq\Service\Installer\InstallTarget;
+use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\InstallerService;
 use OCP\AppFramework\Http;
 use Symfony\Component\Console\Command\Command;
@@ -103,7 +107,7 @@ class InstallVersion extends Command {
 		// duplicating the self/core check (Task 1).
 		if (!$this->installerService->isManageableApp($appId)) {
 			$message = sprintf('"%s" cannot be installed or updated from Versioniq (it is Versioniq itself or a core/always-enabled app).', $appId);
-			$this->reportRefusal($output, $json, $appId, $version, $message);
+			$this->reportRefusal($output, $json, ['appId' => $appId, 'toVersion' => $version, 'message' => $message]);
 
 			return self::EXIT_BAD_ARGUMENTS;
 		}
@@ -115,17 +119,11 @@ class InstallVersion extends Command {
 		$allowDowngrade = (bool)$input->getOption('allow-downgrade');
 		$acceptNewSha = (bool)$input->getOption('accept-new-sha');
 
-		$result = $this->installerService->installAppVersion(
-			$appId,
-			$version,
-			false,
-			$sourceOverride,
-			null,
-			false,
-			$acceptNewSha,
-			$allowDowngrade,
-			$dryRun,
-		);
+		$result = $this->installerService->installAppVersion(new InstallRequest(
+			new InstallTarget($appId, $version, $sourceOverride),
+			new InstallOptions(false, $dryRun, $acceptNewSha, $allowDowngrade),
+			new PinChoice(null, false),
+		));
 
 		$statusCode = $result['statusCode'] ?? Http::STATUS_INTERNAL_SERVER_ERROR;
 		/** @var array<string, mixed> $payload */
@@ -133,7 +131,7 @@ class InstallVersion extends Command {
 		$exitCode = $this->exitCodeFor($statusCode, $payload);
 
 		if ($json) {
-			$output->writeln((string)json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+			$output->writeln(json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
 
 			return $exitCode;
 		}
@@ -168,18 +166,17 @@ class InstallVersion extends Command {
 		}
 	}
 
-	private function reportRefusal(OutputInterface $output, bool $json, string $appId, string $version, string $message): void {
+	/**
+	 * @param array{appId: string, toVersion: string, message: string} $refusal
+	 */
+	private function reportRefusal(OutputInterface $output, bool $json, array $refusal): void {
 		if ($json) {
-			$output->writeln((string)json_encode([
-				'appId' => $appId,
-				'toVersion' => $version,
-				'message' => $message,
-			], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+			$output->writeln(json_encode($refusal, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
 
 			return;
 		}
 
-		$this->errorOutput($output)->writeln(sprintf('<error>%s</error>', $message));
+		$this->errorOutput($output)->writeln(sprintf('<error>%s</error>', $refusal['message']));
 	}
 
 	/**

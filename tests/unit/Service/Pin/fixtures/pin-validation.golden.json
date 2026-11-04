@@ -1,0 +1,110 @@
+{
+    "version \"1.2.3\"": {
+        "version": "1.2.3",
+        "pinnedBy": "admin",
+        "pinnedAt": "2026-01-01T00:00:00+00:00",
+        "reason": null,
+        "driftedTo": null,
+        "driftedAt": null
+    },
+    "version \"1.0.0-beta.1+build\"": {
+        "version": "1.0.0-beta.1+build",
+        "pinnedBy": "admin",
+        "pinnedAt": "2026-01-01T00:00:00+00:00",
+        "reason": null,
+        "driftedTo": null,
+        "driftedAt": null
+    },
+    "version \"v2\"": {
+        "version": "v2",
+        "pinnedBy": "admin",
+        "pinnedAt": "2026-01-01T00:00:00+00:00",
+        "reason": null,
+        "driftedTo": null,
+        "driftedAt": null
+    },
+    "version \"\"": {
+        "refused": "Pin version is empty or contains invalid characters"
+    },
+    "version \" 1.0\"": {
+        "refused": "Pin version is empty or contains invalid characters"
+    },
+    "version \"1.0\\/..\"": {
+        "refused": "Pin version is empty or contains invalid characters"
+    },
+    "version \"1_0\"": {
+        "refused": "Pin version is empty or contains invalid characters"
+    },
+    "version \"1.0\\n\"": {
+        "version": "1.0\n",
+        "pinnedBy": "admin",
+        "pinnedAt": "2026-01-01T00:00:00+00:00",
+        "reason": null,
+        "driftedTo": null,
+        "driftedAt": null
+    },
+    "no pinnedBy": {
+        "refused": "Pin requires a non-empty pinnedBy"
+    },
+    "no pinnedAt": {
+        "refused": "Pin requires a non-empty pinnedAt"
+    },
+    "reason": {
+        "version": "1.0.0",
+        "pinnedBy": "admin",
+        "pinnedAt": "2026-01-01T00:00:00+00:00",
+        "reason": "hold",
+        "driftedTo": null,
+        "driftedAt": null
+    },
+    "empty reason": {
+        "version": "1.0.0",
+        "pinnedBy": "admin",
+        "pinnedAt": "2026-01-01T00:00:00+00:00",
+        "reason": "",
+        "driftedTo": null,
+        "driftedAt": null
+    },
+    "drifted to \"1.1.0\"": {
+        "version": "1.0.0",
+        "pinnedBy": "admin",
+        "pinnedAt": "2026-01-01T00:00:00+00:00",
+        "reason": null,
+        "driftedTo": "1.1.0",
+        "driftedAt": "2026-01-01T00:00:00+00:00"
+    },
+    "drifted to \"\"": {
+        "refused": "Pin driftedTo is empty or contains invalid characters"
+    },
+    "drifted to \"x y\"": {
+        "refused": "Pin driftedTo is empty or contains invalid characters"
+    },
+    "drifted to \"1.1.0+meta\"": {
+        "version": "1.0.0",
+        "pinnedBy": "admin",
+        "pinnedAt": "2026-01-01T00:00:00+00:00",
+        "reason": null,
+        "driftedTo": "1.1.0+meta",
+        "driftedAt": "2026-01-01T00:00:00+00:00"
+    },
+    "drifted to without when": {
+        "refused": "Pin driftedTo and driftedAt must both be set or both be null"
+    },
+    "drift time without version": {
+        "refused": "Pin driftedTo and driftedAt must both be set or both be null"
+    },
+    "empty drift time": {
+        "version": "1.0.0",
+        "pinnedBy": "admin",
+        "pinnedAt": "2026-01-01T00:00:00+00:00",
+        "reason": null,
+        "driftedTo": "1.1.0",
+        "driftedAt": ""
+    },
+    "bad version and no pinnedBy": {
+        "refused": "Pin version is empty or contains invalid characters"
+    },
+    "no pinnedBy and bad drift": {
+        "refused": "Pin requires a non-empty pinnedBy"
+    }
+}
