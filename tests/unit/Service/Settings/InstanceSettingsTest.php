@@ -168,4 +168,43 @@ final class InstanceSettingsTest extends TestCase {
 		}
 		self::assertArrayNotHasKey(InstanceSettings::KEY_MAX_LINES_BEHIND, $this->config);
 	}
+
+	/**
+	 * Every rule of an address field, for the https-only GitHub API base and
+	 * the http-or-https advisory feed: the stored value, or the message.
+	 *
+	 * @dataProvider addresses
+	 */
+	public function testEveryAddressRule(string $field, string $raw, string $expected): void {
+		$key = ['githubApiBase' => 'forge.github.api_base', 'advisoryFeedUrl' => 'advisory.feed_base'][$field];
+		try {
+			$this->store()->update([$field => $raw]);
+			$actual = (string)($this->config[$key] ?? '(cleared)');
+		} catch (InvalidArgumentException $error) {
+			$actual = $error->getMessage();
+		}
+
+		self::assertSame($expected, $actual);
+	}
+
+	/**
+	 * @return iterable<string, array{0: string, 1: string, 2: string}>
+	 */
+	public static function addresses(): iterable {
+		$https = 'Enter an https address without a username, password or query, for example https://ghe.example.org/api/v3.';
+		$http = 'Enter an http or https address without a username, password or query.';
+		foreach (['githubApiBase' => $https, 'advisoryFeedUrl' => $http] as $field => $refusal) {
+			yield "$field trailing slashes trimmed" => [$field, '  https://ghe.example.org/api/v3// ', 'https://ghe.example.org/api/v3'];
+			yield "$field http" => [$field, 'http://ghe.example.org', $field === 'githubApiBase' ? $https : 'http://ghe.example.org'];
+			yield "$field ftp" => [$field, 'ftp://ghe.example.org', $refusal];
+			yield "$field no scheme" => [$field, 'ghe.example.org', $refusal];
+			yield "$field no host" => [$field, 'https:///path', $refusal];
+			yield "$field user" => [$field, 'https://bot@ghe.example.org', $refusal];
+			yield "$field password" => [$field, 'https://:pw@ghe.example.org', $refusal];
+			yield "$field query" => [$field, 'https://ghe.example.org/?a=1', $refusal];
+			yield "$field fragment" => [$field, 'https://ghe.example.org/#top', $refusal];
+			yield "$field port and path" => [$field, 'https://ghe.example.org:8443/api', 'https://ghe.example.org:8443/api'];
+			yield "$field unparseable" => [$field, 'https://', $refusal];
+		}
+	}
 }
