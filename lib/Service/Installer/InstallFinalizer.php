@@ -55,14 +55,20 @@ class InstallFinalizer {
 		private LoggerInterface $logger,
 		private LkgStore $lkgStore,
 		private ITimeFactory $timeFactory,
+		/**
+		 * Runs an update's finalize in a fresh process (#611). Null in tests
+		 * that build this class by hand: finalize() then stays in-process.
+		 */
+		private ?ChildProcessFinalizer $childFinalizer = null,
 	) {
 	}
 
 	/**
-	 * Runs migrations, repair steps, job + route registration, and version/enabled writes after extraction;
-	 * see "Install Specific Version" ("any database migrations for the new version MUST be triggered") and
-	 * "Last-known-good version record" (the last statement here — reached only on success — is the single
-	 * choke point that writes `lkg.{appId}` for both installers).
+	 * Finalizes an install. An update runs in a child process that boots with
+	 * the new files in place, so the repair steps see the new version's
+	 * registrations and not the previous version's (#611); a fresh install,
+	 * or an update without a way to start a child, runs finalizeHere() in
+	 * this process.
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @spec openspec/specs/migration-safety/spec.md
@@ -72,6 +78,27 @@ class InstallFinalizer {
 	 * @throws Exception
 	 */
 	public function finalize(string $appPath, array $info, string $enabled, ?IOutput $output = null, string $sourceId = 'appstore'): string {
+		if ($this->childFinalizer !== null && $this->childFinalizer->applies($info)) {
+			return $this->childFinalizer->run($appPath, $info, $enabled, $sourceId);
+		}
+
+		return $this->finalizeHere($appPath, $info, $enabled, $output, $sourceId);
+	}
+
+	/**
+	 * Runs migrations, repair steps, job + route registration, and version/enabled writes after extraction,
+	 * in this process; see "Install Specific Version" ("any database migrations for the new version MUST be
+	 * triggered") and "Last-known-good version record" (the last statement here — reached only on success —
+	 * is the single choke point that writes `lkg.{appId}` for both installers).
+	 *
+	 * @spec openspec/specs/version-management/spec.md
+	 * @spec openspec/specs/migration-safety/spec.md
+	 * @param array<string, mixed> $info Parsed `appinfo/info.xml` for the just-extracted version.
+	 * @param string $sourceId The source binding id (e.g. `appstore`, `github:owner/repo`) this version was
+	 *                         installed from, recorded alongside the last-known-good version.
+	 * @throws Exception
+	 */
+	public function finalizeHere(string $appPath, array $info, string $enabled, ?IOutput $output = null, string $sourceId = 'appstore'): string {
 		$appId = self::appIdOf($info);
 
 		// Lazy registration must run before autoload + migrations so app-registered
