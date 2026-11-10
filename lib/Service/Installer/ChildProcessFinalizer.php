@@ -109,18 +109,28 @@ class ChildProcessFinalizer {
 		$env = getenv();
 		$env[self::CHILD_ENV] = '1';
 
-		$process = proc_open($command, [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, \OC::$SERVERROOT, $env);
+		// stderr goes to a file, not a pipe: reading two pipes one after the
+		// other blocks the child once it fills the unread one (~64 KB).
+		$stderrFile = tempnam(sys_get_temp_dir(), 'versioniq-finalize-');
+		$stderrSpec = is_string($stderrFile) ? ['file', $stderrFile, 'w'] : ['file', '/dev/null', 'w'];
+		$process = proc_open($command, [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => $stderrSpec], $pipes, \OC::$SERVERROOT, $env);
 		if (!is_resource($process)) {
+			if (is_string($stderrFile)) {
+				@unlink($stderrFile);
+			}
 			$this->logger->warning('versioniq: could not start the finalize child of {app}; finalizing in-process (#611).', ['app' => $appId]);
 
 			return null;
 		}
 		fclose($pipes[0]);
 		$stdout = (string)stream_get_contents($pipes[1]);
-		$stderr = (string)stream_get_contents($pipes[2]);
 		fclose($pipes[1]);
-		fclose($pipes[2]);
 		$exitCode = proc_close($process);
+		$stderr = '';
+		if (is_string($stderrFile)) {
+			$stderr = (string)@file_get_contents($stderrFile);
+			@unlink($stderrFile);
+		}
 
 		$result = self::parseResult($stdout);
 		if ($exitCode !== 0 || ($result['ok'] ?? false) !== true) {
