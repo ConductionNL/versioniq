@@ -20,6 +20,7 @@ use OCP\BackgroundJob\IJobList;
 use OCP\IAppConfig;
 use OCP\IBinaryFinder;
 use OCP\IConfig;
+use OCP\ITempManager;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
@@ -48,6 +49,8 @@ final class ChildProcessFinalizerTest extends TestCase {
 	}
 
 	private function finalizer(string $installedVersion): ChildProcessFinalizer {
+		$tempManager = $this->createMock(ITempManager::class);
+		$tempManager->method('getTemporaryFile')->willReturnCallback(static fn (): string => (string)tempnam(sys_get_temp_dir(), 'vq-test-'));
 		$this->appConfig->method('getValueString')->willReturnCallback(
 			static fn (string $app, string $key, string $default = ''): string => $key === 'installed_version' ? $installedVersion : $default
 		);
@@ -57,6 +60,7 @@ final class ChildProcessFinalizerTest extends TestCase {
 			$this->appConfig,
 			$this->createMock(IAppManager::class),
 			$this->logger,
+			$tempManager,
 		);
 	}
 

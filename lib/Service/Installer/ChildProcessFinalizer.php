@@ -14,6 +14,7 @@ use Exception;
 use OCP\App\IAppManager;
 use OCP\IAppConfig;
 use OCP\IBinaryFinder;
+use OCP\ITempManager;
 use OCP\Server;
 use Psr\Log\LoggerInterface;
 
@@ -49,6 +50,7 @@ class ChildProcessFinalizer {
 		private IAppConfig $appConfig,
 		private IAppManager $appManager,
 		private LoggerInterface $logger,
+		private ITempManager $tempManager,
 	) {
 	}
 
@@ -111,13 +113,18 @@ class ChildProcessFinalizer {
 
 		// stderr goes to a file, not a pipe: reading two pipes one after the
 		// other blocks the child once it fills the unread one (~64 KB).
-		$stderrFile = tempnam(sys_get_temp_dir(), 'versioniq-finalize-');
-		$stderrSpec = is_string($stderrFile) ? ['file', $stderrFile, 'w'] : ['file', '/dev/null', 'w'];
+		// ITempManager, not sys_get_temp_dir(): it honours `tempdirectory` and
+		// stays inside an open_basedir that excludes the system temp dir.
+		$stderrFile = $this->tempManager->getTemporaryFile('.log');
+		if (!is_string($stderrFile) || $stderrFile === '') {
+			$this->logger->warning('versioniq: no temporary file for the finalize child of {app}; finalizing in-process (#611).', ['app' => $appId]);
+
+			return null;
+		}
+		$stderrSpec = ['file', $stderrFile, 'w'];
 		$process = proc_open($command, [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => $stderrSpec], $pipes, \OC::$SERVERROOT, $env);
 		if (!is_resource($process)) {
-			if (is_string($stderrFile)) {
-				@unlink($stderrFile);
-			}
+			@unlink($stderrFile);
 			$this->logger->warning('versioniq: could not start the finalize child of {app}; finalizing in-process (#611).', ['app' => $appId]);
 
 			return null;
@@ -126,11 +133,8 @@ class ChildProcessFinalizer {
 		$stdout = (string)stream_get_contents($pipes[1]);
 		fclose($pipes[1]);
 		$exitCode = proc_close($process);
-		$stderr = '';
-		if (is_string($stderrFile)) {
-			$stderr = (string)@file_get_contents($stderrFile);
-			@unlink($stderrFile);
-		}
+		$stderr = (string)@file_get_contents($stderrFile);
+		@unlink($stderrFile);
 
 		$result = self::parseResult($stdout);
 		if ($exitCode !== 0 || ($result['ok'] ?? false) !== true) {
