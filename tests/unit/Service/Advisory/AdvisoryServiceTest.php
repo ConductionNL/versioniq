@@ -407,4 +407,47 @@ final class AdvisoryServiceTest extends TestCase {
 
 		$this->assertSame('0.9.5', $results['tables']['recommendedVersion']);
 	}
+
+	/**
+	 * A feed read only in part is logged; with no budget left no app's source
+	 * is asked and each app says so; an app whose correlation throws is
+	 * reported with the error instead of aborting the sweep.
+	 */
+	public function testAPartialFeedTheBudgetAndAFailingApp(): void {
+		$logged = [];
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->method('warning')->willReturnCallback(static function (string $message, array $context) use (&$logged): void {
+			$logged[] = [$message, $context];
+		});
+		$feed = $this->createMock(NextcloudAdvisoryFeed::class);
+		$feed->method('fetchAll')->willReturn(['advisories' => [], 'error' => 'page 2 failed']);
+		$appManager = $this->createMock(IAppManager::class);
+		$appManager->method('getEnabledApps')->willReturn(['mail', 'deck']);
+		$appManager->method('getAppVersion')->willReturn('1.0.0');
+		$bindingStore = $this->createMock(SourceBindingStore::class);
+		$bindingStore->method('get')->willThrowException(new \RuntimeException('store down'));
+		$service = $this->buildByName(AdvisoryService::class, [
+			'sourceRegistry' => $this->createMock(SourceRegistry::class),
+			'bindingStore' => $bindingStore,
+			'appManager' => $appManager,
+			'advisoryFeed' => $feed,
+			'branchRange' => new BranchAwareRange(),
+			'serverVersion' => $this->createMock(ServerVersionProvider::class),
+			'logger' => $logger,
+		]);
+
+		$outOfTime = $service->correlateAll(-1.0);
+		$failing = $service->correlateAll(60.0);
+
+		$this->assertSame(['mail', 'deck'], array_keys($outOfTime));
+		$this->assertSame('Advisory correlation budget exceeded before this app was reached; its sources were not queried.', $outOfTime['deck']['error']);
+		$this->assertSame('1.0.0', $outOfTime['deck']['installedVersion']);
+		$this->assertSame('store down', $failing['mail']['error']);
+		$this->assertSame([
+			['AdvisoryService: the Nextcloud advisory feed could not be read in full', ['message' => 'page 2 failed']],
+			['AdvisoryService: the Nextcloud advisory feed could not be read in full', ['message' => 'page 2 failed']],
+			['AdvisoryService: correlation failed for app', ['app' => 'mail', 'message' => 'store down']],
+			['AdvisoryService: correlation failed for app', ['app' => 'deck', 'message' => 'store down']],
+		], $logged);
+	}
 }
