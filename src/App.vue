@@ -871,6 +871,38 @@ async function onRetryAttempt (appId: string, version: string): Promise<void> {
 }
 
 /**
+ * Remove an app's auto-update policy on the server, then from the list.
+ *
+ * @param appId The app whose policy is cleared.
+ */
+async function clearPolicy (appId: string): Promise<void> {
+	const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/policy`)), {
+		method: 'DELETE',
+		headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
+	})
+	await unwrapOcsResponse(response)
+	const next = { ...policies.value }
+	delete next[appId]
+	policies.value = next
+}
+
+/**
+ * Store an app's auto-update policy on the server and keep what it answered.
+ *
+ * @param appId The app whose policy is set.
+ * @param level The policy level to set.
+ */
+async function setPolicy (appId: string, level: PolicyLevel): Promise<void> {
+	const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/policy`, { level })), {
+		method: 'PUT',
+		headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
+		body: JSON.stringify({ level }),
+	})
+	const payload = await unwrapOcsResponse<{ appId: string, policy: PolicyRecord }>(response)
+	policies.value = { ...policies.value, [appId]: { ...payload.policy, appId } }
+}
+
+/**
  *
  * @param appId
  * @param level
@@ -884,22 +916,9 @@ async function onPolicyChange (appId: string, level: PolicyLevel): Promise<void>
 	try {
 		await ensurePasswordConfirmation()
 		if (level === 'none') {
-			const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/policy`)), {
-				method: 'DELETE',
-				headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
-			})
-			await unwrapOcsResponse(response)
-			const next = { ...policies.value }
-			delete next[appId]
-			policies.value = next
+			await clearPolicy(appId)
 		} else {
-			const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/policy`, { level })), {
-				method: 'PUT',
-				headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
-				body: JSON.stringify({ level }),
-			})
-			const payload = await unwrapOcsResponse<{ appId: string, policy: PolicyRecord }>(response)
-			policies.value = { ...policies.value, [appId]: { ...payload.policy, appId } }
+			await setPolicy(appId, level)
 		}
 	} catch (e) {
 		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not update the auto-update policy.')
