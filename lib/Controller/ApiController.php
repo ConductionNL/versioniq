@@ -480,31 +480,66 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
+		$target = new InstallTarget($appId, $this->requestedVersion($version), self::sourceOverride($fields->source));
+		$refusal = self::unknownFlagRefusal($fields);
+		if ($refusal !== null) {
+			/** @psalm-suppress InvalidReturnStatement Status passthrough, as for the installer's own refusals. */
+			return $refusal;
+		}
+
+		$request = $this->installRequest($fields, $target);
+		$result = $this->install->installerService->installAppVersion($request);
+		$echo = ['requestedVersion' => $target->version, 'routeVersion' => $version] + self::deprecationNotice($fields, $request);
+
+		/** @psalm-suppress InvalidReturnStatement Dynamic status passthrough — see the docblock. */
+		return $this->installResponse($result, $echo);
+	}
+
+	/**
+	 * The version to install: a `targetVersion` body parameter, else a
+	 * `version` one, else the version in the route.
+	 */
+	private function requestedVersion(string $routeVersion): string {
 		$requestedVersion = $this->stringParam('targetVersion', '');
 		if ($requestedVersion === '') {
 			$requestedVersion = $this->stringParam('version', '');
 		}
 		if ($requestedVersion === '') {
-			$requestedVersion = $version;
+			$requestedVersion = $routeVersion;
 		}
 
-		$source = $fields->source;
-		$sourceOverride = ($source !== null && trim($source) !== '') ? trim($source) : null;
+		return $requestedVersion;
+	}
 
-		// Read as false, an unknown debug or dryRun would turn a requested dry run into a real install.
+	/** A non-blank `source` field, trimmed; null to use the app's own binding. */
+	private static function sourceOverride(?string $source): ?string {
+		return ($source !== null && trim($source) !== '') ? trim($source) : null;
+	}
+
+	/**
+	 * The 400 for a `debug` or `dryRun` that is not a known boolean: read as
+	 * false, it would turn a requested dry run into a real install.
+	 *
+	 * @return DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>|null
+	 */
+	private static function unknownFlagRefusal(InstallVersionFields $fields): ?DataResponse {
 		foreach (['debug' => $fields->debug, 'dryRun' => $fields->dryRun] as $flag => $value) {
 			if ($value !== null && !in_array(strtolower(trim($value)), self::BINARY_FLAGS, true)) {
-				/** @psalm-suppress InvalidReturnStatement Status passthrough, as for the installer's own refusals. */
 				return new DataResponse(['message' => $flag . ' must be 1, true, 0 or false.'], Http::STATUS_BAD_REQUEST);
 			}
 		}
 
-		$includeDebug = $this->readBinaryBool($fields->debug, false);
+		return null;
+	}
 
-		// `dryRun` is independent of `debug` — see MODIFIED "Debug Mode". Null
-		// means the caller left it out; see InstallVersionFields::$dryRun.
-		$dryRunSupplied = $fields->dryRun !== null;
-		$dryRunFlag = $dryRunSupplied ? $this->readBinaryBool($fields->dryRun, false) : null;
+	/**
+	 * The install request for these fields. `dryRun` is independent of
+	 * `debug` — see MODIFIED "Debug Mode"; left out (null, see
+	 * InstallVersionFields::$dryRun), `debug` still implies a dry run.
+	 */
+	private function installRequest(InstallVersionFields $fields, InstallTarget $target): InstallRequest {
+		$includeDebug = $this->readBinaryBool($fields->debug, false);
+		$dryRunFlag = $fields->dryRun !== null ? $this->readBinaryBool($fields->dryRun, false) : null;
 
 		$overridePinRaw = $this->stringParam('overridePin', '');
 		$overridePin = $overridePinRaw === '' ? null : $overridePinRaw;
@@ -512,22 +547,42 @@ class ApiController extends OCSController {
 		$acceptNewShaFlag = $this->readBinaryBool($fields->acceptNewSha, false);
 		$allowDowngradeFlag = $this->readBinaryBool($fields->allowDowngrade, false);
 
-		$result = $this->install->installerService->installAppVersion(new InstallRequest(
-			new InstallTarget($appId, $requestedVersion, $sourceOverride),
+		return new InstallRequest(
+			$target,
 			new InstallOptions($includeDebug, $dryRunFlag ?? $includeDebug, $acceptNewShaFlag, $allowDowngradeFlag),
 			new PinChoice($overridePin, $pinRequested),
-		));
-		$result['payload']['requestedVersion'] = $requestedVersion;
-		$result['payload']['routeVersion'] = $version;
-		if (!$dryRunSupplied && $includeDebug) {
-			// Legacy back-compat path only — see MODIFIED "Debug Mode",
-			// Scenario "Legacy behavior preserved".
-			$result['payload']['deprecationNotice'] = 'debug=1 implying a dry run is deprecated; pass dryRun=1 explicitly instead.';
+		);
+	}
+
+	/**
+	 * The legacy notice when `debug` alone implied the dry run — see MODIFIED
+	 * "Debug Mode", Scenario "Legacy behavior preserved".
+	 *
+	 * @return array{deprecationNotice?: string}
+	 */
+	private static function deprecationNotice(InstallVersionFields $fields, InstallRequest $request): array {
+		if ($fields->dryRun === null && $request->options->includeDebug) {
+			return ['deprecationNotice' => 'debug=1 implying a dry run is deprecated; pass dryRun=1 explicitly instead.'];
 		}
 
-		/** @psalm-suppress InvalidReturnStatement Dynamic status passthrough — see the docblock. */
+		return [];
+	}
+
+	/**
+	 * The installer's payload with the request echoed into it, at the status
+	 * the installer reported.
+	 *
+	 * @param array{statusCode:int, payload:array<string, mixed>} $result The installer's result.
+	 * @param array<string, string> $echo The request fields to echo.
+	 */
+	private function installResponse(array $result, array $echo): DataResponse {
+		$payload = $result['payload'] ?? [];
+		foreach ($echo as $key => $value) {
+			$payload[$key] = $value;
+		}
+
 		return new DataResponse(
-			$result['payload'] ?? [],
+			$payload,
 			$this->toHttpStatus($result['statusCode'] ?? Http::STATUS_INTERNAL_SERVER_ERROR, Http::STATUS_INTERNAL_SERVER_ERROR)
 		);
 	}
