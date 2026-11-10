@@ -1,0 +1,275 @@
+{
+    "read": {
+        "status": 200,
+        "data": {
+            "intervalHours": 6,
+            "minIntervalHours": 1,
+            "maxIntervalHours": 24,
+            "digestEnabled": true
+        },
+        "calls": [
+            [
+                "getIntervalHours"
+            ],
+            [
+                "isDigestEnabled"
+            ]
+        ]
+    },
+    "not an admin": {
+        "status": 403,
+        "data": {
+            "message": "Forbidden"
+        },
+        "calls": []
+    },
+    "nothing given": {
+        "status": 200,
+        "data": {
+            "intervalHours": 6,
+            "minIntervalHours": 1,
+            "maxIntervalHours": 24,
+            "digestEnabled": true
+        },
+        "calls": [
+            [
+                "getIntervalHours"
+            ],
+            [
+                "isDigestEnabled"
+            ]
+        ]
+    },
+    "empty interval": {
+        "status": 200,
+        "data": {
+            "intervalHours": 6,
+            "minIntervalHours": 1,
+            "maxIntervalHours": 24,
+            "digestEnabled": true
+        },
+        "calls": [
+            [
+                "getIntervalHours"
+            ],
+            [
+                "isDigestEnabled"
+            ]
+        ]
+    },
+    "interval not a number": {
+        "status": 400,
+        "data": {
+            "message": "intervalHours must be a number."
+        },
+        "calls": []
+    },
+    "interval below the minimum": {
+        "status": 400,
+        "data": {
+            "message": "intervalHours must be between 1 and 24."
+        },
+        "calls": []
+    },
+    "interval above the maximum": {
+        "status": 400,
+        "data": {
+            "message": "intervalHours must be between 1 and 24."
+        },
+        "calls": []
+    },
+    "interval at the minimum": {
+        "status": 200,
+        "data": {
+            "intervalHours": 1,
+            "minIntervalHours": 1,
+            "maxIntervalHours": 24,
+            "digestEnabled": true
+        },
+        "calls": [
+            [
+                "setIntervalHours",
+                1
+            ],
+            [
+                "getIntervalHours"
+            ],
+            [
+                "isDigestEnabled"
+            ]
+        ]
+    },
+    "interval at the maximum": {
+        "status": 200,
+        "data": {
+            "intervalHours": 24,
+            "minIntervalHours": 1,
+            "maxIntervalHours": 24,
+            "digestEnabled": true
+        },
+        "calls": [
+            [
+                "setIntervalHours",
+                24
+            ],
+            [
+                "getIntervalHours"
+            ],
+            [
+                "isDigestEnabled"
+            ]
+        ]
+    },
+    "decimal interval": {
+        "status": 200,
+        "data": {
+            "intervalHours": 12,
+            "minIntervalHours": 1,
+            "maxIntervalHours": 24,
+            "digestEnabled": true
+        },
+        "calls": [
+            [
+                "setIntervalHours",
+                12
+            ],
+            [
+                "getIntervalHours"
+            ],
+            [
+                "isDigestEnabled"
+            ]
+        ]
+    },
+    "digest empty is false": {
+        "status": 200,
+        "data": {
+            "intervalHours": 6,
+            "minIntervalHours": 1,
+            "maxIntervalHours": 24,
+            "digestEnabled": false
+        },
+        "calls": [
+            [
+                "isDigestEnabled"
+            ],
+            [
+                "setDigestEnabled",
+                false
+            ],
+            [
+                "getIntervalHours"
+            ],
+            [
+                "isDigestEnabled"
+            ]
+        ]
+    },
+    "digest on": {
+        "status": 200,
+        "data": {
+            "intervalHours": 6,
+            "minIntervalHours": 1,
+            "maxIntervalHours": 24,
+            "digestEnabled": true
+        },
+        "calls": [
+            [
+                "isDigestEnabled"
+            ],
+            [
+                "setDigestEnabled",
+                true
+            ],
+            [
+                "getIntervalHours"
+            ],
+            [
+                "isDigestEnabled"
+            ]
+        ]
+    },
+    "digest off": {
+        "status": 200,
+        "data": {
+            "intervalHours": 6,
+            "minIntervalHours": 1,
+            "maxIntervalHours": 24,
+            "digestEnabled": false
+        },
+        "calls": [
+            [
+                "isDigestEnabled"
+            ],
+            [
+                "setDigestEnabled",
+                false
+            ],
+            [
+                "getIntervalHours"
+            ],
+            [
+                "isDigestEnabled"
+            ]
+        ]
+    },
+    "digest unknown keeps the current value": {
+        "status": 200,
+        "data": {
+            "intervalHours": 6,
+            "minIntervalHours": 1,
+            "maxIntervalHours": 24,
+            "digestEnabled": true
+        },
+        "calls": [
+            [
+                "isDigestEnabled"
+            ],
+            [
+                "setDigestEnabled",
+                true
+            ],
+            [
+                "getIntervalHours"
+            ],
+            [
+                "isDigestEnabled"
+            ]
+        ]
+    },
+    "both": {
+        "status": 200,
+        "data": {
+            "intervalHours": 6,
+            "minIntervalHours": 1,
+            "maxIntervalHours": 24,
+            "digestEnabled": false
+        },
+        "calls": [
+            [
+                "setIntervalHours",
+                6
+            ],
+            [
+                "isDigestEnabled"
+            ],
+            [
+                "setDigestEnabled",
+                false
+            ],
+            [
+                "getIntervalHours"
+            ],
+            [
+                "isDigestEnabled"
+            ]
+        ]
+    },
+    "bad interval stops before the digest": {
+        "status": 400,
+        "data": {
+            "message": "intervalHours must be a number."
+        },
+        "calls": []
+    }
+}
