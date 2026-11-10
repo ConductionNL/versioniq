@@ -16,6 +16,7 @@ use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Db\Pat;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Notification\IManager;
+use OCP\Notification\INotification;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -45,27 +46,12 @@ class PatExpiryNotifier {
 	 */
 	public function notify(Pat $pat, string $threshold, ?int $daysRemaining): bool {
 		try {
-			$deeplink = $this->deeplinkBuilder->build($pat->getKind());
-
-			$notification = $this->notificationManager->createNotification();
-			$notification
-				->setApp(Application::APP_ID)
-				->setUser($pat->getOwnerUid())
-				->setDateTime($this->timeFactory->getDateTime())
-				->setObject('pat', (string)$pat->getId())
-				->setLink($deeplink['url']);
-
+			$notification = $this->notificationFor($pat);
+			$subject = ['label' => $pat->getLabel(), 'forge' => $pat->getForge()];
 			if ($threshold === PatExpiryEvaluator::THRESHOLD_EXPIRED) {
-				$notification->setSubject('pat_expired', [
-					'label' => $pat->getLabel(),
-					'forge' => $pat->getForge(),
-				]);
+				$notification->setSubject('pat_expired', $subject);
 			} else {
-				$notification->setSubject('pat_expiring', [
-					'label' => $pat->getLabel(),
-					'forge' => $pat->getForge(),
-					'daysRemaining' => $daysRemaining ?? 0,
-				]);
+				$notification->setSubject('pat_expiring', $subject + ['daysRemaining' => $daysRemaining ?? 0]);
 			}
 
 			$this->notificationManager->notify($notification);
@@ -80,5 +66,23 @@ class PatExpiryNotifier {
 
 			return false;
 		}
+	}
+
+	/**
+	 * A notification to the PAT's owner, about this PAT, linking the per-forge
+	 * renewal deeplink.
+	 */
+	private function notificationFor(Pat $pat): INotification {
+		$deeplink = $this->deeplinkBuilder->build($pat->getKind());
+
+		$notification = $this->notificationManager->createNotification();
+		$notification
+			->setApp(Application::APP_ID)
+			->setUser($pat->getOwnerUid())
+			->setDateTime($this->timeFactory->getDateTime())
+			->setObject('pat', (string)$pat->getId())
+			->setLink($deeplink['url']);
+
+		return $notification;
 	}
 }
