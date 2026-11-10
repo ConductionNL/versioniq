@@ -149,16 +149,43 @@ class MigrateSchemaApplicationId implements IRepairStep {
 			return;
 		}
 
+		[$moved, $refused] = $this->moveCandidates(candidates: $candidates, taken: $taken);
+
+		$output->info(self::summary(moved: $moved, refused: $refused));
+	}//end run()
+
+	/**
+	 * The line the step reports when it ran.
+	 *
+	 * @param int $moved Schemas moved to the new application id.
+	 * @param int $refused Schemas refused as duplicates.
+	 *
+	 * @return string The summary.
+	 */
+	private static function summary(int $moved, int $refused): string {
+		return sprintf(
+			'MigrateSchemaApplicationId: %d schema(s) moved to %s, %d refused as duplicates.',
+			$moved,
+			self::NEW_APP_ID,
+			$refused
+		);
+	}//end summary()
+
+	/**
+	 * Move every candidate slug that has no twin under the new application id.
+	 *
+	 * @param array<int, string> $candidates Slugs under the old application id.
+	 * @param array<int, string> $taken Lower-cased slugs under the new application id.
+	 *
+	 * @return array{0: int, 1: int} The [moved, refused] counts.
+	 */
+	private function moveCandidates(array $candidates, array $taken): array {
 		$moved = 0;
 		$refused = 0;
 		foreach ($candidates as $slug) {
 			if (in_array(strtolower($slug), $taken, true) === true) {
 				$refused++;
-				$this->logger->warning(
-					'MigrateSchemaApplicationId: schema slug already exists under the new application id; '
-					. 'refusing to create a duplicate (application, slug) pair. Merge them by hand.',
-					['slug' => $slug, 'old' => self::OLD_APP_ID, 'new' => self::NEW_APP_ID]
-				);
+				$this->warnDuplicate(slug: $slug);
 				continue;
 			}
 
@@ -167,15 +194,23 @@ class MigrateSchemaApplicationId implements IRepairStep {
 			}
 		}
 
-		$output->info(
-			sprintf(
-				'MigrateSchemaApplicationId: %d schema(s) moved to %s, %d refused as duplicates.',
-				$moved,
-				self::NEW_APP_ID,
-				$refused
-			)
+		return [$moved, $refused];
+	}//end moveCandidates()
+
+	/**
+	 * Log a slug that would collide with a schema under the new application id.
+	 *
+	 * @param string $slug The colliding slug.
+	 *
+	 * @return void
+	 */
+	private function warnDuplicate(string $slug): void {
+		$this->logger->warning(
+			'MigrateSchemaApplicationId: schema slug already exists under the new application id; '
+			. 'refusing to create a duplicate (application, slug) pair. Merge them by hand.',
+			['slug' => $slug, 'old' => self::OLD_APP_ID, 'new' => self::NEW_APP_ID]
 		);
-	}//end run()
+	}//end warnDuplicate()
 
 	/**
 	 * Slugs already claimed under the NEW application id.
@@ -187,16 +222,11 @@ class MigrateSchemaApplicationId implements IRepairStep {
 	 * @return array<int, string>|null Lower-cased slugs, or null when unreadable.
 	 */
 	private function slugsUnderNewAppId(): ?array {
-		try {
-			$rows = $this->db->executeQuery(
-				'SELECT slug FROM `*PREFIX*openregister_schemas` WHERE application = ?',
-				[self::NEW_APP_ID]
-			)->fetchAll();
-		} catch (Exception $e) {
-			$this->logger->warning(
-				'MigrateSchemaApplicationId: could not read schemas on the new application id; skipping.',
-				['exception' => $e->getMessage()]
-			);
+		$rows = $this->slugRows(
+			application: self::NEW_APP_ID,
+			failure: 'MigrateSchemaApplicationId: could not read schemas on the new application id; skipping.'
+		);
+		if ($rows === null) {
 			return null;
 		}
 
@@ -212,16 +242,11 @@ class MigrateSchemaApplicationId implements IRepairStep {
 	 * @return array<int, string>
 	 */
 	private function slugsUnderOldAppId(): array {
-		try {
-			$rows = $this->db->executeQuery(
-				'SELECT slug FROM `*PREFIX*openregister_schemas` WHERE application = ?',
-				[self::OLD_APP_ID]
-			)->fetchAll();
-		} catch (Exception $e) {
-			$this->logger->warning(
-				'MigrateSchemaApplicationId: could not read schemas on the old application id; skipping.',
-				['exception' => $e->getMessage()]
-			);
+		$rows = $this->slugRows(
+			application: self::OLD_APP_ID,
+			failure: 'MigrateSchemaApplicationId: could not read schemas on the old application id; skipping.'
+		);
+		if ($rows === null) {
 			return [];
 		}
 
@@ -230,6 +255,27 @@ class MigrateSchemaApplicationId implements IRepairStep {
 			$rows
 		)));
 	}//end slugsUnderOldAppId()
+
+	/**
+	 * The schema rows of one application id, or null after logging the
+	 * given warning when they cannot be read.
+	 *
+	 * @param string $application The application id.
+	 * @param string $failure The warning to log on a read failure.
+	 *
+	 * @return array<int, array<string, mixed>>|null The rows, or null when unreadable.
+	 */
+	private function slugRows(string $application, string $failure): ?array {
+		try {
+			return $this->db->executeQuery(
+				'SELECT slug FROM `*PREFIX*openregister_schemas` WHERE application = ?',
+				[$application]
+			)->fetchAll();
+		} catch (Exception $e) {
+			$this->logger->warning($failure, ['exception' => $e->getMessage()]);
+			return null;
+		}
+	}//end slugRows()
 
 	/**
 	 * Move one schema onto the new application id.
