@@ -112,7 +112,7 @@ class BranchAwareRange {
 	 * otherwise null: newer than every patch for its major, and not below the
 	 * earliest patch overall, the fix is already in.
 	 *
-	 * @param list<string> $patched
+	 * @param non-empty-list<string> $patched
 	 */
 	private function predatingEveryPatch(string $installedVersion, array $patched): ?string {
 		$lowest = $this->lowest($patched);
