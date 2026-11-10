@@ -66,13 +66,35 @@ class InstallFinalizer {
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @spec openspec/specs/migration-safety/spec.md
-	 * @param array<string, mixed> $info Parsed `appinfo/info.xml` for the just-extracted version.
-	 * @param string $sourceId The source binding id (e.g. `appstore`, `github:owner/repo`) this version was
-	 *                         installed from, recorded alongside the last-known-good version.
 	 * @throws Exception
 	 */
-	public function finalize(string $appPath, array $info, string $enabled, ?IOutput $output = null, string $sourceId = 'appstore'): string {
+	public function finalize(InstallFinalization $finalization, ?IOutput $output = null): string {
+		$info = $finalization->info;
 		$appId = self::appIdOf($info);
+		$this->loadApp($finalization);
+
+		$this->runMigrations($info, $output);
+		$this->addBackgroundJobs($info);
+		$this->runInstallScript($finalization->appPath, $appId);
+		self::executeRepairSteps($appId, self::repairStepsOf($info, 'install'));
+
+		$installedVersion = $this->installedVersionOf($info);
+		$this->writeCoreKeys($finalization, $installedVersion);
+		$this->announceApp($finalization);
+
+		// Reached only on success: every earlier step throws on failure and
+		// aborts before this line, so a failed or reverted install never
+		// touches the record — see "Last-known-good version record".
+		$this->recordLastKnownGood($finalization, $installedVersion);
+
+		return $appId;
+	}
+
+	/**
+	 * Register the app and its autoloader before anything of it runs.
+	 */
+	private function loadApp(InstallFinalization $finalization): void {
+		$appId = self::appIdOf($finalization->info);
 
 		// Lazy registration must run before autoload + migrations so app-registered
 		// event listeners are wired up when migrations dispatch events.
@@ -80,14 +102,14 @@ class InstallFinalizer {
 
 		// \OC_App::registerAutoloading() is gone in Nextcloud 35; AppAutoloader
 		// picks whichever registrar this server has.
-		AppAutoloader::register($appId, $appPath, $this->appManager, $info);
+		AppAutoloader::register($appId, $finalization->appPath, $this->appManager, $finalization->info);
+	}
 
-		$this->runMigrations($info, $output);
-		$this->addBackgroundJobs($info);
-		$this->runInstallScript($appPath, $appId);
-		self::executeRepairSteps($appId, self::repairStepsOf($info, 'install'));
-
-		$installedVersion = $this->installedVersionOf($info);
+	/**
+	 * Write the `installed_version` and `enabled` keys core owns.
+	 */
+	private function writeCoreKeys(InstallFinalization $finalization, string $installedVersion): void {
+		$appId = self::appIdOf($finalization->info);
 		/**
 		 * setAppValue, not setValueString, for the keys core owns.
 		 *
@@ -108,22 +130,28 @@ class InstallFinalizer {
 		/** @psalm-suppress DeprecatedMethod Deliberate — see the block comment above. */
 		$this->config->setAppValue($appId, 'installed_version', $installedVersion);
 		/** @psalm-suppress DeprecatedMethod Deliberate — see the block comment above. */
-		$this->config->setAppValue($appId, 'enabled', $enabled);
-		$this->registerRoutes($info);
+		$this->config->setAppValue($appId, 'enabled', $finalization->enabled);
+	}
 
-		$this->persistAppTypes($appId);
+	/**
+	 * Register the app's routes and types, and drop the apps cache so the new version is seen.
+	 */
+	private function announceApp(InstallFinalization $finalization): void {
+		$this->registerRoutes($finalization->info);
+
+		$this->persistAppTypes(self::appIdOf($finalization->info));
 		$this->appManager->clearAppsCache();
+	}
 
-		// Reached only on success: every earlier step throws on failure and
-		// aborts before this line, so a failed or reverted install never
-		// touches the record — see "Last-known-good version record".
-		$this->lkgStore->set($appId, new Lkg(
+	/**
+	 * Record the installed version as last-known-good.
+	 */
+	private function recordLastKnownGood(InstallFinalization $finalization, string $installedVersion): void {
+		$this->lkgStore->set(self::appIdOf($finalization->info), new Lkg(
 			$installedVersion,
 			$this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
-			$sourceId,
+			$finalization->sourceId,
 		));
-
-		return $appId;
 	}
 
 	/**

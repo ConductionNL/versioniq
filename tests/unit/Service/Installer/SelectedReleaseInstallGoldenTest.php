@@ -12,6 +12,7 @@ use OC\Files\FilenameValidator;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Installer\InstallFailure;
+use OCA\Versioniq\Service\Installer\InstallFinalization;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
 use OCA\Versioniq\Service\Installer\MigrationDiffer;
 use OCA\Versioniq\Service\SelectedReleaseInstallerService;
@@ -28,6 +29,7 @@ use OCP\ITempManager;
 use OCP\IUser;
 use OCP\IUserSession;
 use OCP\L10N\IFactory;
+use OCP\Migration\IOutput;
 use OCP\ServerVersion;
 use phpseclib3\File\X509;
 use PHPUnit\Framework\TestCase;
@@ -780,7 +782,8 @@ final class SelectedReleaseInstallGoldenTest extends TestCase {
 	 */
 	private function finalizer(array $s): InstallFinalizer {
 		$finalizer = $this->createMock(InstallFinalizer::class);
-		$finalizer->method('finalize')->willReturnCallback(function (mixed ...$args) use ($s): string {
+		$finalizer->method('finalize')->willReturnCallback(function (InstallFinalization $finalization, ?IOutput $output = null) use ($s): string {
+			$args = [$finalization->appPath, $finalization->info, $finalization->enabled, $output, $finalization->sourceId];
 			$this->record('finalizer.finalize', [...$args, InstallerGoldenSupport::snapshot($this->root . '/apps')]);
 
 			return match ($s['finalize']) {

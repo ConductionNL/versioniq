@@ -22,6 +22,7 @@ use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstalledFolder;
 use OCA\Versioniq\Service\Installer\InstallFailure;
+use OCA\Versioniq\Service\Installer\InstallFinalization;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
 use OCA\Versioniq\Service\Installer\MigrationDiffer;
 use OCA\Versioniq\Service\Installer\ReleaseTarget;
@@ -511,7 +512,10 @@ class SelectedReleaseInstallerService {
 	 */
 	private function finalizeInstall(SignedInstall $install, InstalledFolder $folder): string {
 		try {
-			return $this->finalizer->finalize($folder->appPath, $folder->info, $install->enabledAfter(), null, SourceBinding::appStore()->getId());
+			$finalization = new InstallFinalization($folder->appPath, $folder->info);
+			$finalization->enabled = $install->enabledAfter();
+			$finalization->sourceId = SourceBinding::appStore()->getId();
+			return $this->finalizer->finalize($finalization);
 		} catch (\Throwable $finalizeError) {
 			$restoreState = $folder->backup === null
 				? FailureClassifier::RESTORE_NONE

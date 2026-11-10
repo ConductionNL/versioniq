@@ -6,6 +6,7 @@ namespace OCA\Versioniq\Tests\Unit\Service\Installer;
 
 use OC\AppFramework\Bootstrap\Coordinator;
 use OC\DB\Connection;
+use OCA\Versioniq\Service\Installer\InstallFinalization;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
 use OCA\Versioniq\Service\Lkg\Lkg;
 use OCA\Versioniq\Service\Lkg\LkgStore;
@@ -185,15 +186,14 @@ final class InstallFinalizerGoldenTest extends TestCase {
 			};
 		}
 
-		$args = [$this->root . '/' . $case['path'], $case['info'], $case['enabled']];
-		if ($case['output'] === true || $case['sourceId'] !== null) {
-			$args[] = $case['output'] === true ? $this->createMock(IOutput::class) : null;
-		}
+		$finalization = new InstallFinalization($this->root . '/' . $case['path'], $case['info']);
+		$finalization->enabled = $case['enabled'];
 		if ($case['sourceId'] !== null) {
-			$args[] = $case['sourceId'];
+			$finalization->sourceId = $case['sourceId'];
 		}
+		$output = $case['output'] === true ? $this->createMock(IOutput::class) : null;
 		try {
-			$result = ['returned' => $finalizer->finalize(...$args)];
+			$result = ['returned' => $finalizer->finalize($finalization, $output)];
 		} catch (RuntimeException $error) {
 			$result = ['threw' => $error->getMessage()];
 		} finally {

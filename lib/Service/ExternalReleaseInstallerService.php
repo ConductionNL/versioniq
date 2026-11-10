@@ -28,6 +28,7 @@ use OCA\Versioniq\Service\Installer\ExternalInstallRequest;
 use OCA\Versioniq\Service\Installer\ExternalInstallRun;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFailure;
+use OCA\Versioniq\Service\Installer\InstallFinalization;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
 use OCA\Versioniq\Service\Installer\InstallSteps;
 use OCA\Versioniq\Service\Installer\ReleaseDownload;
@@ -438,13 +439,15 @@ class ExternalReleaseInstallerService {
 	 * half-swapped.
 	 */
 	private function finalizeInstall(ExternalInstall $install, ?string $backupDestination): string {
-		$destination = $install->staged->destination;
 		try {
-			return $this->steps->finalizer->finalize($destination, $install->staged->info, $install->run->enabledAfter(), null, $install->run->binding->getId());
+			$finalization = new InstallFinalization($install->staged->destination, $install->staged->info);
+			$finalization->enabled = $install->run->enabledAfter();
+			$finalization->sourceId = $install->run->binding->getId();
+			return $this->steps->finalizer->finalize($finalization);
 		} catch (\Throwable $finalizeError) {
 			$restoreState = $backupDestination === null
 				? FailureClassifier::RESTORE_NONE
-				: ($this->restoreFromBackup($destination, $backupDestination) ? FailureClassifier::RESTORE_CLEAN : FailureClassifier::RESTORE_FAILED);
+				: ($this->restoreFromBackup($install->staged->destination, $backupDestination) ? FailureClassifier::RESTORE_CLEAN : FailureClassifier::RESTORE_FAILED);
 			throw InstallFailure::finalizeFailed($finalizeError->getMessage(), $restoreState, $finalizeError);
 		}
 	}
