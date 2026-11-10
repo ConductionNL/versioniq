@@ -118,16 +118,36 @@ class AutoUpdateJob extends TimedJob {
 	}
 
 	private function processApp(string $appId, string $level): void {
-		if ($this->stores->pinStore->get($appId) !== null) {
-			// Pinned apps are skipped entirely, before any source query; see
-			// "Pinned app skipped".
+		if ($this->isSkipped($appId)) {
 			return;
 		}
 
-		if (!$this->install->installerService->isManageableApp($appId)) {
+		$installedVersion = $this->installedVersionOf($appId);
+		$available = $installedVersion === null ? null : $this->availableVersions($appId);
+		if ($installedVersion === null || $available === null) {
 			return;
 		}
 
+		$candidate = $this->install->candidateSelector->select($installedVersion, $available, $level);
+		if ($candidate === null || $this->stores->attemptLedger->hasAttempted($appId, $candidate)) {
+			// Never-retry — see "Failed attempt is not retried".
+			return;
+		}
+
+		$this->attemptInstall(new InstallTarget($appId, $candidate, null), $installedVersion);
+	}
+
+	/**
+	 * Pinned apps are skipped entirely, before any source query (see "Pinned
+	 * app skipped"), and so are apps Versioniq does not manage.
+	 */
+	private function isSkipped(string $appId): bool {
+		return $this->stores->pinStore->get($appId) !== null
+			|| !$this->install->installerService->isManageableApp($appId);
+	}
+
+	/** The installed version, or null when the app reports none or cannot be read. */
+	private function installedVersionOf(string $appId): ?string {
 		$installedVersion = null;
 		try {
 			$installed = $this->install->appManager->getAppVersion($appId, false);
@@ -135,13 +155,19 @@ class AutoUpdateJob extends TimedJob {
 		} catch (\Throwable) {
 			$installedVersion = null;
 		}
-		if ($installedVersion === null) {
-			return;
-		}
 
+		return $installedVersion;
+	}
+
+	/**
+	 * The versions the app's source lists, or null when it reported an error.
+	 *
+	 * @return list<string>|null
+	 */
+	private function availableVersions(string $appId): ?array {
 		$result = $this->install->installerService->getAppVersions($appId);
 		if (($result['hasError'] ?? false) === true) {
-			return;
+			return null;
 		}
 
 		/** @var list<string> $available */
@@ -150,22 +176,12 @@ class AutoUpdateJob extends TimedJob {
 			$result['availableVersions'] ?? []
 		);
 
-		$candidate = $this->install->candidateSelector->select($installedVersion, $available, $level);
-		if ($candidate === null) {
-			return;
-		}
-
-		if ($this->stores->attemptLedger->hasAttempted($appId, $candidate)) {
-			// Never-retry — see "Failed attempt is not retried".
-			return;
-		}
-
-		$this->attemptInstall($appId, $installedVersion, $candidate);
+		return $available;
 	}
 
-	private function attemptInstall(string $appId, string $installedVersion, string $candidate): void {
+	private function attemptInstall(InstallTarget $target, string $installedVersion): void {
 		$installResult = $this->install->installerService->installAppVersion(new InstallRequest(
-			new InstallTarget($appId, $candidate, null),
+			$target,
 			new InstallOptions(false, false, false, false),
 			new PinChoice(null, false),
 		));
@@ -175,18 +191,18 @@ class AutoUpdateJob extends TimedJob {
 		$payload = $installResult['payload'] ?? [];
 
 		if ($statusCode >= Http::STATUS_OK && $statusCode < Http::STATUS_MULTIPLE_CHOICES) {
-			$this->stores->attemptLedger->record($appId, $candidate, AttemptLedger::OUTCOME_SUCCESS, $at);
+			$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedger::OUTCOME_SUCCESS, $at);
 			$toVersion = is_string($payload['installedVersion'] ?? null) && $payload['installedVersion'] !== ''
 				? $payload['installedVersion']
-				: $candidate;
-			$this->notifier->notifySuccess($appId, $installedVersion, $toVersion);
+				: $target->version;
+			$this->notifier->notifySuccess($target->appId, $installedVersion, $toVersion);
 
 			return;
 		}
 
-		$this->stores->attemptLedger->record($appId, $candidate, AttemptLedger::OUTCOME_FAILURE, $at);
+		$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedger::OUTCOME_FAILURE, $at);
 		$category = is_string($payload['category'] ?? null) ? $payload['category'] : 'unknown';
 		$hint = is_string($payload['hint'] ?? null) ? $payload['hint'] : '';
-		$this->notifier->notifyFailure($appId, $candidate, $category, $hint);
+		$this->notifier->notifyFailure($target->appId, $target->version, $category, $hint);
 	}
 }
