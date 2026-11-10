@@ -2089,11 +2089,11 @@ onBeforeUnmount(() => {
 	window.removeEventListener('hashchange', openSectionFromHash)
 })
 
-onMounted(async () => {
-	// Before the first await, so a settings link lands on its tab at once.
-	openSectionFromHash()
-	window.addEventListener('hashchange', openSectionFromHash)
-
+/**
+ * Restore the safe, debug and dry-run modes the admin last chose in this
+ * browser; a mode with nothing stored keeps its shipped default.
+ */
+function restoreStoredModes (): void {
 	const storedSafeMode = readStoredFlag(safeModeStorageKey)
 	if (storedSafeMode !== null) {
 		safeModeEnabled.value = storedSafeMode !== 'false'
@@ -2106,7 +2106,13 @@ onMounted(async () => {
 	if (storedDryRunMode !== null) {
 		dryRunEnabled.value = storedDryRunMode === 'true'
 	}
+}
 
+/**
+ * Load the update channel and the app list the page opens on, and end the
+ * loading state whatever happens.
+ */
+async function loadInitialLists (): Promise<void> {
 	// Access is enforced server-side: the page is an admin-only ISettings
 	// section and every OCS endpoint guards on isAdmin(). No client-side admin
 	// probe is needed — load the data directly so a flaky probe can never blank
@@ -2116,7 +2122,7 @@ onMounted(async () => {
 		await loadApps()
 	} catch (error) {
 		// A `finally` WITHOUT a `catch` re-throws, and the three non-blocking
-		// loaders below are plain statements in the same function — so anything
+		// loaders that follow this call in onMounted are plain statements — so anything
 		// thrown here silently skipped ALL of them.
 		//
 		// Measured on CI (issue #160): the browser requested update-channel and
@@ -2132,6 +2138,16 @@ onMounted(async () => {
 	} finally {
 		isLoading.value = false
 	}
+}
+
+onMounted(async () => {
+	// Before the first await, so a settings link lands on its tab at once.
+	openSectionFromHash()
+	window.addEventListener('hashchange', openSectionFromHash)
+
+	restoreStoredModes()
+
+	await loadInitialLists()
 	// Kick off advisory correlation, pin state, and auto-update policies after
 	// the list renders (non-blocking). Each handles its own failures; the extra
 	// catch guards a SYNCHRONOUS throw before the first await, which would
