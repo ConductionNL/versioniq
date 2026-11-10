@@ -75,19 +75,8 @@ class BranchAwareRange {
 			return null;
 		}
 
-		$installed = $this->segments($installedVersion);
-		$major = $installed[0];
-		$minor = $installed[1];
-
 		// 1. The installed version's own branch, if that branch was patched.
-		$ownBranch = array_values(array_filter(
-			$patched,
-			function (string $candidate) use ($major, $minor): bool {
-				$parts = $this->segments($candidate);
-
-				return $parts[0] === $major && $parts[1] === $minor;
-			},
-		));
+		$ownBranch = $this->ownBranchPatches($installedVersion, $patched);
 		if ($ownBranch !== []) {
 			$earliest = $this->lowest($ownBranch);
 
@@ -100,13 +89,7 @@ class BranchAwareRange {
 		// 2. This branch was never patched. The nearest higher patch on the
 		//    same major is the upgrade target — this is what covers Mail 3.6.0,
 		//    whose branch is absent but whose major has 3.7.25.
-		$sameMajor = array_values(array_filter(
-			$patched,
-			function (string $candidate) use ($major, $installedVersion): bool {
-				return $this->segments($candidate)[0] === $major
-					&& $this->compare($candidate, $installedVersion) > 0;
-			},
-		));
+		$sameMajor = $this->higherPatchesOnMajor($installedVersion, $patched);
 		if ($sameMajor !== []) {
 			return $this->lowest($sameMajor);
 		}
@@ -121,14 +104,57 @@ class BranchAwareRange {
 		//    has no 2.x fix, and refusing to cross would report it SAFE. A
 		//    security check must not fail in that direction, even though the
 		//    recommendation it produces is a major upgrade.
-		$lowest = $this->lowest($patched);
-		if ($this->compare($installedVersion, $lowest) < 0) {
-			return $lowest;
-		}
+		return $this->predatingEveryPatch($installedVersion, $patched);
+	}
 
-		// 4. Newer than every patch for its major, and not below the earliest
-		//    patch overall: the fix is already in.
-		return null;
+	/**
+	 * The lowest patch when the installed version predates every patch;
+	 * otherwise null: newer than every patch for its major, and not below the
+	 * earliest patch overall, the fix is already in.
+	 *
+	 * @param list<string> $patched
+	 */
+	private function predatingEveryPatch(string $installedVersion, array $patched): ?string {
+		$lowest = $this->lowest($patched);
+
+		return $this->compare($installedVersion, $lowest) < 0 ? $lowest : null;
+	}
+
+	/**
+	 * The patches on the installed version's own `major.minor` branch.
+	 *
+	 * @param list<string> $patched
+	 * @return list<string>
+	 */
+	private function ownBranchPatches(string $installedVersion, array $patched): array {
+		$installed = $this->segments($installedVersion);
+
+		return array_values(array_filter(
+			$patched,
+			function (string $candidate) use ($installed): bool {
+				$parts = $this->segments($candidate);
+
+				return $parts[0] === $installed[0] && $parts[1] === $installed[1];
+			},
+		));
+	}
+
+	/**
+	 * The patches on the installed version's major that are newer than it.
+	 *
+	 * @param list<string> $patched
+	 * @return list<string>
+	 */
+	private function higherPatchesOnMajor(string $installedVersion, array $patched): array {
+		$major = $this->segments($installedVersion)[0];
+
+		return array_values(array_filter(
+			$patched,
+			function (string $candidate) use ($major, $installedVersion): bool {
+				return $this->segments($candidate)[0] === $major
+					&& $this->compare($candidate, $installedVersion) > 0;
+			},
+		));
 	}
 
 	/**
