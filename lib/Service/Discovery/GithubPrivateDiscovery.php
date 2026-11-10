@@ -90,6 +90,20 @@ class GithubPrivateDiscovery implements DiscoveryProviderInterface {
 			return DiscoveryResult::empty();
 		}
 
+		[$hits, $lastError] = $this->searchEach($pats, $query);
+		$unique = self::uniqueByRepo($hits);
+
+		return new DiscoveryResult($unique, $unique === [] ? $lastError : null);
+	}
+
+	/**
+	 * Every PAT's hits, in PAT order, and the error of the last search that
+	 * failed (logged, not raised).
+	 *
+	 * @param list<Pat> $pats
+	 * @return array{0: list<DiscoveryHit>, 1: ?string}
+	 */
+	private function searchEach(array $pats, string $query): array {
 		$hits = [];
 		$lastError = null;
 		foreach ($pats as $pat) {
@@ -97,15 +111,32 @@ class GithubPrivateDiscovery implements DiscoveryProviderInterface {
 				$patHits = $this->searchOne($pat, $query);
 				$hits = array_merge($hits, $patHits);
 			} catch (Exception $error) {
-				$this->logger->warning('GithubPrivateDiscovery: search failed for PAT', [
-					'patId' => $pat->getId(),
-					'errorMessage' => $error->getMessage(),
-				]);
-				$lastError = 'One or more PAT-scoped searches failed (' . $error->getMessage() . ').';
+				$lastError = $this->searchFailed($pat, $error);
 			}
 		}
 
-		// De-duplicate by owner/repo within this provider's results.
+		return [$hits, $lastError];
+	}
+
+	/**
+	 * Logs one PAT's failed search and returns the error the result carries.
+	 */
+	private function searchFailed(Pat $pat, Exception $error): string {
+		$this->logger->warning('GithubPrivateDiscovery: search failed for PAT', [
+			'patId' => $pat->getId(),
+			'errorMessage' => $error->getMessage(),
+		]);
+
+		return 'One or more PAT-scoped searches failed (' . $error->getMessage() . ').';
+	}
+
+	/**
+	 * The hits with the first one per owner/repo kept.
+	 *
+	 * @param list<DiscoveryHit> $hits
+	 * @return list<DiscoveryHit>
+	 */
+	private static function uniqueByRepo(array $hits): array {
 		$seen = [];
 		$unique = [];
 		foreach ($hits as $hit) {
@@ -117,7 +148,7 @@ class GithubPrivateDiscovery implements DiscoveryProviderInterface {
 			$unique[] = $hit;
 		}
 
-		return new DiscoveryResult($unique, $unique === [] ? $lastError : null);
+		return $unique;
 	}
 
 	/**
