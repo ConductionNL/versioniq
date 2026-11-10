@@ -771,9 +771,12 @@ class ExternalReleaseInstallerService {
 	 * than the one requested.
 	 */
 	private function assertArchiveIdentity(\SimpleXMLElement $xml, ExternalInstallRequest $request): void {
-		$archiveAppId = (string)$xml->id;
-		$archiveVersion = (string)$xml->version;
+		$this->assertArchiveAppId($xml, $request);
+		$this->assertArchiveVersion($xml, $request);
+	}
 
+	private function assertArchiveAppId(\SimpleXMLElement $xml, ExternalInstallRequest $request): void {
+		$archiveAppId = (string)$xml->id;
 		if ($archiveAppId !== $request->appId) {
 			throw new Exception(sprintf(
 				"Downloaded archive declares appId '%s', expected '%s'.",
@@ -781,6 +784,10 @@ class ExternalReleaseInstallerService {
 				$request->appId
 			));
 		}
+	}
+
+	private function assertArchiveVersion(\SimpleXMLElement $xml, ExternalInstallRequest $request): void {
+		$archiveVersion = (string)$xml->version;
 		if ($archiveVersion !== $request->version) {
 			throw new Exception(sprintf(
 				"Downloaded archive declares version '%s', expected '%s'.",
