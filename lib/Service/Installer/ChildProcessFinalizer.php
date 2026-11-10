@@ -78,17 +78,21 @@ class ChildProcessFinalizer {
 	}
 
 	/**
-	 * Runs InstallFinalizer::finalizeHere() in a child process and returns the app id.
+	 * Runs InstallFinalizer::finalizeHere() in a child process and returns the app id,
+	 * or null when no child could be started — nothing ran then, so the caller
+	 * finalizes in-process instead of failing the install.
 	 *
 	 * @param array<string, mixed> $info Parsed `appinfo/info.xml` of the new version.
-	 * @throws Exception When the child could not start or the finalize failed in it.
+	 * @throws Exception When the finalize failed in the child.
 	 * @spec openspec/specs/version-management/spec.md
 	 */
-	public function run(string $appPath, array $info, string $enabled, string $sourceId): string {
+	public function run(string $appPath, array $info, string $enabled, string $sourceId): ?string {
 		$appId = (string)($info['id'] ?? '');
 		$php = $this->phpBinary();
 		if ($php === null) {
-			throw new Exception('No PHP CLI binary to run the finalize phase in a child process.');
+			$this->logger->warning('versioniq: no PHP CLI binary for the finalize child of {app}; finalizing in-process (#611).', ['app' => $appId]);
+
+			return null;
 		}
 
 		$command = [
@@ -107,7 +111,9 @@ class ChildProcessFinalizer {
 
 		$process = proc_open($command, [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, \OC::$SERVERROOT, $env);
 		if (!is_resource($process)) {
-			throw new Exception('Could not start the child process for the finalize phase.');
+			$this->logger->warning('versioniq: could not start the finalize child of {app}; finalizing in-process (#611).', ['app' => $appId]);
+
+			return null;
 		}
 		fclose($pipes[0]);
 		$stdout = (string)stream_get_contents($pipes[1]);

@@ -79,7 +79,10 @@ class InstallFinalizer {
 	 */
 	public function finalize(string $appPath, array $info, string $enabled, ?IOutput $output = null, string $sourceId = 'appstore'): string {
 		if ($this->childFinalizer !== null && $this->childFinalizer->applies($info)) {
-			return $this->childFinalizer->run($appPath, $info, $enabled, $sourceId);
+			$appId = $this->childFinalizer->run($appPath, $info, $enabled, $sourceId);
+			if ($appId !== null) {
+				return $appId;
+			}
 		}
 
 		return $this->finalizeHere($appPath, $info, $enabled, $output, $sourceId);
