@@ -331,7 +331,7 @@ class ExternalReleaseInstallerService {
 		$archivePath = $this->extractArchive($download->tempFile, $download->tempFolder);
 		$this->addDebug('archive-extracted', ['extractedRoot' => $archivePath]);
 
-		$info = $this->parseAndValidateInfoXml($archivePath, $run->request->appId, $run->request->version);
+		$info = $this->parseAndValidateInfoXml($archivePath, $run->request);
 		$this->addDebug('info-validated', [
 			'appId' => $info['id'],
 			'archiveVersion' => $info['version'],
@@ -726,10 +726,33 @@ class ExternalReleaseInstallerService {
 	}
 
 	/**
+	 * Reads the extracted app's info.xml, checks it declares the requested app
+	 * and version, and that the app manager loads it, is compatible with this
+	 * server and has its dependencies met.
+	 *
 	 * @return array<string, mixed>
 	 */
-	private function parseAndValidateInfoXml(string $extractedRoot, string $expectedAppId, string $expectedVersion): array {
+	private function parseAndValidateInfoXml(string $extractedRoot, ExternalInstallRequest $request): array {
 		$infoXml = $extractedRoot . '/appinfo/info.xml';
+		$this->assertArchiveIdentity($this->readInfoXml($infoXml), $request);
+
+		$l = Server::get(IFactory::class)->get('core');
+		$info = $this->appManager->getAppInfoByPath($infoXml, $l->getLanguageCode());
+		if (!is_array($info) || ($info['id'] ?? null) !== $request->appId) {
+			throw new Exception('appinfo/info.xml could not be loaded by app manager.');
+		}
+		/** @var array<string, mixed> $info */
+
+		$ignoreMax = $this->assertCompatible($info, $request->appId);
+		\OC_App::checkAppDependencies($this->configs->config, $l, $info, $ignoreMax);
+
+		return $info;
+	}
+
+	/**
+	 * The archive's info.xml, parsed.
+	 */
+	private function readInfoXml(string $infoXml): \SimpleXMLElement {
 		$infoContents = @file_get_contents($infoXml);
 		if (!is_string($infoContents)) {
 			throw new Exception('Downloaded archive is missing appinfo/info.xml.');
@@ -740,48 +763,56 @@ class ExternalReleaseInstallerService {
 			throw new Exception('Could not parse appinfo/info.xml from downloaded archive.');
 		}
 
+		return $xml;
+	}
+
+	/**
+	 * Refuses an archive whose info.xml declares another app id or version
+	 * than the one requested.
+	 */
+	private function assertArchiveIdentity(\SimpleXMLElement $xml, ExternalInstallRequest $request): void {
 		$archiveAppId = (string)$xml->id;
 		$archiveVersion = (string)$xml->version;
 
-		if ($archiveAppId !== $expectedAppId) {
+		if ($archiveAppId !== $request->appId) {
 			throw new Exception(sprintf(
 				"Downloaded archive declares appId '%s', expected '%s'.",
 				$archiveAppId,
-				$expectedAppId
+				$request->appId
 			));
 		}
-		if ($archiveVersion !== $expectedVersion) {
+		if ($archiveVersion !== $request->version) {
 			throw new Exception(sprintf(
 				"Downloaded archive declares version '%s', expected '%s'.",
 				$archiveVersion,
-				$expectedVersion
+				$request->version
 			));
 		}
+	}
 
-		$l = Server::get(IFactory::class)->get('core');
-		$info = $this->appManager->getAppInfoByPath($infoXml, $l->getLanguageCode());
-		if (!is_array($info) || ($info['id'] ?? null) !== $expectedAppId) {
-			throw new Exception('appinfo/info.xml could not be loaded by app manager.');
-		}
-		/** @var array<string, mixed> $info */
-
+	/**
+	 * Refuses an app that is not compatible with this server, unless the admin
+	 * lets it overwrite the max version.
+	 *
+	 * @param array<string, mixed> $info
+	 * @return bool Whether the max-version check is ignored for this app.
+	 */
+	private function assertCompatible(array $info, string $appId): bool {
 		$ignoreMaxApps = (array)$this->configs->config->getSystemValue('app_install_overwrite', []);
-		$ignoreMax = in_array($expectedAppId, $ignoreMaxApps, true);
+		$ignoreMax = in_array($appId, $ignoreMaxApps, true);
 		$serverVersion = Server::get(\OCP\ServerVersion::class)->getVersionString();
 		// Public IAppManager::isAppCompatible() (since 32, this app's floor)
 		// instead of the deprecated \OC_App static. The static used to be
 		// needed because IAppManager lacked the method on Nextcloud 31.
 		if (!$this->appManager->isAppCompatible($serverVersion, $info, $ignoreMax)) {
-			$appName = isset($info['name']) && is_string($info['name']) ? $info['name'] : $expectedAppId;
+			$appName = isset($info['name']) && is_string($info['name']) ? $info['name'] : $appId;
 			throw new Exception(sprintf(
 				'App "%s" is not compatible with this Nextcloud version.',
 				$appName
 			));
 		}
 
-		\OC_App::checkAppDependencies($this->configs->config, $l, $info, $ignoreMax);
-
-		return $info;
+		return $ignoreMax;
 	}
 
 	private function getInstallPath(): string {
