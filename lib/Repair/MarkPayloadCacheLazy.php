@@ -84,39 +84,72 @@ class MarkPayloadCacheLazy implements IRepairStep {
 	 *  capability spec covers how the payload cache is stored.
 	 */
 	public function run(IOutput $output): void {
-		try {
-			$keys = $this->appConfig->getKeys(Application::APP_ID);
-		} catch (Throwable $e) {
-			$this->logger->warning(
-				'[MarkPayloadCacheLazy] Could not list app config keys: ' . $e->getMessage(),
-				['app' => Application::APP_ID, 'exception' => $e]
-			);
-			$output->warning('Could not list app config keys: ' . $e->getMessage());
+		$keys = $this->listKeys(output: $output);
+		if ($keys === null) {
 			return;
 		}
 
 		$flipped = 0;
 		foreach ($keys as $key) {
-			if (str_starts_with($key, AppStoreSource::PAYLOAD_CACHE_PREFIX) === false
-				&& str_starts_with($key, AppStoreSource::PAYLOAD_CACHE_TS_PREFIX) === false
-			) {
-				continue;
-			}
-
-			try {
-				if ($this->appConfig->updateLazy(Application::APP_ID, $key, true) === true) {
-					$flipped++;
-				}
-			} catch (Throwable $e) {
-				// Reported, not raised — see the class docblock.
-				$this->logger->warning(
-					'[MarkPayloadCacheLazy] Could not mark ' . $key . ' lazy: ' . $e->getMessage(),
-					['app' => Application::APP_ID, 'exception' => $e]
-				);
+			if (self::isPayloadCacheKey(key: $key) === true && $this->markLazy(key: $key) === true) {
+				$flipped++;
 			}
 		}
 
 		$output->info('Marked ' . $flipped . ' App Store payload cache keys lazy');
 
 	}//end run()
+
+	/**
+	 * Every app config key of this app, or null after warning that they
+	 * could not be listed.
+	 *
+	 * @param IOutput $output The upgrade output.
+	 *
+	 * @return array<int, string>|null The keys, or null when unreadable.
+	 */
+	private function listKeys(IOutput $output): ?array {
+		try {
+			return $this->appConfig->getKeys(Application::APP_ID);
+		} catch (Throwable $e) {
+			$this->logger->warning(
+				'[MarkPayloadCacheLazy] Could not list app config keys: ' . $e->getMessage(),
+				['app' => Application::APP_ID, 'exception' => $e]
+			);
+			$output->warning('Could not list app config keys: ' . $e->getMessage());
+			return null;
+		}
+	}//end listKeys()
+
+	/**
+	 * Whether a key holds an App Store payload or its timestamp.
+	 *
+	 * @param string $key The app config key.
+	 *
+	 * @return bool True for a payload cache key.
+	 */
+	private static function isPayloadCacheKey(string $key): bool {
+		return str_starts_with($key, AppStoreSource::PAYLOAD_CACHE_PREFIX) === true
+			|| str_starts_with($key, AppStoreSource::PAYLOAD_CACHE_TS_PREFIX) === true;
+	}//end isPayloadCacheKey()
+
+	/**
+	 * Mark one key lazy; a failure is reported, not raised — see the class
+	 * docblock.
+	 *
+	 * @param string $key The payload cache key.
+	 *
+	 * @return bool True when the key was flipped.
+	 */
+	private function markLazy(string $key): bool {
+		try {
+			return $this->appConfig->updateLazy(Application::APP_ID, $key, true) === true;
+		} catch (Throwable $e) {
+			$this->logger->warning(
+				'[MarkPayloadCacheLazy] Could not mark ' . $key . ' lazy: ' . $e->getMessage(),
+				['app' => Application::APP_ID, 'exception' => $e]
+			);
+			return false;
+		}
+	}//end markLazy()
 }//end class
