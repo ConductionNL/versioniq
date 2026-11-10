@@ -87,6 +87,7 @@ final class ChildProcessFinalizerTest extends TestCase {
 
 	public function testAChildThatCannotBootFailsTheFinalize(): void {
 		// No Nextcloud under this root: the child dies on `require lib/base.php`.
+		$savedRoot = \OC::$SERVERROOT;
 		\OC::$SERVERROOT = sys_get_temp_dir() . '/vq-no-server-' . bin2hex(random_bytes(4));
 		mkdir(\OC::$SERVERROOT);
 		$this->logger->expects($this->once())->method('error');
@@ -98,6 +99,7 @@ final class ChildProcessFinalizerTest extends TestCase {
 			$this->assertStringContainsString('failed in the child process', $e->getMessage());
 		} finally {
 			rmdir(\OC::$SERVERROOT);
+			\OC::$SERVERROOT = $savedRoot;
 		}
 	}
 
