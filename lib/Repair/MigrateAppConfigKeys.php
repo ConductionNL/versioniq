@@ -167,51 +167,59 @@ class MigrateAppConfigKeys implements IRepairStep {
 			return;
 		}
 
-		$migrated = 0;
-		$alreadyPresent = 0;
-		$emptySource = 0;
-		$skippedReserved = 0;
-
+		$run = new ConfigKeyMigrationRun();
 		foreach ($keys as $key) {
-			if (in_array($key, self::RESERVED_KEYS, true) === true) {
-				$skippedReserved++;
-				continue;
-			}
-
-			/* Both READS belong inside the try as much as the write does. A
-			   read that throws from outside it propagates out of run() and
-			   aborts `occ upgrade` — and because this step also runs under
-			   <install>, an app that cannot finish its repair steps does not
-			   enable at all, taking every route with it. That is the opposite
-			   of what this class's docblock promises. */
-			try {
-				$old = $this->appConfig->getValueString(self::OLD_APP_ID, $key, '');
-				if ($old === '') {
-					$emptySource++;
-					continue;
-				}
-
-				$existing = $this->appConfig->getValueString(Application::APP_ID, $key, '');
-				if ($existing !== '') {
-					$alreadyPresent++;
-					continue;
-				}
-
-				$this->appConfig->setValueString(Application::APP_ID, $key, $old);
-				$migrated++;
-			} catch (Throwable $e) {
-				$this->logger->warning(
-					'Versioniq: could not migrate one app config key; leaving it under the old namespace',
-					['key' => $key, 'exception' => $e->getMessage()],
-				);
-			}
+			$this->migrateKey($run, $key);
 		}
 
-		$output->info(
-			'MigrateAppConfigKeys: ' . $migrated . ' key(s) migrated, ' . $alreadyPresent
-			. ' already present, ' . $emptySource . ' had no value to migrate, '
-			. $skippedReserved . ' skipped as Nextcloud-reserved.',
-		);
+		$output->info($run->summary());
+	}
+
+	/**
+	 * Copy one key, unless Nextcloud owns it; a failing read or write is
+	 * logged and leaves the key under the old namespace.
+	 */
+	private function migrateKey(ConfigKeyMigrationRun $run, string $key): void {
+		if (in_array($key, self::RESERVED_KEYS, true) === true) {
+			$run->skippedReserved++;
+			return;
+		}
+
+		/* Both READS belong inside the try as much as the write does. A
+		   read that throws from outside it propagates out of run() and
+		   aborts `occ upgrade` — and because this step also runs under
+		   <install>, an app that cannot finish its repair steps does not
+		   enable at all, taking every route with it. That is the opposite
+		   of what this class's docblock promises. */
+		try {
+			$this->copyKey($run, $key);
+		} catch (Throwable $e) {
+			$this->logger->warning(
+				'Versioniq: could not migrate one app config key; leaving it under the old namespace',
+				['key' => $key, 'exception' => $e->getMessage()],
+			);
+		}
+	}
+
+	/**
+	 * Copy a key that has a value under the old app id and none under the
+	 * new one.
+	 */
+	private function copyKey(ConfigKeyMigrationRun $run, string $key): void {
+		$old = $this->appConfig->getValueString(self::OLD_APP_ID, $key, '');
+		if ($old === '') {
+			$run->emptySource++;
+			return;
+		}
+
+		$existing = $this->appConfig->getValueString(Application::APP_ID, $key, '');
+		if ($existing !== '') {
+			$run->alreadyPresent++;
+			return;
+		}
+
+		$this->appConfig->setValueString(Application::APP_ID, $key, $old);
+		$run->migrated++;
 	}
 
 	/**
