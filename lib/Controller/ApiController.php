@@ -585,13 +585,9 @@ class ApiController extends OCSController {
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PUT', url: '/api/app/{appId}/pin')]
 	public function pinApp(string $appId): DataResponse {
-		if (!$this->isAdmin()) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
-		}
-
-		$user = $this->access->caller->userSession->getUser();
-		if ($user === null) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
 		}
 
 		try {
@@ -648,13 +644,9 @@ class ApiController extends OCSController {
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'DELETE', url: '/api/app/{appId}/pin')]
 	public function unpinApp(string $appId): DataResponse {
-		if (!$this->isAdmin()) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
-		}
-
-		$user = $this->access->caller->userSession->getUser();
-		if ($user === null) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
 		}
 
 		$this->autoUpdate->pinStore->clear($appId, $user->getUID());
@@ -745,13 +737,9 @@ class ApiController extends OCSController {
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PUT', url: '/api/app/{appId}/policy')]
 	public function setPolicy(string $appId): DataResponse {
-		if (!$this->isAdmin()) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
-		}
-
-		$user = $this->access->caller->userSession->getUser();
-		if ($user === null) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
 		}
 
 		$level = $this->stringParam('level', '');
@@ -961,13 +949,9 @@ class ApiController extends OCSController {
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/pats')]
 	public function listPats(): DataResponse {
-		if (!$this->isAdmin()) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
-		}
-
-		$user = $this->access->caller->userSession->getUser();
-		if ($user === null) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
 		}
 
 		$pats = $this->access->pats->patMapper->findVisibleTo($user->getUID());
@@ -1014,13 +998,9 @@ class ApiController extends OCSController {
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'POST', url: '/api/pats')]
 	public function createPat(): DataResponse {
-		if (!$this->isAdmin()) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
-		}
-
-		$user = $this->access->caller->userSession->getUser();
-		if ($user === null) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
 		}
 
 		$params = $this->newPatParams();
@@ -1090,13 +1070,9 @@ class ApiController extends OCSController {
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PATCH', url: '/api/pats/{id}')]
 	public function patchPat(int $id, ?string $label = null, ?string $sharedWithAdmins = null): DataResponse {
-		if (!$this->isAdmin()) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
-		}
-
-		$user = $this->access->caller->userSession->getUser();
-		if ($user === null) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
 		}
 
 		try {
@@ -1144,13 +1120,9 @@ class ApiController extends OCSController {
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'DELETE', url: '/api/pats/{id}')]
 	public function deletePat(int $id): DataResponse {
-		if (!$this->isAdmin()) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
-		}
-
-		$user = $this->access->caller->userSession->getUser();
-		if ($user === null) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
 		}
 
 		try {
@@ -1385,6 +1357,25 @@ class ApiController extends OCSController {
 		}
 
 		return $default;
+	}
+
+	/**
+	 * The signed-in admin, or the 403 to answer: for actions that act as the
+	 * admin, so the session is read again after the admin check.
+	 *
+	 * @return IUser|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 */
+	private function adminUser(): IUser|DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$user = $this->access->caller->userSession->getUser();
+		if ($user === null) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		return $user;
 	}
 
 	private function isAdmin(): bool {
