@@ -182,4 +182,48 @@ final class AdvisoryNotifierTest extends TestCase {
 			$this->assertStringNotContainsStringIgnoringCase('install', $typeName);
 		}
 	}
+
+	/**
+	 * The notification names the app, its installed version and the advisory,
+	 * and a failing dispatch is logged with the app and advisory.
+	 */
+	public function testTheNotificationSubjectAndTheFailureLog(): void {
+		$calls = [];
+		$notification = $this->createMock(INotification::class);
+		foreach (['setApp', 'setUser', 'setDateTime', 'setObject', 'setSubject'] as $setter) {
+			$notification->method($setter)->willReturnCallback(function (mixed ...$args) use ($setter, $notification, &$calls): INotification {
+				if ($setter !== 'setDateTime') {
+					$calls[] = array_merge([$setter], $args);
+				}
+
+				return $notification;
+			});
+		}
+		$manager = $this->createMock(IManager::class);
+		$manager->method('createNotification')->willReturn($notification);
+		$manager->method('notify')->willThrowException(new \RuntimeException('notifications app is gone'));
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->method('warning')->willReturnCallback(static function (string $message, array $context) use (&$calls): void {
+			$calls[] = ['warning', $message, $context];
+		});
+
+		$notifier = $this->buildByName(AdvisoryNotifier::class, [
+			'notificationManager' => $manager,
+			'appConfig' => $this->appConfig(),
+			'groupManager' => $this->groupManagerWithAdmin(),
+			'timeFactory' => $this->timeFactory(),
+			'logger' => $logger,
+		]);
+		$correlations = $this->vulnerableCorrelation();
+		$correlations['openregister']['installedVersion'] = null;
+
+		$this->assertSame(1, $notifier->notifyNewAdvisories($correlations));
+		$this->assertSame([
+			['setApp', 'versioniq'],
+			['setUser', 'alice'],
+			['setObject', 'advisory', 'openregister:GHSA-xxxx'],
+			['setSubject', 'pinned_to_vulnerable', ['app' => 'openregister', 'version' => '', 'advisory' => 'GHSA-xxxx']],
+			['warning', 'AdvisoryNotifier: failed to raise notification', ['app' => 'openregister', 'advisory' => 'GHSA-xxxx', 'message' => 'notifications app is gone']],
+		], $calls);
+	}
 }
