@@ -153,20 +153,47 @@ class AdvisoryService {
 	 * @return array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}>
 	 */
 	public function correlateAll(?float $budgetSeconds = null): array {
-		$results = [];
 		$deadline = microtime(true) + ($budgetSeconds ?? self::CORRELATE_ALL_BUDGET_SECONDS);
+		$feedAdvisories = $this->feedAdvisories();
+		$results = $this->correlateEnabledApps($feedAdvisories, $deadline);
 
-		// ONE fetch for the whole sweep. The advisories that actually exist are
-		// published centrally, not per app, so asking each app's own source was
-		// asking 87 of 88 apps a question their source cannot answer (#166).
+		$serverResult = $this->serverResult($feedAdvisories);
+		if ($serverResult !== null) {
+			$results[self::SERVER_KEY] = $serverResult;
+		}
+
+		return $results;
+	}
+
+	/**
+	 * Every advisory in the central feed, by app id; a feed read only in part
+	 * is logged and used as far as it goes.
+	 *
+	 * ONE fetch for the whole sweep. The advisories that actually exist are
+	 * published centrally, not per app, so asking each app's own source was
+	 * asking 87 of 88 apps a question their source cannot answer (#166).
+	 *
+	 * @return array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}>>
+	 */
+	private function feedAdvisories(): array {
 		$feed = $this->matching->advisoryFeed->fetchAll();
-		$feedAdvisories = $feed['advisories'];
 		if ($feed['error'] !== null) {
 			$this->logger->warning('AdvisoryService: the Nextcloud advisory feed could not be read in full', [
 				'message' => $feed['error'],
 			]);
 		}
 
+		return $feed['advisories'];
+	}
+
+	/**
+	 * Correlates each enabled app until the deadline passes.
+	 *
+	 * @param array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}>> $feedAdvisories
+	 * @return array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}>
+	 */
+	private function correlateEnabledApps(array $feedAdvisories, float $deadline): array {
+		$results = [];
 		foreach ($this->appManager->getEnabledApps() as $appId) {
 			// BUDGET, BECAUSE THIS ENDPOINT COULD NOT PREVIOUSLY RETURN AT ALL.
 			//
@@ -188,39 +215,68 @@ class AdvisoryService {
 			// caller already treats that field as "could not answer", so
 			// coverage is unchanged in shape — what changes is that a slow
 			// source degrades to a stated gap instead of an endpoint that hangs.
-			if (microtime(true) >= $deadline) {
-				$results[$appId] = $this->emptyResult(
-					$appId,
-					$this->installedVersion($appId),
-					'Advisory correlation budget exceeded before this app was reached; its sources were not queried.'
-				);
-				continue;
-			}
-
-			try {
-				$results[$appId] = $this->correlate($appId, $feedAdvisories[$appId] ?? []);
-			} catch (\Throwable $error) {
-				$this->logger->warning('AdvisoryService: correlation failed for app', [
-					'app' => $appId,
-					'message' => $error->getMessage(),
-				]);
-				$results[$appId] = $this->emptyResult($appId, $this->installedVersion($appId), $error->getMessage());
-			}
-		}
-
-		// The server's own row. It is not an app, but 95 of the 277 published
-		// advisories are about it — the largest single subject in the feed —
-		// and an administrator on a vulnerable server has to be told.
-		$serverAdvisories = $feedAdvisories[self::SERVER_KEY] ?? [];
-		if ($serverAdvisories !== []) {
-			$installed = $this->matching->serverVersion->current();
-			$evaluated = $this->evaluate($installed, $serverAdvisories, []);
-			$evaluated['appId'] = self::SERVER_KEY;
-			$evaluated['error'] = null;
-			$results[self::SERVER_KEY] = $evaluated;
+			$results[$appId] = microtime(true) >= $deadline
+				? $this->budgetExceeded($appId)
+				: $this->correlateOrReport($appId, $feedAdvisories[$appId] ?? []);
 		}
 
 		return $results;
+	}
+
+	/**
+	 * The entry of an app the sweep had no time left for.
+	 *
+	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}
+	 */
+	private function budgetExceeded(string $appId): array {
+		return $this->emptyResult(
+			$appId,
+			$this->installedVersion($appId),
+			'Advisory correlation budget exceeded before this app was reached; its sources were not queried.'
+		);
+	}
+
+	/**
+	 * One app's correlation, or its failure logged and reported as the error.
+	 *
+	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}> $feedForApp The feed's advisories for this app.
+	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}
+	 */
+	private function correlateOrReport(string $appId, array $feedForApp): array {
+		try {
+			return $this->correlate($appId, $feedForApp);
+		} catch (\Throwable $error) {
+			$this->logger->warning('AdvisoryService: correlation failed for app', [
+				'app' => $appId,
+				'message' => $error->getMessage(),
+			]);
+
+			return $this->emptyResult($appId, $this->installedVersion($appId), $error->getMessage());
+		}
+	}
+
+	/**
+	 * The server's own row, when the feed carries advisories about it.
+	 *
+	 * The server is not an app, but 95 of the 277 published advisories are
+	 * about it — the largest single subject in the feed — and an administrator
+	 * on a vulnerable server has to be told.
+	 *
+	 * @param array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}>> $feedAdvisories
+	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}|null
+	 */
+	private function serverResult(array $feedAdvisories): ?array {
+		$serverAdvisories = $feedAdvisories[self::SERVER_KEY] ?? [];
+		if ($serverAdvisories === []) {
+			return null;
+		}
+
+		$installed = $this->matching->serverVersion->current();
+		$evaluated = $this->evaluate($installed, $serverAdvisories, []);
+		$evaluated['appId'] = self::SERVER_KEY;
+		$evaluated['error'] = null;
+
+		return $evaluated;
 	}
 
 	/**
