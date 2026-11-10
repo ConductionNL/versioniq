@@ -20,6 +20,7 @@ use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
+use OCA\Versioniq\Service\Installer\AppsRoot;
 use OCA\Versioniq\Service\Installer\ArchiveCheck;
 use OCA\Versioniq\Service\Installer\ArchiveDownload;
 use OCA\Versioniq\Service\Installer\ExternalInstall;
@@ -338,7 +339,7 @@ class ExternalReleaseInstallerService {
 		]);
 
 		$previousPath = $this->previousAppPath($run->request->appId);
-		$destination = $previousPath ?? $this->getInstallPath() . '/' . $run->request->appId;
+		$destination = $previousPath ?? AppsRoot::writablePath() . '/' . $run->request->appId;
 
 		if (!is_dir(dirname($destination))) {
 			throw new Exception('Could not resolve app install folder.');
@@ -782,20 +783,6 @@ class ExternalReleaseInstallerService {
 		\OC_App::checkAppDependencies($this->configs->config, $l, $info, $ignoreMax);
 
 		return $info;
-	}
-
-	private function getInstallPath(): string {
-		foreach (\OC::$APPSROOTS as $dir) {
-			if (isset($dir['writable']) && $dir['writable'] === true) {
-				if (!is_writable($dir['path']) || !is_readable($dir['path'])) {
-					throw new Exception('Cannot write into "apps" directory.');
-				}
-
-				return $dir['path'];
-			}
-		}
-
-		throw new Exception('No writable apps directory found.');
 	}
 
 	private function getDownloadTimeout(): int {
