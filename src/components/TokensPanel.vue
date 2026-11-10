@@ -81,32 +81,54 @@ function derivedTargetPattern (): string {
 }
 
 /**
+ * Whether the label, owner and token fields are filled in.
+ */
+function hasRequiredFields (): boolean {
+	return Boolean(label.value.trim() && owner.value.trim() && token.value.trim())
+}
+
+/**
+ * Send the form's token to the server; answers the server's refusal, if any.
+ */
+async function postToken (): Promise<string | undefined> {
+	const { error: apiError } = await ocsWrite<{ pat?: Pat }>('POST', PATS, {
+		forge: forge.value,
+		label: label.value.trim(),
+		targetPattern: derivedTargetPattern(),
+		token: token.value.trim(),
+	})
+	return apiError
+}
+
+/**
+ * Empty the add-token form, keeping the chosen forge.
+ */
+function clearForm (): void {
+	label.value = ''
+	owner.value = ''
+	repo.value = ''
+	token.value = ''
+}
+
+/**
  *
  */
 async function addToken (): Promise<void> {
 	error.value = ''
 	notice.value = ''
-	if (!label.value.trim() || !owner.value.trim() || !token.value.trim()) {
+	if (!hasRequiredFields()) {
 		error.value = t('versioniq', 'Label, owner and token are required.')
 		return
 	}
 	loading.value = true
 	try {
-		const { error: apiError } = await ocsWrite<{ pat?: Pat }>('POST', PATS, {
-			forge: forge.value,
-			label: label.value.trim(),
-			targetPattern: derivedTargetPattern(),
-			token: token.value.trim(),
-		})
+		const apiError = await postToken()
 		if (apiError) {
 			error.value = apiError
 			return
 		}
 		notice.value = t('versioniq', 'Token added.')
-		label.value = ''
-		owner.value = ''
-		repo.value = ''
-		token.value = ''
+		clearForm()
 		await loadPats()
 	} catch (e) {
 		error.value = e instanceof Error ? e.message : t('versioniq', 'Could not add the token.')
