@@ -113,6 +113,28 @@ trait ReplacesAppFolder {
 	 * @throws Exception
 	 */
 	private function copyRecursive(string $source, string $destination): void {
+		$items = $this->itemsToCopy($source, $destination);
+
+		$filenameValidator = Server::get(FilenameValidator::class);
+		foreach ($items as $item) {
+			$sourceItem = $source . '/' . $item;
+			$destinationItem = $destination . '/' . $item;
+			if (is_dir($sourceItem)) {
+				$this->copyRecursive($sourceItem, $destinationItem);
+			} elseif (is_file($sourceItem) && !$filenameValidator->isForbidden($sourceItem)) {
+				$this->copyFile($sourceItem, $destinationItem);
+			}
+		}
+	}
+
+	/**
+	 * The entries of an extracted folder, once the source is a folder and the
+	 * destination exists.
+	 *
+	 * @return list<string>
+	 * @throws Exception
+	 */
+	private function itemsToCopy(string $source, string $destination): array {
 		if (!is_dir($source)) {
 			throw new Exception('Invalid extracted app source folder.');
 		}
@@ -124,22 +146,15 @@ trait ReplacesAppFolder {
 			throw new Exception('Could not read extracted folder contents.');
 		}
 
-		$filenameValidator = Server::get(FilenameValidator::class);
-		foreach ($items as $item) {
-			if ($item === '.' || $item === '..') {
-				continue;
-			}
-			$sourceItem = $source . '/' . $item;
-			$destinationItem = $destination . '/' . $item;
-			if (is_dir($sourceItem)) {
-				$this->copyRecursive($sourceItem, $destinationItem);
-			} elseif (is_file($sourceItem)) {
-				if (!$filenameValidator->isForbidden($sourceItem)) {
-					if (!copy($sourceItem, $destinationItem)) {
-						throw new Exception('Could not copy app file "' . $item . '".');
-					}
-				}
-			}
+		return array_values(array_filter($items, static fn (string $item): bool => $item !== '.' && $item !== '..'));
+	}
+
+	/**
+	 * @throws Exception
+	 */
+	private function copyFile(string $sourceItem, string $destinationItem): void {
+		if (!copy($sourceItem, $destinationItem)) {
+			throw new Exception('Could not copy app file "' . basename($sourceItem) . '".');
 		}
 	}
 
