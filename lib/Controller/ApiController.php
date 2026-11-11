@@ -271,21 +271,8 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$kind = $this->stringParam('kind', '');
-		$forge = $this->stringParam('forge', SourceBinding::FORGE_GITHUB);
 		try {
-			$binding = match ($kind) {
-				SourceBinding::KIND_APPSTORE => SourceBinding::appStore(),
-				// Any known forge, the self-hosted forgejo one included (issue
-				// #437); an unknown forge is a 400, not a silent GitHub binding.
-				SourceBinding::KIND_GITHUB_RELEASE => SourceBinding::release(
-					$forge,
-					$this->stringParam('owner', ''),
-					$this->stringParam('repo', ''),
-					$this->stringParam('assetPattern', '*.tar.gz'),
-				),
-				default => throw new InvalidArgumentException('Unknown source kind: ' . $kind),
-			};
+			$binding = $this->requestedBinding();
 		} catch (InvalidArgumentException $error) {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
@@ -296,10 +283,44 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_FORBIDDEN);
 		}
 
-		// Re-read the persisted binding: rebinding to the same source id
-		// preserves any previously recorded SHA-256 digests, so the response
-		// should reflect what was actually written, not the pre-write value —
-		// see "Recorded digests are binding-scoped and surfaced".
+		return $this->boundResponse($appId, $binding);
+	}
+
+	/**
+	 * The binding the request asks for: the App Store, or a release on any
+	 * known forge.
+	 *
+	 * @throws InvalidArgumentException For an unknown kind or forge, or invalid release arguments.
+	 */
+	private function requestedBinding(): SourceBinding {
+		$kind = $this->stringParam('kind', '');
+		$forge = $this->stringParam('forge', SourceBinding::FORGE_GITHUB);
+
+		return match ($kind) {
+			SourceBinding::KIND_APPSTORE => SourceBinding::appStore(),
+			// Any known forge, the self-hosted forgejo one included (issue
+			// #437); an unknown forge is a 400, not a silent GitHub binding.
+			SourceBinding::KIND_GITHUB_RELEASE => SourceBinding::release(
+				$forge,
+				$this->stringParam('owner', ''),
+				$this->stringParam('repo', ''),
+				$this->stringParam('assetPattern', '*.tar.gz'),
+			),
+			default => throw new InvalidArgumentException('Unknown source kind: ' . $kind),
+		};
+	}
+
+	/**
+	 * The answer to a bind, from the persisted binding.
+	 *
+	 * Re-read the persisted binding: rebinding to the same source id
+	 * preserves any previously recorded SHA-256 digests, so the response
+	 * should reflect what was actually written, not the pre-write value —
+	 * see "Recorded digests are binding-scoped and surfaced".
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, sourceId: string, binding: array<string, mixed>}, array{}>
+	 */
+	private function boundResponse(string $appId, SourceBinding $binding): DataResponse {
 		$persisted = $this->install->installerService->getBinding($appId);
 
 		return new DataResponse([
