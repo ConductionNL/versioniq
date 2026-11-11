@@ -135,4 +135,44 @@ final class InstallerServiceTrustedPatternTest extends TestCase {
 		$this->expectException(UntrustedSourceException::class);
 		$service->bindSource('evilapp', SourceBinding::github('evil', 'app'));
 	}
+	/**
+	 * Every accepted pattern and every refusal message, including which check
+	 * wins when several fail (forge, then owner, then repo, then breadth).
+	 *
+	 * @return iterable<string, array{0: string, 1: string, 2: ?string, 3: string}>
+	 */
+	public static function patternOutcomes(): iterable {
+		yield 'owner and repo' => ['github', 'acme', 'tool', 'github:acme/tool'];
+		yield 'owner only' => ['github', 'acme', null, 'github:acme/*'];
+		yield 'empty repo means every repo' => ['forgejo', 'acme', '', 'forgejo:acme/*'];
+		yield 'blank repo means every repo' => ['forgejo', 'acme', '   ', 'forgejo:acme/*'];
+		yield 'owner and repo are trimmed' => ['codeberg', ' acme ', ' tool ', 'codeberg:acme/tool'];
+		yield 'dots dashes underscores' => ['github', 'a.b-c_d', 'R.e-p_0', 'github:a.b-c_d/R.e-p_0'];
+		yield 'unknown forge' => ['gitlab', 'acme', 'tool', 'REFUSED Unknown forge: gitlab'];
+		yield 'unknown forge beats bad owner' => ['gitlab', '*', 'wid*get', 'REFUSED Unknown forge: gitlab'];
+		yield 'forge is case sensitive' => ['GitHub', 'acme', null, 'REFUSED Unknown forge: GitHub'];
+		yield 'empty owner' => ['github', '', null, 'REFUSED A concrete owner is required (wildcard-only owners are not allowed).'];
+		yield 'blank owner' => ['github', '  ', null, 'REFUSED A concrete owner is required (wildcard-only owners are not allowed).'];
+		yield 'wildcard owner' => ['github', ' * ', 'tool', 'REFUSED A concrete owner is required (wildcard-only owners are not allowed).'];
+		yield 'owner with slash' => ['github', 'a/b', null, 'REFUSED Owner contains invalid characters.'];
+		yield 'owner with star beats bad repo' => ['github', 'ac*me', 'wid*get', 'REFUSED Owner contains invalid characters.'];
+		yield 'repo with star' => ['github', 'acme', 'wid*get', 'REFUSED Repository contains invalid characters.'];
+		yield 'repo with traversal' => ['github', 'acme', '../x', 'REFUSED Repository contains invalid characters.'];
+		yield 'repo wildcard only' => ['github', 'acme', '*', 'REFUSED Repository contains invalid characters.'];
+	}
+
+	#[\PHPUnit\Framework\Attributes\DataProvider('patternOutcomes')]
+	public function testPatternOutcomeIsPinned(string $forge, string $owner, ?string $repo, string $expected): void {
+		try {
+			$result = $this->service()->addTrustedPattern($forge, $owner, $repo);
+		} catch (InvalidArgumentException $e) {
+			self::assertSame($expected, 'REFUSED ' . $e->getMessage());
+			self::assertSame([], $this->stored);
+
+			return;
+		}
+
+		self::assertSame([$expected], $result);
+		self::assertSame([$expected], $this->stored);
+	}
 }
