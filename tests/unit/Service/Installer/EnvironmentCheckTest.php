@@ -112,4 +112,47 @@ final class EnvironmentCheckTest extends TestCase {
 			self::assertStringNotContainsString('Git', (string)$result['warning']);
 		}
 	}
+	private const DEV_CHECKOUT_WARNING = 'This app looks like a development checkout (e.g. a Git working copy or a bind mount owned by another user). Version changes here will overwrite your working copy.';
+
+	public function testGitCheckoutWarningIsTheDevCheckoutText(): void {
+		$appPath = $this->makeAppDir();
+		mkdir($appPath . '/.git', 0777, true);
+
+		self::assertSame(['manageable' => true, 'warning' => self::DEV_CHECKOUT_WARNING], $this->build()->inspect($appPath));
+	}
+
+	public function testFolderOwnedByAnotherUserEnrichesWarningButDoesNotBlock(): void {
+		if (!function_exists('posix_getuid') || posix_getuid() !== 0) {
+			self::markTestSkipped('Changing a folder\'s owner needs root.');
+		}
+		$appPath = $this->makeAppDir();
+		chown($appPath, 65534);
+		clearstatcache();
+
+		self::assertSame(['manageable' => true, 'warning' => self::DEV_CHECKOUT_WARNING], $this->build()->inspect($appPath));
+	}
+
+	public function testGitCheckoutOwnedByAnotherUserStillWarnsOnce(): void {
+		if (!function_exists('posix_getuid') || posix_getuid() !== 0) {
+			self::markTestSkipped('Changing a folder\'s owner needs root.');
+		}
+		$appPath = $this->makeAppDir();
+		mkdir($appPath . '/.git', 0777, true);
+		chown($appPath, 65534);
+		clearstatcache();
+
+		self::assertSame(['manageable' => true, 'warning' => self::DEV_CHECKOUT_WARNING], $this->build()->inspect($appPath));
+	}
+
+	public function testPlainFolderOwnedByThisUserHasNoWarning(): void {
+		if (!function_exists('posix_getuid')) {
+			self::markTestSkipped('posix is needed to know the process owner.');
+		}
+		$appPath = $this->makeAppDir();
+		if (fileowner($appPath) !== posix_getuid()) {
+			self::markTestSkipped('The temp folder is not owned by the test user.');
+		}
+
+		self::assertSame(['manageable' => true, 'warning' => null], $this->build()->inspect($appPath));
+	}
 }
