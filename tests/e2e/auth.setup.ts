@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+// SPDX-License-Identifier: EUPL-1.2
 import { expect, test as setup } from "@playwright/test";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";

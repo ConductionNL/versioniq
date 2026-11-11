@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+// SPDX-License-Identifier: EUPL-1.2
 import { readdir, readFile } from "node:fs/promises";
 // Fixture forge — a Forgejo/Gitea-shaped HTTP double for Versioniq e2e tests.
 //
