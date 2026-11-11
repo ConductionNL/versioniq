@@ -6,6 +6,11 @@
         "description": "Install any earlier or newer version of already installed Nextcloud apps",
         "license": {
             "name": "EUPL-1.2"
+        },
+        "contact": {
+            "name": "Conduction B.V.",
+            "email": "info@conduction.nl",
+            "url": "https://conduction.nl"
         }
     },
     "components": {
@@ -20,7 +25,7 @@
             }
         },
         "schemas": {
-            "OCSMeta": {
+            "OcsMeta": {
                 "type": "object",
                 "required": [
                     "status",
@@ -44,10 +49,19 @@
                     }
                 }
             }
+        },
+        "headers": {
+            "API-Version": {
+                "description": "The version of the API that answered, which is the installed app version.",
+                "schema": {
+                    "type": "string",
+                    "example": "1.0.0"
+                }
+            }
         }
     },
     "paths": {
-        "/ocs/v2.php/apps/versioniq/api/apps": {
+        "/apps": {
             "get": {
                 "operationId": "api-apps",
                 "summary": "Lists installed apps (admin-only); see \"List Installed Apps\"",
@@ -94,7 +108,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -118,6 +132,11 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
                         }
                     },
                     "403": {
@@ -140,7 +159,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -171,7 +190,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -201,7 +220,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -214,7 +233,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/advisories": {
+        "/advisories": {
             "get": {
                 "operationId": "api-advisories",
                 "summary": "Returns the most recent security-advisory correlation for each installed app (admin-only, read-only): a per-app map of advisory state (`none` | `advisory-available` | `pinned-to-vulnerable`), the matching advisories, and the recommended safe version. Never changes a version.",
@@ -261,7 +280,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -288,6 +307,11 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
                         }
                     },
                     "403": {
@@ -310,7 +334,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -341,7 +365,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -371,7 +395,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -384,7 +408,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/updates": {
+        "/updates": {
             "get": {
                 "operationId": "api-updates",
                 "summary": "Returns the stored pending-updates snapshot (admin-only, read-only): per app the installed version, the newest version, the newest one this server can run, the release lines behind, the pin and the source error. `checkedAt` is the unix time of the last sweep, null when none has run; `maxLinesBehind` is the admin's lag limit, null when the check is off. Like /api/advisories it reads what AvailabilityRefreshJob stored and never calls a source (issue #160).",
@@ -431,7 +455,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -464,6 +488,11 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
                         }
                     },
                     "403": {
@@ -486,7 +515,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -517,7 +546,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -547,7 +576,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -560,7 +589,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/update-channel": {
+        "/update-channel": {
             "get": {
                 "operationId": "api-update-channel",
                 "summary": "Returns the server update channel so versions can be filtered; see \"Respect update channel\"",
@@ -607,7 +636,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -624,6 +653,11 @@
                                         }
                                     }
                                 }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
                             }
                         }
                     },
@@ -647,7 +681,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -678,7 +712,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -708,7 +742,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -721,7 +755,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/sources": {
+        "/sources": {
             "get": {
                 "operationId": "api-sources",
                 "summary": "Lists registered sources and trusted-source globs; see \"Source management API\"",
@@ -768,7 +802,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -799,6 +833,11 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
                         }
                     },
                     "403": {
@@ -821,7 +860,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -852,7 +891,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -882,7 +921,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -895,7 +934,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/source/{appId}/binding": {
+        "/source/{appId}/binding": {
             "get": {
                 "operationId": "api-get-binding",
                 "summary": "Returns the active source binding for an app, including any recorded SHA-256 digests (not secrets); see \"Source binding\" and \"Recorded * digests are binding-scoped and surfaced\"",
@@ -951,7 +990,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -981,6 +1020,11 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
                         }
                     },
                     "403": {
@@ -1003,7 +1047,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -1034,7 +1078,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -1064,7 +1108,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -1131,7 +1175,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -1152,6 +1196,11 @@
                                         }
                                     }
                                 }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
                             }
                         }
                     },
@@ -1175,7 +1224,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -1206,7 +1255,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -1236,7 +1285,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -1249,7 +1298,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/source/{appId}/bind": {
+        "/source/{appId}/bind": {
             "post": {
                 "operationId": "api-bind-source",
                 "summary": "Binds a source to an app after allowlist validation; see \"Source management API\"",
@@ -1305,7 +1354,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -1334,6 +1383,11 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
                         }
                     },
                     "400": {
@@ -1354,7 +1408,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -1394,7 +1448,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -1425,7 +1479,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -1455,7 +1509,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -1468,7 +1522,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/trusted-sources": {
+        "/trusted-sources": {
             "post": {
                 "operationId": "api-add-trusted-source",
                 "summary": "Curated add of a forge-qualified trusted-source pattern; see \"Source management API\".",
@@ -1533,7 +1587,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -1553,6 +1607,11 @@
                                         }
                                     }
                                 }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
                             }
                         }
                     },
@@ -1576,7 +1635,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -1607,7 +1666,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -1637,7 +1696,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -1675,7 +1734,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -1733,7 +1792,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -1753,6 +1812,11 @@
                                         }
                                     }
                                 }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
                             }
                         }
                     },
@@ -1774,7 +1838,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -1814,7 +1878,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -1845,7 +1909,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -1875,7 +1939,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -1888,7 +1952,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/app/{appId}/versions": {
+        "/app/{appId}/versions": {
             "get": {
                 "operationId": "api-app-versions",
                 "summary": "Fetches available versions from the bound (or overridden) source; see \"Fetch Available Versions\" and \"Version listings carry release notes\"",
@@ -1954,7 +2018,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -1966,6 +2030,11 @@
                                         }
                                     }
                                 }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
                             }
                         }
                     },
@@ -1989,7 +2058,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -2020,7 +2089,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -2050,7 +2119,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -2063,7 +2132,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/app/{appId}/versions/{version}/install": {
+        "/app/{appId}/versions/{version}/install": {
             "post": {
                 "operationId": "api-install-version",
                 "summary": "Installs a specific version (password-confirmed); see \"Install Specific * Version\" and, when the app is pinned, \"Pins are enforced on App * Versions' own install path\" (`overridePin=repin|unpin`, `pin=1`). For an external source with a recorded SHA-256 mismatch, `acceptNewSha=1` bypasses the check once and replaces the recorded digest on success; see \"Recorded SHA-256 enforced on reinstall\". A downgrade (target version older than installed) is refused with a 409 unless `allowDowngrade=1`; see \"Server-side downgrade guard\".",
@@ -2172,7 +2241,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -2184,6 +2253,11 @@
                                         }
                                     }
                                 }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
                             }
                         }
                     },
@@ -2207,7 +2281,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -2233,7 +2307,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -2263,7 +2337,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -2296,7 +2370,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -2309,7 +2383,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/pins": {
+        "/pins": {
             "get": {
                 "operationId": "api-pins",
                 "summary": "Lists all pins joined with the live installed version and current drift status; see \"Honest pin presentation\"",
@@ -2356,7 +2430,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -2380,6 +2454,11 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
                         }
                     },
                     "403": {
@@ -2402,7 +2481,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -2433,7 +2512,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -2463,7 +2542,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -2476,7 +2555,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/app/{appId}/pin": {
+        "/app/{appId}/pin": {
             "put": {
                 "operationId": "api-pin-app",
                 "summary": "Pins an app to its currently installed version (password-confirmed); rejects a `version` other than the installed one; see \"Pin an * installed app to its current version\"",
@@ -2532,7 +2611,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -2557,6 +2636,11 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
                         }
                     },
                     "400": {
@@ -2577,7 +2661,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -2617,7 +2701,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -2648,7 +2732,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -2678,7 +2762,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -2745,7 +2829,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -2766,6 +2850,11 @@
                                         }
                                     }
                                 }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
                             }
                         }
                     },
@@ -2789,7 +2878,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -2820,7 +2909,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -2850,7 +2939,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -2863,7 +2952,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/app/{appId}/attempts/{version}": {
+        "/app/{appId}/attempts/{version}": {
             "delete": {
                 "operationId": "api-retry-attempt",
                 "summary": "Clears a failed automatic-update attempt so the next run inside the window tries that version again (password-confirmed); see \"Failed * attempt is not retried\" (#438)",
@@ -2928,7 +3017,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -2954,6 +3043,11 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
                         }
                     },
                     "403": {
@@ -2976,7 +3070,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -3007,7 +3101,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -3037,7 +3131,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -3075,7 +3169,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -3088,7 +3182,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/policies": {
+        "/policies": {
             "get": {
                 "operationId": "api-policies",
                 "summary": "Lists every persisted per-app auto-update policy plus the global kill switch / window; see \"Per-app update policy\" and \"Global kill * switch and window\"",
@@ -3135,7 +3229,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -3147,6 +3241,11 @@
                                         }
                                     }
                                 }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
                             }
                         }
                     },
@@ -3170,7 +3269,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -3201,7 +3300,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -3231,7 +3330,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -3244,7 +3343,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/app/{appId}/policy": {
+        "/app/{appId}/policy": {
             "put": {
                 "operationId": "api-set-policy",
                 "summary": "Sets an app's auto-update policy level (password-confirmed); rejects an unknown level with 400; see \"Per-app update policy\"",
@@ -3300,7 +3399,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -3325,6 +3424,11 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
                         }
                     },
                     "400": {
@@ -3345,7 +3449,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -3385,7 +3489,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -3416,7 +3520,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -3446,7 +3550,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -3513,7 +3617,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -3534,6 +3638,11 @@
                                         }
                                     }
                                 }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
                             }
                         }
                     },
@@ -3557,7 +3666,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -3588,7 +3697,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -3618,7 +3727,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -3631,7 +3740,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/auto-update/settings": {
+        "/auto-update/settings": {
             "put": {
                 "operationId": "api-update-auto-update-settings",
                 "summary": "Updates the global auto-update kill switch and/or maintenance window (password-confirmed); rejects a malformed window with 400; see \"Global * kill switch and window\"",
@@ -3696,7 +3805,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -3708,6 +3817,11 @@
                                         }
                                     }
                                 }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
                             }
                         }
                     },
@@ -3729,7 +3843,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -3769,7 +3883,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -3800,7 +3914,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -3830,7 +3944,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -3843,7 +3957,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/advisory/settings": {
+        "/advisory/settings": {
             "get": {
                 "operationId": "api-advisory-settings",
                 "summary": "Returns the advisory check settings: how often the sweep runs and whether the weekly digest is sent (admin-only).",
@@ -3890,7 +4004,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -3923,6 +4037,11 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
                         }
                     },
                     "403": {
@@ -3945,7 +4064,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -3976,7 +4095,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -4006,7 +4125,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -4088,7 +4207,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -4121,6 +4240,11 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
                         }
                     },
                     "400": {
@@ -4141,7 +4265,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -4181,7 +4305,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -4212,7 +4336,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -4242,7 +4366,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -4255,7 +4379,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/pats": {
+        "/pats": {
             "get": {
                 "operationId": "api-list-pats",
                 "summary": "Lists PATs visible to the current admin, redacted, with derived `expiryState`/`daysRemaining`; see \"PAT management API\" and \"Expiry state in the PAT API and UI\"",
@@ -4302,7 +4426,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -4326,6 +4450,11 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
                         }
                     },
                     "403": {
@@ -4348,7 +4477,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -4379,7 +4508,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -4409,7 +4538,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -4467,7 +4596,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -4495,6 +4624,11 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
                         }
                     },
                     "400": {
@@ -4515,7 +4649,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -4555,7 +4689,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -4586,7 +4720,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -4616,7 +4750,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -4629,7 +4763,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/pats/{id}": {
+        "/pats/{id}": {
             "patch": {
                 "operationId": "api-patch-pat",
                 "summary": "Updates a PAT's label / share flag, owner-only; see \"PAT management API\" and \"PAT storage\"",
@@ -4710,7 +4844,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -4730,6 +4864,11 @@
                                         }
                                     }
                                 }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
                             }
                         }
                     },
@@ -4753,7 +4892,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -4784,7 +4923,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -4814,7 +4953,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -4852,7 +4991,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -4920,7 +5059,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -4938,6 +5077,11 @@
                                         }
                                     }
                                 }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
                             }
                         }
                     },
@@ -4961,7 +5105,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -4992,7 +5136,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -5022,7 +5166,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -5060,7 +5204,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -5073,7 +5217,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/discover": {
+        "/discover": {
             "get": {
                 "operationId": "api-discover",
                 "summary": "Multi-source app search with query-length + filter handling; see \"Discovery API\"",
@@ -5129,7 +5273,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -5141,6 +5285,11 @@
                                         }
                                     }
                                 }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
                             }
                         }
                     },
@@ -5162,7 +5311,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -5202,7 +5351,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -5233,7 +5382,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -5263,7 +5412,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -5276,7 +5425,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/pats/deeplink": {
+        "/pats/deeplink": {
             "get": {
                 "operationId": "api-pat-deeplink",
                 "summary": "Returns a prefilled GitHub PAT-creation deeplink; see \"PAT management API\" (deeplink scenarios)",
@@ -5323,7 +5472,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -5335,6 +5484,11 @@
                                         }
                                     }
                                 }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
                             }
                         }
                     },
@@ -5356,7 +5510,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -5396,7 +5550,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -5427,7 +5581,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -5457,7 +5611,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -5470,7 +5624,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/audit": {
+        "/audit": {
             "get": {
                 "operationId": "api-audit-log",
                 "summary": "Lists audit entries, newest-first, admin-only, paginated and optionally filtered by app id; see \"Audit entries are immutable and admin-readable\". No mutation endpoint exists for this resource — the retention prune job is the only deletion path.",
@@ -5517,7 +5671,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -5529,6 +5683,11 @@
                                         }
                                     }
                                 }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
                             }
                         }
                     },
@@ -5552,7 +5711,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -5583,7 +5742,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -5613,7 +5772,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -5626,7 +5785,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/cache": {
+        "/cache": {
             "get": {
                 "operationId": "api-cache-summary",
                 "summary": "Cache summary: per-app cached versions + size, and the total cache size, admin-only; see \"Cache visibility and management\"",
@@ -5673,7 +5832,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -5685,6 +5844,11 @@
                                         }
                                     }
                                 }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
                             }
                         }
                     },
@@ -5708,7 +5872,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -5739,7 +5903,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -5769,7 +5933,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -5827,7 +5991,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -5839,6 +6003,11 @@
                                         }
                                     }
                                 }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
                             }
                         }
                     },
@@ -5862,7 +6031,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -5893,7 +6062,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -5923,7 +6092,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -5936,7 +6105,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/forges/forgejo": {
+        "/forges/forgejo": {
             "get": {
                 "operationId": "forge-forgejo-host",
                 "summary": "Returns the self-hosted Forgejo or Gitea host",
@@ -5983,7 +6152,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -6004,6 +6173,11 @@
                                         }
                                     }
                                 }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
                             }
                         }
                     },
@@ -6027,7 +6201,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -6058,7 +6232,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -6088,7 +6262,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -6163,7 +6337,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -6185,6 +6359,11 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
                         }
                     },
                     "400": {
@@ -6205,7 +6384,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -6245,7 +6424,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -6276,7 +6455,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -6306,7 +6485,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -6319,7 +6498,7 @@
                 }
             }
         },
-        "/ocs/v2.php/apps/versioniq/api/instance-settings": {
+        "/instance-settings": {
             "get": {
                 "operationId": "settings-instance-settings",
                 "summary": "Returns the instance settings with their defaults",
@@ -6366,7 +6545,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -6387,6 +6566,11 @@
                                         }
                                     }
                                 }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
                             }
                         }
                     },
@@ -6410,7 +6594,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -6441,7 +6625,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -6471,7 +6655,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -6583,7 +6767,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -6605,6 +6789,11 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
                         }
                     },
                     "400": {
@@ -6625,7 +6814,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -6665,7 +6854,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -6696,7 +6885,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -6726,7 +6915,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
@@ -6738,16 +6927,74 @@
                     }
                 }
             }
+        },
+        "/openapi.json": {
+            "get": {
+                "operationId": "open_api-show",
+                "summary": "The OpenAPI document of this API",
+                "description": "Returns this document. It needs no authentication and can be read from any origin.",
+                "tags": [
+                    "open_api"
+                ],
+                "security": [],
+                "responses": {
+                    "200": {
+                        "description": "The OpenAPI document.",
+                        "headers": {
+                            "access-control-allow-origin": {
+                                "description": "Always `*`.",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "*"
+                                    ]
+                                }
+                            },
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "tags": [
         {
+            "name": "api",
+            "description": "Installed apps, their versions, pins, advisories, updates and the audit log"
+        },
+        {
             "name": "forge",
-            "description": "Reads and sets the self-hosted Forgejo or Gitea host (issue #437). Before this, another Forgejo or Gitea host was reachable only by overriding `forge.codeberg.api_base` with occ, which replaced Codeberg; Codeberg is now retired as a forge of its own and this host is the generic route. Admin-only twice over: the routes carry no NoAdminRequired attribute, so Nextcloud's middleware already refuses non-admins, and isAdmin() below is the explicit guard the unit tests pin."
+            "description": "The self-hosted Forgejo or Gitea host that app sources are read from"
+        },
+        {
+            "name": "open_api",
+            "description": "The OpenAPI document that describes this API"
         },
         {
             "name": "settings",
-            "description": "Reads and sets the instance settings that used to be occ-only (#438 item 7): audit retention, artifact cache size, App Store and GitHub base URLs and the advisory feed URL. Admin-only twice over, like ForgeController: no NoAdminRequired attribute, and the explicit isAdmin() guard the unit tests pin. A change is audited, because pointing the App Store or GitHub at another host changes where installs come from."
+            "description": "Instance settings of Versioniq"
+        }
+    ],
+    "servers": [
+        {
+            "url": "https://{host}/ocs/v2.php/apps/versioniq/api",
+            "description": "The versioniq API on a Nextcloud instance.",
+            "variables": {
+                "host": {
+                    "default": "localhost",
+                    "description": "The host name of the Nextcloud instance."
+                }
+            }
         }
     ]
 }

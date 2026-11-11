@@ -43,6 +43,7 @@
 		<directory suffix="Test.php">unit/Sections</directory>
 		<directory suffix="Test.php">unit/Settings</directory>
 		<directory suffix="Test.php">unit/Command</directory>
+		<directory suffix="Test.php">unit/Middleware</directory>
 	</testsuite>
 	<source>
 		<include>
@@ -56,6 +57,7 @@
 			<directory suffix=".php">../lib/Sections</directory>
 			<directory suffix=".php">../lib/Settings</directory>
 			<directory suffix=".php">../lib/Command</directory>
+			<directory suffix=".php">../lib/Middleware</directory>
 		</include>
 	</source>
 </phpunit>
