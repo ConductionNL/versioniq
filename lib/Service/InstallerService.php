@@ -864,7 +864,7 @@ class InstallerService {
 			$this->settlePin($install);
 			// After the pin is settled, so our own listener does not read a
 			// re-pinned install as drift.
-			$this->dispatchUpdateEvent($appId, $run->installedVersion, $install->appVersion);
+			$this->dispatchUpdateEvent($install);
 		}
 
 		return $this->installEnvelope(Http::STATUS_OK, $payload);
@@ -942,8 +942,8 @@ class InstallerService {
 			'fromVersion' => $run->fromVersion(),
 			'toVersion' => $dryRun ? $run->request->target->version : $install->appVersion,
 			'installedVersion' => $install->appVersion,
-			'updateType' => $this->classifyUpdateType($run->installedVersion, $install->appVersion, $dryRun),
-			'message' => $this->classifyMessage($run->installedVersion, $install->appVersion, $dryRun),
+			'updateType' => $this->classifyUpdateType($install),
+			'message' => $this->classifyMessage($install),
 			'dryRun' => $dryRun,
 			'installStatus' => $result['status'] ?? 'unknown',
 			'sourceId' => $run->binding->getId(),
@@ -1234,7 +1234,9 @@ class InstallerService {
 	 *
 	 * @spec openspec/changes/releases-notes-reach/tasks.md#task-1.1
 	 */
-	private function dispatchUpdateEvent(string $appId, string $fromVersion, string $toVersion): void {
+	private function dispatchUpdateEvent(ReleaseInstall $install): void {
+		$fromVersion = $install->run->installedVersion;
+		$toVersion = $install->appVersion;
 		if ($fromVersion === '' || $toVersion === '' || $fromVersion === $toVersion) {
 			return;
 		}
@@ -1242,7 +1244,7 @@ class InstallerService {
 			return;
 		}
 
-		$this->server->eventDispatcher->dispatchTyped(new AppUpdateEvent($appId));
+		$this->server->eventDispatcher->dispatchTyped(new AppUpdateEvent($install->run->request->target->appId));
 	}
 
 	private function resolveBinding(string $appId, ?string $sourceOverride): SourceBinding {
@@ -1277,8 +1279,14 @@ class InstallerService {
 		return SourceBinding::appStore();
 	}
 
-	private function classifyUpdateType(string $previousVersion, string $newVersion, bool $dryRun): string {
-		if ($dryRun) {
+	/**
+	 * The kind of version change an install made: `dry-run`, `install`,
+	 * `none`, `upgrade` or `downgrade`.
+	 */
+	private function classifyUpdateType(ReleaseInstall $install): string {
+		$previousVersion = $install->run->installedVersion;
+		$newVersion = $install->appVersion;
+		if ($install->run->request->options->dryRun) {
 			return 'dry-run';
 		}
 		if ($previousVersion === '') {
@@ -1291,8 +1299,13 @@ class InstallerService {
 		return version_compare($newVersion, $previousVersion, '>') ? 'upgrade' : 'downgrade';
 	}
 
-	private function classifyMessage(string $previousVersion, string $newVersion, bool $dryRun): string {
-		if ($dryRun) {
+	/**
+	 * The human summary of an install's version change.
+	 */
+	private function classifyMessage(ReleaseInstall $install): string {
+		$previousVersion = $install->run->installedVersion;
+		$newVersion = $install->appVersion;
+		if ($install->run->request->options->dryRun) {
 			return 'Dry run mode: no changes were applied.';
 		}
 		if ($previousVersion === '') {
