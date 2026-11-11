@@ -28,18 +28,41 @@ final class StoredSnapshot {
 	}
 
 	/**
-	 * Writes the encoded snapshot, then the time it was taken.
+	 * Encodes the snapshot and writes it, then the time it was taken. Nothing
+	 * is written when the snapshot cannot be encoded, so the previous one stays.
+	 *
+	 * @param array<array-key, mixed> $map
+	 * @throws \JsonException when the snapshot cannot be encoded
 	 */
-	public function write(string $encoded, int $checkedAt): void {
+	public function write(array $map, int $checkedAt): void {
+		$encoded = json_encode($map, JSON_THROW_ON_ERROR);
 		$this->config->setValueString(Application::APP_ID, $this->key, $encoded);
 		$this->config->setValueInt(Application::APP_ID, $this->checkedAtKey(), $checkedAt);
 	}
 
 	/**
-	 * The stored JSON, or '' when nothing is stored.
+	 * The stored snapshot as the map it was written from, or null when nothing
+	 * is stored or the stored JSON is not an array.
+	 *
+	 * json_decode yields array-key keys; the keys the stores write are app ids.
+	 *
+	 * @return array<string, mixed>|null
+	 * @throws \JsonException when the stored value is not valid JSON
 	 */
-	public function raw(): string {
-		return $this->config->getValueString(Application::APP_ID, $this->key, '');
+	public function readMap(): ?array {
+		$raw = $this->config->getValueString(Application::APP_ID, $this->key, '');
+		if ($raw === '') {
+			return null;
+		}
+
+		/** @var mixed $decoded */
+		$decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+		if (!is_array($decoded)) {
+			return null;
+		}
+
+		/** @var array<string, mixed> $decoded */
+		return $decoded;
 	}
 
 	/**
@@ -49,26 +72,6 @@ final class StoredSnapshot {
 		$checkedAt = $this->config->getValueInt(Application::APP_ID, $this->checkedAtKey(), 0);
 
 		return $checkedAt > 0 ? $checkedAt : null;
-	}
-
-	/**
-	 * Decodes a stored snapshot to the map it was written from, or null when
-	 * the JSON is valid but not an array.
-	 *
-	 * json_decode yields array-key keys; the keys the stores write are app ids.
-	 *
-	 * @return array<string, mixed>|null
-	 * @throws \JsonException when the stored value is not valid JSON
-	 */
-	public static function decodeMap(string $raw): ?array {
-		/** @var mixed $decoded */
-		$decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
-		if (!is_array($decoded)) {
-			return null;
-		}
-
-		/** @var array<string, mixed> $decoded */
-		return $decoded;
 	}
 
 	private function checkedAtKey(): string {

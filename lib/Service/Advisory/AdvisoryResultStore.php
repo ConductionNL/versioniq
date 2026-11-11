@@ -60,7 +60,7 @@ class AdvisoryResultStore {
 	 */
 	public function save(array $correlations, int $checkedAt): void {
 		try {
-			$encoded = json_encode($correlations, JSON_THROW_ON_ERROR);
+			$this->snapshot()->write($correlations, $checkedAt);
 		} catch (\JsonException $error) {
 			// A snapshot that cannot be encoded must not clear the previous
 			// one: a stale answer is worth more than no answer, and the UI
@@ -68,11 +68,7 @@ class AdvisoryResultStore {
 			$this->logger->error('AdvisoryResultStore: could not encode correlation snapshot; keeping the previous one', [
 				'message' => $error->getMessage(),
 			]);
-
-			return;
 		}
-
-		$this->snapshot()->write($encoded, $checkedAt);
 	}
 
 	/**
@@ -84,14 +80,8 @@ class AdvisoryResultStore {
 	 * @return array{advisories: array<string, mixed>, checkedAt: ?int}
 	 */
 	public function read(): array {
-		$snapshot = $this->snapshot();
-		$raw = $snapshot->raw();
-		if ($raw === '') {
-			return ['advisories' => [], 'checkedAt' => null];
-		}
-
 		try {
-			$advisories = StoredSnapshot::decodeMap($raw);
+			$advisories = $this->snapshot()->readMap();
 		} catch (\JsonException $error) {
 			$this->logger->warning('AdvisoryResultStore: stored snapshot is not valid JSON; reporting as never checked', [
 				'message' => $error->getMessage(),
@@ -106,7 +96,7 @@ class AdvisoryResultStore {
 
 		return [
 			'advisories' => $advisories,
-			'checkedAt' => $snapshot->checkedAt(),
+			'checkedAt' => $this->snapshot()->checkedAt(),
 		];
 	}
 

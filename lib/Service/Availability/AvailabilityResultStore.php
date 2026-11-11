@@ -43,16 +43,12 @@ class AvailabilityResultStore {
 	 */
 	public function save(array $updates, int $checkedAt): void {
 		try {
-			$encoded = json_encode($updates, JSON_THROW_ON_ERROR);
+			$this->snapshot()->write($updates, $checkedAt);
 		} catch (\JsonException $error) {
 			$this->logger->error('AvailabilityResultStore: could not encode the snapshot; keeping the previous one', [
 				'message' => $error->getMessage(),
 			]);
-
-			return;
 		}
-
-		$this->snapshot()->write($encoded, $checkedAt);
 	}
 
 	/**
@@ -60,14 +56,8 @@ class AvailabilityResultStore {
 	 * @return array{updates: array<string, mixed>, checkedAt: ?int}
 	 */
 	public function read(): array {
-		$snapshot = $this->snapshot();
-		$raw = $snapshot->raw();
-		if ($raw === '') {
-			return ['updates' => [], 'checkedAt' => null];
-		}
-
 		try {
-			$updates = StoredSnapshot::decodeMap($raw);
+			$updates = $this->snapshot()->readMap();
 		} catch (\JsonException $error) {
 			$this->logger->warning('AvailabilityResultStore: the stored snapshot is not valid JSON; reporting it as never checked', [
 				'message' => $error->getMessage(),
@@ -80,7 +70,7 @@ class AvailabilityResultStore {
 			return ['updates' => [], 'checkedAt' => null];
 		}
 
-		return ['updates' => $updates, 'checkedAt' => $snapshot->checkedAt()];
+		return ['updates' => $updates, 'checkedAt' => $this->snapshot()->checkedAt()];
 	}
 
 	private function snapshot(): StoredSnapshot {
