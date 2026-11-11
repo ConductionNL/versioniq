@@ -36,12 +36,7 @@
         "refused": "Pin version is empty or contains invalid characters"
     },
     "version \"1.0\\n\"": {
-        "version": "1.0\n",
-        "pinnedBy": "admin",
-        "pinnedAt": "2026-01-01T00:00:00+00:00",
-        "reason": null,
-        "driftedTo": null,
-        "driftedAt": null
+        "refused": "Pin version is empty or contains invalid characters"
     },
     "no pinnedBy": {
         "refused": "Pin requires a non-empty pinnedBy"

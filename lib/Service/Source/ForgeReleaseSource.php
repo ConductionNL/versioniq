@@ -482,7 +482,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 */
 	private function scanAssets(array $assets, string $assetPattern): array {
 		$matchingAssets = [];
-		$shaUrl = null;
+		$shaAssets = [];
 		/** @var mixed $asset */
 		foreach ($assets as $asset) {
 			$named = $this->namedAsset($asset);
@@ -493,11 +493,28 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 				$matchingAssets[] = $named;
 			}
 			if (str_ends_with($named['name'], '.sha256')) {
-				$shaUrl = $named['url'];
+				$shaAssets[$named['name']] = $named['url'];
 			}
 		}
 
-		return [$matchingAssets, $shaUrl];
+		return [$matchingAssets, $this->checksumUrl($matchingAssets, $shaAssets)];
+	}
+
+	/**
+	 * The checksum asset for the archive: the one named after it plus
+	 * `.sha256`, or the only checksum asset of the release. Null when there
+	 * is none, or several and none is named after the archive.
+	 *
+	 * @param list<array{name: string, url: string}> $matchingAssets
+	 * @param array<string, string> $shaAssets checksum asset name => url
+	 */
+	private function checksumUrl(array $matchingAssets, array $shaAssets): ?string {
+		$sibling = isset($matchingAssets[0]) ? $matchingAssets[0]['name'] . '.sha256' : null;
+		if ($sibling !== null && isset($shaAssets[$sibling])) {
+			return $shaAssets[$sibling];
+		}
+
+		return count($shaAssets) === 1 ? reset($shaAssets) : null;
 	}
 
 	/**

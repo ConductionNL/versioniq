@@ -165,6 +165,28 @@ final class ForgeReleaseSourceTest extends TestCase {
 		$this->assertSame('https://example.invalid/openregister-2.5.0.tar.gz.sha256', $release['sha256Url']);
 	}
 
+	public function testResolveReleasePrefersTheChecksumNamedAfterTheArchive(): void {
+		foreach ([
+			'sibling first' => [['openregister-2.5.0.tar.gz.sha256', 'other.sha256'], 'https://example.invalid/openregister-2.5.0.tar.gz.sha256'],
+			'sibling last' => [['other.sha256', 'openregister-2.5.0.tar.gz.sha256'], 'https://example.invalid/openregister-2.5.0.tar.gz.sha256'],
+			'only checksum' => [['SHA256SUMS.sha256'], 'https://example.invalid/SHA256SUMS.sha256'],
+			'several, none named after it' => [['a.sha256', 'b.sha256'], null],
+		] as $case => [$checksums, $expected]) {
+			$assets = [['name' => 'openregister-2.5.0.tar.gz', 'browser_download_url' => 'https://example.invalid/openregister-2.5.0.tar.gz']];
+			foreach ($checksums as $name) {
+				$assets[] = ['name' => $name, 'browser_download_url' => 'https://example.invalid/' . $name];
+			}
+
+			$client = $this->createMock(IClient::class);
+			$client->method('get')->willReturn($this->mockResponse(200, json_encode([['tag_name' => 'v2.5.0', 'assets' => $assets]], JSON_THROW_ON_ERROR)));
+
+			$release = $this->buildSource($client)->resolveRelease('openregister', '2.5.0', SourceBinding::github('ConductionNL', 'openregister'));
+
+			$this->assertNotNull($release, $case);
+			$this->assertSame($expected, $release['sha256Url'], $case);
+		}
+	}
+
 	public function testResolveReleaseFailsWhenMultipleMatchingAssets(): void {
 		$body = json_encode([
 			[

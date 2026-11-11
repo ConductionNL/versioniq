@@ -17,7 +17,7 @@ namespace OCA\Versioniq\Service\Installer;
  * traversal, a space) is refused before it reaches a path lookup.
  */
 final class AppIdFormat {
-	private const PATTERN = '/^[a-z][a-z0-9_\-]*$/';
+	private const PATTERN = '/^[a-z][a-z0-9_\-]*$/D';
 
 	/**
 	 * @spec openspec/specs/version-management/spec.md
