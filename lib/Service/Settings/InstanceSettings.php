@@ -231,6 +231,9 @@ class InstanceSettings {
 		return min((int)$raw, self::MAX_LINES_BEHIND);
 	}
 
+	/** Address parts a configured base URL must not carry. */
+	private const REFUSED_ADDRESS_PARTS = ['user' => true, 'pass' => true, 'query' => true, 'fragment' => true];
+
 	private function stored(string $key): string {
 		return trim($this->config->getValueString(Application::APP_ID, $key, ''));
 	}
@@ -250,22 +253,26 @@ class InstanceSettings {
 			return '';
 		}
 
-		$parts = parse_url($value);
-		$scheme = is_array($parts) ? ($parts['scheme'] ?? '') : '';
-		$allowed = $httpsOnly ? ['https'] : ['https', 'http'];
-		if (!is_array($parts)
-			|| !in_array($scheme, $allowed, true)
-			|| ($parts['host'] ?? '') === ''
-			|| isset($parts['user'])
-			|| isset($parts['pass'])
-			|| isset($parts['query'])
-			|| isset($parts['fragment'])
-		) {
+		if (!self::isPlainAddress(parse_url($value), $httpsOnly ? ['https'] : ['https', 'http'])) {
 			throw new InvalidArgumentException($httpsOnly
 				? 'Enter an https address without a username, password or query, for example https://ghe.example.org/api/v3.'
 				: 'Enter an http or https address without a username, password or query.');
 		}
 
 		return $value;
+	}
+
+	/**
+	 * Whether parsed address parts have an allowed scheme and a host, and no
+	 * username, password, query or fragment.
+	 *
+	 * @param array<string, int|string>|false $parts What parse_url() returned.
+	 * @param list<string> $allowedSchemes
+	 */
+	private static function isPlainAddress(array|false $parts, array $allowedSchemes): bool {
+		return is_array($parts)
+			&& in_array($parts['scheme'] ?? '', $allowedSchemes, true)
+			&& ($parts['host'] ?? '') !== ''
+			&& array_intersect_key($parts, self::REFUSED_ADDRESS_PARTS) === [];
 	}
 }
