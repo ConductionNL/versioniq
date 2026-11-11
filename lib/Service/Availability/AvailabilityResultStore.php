@@ -11,7 +11,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Availability;
 
-use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Settings\StoredSnapshot;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
 
@@ -26,9 +26,8 @@ use Psr\Log\LoggerInterface;
  * @psalm-api
  */
 class AvailabilityResultStore {
+	/** The sweep time is held under `availability.results.checkedAt`; see {@see StoredSnapshot}. */
 	private const KEY = 'availability.results';
-
-	private const KEY_CHECKED_AT = 'availability.results.checkedAt';
 
 	public function __construct(
 		private IAppConfig $config,
@@ -44,17 +43,12 @@ class AvailabilityResultStore {
 	 */
 	public function save(array $updates, int $checkedAt): void {
 		try {
-			$encoded = json_encode($updates, JSON_THROW_ON_ERROR);
+			$this->snapshot()->write($updates, $checkedAt);
 		} catch (\JsonException $error) {
 			$this->logger->error('AvailabilityResultStore: could not encode the snapshot; keeping the previous one', [
 				'message' => $error->getMessage(),
 			]);
-
-			return;
 		}
-
-		$this->config->setValueString(Application::APP_ID, self::KEY, $encoded);
-		$this->config->setValueInt(Application::APP_ID, self::KEY_CHECKED_AT, $checkedAt);
 	}
 
 	/**
@@ -62,13 +56,8 @@ class AvailabilityResultStore {
 	 * @return array{updates: array<string, mixed>, checkedAt: ?int}
 	 */
 	public function read(): array {
-		$raw = $this->config->getValueString(Application::APP_ID, self::KEY, '');
-		if ($raw === '') {
-			return ['updates' => [], 'checkedAt' => null];
-		}
-
 		try {
-			$decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+			$updates = $this->snapshot()->readMap();
 		} catch (\JsonException $error) {
 			$this->logger->warning('AvailabilityResultStore: the stored snapshot is not valid JSON; reporting it as never checked', [
 				'message' => $error->getMessage(),
@@ -77,16 +66,14 @@ class AvailabilityResultStore {
 			return ['updates' => [], 'checkedAt' => null];
 		}
 
-		if (!is_array($decoded)) {
+		if ($updates === null) {
 			return ['updates' => [], 'checkedAt' => null];
 		}
 
-		$checkedAt = $this->config->getValueInt(Application::APP_ID, self::KEY_CHECKED_AT, 0);
+		return ['updates' => $updates, 'checkedAt' => $this->snapshot()->checkedAt()];
+	}
 
-		// json_decode yields array-key keys; the keys we wrote are app ids.
-		/** @var array<string, mixed> $updates */
-		$updates = $decoded;
-
-		return ['updates' => $updates, 'checkedAt' => $checkedAt > 0 ? $checkedAt : null];
+	private function snapshot(): StoredSnapshot {
+		return new StoredSnapshot($this->config, self::KEY);
 	}
 }
