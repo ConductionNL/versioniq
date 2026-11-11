@@ -38,6 +38,7 @@ use OCP\App\IAppManager;
 use OCP\Http\Client\IClientService;
 use OCP\IAppConfig;
 use OCP\IConfig;
+use OCP\IL10N;
 use OCP\ITempManager;
 use OCP\IUserSession;
 use OCP\L10N\IFactory;
@@ -448,40 +449,67 @@ class SelectedReleaseInstallerService {
 	 */
 	private function validateInstalledInfo(SignedInstall $install, InstalledFolder $folder): void {
 		$appManager = $this->getAppManager();
-		$config = $this->getConfig();
 		$l = $this->getL10n()->get('core');
 		$appId = $install->appId;
 
 		try {
 			$info = $appManager->getAppInfoByPath($folder->appPath . '/appinfo/info.xml', $l->getLanguageCode());
 			if (!is_array($info) || ($info['id'] ?? null) !== $appId) {
-				throw new Exception(
-					$l->t('App "%s" cannot be installed because appinfo file cannot be read.',
-						[$appId]
-					)
-				);
+				throw $this->unreadableInfo($appId, $l);
 			}
 			/** @var array<string, mixed> $info */
-
-			$ignoreMaxApps = (array)$config->getSystemValue('app_install_overwrite', []);
-			$ignoreMax = in_array($appId, $ignoreMaxApps, true);
-			$serverVersion = Server::get(\OCP\ServerVersion::class)->getVersionString();
-			if (!$appManager->isAppCompatible($serverVersion, $info, $ignoreMax)) {
-				$appName = isset($info['name']) && is_string($info['name']) ? $info['name'] : $appId;
-				throw new Exception(
-					$l->t('App "%s" cannot be installed because it is not compatible with this version of the server.',
-						[$appName]
-					)
-				);
-			}
-
-			\OC_App::checkAppDependencies($config, $l, $info, $ignoreMax);
+			$this->assertInstallable($info, $l);
 		} catch (Exception $validationError) {
 			$this->restoreFromBackup($folder->appPath, $folder->backup);
 			throw InstallFailure::reverted($validationError->getMessage(), FailureClassifier::STAGE_INFO_VALIDATED, $validationError);
 		}
 
 		$folder->info = $info;
+	}
+
+	/**
+	 * The refusal for an `appinfo/info.xml` that cannot be read or names another app.
+	 */
+	private function unreadableInfo(string $appId, IL10N $l): Exception {
+		return new Exception(
+			$l->t('App "%s" cannot be installed because appinfo file cannot be read.',
+				[$appId]
+			)
+		);
+	}
+
+	/**
+	 * Refuse an app that is not compatible with this server or whose
+	 * dependencies are not met; `app_install_overwrite` lifts the max-version check.
+	 *
+	 * @param array<string, mixed> $info The app's info, its id already checked.
+	 */
+	private function assertInstallable(array $info, IL10N $l): void {
+		$config = $this->getConfig();
+		$appId = (string)$info['id'];
+
+		$ignoreMaxApps = (array)$config->getSystemValue('app_install_overwrite', []);
+		$ignoreMax = in_array($appId, $ignoreMaxApps, true);
+		$serverVersion = Server::get(\OCP\ServerVersion::class)->getVersionString();
+		if (!$this->getAppManager()->isAppCompatible($serverVersion, $info, $ignoreMax)) {
+			throw $this->incompatible($info, $l);
+		}
+
+		\OC_App::checkAppDependencies($config, $l, $info, $ignoreMax);
+	}
+
+	/**
+	 * The refusal for an app that is not compatible with this server version.
+	 *
+	 * @param array<string, mixed> $info The app's info.
+	 */
+	private function incompatible(array $info, IL10N $l): Exception {
+		$appName = isset($info['name']) && is_string($info['name']) ? $info['name'] : (string)$info['id'];
+		return new Exception(
+			$l->t('App "%s" cannot be installed because it is not compatible with this version of the server.',
+				[$appName]
+			)
+		);
 	}
 
 	/**
