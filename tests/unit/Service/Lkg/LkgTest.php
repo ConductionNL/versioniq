@@ -36,6 +36,11 @@ final class LkgTest extends TestCase {
 		new Lkg('2.5.0; rm -rf', '2026-07-23T12:00:00+00:00');
 	}
 
+	public function testRejectsATrailingNewline(): void {
+		$this->expectException(InvalidArgumentException::class);
+		new Lkg("2.5.0\n", '2026-07-23T12:00:00+00:00');
+	}
+
 	public function testRejectsEmptyRecordedAt(): void {
 		$this->expectException(InvalidArgumentException::class);
 		new Lkg('2.5.0', '');

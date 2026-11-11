@@ -25,7 +25,7 @@ use InvalidArgumentException;
  * reconcile run). Both are null on a pin with no known drift.
  */
 final class Pin {
-	private const VERSION_PATTERN = '/^[0-9A-Za-z.\-+]+$/';
+	private const VERSION_PATTERN = '/^[0-9A-Za-z.\-+]+$/D';
 
 	public function __construct(
 		public readonly string $version,

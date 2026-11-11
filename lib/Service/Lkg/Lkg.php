@@ -25,7 +25,7 @@ use InvalidArgumentException;
  * @spec openspec/specs/migration-safety/spec.md
  */
 final class Lkg {
-	private const VERSION_PATTERN = '/^[0-9A-Za-z.\-+]+$/';
+	private const VERSION_PATTERN = '/^[0-9A-Za-z.\-+]+$/D';
 
 	public function __construct(
 		public readonly string $version,

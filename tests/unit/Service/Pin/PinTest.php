@@ -19,6 +19,11 @@ final class PinTest extends TestCase {
 		new Pin('2.3.0; rm -rf', 'alice', '2026-06-11T12:00:00+00:00');
 	}
 
+	public function testConstructorRejectsATrailingNewline(): void {
+		$this->expectException(InvalidArgumentException::class);
+		new Pin("2.3.0\n", 'alice', '2026-06-11T12:00:00+00:00');
+	}
+
 	public function testConstructorRejectsEmptyPinnedBy(): void {
 		$this->expectException(InvalidArgumentException::class);
 		new Pin('2.3.0', '', '2026-06-11T12:00:00+00:00');
