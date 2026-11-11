@@ -164,4 +164,25 @@ final class AuditLoggerTest extends TestCase {
 		$this->assertNull($captured->getToVersion());
 		$this->assertNull($captured->getMessage());
 	}
+
+	public function testTheRejectionAndTheWriteFailureAreLoggedWithTheirContext(): void {
+		$logged = [];
+		$logger = $this->createMock(LoggerInterface::class);
+		foreach (['warning', 'error'] as $level) {
+			$logger->method($level)->willReturnCallback(static function (string $message, array $context) use ($level, &$logged): void {
+				$logged[] = [$level, $message, $context];
+			});
+		}
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->method('insert')->willThrowException(new \RuntimeException('table missing'));
+		$auditLogger = new AuditLogger($mapper, $this->timeFactory(), $logger);
+
+		AuditArgs::call($auditLogger, 'alice', 'openregister', 'Bad Op', null, '2.3.0', 'appstore', AuditLogger::STATUS_SUCCESS);
+		AuditArgs::call($auditLogger, 'alice', 'openregister', AuditLogger::OPERATION_PIN, null, '2.3.0', 'appstore', AuditLogger::STATUS_FAILURE);
+
+		$this->assertSame([
+			['warning', 'AuditLogger: rejected malformed operation name, entry not recorded', ['appId' => 'openregister', 'operation' => 'Bad Op']],
+			['error', 'AuditLogger: failed to record audit entry', ['appId' => 'openregister', 'operation' => 'pin', 'message' => 'table missing']],
+		], $logged);
+	}
 }

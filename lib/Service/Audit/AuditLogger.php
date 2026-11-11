@@ -62,23 +62,12 @@ class AuditLogger {
 		string $status,
 		?string $message = null,
 	): void {
-		if (preg_match(self::OPERATION_PATTERN, $subject->operation) !== 1) {
-			$this->logger->warning('AuditLogger: rejected malformed operation name, entry not recorded', [
-				'appId' => $subject->appId,
-				'operation' => $subject->operation,
-			]);
-
+		if ($this->rejectsOperation($subject)) {
 			return;
 		}
 
 		try {
-			$entry = new AuditEntry();
-			$entry->setActorUid($subject->actorUid);
-			$entry->setAppId($subject->appId);
-			$entry->setOperation($subject->operation);
-			$entry->setFromVersion($versions->fromVersion === '' ? null : $versions->fromVersion);
-			$entry->setToVersion($versions->toVersion === '' ? null : $versions->toVersion);
-			$entry->setSourceId($versions->sourceId === '' ? null : $versions->sourceId);
+			$entry = $this->entryFor($subject, $versions);
 			$entry->setStatus($status);
 			$entry->setMessage($this->sanitizeMessage($message));
 			$entry->setCreatedAt($this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'));
@@ -89,12 +78,49 @@ class AuditLogger {
 			// caller (an install / bind operation), which would turn a logging
 			// bug into an outage. See design.md "Write path: best-effort by
 			// construction".
-			$this->logger->error('AuditLogger: failed to record audit entry', [
-				'appId' => $subject->appId,
-				'operation' => $subject->operation,
-				'message' => $error->getMessage(),
-			]);
+			$this->logWriteFailure($subject, $error);
 		}
+	}
+
+	/**
+	 * Whether the operation name is malformed; such an entry is logged and
+	 * not recorded.
+	 */
+	private function rejectsOperation(AuditSubject $subject): bool {
+		if (preg_match(self::OPERATION_PATTERN, $subject->operation) === 1) {
+			return false;
+		}
+
+		$this->logger->warning('AuditLogger: rejected malformed operation name, entry not recorded', [
+			'appId' => $subject->appId,
+			'operation' => $subject->operation,
+		]);
+
+		return true;
+	}
+
+	/**
+	 * A new entry with who did what to which app, and the versions it went
+	 * between; empty versions are stored as null.
+	 */
+	private function entryFor(AuditSubject $subject, AuditedVersions $versions): AuditEntry {
+		$entry = new AuditEntry();
+		$entry->setActorUid($subject->actorUid);
+		$entry->setAppId($subject->appId);
+		$entry->setOperation($subject->operation);
+		$entry->setFromVersion($versions->fromVersion === '' ? null : $versions->fromVersion);
+		$entry->setToVersion($versions->toVersion === '' ? null : $versions->toVersion);
+		$entry->setSourceId($versions->sourceId === '' ? null : $versions->sourceId);
+
+		return $entry;
+	}
+
+	private function logWriteFailure(AuditSubject $subject, \Throwable $error): void {
+		$this->logger->error('AuditLogger: failed to record audit entry', [
+			'appId' => $subject->appId,
+			'operation' => $subject->operation,
+			'message' => $error->getMessage(),
+		]);
 	}
 
 	/**
