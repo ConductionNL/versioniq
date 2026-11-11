@@ -871,6 +871,38 @@ async function onRetryAttempt (appId: string, version: string): Promise<void> {
 }
 
 /**
+ * Remove an app's auto-update policy on the server, then from the list.
+ *
+ * @param appId The app whose policy is cleared.
+ */
+async function clearPolicy (appId: string): Promise<void> {
+	const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/policy`)), {
+		method: 'DELETE',
+		headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
+	})
+	await unwrapOcsResponse(response)
+	const next = { ...policies.value }
+	delete next[appId]
+	policies.value = next
+}
+
+/**
+ * Store an app's auto-update policy on the server and keep what it answered.
+ *
+ * @param appId The app whose policy is set.
+ * @param level The policy level to set.
+ */
+async function setPolicy (appId: string, level: PolicyLevel): Promise<void> {
+	const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/policy`, { level })), {
+		method: 'PUT',
+		headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
+		body: JSON.stringify({ level }),
+	})
+	const payload = await unwrapOcsResponse<{ appId: string, policy: PolicyRecord }>(response)
+	policies.value = { ...policies.value, [appId]: { ...payload.policy, appId } }
+}
+
+/**
  *
  * @param appId
  * @param level
@@ -884,22 +916,9 @@ async function onPolicyChange (appId: string, level: PolicyLevel): Promise<void>
 	try {
 		await ensurePasswordConfirmation()
 		if (level === 'none') {
-			const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/policy`)), {
-				method: 'DELETE',
-				headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
-			})
-			await unwrapOcsResponse(response)
-			const next = { ...policies.value }
-			delete next[appId]
-			policies.value = next
+			await clearPolicy(appId)
 		} else {
-			const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/policy`, { level })), {
-				method: 'PUT',
-				headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
-				body: JSON.stringify({ level }),
-			})
-			const payload = await unwrapOcsResponse<{ appId: string, policy: PolicyRecord }>(response)
-			policies.value = { ...policies.value, [appId]: { ...payload.policy, appId } }
+			await setPolicy(appId, level)
 		}
 	} catch (e) {
 		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not update the auto-update policy.')
@@ -2089,11 +2108,11 @@ onBeforeUnmount(() => {
 	window.removeEventListener('hashchange', openSectionFromHash)
 })
 
-onMounted(async () => {
-	// Before the first await, so a settings link lands on its tab at once.
-	openSectionFromHash()
-	window.addEventListener('hashchange', openSectionFromHash)
-
+/**
+ * Restore the safe, debug and dry-run modes the admin last chose in this
+ * browser; a mode with nothing stored keeps its shipped default.
+ */
+function restoreStoredModes (): void {
 	const storedSafeMode = readStoredFlag(safeModeStorageKey)
 	if (storedSafeMode !== null) {
 		safeModeEnabled.value = storedSafeMode !== 'false'
@@ -2106,7 +2125,13 @@ onMounted(async () => {
 	if (storedDryRunMode !== null) {
 		dryRunEnabled.value = storedDryRunMode === 'true'
 	}
+}
 
+/**
+ * Load the update channel and the app list the page opens on, and end the
+ * loading state whatever happens.
+ */
+async function loadInitialLists (): Promise<void> {
 	// Access is enforced server-side: the page is an admin-only ISettings
 	// section and every OCS endpoint guards on isAdmin(). No client-side admin
 	// probe is needed — load the data directly so a flaky probe can never blank
@@ -2116,7 +2141,7 @@ onMounted(async () => {
 		await loadApps()
 	} catch (error) {
 		// A `finally` WITHOUT a `catch` re-throws, and the three non-blocking
-		// loaders below are plain statements in the same function — so anything
+		// loaders that follow this call in onMounted are plain statements — so anything
 		// thrown here silently skipped ALL of them.
 		//
 		// Measured on CI (issue #160): the browser requested update-channel and
@@ -2132,6 +2157,16 @@ onMounted(async () => {
 	} finally {
 		isLoading.value = false
 	}
+}
+
+onMounted(async () => {
+	// Before the first await, so a settings link lands on its tab at once.
+	openSectionFromHash()
+	window.addEventListener('hashchange', openSectionFromHash)
+
+	restoreStoredModes()
+
+	await loadInitialLists()
 	// Kick off advisory correlation, pin state, and auto-update policies after
 	// the list renders (non-blocking). Each handles its own failures; the extra
 	// catch guards a SYNCHRONOUS throw before the first await, which would
