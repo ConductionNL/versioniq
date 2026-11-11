@@ -1130,7 +1130,8 @@ class InstallerService {
 	 * @throws InvalidArgumentException on an unknown forge, empty/`*` owner, bad charset, or an over-broad result
 	 */
 	public function addTrustedPattern(string $forge, string $owner, ?string $repo): array {
-		$pattern = $this->buildAndValidatePattern($forge, $owner, $repo);
+		self::assertKnownForge($forge);
+		$pattern = self::forgePattern($forge, self::ownerRepoPath($owner, $repo));
 
 		$patterns = $this->state->trustedSources->getPatterns();
 		if (!in_array($pattern, $patterns, true)) {
@@ -1158,15 +1159,36 @@ class InstallerService {
 	}
 
 	/**
-	 * Validates a curated allowlist entry and returns the forge-qualified glob.
-	 * Guarantees a concrete owner — never a whole-forge or match-everything glob.
+	 * Refuses a forge outside {@see SourceBinding::FORGES}. Checked first, so
+	 * an unknown forge is reported before anything about owner or repo.
 	 *
 	 * @throws InvalidArgumentException
 	 */
-	private function buildAndValidatePattern(string $forge, string $owner, ?string $repo): string {
+	private static function assertKnownForge(string $forge): void {
 		if (!in_array($forge, SourceBinding::FORGES, true)) {
 			throw new InvalidArgumentException('Unknown forge: ' . $forge);
 		}
+	}
+
+	/**
+	 * The `owner/repo` part of a curated allowlist entry, with `*` for every
+	 * repo of the owner. The owner is validated before the repo.
+	 *
+	 * @throws InvalidArgumentException
+	 */
+	private static function ownerRepoPath(string $owner, ?string $repo): string {
+		$owner = self::concreteOwner($owner);
+
+		return $owner . '/' . self::repoPart($repo);
+	}
+
+	/**
+	 * The trimmed owner; never empty, never a bare wildcard, only GitHub's
+	 * owner charset.
+	 *
+	 * @throws InvalidArgumentException
+	 */
+	private static function concreteOwner(string $owner): string {
 		$owner = trim($owner);
 		if ($owner === '' || $owner === '*') {
 			throw new InvalidArgumentException('A concrete owner is required (wildcard-only owners are not allowed).');
@@ -1175,16 +1197,34 @@ class InstallerService {
 			throw new InvalidArgumentException('Owner contains invalid characters.');
 		}
 
-		$repoPart = '*';
-		if ($repo !== null && trim($repo) !== '') {
-			$repo = trim($repo);
-			if (!preg_match('/^[A-Za-z0-9_.\-]+$/', $repo)) {
-				throw new InvalidArgumentException('Repository contains invalid characters.');
-			}
-			$repoPart = $repo;
+		return $owner;
+	}
+
+	/**
+	 * The trimmed repo, or `*` when none is given.
+	 *
+	 * @throws InvalidArgumentException
+	 */
+	private static function repoPart(?string $repo): string {
+		if ($repo === null || trim($repo) === '') {
+			return '*';
+		}
+		$repo = trim($repo);
+		if (!preg_match('/^[A-Za-z0-9_.\-]+$/', $repo)) {
+			throw new InvalidArgumentException('Repository contains invalid characters.');
 		}
 
-		$pattern = $forge . ':' . $owner . '/' . $repoPart;
+		return $repo;
+	}
+
+	/**
+	 * Joins forge and path into the forge-qualified glob. Guarantees a
+	 * concrete owner — never a whole-forge or match-everything glob.
+	 *
+	 * @throws InvalidArgumentException
+	 */
+	private static function forgePattern(string $forge, string $ownerRepoPath): string {
+		$pattern = $forge . ':' . $ownerRepoPath;
 		// Defence in depth: reject anything that would trust an entire forge.
 		if (in_array($pattern, ['*', '*/*', $forge . ':*', $forge . ':*/*'], true)) {
 			throw new InvalidArgumentException('That pattern is too broad — it would trust an entire forge.');
