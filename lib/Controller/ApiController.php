@@ -919,12 +919,7 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		return new DataResponse([
-			'intervalHours' => $this->reports->stores->advisorySettingsStore->getIntervalHours(),
-			'minIntervalHours' => AdvisorySettingsStore::MIN_INTERVAL_HOURS,
-			'maxIntervalHours' => AdvisorySettingsStore::MAX_INTERVAL_HOURS,
-			'digestEnabled' => $this->reports->stores->advisorySettingsStore->isDigestEnabled(),
-		]);
+		return $this->advisorySettingsResponse();
 	}
 
 	/**
@@ -953,35 +948,76 @@ class ApiController extends OCSController {
 		}
 
 		if ($intervalHours !== null && $intervalHours !== '') {
-			if (!is_numeric($intervalHours)) {
-				return new DataResponse(
-					['message' => 'intervalHours must be a number.'],
-					Http::STATUS_BAD_REQUEST
-				);
+			$refusal = $this->storeIntervalHours($intervalHours);
+			if ($refusal !== null) {
+				return $refusal;
 			}
-			$hours = (int)$intervalHours;
-			if ($hours < AdvisorySettingsStore::MIN_INTERVAL_HOURS || $hours > AdvisorySettingsStore::MAX_INTERVAL_HOURS) {
-				return new DataResponse(
-					['message' => sprintf(
-						'intervalHours must be between %d and %d.',
-						AdvisorySettingsStore::MIN_INTERVAL_HOURS,
-						AdvisorySettingsStore::MAX_INTERVAL_HOURS,
-					)],
-					Http::STATUS_BAD_REQUEST
-				);
-			}
-			$this->reports->stores->advisorySettingsStore->setIntervalHours($hours);
 		}
 
 		// Same empty-string-is-an-explicit-false handling as the auto-update
 		// kill switch above: PHP casts a JSON `false` to "", not "0".
 		if ($digestEnabled !== null) {
-			$digestParam = ($digestEnabled === '') ? '0' : $digestEnabled;
-			$this->reports->stores->advisorySettingsStore->setDigestEnabled(
-				$this->readBinaryBool($digestParam, $this->reports->stores->advisorySettingsStore->isDigestEnabled()),
-			);
+			$this->storeDigestEnabled($digestEnabled);
 		}
 
+		return $this->advisorySettingsResponse();
+	}
+
+	/**
+	 * Stores the weekly digest flag; an empty string is an explicit false,
+	 * and an unknown value keeps the current one.
+	 */
+	private function storeDigestEnabled(string $digestEnabled): void {
+		$digestParam = ($digestEnabled === '') ? '0' : $digestEnabled;
+		$this->reports->stores->advisorySettingsStore->setDigestEnabled(
+			$this->readBinaryBool($digestParam, $this->reports->stores->advisorySettingsStore->isDigestEnabled()),
+		);
+	}
+
+	/**
+	 * Stores a valid sweep interval, or answers the 400 for one that is not a
+	 * number or outside the supported range.
+	 *
+	 * @return DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>|null
+	 */
+	private function storeIntervalHours(string $intervalHours): ?DataResponse {
+		if (!is_numeric($intervalHours)) {
+			return new DataResponse(
+				['message' => 'intervalHours must be a number.'],
+				Http::STATUS_BAD_REQUEST
+			);
+		}
+		$hours = (int)$intervalHours;
+		if ($hours < AdvisorySettingsStore::MIN_INTERVAL_HOURS || $hours > AdvisorySettingsStore::MAX_INTERVAL_HOURS) {
+			return self::intervalOutOfRange();
+		}
+		$this->reports->stores->advisorySettingsStore->setIntervalHours($hours);
+
+		return null;
+	}
+
+	/**
+	 * The 400 for a sweep interval outside the supported range.
+	 *
+	 * @return DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>
+	 */
+	private static function intervalOutOfRange(): DataResponse {
+		return new DataResponse(
+			['message' => sprintf(
+				'intervalHours must be between %d and %d.',
+				AdvisorySettingsStore::MIN_INTERVAL_HOURS,
+				AdvisorySettingsStore::MAX_INTERVAL_HOURS,
+			)],
+			Http::STATUS_BAD_REQUEST
+		);
+	}
+
+	/**
+	 * The advisory check settings as stored, with the supported interval range.
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool}, array{}>
+	 */
+	private function advisorySettingsResponse(): DataResponse {
 		return new DataResponse([
 			'intervalHours' => $this->reports->stores->advisorySettingsStore->getIntervalHours(),
 			'minIntervalHours' => AdvisorySettingsStore::MIN_INTERVAL_HOURS,
