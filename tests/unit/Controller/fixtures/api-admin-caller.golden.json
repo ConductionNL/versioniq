@@ -1,0 +1,559 @@
+{
+    "pinApp / signed out": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                null
+            ]
+        ]
+    },
+    "pinApp / user": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "alice"
+            ],
+            [
+                "isAdmin",
+                "alice"
+            ]
+        ]
+    },
+    "pinApp / admin, session gone on the second read": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "root"
+            ],
+            [
+                "isAdmin",
+                "root"
+            ],
+            [
+                "getUser",
+                null
+            ]
+        ]
+    },
+    "pinApp / admin": {
+        "result": {
+            "class": "DataResponse",
+            "status": 400,
+            "data": {
+                "message": "App is not installed."
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "root"
+            ],
+            [
+                "isAdmin",
+                "root"
+            ],
+            [
+                "getUser",
+                "root"
+            ]
+        ]
+    },
+    "unpinApp / signed out": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                null
+            ]
+        ]
+    },
+    "unpinApp / user": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "alice"
+            ],
+            [
+                "isAdmin",
+                "alice"
+            ]
+        ]
+    },
+    "unpinApp / admin, session gone on the second read": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "root"
+            ],
+            [
+                "isAdmin",
+                "root"
+            ],
+            [
+                "getUser",
+                null
+            ]
+        ]
+    },
+    "unpinApp / admin": {
+        "result": {
+            "class": "DataResponse",
+            "status": 200,
+            "data": {
+                "appId": "someapp",
+                "unpinned": true
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "root"
+            ],
+            [
+                "isAdmin",
+                "root"
+            ],
+            [
+                "getUser",
+                "root"
+            ]
+        ]
+    },
+    "setPolicy / signed out": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                null
+            ]
+        ]
+    },
+    "setPolicy / user": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "alice"
+            ],
+            [
+                "isAdmin",
+                "alice"
+            ]
+        ]
+    },
+    "setPolicy / admin, session gone on the second read": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "root"
+            ],
+            [
+                "isAdmin",
+                "root"
+            ],
+            [
+                "getUser",
+                null
+            ]
+        ]
+    },
+    "setPolicy / admin": {
+        "result": {
+            "threw": "InvalidArgumentException"
+        },
+        "calls": [
+            [
+                "getUser",
+                "root"
+            ],
+            [
+                "isAdmin",
+                "root"
+            ],
+            [
+                "getUser",
+                "root"
+            ]
+        ]
+    },
+    "listPats / signed out": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                null
+            ]
+        ]
+    },
+    "listPats / user": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "alice"
+            ],
+            [
+                "isAdmin",
+                "alice"
+            ]
+        ]
+    },
+    "listPats / admin, session gone on the second read": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "root"
+            ],
+            [
+                "isAdmin",
+                "root"
+            ],
+            [
+                "getUser",
+                null
+            ]
+        ]
+    },
+    "listPats / admin": {
+        "result": {
+            "class": "DataResponse",
+            "status": 200,
+            "data": {
+                "pats": []
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "root"
+            ],
+            [
+                "isAdmin",
+                "root"
+            ],
+            [
+                "getUser",
+                "root"
+            ]
+        ]
+    },
+    "createPat / signed out": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                null
+            ]
+        ]
+    },
+    "createPat / user": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "alice"
+            ],
+            [
+                "isAdmin",
+                "alice"
+            ]
+        ]
+    },
+    "createPat / admin, session gone on the second read": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "root"
+            ],
+            [
+                "isAdmin",
+                "root"
+            ],
+            [
+                "getUser",
+                null
+            ]
+        ]
+    },
+    "createPat / admin": {
+        "result": {
+            "class": "DataResponse",
+            "status": 400,
+            "data": {
+                "message": "label, targetPattern and token are required."
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "root"
+            ],
+            [
+                "isAdmin",
+                "root"
+            ],
+            [
+                "getUser",
+                "root"
+            ]
+        ]
+    },
+    "patchPat / signed out": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                null
+            ]
+        ]
+    },
+    "patchPat / user": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "alice"
+            ],
+            [
+                "isAdmin",
+                "alice"
+            ]
+        ]
+    },
+    "patchPat / admin, session gone on the second read": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "root"
+            ],
+            [
+                "isAdmin",
+                "root"
+            ],
+            [
+                "getUser",
+                null
+            ]
+        ]
+    },
+    "patchPat / admin": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Only the PAT owner can update it."
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "root"
+            ],
+            [
+                "isAdmin",
+                "root"
+            ],
+            [
+                "getUser",
+                "root"
+            ]
+        ]
+    },
+    "deletePat / signed out": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                null
+            ]
+        ]
+    },
+    "deletePat / user": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "alice"
+            ],
+            [
+                "isAdmin",
+                "alice"
+            ]
+        ]
+    },
+    "deletePat / admin, session gone on the second read": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Forbidden"
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "root"
+            ],
+            [
+                "isAdmin",
+                "root"
+            ],
+            [
+                "getUser",
+                null
+            ]
+        ]
+    },
+    "deletePat / admin": {
+        "result": {
+            "class": "DataResponse",
+            "status": 403,
+            "data": {
+                "message": "Only the PAT owner can delete it."
+            }
+        },
+        "calls": [
+            [
+                "getUser",
+                "root"
+            ],
+            [
+                "isAdmin",
+                "root"
+            ],
+            [
+                "getUser",
+                "root"
+            ]
+        ]
+    }
+}
