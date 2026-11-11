@@ -1,0 +1,54 @@
+publiccodeYmlVersion: "0.4"
+
+name: Versioniq
+url: "https://github.com/ConductionNL/versioniq"
+softwareVersion: "1.6.6"
+releaseDate: "2026-09-16"
+developmentStatus: stable
+softwareType: addon
+
+platforms:
+  - nextcloud
+
+categories:
+  - it-management
+
+description:
+  nl:
+    shortDescription: "Installeer een eerdere of nieuwere versie van Nextcloud-apps"
+    longDescription: |
+      Versioniq laat Nextcloud-beheerders een al geïnstalleerde app terugzetten
+      naar een eerdere versie, of juist een specifieke nieuwere versie
+      installeren. Dat helpt bij het opsporen van fouten, het testen van
+      compatibiliteit en het herstellen van een update die iets heeft stukgemaakt.
+    features:
+      - Apps terugzetten naar een eerdere versie
+      - Een specifieke nieuwere versie installeren
+      - Herstellen na een mislukte update
+  en:
+    shortDescription: "Install an earlier or newer version of Nextcloud apps"
+    longDescription: |
+      Versioniq lets Nextcloud administrators roll an installed app back to an
+      earlier version, or install a specific newer version. That helps with
+      debugging, testing compatibility and recovering from an update that broke
+      something.
+    features:
+      - Roll apps back to an earlier version
+      - Install a specific newer version
+      - Recover from a broken update
+
+legal:
+  license: EUPL-1.2
+
+localisation:
+  localisationReady: true
+  availableLanguages:
+    - nl
+    - en
+
+maintenance:
+  type: internal
+  contacts:
+    - name: Conduction Development Team
+      email: info@conduction.nl
+      affiliation: Conduction B.V.

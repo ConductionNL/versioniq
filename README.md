@@ -27,3 +27,9 @@ upload it to the Appstore.
 
 - Official community chat: https://cloud.nextcloud.com/call/xs25tz5y
 - Official community forum: https://help.nextcloud.com/c/dev/11
+
+## License
+
+Copyright (C) 2024-2026 Conduction B.V.
+
+This project is licensed under the [EUPL-1.2](LICENSE).
