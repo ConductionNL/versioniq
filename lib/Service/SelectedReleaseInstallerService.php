@@ -19,6 +19,7 @@ use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
+use OCA\Versioniq\Service\Installer\AppsRoot;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstalledFolder;
 use OCA\Versioniq\Service\Installer\InstallFailure;
@@ -275,25 +276,6 @@ class SelectedReleaseInstallerService {
 		$subject = is_array($certInfo) ? ($certInfo['subject'] ?? null) : null;
 
 		return is_array($subject) ? $subject : [];
-	}
-
-	/**
-	 * Resolves writable apps root path.
-	 *
-	 * @return string
-	 * @throws Exception
-	 */
-	private function getInstallPath(): string {
-		foreach (\OC::$APPSROOTS as $dir) {
-			if (isset($dir['writable']) && $dir['writable'] === true) {
-				if (!is_writable($dir['path']) || !is_readable($dir['path'])) {
-					throw new Exception('Cannot write into "apps" directory.');
-				}
-				return $dir['path'];
-			}
-		}
-
-		throw new Exception('No writable apps directory found.');
 	}
 
 	/**
@@ -789,7 +771,7 @@ class SelectedReleaseInstallerService {
 			$previousPath = null;
 		}
 
-		$destination = $previousPath ?? $this->getInstallPath() . '/' . $run->appId;
+		$destination = $previousPath ?? AppsRoot::writablePath() . '/' . $run->appId;
 
 		if (!is_dir(dirname($destination))) {
 			throw new Exception('Could not resolve app install folder.');
