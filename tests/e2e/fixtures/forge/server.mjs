@@ -167,144 +167,171 @@ function releaseJson(repo) {
 	});
 }
 
+// --- Control plane (test-only) -------------------------------------------
+async function controlRepo(req, res) {
+	// { repo, status?, releases?, advisories? }
+	const b = await readBody(req);
+	const key = b.repo || "fixtureowner/fixtureapp";
+	state.repos[key] = {
+		status: b.status,
+		requireAuth: b.requireAuth ?? false,
+		releases: b.releases ?? state.repos[key]?.releases ?? [],
+		advisories: b.advisories ?? state.repos[key]?.advisories ?? [],
+	};
+	return json(res, 200, { ok: true, repo: key });
+}
+
+async function controlAsset(req, res) {
+	// { asset, status?, serveInstead? }  — force a status or swap bytes
+	const b = await readBody(req);
+	if (b.status !== null && b.status !== undefined)
+		state.assetStatus[b.asset] = b.status;
+	if (b.serveInstead !== null && b.serveInstead !== undefined)
+		state.assetOverride[b.asset] = b.serveInstead;
+	return json(res, 200, { ok: true });
+}
+
+const CONTROL_ROUTES = {
+	"/control/reset": (_req, res) => {
+		state = freshState();
+		return json(res, 200, { ok: true });
+	},
+	"/control/repo": controlRepo,
+	"/control/asset": controlAsset,
+};
+
+// --- Forge API (Forgejo `/api/v1/...` and GitHub `/...` shapes) -----------
+// A token containing "revoked" is invalid, so PAT validation can exercise the
+// rejection path. Scopes and expiry are derived from the token so tests are
+// deterministic: "scope-repo" -> repo only; "scope-admin" -> over-broad;
+// "expires" -> a near expiry header.
+function forgeUser(res, auth) {
+	if (auth.includes("revoked")) {
+		return json(res, 401, { message: "Unauthorized" });
+	}
+	const headers = {};
+	if (auth.includes("scope-admin"))
+		headers["x-oauth-scopes"] = "repo, admin:org, write:packages";
+	else if (auth.includes("scope-repo")) headers["x-oauth-scopes"] = "repo";
+	if (auth.includes("expires"))
+		headers["github-authentication-token-expiration"] =
+			"2026-08-15 12:00:00 UTC";
+	return json(res, 200, { login: "fixture-bot", id: 1 }, headers);
+}
+
+// The error a repo endpoint answers with instead of its body, or null.
+function repoError(repo, { checkAuth, auth }) {
+	if (!repo) return [404, { message: "Not Found" }];
+	if (checkAuth && repo.requireAuth && !auth)
+		return [404, { message: "Not Found" }];
+	if (repo.status) return [repo.status, { message: `forced ${repo.status}` }];
+	return null;
+}
+
+const REPO_ROUTES = [
+	{
+		pattern: /^\/repos\/([^/]+)\/([^/]+)\/releases$/,
+		checkAuth: true,
+		body: releaseJson,
+	},
+	{
+		pattern: /^\/repos\/([^/]+)\/([^/]+)\/security-advisories$/,
+		checkAuth: false,
+		body: (repo) => repo.advisories ?? [],
+	},
+];
+
+// GitHub base is `https://api.github.com` (no `/api/v1`); a Forgejo host is
+// `https://<host>/api/v1`. Accept an optional `/api/v1` prefix so one fixture
+// serves both when the github and forgejo base URLs point here. Returns false
+// when the path is not a forge endpoint.
+function forgeApi(req, res, path) {
+	const api = path.replace(/^\/api\/v1/, "");
+	const auth = req.headers.authorization ?? "";
+	if (api === "/user") {
+		forgeUser(res, auth);
+		return true;
+	}
+	for (const route of REPO_ROUTES) {
+		const m = api.match(route.pattern);
+		if (!m) continue;
+		const repo = state.repos[`${m[1]}/${m[2]}`];
+		const error = repoError(repo, { checkAuth: route.checkAuth, auth });
+		if (error) json(res, ...error);
+		else json(res, 200, route.body(repo));
+		return true;
+	}
+	return false;
+}
+
+// --- Artifact download -----------------------------------------------------
+async function download(res, requested) {
+	const forced = state.assetStatus[requested];
+	if (forced) {
+		res.writeHead(forced);
+		return res.end(`forced ${forced}`);
+	}
+	const served = state.assetOverride[requested] ?? requested;
+	try {
+		const bytes = await readFile(join(ARTIFACTS, served));
+		res.writeHead(200, {
+			"content-type": "application/octet-stream",
+			"content-length": bytes.length,
+		});
+		return res.end(bytes);
+	} catch {
+		res.writeHead(404);
+		return res.end("artifact not found");
+	}
+}
+
+// ── App Store double ─────────────────────────────────────────────────────
+//
+// The real catalogue is ~12.4 MB from garm3.nextcloud.com, and reaching it
+// from a CI runner is what left the discovery and version-listing specs timing
+// out at 20s while every other endpoint answered in 60ms. A forge double
+// already removes that dependency for forge sources; this does the same for
+// the App Store, so the suite stops asserting on somebody else's uptime.
+//
+// The entries are REAL app ids that the CI instance actually has installed —
+// files, dashboard, notifications, notes — because the specs assert that a hit
+// reports its installedVersion, which only the server can supply. Inventing
+// ids would make every such assertion vacuous.
+function appStore(res, url) {
+	const filter = url.searchParams.get("filter");
+	const page = Number(url.searchParams.get("page") || 1);
+	// AppStoreSource pages until told otherwise; everything fits on one.
+	if (page > 1) return json(res, 200, { data: [], pages: { next: false } });
+	const catalog = filter
+		? APPSTORE_CATALOG.filter((a) => a.id === filter)
+		: APPSTORE_CATALOG;
+	return json(res, 200, { data: catalog, pages: { next: false } });
+}
+
+async function route(req, res) {
+	const url = new URL(req.url, `http://localhost:${PORT}`);
+	const path = url.pathname;
+
+	const control = CONTROL_ROUTES[path];
+	if (control && req.method === "POST") return control(req, res);
+
+	if (forgeApi(req, res, path)) return;
+
+	const dl = path.match(/^\/dl\/(.+)$/);
+	if (dl) return download(res, dl[1]);
+
+	if (path === "/appstore/api/v1/apps.json" || path.endsWith("/apps.json"))
+		return appStore(res, url);
+
+	if (path === "/health") return json(res, 200, { ok: true });
+
+	res.writeHead(404);
+	res.end("not found");
+}
+
 const server = createServer(async (req, res) => {
 	try {
-		const url = new URL(req.url, `http://localhost:${PORT}`);
-		const path = url.pathname;
-
-		// --- Control plane (test-only) -------------------------------------
-		if (path === "/control/reset" && req.method === "POST") {
-			state = freshState();
-			return json(res, 200, { ok: true });
-		}
-		if (path === "/control/repo" && req.method === "POST") {
-			// { repo, status?, releases?, advisories? }
-			const b = await readBody(req);
-			const key = b.repo || "fixtureowner/fixtureapp";
-			state.repos[key] = {
-				status: b.status,
-				requireAuth: b.requireAuth ?? false,
-				releases: b.releases ?? state.repos[key]?.releases ?? [],
-				advisories: b.advisories ?? state.repos[key]?.advisories ?? [],
-			};
-			return json(res, 200, { ok: true, repo: key });
-		}
-		if (path === "/control/asset" && req.method === "POST") {
-			// { asset, status?, serveInstead? }  — force a status or swap bytes
-			const b = await readBody(req);
-			if (b.status !== null && b.status !== undefined)
-				state.assetStatus[b.asset] = b.status;
-			if (b.serveInstead !== null && b.serveInstead !== undefined)
-				state.assetOverride[b.asset] = b.serveInstead;
-			return json(res, 200, { ok: true });
-		}
-
-		// --- Forge API (Forgejo `/api/v1/...` and GitHub `/...` shapes) -----
-		// GitHub base is `https://api.github.com` (no `/api/v1`); a Forgejo host
-		// is `https://<host>/api/v1`. Accept an optional `/api/v1` prefix so
-		// one fixture serves both when the github and forgejo base URLs point here.
-		const api = path.replace(/^\/api\/v1/, "");
-		const auth = req.headers.authorization ?? "";
-
-		if (api === "/user") {
-			// A token containing "revoked" is invalid, so PAT validation can
-			// exercise the rejection path. Scopes and expiry are derived from the
-			// token so tests are deterministic: "scope-repo" -> repo only;
-			// "scope-admin" -> over-broad; "expires" -> a near expiry header.
-			if (auth.includes("revoked")) {
-				return json(res, 401, { message: "Unauthorized" });
-			}
-			const headers = {};
-			if (auth.includes("scope-admin"))
-				headers["x-oauth-scopes"] = "repo, admin:org, write:packages";
-			else if (auth.includes("scope-repo"))
-				headers["x-oauth-scopes"] = "repo";
-			if (auth.includes("expires"))
-				headers["github-authentication-token-expiration"] =
-					"2026-08-15 12:00:00 UTC";
-			return json(res, 200, { login: "fixture-bot", id: 1 }, headers);
-		}
-
-		let m = api.match(/^\/repos\/([^/]+)\/([^/]+)\/releases$/);
-		if (m) {
-			const repo = state.repos[`${m[1]}/${m[2]}`];
-			if (!repo) return json(res, 404, { message: "Not Found" });
-			if (repo.requireAuth && !auth)
-				return json(res, 404, { message: "Not Found" });
-			if (repo.status)
-				return json(res, repo.status, {
-					message: `forced ${repo.status}`,
-				});
-			return json(res, 200, releaseJson(repo));
-		}
-
-		m = api.match(/^\/repos\/([^/]+)\/([^/]+)\/security-advisories$/);
-		if (m) {
-			const repo = state.repos[`${m[1]}/${m[2]}`];
-			if (!repo) return json(res, 404, { message: "Not Found" });
-			if (repo.status)
-				return json(res, repo.status, {
-					message: `forced ${repo.status}`,
-				});
-			return json(res, 200, repo.advisories ?? []);
-		}
-
-		// --- Artifact download ---------------------------------------------
-		m = path.match(/^\/dl\/(.+)$/);
-		if (m) {
-			const requested = m[1];
-			const forced = state.assetStatus[requested];
-			if (forced) {
-				res.writeHead(forced);
-				return res.end(`forced ${forced}`);
-			}
-			const served = state.assetOverride[requested] ?? requested;
-			try {
-				const bytes = await readFile(join(ARTIFACTS, served));
-				res.writeHead(200, {
-					"content-type": "application/octet-stream",
-					"content-length": bytes.length,
-				});
-				return res.end(bytes);
-			} catch {
-				res.writeHead(404);
-				return res.end("artifact not found");
-			}
-		}
-
-		// ── App Store double ─────────────────────────────────────────────────
-		//
-		// The real catalogue is ~12.4 MB from garm3.nextcloud.com, and reaching
-		// it from a CI runner is what left the discovery and version-listing
-		// specs timing out at 20s while every other endpoint answered in 60ms.
-		// A forge double already removes that dependency for forge sources;
-		// this does the same for the App Store, so the suite stops asserting on
-		// somebody else's uptime.
-		//
-		// The entries are REAL app ids that the CI instance actually has
-		// installed — files, dashboard, notifications, notes — because the
-		// specs assert that a hit reports its installedVersion, which only the
-		// server can supply. Inventing ids would make every such assertion
-		// vacuous.
-		if (
-			path === "/appstore/api/v1/apps.json" ||
-			path.endsWith("/apps.json")
-		) {
-			const filter = url.searchParams.get("filter");
-			const page = Number(url.searchParams.get("page") || 1);
-			// AppStoreSource pages until told otherwise; everything fits on one.
-			if (page > 1)
-				return json(res, 200, { data: [], pages: { next: false } });
-			const catalog = filter
-				? APPSTORE_CATALOG.filter((a) => a.id === filter)
-				: APPSTORE_CATALOG;
-			return json(res, 200, { data: catalog, pages: { next: false } });
-		}
-
-		if (path === "/health") return json(res, 200, { ok: true });
-
-		res.writeHead(404);
-		res.end("not found");
+		await route(req, res);
 	} catch (err) {
 		res.writeHead(500);
 		res.end(String(err));
