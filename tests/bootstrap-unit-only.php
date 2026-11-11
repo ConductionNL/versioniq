@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 // Minimal bootstrap for tests that only exercise pure-PHP classes from
 // `lib/Service/Source/*` against mocked OCP interfaces. This avoids pulling
 // in the full Nextcloud server bootstrap so tests can run in CI / locally

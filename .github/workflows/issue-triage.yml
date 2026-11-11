@@ -10,8 +10,14 @@ on:
         type: boolean
         default: true
 
+permissions:
+  contents: read
+
 jobs:
   triage:
+    permissions:
+      issues: write
+      contents: read
     uses: ConductionNL/.github/.github/workflows/issue-triage.yml@main
     with:
       # FROZEN ON THE OLD NAME through the app_versions -> versioniq rename —

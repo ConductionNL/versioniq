@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+// SPDX-License-Identifier: EUPL-1.2
 // Semver-ish comparison shared by App.vue's version list, range summaries
 // and the changelog aggregate range panel. Extracted verbatim from App.vue
 // so the comparison logic has a single source of truth that both the UI

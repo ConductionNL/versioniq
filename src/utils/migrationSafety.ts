@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+// SPDX-License-Identifier: EUPL-1.2
 // Pure helpers for the migration-safety UI (downgrade guard, migration diff,
 // last-known-good rollback). Kept free of Vue/component state so they can be
 // unit-tested directly.
