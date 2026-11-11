@@ -246,6 +246,7 @@ class ExternalReleaseInstallerService {
 			$shaUrl === null ? null : $this->patForUrl($shaUrl, $run->binding, $download->token),
 		);
 		$this->addDebug('checksum', ['shaUrl' => $shaUrl, 'integrityWarning' => $integrityWarning]);
+		self::refuseUnverifiedAdvertisedSha(shaUrl: $shaUrl, integrityWarning: $integrityWarning, recordedShaMatched: $recordedShaMatched);
 
 		// Captured for persisting via ArtifactCache::store() once finalize()
 		// succeeds — see "Persist verified artifacts on successful install".
@@ -621,6 +622,21 @@ class ExternalReleaseInstallerService {
 		}
 
 		return self::checksumOutcome($this->fetchChecksumFile($shaUrl, $pat), $actualSha);
+	}
+
+	/**
+	 * Refuses an archive whose release advertises a `.sha256` that could not be
+	 * fetched or read, unless the digest recorded on an earlier install matched.
+	 * A release without a `.sha256` keeps its warning.
+	 *
+	 * @throws Exception when the advertised digest could not be checked
+	 */
+	private static function refuseUnverifiedAdvertisedSha(?string $shaUrl, ?string $integrityWarning, bool $recordedShaMatched): void {
+		if ($shaUrl === null || $integrityWarning === null || $recordedShaMatched === true) {
+			return;
+		}
+
+		throw new Exception('The release advertises a SHA-256 checksum that could not be verified; install refused.');
 	}
 
 	/**
