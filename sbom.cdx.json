@@ -2,10 +2,8 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:90e00e9d-2a8e-4a28-a209-e1a78292c4b7",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-11-11T17:27:59Z",
     "tools": [
       {
         "name": "composer",
@@ -82,10 +80,10 @@
       }
     ],
     "component": {
-      "bom-ref": "nextcloud/versioniq-dev-development",
+      "bom-ref": "nextcloud/versioniq-1.0.0.0",
       "type": "application",
       "name": "versioniq",
-      "version": "dev-development",
+      "version": "1.0.0",
       "group": "nextcloud",
       "description": "An example description",
       "author": "example",
@@ -96,16 +94,8 @@
           }
         }
       ],
-      "purl": "pkg:composer/nextcloud/versioniq@dev-development",
+      "purl": "pkg:composer/nextcloud/versioniq@1.0.0",
       "properties": [
-        {
-          "name": "cdx:composer:package:distReference",
-          "value": "daeac1c6275f6cb450a84f5260482e883250468a"
-        },
-        {
-          "name": "cdx:composer:package:sourceReference",
-          "value": "daeac1c6275f6cb450a84f5260482e883250468a"
-        },
         {
           "name": "cdx:composer:package:type",
           "value": "library"
@@ -12594,7 +12584,7 @@
   ],
   "dependencies": [
     {
-      "ref": "nextcloud/versioniq-dev-development"
+      "ref": "nextcloud/versioniq-1.0.0.0"
     }
   ]
 }
