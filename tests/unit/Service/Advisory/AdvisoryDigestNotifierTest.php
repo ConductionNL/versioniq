@@ -29,6 +29,9 @@ final class AdvisoryDigestNotifierTest extends TestCase {
 
 	private int $notifyCalls = 0;
 
+	/** @var list<list<mixed>> Setter calls on the notification, without setDateTime. */
+	private array $setterCalls = [];
+
 	/**
 	 * @param list<string> $admins
 	 */
@@ -36,8 +39,15 @@ final class AdvisoryDigestNotifierTest extends TestCase {
 		$this->notifyCalls = 0;
 
 		$notification = $this->createMock(INotification::class);
+		$this->setterCalls = [];
 		foreach (['setApp', 'setDateTime', 'setUser', 'setObject', 'setSubject'] as $setter) {
-			$notification->method($setter)->willReturnSelf();
+			$notification->method($setter)->willReturnCallback(function (mixed ...$args) use ($setter, $notification): INotification {
+				if ($setter !== 'setDateTime') {
+					$this->setterCalls[] = array_merge([$setter], $args);
+				}
+
+				return $notification;
+			});
 		}
 
 		$manager = $this->createMock(IManager::class);
@@ -186,5 +196,26 @@ final class AdvisoryDigestNotifierTest extends TestCase {
 
 		$working = $this->notifier();
 		$this->assertSame(2, $working->sendIfDue(['mail' => $this->informational('mail')], 1_700_000_060));
+	}
+
+	/**
+	 * Each admin gets one notification counting the apps and their
+	 * informational advisories.
+	 */
+	public function testTheDigestCountsAppsAndAdvisories(): void {
+		$notifier = $this->notifier(admins: ['alice']);
+		$twoAdvisories = $this->correlation('deck', AdvisoryService::STATE_AVAILABLE, [
+			['id' => 'GHSA-1', 'severity' => 'low', 'summary' => 'one'],
+			['id' => 'GHSA-2', 'severity' => 'low', 'summary' => 'two'],
+		]);
+
+		$notifier->sendIfDue(['mail' => $this->informational('mail'), 'deck' => $twoAdvisories], 1_700_000_000);
+
+		$this->assertSame([
+			['setApp', 'versioniq'],
+			['setUser', 'alice'],
+			['setObject', 'advisory_digest', '2'],
+			['setSubject', 'advisory_digest', ['apps' => 2, 'advisories' => 3]],
+		], $this->setterCalls);
 	}
 }

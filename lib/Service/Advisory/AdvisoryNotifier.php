@@ -68,8 +68,9 @@ class AdvisoryNotifier {
 					continue;
 				}
 				$newKeys[$key] = true;
+				$subject = ['app' => $appId, 'version' => (string)$installedVersion, 'advisory' => $advisory['id']];
 				foreach ($admins as $uid) {
-					$this->fire($uid, $appId, (string)$installedVersion, $advisory['id']);
+					$this->fire($uid, $subject);
 				}
 			}
 		}
@@ -84,24 +85,25 @@ class AdvisoryNotifier {
 		return count($newKeys);
 	}
 
-	private function fire(string $uid, string $appId, string $version, string $advisoryId): void {
+	/**
+	 * Tells one admin that an app's installed version is affected by an advisory.
+	 *
+	 * @param array{app: string, version: string, advisory: string} $subject
+	 */
+	private function fire(string $uid, array $subject): void {
 		try {
 			$notification = $this->admin->notificationManager->createNotification();
 			$notification
 				->setApp(Application::APP_ID)
 				->setUser($uid)
 				->setDateTime($this->admin->timeFactory->getDateTime())
-				->setObject('advisory', $appId . ':' . $advisoryId)
-				->setSubject('pinned_to_vulnerable', [
-					'app' => $appId,
-					'version' => $version,
-					'advisory' => $advisoryId,
-				]);
+				->setObject('advisory', $subject['app'] . ':' . $subject['advisory'])
+				->setSubject('pinned_to_vulnerable', $subject);
 			$this->admin->notificationManager->notify($notification);
 		} catch (\Throwable $error) {
 			$this->logger->warning('AdvisoryNotifier: failed to raise notification', [
-				'app' => $appId,
-				'advisory' => $advisoryId,
+				'app' => $subject['app'],
+				'advisory' => $subject['advisory'],
 				'message' => $error->getMessage(),
 			]);
 		}
