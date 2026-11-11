@@ -138,4 +138,29 @@ final class AppStoreDiscoveryTest extends TestCase {
 		$this->assertCount(1, $result->hits);
 		$this->assertStringContainsString('cached entry', $result->hits[0]->summary);
 	}
+
+	/**
+	 * Rows without a usable id are skipped, the walk stops at 200 hits, and
+	 * the hits come back best match first.
+	 */
+	public function testInvalidIdsTheHitCapAndTheOrder(): void {
+		$catalog = [['id' => ''], ['id' => 42, 'name' => 'mail'], ['name' => 'mail without id']];
+		for ($i = 0; $i < 205; $i++) {
+			$catalog[] = ['id' => sprintf('app%03d', $i), 'summary' => 'a mail tool'];
+		}
+		$catalog[] = ['id' => 'mail', 'name' => 'Mail'];
+
+		$ids = array_map(static fn ($hit): string => $hit->appId, $this->buildDiscovery($catalog)->search('mail')->hits);
+
+		$this->assertCount(200, $ids);
+		$this->assertSame(['app000', 'app001', 'app002'], array_slice($ids, 0, 3));
+		$this->assertSame('app199', end($ids));
+		$this->assertNotContains('mail', $ids, 'the walk stops before the 206th match');
+
+		$ranked = array_map(
+			static fn ($hit): string => $hit->appId,
+			$this->buildDiscovery([['id' => 'x1', 'summary' => 'mail client'], ['id' => 'mail', 'name' => 'Mail']])->search('mail')->hits,
+		);
+		$this->assertSame(['mail', 'x1'], $ranked);
+	}
 }

@@ -100,42 +100,79 @@ class AppStoreDiscovery implements DiscoveryProviderInterface {
 			return DiscoveryResult::empty();
 		}
 
+		$hits = $this->matchingHits($catalog, $needle);
+		usort($hits, fn (DiscoveryHit $a, DiscoveryHit $b): int => $this->scoreHit($needle, $b) <=> $this->scoreHit($needle, $a));
+
+		return new DiscoveryResult($hits, null);
+	}
+
+	/**
+	 * The first 200 catalogue apps with an id that match the needle, in
+	 * catalogue order.
+	 *
+	 * @param list<array<array-key, mixed>> $catalog
+	 * @return list<DiscoveryHit>
+	 */
+	private function matchingHits(array $catalog, string $needle): array {
 		$hits = [];
 		foreach ($catalog as $app) {
-			/** @var mixed $id */
-			$id = $app['id'] ?? null;
-			if (!is_string($id) || $id === '') {
+			$id = self::catalogId($app);
+			if ($id === null || !$this->matches($app, $needle)) {
 				continue;
 			}
 
-			if (!$this->matches($app, $needle)) {
-				continue;
-			}
-
-			$hits[] = new DiscoveryHit(
-				appId: $id,
-				listing: new DiscoveryListing(
-					name: $this->stringField($app, 'name', $id),
-					summary: $this->stringField($app, 'summary', ''),
-					iconUrl: $this->stringField($app, 'preview', '') ?: null,
-					homepageUrl: $this->stringField($app, 'website', '') ?: null,
-				),
-				source: new DiscoverySource(
-					providerId: self::ID,
-					binding: ['kind' => SourceBinding::KIND_APPSTORE],
-					installable: true,
-					installableReason: null,
-				),
-			);
-
+			$hits[] = $this->hitFor($app, $id);
 			if (count($hits) >= 200) {
 				break;
 			}
 		}
 
-		usort($hits, fn (DiscoveryHit $a, DiscoveryHit $b): int => $this->scoreHit($needle, $b) <=> $this->scoreHit($needle, $a));
+		return $hits;
+	}
 
-		return new DiscoveryResult($hits, null);
+	/**
+	 * A catalogue app's id, or null when it has none usable.
+	 *
+	 * @param array<array-key, mixed> $app
+	 */
+	private static function catalogId(array $app): ?string {
+		/** @var mixed $id */
+		$id = $app['id'] ?? null;
+
+		return is_string($id) && $id !== '' ? $id : null;
+	}
+
+	/**
+	 * How a catalogue app is listed: its name (the id when it has none),
+	 * summary, preview image and website.
+	 *
+	 * @param array<array-key, mixed> $app
+	 */
+	private function listingFor(array $app, string $id): DiscoveryListing {
+		return new DiscoveryListing(
+			name: $this->stringField($app, 'name', $id),
+			summary: $this->stringField($app, 'summary', ''),
+			iconUrl: $this->stringField($app, 'preview', '') ?: null,
+			homepageUrl: $this->stringField($app, 'website', '') ?: null,
+		);
+	}
+
+	/**
+	 * One catalogue app as an installable App Store hit.
+	 *
+	 * @param array<array-key, mixed> $app
+	 */
+	private function hitFor(array $app, string $id): DiscoveryHit {
+		return new DiscoveryHit(
+			appId: $id,
+			listing: $this->listingFor($app, $id),
+			source: new DiscoverySource(
+				providerId: self::ID,
+				binding: ['kind' => SourceBinding::KIND_APPSTORE],
+				installable: true,
+				installableReason: null,
+			),
+		);
 	}
 
 	/**
