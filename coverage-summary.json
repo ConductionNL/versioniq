@@ -42,6 +42,6 @@
         }
     },
     "measuredAt": "2026-11-12",
-    "commit": "8f01d85",
+    "commit": "2281797",
     "generator": "scripts/coverage-publish.php"
 }
