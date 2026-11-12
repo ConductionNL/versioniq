@@ -44,9 +44,21 @@ on:
     branches: [main, master, development, beta]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   quality:
     if: (github.event_name != 'pull_request' || github.head_ref != 'development')
+    # Ceiling for the shared quality pipeline: GitHub validates the called
+    # workflow's job permissions against this grant, so it must cover the most
+    # any nested job declares.
+    permissions:
+      contents: write
+      actions: write
+      issues: write
+      pull-requests: write
+      packages: read
     uses: ConductionNL/.github/.github/workflows/quality.yml@main
     with:
       # MUST equal <id>versioniq</id> in appinfo/info.xml, character for
