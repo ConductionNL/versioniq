@@ -9,6 +9,7 @@ use OC\DB\Connection;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
 use OCA\Versioniq\Service\Lkg\Lkg;
 use OCA\Versioniq\Service\Lkg\LkgStore;
+use OCA\Versioniq\Service\Settings\ConfigStores;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\IJobList;
@@ -168,8 +169,7 @@ final class InstallFinalizerGoldenTest extends TestCase {
 	private function runCase(array $case): array {
 		$this->calls = [];
 		$finalizer = new InstallFinalizer(
-			$this->appConfig($case),
-			$this->config($case),
+			new ConfigStores($this->config($case), $this->appConfig($case)),
 			$this->appManager($case),
 			$this->jobList($case),
 			$this->logger(),

@@ -18,12 +18,11 @@ use OC\DB\Connection;
 use OC\DB\MigrationService;
 use OCA\Versioniq\Service\Lkg\Lkg;
 use OCA\Versioniq\Service\Lkg\LkgStore;
+use OCA\Versioniq\Service\Settings\ConfigStores;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\IJob;
 use OCP\BackgroundJob\IJobList;
-use OCP\IAppConfig;
-use OCP\IConfig;
 use OCP\Migration\IOutput;
 use OCP\Server;
 use Psr\Log\LoggerInterface;
@@ -42,14 +41,14 @@ use Psr\Log\LoggerInterface;
  */
 class InstallFinalizer {
 	public function __construct(
-		private IAppConfig $appConfig,
 		/**
-		 * Only for the handful of keys Nextcloud core owns and writes itself.
-		 * IConfig::setAppValue() is deprecated, but it is the sole public way
-		 * to store a value untyped (VALUE_MIXED), and matching core's own type
-		 * is the entire point. See the comment on the writes below.
+		 * `configs->config` only for the handful of keys Nextcloud core owns
+		 * and writes itself. IConfig::setAppValue() is deprecated, but it is
+		 * the sole public way to store a value untyped (VALUE_MIXED), and
+		 * matching core's own type is the entire point. See the comment on
+		 * the writes below.
 		 */
-		private IConfig $config,
+		private ConfigStores $configs,
 		private IAppManager $appManager,
 		private IJobList $jobList,
 		private LoggerInterface $logger,
@@ -64,11 +63,15 @@ class InstallFinalizer {
 	}
 
 	/**
-	 * Finalizes an install. An update runs in a child process that boots with
-	 * the new files in place, so the repair steps see the new version's
-	 * registrations and not the previous version's (#611); a fresh install,
-	 * or an update without a way to start a child, runs finalizeHere() in
-	 * this process.
+	 * Runs migrations, repair steps, job + route registration, and version/enabled writes after extraction;
+	 * see "Install Specific Version" ("any database migrations for the new version MUST be triggered") and
+	 * "Last-known-good version record" (the last statement here — reached only on success — is the single
+	 * choke point that writes `lkg.{appId}` for both installers).
+	 *
+	 * An update runs all of that in a child process that boots with the new files in place, so the repair
+	 * steps see the new version's registrations and not the previous version's (#611); the child calls this
+	 * method again and stays in-process. A fresh install, or an update without a way to start a child, runs
+	 * in this process.
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @spec openspec/specs/migration-safety/spec.md
@@ -79,29 +82,12 @@ class InstallFinalizer {
 	 */
 	public function finalize(string $appPath, array $info, string $enabled, ?IOutput $output = null, string $sourceId = 'appstore'): string {
 		if ($this->childFinalizer !== null && $this->childFinalizer->applies($info)) {
-			$appId = $this->childFinalizer->run($appPath, $info, $enabled, $sourceId);
-			if ($appId !== null) {
-				return $appId;
+			$childAppId = $this->childFinalizer->run($appPath, $info, $enabled, $sourceId);
+			if ($childAppId !== null) {
+				return $childAppId;
 			}
 		}
 
-		return $this->finalizeHere($appPath, $info, $enabled, $output, $sourceId);
-	}
-
-	/**
-	 * Runs migrations, repair steps, job + route registration, and version/enabled writes after extraction,
-	 * in this process; see "Install Specific Version" ("any database migrations for the new version MUST be
-	 * triggered") and "Last-known-good version record" (the last statement here — reached only on success —
-	 * is the single choke point that writes `lkg.{appId}` for both installers).
-	 *
-	 * @spec openspec/specs/version-management/spec.md
-	 * @spec openspec/specs/migration-safety/spec.md
-	 * @param array<string, mixed> $info Parsed `appinfo/info.xml` for the just-extracted version.
-	 * @param string $sourceId The source binding id (e.g. `appstore`, `github:owner/repo`) this version was
-	 *                         installed from, recorded alongside the last-known-good version.
-	 * @throws Exception
-	 */
-	public function finalizeHere(string $appPath, array $info, string $enabled, ?IOutput $output = null, string $sourceId = 'appstore'): string {
 		$appId = self::appIdOf($info);
 
 		// Lazy registration must run before autoload + migrations so app-registered
@@ -136,9 +122,9 @@ class InstallFinalizer {
 		 * on the typed API; only core's keys use core's semantics.
 		 */
 		/** @psalm-suppress DeprecatedMethod Deliberate — see the block comment above. */
-		$this->config->setAppValue($appId, 'installed_version', $installedVersion);
+		$this->configs->config->setAppValue($appId, 'installed_version', $installedVersion);
 		/** @psalm-suppress DeprecatedMethod Deliberate — see the block comment above. */
-		$this->config->setAppValue($appId, 'enabled', $enabled);
+		$this->configs->config->setAppValue($appId, 'enabled', $enabled);
 		$this->registerRoutes($info);
 
 		$this->persistAppTypes($appId);
@@ -171,7 +157,7 @@ class InstallFinalizer {
 	 */
 	private function runMigrations(array $info, ?IOutput $output): void {
 		$appId = self::appIdOf($info);
-		$previousVersion = $this->appConfig->getValueString($appId, 'installed_version', '');
+		$previousVersion = $this->configs->appConfig->getValueString($appId, 'installed_version', '');
 		$migrationService = new MigrationService($appId, Server::get(Connection::class));
 		if ($output instanceof IOutput) {
 			$migrationService->setOutput($output);
@@ -258,7 +244,7 @@ class InstallFinalizer {
 			$routes = (array)($info[$kind] ?? []);
 			foreach ($routes as $name => $path) {
 				/** @psalm-suppress DeprecatedMethod Deliberate — see the block comment in finalize(). */
-				$this->config->setAppValue('core', $kind . '_' . $name, $appId . '/' . $path);
+				$this->configs->config->setAppValue('core', $kind . '_' . $name, $appId . '/' . $path);
 			}
 		}
 	}
@@ -281,7 +267,7 @@ class InstallFinalizer {
 		// Core-owned key as well: OC_App writes app types untyped, so a typed
 		// row here would collide the same way installed_version did.
 		/** @psalm-suppress DeprecatedMethod Deliberate — core owns this key and writes it untyped. */
-		$this->config->setAppValue($appId, 'types', $types);
+		$this->configs->config->setAppValue($appId, 'types', $types);
 	}
 
 	private static function includeAppScript(string $script): void {

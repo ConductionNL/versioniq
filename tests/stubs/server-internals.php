@@ -26,6 +26,9 @@ namespace {
 		/** @var string */
 		public static $SERVERROOT;
 
+		/** @var ?string Ends with '/'; null until a server boots, as in unit tests. */
+		public static $configDir;
+
 		/** @var mixed */
 		public static $server;
 

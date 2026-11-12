@@ -12,7 +12,6 @@ namespace OCA\Versioniq\Service\Installer;
 
 use Exception;
 use OCP\App\IAppManager;
-use OCP\IAppConfig;
 use OCP\IBinaryFinder;
 use OCP\ITempManager;
 use OCP\Server;
@@ -29,10 +28,20 @@ use Psr\Log\LoggerInterface;
  * version built through a factory of its own, then fails, after the migrations
  * already ran (#611). A child process boots Nextcloud with the new files in
  * place, so the new version is the one registered, and runs the same
- * {@see InstallFinalizer::finalizeHere()}.
+ * {@see InstallFinalizer::finalize()}, which stays in-process there.
  *
  * A fresh install has no previous version in the process and stays in-process,
  * as does an update when no PHP CLI binary or `proc_open` is available.
+ *
+ * Nextcloud keeps the system config in memory and writes all of it back to
+ * `config/config.php` on every change, so a value the child writes (a migration
+ * or repair step calling `IConfig::setSystemValue()`) would be reverted by this
+ * process's next write. The keys the child added, changed or removed in
+ * `config.php` are therefore applied to this process's config after the child
+ * ends, whether it succeeded or failed. Only `config.php` itself is compared,
+ * not the `*.config.php` files beside it, and a value this process changes
+ * while the child runs would be overwritten, which does not happen: it waits
+ * for the child and writes no system config in that time.
  *
  * @spec openspec/specs/version-management/spec.md
  * @spec openspec/specs/migration-safety/spec.md
@@ -47,8 +56,7 @@ class ChildProcessFinalizer {
 
 	public function __construct(
 		private IBinaryFinder $binaryFinder,
-		private IAppConfig $appConfig,
-		private IAppManager $appManager,
+		private ServerAccess $server,
 		private LoggerInterface $logger,
 		private ITempManager $tempManager,
 	) {
@@ -67,7 +75,7 @@ class ChildProcessFinalizer {
 		if ($appId === '' || getenv(self::CHILD_ENV) === '1') {
 			return false;
 		}
-		if ($this->appConfig->getValueString($appId, 'installed_version', '') === '') {
+		if ($this->server->configs->appConfig->getValueString($appId, 'installed_version', '') === '') {
 			return false;
 		}
 		if ($this->phpBinary() === null) {
@@ -80,7 +88,7 @@ class ChildProcessFinalizer {
 	}
 
 	/**
-	 * Runs InstallFinalizer::finalizeHere() in a child process and returns the app id,
+	 * Runs InstallFinalizer::finalize() in a child process and returns the app id,
 	 * or null when no child could be started — nothing ran then, so the caller
 	 * finalizes in-process instead of failing the install.
 	 *
@@ -97,20 +105,6 @@ class ChildProcessFinalizer {
 			return null;
 		}
 
-		$command = [
-			$php,
-			'-r',
-			'define("OC_CONSOLE", 1); require $argv[1] . "/lib/base.php"; exit(\\' . self::class . '::main(array_slice($argv, 2)));',
-			'--',
-			\OC::$SERVERROOT,
-			$appId,
-			$appPath,
-			$enabled,
-			$sourceId,
-		];
-		$env = getenv();
-		$env[self::CHILD_ENV] = '1';
-
 		// stderr goes to a file, not a pipe: reading two pipes one after the
 		// other blocks the child once it fills the unread one (~64 KB).
 		// ITempManager, not sys_get_temp_dir(): it honours `tempdirectory` and
@@ -121,39 +115,21 @@ class ChildProcessFinalizer {
 
 			return null;
 		}
-		$stderrSpec = ['file', $stderrFile, 'w'];
-		$process = proc_open($command, [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => $stderrSpec], $pipes, \OC::$SERVERROOT, $env);
-		if (!is_resource($process)) {
-			@unlink($stderrFile);
+
+		$configBefore = self::readConfigFile();
+		$outcome = self::runChild($this->childCommand($php, [$appId, $appPath, $enabled, $sourceId]), $stderrFile);
+		if ($outcome === null) {
 			$this->logger->warning('versioniq: could not start the finalize child of {app}; finalizing in-process (#611).', ['app' => $appId]);
 
 			return null;
 		}
-		fclose($pipes[0]);
-		$stdout = (string)stream_get_contents($pipes[1]);
-		fclose($pipes[1]);
-		$exitCode = proc_close($process);
-		$stderr = (string)@file_get_contents($stderrFile);
-		@unlink($stderrFile);
-
-		$result = self::parseResult($stdout);
-		if ($exitCode !== 0 || ($result['ok'] ?? false) !== true) {
-			$message = is_string($result['message'] ?? null) && $result['message'] !== ''
-				? $result['message']
-				: 'The finalize phase failed in the child process (exit ' . $exitCode . '): ' . self::tail($stderr !== '' ? $stderr : $stdout);
-			$this->logger->error('versioniq: finalize of {app} failed in the child process: {message}', [
-				'app' => $appId,
-				'message' => $message,
-				'exitCode' => $exitCode,
-				'class' => $result['class'] ?? null,
-			]);
-			throw new Exception($message);
-		}
+		$this->syncSystemConfig($appId, $configBefore, self::readConfigFile());
+		$this->failOnChildFailure($appId, $outcome);
 
 		// The child wrote installed_version, enabled, routes and the
 		// last-known-good record; this process still holds the values it read.
-		$this->appConfig->clearCache(true);
-		$this->appManager->clearAppsCache();
+		$this->server->configs->appConfig->clearCache(true);
+		$this->server->appManager->clearAppsCache();
 
 		return $appId;
 	}
@@ -166,6 +142,9 @@ class ChildProcessFinalizer {
 	 * @spec openspec/specs/version-management/spec.md
 	 */
 	public static function main(array $args): int {
+		// Whoever started this process, InstallFinalizer::finalize() must not
+		// hand the finalize to yet another child.
+		putenv(self::CHILD_ENV . '=1');
 		[$appId, $appPath, $enabled, $sourceId] = array_pad($args, 4, '');
 		if ($appId === '' || $appPath === '' || !is_file($appPath . '/appinfo/info.xml')) {
 			echo self::RESULT_PREFIX . json_encode(['ok' => false, 'message' => 'Bad arguments for the finalize child process.']) . "\n";
@@ -178,7 +157,7 @@ class ChildProcessFinalizer {
 			if (!is_array($info) || ($info['id'] ?? null) !== $appId) {
 				throw new Exception('appinfo/info.xml of ' . $appId . ' could not be read in the child process.');
 			}
-			Server::get(InstallFinalizer::class)->finalizeHere($appPath, $info, $enabled, null, $sourceId !== '' ? $sourceId : 'appstore');
+			Server::get(InstallFinalizer::class)->finalize($appPath, $info, $enabled, null, $sourceId !== '' ? $sourceId : 'appstore');
 		} catch (\Throwable $e) {
 			echo self::RESULT_PREFIX . json_encode(['ok' => false, 'class' => get_class($e), 'message' => $e->getMessage()], JSON_UNESCAPED_SLASHES) . "\n";
 
@@ -188,6 +167,173 @@ class ChildProcessFinalizer {
 		echo self::RESULT_PREFIX . json_encode(['ok' => true, 'appId' => $appId]) . "\n";
 
 		return 0;
+	}
+
+	/**
+	 * The command that starts the child: PHP boots Nextcloud and calls main()
+	 * with the arguments.
+	 *
+	 * @param list<string> $childArgs appId, appPath, enabled, sourceId.
+	 * @return list<string>
+	 * @spec openspec/specs/version-management/spec.md
+	 */
+	protected function childCommand(string $php, array $childArgs): array {
+		return [
+			$php,
+			'-r',
+			'define("OC_CONSOLE", 1); require $argv[1] . "/lib/base.php"; exit(\\' . self::class . '::main(array_slice($argv, 2)));',
+			'--',
+			\OC::$SERVERROOT,
+			...$childArgs,
+		];
+	}
+
+	/**
+	 * Starts the child and waits for it; null when it could not be started.
+	 *
+	 * @param list<string> $command
+	 * @return ?array{exitCode: int, stdout: string, stderr: string}
+	 */
+	private static function runChild(array $command, string $stderrFile): ?array {
+		$env = getenv();
+		$env[self::CHILD_ENV] = '1';
+		$process = proc_open($command, [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['file', $stderrFile, 'w']], $pipes, \OC::$SERVERROOT, $env);
+		if (!is_resource($process)) {
+			@unlink($stderrFile);
+
+			return null;
+		}
+		fclose($pipes[0]);
+		$stdout = (string)stream_get_contents($pipes[1]);
+		fclose($pipes[1]);
+		$exitCode = proc_close($process);
+		$stderr = (string)@file_get_contents($stderrFile);
+		@unlink($stderrFile);
+
+		return ['exitCode' => $exitCode, 'stdout' => $stdout, 'stderr' => $stderr];
+	}
+
+	/**
+	 * Throws when the child exited non-zero or did not report success.
+	 *
+	 * @param array{exitCode: int, stdout: string, stderr: string} $outcome
+	 * @throws Exception
+	 */
+	private function failOnChildFailure(string $appId, array $outcome): void {
+		$result = self::parseResult($outcome['stdout']);
+		if ($outcome['exitCode'] === 0 && $result['ok']) {
+			return;
+		}
+
+		$message = $result['message'] !== ''
+			? $result['message']
+			: 'The finalize phase failed in the child process (exit ' . $outcome['exitCode'] . '): ' . self::tail($outcome['stderr'] !== '' ? $outcome['stderr'] : $outcome['stdout']);
+		$this->logger->error('versioniq: finalize of {app} failed in the child process: {message}', [
+			'app' => $appId,
+			'message' => $message,
+			'exitCode' => $outcome['exitCode'],
+			'class' => $result['class'],
+		]);
+		throw new Exception($message);
+	}
+
+	/**
+	 * Applies the keys the child added, changed or removed in config.php to
+	 * this process's system config, in one write. Logs the keys, never the
+	 * values: config.php holds secrets.
+	 *
+	 * @param ?array<array-key, mixed> $before config.php before the child started.
+	 * @param ?array<array-key, mixed> $after config.php after the child ended.
+	 */
+	private function syncSystemConfig(string $appId, ?array $before, ?array $after): void {
+		if ($before === null || $after === null) {
+			$this->logger->warning('versioniq: could not read config/config.php around the finalize child of {app}; a system config value the child wrote may be reverted by this process\'s next config write (#611).', ['app' => $appId]);
+
+			return;
+		}
+
+		$changes = self::configChanges($before, $after);
+		if ($changes === []) {
+			return;
+		}
+
+		$keys = implode(', ', array_map(static fn (int|string $key): string => (string)$key, array_keys($changes)));
+		$this->logger->info('versioniq: the finalize child of {app} changed the system config keys {keys}; applying them to this process so its next config write keeps them (#611).', ['app' => $appId, 'keys' => $keys]);
+		try {
+			$this->server->configs->config->setSystemValues($changes);
+		} catch (\Throwable $e) {
+			$this->logger->warning('versioniq: could not apply the system config keys {keys} the finalize child of {app} changed: {message}', ['app' => $appId, 'keys' => $keys, 'message' => $e->getMessage()]);
+		}
+	}
+
+	/**
+	 * The keys added or changed (with their new value) and removed (with null)
+	 * between two reads of config.php; values are compared strictly.
+	 *
+	 * @param array<array-key, mixed> $before
+	 * @param array<array-key, mixed> $after
+	 * @return array<array-key, mixed>
+	 */
+	private static function configChanges(array $before, array $after): array {
+		$changes = [];
+		/** @psalm-suppress MixedAssignment A config value can be anything config.php holds. */
+		foreach ($after as $key => $value) {
+			if (!array_key_exists($key, $before) || $before[$key] !== $value) {
+				$changes[$key] = $value;
+			}
+		}
+		foreach (array_keys($before) as $key) {
+			if (!array_key_exists($key, $after)) {
+				$changes[$key] = null;
+			}
+		}
+
+		return $changes;
+	}
+
+	/**
+	 * config.php, read the way Nextcloud reads it (fresh stat and opcache, a
+	 * shared lock); null when it cannot be read.
+	 *
+	 * @return ?array<array-key, mixed>
+	 */
+	private static function readConfigFile(): ?array {
+		$configDir = \OC::$configDir;
+		if (!is_string($configDir) || $configDir === '') {
+			return null;
+		}
+		$file = $configDir . 'config.php';
+		clearstatcache(true, $file);
+		if (function_exists('opcache_invalidate')) {
+			@opcache_invalidate($file, false);
+		}
+		$handle = is_file($file) ? @fopen($file, 'r') : false;
+		if ($handle === false) {
+			return null;
+		}
+
+		try {
+			return flock($handle, LOCK_SH) ? self::includeConfig($file) : null;
+		} catch (\Throwable) {
+			return null;
+		} finally {
+			flock($handle, LOCK_UN);
+			fclose($handle);
+		}
+	}
+
+	/**
+	 * Includes a config file in a scope of its own and returns its `$CONFIG`.
+	 *
+	 * @return ?array<array-key, mixed>
+	 */
+	private static function includeConfig(string $file): ?array {
+		/** @var mixed $CONFIG The include below may replace it with anything. */
+		$CONFIG = [];
+		/** @psalm-suppress UnresolvableInclude The server's own config file, at a path only known at run time. */
+		include $file;
+
+		return is_array($CONFIG) ? $CONFIG : null;
 	}
 
 	/**
@@ -206,21 +352,26 @@ class ChildProcessFinalizer {
 	}
 
 	/**
-	 * The child's result line, decoded; an empty array when there is none.
+	 * The child's result line, decoded; not ok and without a message when
+	 * there is none.
 	 *
-	 * @return array<string, mixed>
+	 * @return array{ok: bool, message: string, class: ?string}
 	 */
 	private static function parseResult(string $stdout): array {
-		$lines = array_reverse(explode("\n", $stdout));
-		foreach ($lines as $line) {
-			if (str_starts_with($line, self::RESULT_PREFIX)) {
-				$decoded = json_decode(substr($line, strlen(self::RESULT_PREFIX)), true);
-
-				return is_array($decoded) ? $decoded : [];
+		foreach (array_reverse(explode("\n", $stdout)) as $line) {
+			if (!str_starts_with($line, self::RESULT_PREFIX)) {
+				continue;
 			}
+			$decoded = (array)json_decode(substr($line, strlen(self::RESULT_PREFIX)), true);
+
+			return [
+				'ok' => ($decoded['ok'] ?? null) === true,
+				'message' => isset($decoded['message']) && is_string($decoded['message']) ? $decoded['message'] : '',
+				'class' => isset($decoded['class']) && is_string($decoded['class']) ? $decoded['class'] : null,
+			];
 		}
 
-		return [];
+		return ['ok' => false, 'message' => '', 'class' => null];
 	}
 
 	private static function tail(string $text): string {
