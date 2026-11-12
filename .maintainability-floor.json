@@ -1,19 +1,19 @@
 {
-  "measured_at": "2026-11-11T15:39:53Z",
-  "commit": "760128d5fb855b27a9166f5f649f6da6eba18aac",
+  "measured_at": "2026-11-12T09:53:31Z",
+  "commit": "be3e4f3dff4e12a025136a5a9096a6e4405c93a6",
   "tool_version": "estimator sha256:391d6ca5ea39; lizard 1.24.3; jscpd 4.0.5; profile five-star",
   "tolerance": 0.01,
-  "overall": 4.9,
+  "overall": 4.94,
   "overall_range": [
-    4.9,
-    4.93
+    4.94,
+    4.96
   ],
   "properties": {
     "volume": null,
     "duplication": 5.13,
-    "unit_size": 4.73,
-    "unit_complexity": 4.6,
-    "unit_interfacing": 3.95,
+    "unit_size": 4.74,
+    "unit_complexity": 4.62,
+    "unit_interfacing": 4.17,
     "module_coupling": 5.14,
     "component_independence": 5.5,
     "component_entanglement": 5.5
