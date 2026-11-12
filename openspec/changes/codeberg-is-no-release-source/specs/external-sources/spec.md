@@ -8,6 +8,56 @@
 
 ## MODIFIED Requirements
 
+### Requirement: Trusted-source allowlist [MVP]
+
+The system MUST reject external installs from sources not in the configured allowlist. Allowlist patterns are **forge-qualified** globs of the form `{forge}:owner/repo` (e.g. `github:ConductionNL/*`), stored in `versioniq.trusted_sources` as a JSON array. Matching is performed against the binding's `{forge}:owner/repo` id. A stored pattern with **no** forge prefix (legacy bare `owner/repo`) MUST be treated as `github:owner/repo`. When unset, the default is `["github:ConductionNL/*"]`; the default trusts nothing on a retired forge, and a stored pattern of a retired forge stays trusted. The existing fnmatch and owner/repo path-traversal protections MUST be preserved.
+
+#### Scenario: Forge-qualified source in allowlist
+
+@e2e exclude TrustedSourceList glob matching is unit-tested.
+
+- **GIVEN** trusted_sources is `["github:ConductionNL/*", "codeberg:Conduction/*"]`, the Codeberg pattern stored before Codeberg was retired
+- **WHEN** an admin tries to install from `github:ConductionNL/openregister`
+- **THEN** `TrustedSourceList::assertAllowed` MUST succeed
+- **WHEN** an admin tries to install from `codeberg:Conduction/openregister`
+- **THEN** `TrustedSourceList::assertAllowed` MUST succeed
+
+#### Scenario: Untrusted Codeberg source rejected
+
+@e2e tests/e2e/external-sources.spec.ts
+
+- **GIVEN** trusted_sources is `["github:ConductionNL/*", "codeberg:Conduction/*"]`
+- **WHEN** an admin tries to install from `codeberg:randomuser/randomapp`
+- **THEN** `TrustedSourceList::assertAllowed` MUST throw `UntrustedSourceException`
+- **AND** the system MUST return HTTP 403 with a message naming the rejected source
+- **AND** no download or filesystem change MUST happen
+
+#### Scenario: Legacy bare pattern treated as github
+
+@e2e exclude the legacy-pattern normalisation is unit-tested.
+
+- **GIVEN** trusted_sources is the legacy bare `["ConductionNL/*"]`
+- **WHEN** an admin tries to install from `github:ConductionNL/openregister`
+- **THEN** the pattern MUST be interpreted as `github:ConductionNL/*` and the source MUST be allowed
+- **AND** `codeberg:ConductionNL/openregister` MUST NOT match the bare github-only pattern
+
+#### Scenario: Cross-forge isolation
+
+@e2e exclude cross-forge allowlist isolation is unit-tested in TrustedSourceList.
+
+- **GIVEN** trusted_sources is `["github:Conduction/*"]`
+- **WHEN** an admin tries to install from `codeberg:Conduction/openregister`
+- **THEN** `TrustedSourceList::assertAllowed` MUST throw `UntrustedSourceException` (a github pattern does not authorize a codeberg source)
+
+#### Scenario: Unset allowlist falls back to default
+
+@e2e exclude the default-allowlist fallback is unit-tested.
+
+- **GIVEN** `versioniq.trusted_sources` has never been set
+- **WHEN** the system reads the allowlist
+- **THEN** the default `["github:ConductionNL/*"]` MUST be used
+- **AND** `codeberg:Conduction/openregister` MUST NOT be allowed
+
 ### Requirement: Trusted-allowlist management API [MVP]
 
 The system MUST provide admin-only, password-confirmed endpoints to curate the trusted-source allowlist by adding and removing forge-qualified patterns, delegating persistence to `TrustedSourceList::setPatterns()`. The system MUST reject over-broad patterns that would trust an entire forge or everything, and MUST refuse a new pattern for a retired forge (`codeberg`). A stored pattern of a retired forge MUST stay listed and removable.

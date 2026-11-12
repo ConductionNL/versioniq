@@ -8,7 +8,7 @@
 ## 2. Code and tests
 
 - [ ] 2.1 Point `tests/e2e/external-sources.spec.ts` and `tests/e2e/panels.spec.ts` at a GitHub or self-hosted Forgejo fixture instead of the Codeberg path, and add a unit test that `POST /api/source/{appId}/bind` and `POST /api/trusted-sources` refuse forge `codeberg` (`tests/unit/Controller/ApiTest.php`).
-- [ ] 2.2 Decide whether `TrustedSourceList::DEFAULT_PATTERNS` (`lib/Service/Source/TrustedSourceList.php:34`) keeps `codeberg:Conduction/*`; drop it if not, and change "Trusted-source allowlist [MVP]" with it.
+- [x] 2.2 Decide whether `TrustedSourceList::DEFAULT_PATTERNS` (`lib/Service/Source/TrustedSourceList.php:34`) keeps `codeberg:Conduction/*`; drop it if not, and change "Trusted-source allowlist [MVP]" with it.
 
 ## 3. Close out
 
