@@ -825,7 +825,7 @@
 					"canvas": "design-system",
 					"board": "VqApps"
 				},
-				"requirement": "The card names where the installed version came from"
+				"requirement": "openspec/changes/inventory-pins-checks-and-pending/specs/external-sources :: The card names where the installed version came from"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -972,7 +972,7 @@
 					"canvas": "design-system",
 					"board": "VqApps"
 				},
-				"requirement": "The app card shows shipped apps and the bound source"
+				"requirement": "openspec/specs/version-management :: The app card shows shipped apps and the bound source"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1156,7 +1156,7 @@
 					"board": "VqAppVersies"
 				},
 				"change": "inventory-app-details-card",
-				"requirement": "The version view shows an About card with publisher, licence and links"
+				"requirement": "openspec/changes/inventory-app-details-card/specs/version-management :: The version view shows an About card with publisher, licence and links"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1883,7 +1883,7 @@
 					"canvas": "design-system",
 					"board": "VqApps"
 				},
-				"requirement": "The app card offers the version before the last update as a rollback target"
+				"requirement": "openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety :: The app card offers the version before the last update as a rollback target"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2349,7 +2349,8 @@
 					"board": "VqInstalleren"
 				},
 				"spec": "openspec/specs/version-management",
-				"requirement": "Install Specific Version (change retro-enabled-state-and-unattended-tokens adds the enabled-state SHALL)"
+				"requirement": "openspec/changes/retro-enabled-state-and-unattended-tokens/specs/version-management :: Install Specific Version [MVP]",
+				"plan": "openspec/changes/retro-enabled-state-and-unattended-tokens"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2459,7 +2460,7 @@
 					"canvas": "design-system",
 					"board": "VqApps"
 				},
-				"requirement": "The pre-flight check refuses an install that does not fit on disk"
+				"requirement": "openspec/changes/safety-rollback-backup-and-preflight/specs/version-management :: The pre-flight check refuses an install that does not fit on disk"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2712,7 +2713,7 @@
 					"canvas": "design-system",
 					"board": "VqInstalleren"
 				},
-				"requirement": "Restoring a broken install puts back files and tables"
+				"requirement": "openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety :: Restoring a broken install puts back files and tables"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2748,7 +2749,7 @@
 					"canvas": "design-system",
 					"board": "VqInstalleren"
 				},
-				"requirement": "A real install keeps a restorable backup of the app folder and its tables"
+				"requirement": "openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety :: A real install keeps a restorable backup of the app folder and its tables"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2776,7 +2777,7 @@
 			"easy-updates-manager": "yes",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/InstallerService.php:609 (maintenance on for a real install when it was off), lib/Service/InstallerService.php:807 (switched off in finally); tests/unit/Service/InstallerDryRunSideEffectsTest.php:98 (dry run never writes it)",
+				"evidence": "lib/Service/InstallerService.php:820 (maintenance on for a real install when it was off), lib/Service/InstallerService.php:836 (switched off in finally), lib/Service/InstallerService.php:841 (dry run and maintenance already on are left alone); tests/unit/Service/InstallerDryRunSideEffectsTest.php:98 (a dry run does not write it)",
 				"reachedOn": "Apps tab (any install); occ versioniq:install; background job AutoUpdateJob",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/migration-safety",
@@ -2984,7 +2985,7 @@
 			"easy-updates-manager": "partial",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/InstallerService.php:939",
+				"evidence": "lib/Service/InstallerService.php:1387 (isManageableApp), lib/Service/InstallerService.php:603 (install refused with 403), lib/Service/InstallerService.php:310 (version list refused), lib/Command/InstallVersion.php:108",
 				"reachedOn": "every install path: Apps tab, API, occ, auto-update job",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/version-management",
@@ -2992,7 +2993,11 @@
 					"canvas": "design-system",
 					"board": "VqApps"
 				},
-				"requirement": "List Installed Apps (core apps distinguished)"
+				"requirement": [
+					"openspec/changes/write-guards-and-advisory-alerts/specs/version-management :: Core apps and Versioniq itself are never changed",
+					"openspec/specs/version-management :: List Installed Apps [MVP]"
+				],
+				"plan": "openspec/changes/write-guards-and-advisory-alerts"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3514,7 +3519,7 @@
 					"canvas": "design-system",
 					"board": "VqApps"
 				},
-				"requirement": "The app list filters to pinned apps"
+				"requirement": "openspec/changes/inventory-pins-checks-and-pending/specs/version-pinning :: The app list filters to pinned apps"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4186,7 +4191,7 @@
 					"board": "VqAutomatischeUpdates"
 				},
 				"change": "inventory-pins-checks-and-pending",
-				"requirement": "The overview lists the updates that are pending now"
+				"requirement": "openspec/changes/inventory-pins-checks-and-pending/specs/auto-update-policies :: The overview lists the updates that are pending now"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4223,7 +4228,8 @@
 					"board": "VqTokens"
 				},
 				"spec": "openspec/specs/pat-management",
-				"requirement": "Background jobs use only tokens shared with all admins (change retro-enabled-state-and-unattended-tokens)"
+				"requirement": "openspec/changes/retro-enabled-state-and-unattended-tokens/specs/pat-management :: Background jobs use only tokens shared with all admins",
+				"plan": "openspec/changes/retro-enabled-state-and-unattended-tokens"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4492,7 +4498,10 @@
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
 				},
-				"requirement": "openspec/specs/security-advisory-correlation :: The installed/pinned version is correlated against known security advisories"
+				"requirement": [
+					"openspec/specs/security-advisory-correlation :: The installed/pinned version is correlated against known security advisories",
+					"openspec/specs/security-advisory-correlation :: Every stored advisory is reachable from a page, with its severity"
+				]
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4708,7 +4717,8 @@
 					"canvas": "design-system",
 					"board": "VqInstellingen"
 				},
-				"requirement": "openspec/specs/security-advisory-correlation :: The admin is notified and stays in control"
+				"requirement": "openspec/changes/write-guards-and-advisory-alerts/specs/security-advisory-correlation :: The admin is notified and stays in control",
+				"plan": "openspec/changes/write-guards-and-advisory-alerts"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4991,7 +5001,7 @@
 					"board": "VqInstellingen"
 				},
 				"change": "sources-trust-audit-and-offline-feed",
-				"requirement": "An instance without internet imports a local copy of the advisory feed"
+				"requirement": "openspec/changes/sources-trust-audit-and-offline-feed/specs/security-advisory-correlation :: An instance without internet imports a local copy of the advisory feed"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5028,7 +5038,7 @@
 					"board": "VqApps"
 				},
 				"change": "inventory-pins-checks-and-pending",
-				"requirement": "The check line says whether the last sweep succeeded"
+				"requirement": "openspec/changes/inventory-pins-checks-and-pending/specs/security-advisory-correlation :: The check line says whether the last sweep succeeded"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5467,7 +5477,14 @@
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
 				},
-				"requirement": "openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked :: Installed apps are rechecked against a current revocation list"
+				"requirement": [
+					"openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked :: Installed apps are rechecked against a current revocation list",
+					"openspec/changes/advisories-bundled-libraries/specs/security-advisory-correlation :: Libraries bundled inside installed apps are checked against OSV"
+				],
+				"plan": [
+					"openspec/changes/safety-withdrawn-and-revoked",
+					"openspec/changes/advisories-bundled-libraries"
+				]
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5613,7 +5630,8 @@
 					"board": "VqBronnen"
 				},
 				"requirement": "openspec/changes/sources-gitlab-forge/specs/external-sources :: A self-hosted Forgejo or Gitea host is a release source",
-				"note": "decision 392 (12 Nov): Codeberg is removed from the specs (GitHub only); reworded. Before: Get versions from Codeberg or another Forgejo or Gitea forge. Existing codeberg bindings keep working (change codeberg-is-no-release-source)."
+				"note": "decision 392 (12 Nov): Codeberg is removed from the specs (GitHub only); reworded. Before: Get versions from Codeberg or another Forgejo or Gitea forge. Existing codeberg bindings keep working (change codeberg-is-no-release-source).",
+				"plan": "openspec/changes/codeberg-is-no-release-source"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5686,7 +5704,7 @@
 					"board": "VqAppVersies"
 				},
 				"spec": "openspec/specs/pat-management",
-				"requirement": "Authenticated GitHub fetches"
+				"requirement": "openspec/specs/pat-management :: Authenticated GitHub fetches [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5833,7 +5851,7 @@
 					"canvas": "design-system",
 					"board": "VqInstellingen"
 				},
-				"requirement": "Instance settings on a page (appstore.api_base, forge.github.api_base)"
+				"requirement": "openspec/specs/audit-trail :: Instance settings on a page [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5905,7 +5923,7 @@
 					"canvas": "design-system",
 					"board": "VqOntdekken"
 				},
-				"requirement": "Public GitHub search is switched on and off on the page"
+				"requirement": "openspec/changes/sources-trust-audit-and-offline-feed/specs/app-discovery :: Public GitHub search is switched on and off on the page"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6198,7 +6216,7 @@
 					"board": "VqTokens"
 				},
 				"spec": "openspec/specs/pat-management",
-				"requirement": "PAT management API (token creation deeplink)"
+				"requirement": "openspec/specs/pat-management :: PAT management API [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6298,7 +6316,7 @@
 			"easy-updates-manager": "partial",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/SelectedReleaseInstallerService.php:445, lib/Service/ExternalReleaseInstallerService.php:411, lib/Service/Pin/PinStore.php:97, lib/Service/Pin/PinStore.php:125, lib/Service/Pin/PinStore.php:159",
+				"evidence": "lib/Service/SelectedReleaseInstallerService.php:445, lib/Service/ExternalReleaseInstallerService.php:411, lib/Service/Pin/PinStore.php:82 (pin), lib/Service/Pin/PinStore.php:106 (unpin), lib/Service/Pin/PinStore.php:143 (pin_drift)",
 				"reachedOn": "History tab and per-app History tab",
 				"owner": "ConductionNL/versioniq",
 				"change": "add-version-audit-trail",
@@ -6345,7 +6363,7 @@
 					"canvas": "design-system",
 					"board": "VqHistorie"
 				},
-				"requirement": "Trusted-source changes and cleared bindings are recorded"
+				"requirement": "openspec/changes/sources-trust-audit-and-offline-feed/specs/audit-trail :: Trusted-source changes and cleared bindings are recorded"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6494,7 +6512,7 @@
 					"board": "VqHistorie"
 				},
 				"change": "audit-security-reports",
-				"requirement": "An admin reports on the security updates of a period (history export to CSV and JSON, task 2.2)"
+				"requirement": "openspec/changes/audit-security-reports/specs/audit-trail :: An admin reports on the security updates of a period"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6717,7 +6735,10 @@
 					"board": "VqInstalleren"
 				},
 				"spec": "openspec/specs/version-management",
-				"requirement": "Debug Mode (specs/version-management); Last-known-good version record (specs/migration-safety)"
+				"requirement": [
+					"openspec/specs/version-management :: Debug Mode [MVP]",
+					"openspec/specs/migration-safety :: Last-known-good version record [MVP]"
+				]
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6783,7 +6804,10 @@
 					"canvas": "design-system",
 					"board": "VqApps"
 				},
-				"requirement": "openspec/specs/version-management :: Tabbed admin UI in the settings context [MVP]"
+				"requirement": [
+					"openspec/specs/version-management :: Tabbed admin UI in the settings context [MVP]",
+					"openspec/specs/admin-api :: Every page action is an OCS API route"
+				]
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6811,7 +6835,7 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Controller/ApiController.php:246, lib/Controller/ApiController.php:456, src/ocs.ts:70, src/App.vue:1080",
+				"evidence": "lib/Controller/ApiController.php:242 and every other POST, PUT, PATCH and DELETE route in lib/Controller/ApiController.php, lib/Controller/ForgeController.php and lib/Controller/SettingsController.php:90 carry #[PasswordConfirmationRequired]; src/ocs.ts:70, src/App.vue:1080",
 				"reachedOn": "every write action (bind, install, pin, policy, tokens, cache)",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/version-pinning",
@@ -6819,7 +6843,8 @@
 					"canvas": "design-system",
 					"board": "VqVersieTerugzetten"
 				},
-				"requirement": "Pin an installed app to its current version (password confirmation, stated per write route)"
+				"requirement": "openspec/changes/write-guards-and-advisory-alerts/specs/version-management :: Every write action asks for the admin password",
+				"plan": "openspec/changes/write-guards-and-advisory-alerts"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7019,7 +7044,7 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "openapi.json:1 (OpenAPI 3.0.3, 24 paths, generated by composer run openapi), .github/workflows/openapi.yml:113 (regenerates and fails on a diff); missing: GET /api/updates (lib/Controller/ApiController.php, from inventory-pending-updates #493) is not in openapi.json on development",
+				"evidence": "openapi.json:1 (OpenAPI 3.0.3, 26 paths including /updates, generated by composer run openapi), .github/workflows/openapi.yml:182 (regenerates and fails on a diff)",
 				"reachedOn": "openapi.json in the app package",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/admin-api",
@@ -7173,7 +7198,7 @@
 					"reason": "A property of how the app runs (fully on premises), not a screen."
 				},
 				"change": "platform-properties",
-				"requirement": "Versioniq runs inside the Nextcloud instance with no SaaS dependency"
+				"requirement": "openspec/specs/platform-properties :: Versioniq runs inside the Nextcloud instance with no SaaS dependency"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7245,7 +7270,7 @@
 					"reason": "Every feature is free; a property of the app, not a screen."
 				},
 				"change": "platform-properties",
-				"requirement": "Every feature is available without a paid plan"
+				"requirement": "openspec/specs/platform-properties :: Every feature is available without a paid plan"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -8495,7 +8520,7 @@
 					"canvas": "design-system",
 					"board": "VqApps"
 				},
-				"requirement": "List Installed Apps (scenario one-click enable)"
+				"requirement": "openspec/specs/version-management :: List Installed Apps [MVP]"
 			},
 			"feature": "app-inventory",
 			"source": "spec-round-2026-10-07"

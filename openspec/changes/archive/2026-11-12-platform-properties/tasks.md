@@ -7,4 +7,4 @@
 
 ## 2. Close
 
-- [ ] 2.1 Archive this change, so `platform-properties` lands in the main specs.
+- [x] 2.1 Archive this change, so `platform-properties` lands in the main specs.

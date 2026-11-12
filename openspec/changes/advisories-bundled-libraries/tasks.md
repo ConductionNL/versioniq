@@ -4,6 +4,7 @@
 
 - [ ] 1.1 Add `BundledLibraryScanner::scan()` per design D1. Verify: `tests/unit/Service/Advisory/BundledLibraryScannerTest.php` with committed `installed.json` fixtures covers the Composer 2 and Composer 1 layouts, `dev-package-names`, a `dev-main` version, a leading `v`, and a missing file.
 - [ ] 1.2 Add `OsvClient` (query batch with `next_page_token`, vulnerability details, first fixed version, the SSRF guard, the https-only base override) per D2. Verify: `tests/unit/Service/Advisory/OsvClientTest.php` with a stubbed `IClientService` covers one batch for two apps sharing a library, a paged result, a record without `database_specific.severity` (`unknown`), and a 503 returned as an error.
+- [ ] 1.3 Mark an OSV record whose id starts with `MAL-` as a known malicious package, carried to `BundledLibrariesSection.vue` as "Known malicious package" with the advice to remove or replace the app. Verify: `OsvClientTest` returns `malicious: true` for a `MAL-` record; `BundledLibrariesSection.spec.ts` renders the label.
 
 ## 2. Snapshot and job
 
@@ -21,4 +22,4 @@
 ## 4. Close
 
 - [ ] 4.1 Run the PHPUnit and Playwright jobs on the stable32, stable33 and stable34 legs of `nextcloud-test-refs`. Verify: every leg is green.
-- [ ] 4.2 Set the matrix rows `adv-osv-feed` and `adv-dependencies` to `built` with evidence lines, then archive this change.
+- [ ] 4.2 Set the matrix rows `adv-osv-feed`, `adv-dependencies` and `adv-malicious-package` to `built` with evidence lines, then archive this change.
