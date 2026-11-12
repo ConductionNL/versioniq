@@ -6,6 +6,7 @@ namespace OCA\Versioniq\Tests\Unit\Service\Installer;
 
 use OC\AppFramework\Bootstrap\Coordinator;
 use OC\DB\Connection;
+use OCA\Versioniq\Service\Installer\ChildProcessFinalizer;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
 use OCA\Versioniq\Service\Lkg\Lkg;
 use OCA\Versioniq\Service\Lkg\LkgStore;
@@ -175,6 +176,7 @@ final class InstallFinalizerGoldenTest extends TestCase {
 			$this->logger(),
 			$this->lkgStore(),
 			$this->timeFactory(),
+			$this->childFinalizer(),
 		);
 		if ($case['throwAt'] === 'migrate') {
 			\OC_App::$recorder = function (string $call, array $args): void {
@@ -289,6 +291,18 @@ final class InstallFinalizerGoldenTest extends TestCase {
 		});
 
 		return $store;
+	}
+
+	/**
+	 * A child finalizer that takes no case: the golden pins the in-process
+	 * finalize, and without a child finalizer an upgrade case would also log
+	 * the "no child finalizer" warning and read installed_version once more.
+	 */
+	private function childFinalizer(): ChildProcessFinalizer {
+		$child = $this->createMock(ChildProcessFinalizer::class);
+		$child->method('applies')->willReturn(false);
+
+		return $child;
 	}
 
 	private function timeFactory(): ITimeFactory {

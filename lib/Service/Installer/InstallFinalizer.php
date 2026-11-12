@@ -71,7 +71,7 @@ class InstallFinalizer {
 	 * An update runs all of that in a child process that boots with the new files in place, so the repair
 	 * steps see the new version's registrations and not the previous version's (#611); the child calls this
 	 * method again and stays in-process. A fresh install, or an update without a way to start a child, runs
-	 * in this process.
+	 * in this process. `$output` is used only when this process finalizes; the child gets none.
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @spec openspec/specs/migration-safety/spec.md
@@ -81,11 +81,9 @@ class InstallFinalizer {
 	 * @throws Exception
 	 */
 	public function finalize(string $appPath, array $info, string $enabled, ?IOutput $output = null, string $sourceId = 'appstore'): string {
-		if ($this->childFinalizer !== null && $this->childFinalizer->applies($info)) {
-			$childAppId = $this->childFinalizer->run($appPath, $info, $enabled, $sourceId);
-			if ($childAppId !== null) {
-				return $childAppId;
-			}
+		$childAppId = $this->finalizeInChild($appPath, $info, $enabled, $sourceId);
+		if ($childAppId !== null) {
+			return $childAppId;
 		}
 
 		$appId = self::appIdOf($info);
@@ -140,6 +138,30 @@ class InstallFinalizer {
 		));
 
 		return $appId;
+	}
+
+	/**
+	 * Hands an update to the child finalizer; the app id when the child
+	 * finalized, null when this process has to. Without a child finalizer
+	 * (built by hand, or Nextcloud's container could not build one and fell
+	 * back to the parameter's default) an update logs a warning first, so the
+	 * #611 fix is not switched off without a sound.
+	 *
+	 * @param array<string, mixed> $info
+	 * @throws Exception When the finalize failed in the child.
+	 * @spec openspec/specs/version-management/spec.md
+	 */
+	private function finalizeInChild(string $appPath, array $info, string $enabled, string $sourceId): ?string {
+		if ($this->childFinalizer === null) {
+			$appId = self::appIdOf($info);
+			if ($appId !== '' && $this->configs->appConfig->getValueString($appId, 'installed_version', '') !== '') {
+				$this->logger->warning('versioniq: no child finalizer available; finalizing the update of {app} in-process, where repair steps of the new version may fail against the previous version\'s registrations (#611).', ['app' => $appId]);
+			}
+
+			return null;
+		}
+
+		return $this->childFinalizer->applies($info) ? $this->childFinalizer->run($appPath, $info, $enabled, $sourceId) : null;
 	}
 
 	/**
