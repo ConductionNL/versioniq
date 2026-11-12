@@ -33,3 +33,28 @@ upload it to the Appstore.
 Copyright (C) 2024-2026 Conduction B.V.
 
 This project is licensed under the [EUPL-1.2](LICENSE).
+
+## Deployment
+
+### Try it with Docker
+
+The repository builds an evaluation image: the official Nextcloud image with versioniq and OpenRegister installed and enabled. It is meant for trying the app out and for test environments. For production, install the app from the Nextcloud App Store.
+
+```bash
+docker compose -f docker-compose.yml up -d --build
+```
+
+Open http://localhost:8080/apps/versioniq/ and sign in as `admin` with password `admin`. The first start takes a minute or two. Set `NEXTCLOUD_ADMIN_PASSWORD` and `APP_PORT` to change the password and the port; `docker-compose.yml` lists every setting. `docker compose -f docker-compose.yml down -v` removes the stack and its data.
+
+Released versions are published as `ghcr.io/conductionnl/versioniq`, so leaving out `--build` uses the published image.
+
+### Run it on Kubernetes
+
+`charts/versioniq` wraps the official [Nextcloud Helm chart](https://github.com/nextcloud/helm) and runs the same image with PostgreSQL:
+
+```bash
+helm dependency build charts/versioniq
+helm install versioniq charts/versioniq --set nextcloud.nextcloud.host=versioniq.example.org
+```
+
+Change the passwords in `charts/versioniq/values.yaml` before you install it anywhere that matters.
