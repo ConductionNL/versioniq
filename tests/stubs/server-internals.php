@@ -28,6 +28,12 @@ namespace {
 
 		/** @var array<int, array{path: string, url: string, writable: bool}> */
 		public static $APPSROOTS;
+
+		/** @var ?string Ends with '/'; null until a server boots, as in unit tests. */
+		public static $configDir;
+
+		/** @var mixed */
+		public static $server;
 	}
 
 	class OC_App {
