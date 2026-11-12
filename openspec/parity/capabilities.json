@@ -5594,7 +5594,7 @@
 		{
 			"id": "src-codeberg",
 			"area": "sources",
-			"name": "Get versions from Codeberg or another Forgejo or Gitea forge.",
+			"name": "Get versions from a self-hosted Forgejo or Gitea forge.",
 			"rowSource": "own-code",
 			"versioniq": "yes",
 			"nextcloud": "no",
@@ -5612,7 +5612,8 @@
 					"canvas": "design-system",
 					"board": "VqBronnen"
 				},
-				"requirement": "openspec/changes/sources-gitlab-forge/specs/external-sources :: A self-hosted Forgejo or Gitea host is a release source"
+				"requirement": "openspec/changes/sources-gitlab-forge/specs/external-sources :: A self-hosted Forgejo or Gitea host is a release source",
+				"note": "decision 392 (12 Nov): Codeberg is removed from the specs (GitHub only); reworded. Before: Get versions from Codeberg or another Forgejo or Gitea forge. Existing codeberg bindings keep working (change codeberg-is-no-release-source)."
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
