@@ -7,14 +7,13 @@ ConductionNL uses GitHub only, a standing rule since Codeberg was retired on 23 
 ## What changes
 
 - `external-sources`: "Codeberg releases as a source [MVP]" is removed.
+- "Trusted-source allowlist [MVP]": the default allowlist is `["github:ConductionNL/*"]`. `TrustedSourceList::DEFAULT_PATTERNS` no longer holds `codeberg:Conduction/*`; a Codeberg pattern an admin stored stays trusted.
 - "Trusted-allowlist management API" refuses a new pattern for a retired forge. Its add example is GitHub.
 - "Source binding UI surfacing" no longer offers Codeberg for a new binding.
 - New requirement "A retired forge keeps what was stored under it": bindings, tokens and trusted patterns already stored under `codeberg` keep working and stay removable.
 - `sources-gitlab-forge` (open change): the Forge abstraction's known-forges scenario no longer names Codeberg.
 
-Existing bindings keep working. Nothing an admin stored under `codeberg` breaks.
-
-Left as it is: the default allowlist in `TrustedSourceList::DEFAULT_PATTERNS` still holds `codeberg:Conduction/*`, and "Trusted-source allowlist [MVP]" still says so. Dropping that default is a separate code change, named in task 2.2.
+Existing bindings keep working. Nothing an admin stored under `codeberg` breaks. One case does change: an install that never set its allowlist and bound an app to Codeberg relied on the default, so that binding is no longer trusted. A new `codeberg:` pattern is refused, so the admin binds the app to GitHub, or to codeberg.org as the self-hosted Forgejo host with a `forgejo:` pattern.
 
 ## Matrix rows (`openspec/parity/capabilities.json`)
 
