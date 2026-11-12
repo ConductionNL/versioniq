@@ -15,10 +15,10 @@ The system MUST model each supported release forge as a `Forge` configuration en
 @e2e exclude ForgeRegistry contents are unit-tested.
 
 - **GIVEN** the `ForgeRegistry`
-- **WHEN** `get('github')`, `get('codeberg')` and `get('gitlab')` are called
+- **WHEN** `get('github')` and `get('gitlab')` are called
 - **THEN** `github` MUST resolve to dialect `github`, apiBaseUrl `https://api.github.com`, authScheme `Bearer`, exposesScopeHeader `true`, tokenCreateUrl `https://github.com/settings/tokens`
-- **AND** `codeberg` MUST resolve to dialect `github`, apiBaseUrl `https://codeberg.org/api/v1`, authScheme `token`, exposesScopeHeader `false`, tokenCreateUrl `https://codeberg.org/user/settings/applications`
 - **AND** `gitlab` MUST resolve to dialect `gitlab`, apiBaseUrl `https://gitlab.com/api/v4`, authScheme `Bearer`, unless the admin set a self-managed GitLab host
+- **AND** `selectableIds()` MUST NOT contain `codeberg`, a retired forge kept only so what was stored under it resolves (see "A retired forge keeps what was stored under it")
 
 #### Scenario: Unknown forge rejected
 
