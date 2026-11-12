@@ -752,7 +752,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/specs/version-management :: List Installed Apps [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -787,7 +788,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/specs/pending-updates :: Every app card shows its installed version and whether an update is available"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -860,7 +862,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/specs/version-management :: Fetch Available Versions [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -896,7 +899,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/specs/version-management :: The app list and the version list can be filtered"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -931,7 +935,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/specs/version-management :: List Installed Apps [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1002,7 +1007,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
-				}
+				},
+				"requirement": "openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness :: An admin checks every installed app against a target server major and PHP version"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1037,7 +1043,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/changes/install-multi-instance-promotion/specs/multi-instance :: The Instances tab shows every instance's versions side by side"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1072,7 +1079,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/changes/inventory-export-sbom-metrics/specs/inventory-export :: An admin exports the inventory as an SBOM"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1107,7 +1115,11 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": [
+					"openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals :: Abandoned and unsupported apps are flagged on their card",
+					"openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals :: An admin replaces an app with its successor in one action"
+				]
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1179,7 +1191,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/specs/version-management :: Pre-flight Environment Checks [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1214,7 +1227,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/specs/version-management :: Fetch Available Versions [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1249,7 +1263,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/specs/changelog-visibility :: Per-version changelog display [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1284,7 +1299,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/specs/changelog-visibility :: Aggregate range changelog on target selection [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1319,7 +1335,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/changes/releases-channel-and-prereleases/specs/release-channels :: The version picker shows the app's channel and reveals the rest on request"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1354,7 +1371,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/changes/releases-channel-and-prereleases/specs/release-channels :: An admin sets a release channel for the instance and per app"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1390,7 +1408,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/specs/version-management :: The app list and the version list can be filtered"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1425,7 +1444,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/changes/releases-version-facts/specs/version-management :: Every version carries its release date"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1460,7 +1480,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"requirement": "openspec/changes/releases-minimum-age/specs/auto-update-policies :: The nightly job waits until a release is old enough"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1495,7 +1516,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/changes/releases-version-facts/specs/version-management :: Every version shows how widely it runs and how installs of it went"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1530,7 +1552,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/changes/releases-version-facts/specs/changelog-visibility :: A version its publisher marks as breaking is flagged"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1565,7 +1588,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
-				}
+				},
+				"requirement": "openspec/changes/releases-new-release-alerts/specs/release-alerts :: Admins are notified of new releases in the scope they choose"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1600,7 +1624,11 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
-				}
+				},
+				"requirement": [
+					"openspec/changes/releases-new-release-alerts/specs/release-alerts :: New releases are available as an RSS feed for admins",
+					"openspec/changes/releases-new-release-alerts/specs/alert-webhooks :: Every Versioniq alert is delivered to matching targets in the background"
+				]
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1636,7 +1664,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
-				}
+				},
+				"requirement": "openspec/changes/releases-notes-reach/specs/changelog-visibility :: Users hear what changed after an update through Versioniq"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1672,7 +1701,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked :: A withdrawn installed version is marked and never reinstalled by accident"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1708,7 +1738,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"requirement": "openspec/changes/releases-channel-and-prereleases/specs/release-channels :: The long-term support channel offers only marked release lines"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1743,7 +1774,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/specs/version-management :: Install Specific Version [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1778,7 +1810,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/changes/install-one-click-updates/specs/version-management :: An admin updates one app or all apps in one action"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1813,7 +1846,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/changes/install-one-click-updates/specs/version-management :: An admin updates one app or all apps in one action"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1884,7 +1918,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/specs/migration-safety :: Last-known-good version record [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1919,7 +1954,11 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqVersieTerugzetten"
-				}
+				},
+				"requirement": [
+					"openspec/specs/migration-safety :: Server-side downgrade guard [MVP]",
+					"openspec/specs/migration-safety :: Migration diff on downgrade [MVP]"
+				]
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1954,7 +1993,8 @@
 				"screen": {
 					"board": null,
 					"reason": "A command-line command (occ versioniq:versions); it has no screen."
-				}
+				},
+				"requirement": "openspec/specs/cli-commands :: List versions from the CLI [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1989,7 +2029,8 @@
 				"screen": {
 					"board": null,
 					"reason": "A command-line command (occ versioniq:install); it has no screen."
-				}
+				},
+				"requirement": "openspec/specs/cli-commands :: Install a specific version from the CLI [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2024,7 +2065,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqOntdekken"
-				}
+				},
+				"requirement": "openspec/specs/app-discovery :: Hits route into existing flows [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2089,7 +2131,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/specs/artifact-cache :: Cached fallback with full re-verification [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2124,7 +2167,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
-				}
+				},
+				"requirement": "openspec/specs/artifact-cache :: Cache visibility and management [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2159,7 +2203,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqOntdekken"
-				}
+				},
+				"requirement": "openspec/changes/install-manual-upload/specs/external-sources :: An admin installs a version from an uploaded archive"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2194,7 +2239,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
-				}
+				},
+				"requirement": "openspec/changes/install-live-progress/specs/version-management :: An admin sees each stage of an install while it runs"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2229,7 +2275,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
-				}
+				},
+				"requirement": "openspec/specs/version-management :: Debug Mode [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2264,7 +2311,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/changes/install-bulk-rollback/specs/migration-safety :: An admin rolls several apps back to a snapshot or a date"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2337,7 +2385,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/changes/install-force-incompatible/specs/version-management :: An admin forces a version past its declared maximum, and Versioniq lifts it at the next major"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2373,7 +2422,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals :: An admin replaces an app with its successor in one action"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2444,7 +2494,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqVersieTerugzetten"
-				}
+				},
+				"requirement": "openspec/specs/migration-safety :: Server-side downgrade guard [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2479,7 +2530,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqVersieTerugzetten"
-				}
+				},
+				"requirement": "openspec/specs/migration-safety :: Migration diff on downgrade [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2515,7 +2567,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
-				}
+				},
+				"requirement": "openspec/specs/migration-safety :: An App Store package is verified against Nextcloud code signing before install [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2550,7 +2603,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/specs/external-sources :: SHA-256 recorded on first successful external install [Hardening]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2585,7 +2639,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
-				}
+				},
+				"requirement": "openspec/specs/external-sources :: Recorded SHA-256 enforced on reinstall [Hardening]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2620,7 +2675,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
-				}
+				},
+				"requirement": "openspec/specs/version-management :: Install Specific Version [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2728,7 +2784,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
-				}
+				},
+				"requirement": "openspec/specs/migration-safety :: Maintenance mode is held around a real install [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2793,7 +2850,11 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
-				}
+				},
+				"requirement": [
+					"openspec/changes/safety-update-checks/specs/update-checks :: A dry run validates the package like a real install",
+					"openspec/changes/safety-update-checks/specs/update-checks :: Admins and operators attach checks that every dry run runs"
+				]
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2858,7 +2919,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBronnen"
-				}
+				},
+				"requirement": "openspec/specs/external-sources :: Trusted-source allowlist [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2893,7 +2955,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
-				}
+				},
+				"requirement": "openspec/specs/external-sources :: Install provenance and a one-off source on the page"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2965,7 +3028,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqVersieTerugzetten"
-				}
+				},
+				"requirement": "openspec/changes/safety-upgrade-migration-preview/specs/migration-safety :: A dry run of an upgrade previews the database changes"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3062,7 +3126,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
-				}
+				},
+				"requirement": "openspec/changes/audit-external-changes/specs/version-management :: An app left disabled by an update is reported and, when it can run, re-enabled"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3097,7 +3162,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/specs/version-pinning :: Pin an installed app to its current version [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3132,7 +3198,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/specs/version-pinning :: Unpin [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3167,7 +3234,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/specs/version-pinning :: Honest pin presentation [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3202,7 +3270,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
-				}
+				},
+				"requirement": "openspec/specs/version-pinning :: Pins are enforced on Versioniq's own install path [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3267,7 +3336,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/specs/version-pinning :: Drift detection [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3302,7 +3372,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/specs/version-pinning :: Drift response — notify and offer re-pin [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3337,7 +3408,11 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": [
+					"openspec/specs/auto-update-policies :: Nightly policy execution through the standard installer [MVP]",
+					"openspec/changes/pinning-ranges-and-skips/specs/auto-update-policies :: A policy can hold manual installs to its level"
+				]
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3372,7 +3447,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/changes/pinning-ranges-and-skips/specs/version-pinning :: An admin skips one version and keeps later ones"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3474,7 +3550,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/specs/pending-updates :: Every app card shows its installed version and whether an update is available"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3540,7 +3617,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/specs/auto-update-policies :: Per-app update policy [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3575,7 +3653,11 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": [
+					"openspec/specs/auto-update-policies :: Per-app update policy [MVP]",
+					"openspec/specs/auto-update-policies :: Nightly policy execution through the standard installer [MVP]"
+				]
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3610,7 +3692,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"requirement": "openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies :: Per-app update policy [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3645,7 +3728,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"requirement": "openspec/specs/auto-update-policies :: Global kill switch and window [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3680,7 +3764,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"requirement": "openspec/specs/auto-update-policies :: Global kill switch and window [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3715,7 +3800,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"requirement": "openspec/changes/autoupdate-schedules/specs/auto-update-policies :: Global kill switch and window [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3750,7 +3836,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"requirement": "openspec/specs/auto-update-policies :: Every auto-update outcome is reported [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3785,7 +3872,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"requirement": "openspec/specs/auto-update-policies :: Nightly policy execution through the standard installer [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3820,7 +3908,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"requirement": "openspec/changes/autoupdate-run-batching/specs/auto-update-policies :: Apps in an update group are updated together or not at all"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3855,7 +3944,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"requirement": "openspec/changes/autoupdate-security-first/specs/auto-update-policies :: The security level installs only advisory fixes, in the window"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3890,7 +3980,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"requirement": "openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies :: An admin can require approval, or decline a version, before an automatic update installs"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3925,7 +4016,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"requirement": "openspec/changes/safety-update-checks/specs/auto-update-policies :: The nightly job installs only after the attached checks pass"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3960,7 +4052,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"requirement": "openspec/changes/autoupdate-run-batching/specs/auto-update-policies :: An admin limits how many automatic updates run"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4025,7 +4118,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"requirement": "openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies :: Policies can be kept in a file"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4164,7 +4258,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/specs/auto-update-policies :: Nightly policy execution through the standard installer [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4262,7 +4357,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"requirement": "openspec/changes/autoupdate-schedules/specs/auto-update-policies :: Each kind of update has its own schedule"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4359,7 +4455,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/specs/security-advisory-correlation :: The installed/pinned version is correlated against known security advisories"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4394,7 +4491,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
-				}
+				},
+				"requirement": "openspec/specs/security-advisory-correlation :: The installed/pinned version is correlated against known security advisories"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4429,7 +4527,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
-				}
+				},
+				"requirement": "openspec/specs/security-advisory-correlation :: The installed/pinned version is correlated against known security advisories"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4464,7 +4563,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
-				}
+				},
+				"requirement": "openspec/changes/advisories-bundled-libraries/specs/security-advisory-correlation :: Libraries bundled inside installed apps are checked against OSV"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4499,7 +4599,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
-				}
+				},
+				"requirement": "openspec/specs/security-advisory-correlation :: Every stored advisory is reachable from a page, with its severity"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4534,7 +4635,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/specs/security-advisory-correlation :: The installed/pinned version is correlated against known security advisories"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4569,7 +4671,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
-				}
+				},
+				"requirement": "openspec/changes/install-one-click-updates/specs/security-advisory-correlation :: An admin updates to the safe version straight from the advisory"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4604,7 +4707,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
-				}
+				},
+				"requirement": "openspec/specs/security-advisory-correlation :: The admin is notified and stays in control"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4640,7 +4744,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
-				}
+				},
+				"requirement": "openspec/specs/security-advisory-correlation :: Non-urgent advisories arrive in a weekly digest"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4676,7 +4781,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
-				}
+				},
+				"requirement": "openspec/specs/security-advisory-correlation :: The admin sets how often advisories are checked"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4711,7 +4817,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
-				}
+				},
+				"requirement": "openspec/changes/advisories-triage/specs/security-advisory-correlation :: An admin dismisses an advisory with a recorded reason"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4747,7 +4854,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
-				}
+				},
+				"requirement": "openspec/specs/security-advisory-correlation :: Advisories are matched per release branch"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4784,7 +4892,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
-				}
+				},
+				"requirement": "openspec/changes/advisories-bundled-libraries/specs/security-advisory-correlation :: Libraries bundled inside installed apps are checked against OSV"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4984,7 +5093,11 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": [
+					"openspec/specs/security-advisory-correlation :: The installed/pinned version is correlated against known security advisories",
+					"openspec/specs/security-advisory-correlation :: The admin is notified and stays in control"
+				]
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5051,7 +5164,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
-				}
+				},
+				"requirement": "openspec/changes/advisories-ncsc-feed/specs/security-advisory-correlation :: NCSC-NL advisories are matched to the installed server and apps"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5088,7 +5202,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation :: Each product lists its recent advisories with CVE ids and dates"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5123,7 +5238,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
-				}
+				},
+				"requirement": "openspec/specs/security-advisory-correlation :: Every stored advisory is reachable from a page, with its severity"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5282,7 +5398,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
-				}
+				},
+				"requirement": "openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation :: An affected version without an installable fix says why"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5349,7 +5466,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
-				}
+				},
+				"requirement": "openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked :: Installed apps are rechecked against a current revocation list"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5385,7 +5503,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
-				}
+				},
+				"requirement": "openspec/changes/advisories-triage/specs/security-advisory-correlation :: An admin assigns an advisory to an owner"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5420,7 +5539,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/specs/version-management :: Fetch Available Versions [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5455,7 +5575,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBronnen"
-				}
+				},
+				"requirement": "openspec/specs/external-sources :: GitHub releases as a source [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5490,7 +5611,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBronnen"
-				}
+				},
+				"requirement": "openspec/changes/sources-gitlab-forge/specs/external-sources :: A self-hosted Forgejo or Gitea host is a release source"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5525,7 +5647,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBronnen"
-				}
+				},
+				"requirement": "openspec/changes/sources-gitlab-forge/specs/external-sources :: GitLab releases as a source"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5597,7 +5720,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBronnen"
-				}
+				},
+				"requirement": "openspec/specs/external-sources :: Source binding UI surfacing [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5632,7 +5756,11 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": [
+					"openspec/specs/version-management :: Explicit source override [MVP]",
+					"openspec/specs/external-sources :: Install provenance and a one-off source on the page"
+				]
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5667,7 +5795,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBronnen"
-				}
+				},
+				"requirement": "openspec/specs/external-sources :: Trusted-allowlist management API [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5738,7 +5867,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqOntdekken"
-				}
+				},
+				"requirement": "openspec/specs/app-discovery :: App Store discovery [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5809,7 +5939,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqOntdekken"
-				}
+				},
+				"requirement": "openspec/specs/app-discovery :: GitHub private discovery [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5844,7 +5975,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqOntdekken"
-				}
+				},
+				"requirement": "openspec/specs/app-discovery :: Hits route into existing flows [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5880,7 +6012,11 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBronnen"
-				}
+				},
+				"requirement": [
+					"openspec/changes/adopt-connection-registry/specs/admin-integrations :: REQ-VERSIONIQ-CONN-002 Versioniq reports what a real request met",
+					"openspec/changes/adopt-connection-registry/specs/admin-integrations :: REQ-VERSIONIQ-CONN-003 An admin reads the connections on an Integrations tab"
+				]
 			},
 			"provider": "integriq",
 			"providerHow": "read-from-code",
@@ -5915,7 +6051,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqTokens"
-				}
+				},
+				"requirement": "openspec/specs/pat-management :: PAT storage [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5950,7 +6087,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqTokens"
-				}
+				},
+				"requirement": "openspec/specs/pat-management :: Encryption at rest [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5985,7 +6123,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqTokens"
-				}
+				},
+				"requirement": "openspec/specs/pat-management :: PAT validation on upload [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6020,7 +6159,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqTokens"
-				}
+				},
+				"requirement": "openspec/specs/pat-management :: PAT expiry warnings [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6092,7 +6232,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqTokens"
-				}
+				},
+				"requirement": "openspec/specs/pat-management :: PAT storage [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6127,7 +6268,8 @@
 				"screen": {
 					"board": null,
 					"reason": "A background listener that removes tokens when a user is deleted; it has no screen."
-				}
+				},
+				"requirement": "openspec/specs/pat-management :: Admin removal cleans up PATs [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6162,7 +6304,11 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqHistorie"
-				}
+				},
+				"requirement": [
+					"openspec/specs/audit-trail :: Version operations are recorded [MVP]",
+					"openspec/specs/audit-trail :: Pin lifecycle operations are audited [MVP]"
+				]
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6233,7 +6379,11 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqHistorie"
-				}
+				},
+				"requirement": [
+					"openspec/specs/audit-trail :: Audit history UI [MVP]",
+					"openspec/specs/audit-trail :: Audit entries are immutable and admin-readable [MVP]"
+				]
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6268,7 +6418,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqHistorie"
-				}
+				},
+				"requirement": "openspec/specs/audit-trail :: Audit entries are immutable and admin-readable [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6303,7 +6454,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
-				}
+				},
+				"requirement": "openspec/specs/audit-trail :: Retention [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6376,7 +6528,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
-				}
+				},
+				"requirement": "openspec/changes/audit-attribution-and-forwarding/specs/audit-trail :: Audit rows reach the platform's audit log and activity stream"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6411,7 +6564,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqHistorie"
-				}
+				},
+				"requirement": "openspec/changes/audit-attribution-and-forwarding/specs/audit-trail :: Every audit row says where it came from"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6446,7 +6600,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
-				}
+				},
+				"requirement": "openspec/changes/audit-attribution-and-forwarding/specs/audit-trail :: Audit rows reach the platform's audit log and activity stream"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6483,7 +6638,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation :: The instance has one patch compliance status"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6520,7 +6676,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"requirement": "openspec/changes/autoupdate-security-first/specs/auto-update-policies :: An admin records a patch policy and security fixes go first"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6624,7 +6781,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/specs/version-management :: Tabbed admin UI in the settings context [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6725,7 +6883,11 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
-				}
+				},
+				"requirement": [
+					"openspec/specs/auto-update-policies :: Every auto-update outcome is reported [MVP]",
+					"openspec/specs/security-advisory-correlation :: The admin is notified and stays in control"
+				]
 			},
 			"provider": "nextcloud-server",
 			"providerHow": "read-from-code",
@@ -6790,7 +6952,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
-				}
+				},
+				"requirement": "openspec/changes/releases-new-release-alerts/specs/alert-webhooks :: An admin manages webhook targets"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6826,7 +6989,8 @@
 				"screen": {
 					"board": null,
 					"reason": "An OCS API for scripts and other apps; it has no screen of its own."
-				}
+				},
+				"requirement": "openspec/specs/admin-api :: Every page action is an OCS API route"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6862,7 +7026,8 @@
 				"screen": {
 					"board": null,
 					"reason": "An openapi.json file shipped in the app package; nothing to show on a screen."
-				}
+				},
+				"requirement": "openspec/specs/admin-api :: The API is described in a generated OpenAPI document"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6897,7 +7062,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/changes/admin-translate-apps-tab/specs/interface-language :: Every string on the admin page is translatable and has a Dutch translation"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6933,7 +7099,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/specs/version-management :: The admin page works with a keyboard and a screen reader"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6968,7 +7135,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/specs/version-management :: Admin Settings Placement [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7039,7 +7207,8 @@
 				"screen": {
 					"board": null,
 					"reason": "The licence in appinfo; a property of the app, not a screen."
-				}
+				},
+				"requirement": "openspec/specs/source-license-headers :: Every lib PHP file carries an EUPL-1.2 licence and copyright header"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7111,7 +7280,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBronnen"
-				}
+				},
+				"requirement": "openspec/changes/adopt-connection-registry/specs/admin-integrations :: REQ-VERSIONIQ-CONN-003 An admin reads the connections on an Integrations tab"
 			},
 			"provider": "integriq",
 			"providerHow": "read-from-code",
@@ -7147,7 +7317,8 @@
 				"screen": {
 					"board": null,
 					"reason": "Runs through an MCP server for an external AI assistant; it has no screen in Versioniq."
-				}
+				},
+				"requirement": "openspec/changes/admin-mcp-assistant/specs/assistant-tools :: Versioniq publishes read-only assistant tools for admins"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7184,7 +7355,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
-				}
+				},
+				"requirement": "openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness :: An admin checks every installed app against a target server major and PHP version"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7253,7 +7425,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
-				}
+				},
+				"requirement": "openspec/changes/inventory-export-sbom-metrics/specs/inventory-export :: Installed app versions are exposed as OpenMetrics"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7290,7 +7463,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
-				}
+				},
+				"requirement": "openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked :: Installed apps are rechecked against a current revocation list"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7327,7 +7501,8 @@
 				"screen": {
 					"board": null,
 					"reason": "A command-line option (occ versioniq:updates --json); it has no screen."
-				}
+				},
+				"requirement": "openspec/specs/cli-commands :: List pending updates from the CLI"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7364,7 +7539,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/changes/inventory-verified-publisher/specs/app-discovery :: Hits and cards name the publisher and the trust marks the data backs"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7433,7 +7609,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/changes/releases-minimum-age/specs/auto-update-policies :: An admin sees what is held back and when it becomes eligible"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7470,7 +7647,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/changes/releases-minimum-age/specs/auto-update-policies :: An admin releases one held version early, and the exception clears itself"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7603,7 +7781,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"requirement": "openspec/changes/releases-minimum-age/specs/auto-update-policies :: A security fix skips the minimum age"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7640,7 +7819,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"requirement": "openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies :: Proposed updates are worked out ahead of the window and shown"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7709,7 +7889,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqHistorie"
-				}
+				},
+				"requirement": "openspec/changes/audit-attribution-and-forwarding/specs/audit-trail :: Changes to the update rules are audited"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7970,7 +8151,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqHistorie"
-				}
+				},
+				"requirement": "openspec/changes/audit-external-changes/specs/audit-trail :: Version changes made outside Versioniq are recorded with their trigger"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -8007,7 +8189,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
-				}
+				},
+				"requirement": "openspec/changes/inventory-export-sbom-metrics/specs/inventory-export :: Every update leaves an SBOM of the state it produced"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -8044,7 +8227,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqHistorie"
-				}
+				},
+				"requirement": "openspec/changes/audit-security-reports/specs/audit-trail :: An admin reports on the security updates of a period"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -8081,7 +8265,11 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": [
+					"openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals :: Abandoned and unsupported apps are flagged on their card",
+					"openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals :: Admins are warned before the server leaves support"
+				]
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -8118,7 +8306,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
-				}
+				},
+				"requirement": "openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies :: Planned updates are announced a set number of days ahead with their release notes"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -8155,7 +8344,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/changes/install-multi-instance-promotion/specs/multi-instance :: An admin promotes the exact package an earlier stage runs"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -8192,7 +8382,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/changes/releases-version-facts/specs/changelog-visibility :: Known issues of a version are shown before and after installing it"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -8229,7 +8420,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
-				}
+				},
+				"requirement": "openspec/changes/releases-notes-reach/specs/changelog-visibility :: An admin translates release notes into their language"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -8266,7 +8458,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
-				}
+				},
+				"requirement": "openspec/specs/pending-updates :: An admin sets how far an app may fall behind"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -8328,7 +8521,8 @@
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
-				}
+				},
+				"requirement": "openspec/changes/audit-security-reports/specs/security-advisory-correlation :: Remediation is measured per severity against the patch policy deadlines"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
