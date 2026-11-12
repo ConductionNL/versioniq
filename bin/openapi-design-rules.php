@@ -7,7 +7,9 @@
  * Run by `composer openapi` right after `generate-spec`, so the committed
  * document stays reproducible from the code:
  *
- * - `servers` carries the OCS base path, and the paths are relative to it;
+ * - `servers` carries the versioned OCS base path (`.../api/v1`), and the paths
+ *   are relative to it; the deprecated unversioned twins are left out, and
+ *   `info.description` says so;
  * - `info.contact` names the maintainer;
  * - every tag an operation uses is defined at the top level;
  * - every 2xx and 3xx response documents the `API-Version` header that
@@ -27,17 +29,21 @@ $path = ($argv[1] ?? 'openapi.json');
 $document = json_decode((string)file_get_contents($path), false, 512, JSON_THROW_ON_ERROR);
 
 $appId = 'versioniq';
-$base = '/ocs/v2.php/apps/' . $appId . '/api';
+$base = '/ocs/v2.php/apps/' . $appId . '/api/v1';
 
 $document->servers = [
 	(object)[
 		'url' => 'https://{host}' . $base,
-		'description' => 'The ' . $document->info->title . ' API on a Nextcloud instance.',
+		'description' => 'The ' . $document->info->title . ' API, version 1, on a Nextcloud instance.',
 		'variables' => (object)[
 			'host' => (object)['default' => 'localhost', 'description' => 'The host name of the Nextcloud instance.'],
 		],
 	],
 ];
+$document->info->description = rtrim((string)($document->info->description ?? '')) . "\n\n"
+	. 'Every path is served under `/api/v1/`, the version this document describes. The unversioned `/api/` '
+	. 'paths keep working, are deprecated, and name their `/api/v1/` successor in a `Link` header next to a '
+	. '`Deprecation` header.';
 $document->info->contact = (object)[
 	'name' => 'Conduction B.V.',
 	'email' => 'info@conduction.nl',
@@ -46,8 +52,9 @@ $document->info->contact = (object)[
 
 $paths = new stdClass();
 foreach ($document->paths as $route => $item) {
-	$relative = str_starts_with($route, $base . '/') ? substr($route, strlen($base)) : $route;
-	$paths->{$relative} = $item;
+	if (str_starts_with($route, $base . '/') === true) {
+		$paths->{substr($route, strlen($base))} = $item;
+	}
 }
 
 $paths->{'/openapi.json'} = (object)[

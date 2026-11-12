@@ -74,6 +74,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/version-management/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/apps')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/apps', postfix: 'v1')]
 	public function apps(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -110,6 +111,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/advisories')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/advisories', postfix: 'v1')]
 	public function advisories(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -140,6 +142,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/pending-updates/spec.md#requirement-an-admin-sets-how-far-an-app-may-fall-behind
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/updates')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/updates', postfix: 'v1')]
 	public function updates(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -165,6 +168,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/version-management/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/update-channel')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/update-channel', postfix: 'v1')]
 	public function updateChannel(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -186,6 +190,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/sources')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/sources', postfix: 'v1')]
 	public function sources(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -212,6 +217,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/source/{appId}/binding')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/source/{appId}/binding', postfix: 'v1')]
 	public function getBinding(string $appId): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -241,6 +247,7 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'DELETE', url: '/api/source/{appId}/binding')]
+	#[ApiRoute(verb: 'DELETE', url: '/api/v1/source/{appId}/binding', postfix: 'v1')]
 	public function clearBinding(string $appId): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -266,6 +273,7 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'POST', url: '/api/source/{appId}/bind')]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/source/{appId}/bind', postfix: 'v1')]
 	public function bindSource(string $appId): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -352,6 +360,7 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'POST', url: '/api/trusted-sources')]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/trusted-sources', postfix: 'v1')]
 	public function addTrustedSource(?string $repo = null): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -391,6 +400,7 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'DELETE', url: '/api/trusted-sources')]
+	#[ApiRoute(verb: 'DELETE', url: '/api/v1/trusted-sources', postfix: 'v1')]
 	public function removeTrustedSource(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -434,6 +444,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/changelog-visibility/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/app/{appId}/versions')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/app/{appId}/versions', postfix: 'v1')]
 	public function appVersions(string $appId, ?string $source = null): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -488,6 +499,7 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'POST', url: '/api/app/{appId}/versions/{version}/install')]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/app/{appId}/versions/{version}/install', postfix: 'v1')]
 	#[RequestFieldsFrom(InstallVersionFields::class)]
 	public function installVersion(string $appId, string $version): Response {
 		// The optional fields are declared in InstallVersionFields; one that is
@@ -620,6 +632,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/version-pinning/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/pins')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/pins', postfix: 'v1')]
 	public function pins(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -660,6 +673,7 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PUT', url: '/api/app/{appId}/pin')]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/app/{appId}/pin', postfix: 'v1')]
 	public function pinApp(string $appId): DataResponse {
 		$user = $this->adminUser();
 		if (!$user instanceof IUser) {
@@ -719,6 +733,7 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'DELETE', url: '/api/app/{appId}/pin')]
+	#[ApiRoute(verb: 'DELETE', url: '/api/v1/app/{appId}/pin', postfix: 'v1')]
 	public function unpinApp(string $appId): DataResponse {
 		$user = $this->adminUser();
 		if (!$user instanceof IUser) {
@@ -748,6 +763,7 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'DELETE', url: '/api/app/{appId}/attempts/{version}')]
+	#[ApiRoute(verb: 'DELETE', url: '/api/v1/app/{appId}/attempts/{version}', postfix: 'v1')]
 	public function retryAttempt(string $appId, string $version): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -773,6 +789,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/policies')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/policies', postfix: 'v1')]
 	public function policies(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -812,6 +829,7 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PUT', url: '/api/app/{appId}/policy')]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/app/{appId}/policy', postfix: 'v1')]
 	public function setPolicy(string $appId): DataResponse {
 		$user = $this->adminUser();
 		if (!$user instanceof IUser) {
@@ -851,6 +869,7 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'DELETE', url: '/api/app/{appId}/policy')]
+	#[ApiRoute(verb: 'DELETE', url: '/api/v1/app/{appId}/policy', postfix: 'v1')]
 	public function clearPolicy(string $appId): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -878,6 +897,7 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PUT', url: '/api/auto-update/settings')]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/auto-update/settings', postfix: 'v1')]
 	public function updateAutoUpdateSettings(?string $enabled = null): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -935,6 +955,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/advisory/settings')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/advisory/settings', postfix: 'v1')]
 	public function advisorySettings(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -962,6 +983,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
 	 */
 	#[ApiRoute(verb: 'PUT', url: '/api/advisory/settings')]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/advisory/settings', postfix: 'v1')]
 	#[PasswordConfirmationRequired]
 	public function updateAdvisorySettings(?string $intervalHours = null, ?string $digestEnabled = null): DataResponse {
 		if (!$this->isAdmin()) {
@@ -1060,6 +1082,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/pat-management/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/pats')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/pats', postfix: 'v1')]
 	public function listPats(): DataResponse {
 		$user = $this->adminUser();
 		if (!$user instanceof IUser) {
@@ -1109,6 +1132,7 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'POST', url: '/api/pats')]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/pats', postfix: 'v1')]
 	public function createPat(): DataResponse {
 		$user = $this->adminUser();
 		if (!$user instanceof IUser) {
@@ -1181,6 +1205,7 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PATCH', url: '/api/pats/{id}')]
+	#[ApiRoute(verb: 'PATCH', url: '/api/v1/pats/{id}', postfix: 'v1')]
 	public function patchPat(int $id, ?string $label = null, ?string $sharedWithAdmins = null): DataResponse {
 		$user = $this->adminUser();
 		if (!$user instanceof IUser) {
@@ -1231,6 +1256,7 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'DELETE', url: '/api/pats/{id}')]
+	#[ApiRoute(verb: 'DELETE', url: '/api/v1/pats/{id}', postfix: 'v1')]
 	public function deletePat(int $id): DataResponse {
 		$user = $this->adminUser();
 		if (!$user instanceof IUser) {
@@ -1267,6 +1293,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/app-discovery/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/discover')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/discover', postfix: 'v1')]
 	public function discover(string $installedOnly = '0'): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -1313,6 +1340,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/pat-management/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/pats/deeplink')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/pats/deeplink', postfix: 'v1')]
 	public function patDeeplink(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -1346,6 +1374,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/audit-trail/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/audit')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/audit', postfix: 'v1')]
 	public function auditLog(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -1377,6 +1406,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/artifact-cache/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/cache')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/cache', postfix: 'v1')]
 	public function cacheSummary(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -1399,6 +1429,7 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'DELETE', url: '/api/cache')]
+	#[ApiRoute(verb: 'DELETE', url: '/api/v1/cache', postfix: 'v1')]
 	public function clearCache(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);

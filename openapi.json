@@ -2,8 +2,8 @@
     "openapi": "3.0.3",
     "info": {
         "title": "versioniq",
-        "version": "1.6.6",
-        "description": "Install any earlier or newer version of already installed Nextcloud apps",
+        "version": "0.0.1",
+        "description": "Install any earlier or newer version of already installed Nextcloud apps\n\nEvery path is served under `/api/v1/`, the version this document describes. The unversioned `/api/` paths keep working, are deprecated, and name their `/api/v1/` successor in a `Link` header next to a `Deprecation` header.",
         "license": {
             "name": "EUPL-1.2"
         },
@@ -63,7 +63,7 @@
     "paths": {
         "/apps": {
             "get": {
-                "operationId": "api-apps",
+                "operationId": "api-apps-v1",
                 "summary": "Lists installed apps (admin-only); see \"List Installed Apps\"",
                 "description": "openspec/specs/version-management/spec.md\nThis endpoint requires admin access",
                 "tags": [
@@ -235,7 +235,7 @@
         },
         "/advisories": {
             "get": {
-                "operationId": "api-advisories",
+                "operationId": "api-advisories-v1",
                 "summary": "Returns the most recent security-advisory correlation for each installed app (admin-only, read-only): a per-app map of advisory state (`none` | `advisory-available` | `pinned-to-vulnerable`), the matching advisories, and the recommended safe version. Never changes a version.",
                 "description": "READS A SNAPSHOT, DOES NOT COMPUTE ONE. Correlation costs two external calls per app — ~176 sequential calls on an 88-app instance — which this endpoint used to do inline. Measured on a live instance it then did not answer within 120s, twice, and while it held the PHP session lock the sibling `/api/pins` request never ran at all, so pin badges silently never rendered (issue #160). The sweep now runs in AdvisoryRefreshJob every 6 hours and this endpoint serves what it stored.\n`checkedAt` is part of the contract, not decoration: it is the unix time of the last completed sweep, and `null` means no sweep has completed yet. Without it the client cannot tell a fresh \"no advisories\" from a six-hour-old one, or from an instance whose cron has never run — three states that otherwise render as an identical empty map.\nopenspec/specs/security-advisory-correlation/spec.md\nThis endpoint requires admin access",
                 "tags": [
@@ -410,7 +410,7 @@
         },
         "/updates": {
             "get": {
-                "operationId": "api-updates",
+                "operationId": "api-updates-v1",
                 "summary": "Returns the stored pending-updates snapshot (admin-only, read-only): per app the installed version, the newest version, the newest one this server can run, the release lines behind, the pin and the source error. `checkedAt` is the unix time of the last sweep, null when none has run; `maxLinesBehind` is the admin's lag limit, null when the check is off. Like /api/advisories it reads what AvailabilityRefreshJob stored and never calls a source (issue #160).",
                 "description": "openspec/specs/pending-updates/spec.md#requirement-an-admin-sets-how-far-an-app-may-fall-behind\nThis endpoint requires admin access",
                 "tags": [
@@ -591,7 +591,7 @@
         },
         "/update-channel": {
             "get": {
-                "operationId": "api-update-channel",
+                "operationId": "api-update-channel-v1",
                 "summary": "Returns the server update channel so versions can be filtered; see \"Respect update channel\"",
                 "description": "openspec/specs/version-management/spec.md\nThis endpoint requires admin access",
                 "tags": [
@@ -757,7 +757,7 @@
         },
         "/sources": {
             "get": {
-                "operationId": "api-sources",
+                "operationId": "api-sources-v1",
                 "summary": "Lists registered sources and trusted-source globs; see \"Source management API\"",
                 "description": "openspec/specs/external-sources/spec.md\nThis endpoint requires admin access",
                 "tags": [
@@ -936,7 +936,7 @@
         },
         "/source/{appId}/binding": {
             "get": {
-                "operationId": "api-get-binding",
+                "operationId": "api-get-binding-v1",
                 "summary": "Returns the active source binding for an app, including any recorded SHA-256 digests (not secrets); see \"Source binding\" and \"Recorded * digests are binding-scoped and surfaced\"",
                 "description": "openspec/specs/external-sources/spec.md\nThis endpoint requires admin access",
                 "tags": [
@@ -1121,7 +1121,7 @@
                 }
             },
             "delete": {
-                "operationId": "api-clear-binding",
+                "operationId": "api-clear-binding-v1",
                 "summary": "Removes an app's source binding so it is read from the App Store again (password-confirmed); see \"Source binding\" (#438)",
                 "description": "openspec/specs/external-sources/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
@@ -1300,7 +1300,7 @@
         },
         "/source/{appId}/bind": {
             "post": {
-                "operationId": "api-bind-source",
+                "operationId": "api-bind-source-v1",
                 "summary": "Binds a source to an app after allowlist validation; see \"Source management API\"",
                 "description": "openspec/specs/external-sources/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
@@ -1524,7 +1524,7 @@
         },
         "/trusted-sources": {
             "post": {
-                "operationId": "api-add-trusted-source",
+                "operationId": "api-add-trusted-source-v1",
                 "summary": "Curated add of a forge-qualified trusted-source pattern; see \"Source management API\".",
                 "description": "Admin access is enforced by the runtime isAdmin() guard below (covered by both the 403 and 200 controller tests). The declarative #[AuthorizedAdminSetting] attribute is intentionally not used here: it requires a class-string<IDelegatedSettings>, whereas Settings\\Admin is a plain ISettings — adopting it would also opt this endpoint into admin delegation semantics, a product change to make deliberately.\nopenspec/specs/external-sources/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
@@ -1747,7 +1747,7 @@
                 }
             },
             "delete": {
-                "operationId": "api-remove-trusted-source",
+                "operationId": "api-remove-trusted-source-v1",
                 "summary": "Removes a trusted-source pattern. The pattern is passed as a `pattern` query parameter (not a path segment) because patterns contain `/`, and Apache rejects encoded slashes in the path (`AllowEncodedSlashes Off`) with a 404 before the request reaches Nextcloud; query strings carry `%2F` fine.",
                 "description": "openspec/specs/external-sources/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
@@ -1954,7 +1954,7 @@
         },
         "/app/{appId}/versions": {
             "get": {
-                "operationId": "api-app-versions",
+                "operationId": "api-app-versions-v1",
                 "summary": "Fetches available versions from the bound (or overridden) source; see \"Fetch Available Versions\" and \"Version listings carry release notes\"",
                 "description": "source reported, mapped through toHttpStatus()\nThe @return above is the DOCUMENTED contract — the two outcomes a caller designs against. The runtime status is a passthrough: toHttpStatus() returns any code on its whitelist, so psalm widens the inferred type to all ~60 of them and cannot reconcile it with 200|403. Widening the annotation to match would make the generated OpenAPI spec describe sixty responses and document nothing, so the mismatch is suppressed here, at the one method where it is true, rather than the annotation being made useless.\nopenspec/specs/version-management/spec.md\nopenspec/specs/changelog-visibility/spec.md\nThis endpoint requires admin access",
                 "tags": [
@@ -2134,7 +2134,7 @@
         },
         "/app/{appId}/versions/{version}/install": {
             "post": {
-                "operationId": "api-install-version",
+                "operationId": "api-install-version-v1",
                 "summary": "Installs a specific version (password-confirmed); see \"Install Specific * Version\" and, when the app is pinned, \"Pins are enforced on App * Versions' own install path\" (`overridePin=repin|unpin`, `pin=1`). For an external source with a recorded SHA-256 mismatch, `acceptNewSha=1` bypasses the check once and replaces the recorded digest on success; see \"Recorded SHA-256 enforced on reinstall\". A downgrade (target version older than installed) is refused with a 409 unless `allowDowngrade=1`; see \"Server-side downgrade guard\".",
                 "description": "`dryRun` is an independent boolean, decoupled from `debug`; see MODIFIED \"Debug Mode\". When `dryRun` is not supplied at all, `debug=1` still implies a dry run (deprecated back-compat) and the response carries a `deprecationNotice`.\nreported, mapped through toHttpStatus() — a refused downgrade is a 409 and a SHA-256 mismatch a 4xx, both carried in that payload\nAs with appVersions(), the @return above is the documented contract; the runtime status is a toHttpStatus() passthrough psalm cannot narrow.\nopenspec/specs/version-management/spec.md\nopenspec/specs/version-pinning/spec.md\nopenspec/specs/external-sources/spec.md\nopenspec/specs/migration-safety/spec.md\nopenspec/specs/cli-commands/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
@@ -2385,7 +2385,7 @@
         },
         "/pins": {
             "get": {
-                "operationId": "api-pins",
+                "operationId": "api-pins-v1",
                 "summary": "Lists all pins joined with the live installed version and current drift status; see \"Honest pin presentation\"",
                 "description": "openspec/specs/version-pinning/spec.md\nThis endpoint requires admin access",
                 "tags": [
@@ -2557,7 +2557,7 @@
         },
         "/app/{appId}/pin": {
             "put": {
-                "operationId": "api-pin-app",
+                "operationId": "api-pin-app-v1",
                 "summary": "Pins an app to its currently installed version (password-confirmed); rejects a `version` other than the installed one; see \"Pin an * installed app to its current version\"",
                 "description": "openspec/specs/version-pinning/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
@@ -2775,7 +2775,7 @@
                 }
             },
             "delete": {
-                "operationId": "api-unpin-app",
+                "operationId": "api-unpin-app-v1",
                 "summary": "Removes an app's pin (password-confirmed); the installed version is unaffected; see \"Unpin\"",
                 "description": "openspec/specs/version-pinning/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
@@ -2954,7 +2954,7 @@
         },
         "/app/{appId}/attempts/{version}": {
             "delete": {
-                "operationId": "api-retry-attempt",
+                "operationId": "api-retry-attempt-v1",
                 "summary": "Clears a failed automatic-update attempt so the next run inside the window tries that version again (password-confirmed); see \"Failed * attempt is not retried\" (#438)",
                 "description": "openspec/specs/auto-update-policies/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
@@ -3184,7 +3184,7 @@
         },
         "/policies": {
             "get": {
-                "operationId": "api-policies",
+                "operationId": "api-policies-v1",
                 "summary": "Lists every persisted per-app auto-update policy plus the global kill switch / window; see \"Per-app update policy\" and \"Global kill * switch and window\"",
                 "description": "openspec/specs/auto-update-policies/spec.md\nThis endpoint requires admin access",
                 "tags": [
@@ -3345,7 +3345,7 @@
         },
         "/app/{appId}/policy": {
             "put": {
-                "operationId": "api-set-policy",
+                "operationId": "api-set-policy-v1",
                 "summary": "Sets an app's auto-update policy level (password-confirmed); rejects an unknown level with 400; see \"Per-app update policy\"",
                 "description": "openspec/specs/auto-update-policies/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
@@ -3563,7 +3563,7 @@
                 }
             },
             "delete": {
-                "operationId": "api-clear-policy",
+                "operationId": "api-clear-policy-v1",
                 "summary": "Clears an app's auto-update policy (password-confirmed); a no-op when none exists; see \"Per-app update policy\"",
                 "description": "openspec/specs/auto-update-policies/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
@@ -3742,7 +3742,7 @@
         },
         "/auto-update/settings": {
             "put": {
-                "operationId": "api-update-auto-update-settings",
+                "operationId": "api-update-auto-update-settings-v1",
                 "summary": "Updates the global auto-update kill switch and/or maintenance window (password-confirmed); rejects a malformed window with 400; see \"Global * kill switch and window\"",
                 "description": "openspec/specs/auto-update-policies/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
@@ -3959,7 +3959,7 @@
         },
         "/advisory/settings": {
             "get": {
-                "operationId": "api-advisory-settings",
+                "operationId": "api-advisory-settings-v1",
                 "summary": "Returns the advisory check settings: how often the sweep runs and whether the weekly digest is sent (admin-only).",
                 "description": "The supported bounds travel WITH the values. A client that has to hardcode the range in order to build a control will drift from the server the first time the range changes.\nopenspec/specs/security-advisory-correlation/spec.md\nThis endpoint requires admin access",
                 "tags": [
@@ -4138,7 +4138,7 @@
                 }
             },
             "put": {
-                "operationId": "api-update-advisory-settings",
+                "operationId": "api-update-advisory-settings-v1",
                 "summary": "Updates the advisory check settings (admin-only).",
                 "description": "An out-of-range interval is REJECTED here rather than silently clamped, because a UI that asks for 48 hours and is answered \"200 OK\" while the server stores 24 has been lied to. The store still clamps, for values that arrive by other routes such as `occ config:app:set`.\nopenspec/specs/security-advisory-correlation/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
@@ -4381,7 +4381,7 @@
         },
         "/pats": {
             "get": {
-                "operationId": "api-list-pats",
+                "operationId": "api-list-pats-v1",
                 "summary": "Lists PATs visible to the current admin, redacted, with derived `expiryState`/`daysRemaining`; see \"PAT management API\" and \"Expiry state in the PAT API and UI\"",
                 "description": "openspec/specs/pat-management/spec.md\nThis endpoint requires admin access",
                 "tags": [
@@ -4551,7 +4551,7 @@
                 }
             },
             "post": {
-                "operationId": "api-create-pat",
+                "operationId": "api-create-pat-v1",
                 "summary": "Validates and creates an encrypted PAT; see \"PAT validation on upload\" and \"PAT storage\"",
                 "description": "After a GitHub token is stored, integriq is asked to look at the GitHub connection again, and told the token check reached GitHub. That never throws and never changes the response.\nopenspec/specs/pat-management/spec.md\nopenspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
@@ -4765,7 +4765,7 @@
         },
         "/pats/{id}": {
             "patch": {
-                "operationId": "api-patch-pat",
+                "operationId": "api-patch-pat-v1",
                 "summary": "Updates a PAT's label / share flag, owner-only; see \"PAT management API\" and \"PAT storage\"",
                 "description": "openspec/specs/pat-management/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
@@ -5004,7 +5004,7 @@
                 }
             },
             "delete": {
-                "operationId": "api-delete-pat",
+                "operationId": "api-delete-pat-v1",
                 "summary": "Deletes a PAT, restricted to its owner; see \"PAT management API\" (\"Delete restricted to owner\")",
                 "description": "After a GitHub token is removed, integriq is asked to look at the GitHub connection again.\nopenspec/specs/pat-management/spec.md\nopenspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
@@ -5219,7 +5219,7 @@
         },
         "/discover": {
             "get": {
-                "operationId": "api-discover",
+                "operationId": "api-discover-v1",
                 "summary": "Multi-source app search with query-length + filter handling; see \"Discovery API\"",
                 "description": "openspec/specs/app-discovery/spec.md\nThis endpoint requires admin access",
                 "tags": [
@@ -5427,7 +5427,7 @@
         },
         "/pats/deeplink": {
             "get": {
-                "operationId": "api-pat-deeplink",
+                "operationId": "api-pat-deeplink-v1",
                 "summary": "Returns a prefilled GitHub PAT-creation deeplink; see \"PAT management API\" (deeplink scenarios)",
                 "description": "openspec/specs/pat-management/spec.md\nThis endpoint requires admin access",
                 "tags": [
@@ -5626,7 +5626,7 @@
         },
         "/audit": {
             "get": {
-                "operationId": "api-audit-log",
+                "operationId": "api-audit-log-v1",
                 "summary": "Lists audit entries, newest-first, admin-only, paginated and optionally filtered by app id; see \"Audit entries are immutable and admin-readable\". No mutation endpoint exists for this resource — the retention prune job is the only deletion path.",
                 "description": "openspec/specs/audit-trail/spec.md\nThis endpoint requires admin access",
                 "tags": [
@@ -5787,7 +5787,7 @@
         },
         "/cache": {
             "get": {
-                "operationId": "api-cache-summary",
+                "operationId": "api-cache-summary-v1",
                 "summary": "Cache summary: per-app cached versions + size, and the total cache size, admin-only; see \"Cache visibility and management\"",
                 "description": "openspec/specs/artifact-cache/spec.md\nThis endpoint requires admin access",
                 "tags": [
@@ -5946,7 +5946,7 @@
                 }
             },
             "delete": {
-                "operationId": "api-clear-cache",
+                "operationId": "api-clear-cache-v1",
                 "summary": "Clears cached release artifacts — all apps, or a single app when `appId` is supplied — password-confirmed; see \"Cache visibility and * management\" (\"Clear cache\")",
                 "description": "openspec/specs/artifact-cache/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
@@ -6107,7 +6107,7 @@
         },
         "/forges/forgejo": {
             "get": {
-                "operationId": "forge-forgejo-host",
+                "operationId": "forge-forgejo-host-v1",
                 "summary": "Returns the self-hosted Forgejo or Gitea host",
                 "description": "openspec/specs/external-sources/spec.md\nThis endpoint requires admin access",
                 "tags": [
@@ -6275,7 +6275,7 @@
                 }
             },
             "put": {
-                "operationId": "forge-set-forgejo-host",
+                "operationId": "forge-set-forgejo-host-v1",
                 "summary": "Sets or clears the self-hosted Forgejo or Gitea host",
                 "description": "openspec/specs/external-sources/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
@@ -6500,7 +6500,7 @@
         },
         "/instance-settings": {
             "get": {
-                "operationId": "settings-instance-settings",
+                "operationId": "settings-instance-settings-v1",
                 "summary": "Returns the instance settings with their defaults",
                 "description": "openspec/specs/audit-trail/spec.md\nopenspec/specs/external-sources/spec.md\nThis endpoint requires admin access",
                 "tags": [
@@ -6668,7 +6668,7 @@
                 }
             },
             "put": {
-                "operationId": "settings-update-instance-settings",
+                "operationId": "settings-update-instance-settings-v1",
                 "summary": "Updates the instance settings (password-confirmed); an omitted field is left alone",
                 "description": "openspec/specs/audit-trail/spec.md\nopenspec/specs/external-sources/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
@@ -6987,8 +6987,8 @@
     ],
     "servers": [
         {
-            "url": "https://{host}/ocs/v2.php/apps/versioniq/api",
-            "description": "The versioniq API on a Nextcloud instance.",
+            "url": "https://{host}/ocs/v2.php/apps/versioniq/api/v1",
+            "description": "The versioniq API, version 1, on a Nextcloud instance.",
             "variables": {
                 "host": {
                     "default": "localhost",

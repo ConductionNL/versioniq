@@ -65,6 +65,7 @@ class SettingsController extends OCSController {
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/instance-settings')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/instance-settings', postfix: 'v1')]
 	public function instanceSettings(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -89,6 +90,7 @@ class SettingsController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PUT', url: '/api/instance-settings')]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/instance-settings', postfix: 'v1')]
 	#[RequestFieldsFrom(InstanceSettingsFields::class)]
 	public function updateInstanceSettings(): Response {
 		// The fields are declared in InstanceSettingsFields; one that is not

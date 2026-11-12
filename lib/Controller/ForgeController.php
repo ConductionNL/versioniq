@@ -57,6 +57,7 @@ class ForgeController extends OCSController {
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/forges/forgejo')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/forges/forgejo', postfix: 'v1')]
 	public function forgejoHost(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -80,6 +81,7 @@ class ForgeController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PUT', url: '/api/forges/forgejo')]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/forges/forgejo', postfix: 'v1')]
 	public function setForgejoHost(string $host = ''): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);

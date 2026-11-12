@@ -6,7 +6,7 @@ status: done
 
 ## Purpose
 
-How Versioniq's JSON API meets the NL API Design Rules that apply to every endpoint, whatever it does: each response says which version answered it, errors come back as RFC 9457 problem details, and the OpenAPI document that describes the API is published by the API itself. The document lives at `openapi.json` in the repository root. `composer openapi` generates it from the controllers with nextcloud/openapi-extractor and completes it with `bin/openapi-design-rules.php`. It is linted with the Spectral ruleset of the API Design Rules (`https://static.developer.overheid.nl/adr/ruleset.yaml`).
+How Versioniq's JSON API meets the NL API Design Rules that apply to every endpoint, whatever it does: each path carries the major version, each response says which version answered it, errors come back as RFC 9457 problem details, and the OpenAPI document that describes the API is published by the API itself. The document lives at `openapi.json` in the repository root. `composer openapi` generates it from the controllers with nextcloud/openapi-extractor and completes it with `bin/openapi-design-rules.php`. It is linted with the Spectral ruleset of the API Design Rules (`https://static.developer.overheid.nl/adr/ruleset.yaml`).
 
 ## Requirements
 
@@ -47,3 +47,36 @@ A JSON error response (status 400 or higher) of an endpoint under `/api/` MUST b
 - WHEN it requests `/ocs/v2.php/apps/versioniq/api/openapi.json`
 - THEN it MUST receive the OpenAPI document with status 200
 - AND the response MUST carry `Access-Control-Allow-Origin: *`
+
+### Requirement: Every API path is served under its major version
+
+Every `#[ApiRoute]` under `/api/` MUST have a `/api/v1/` twin on the same method, postfixed `v1` (/core/uri-version). A route the app already declares under `/api/v1/` keeps its path; an unversioned path whose versioned form such a route answers keeps no successor and is listed in `ApiPathAliases::WITHOUT_SUCCESSOR`. The unversioned path MUST keep answering exactly as before, and its responses MUST carry a `Deprecation` header and a `Link` header naming the `/api/v1/` successor with `rel="successor-version"` (/core/deprecation-schedule). The OpenAPI document MUST name `/ocs/v2.php/apps/versioniq/api/v1` as its server and MUST describe every versioned path the app routes, and no other path.
+
+#### Scenario: An unversioned path names its successor
+
+@e2e exclude response headers, not browser behaviour; covered by PHPUnit ApiContractMiddlewareTest and VersionedRoutesTest.
+
+- GIVEN a client calls `GET /ocs/v2.php/apps/versioniq/api/apps`
+- THEN it MUST receive the same answer as before
+- AND the response MUST carry `Deprecation: @1794441600`
+- AND the response MUST carry `Link: </ocs/v2.php/apps/versioniq/api/v1/apps>; rel="successor-version"`
+
+#### Scenario: The versioned path answers the same request
+
+@e2e exclude a route table property; covered by PHPUnit VersionedRoutesTest.
+
+- GIVEN a route `/api/apps`
+- WHEN a client calls `/ocs/v2.php/apps/versioniq/api/v1/apps`
+- THEN the same controller method MUST answer it, without a `Deprecation` header
+
+### Requirement: Standard protocol paths keep their own formats
+
+Paths that implement a protocol defined elsewhere (Health check, Prometheus metrics) MUST NOT get a `/api/v1/` alias, a `Deprecation` header, an `API-Version` header or a problem details rewrite: their formats belong to their standard. They are listed in `lib/Middleware/Support/StandardProtocolPaths.php` and are not described in the OpenAPI document.
+
+#### Scenario: A protocol path is left alone
+
+@e2e exclude a response shape, not browser behaviour; covered by PHPUnit ApiContractMiddlewareTest.
+
+- GIVEN a client calls `/ocs/v2.php/apps/versioniq/api/health` and it answers `400` with `{"error": "x"}`
+- THEN the body MUST stay `{"error": "x"}`
+- AND the response MUST carry no `API-Version` and no `Deprecation` header
