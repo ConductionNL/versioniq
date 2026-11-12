@@ -26,6 +26,11 @@
     "cs:fix": "./vendor/bin/php-cs-fixer fix",
     "psalm": "./vendor/bin/psalm --threads=1 --no-cache",
     "test:unit": "./vendor/bin/phpunit -c phpunit.xml --colors=always --fail-on-warning --fail-on-risky",
+    "coverage:publish": [
+        "@putenv XDEBUG_MODE=coverage",
+        "@php -d pcov.enabled=1 -d pcov.directory=lib vendor/bin/phpunit -c tests/phpunit-unit-only.xml --do-not-fail-on-risky --coverage-clover=coverage/clover.xml",
+        "@php scripts/coverage-publish.php"
+    ],
     "test:unit-only": "./vendor/bin/phpunit -c tests/phpunit-unit-only.xml --colors=always",
     "openapi": "./vendor/bin/generate-spec && php bin/openapi-design-rules.php openapi.json",
     "rector": "./vendor/bin/rector && composer cs:fix",

@@ -6,6 +6,12 @@
 
 A template to get started with Nextcloud app development.
 
+## Test coverage
+
+<!-- coverage:start -->
+Measured test coverage: 93.2% of statements (PHP 93.2% of 5,606 statements), at commit `2281797` on 2026-11-12. The JavaScript frontend is not in this figure, because it has no coverage measurement yet. The figures come from [`coverage-summary.json`](coverage-summary.json); refresh them with `composer coverage:publish`.
+<!-- coverage:end -->
+
 ## Usage
 
 - To get started easily use the [Appstore App generator](https://apps.nextcloud.com/developer/apps/generate) to
