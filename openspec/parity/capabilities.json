@@ -7198,7 +7198,7 @@
 					"reason": "A property of how the app runs (fully on premises), not a screen."
 				},
 				"change": "platform-properties",
-				"requirement": "openspec/changes/platform-properties/specs/platform-properties :: Versioniq runs inside the Nextcloud instance with no SaaS dependency"
+				"requirement": "openspec/specs/platform-properties :: Versioniq runs inside the Nextcloud instance with no SaaS dependency"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7270,7 +7270,7 @@
 					"reason": "Every feature is free; a property of the app, not a screen."
 				},
 				"change": "platform-properties",
-				"requirement": "openspec/changes/platform-properties/specs/platform-properties :: Every feature is available without a paid plan"
+				"requirement": "openspec/specs/platform-properties :: Every feature is available without a paid plan"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
