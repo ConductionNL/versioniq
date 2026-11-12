@@ -23,4 +23,6 @@
 
 ## 5. Close
 
+- [ ] 5.0 Record the self-hosted Forgejo requirement for the matrix row `src-codeberg`. The behaviour is built (`lib/Controller/ForgeController.php`, `lib/Service/Source/ForgeRegistry.php`); this change only writes it down.
+
 - [ ] 5.1 Set the matrix row `src-gitlab` to `built` with evidence lines, then archive this change.

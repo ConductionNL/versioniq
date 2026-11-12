@@ -29,6 +29,7 @@ No demand row. Two competitors are rated yes.
 - An admin binds an app to `gitlab:group/project`, nested groups included (`gitlab:group/subgroup/project`). Versions come from the project's releases, release notes from their descriptions, and the archive from a release asset link that matches the asset pattern.
 - A GitLab token can be stored like a GitHub token. Versioniq checks its scopes with GitLab's own token endpoint and accepts read-only scopes (`read_api`, `read_repository`) only.
 - Trusted-source patterns accept `gitlab:group/*` and deeper globs.
+- The self-hosted Forgejo or Gitea host that is already built gets its own requirement, so the matrix row `src-codeberg` records a spec. No code changes for it.
 - GitLab has no per-project security advisory API. A GitLab-bound app therefore reads "no advisory source" in the advisory check, never "no advisories".
 
 ## Scope
