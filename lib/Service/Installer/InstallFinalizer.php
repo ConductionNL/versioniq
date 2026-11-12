@@ -71,7 +71,7 @@ class InstallFinalizer {
 	 * An update runs all of that in a child process that boots with the new files in place, so the repair
 	 * steps see the new version's registrations and not the previous version's (#611); the child calls this
 	 * method again and stays in-process. A fresh install, or an update without a way to start a child, runs
-	 * in this process.
+	 * in this process. `$output` is used only when this process finalizes; the child gets none.
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @spec openspec/specs/migration-safety/spec.md
@@ -174,7 +174,10 @@ class InstallFinalizer {
 	}
 
 	/**
-	 * Hands an update's finalize to a child process (#611).
+	 * Hands an update's finalize to a child process (#611). Without a child
+	 * finalizer (built by hand, or Nextcloud's container could not build one and
+	 * fell back to the parameter's default) an update logs a warning first, so
+	 * the #611 fix is not switched off without a sound.
 	 *
 	 * @param array<string, mixed> $info
 	 * @return ?string The app id when the child finalized; null when this
@@ -183,11 +186,16 @@ class InstallFinalizer {
 	 * @throws Exception When the finalize failed in the child.
 	 */
 	private function finalizeInChild(string $appPath, array $info, string $enabled, string $sourceId): ?string {
-		if ($this->childFinalizer === null || !$this->childFinalizer->applies($info)) {
+		if ($this->childFinalizer === null) {
+			$appId = (string)($info['id'] ?? '');
+			if ($appId !== '' && $this->configs->appConfig->getValueString($appId, 'installed_version', '') !== '') {
+				$this->logger->warning('versioniq: no child finalizer available; finalizing the update of {app} in-process, where repair steps of the new version may fail against the previous version\'s registrations (#611).', ['app' => $appId]);
+			}
+
 			return null;
 		}
 
-		return $this->childFinalizer->run($appPath, $info, $enabled, $sourceId);
+		return $this->childFinalizer->applies($info) ? $this->childFinalizer->run($appPath, $info, $enabled, $sourceId) : null;
 	}
 
 	/**

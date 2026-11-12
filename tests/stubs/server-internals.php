@@ -38,6 +38,23 @@ namespace {
 
 	class OC_App {
 		/**
+		 * Receives the calls of these stubs that a unit test records: the
+		 * stub's name and its arguments.
+		 *
+		 * @var ?\Closure(string, array<int, mixed>): void
+		 */
+		public static ?\Closure $recorder = null;
+
+		/**
+		 * @param array<int, mixed> $args
+		 */
+		public static function record(string $call, array $args): void {
+			if (self::$recorder !== null) {
+				(self::$recorder)($call, $args);
+			}
+		}
+
+		/**
 		 * @return array<int, array<string, mixed>>
 		 */
 		public static function listAllApps(): array {
@@ -50,12 +67,14 @@ namespace {
 		}
 
 		public static function registerAutoloading(string $app, string $path): void {
+			self::record('OC_App::registerAutoloading', [$app, $path]);
 		}
 
 		/**
 		 * @param array<array-key, mixed> $steps
 		 */
 		public static function executeRepairSteps(string $appId, array $steps): void {
+			self::record('OC_App::executeRepairSteps', [$appId, $steps]);
 		}
 
 		public static function setAppTypes(string $appId): void {
@@ -97,6 +116,7 @@ namespace OC\Files {
 namespace OC\AppFramework\Bootstrap {
 	class Coordinator {
 		public function runLazyRegistration(string $appId): void {
+			\OC_App::record('Coordinator::runLazyRegistration', [$appId]);
 		}
 	}
 }
@@ -107,12 +127,15 @@ namespace OC\DB {
 
 	class MigrationService {
 		public function __construct(string $appName, Connection $connection) {
+			\OC_App::record('MigrationService::__construct', [$appName]);
 		}
 
 		public function setOutput(\OCP\Migration\IOutput $output): void {
+			\OC_App::record('MigrationService::setOutput', []);
 		}
 
 		public function migrate(string $to = 'latest', bool $schemaOnly = false): void {
+			\OC_App::record('MigrationService::migrate', [$to, $schemaOnly]);
 		}
 	}
 }
