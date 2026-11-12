@@ -759,7 +759,7 @@
 			"providerHow": "read-from-code",
 			"feature": "app-inventory",
 			"featureConfidence": "high",
-			"note": "The Apps tab lists every enabled app as a card, but the card shows name, id and description only; the installed version the API already returns (installedVersion) appears only after 'Choose app' opens the detail. No single list of apps with their versions. Existing 2026-09-27: openspec/changes/archive/2026-06-14-move-to-admin-settings specifies the missing half; the code lacks it (defect of that change, not filed). See openspec/parity/gap-decisions.json.",
+			"note": "The Apps tab lists every installed app as a card that reads 'Installed {version}' (src/App.vue:2528), including disabled apps and apps bound but not installed yet, each marked with its state. Re-checked 2026-11-12 against development: the earlier note that cards show no version was stale.",
 			"evidence": {
 				"nextcloud": "apps/appstore/src/views/AppstoreManage.vue:33 (Installed category) with the version column at apps/appstore/src/components/AppTable/AppTableRow.vue:79; CLI core/Command/App/ListApps.php:64 prints installed versions.",
 				"renovate": "lib/workers/repository/package-files.ts:39 renders a \"Detected Dependencies\" section in the dependency dashboard listing every detected dependency with its current version per package file; an \"app\" maps to a dependency.",
@@ -795,7 +795,7 @@
 			"providerHow": "read-from-code",
 			"feature": "app-inventory",
 			"featureConfidence": "high",
-			"note": "Nothing marks which apps have a newer release; an admin must open each app's version list. The nightly AutoUpdateJob computes candidates per policy but never displays them. Specified 2026-09-27 in openspec/changes/inventory-pending-updates (openspec pass).",
+			"note": "Each card shows 'Update available: {version}' from the stored availability sweep, a pinned app says the pin holds it, and the Apps tab filters on apps with an update (src/utils/pendingUpdates.ts). Re-checked 2026-11-12 against development: the earlier note that nothing marks newer releases was stale.",
 			"evidence": {
 				"nextcloud": "apps/appstore/src/views/AppstoreManage.vue:39 lists apps with a pending update under the Updates category; counter from apps/appstore/lib/Controller/PageController.php:84 via Installer::isUpdateAvailable (lib/private/Installer.php:361).",
 				"renovate": "lib/workers/repository/dependency-dashboard.ts:500-610 lists pending, awaiting-schedule, rate-limited and open update branches per dependency, and each available update becomes a branch or PR.",
@@ -2458,7 +2458,7 @@
 				"change": "safety-rollback-backup-and-preflight",
 				"screen": {
 					"canvas": "design-system",
-					"board": "VqApps"
+					"board": "VqInstalleren"
 				},
 				"requirement": "openspec/changes/safety-rollback-backup-and-preflight/specs/version-management :: The pre-flight check refuses an install that does not fit on disk"
 			},
@@ -3238,7 +3238,7 @@
 				"change": "add-version-pinning",
 				"screen": {
 					"canvas": "design-system",
-					"board": "VqAppVersies"
+					"board": "VqApps"
 				},
 				"requirement": "openspec/specs/version-pinning :: Honest pin presentation [MVP]"
 			},
@@ -4493,13 +4493,13 @@
 				"evidence": "lib/Service/Advisory/NextcloudAdvisoryFeed.php:44, lib/Service/Advisory/NextcloudAdvisoryFeed.php:93, lib/Service/Advisory/AdvisoryService.php:166",
 				"reachedOn": "background job AdvisoryRefreshJob, Apps tab badges",
 				"owner": "ConductionNL/versioniq",
-				"change": "security-advisory-correlation",
+				"change": "advisories-name-their-feeds",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
 				},
 				"requirement": [
-					"openspec/specs/security-advisory-correlation :: The installed/pinned version is correlated against known security advisories",
+					"openspec/changes/advisories-name-their-feeds/specs/security-advisory-correlation :: The installed/pinned version is correlated against known security advisories",
 					"openspec/specs/security-advisory-correlation :: Every stored advisory is reachable from a page, with its severity"
 				]
 			},
@@ -4532,12 +4532,12 @@
 				"evidence": "lib/Service/Source/ForgeReleaseSource.php:174, lib/Service/Advisory/AdvisoryService.php:129",
 				"reachedOn": "background job AdvisoryRefreshJob, Apps tab badges",
 				"owner": "ConductionNL/versioniq",
-				"change": "security-advisory-correlation",
+				"change": "advisories-name-their-feeds",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
 				},
-				"requirement": "openspec/specs/security-advisory-correlation :: The installed/pinned version is correlated against known security advisories"
+				"requirement": "openspec/changes/advisories-name-their-feeds/specs/security-advisory-correlation :: The installed/pinned version is correlated against known security advisories"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4790,7 +4790,7 @@
 				"readOn": "2026-10-07",
 				"screen": {
 					"canvas": "design-system",
-					"board": "VqBeveiligingsadviezen"
+					"board": "VqInstellingen"
 				},
 				"requirement": "openspec/specs/security-advisory-correlation :: The admin sets how often advisories are checked"
 			},
@@ -7036,7 +7036,7 @@
 			"area": "admin",
 			"name": "Publish an OpenAPI description of the API.",
 			"rowSource": "own-code",
-			"versioniq": "partial",
+			"versioniq": "yes",
 			"nextcloud": "yes",
 			"renovate": "unknown",
 			"dependabot": "yes",
@@ -7059,7 +7059,7 @@
 			"providerHow": "read-from-code",
 			"feature": "api-and-assistant",
 			"featureConfidence": "high",
-			"note": "A generated OpenAPI 3.0.3 description ships with the app and CI checks it is fresh. Re-rated 2026-10-07 from yes to partial: the committed openapi.json lacks the GET /api/updates route added in #493, so the description is one route behind and the openapi check is red until it is regenerated.",
+			"note": "A generated OpenAPI 3.0.3 description ships with the app and CI checks it is fresh. Re-checked 2026-11-12 against development: openapi.json lists all 26 OCS routes, GET /api/updates included, so the 2026-10-07 note that it was one route behind is resolved.",
 			"evidence": {
 				"nextcloud": "apps/appstore/openapi.json and apps/updatenotification/openapi.json are generated from the controllers; published at https://docs.nextcloud.com/server/latest/developer_manual/_static/openapi.html.",
 				"renovate": "not checked: no OpenAPI description found in the repo; Mend portal APIs were not read.",
