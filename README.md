@@ -6,6 +6,11 @@
 
 A template to get started with Nextcloud app development.
 
+## Test coverage
+
+<!-- coverage:start -->
+<!-- coverage:end -->
+
 ## Usage
 
 - To get started easily use the [Appstore App generator](https://apps.nextcloud.com/developer/apps/generate) to
