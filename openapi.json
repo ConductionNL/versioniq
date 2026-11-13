@@ -48,6 +48,36 @@
                         "type": "string"
                     }
                 }
+            },
+            "Problem": {
+                "type": "object",
+                "description": "RFC 9457 problem details. Members of the original error body are kept beside these.",
+                "required": [
+                    "type",
+                    "title",
+                    "status"
+                ],
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "format": "uri-reference",
+                        "example": "about:blank"
+                    },
+                    "title": {
+                        "type": "string",
+                        "example": "Not Found"
+                    },
+                    "status": {
+                        "type": "integer",
+                        "minimum": 400,
+                        "maximum": 599,
+                        "example": 404
+                    },
+                    "detail": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": true
             }
         },
         "headers": {
@@ -6959,6 +6989,16 @@
                                 "schema": {
                                     "type": "object",
                                     "additionalProperties": true
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The document is not installed.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
                                 }
                             }
                         }
