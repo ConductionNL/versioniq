@@ -1,9 +1,10 @@
-import type {VueWrapper} from '@vue/test-utils';
 
 // SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
 // SPDX-License-Identifier: EUPL-1.2
 // The Sources tab's bind form, the Discover prefill and the self-hosted forge host.
 // @spec openspec/specs/external-sources/spec.md
+import type { VueWrapper } from '@vue/test-utils'
+
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SourcesPanel from './SourcesPanel.vue'
