@@ -15,7 +15,8 @@
  * - every 2xx and 3xx response documents the `API-Version` header that
  *   ApiContractMiddleware adds;
  * - schema names are PascalCase (`OCSMeta` becomes `OcsMeta`);
- * - `/openapi.json` documents the endpoint that serves this document.
+ * - `/openapi.json` documents the endpoint that serves this document, and its
+ *   404 as the shared `Problem` schema (`application/problem+json`).
  *
  * Usage: php bin/openapi-design-rules.php openapi.json
  *
@@ -77,6 +78,12 @@ $paths->{'/openapi.json'} = (object)[
 					'application/json' => (object)['schema' => (object)['type' => 'object', 'additionalProperties' => true]],
 				],
 			],
+			'404' => (object)[
+				'description' => 'The document is not installed.',
+				'content' => (object)[
+					'application/problem+json' => (object)['schema' => (object)['$ref' => '#/components/schemas/Problem']],
+				],
+			],
 		],
 	],
 ];
@@ -87,6 +94,24 @@ $document->components->headers = (object)[
 		'description' => 'The version of the API that answered, which is the installed app version.',
 		'schema' => (object)['type' => 'string', 'example' => '1.0.0'],
 	],
+];
+
+// The RFC 9457 problem details shape ApiContractMiddleware gives a plain JSON
+// error response on /api/. The OCS routes answer their errors inside the OCS
+// envelope (a DataResponse is not decorated), so they keep their own error
+// schemas; only plain JSON responses, such as the 404 of /openapi.json,
+// reference this one.
+$document->components->schemas->Problem = (object)[
+	'type' => 'object',
+	'description' => 'RFC 9457 problem details. Members of the original error body are kept beside these.',
+	'required' => ['type', 'title', 'status'],
+	'properties' => (object)[
+		'type' => (object)['type' => 'string', 'format' => 'uri-reference', 'example' => 'about:blank'],
+		'title' => (object)['type' => 'string', 'example' => 'Not Found'],
+		'status' => (object)['type' => 'integer', 'minimum' => 400, 'maximum' => 599, 'example' => 404],
+		'detail' => (object)['type' => 'string'],
+	],
+	'additionalProperties' => true,
 ];
 
 $tags = [];
