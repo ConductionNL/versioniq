@@ -72,6 +72,25 @@ describe('InstanceSettingsPanel', () => {
 		expect(wrapper.find('[data-testid="instance-settings-notice"]').exists()).toBe(true)
 	})
 
+	// @spec openspec/changes/audit-external-changes
+	it('shows automatic re-enabling off and sends it when switched on', async () => {
+		mockedGet.mockResolvedValue({ payload: { ...settings, reactivateAuto: false } })
+		mockedWrite.mockResolvedValue({ payload: { ...settings, reactivateAuto: true } })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		const box = wrapper.find('[data-testid="setting-reactivate-auto"]')
+		expect((box.element as HTMLInputElement).checked).toBe(false)
+		expect(wrapper.text()).toContain('Enable an app again when an update left it disabled and it runs on this server')
+
+		await box.setValue(true)
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		expect(mockedWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/instance-settings', expect.objectContaining({ reactivateAuto: 'true' }))
+		expect((wrapper.find('[data-testid="setting-reactivate-auto"]').element as HTMLInputElement).checked).toBe(true)
+	})
+
 	it('shows the server message when a value is refused', async () => {
 		mockedGet.mockResolvedValue({ payload: settings })
 		mockedWrite.mockResolvedValue({ payload: {}, error: 'The audit retention must be a whole number between 30 and 3650.' })

@@ -16,6 +16,7 @@ use Exception;
 use OC\AppFramework\Bootstrap\Coordinator;
 use OC\DB\Connection;
 use OC\DB\MigrationService;
+use OCA\Versioniq\Service\Audit\SeenStateStore;
 use OCA\Versioniq\Service\Lkg\Lkg;
 use OCA\Versioniq\Service\Lkg\LkgStore;
 use OCA\Versioniq\Service\Settings\ConfigStores;
@@ -59,6 +60,11 @@ class InstallFinalizer {
 		 * that build this class by hand: finalize() then stays in-process.
 		 */
 		private ?ChildProcessFinalizer $childFinalizer = null,
+		/**
+		 * What Versioniq last saw of every app (audit-external-changes): its
+		 * own install updates it, so the hourly check never records it again.
+		 */
+		private ?SeenStateStore $seenState = null,
 	) {
 	}
 
@@ -83,6 +89,8 @@ class InstallFinalizer {
 	public function finalize(string $appPath, array $info, string $enabled, ?IOutput $output = null, string $sourceId = 'appstore'): string {
 		$childAppId = $this->finalizeInChild($appPath, $info, $enabled, $sourceId);
 		if ($childAppId !== null) {
+			$this->rememberInstall($childAppId, $this->installedVersionOf($info), $enabled);
+
 			return $childAppId;
 		}
 
@@ -136,8 +144,24 @@ class InstallFinalizer {
 			$this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
 			$sourceId,
 		));
+		$this->rememberInstall($appId, $installedVersion, $enabled);
 
 		return $appId;
+	}
+
+	/**
+	 * Stores the installed version as seen, so this install is never
+	 * recorded a second time as a change made outside Versioniq. Reached only
+	 * after a successful install.
+	 *
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	private function rememberInstall(string $appId, string $installedVersion, string $enabled): void {
+		try {
+			$this->seenState?->rememberApp($appId, $installedVersion, $enabled !== 'no');
+		} catch (\Throwable $error) {
+			$this->logger->warning('InstallFinalizer: could not update the seen state', ['appId' => $appId, 'message' => $error->getMessage()]);
+		}
 	}
 
 	/**

@@ -37,6 +37,12 @@ class AuditLogger {
 	public const OPERATION_PIN_DRIFT = 'pin_drift';
 	/** An instance setting changed from the Settings tab (#438). */
 	public const OPERATION_SETTINGS = 'settings';
+	/** A version change Versioniq did not make (audit-external-changes). */
+	public const OPERATION_EXTERNAL_UPDATE = 'external_update';
+	/** An app switched off without a version change (audit-external-changes). */
+	public const OPERATION_EXTERNAL_DISABLE = 'external_disable';
+	/** An app Versioniq enabled again after an update left it off (audit-external-changes). */
+	public const OPERATION_REACTIVATE = 'reactivate';
 
 	private const OPERATION_PATTERN = '/^[a-z_]{1,32}$/';
 	private const MESSAGE_MAX_LENGTH = 4000;

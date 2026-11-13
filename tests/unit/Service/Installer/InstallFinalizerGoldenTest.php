@@ -11,6 +11,7 @@ namespace OCA\Versioniq\Tests\Unit\Service\Installer;
 
 use OC\AppFramework\Bootstrap\Coordinator;
 use OC\DB\Connection;
+use OCA\Versioniq\Service\Audit\SeenStateStore;
 use OCA\Versioniq\Service\Installer\ChildProcessFinalizer;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
 use OCA\Versioniq\Service\Lkg\Lkg;
@@ -210,6 +211,41 @@ final class InstallFinalizerGoldenTest extends TestCase {
 	}
 
 	/**
+	 * Versioniq's own install updates what it last saw, so the hourly check
+	 * never records it again (audit-external-changes).
+	 *
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	public function testASuccessfulInstallIsRememberedAsSeen(): void {
+		$seen = $this->createMock(SeenStateStore::class);
+		$seen->expects(self::once())->method('rememberApp')->with('someapp', '2.0.0', true);
+
+		$outcome = $this->runCase([
+			'path' => 'plain', 'info' => ['id' => 'someapp', 'version' => '2.0.0'], 'enabled' => 'yes',
+			'output' => false, 'sourceId' => null, 'previous' => '', 'appVersion' => '1.9.0',
+			'appInfo' => ['types' => []], 'throwAt' => null, 'noChild' => true, 'seenState' => $seen,
+		]);
+
+		self::assertSame('someapp', $outcome['returned']);
+	}
+
+	/**
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	public function testAFailedInstallIsNotRememberedAsSeen(): void {
+		$seen = $this->createMock(SeenStateStore::class);
+		$seen->expects(self::never())->method('rememberApp');
+
+		$outcome = $this->runCase([
+			'path' => 'plain', 'info' => ['id' => 'someapp', 'version' => '2.0.0'], 'enabled' => 'no',
+			'output' => false, 'sourceId' => null, 'previous' => '', 'appVersion' => '1.9.0',
+			'appInfo' => ['types' => []], 'throwAt' => 'migrate', 'noChild' => true, 'seenState' => $seen,
+		]);
+
+		self::assertSame('migration failed', $outcome['threw']);
+	}
+
+	/**
 	 * @param array<string, mixed> $case
 	 * @return array<string, mixed>
 	 */
@@ -223,6 +259,7 @@ final class InstallFinalizerGoldenTest extends TestCase {
 			$this->lkgStore(),
 			$this->timeFactory(),
 			($case['noChild'] ?? false) === true ? null : $this->childFinalizer(),
+			$case['seenState'] ?? null,
 		);
 		if ($case['throwAt'] === 'migrate') {
 			\OC_App::$recorder = function (string $call, array $args): void {

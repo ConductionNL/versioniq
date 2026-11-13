@@ -13,6 +13,7 @@ namespace OCA\Versioniq\Service\Api;
 
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Service\Audit\SeenStateStore;
 use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
 use OCA\Versioniq\Service\Settings\InstanceSettings;
 
@@ -29,6 +30,8 @@ final class ReportStores {
 		// Optional: the pending-updates snapshot (inventory-pending-updates).
 		public readonly ?AvailabilityResultStore $availabilityResultStore = null,
 		public readonly ?InstanceSettings $instanceSettings = null,
+		// Optional: what Versioniq last saw of every app (audit-external-changes).
+		public readonly ?SeenStateStore $seenStateStore = null,
 	) {
 	}
 }

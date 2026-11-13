@@ -204,4 +204,56 @@ final class NotifierTest extends TestCase {
 
 		$this->assertInstanceOf(INotification::class, $result);
 	}
+
+	/**
+	 * Prepares one `app_left_disabled` notification and returns its parsed subject and message.
+	 *
+	 * @param array<string, string> $parameters
+	 * @return array{0: string, 1: string}
+	 */
+	private function leftDisabled(array $parameters): array {
+		$parsed = ['', ''];
+		$notification = $this->createMock(INotification::class);
+		$notification->method('getApp')->willReturn(Application::APP_ID);
+		$notification->method('getSubject')->willReturn('app_left_disabled');
+		$notification->method('getSubjectParameters')->willReturn($parameters);
+		$notification->method('setParsedSubject')->willReturnCallback(function (string $text) use ($notification, &$parsed): INotification {
+			$parsed[0] = $text;
+
+			return $notification;
+		});
+		$notification->method('setParsedMessage')->willReturnCallback(function (string $text) use ($notification, &$parsed): INotification {
+			$parsed[1] = $text;
+
+			return $notification;
+		});
+
+		(new Notifier($this->l10nFactory()))->prepare($notification, 'en');
+
+		return $parsed;
+	}
+
+	/**
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	public function testAnAppLeftDisabledThatRunsSaysToEnableIt(): void {
+		$this->assertSame(
+			['An update left an app disabled', 'forms was left disabled by the update from Nextcloud 33 to Nextcloud 34. It runs on this server: enable it.'],
+			$this->leftDisabled(['app' => 'forms', 'fromVersion' => 'Nextcloud 33', 'toVersion' => 'Nextcloud 34', 'compatible' => '1', 'serverMajor' => '34', 'compatibleVersion' => '']),
+		);
+	}
+
+	/**
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	public function testAnAppLeftDisabledThatDoesNotRunNamesTheServerAndTheVersionThatDoes(): void {
+		$this->assertSame(
+			'hermiq was left disabled by the update from Nextcloud 33 to Nextcloud 34. It does not run on Nextcloud 34.',
+			$this->leftDisabled(['app' => 'hermiq', 'fromVersion' => 'Nextcloud 33', 'toVersion' => 'Nextcloud 34', 'compatible' => '0', 'serverMajor' => '34', 'compatibleVersion' => ''])[1],
+		);
+		$this->assertSame(
+			'hermiq was left disabled by the update from Nextcloud 33 to Nextcloud 34. It does not run on Nextcloud 34; version 1.5.0 does.',
+			$this->leftDisabled(['app' => 'hermiq', 'fromVersion' => 'Nextcloud 33', 'toVersion' => 'Nextcloud 34', 'compatible' => '0', 'serverMajor' => '34', 'compatibleVersion' => '1.5.0'])[1],
+		);
+	}
 }

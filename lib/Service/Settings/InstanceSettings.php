@@ -44,6 +44,8 @@ class InstanceSettings {
 	public const KEY_ADVISORY_FEED = 'advisory.feed_base';
 	/** How many release lines an app may fall behind; absent means off (inventory-pending-updates D3). */
 	public const KEY_MAX_LINES_BEHIND = 'update.max_lines_behind';
+	/** Whether apps an update left disabled are enabled again when they run (audit-external-changes). */
+	public const KEY_REACTIVATE_AUTO = 'reactivate.auto';
 
 	public const MAX_LINES_BEHIND = 10;
 
@@ -73,7 +75,7 @@ class InstanceSettings {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int}
+	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, reactivateAuto: bool}
 	 */
 	public function read(): array {
 		$retention = $this->config->getValueInt(Application::APP_ID, PruneAuditJob::CONFIG_KEY_RETENTION_DAYS, PruneAuditJob::DEFAULT_RETENTION_DAYS);
@@ -95,6 +97,7 @@ class InstanceSettings {
 			'advisoryFeedDefault' => NextcloudAdvisoryFeed::DEFAULT_FEED_URL,
 			'maxLinesBehind' => $this->maxLinesBehind(),
 			'maxLinesBehindMax' => self::MAX_LINES_BEHIND,
+			'reactivateAuto' => $this->config->getValueBool(Application::APP_ID, self::KEY_REACTIVATE_AUTO, false),
 		];
 	}
 
@@ -114,6 +117,7 @@ class InstanceSettings {
 		$ints = $this->validatedInts($fields);
 		$lagLimit = $this->validatedLagLimit($fields);
 		$urls = $this->validatedUrls($fields);
+		$reactivate = self::validatedSwitch($fields, 'reactivateAuto', 'Automatic re-enabling');
 
 		$this->storeInts($ints);
 		if ($lagLimit !== null) {
@@ -121,6 +125,9 @@ class InstanceSettings {
 		}
 		foreach ($urls as $key => $value) {
 			$this->storeOrClear($key, $value);
+		}
+		if ($reactivate !== null) {
+			$this->config->setValueBool(Application::APP_ID, self::KEY_REACTIVATE_AUTO, $reactivate);
 		}
 
 		return self::appliedFields($fields);
@@ -134,9 +141,28 @@ class InstanceSettings {
 	 */
 	private static function appliedFields(array $fields): array {
 		return array_values(array_filter(
-			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS)],
+			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS), 'reactivateAuto'],
 			static fn (string $field): bool => isset($fields[$field]),
 		));
+	}
+
+	/**
+	 * A sent on/off field as a bool, null when it was not sent; anything but
+	 * 1/0/true/false is refused.
+	 *
+	 * @param array<string, string> $fields
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	private static function validatedSwitch(array $fields, string $field, string $label): ?bool {
+		if (!isset($fields[$field])) {
+			return null;
+		}
+
+		return match (strtolower(trim($fields[$field]))) {
+			'1', 'true' => true,
+			'0', 'false', '' => false,
+			default => throw new InvalidArgumentException($label . ' must be on or off.'),
+		};
 	}
 
 	/**

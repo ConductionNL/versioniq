@@ -300,7 +300,25 @@ OC.L10N.register(
         "Outside the update policy": "Buiten het updatebeleid",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Aantal releases dat een app achter mag lopen (0 tot {max}, laat leeg om de controle uit te zetten)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "Een app die verder achterloopt, wordt gemarkeerd op het tabblad Apps. 1 betekent de nieuwste release of de release daarvoor.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"]
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"],
+        "Install": "Installeren",
+        "Source bound": "Bron gekoppeld",
+        "Pinned": "Vastgezet",
+        "Unpinned": "Losgemaakt",
+        "Pin drift": "Afwijking van vastgezette versie",
+        "Settings changed": "Instellingen gewijzigd",
+        "Changed outside Versioniq": "Buiten Versioniq gewijzigd",
+        "Disabled outside Versioniq": "Buiten Versioniq uitgeschakeld",
+        "Enabled again after an update": "Opnieuw ingeschakeld na een update",
+        "Trigger: {trigger}": "Aanleiding: {trigger}",
+        "Disabled by the update to {version}": "Uitgeschakeld door de update naar {version}",
+        "It does not run on this server; version {version} does.": "Deze versie werkt niet op deze server; versie {version} wel.",
+        "It does not run on this server.": "Deze versie werkt niet op deze server.",
+        "Enable an app again when an update left it disabled and it runs on this server": "Een app opnieuw inschakelen als een update hem uitgeschakeld liet en hij op deze server werkt",
+        "An update left an app disabled": "Een update liet een app uitgeschakeld",
+        "%1$s was left disabled by the update from %2$s to %3$s. It runs on this server: enable it.": "%1$s is uitgeschakeld gebleven na de update van %2$s naar %3$s. De app werkt op deze server: schakel hem in.",
+        "%1$s was left disabled by the update from %2$s to %3$s. It does not run on Nextcloud %4$s; version %5$s does.": "%1$s is uitgeschakeld gebleven na de update van %2$s naar %3$s. De app werkt niet op Nextcloud %4$s; versie %5$s wel.",
+        "%1$s was left disabled by the update from %2$s to %3$s. It does not run on Nextcloud %4$s.": "%1$s is uitgeschakeld gebleven na de update van %2$s naar %3$s. De app werkt niet op Nextcloud %4$s."
     },
     "nplurals=2; plural=(n != 1);"
 )

@@ -72,6 +72,8 @@ class Notifier implements INotifier {
 			// Sent weekly by AdvisoryDigestNotifier. Without this branch the
 			// digest was stored but skipped by the bell every time (#428).
 			'advisory_digest' => $this->renderAdvisoryDigest(...),
+			// Sent by ReactivationService (audit-external-changes).
+			'app_left_disabled' => $this->renderAppLeftDisabled(...),
 			default => throw new UnknownNotificationException(),
 		};
 		$render($notification, $l);
@@ -124,6 +126,32 @@ class Notifier implements INotifier {
 			->setParsedMessage(
 				$l->t('%1$s is pinned to %2$s but is now running %3$s. Re-pin to restore the pinned version, or accept the change.', [$app, $pinnedVersion, $observedVersion])
 			);
+	}
+
+	/**
+	 * An app an update left disabled: whether it runs on this server, and
+	 * the newest version that does when one is known.
+	 *
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	private function renderAppLeftDisabled(INotification $notification, IL10N $l): void {
+		$app = $this->stringParameter($notification, 'app');
+		$fromVersion = $this->stringParameter($notification, 'fromVersion');
+		$toVersion = $this->stringParameter($notification, 'toVersion');
+		$serverMajor = $this->stringParameter($notification, 'serverMajor');
+		$compatibleVersion = $this->stringParameter($notification, 'compatibleVersion');
+
+		if ($this->stringParameter($notification, 'compatible') === '1') {
+			$message = $l->t('%1$s was left disabled by the update from %2$s to %3$s. It runs on this server: enable it.', [$app, $fromVersion, $toVersion]);
+		} elseif ($compatibleVersion !== '') {
+			$message = $l->t('%1$s was left disabled by the update from %2$s to %3$s. It does not run on Nextcloud %4$s; version %5$s does.', [$app, $fromVersion, $toVersion, $serverMajor, $compatibleVersion]);
+		} else {
+			$message = $l->t('%1$s was left disabled by the update from %2$s to %3$s. It does not run on Nextcloud %4$s.', [$app, $fromVersion, $toVersion, $serverMajor]);
+		}
+
+		$notification
+			->setParsedSubject($l->t('An update left an app disabled'))
+			->setParsedMessage($message);
 	}
 
 	private function renderPatExpired(INotification $notification, IL10N $l): void {
