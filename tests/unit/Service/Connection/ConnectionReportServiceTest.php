@@ -297,4 +297,21 @@ final class ConnectionReportServiceTest extends TestCase {
 		// Nothing reached integriq, so nothing may suppress the next attempt.
 		self::assertSame([], $this->config);
 	}
+
+	public function testALibraryCheckMapsItsOutcome(): void {
+		$service = $this->service();
+
+		self::assertSame(['configured', 'The last check asked OSV about 41 libraries.'], $service->describeOsvCheck(41, 0, null));
+		self::assertSame(
+			['limited', 'The last check asked about 41 libraries; 3 were not checked. OSV returned HTTP 404.'],
+			$service->describeOsvCheck(41, 3, 'OSV returned HTTP 404.'),
+		);
+		self::assertSame(['error', 'OSV returned HTTP 503.'], $service->describeOsvCheck(41, 41, 'OSV returned HTTP 503.'));
+	}
+
+	public function testALibraryCheckIsReportedUnderTheOsvKey(): void {
+		self::assertTrue($this->service()->osvChecked(41, 0, null));
+
+		self::assertSame(['report:osv:configured'], $this->sentSummary());
+	}
 }

@@ -56,6 +56,9 @@ class ConnectionReportService {
 	/** The advisory feed connection key in lib/Settings/connections.json. */
 	public const KEY_ADVISORIES = 'advisories';
 
+	/** The OSV vulnerability database the bundled-library check asks. */
+	public const KEY_OSV = 'osv';
+
 	/**
 	 * The forge whose requests are reported. Codeberg is retired, and gets no
 	 * row, so its requests are never reported. The self-hosted Forgejo or
@@ -218,6 +221,45 @@ class ConnectionReportService {
 
 		if ($read > 0) {
 			return ['limited', 'The last check stopped after ' . $read . ' advisories. ' . $this->shorten($error)];
+		}
+
+		return ['error', $this->shorten($error)];
+	}
+
+	/**
+	 * After a bundled-library check: report how many libraries OSV was asked
+	 * about and whether it answered.
+	 *
+	 * @param int $asked How many distinct libraries were sent.
+	 * @param int $unchecked How many were left out because of an error or a limit.
+	 * @param string|null $error Why the check stopped early, or null.
+	 * @return bool True when a report was sent.
+	 *
+	 * @spec openspec/changes/advisories-bundled-libraries
+	 */
+	public function osvChecked(int $asked, int $unchecked, ?string $error): bool {
+		[$status, $message] = $this->describeOsvCheck($asked, $unchecked, $error);
+
+		return $this->reportThrottled(self::KEY_OSV, $status, $message);
+	}
+
+	/**
+	 * What a bundled-library check says about the OSV connection.
+	 *
+	 * @param int $asked How many distinct libraries were sent.
+	 * @param int $unchecked How many were left out because of an error or a limit.
+	 * @param string|null $error Why the check stopped early, or null.
+	 * @return array{0: string, 1: string} The status and the message.
+	 *
+	 * @spec openspec/changes/advisories-bundled-libraries
+	 */
+	public function describeOsvCheck(int $asked, int $unchecked, ?string $error): array {
+		if ($error === null) {
+			return ['configured', 'The last check asked OSV about ' . $asked . ' libraries.'];
+		}
+
+		if ($unchecked < $asked) {
+			return ['limited', 'The last check asked about ' . $asked . ' libraries; ' . $unchecked . ' were not checked. ' . $this->shorten($error)];
 		}
 
 		return ['error', $this->shorten($error)];

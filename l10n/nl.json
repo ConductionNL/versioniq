@@ -308,6 +308,26 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Buiten het updatebeleid: %n release achter",
             "Buiten het updatebeleid: %n releases achter"
+        ],
+        "Bundled libraries": "Meegeleverde bibliotheken",
+        "Libraries checked just now": "Bibliotheken zojuist gecontroleerd",
+        "Libraries checked {minutes} min ago": "Bibliotheken {minutes} min geleden gecontroleerd",
+        "Libraries checked {hours} h ago": "Bibliotheken {hours} u geleden gecontroleerd",
+        "The libraries bundled in apps have not been checked. Switch the check on under Security advisory checks.": "De bibliotheken die apps meeleveren zijn niet gecontroleerd. Zet de controle aan onder Controles op beveiligingsadviezen.",
+        "JavaScript built into an app carries no library manifest and is not checked.": "JavaScript die in een app is ingebouwd heeft geen bibliotheekmanifest en wordt niet gecontroleerd.",
+        "No library manifest found, so its libraries were not checked.": "Geen bibliotheekmanifest gevonden, dus de bibliotheken zijn niet gecontroleerd.",
+        "No known advisory for these libraries.": "Geen bekend beveiligingsadvies voor deze bibliotheken.",
+        "Known malicious package": "Bekend kwaadaardig pakket",
+        "Fixed in {version}": "Opgelost in {version}",
+        "Remove this app or replace it with one that does not bundle {package}.": "Verwijder deze app of vervang hem door een app die {package} niet meelevert.",
+        "Look for a newer version of this app that bundles {package} {version} or later, or ask its maintainer.": "Zoek een nieuwere versie van deze app die {package} {version} of later meelevert, of vraag het aan de beheerder van de app.",
+        "No fixed version of {package} is known yet; ask the app's maintainer.": "Er is nog geen versie van {package} bekend waarin dit is opgelost; vraag het aan de beheerder van de app.",
+        "Check libraries bundled in apps against OSV (sends library names and versions to osv.dev)": "Bibliotheken die apps meeleveren controleren via OSV (stuurt namen en versies van bibliotheken naar osv.dev)",
+        "Library advisory": "Bibliotheekadvies",
+        "OSV API address for the library check (https, a mirror)": "OSV API-adres voor de bibliotheekcontrole (https, een mirror)",
+        "_%n PHP library checked_::_%n PHP libraries checked_": [
+            "%n PHP-bibliotheek gecontroleerd",
+            "%n PHP-bibliotheken gecontroleerd"
         ]
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"

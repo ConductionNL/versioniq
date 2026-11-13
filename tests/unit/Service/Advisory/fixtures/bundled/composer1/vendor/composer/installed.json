@@ -1,0 +1,4 @@
+[
+    {"name": "vendor/legacy", "version": "1.0.1", "version_normalized": "1.0.1.0", "type": "library"},
+    {"name": "vendor/other", "version": "V3.0.0", "version_normalized": "3.0.0.0", "type": "library"}
+]

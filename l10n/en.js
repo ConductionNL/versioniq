@@ -271,7 +271,24 @@ OC.L10N.register(
         "Outside the update policy": "Outside the update policy",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"]
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"],
+        "Bundled libraries": "Bundled libraries",
+        "Libraries checked just now": "Libraries checked just now",
+        "Libraries checked {minutes} min ago": "Libraries checked {minutes} min ago",
+        "Libraries checked {hours} h ago": "Libraries checked {hours} h ago",
+        "The libraries bundled in apps have not been checked. Switch the check on under Security advisory checks.": "The libraries bundled in apps have not been checked. Switch the check on under Security advisory checks.",
+        "JavaScript built into an app carries no library manifest and is not checked.": "JavaScript built into an app carries no library manifest and is not checked.",
+        "No library manifest found, so its libraries were not checked.": "No library manifest found, so its libraries were not checked.",
+        "No known advisory for these libraries.": "No known advisory for these libraries.",
+        "Known malicious package": "Known malicious package",
+        "Fixed in {version}": "Fixed in {version}",
+        "Remove this app or replace it with one that does not bundle {package}.": "Remove this app or replace it with one that does not bundle {package}.",
+        "Look for a newer version of this app that bundles {package} {version} or later, or ask its maintainer.": "Look for a newer version of this app that bundles {package} {version} or later, or ask its maintainer.",
+        "No fixed version of {package} is known yet; ask the app's maintainer.": "No fixed version of {package} is known yet; ask the app's maintainer.",
+        "Check libraries bundled in apps against OSV (sends library names and versions to osv.dev)": "Check libraries bundled in apps against OSV (sends library names and versions to osv.dev)",
+        "Library advisory": "Library advisory",
+        "OSV API address for the library check (https, a mirror)": "OSV API address for the library check (https, a mirror)",
+        "_%n PHP library checked_::_%n PHP libraries checked_": ["%n PHP library checked","%n PHP libraries checked"]
     },
     "nplurals=2; plural=(n != 1);"
 )

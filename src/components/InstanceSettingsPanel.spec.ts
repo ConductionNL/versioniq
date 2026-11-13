@@ -32,6 +32,8 @@ const settings = {
 	githubWebDefault: 'https://github.com',
 	advisoryFeedUrl: '',
 	advisoryFeedDefault: 'https://api.github.com/repos/nextcloud/security-advisories/security-advisories',
+	osvApiBase: '',
+	osvApiDefault: 'https://api.osv.dev',
 	maxLinesBehind: null,
 	maxLinesBehindMax: 10,
 }
@@ -70,6 +72,25 @@ describe('InstanceSettingsPanel', () => {
 			artifactCacheKeep: '3',
 		}))
 		expect(wrapper.find('[data-testid="instance-settings-notice"]').exists()).toBe(true)
+	})
+
+	// @spec openspec/changes/advisories-bundled-libraries
+	it('shows the OSV default and sends the OSV address override', async () => {
+		mockedGet.mockResolvedValue({ payload: settings })
+		mockedWrite.mockResolvedValue({ payload: { ...settings, osvApiBase: 'https://osv.mirror.example' } })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		expect(wrapper.find('[data-testid="setting-osv-api"]').attributes('placeholder')).toBe('https://api.osv.dev')
+		expect(wrapper.text()).toContain('Default: https://api.osv.dev')
+		await wrapper.find('[data-testid="setting-osv-api"]').setValue(' https://osv.mirror.example ')
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		expect(mockedWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/instance-settings', expect.objectContaining({
+			osvApiBase: 'https://osv.mirror.example',
+		}))
+		expect((wrapper.find('[data-testid="setting-osv-api"]').element as HTMLInputElement).value).toBe('https://osv.mirror.example')
 	})
 
 	it('shows the server message when a value is refused', async () => {

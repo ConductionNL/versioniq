@@ -28,6 +28,8 @@ type Settings = {
 	githubWebDefault: string
 	advisoryFeedUrl: string
 	advisoryFeedDefault: string
+	osvApiBase?: string
+	osvApiDefault?: string
 	maxLinesBehind: number | null
 	maxLinesBehindMax: number
 }
@@ -42,6 +44,7 @@ const form = ref({
 	githubApiBase: '',
 	githubWebBase: '',
 	advisoryFeedUrl: '',
+	osvApiBase: '',
 	maxLinesBehind: '',
 })
 const saving = ref(false)
@@ -61,6 +64,7 @@ function fill (settings: Settings): void {
 		githubApiBase: settings.githubApiBase,
 		githubWebBase: settings.githubWebBase,
 		advisoryFeedUrl: settings.advisoryFeedUrl,
+		osvApiBase: settings.osvApiBase ?? '',
 		maxLinesBehind: settings.maxLinesBehind === null || settings.maxLinesBehind === undefined ? '' : String(settings.maxLinesBehind),
 	}
 }
@@ -194,6 +198,16 @@ onMounted(load)
 					:placeholder="loaded.advisoryFeedDefault"
 					data-testid="setting-advisory-feed">
 				<span :class="$style.hint">{{ t('versioniq', 'Default: {url}', { url: loaded.advisoryFeedDefault }) }}</span>
+			</label>
+			<label :class="$style.field" for="setting-osv-api">
+				<span>{{ t('versioniq', 'OSV API address for the library check (https, a mirror)') }}</span>
+				<input
+					id="setting-osv-api"
+					v-model="form.osvApiBase"
+					type="url"
+					:placeholder="loaded.osvApiDefault"
+					data-testid="setting-osv-api">
+				<span :class="$style.hint">{{ t('versioniq', 'Default: {url}', { url: loaded.osvApiDefault ?? '' }) }}</span>
 			</label>
 
 			<p v-if="notice" :class="$style.notice" data-testid="instance-settings-notice">

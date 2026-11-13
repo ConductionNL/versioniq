@@ -38,6 +38,9 @@ final class InstanceSettingsFields extends RequestFields {
 	/** @var string|null Advisory feed URL; blank uses the published Nextcloud feed */
 	public ?string $advisoryFeedUrl = null;
 
+	/** @var string|null OSV API base URL (https); blank uses api.osv.dev */
+	public ?string $osvApiBase = null;
+
 	/** @var string|null Release lines an app may fall behind, 0 to 10; blank turns the check off */
 	public ?string $maxLinesBehind = null;
 

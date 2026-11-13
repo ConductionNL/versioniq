@@ -31,6 +31,7 @@ use OCP\IAppConfig;
 class AdvisorySettingsStore {
 	public const CONFIG_INTERVAL_HOURS = 'advisory.interval_hours';
 	public const CONFIG_DIGEST_ENABLED = 'advisory.digest_enabled';
+	public const CONFIG_LIBRARIES_ENABLED = 'advisory.libraries_enabled';
 
 	/** Four sweeps a day: well inside the window in which an advisory matters. */
 	public const DEFAULT_INTERVAL_HOURS = 6;
@@ -108,5 +109,24 @@ class AdvisorySettingsStore {
 	 */
 	public function setDigestEnabled(bool $enabled): void {
 		$this->config->setValueBool(Application::APP_ID, self::CONFIG_DIGEST_ENABLED, $enabled);
+	}
+
+	/**
+	 * Whether the libraries bundled in apps are checked against OSV.
+	 *
+	 * Defaults to OFF: the check sends library names and versions to an
+	 * outside service, which an admin decides to allow.
+	 *
+	 * @spec openspec/changes/advisories-bundled-libraries
+	 */
+	public function isLibraryCheckEnabled(): bool {
+		return $this->config->getValueBool(Application::APP_ID, self::CONFIG_LIBRARIES_ENABLED, false);
+	}
+
+	/**
+	 * @spec openspec/changes/advisories-bundled-libraries
+	 */
+	public function setLibraryCheckEnabled(bool $enabled): void {
+		$this->config->setValueBool(Application::APP_ID, self::CONFIG_LIBRARIES_ENABLED, $enabled);
 	}
 }

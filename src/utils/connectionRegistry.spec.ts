@@ -113,7 +113,7 @@ describe('the rows and the links', () => {
 			.map((c: { settingsUrl?: string }) => c.settingsUrl)
 			.filter((url: string | undefined): url is string => typeof url === 'string')
 			.map((url: string) => url.slice(url.indexOf('#')))
-		expect(anchors).toEqual(['#section-sources', '#section-advisories'])
+		expect(anchors).toEqual(['#section-sources', '#section-advisories', '#section-advisories'])
 
 		for (const anchor of anchors) {
 			expect(tabForHash(anchor), anchor).not.toBeNull()
@@ -121,6 +121,7 @@ describe('the rows and the links', () => {
 		expect(tabForHash('#section-sources')).toEqual({ tab: 'sources', anchor: 'section-sources' })
 		expect(tabForHash('section-advisories')).toEqual({ tab: 'apps', anchor: 'section-advisories' })
 		expect(tabForHash('#section-integrations')).toEqual({ tab: 'integrations', anchor: 'section-integrations' })
+		expect(tabForHash('#section-bundled-libraries')).toEqual({ tab: 'advisories', anchor: 'section-bundled-libraries' })
 		expect(tabForHash('#versioniq-main')).toBeNull()
 		expect(tabForHash('#toString')).toBeNull()
 	})

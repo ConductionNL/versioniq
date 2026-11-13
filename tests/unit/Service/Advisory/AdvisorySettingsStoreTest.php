@@ -112,4 +112,18 @@ final class AdvisorySettingsStoreTest extends TestCase {
 		$store->setDigestEnabled(true);
 		$this->assertTrue($store->isDigestEnabled());
 	}
+
+	public function testTheLibraryCheckIsOffUntilSwitchedOn(): void {
+		$store = $this->store();
+
+		$this->assertFalse($store->isLibraryCheckEnabled());
+
+		$store->setLibraryCheckEnabled(true);
+		$this->assertTrue($store->isLibraryCheckEnabled());
+		$this->assertSame(true, $this->stored[AdvisorySettingsStore::CONFIG_LIBRARIES_ENABLED]);
+		$this->assertSame('advisory.libraries_enabled', AdvisorySettingsStore::CONFIG_LIBRARIES_ENABLED);
+
+		$store->setLibraryCheckEnabled(false);
+		$this->assertFalse($store->isLibraryCheckEnabled());
+	}
 }

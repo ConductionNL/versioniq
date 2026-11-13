@@ -17,6 +17,7 @@ require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
 use OCA\Versioniq\Service\Advisory\AdvisoryService;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
 use OCA\Versioniq\Service\Advisory\BranchAwareRange;
+use OCA\Versioniq\Service\Advisory\LibraryAdvisoryStore;
 use OCA\Versioniq\Service\Advisory\NextcloudAdvisoryFeed;
 use OCA\Versioniq\Service\Advisory\ServerVersionProvider;
 use OCA\Versioniq\Service\Source\SourceBinding;
@@ -449,5 +450,37 @@ final class AdvisoryServiceTest extends TestCase {
 			['AdvisoryService: correlation failed for app', ['app' => 'mail', 'message' => 'store down']],
 			['AdvisoryService: correlation failed for app', ['app' => 'deck', 'message' => 'store down']],
 		], $logged);
+	}
+
+	/**
+	 * A bundled-library finding has no app version known to fix it, so it
+	 * must never move the app's own advisory state (advisories-bundled-libraries).
+	 *
+	 * @spec openspec/changes/advisories-bundled-libraries
+	 */
+	public function testALibraryFindingLeavesTheAppStateAtNone(): void {
+		$stored = [];
+		$config = $this->createMock(\OCP\IAppConfig::class);
+		$config->method('setValueString')->willReturnCallback(function (string $app, string $key, string $value) use (&$stored): bool {
+			$stored[$key] = $value;
+
+			return true;
+		});
+		$config->method('setValueInt')->willReturn(true);
+		(new LibraryAdvisoryStore($config, $this->createMock(LoggerInterface::class)))->save([
+			'mail' => ['manifest' => 'vendor/composer/installed.json', 'checked' => 1, 'skipped' => 0, 'error' => null, 'findings' => [
+				['package' => 'vendor/library', 'version' => '2.4.3', 'id' => 'GHSA-aaaa-bbbb-cccc', 'cveIds' => [], 'severity' => 'high', 'summary' => 's', 'fixedIn' => '2.4.5', 'url' => 'u', 'malicious' => false],
+			]],
+		], 1700000000);
+		$this->assertArrayHasKey(LibraryAdvisoryStore::KEY, $stored);
+
+		$results = $this->serviceWithFeed([], ['mail' => '3.6.0'])->correlateAll(60.0);
+
+		$this->assertSame(AdvisoryService::STATE_NONE, $results['mail']['state']);
+		$this->assertSame([], $results['mail']['advisories']);
+		$this->assertNull($results['mail']['recommendedVersion']);
+		// The service has no way to read the library snapshot at all.
+		$parameters = (new \ReflectionMethod(AdvisoryService::class, '__construct'))->getParameters();
+		$this->assertNotContains(LibraryAdvisoryStore::class, array_map(static fn (\ReflectionParameter $p): string => (string)$p->getType(), $parameters));
 	}
 }
