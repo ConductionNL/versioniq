@@ -335,3 +335,43 @@ namespace Doctrine\DBAL {
 		public const BINARY = 116;
 	}
 }
+
+namespace Doctrine\DBAL\Types {
+	/**
+	 * The type-name constants IQueryBuilder derives PARAM_BOOL and its date and
+	 * time PARAM_* constants from.
+	 *
+	 * Same reason as ParameterType above: without this class, creating a test
+	 * double of IQueryBuilder resolves its constants and dies with
+	 * `Class "Doctrine\DBAL\Types\Types" not found`, which is why the mapper
+	 * tests could not run in this suite. The values mirror doctrine/dbal 3.x,
+	 * where these are plain string constants.
+	 */
+	final class Types {
+		public const BOOLEAN = 'boolean';
+		public const DATE_MUTABLE = 'date';
+		public const DATE_IMMUTABLE = 'date_immutable';
+		public const DATETIME_MUTABLE = 'datetime';
+		public const DATETIME_IMMUTABLE = 'datetime_immutable';
+		public const DATETIMETZ_MUTABLE = 'datetimetz';
+		public const DATETIMETZ_IMMUTABLE = 'datetimetz_immutable';
+		public const TIME_MUTABLE = 'time';
+		public const TIME_IMMUTABLE = 'time_immutable';
+	}
+}
+
+namespace Doctrine\DBAL\Query\Expression {
+	/**
+	 * The comparison-operator constants IExpressionBuilder derives EQ, NEQ,
+	 * LT, LTE, GT and GTE from; without it a test double of
+	 * IExpressionBuilder cannot be created. Values mirror doctrine/dbal 3.x.
+	 */
+	class ExpressionBuilder {
+		public const EQ = '=';
+		public const NEQ = '<>';
+		public const LT = '<';
+		public const LTE = '<=';
+		public const GT = '>';
+		public const GTE = '>=';
+	}
+}
