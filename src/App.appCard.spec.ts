@@ -28,6 +28,9 @@ const apps = [
 	{ id: 'notyet', label: 'Not yet', isCore: false, installedVersion: null, state: 'notInstalled' },
 ]
 
+let appsAnswer: Array<Record<string, unknown>> = apps
+let disabledByUpdate: unknown = []
+
 /**
  * Answers every OCS call the page makes on mount; only the app list carries data.
  *
@@ -35,7 +38,7 @@ const apps = [
  */
 function ocsFetch (input: RequestInfo | URL): Promise<Response> {
 	const url = String(input)
-	const data = url.includes('/api/apps') ? { apps } : {}
+	const data = url.includes('/api/apps') ? { apps: appsAnswer, disabledByUpdate } : {}
 
 	return Promise.resolve(new Response(JSON.stringify({ ocs: { meta: { status: 'ok', statuscode: 200 }, data } }), {
 		status: 200,
@@ -45,6 +48,8 @@ function ocsFetch (input: RequestInfo | URL): Promise<Response> {
 
 afterEach(() => {
 	vi.unstubAllGlobals()
+	appsAnswer = apps
+	disabledByUpdate = []
 })
 
 describe('App card', () => {
@@ -60,5 +65,34 @@ describe('App card', () => {
 
 		const notYet = wrapper.find('[data-app-id="notyet"]')
 		expect(notYet.find('[data-testid="app-installed-version"]').exists()).toBe(false)
+	})
+
+	// @spec openspec/changes/audit-external-changes
+	it('says an update left an app disabled, with Enable only when it runs on this server', async () => {
+		appsAnswer = [
+			{ id: 'forms', label: 'Forms', isCore: false, installedVersion: '4.3.0', state: 'disabled' },
+			{ id: 'hermiq', label: 'Hermiq', isCore: false, installedVersion: '1.4.0', state: 'disabled' },
+			{ id: 'notes', label: 'Notes', isCore: false, installedVersion: '1.0.0', state: 'disabled' },
+		]
+		disabledByUpdate = {
+			forms: { toVersion: 'Nextcloud 34', compatible: true, compatibleVersion: null },
+			hermiq: { toVersion: 'Nextcloud 34', compatible: false, compatibleVersion: '1.5.0' },
+		}
+		vi.stubGlobal('fetch', vi.fn(ocsFetch))
+		const wrapper = mount(App, { global: { stubs: { CachePanel: true, SourcesPanel: true, TokensPanel: true, IntegrationsPanel: true, InstanceSettingsPanel: true, HistoryPanel: true, DiscoverPanel: true, AdvisoriesPanel: true, TrustedSourcesPanel: true, AutoUpdateOverview: true } } })
+		await flushPromises()
+
+		const forms = wrapper.find('[data-app-id="forms"]')
+		expect(forms.find('[data-testid="app-left-disabled"]').text()).toBe('Disabled by the update to Nextcloud 34')
+		expect(forms.find('[data-testid="app-enable-button"]').exists()).toBe(true)
+
+		const hermiq = wrapper.find('[data-app-id="hermiq"]')
+		expect(hermiq.find('[data-testid="app-left-disabled"]').text()).toBe('Disabled by the update to Nextcloud 34. It does not run on this server; version 1.5.0 does.')
+		expect(hermiq.find('[data-testid="app-enable-button"]').exists()).toBe(false)
+
+		// Disabled on purpose: no notice, and Enable as before.
+		const notes = wrapper.find('[data-app-id="notes"]')
+		expect(notes.find('[data-testid="app-left-disabled"]').exists()).toBe(false)
+		expect(notes.find('[data-testid="app-enable-button"]').exists()).toBe(true)
 	})
 })

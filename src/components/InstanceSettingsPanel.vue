@@ -30,6 +30,7 @@ type Settings = {
 	advisoryFeedDefault: string
 	maxLinesBehind: number | null
 	maxLinesBehindMax: number
+	reactivateAuto?: boolean
 }
 
 const ENDPOINT = '/ocs/v2.php/apps/versioniq/api/instance-settings'
@@ -43,6 +44,7 @@ const form = ref({
 	githubWebBase: '',
 	advisoryFeedUrl: '',
 	maxLinesBehind: '',
+	reactivateAuto: false,
 })
 const saving = ref(false)
 const error = ref('')
@@ -62,6 +64,7 @@ function fill (settings: Settings): void {
 		githubWebBase: settings.githubWebBase,
 		advisoryFeedUrl: settings.advisoryFeedUrl,
 		maxLinesBehind: settings.maxLinesBehind === null || settings.maxLinesBehind === undefined ? '' : String(settings.maxLinesBehind),
+		reactivateAuto: settings.reactivateAuto === true,
 	}
 }
 
@@ -151,6 +154,15 @@ onMounted(load)
 				<span :class="$style.hint">{{ t('versioniq', 'An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.') }}</span>
 			</label>
 
+			<label :class="$style.checkboxField" for="setting-reactivate-auto">
+				<input
+					id="setting-reactivate-auto"
+					v-model="form.reactivateAuto"
+					type="checkbox"
+					data-testid="setting-reactivate-auto">
+				<span>{{ t('versioniq', 'Enable an app again when an update left it disabled and it runs on this server') }}</span>
+			</label>
+
 			<h4>{{ t('versioniq', 'Sources and mirrors') }}</h4>
 			<p :class="$style.hint">
 				{{ t('versioniq', 'Leave a field empty to use the default shown under it.') }}
@@ -223,6 +235,12 @@ onMounted(load)
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
+}
+
+.checkboxField {
+	display: flex;
+	gap: 8px;
+	align-items: center;
 }
 
 .hint {

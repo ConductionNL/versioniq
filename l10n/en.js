@@ -271,7 +271,25 @@ OC.L10N.register(
         "Outside the update policy": "Outside the update policy",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"]
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"],
+        "Install": "Install",
+        "Source bound": "Source bound",
+        "Pinned": "Pinned",
+        "Unpinned": "Unpinned",
+        "Pin drift": "Pin drift",
+        "Settings changed": "Settings changed",
+        "Changed outside Versioniq": "Changed outside Versioniq",
+        "Disabled outside Versioniq": "Disabled outside Versioniq",
+        "Enabled again after an update": "Enabled again after an update",
+        "Trigger: {trigger}": "Trigger: {trigger}",
+        "Disabled by the update to {version}": "Disabled by the update to {version}",
+        "It does not run on this server; version {version} does.": "It does not run on this server; version {version} does.",
+        "It does not run on this server.": "It does not run on this server.",
+        "Enable an app again when an update left it disabled and it runs on this server": "Enable an app again when an update left it disabled and it runs on this server",
+        "An update left an app disabled": "An update left an app disabled",
+        "%1$s was left disabled by the update from %2$s to %3$s. It runs on this server: enable it.": "%1$s was left disabled by the update from %2$s to %3$s. It runs on this server: enable it.",
+        "%1$s was left disabled by the update from %2$s to %3$s. It does not run on Nextcloud %4$s; version %5$s does.": "%1$s was left disabled by the update from %2$s to %3$s. It does not run on Nextcloud %4$s; version %5$s does.",
+        "%1$s was left disabled by the update from %2$s to %3$s. It does not run on Nextcloud %4$s.": "%1$s was left disabled by the update from %2$s to %3$s. It does not run on Nextcloud %4$s."
     },
     "nplurals=2; plural=(n != 1);"
 )

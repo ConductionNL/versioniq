@@ -47,6 +47,15 @@ final class InstanceSettingsTest extends TestCase {
 				return true;
 			},
 		);
+		$appConfig->method('getValueBool')->willReturnCallback(
+			fn (string $app, string $key, bool $default = false): bool => (bool)($this->config[$key] ?? $default),
+		);
+		$appConfig->method('setValueBool')->willReturnCallback(
+			function (string $app, string $key, bool $value): bool {
+				$this->config[$key] = $value;
+				return true;
+			},
+		);
 		$appConfig->method('deleteKey')->willReturnCallback(
 			function (string $app, string $key): void {
 				unset($this->config[$key]);
@@ -211,5 +220,22 @@ final class InstanceSettingsTest extends TestCase {
 			yield "$field port and path" => [$field, 'https://ghe.example.org:8443/api', 'https://ghe.example.org:8443/api'];
 			yield "$field unparseable" => [$field, 'https://', $refusal];
 		}
+	}
+
+	/**
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	public function testAutomaticReEnablingIsOffUntilSwitchedOnAndRefusesOtherValues(): void {
+		$store = $this->store();
+		self::assertFalse($store->read()['reactivateAuto']);
+
+		self::assertSame(['reactivateAuto'], $store->update(['reactivateAuto' => '1']));
+		self::assertTrue($store->read()['reactivateAuto']);
+		$store->update(['reactivateAuto' => 'false']);
+		self::assertFalse($store->read()['reactivateAuto']);
+
+		$this->expectException(InvalidArgumentException::class);
+		$this->expectExceptionMessage('Automatic re-enabling must be on or off.');
+		$store->update(['reactivateAuto' => 'maybe']);
 	}
 }
