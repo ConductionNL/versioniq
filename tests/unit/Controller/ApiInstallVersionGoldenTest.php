@@ -35,6 +35,18 @@ use PHPUnit\Framework\TestCase;
  * the fixture.
  *
  * @covers \OCA\Versioniq\Controller\ApiController
+ * @uses \OCA\Versioniq\Service\Api\AccessCollaborators
+ * @uses \OCA\Versioniq\Service\Api\ApiCaller
+ * @uses \OCA\Versioniq\Service\Api\InstallCollaborators
+ * @uses \OCA\Versioniq\Service\Api\PatServices
+ * @uses \OCA\Versioniq\Service\Api\ReportCollaborators
+ * @uses \OCA\Versioniq\Service\Api\ReportStores
+ * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores
+ * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
+ * @uses \OCA\Versioniq\Service\Installer\InstallOptions
+ * @uses \OCA\Versioniq\Service\Installer\InstallRequest
+ * @uses \OCA\Versioniq\Service\Installer\InstallTarget
+ * @uses \OCA\Versioniq\Service\Installer\PinChoice
  */
 final class ApiInstallVersionGoldenTest extends TestCase {
 	use BuildsByParameterName;

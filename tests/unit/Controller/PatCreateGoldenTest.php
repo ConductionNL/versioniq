@@ -58,6 +58,13 @@ use ReflectionClass;
  * @uses \OCA\Versioniq\Service\Pat\NewPat
  * @uses \OCA\Versioniq\Service\Pat\ValidationResult
  * @uses \OCA\Versioniq\Db\Pat
+ * @uses \OCA\Versioniq\Service\Api\AccessCollaborators
+ * @uses \OCA\Versioniq\Service\Api\ApiCaller
+ * @uses \OCA\Versioniq\Service\Api\InstallCollaborators
+ * @uses \OCA\Versioniq\Service\Api\PatServices
+ * @uses \OCA\Versioniq\Service\Api\ReportCollaborators
+ * @uses \OCA\Versioniq\Service\Api\ReportStores
+ * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores
  */
 final class PatCreateGoldenTest extends TestCase {
 	use BuildsByParameterName;

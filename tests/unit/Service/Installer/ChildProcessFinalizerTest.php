@@ -47,6 +47,8 @@ require_once __DIR__ . '/InstallerGoldenSupport.php';
  * @covers \OCA\Versioniq\Service\Installer\InstallFinalizer::finalize
  * @uses \OCA\Versioniq\Service\Installer\ServerAccess
  * @uses \OCA\Versioniq\Service\Settings\ConfigStores
+ * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
+ * @uses \OCA\Versioniq\Service\Installer\InstallFinalizer
  */
 final class ChildProcessFinalizerTest extends TestCase {
 	private const RESULT_PREFIX = 'VERSIONIQ_FINALIZE_RESULT ';

@@ -32,6 +32,8 @@ use Psr\Log\LoggerInterface;
  * @uses \OCA\Versioniq\Service\Pat\ValidationResult
  * @uses \OCA\Versioniq\Service\Source\Forge
  * @uses \OCA\Versioniq\Service\Source\ForgeRegistry
+ * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
+ * @uses \OCA\Versioniq\Service\Source\ForgeUrls
  */
 final class PatValidatorGoldenTest extends TestCase {
 	private const FIXTURE = __DIR__ . '/fixtures/pat-validate.golden.json';

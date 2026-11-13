@@ -31,6 +31,7 @@ use PHPUnit\Framework\TestCase;
  * @covers \OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier
  * @covers \OCA\Versioniq\Service\Pin\PinDriftHandler
  * @covers \OCA\Versioniq\Service\ResolvesAdminUids
+ * @uses \OCA\Versioniq\Service\AdminNotificationServices
  */
 final class AdminUidsGoldenTest extends TestCase {
 	use BuildsByParameterName;

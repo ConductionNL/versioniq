@@ -27,6 +27,11 @@ use ReflectionMethod;
  *
  * @covers \OCA\Versioniq\Service\Source\ForgeReleaseSource
  * @covers \OCA\Versioniq\Service\Source\AppStoreSource
+ * @uses \OCA\Versioniq\Service\Advisory\AdvisoryClauses
+ * @uses \OCA\Versioniq\Service\Advisory\AdvisorySeverity
+ * @uses \OCA\Versioniq\Service\Connection\ReportedHttp
+ * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
+ * @uses \OCA\Versioniq\Service\Pat\PatAccess
  */
 final class AdvisoryNormalizeGoldenTest extends TestCase {
 	use BuildsByParameterName;

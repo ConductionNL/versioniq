@@ -53,6 +53,11 @@ use RuntimeException;
  * @uses \OCA\Versioniq\Service\Installer\FailureClassifier
  * @uses \OCA\Versioniq\Service\Lkg\Lkg
  * @uses \OCA\Versioniq\Service\Source\SourceBinding
+ * @uses \OCA\Versioniq\Service\Installer\InstallState
+ * @uses \OCA\Versioniq\Service\Installer\ReleaseInstallers
+ * @uses \OCA\Versioniq\Service\Installer\ServerAccess
+ * @uses \OCA\Versioniq\Service\Settings\ConfigStores
+ * @uses \OCA\Versioniq\Service\Source\SourceLookup
  */
 final class InstallerServiceAppListGoldenTest extends TestCase {
 	use BuildsByParameterName;

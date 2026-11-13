@@ -32,6 +32,15 @@ use ReflectionClass;
  * installer service was asked to bind and read back.
  *
  * @covers \OCA\Versioniq\Controller\ApiController
+ * @uses \OCA\Versioniq\Service\Api\AccessCollaborators
+ * @uses \OCA\Versioniq\Service\Api\ApiCaller
+ * @uses \OCA\Versioniq\Service\Api\InstallCollaborators
+ * @uses \OCA\Versioniq\Service\Api\PatServices
+ * @uses \OCA\Versioniq\Service\Api\ReportCollaborators
+ * @uses \OCA\Versioniq\Service\Api\ReportStores
+ * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores
+ * @uses \OCA\Versioniq\Service\Source\SourceBinding
+ * @uses \OCA\Versioniq\Service\Source\UntrustedSourceException
  */
 final class ApiBindSourceTest extends TestCase {
 	use BuildsByParameterName;

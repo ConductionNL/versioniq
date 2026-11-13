@@ -33,6 +33,7 @@ use RuntimeException;
  * rewrite the fixture.
  *
  * @covers \OCA\Versioniq\Service\Cache\ArtifactCache
+ * @uses \OCA\Versioniq\Service\Installer\AppIdFormat
  */
 final class ArtifactCacheStoreFetchGoldenTest extends TestCase {
 	private const FIXTURE = __DIR__ . '/fixtures/artifact-cache-store-fetch.golden.json';

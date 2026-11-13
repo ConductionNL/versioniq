@@ -62,6 +62,11 @@ require_once __DIR__ . '/InstallerGoldenSupport.php';
  * @uses \OCA\Versioniq\Service\Installer\SignedReleaseRun
  * @uses \OCA\Versioniq\Service\Installer\TempArchive
  * @uses \OCA\Versioniq\Service\Source\SourceBinding
+ * @uses \OCA\Versioniq\Service\Audit\AuditSubject
+ * @uses \OCA\Versioniq\Service\Audit\AuditedVersions
+ * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
+ * @uses \OCA\Versioniq\Service\Installer\AppIdFormat
+ * @uses \OCA\Versioniq\Service\Installer\AppsRoot
  */
 final class SelectedReleaseInstallGoldenTest extends TestCase {
 	private const FIXTURE = __DIR__ . '/../fixtures/selected-release-install.golden.json';

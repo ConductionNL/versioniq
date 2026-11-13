@@ -28,6 +28,7 @@ use ReflectionProperty;
  * Pins what GET /api/openapi.json serves.
  *
  * @covers \OCA\Versioniq\Controller\OpenApiController
+ * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
  */
 class OpenApiControllerTest extends TestCase {
 

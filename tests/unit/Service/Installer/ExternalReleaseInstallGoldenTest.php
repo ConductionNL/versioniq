@@ -76,6 +76,16 @@ require_once __DIR__ . '/InstallerGoldenSupport.php';
  * @uses \OCA\Versioniq\Service\Source\Forge
  * @uses \OCA\Versioniq\Service\Source\SourceBinding
  * @uses \OCA\Versioniq\Service\Source\UntrustedSourceException
+ * @uses \OCA\Versioniq\Service\Audit\AuditSubject
+ * @uses \OCA\Versioniq\Service\Audit\AuditedVersions
+ * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
+ * @uses \OCA\Versioniq\Service\Installer\AppIdFormat
+ * @uses \OCA\Versioniq\Service\Installer\AppsRoot
+ * @uses \OCA\Versioniq\Service\Installer\ArchiveDownload
+ * @uses \OCA\Versioniq\Service\Installer\InstallSteps
+ * @uses \OCA\Versioniq\Service\Pat\PatAccess
+ * @uses \OCA\Versioniq\Service\Settings\ConfigStores
+ * @uses \OCA\Versioniq\Service\Source\ForgeUrls
  */
 final class ExternalReleaseInstallGoldenTest extends TestCase {
 	use BuildsByParameterName;

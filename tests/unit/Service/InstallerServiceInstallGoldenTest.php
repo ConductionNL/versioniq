@@ -69,6 +69,13 @@ use RuntimeException;
  * @uses \OCA\Versioniq\Service\Source\SourceBinding
  * @uses \OCA\Versioniq\Service\Source\SourceRegistry
  * @uses \OCA\Versioniq\Service\Source\UntrustedSourceException
+ * @uses \OCA\Versioniq\Service\Installer\AppIdFormat
+ * @uses \OCA\Versioniq\Service\Installer\InstallState
+ * @uses \OCA\Versioniq\Service\Installer\ReleaseInstallers
+ * @uses \OCA\Versioniq\Service\Installer\ServerAccess
+ * @uses \OCA\Versioniq\Service\Settings\ConfigStores
+ * @uses \OCA\Versioniq\Service\Source\SourceLookup
+ * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
  */
 final class InstallerServiceInstallGoldenTest extends TestCase {
 	use BuildsByParameterName;

@@ -33,6 +33,7 @@ use ReflectionMethod;
  * @uses \OCA\Versioniq\Service\Installer\SignedRelease
  * @uses \OCA\Versioniq\Service\Installer\SignedReleaseRun
  * @uses \OCA\Versioniq\Service\Installer\TempArchive
+ * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
  */
 final class SelectedReleaseCachedWriteTest extends TestCase {
 	private string $root = '';

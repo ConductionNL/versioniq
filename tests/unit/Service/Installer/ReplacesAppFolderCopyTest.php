@@ -23,6 +23,7 @@ use PHPUnit\Framework\TestCase;
  * which files the filename validator is asked about, and the refusals.
  *
  * @covers \OCA\Versioniq\Service\Installer\ReplacesAppFolder
+ * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
  */
 final class ReplacesAppFolderCopyTest extends TestCase {
 	private string $root;
