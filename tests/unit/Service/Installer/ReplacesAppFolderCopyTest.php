@@ -22,6 +22,10 @@ use PHPUnit\Framework\TestCase;
  * The recursive copy of an extracted app: what lands in the destination,
  * which files the filename validator is asked about, and the refusals.
  *
+ * Also the primitives around the copy, against the same real temp tree: moving
+ * the live folder aside, finding the extracted root, restoring a backup after
+ * a failed swap and deleting what is left over.
+ *
  * @covers \OCA\Versioniq\Service\Installer\ReplacesAppFolder
  */
 final class ReplacesAppFolderCopyTest extends TestCase {
@@ -98,12 +102,102 @@ final class ReplacesAppFolderCopyTest extends TestCase {
 		return $files;
 	}
 
+	public function testBackupMovesTheLiveFolderAsideOverAStaleBackup(): void {
+		mkdir($this->root . '/app', 0777, true);
+		file_put_contents($this->root . '/app/marker.txt', 'LIVE');
+		mkdir($this->root . '/app.appversion-backup/old', 0777, true);
+
+		$backup = $this->copier()->backup($this->root . '/app');
+
+		$this->assertSame($this->root . '/app.appversion-backup', $backup);
+		$this->assertDirectoryDoesNotExist($this->root . '/app');
+		$this->assertDirectoryDoesNotExist($this->root . '/app.appversion-backup/old', 'the stale backup is replaced, not merged');
+		$this->assertSame('LIVE', file_get_contents($this->root . '/app.appversion-backup/marker.txt'));
+	}
+
+	public function testBackupRefusesWhenTheLiveFolderCannotBeMovedAside(): void {
+		mkdir($this->root . '/app', 0777, true);
+		file_put_contents($this->root . '/app/marker.txt', 'LIVE');
+		// A plain file where the backup folder goes: rename() cannot replace it.
+		file_put_contents($this->root . '/app.appversion-backup', 'in the way');
+
+		$refusal = null;
+		try {
+			@$this->copier()->backup($this->root . '/app');
+		} catch (Exception $e) {
+			$refusal = $e->getMessage();
+		}
+
+		$this->assertSame('Could not backup existing app folder before replacement.', $refusal);
+		$this->assertSame('LIVE', file_get_contents($this->root . '/app/marker.txt'), 'the live app must be left alone');
+	}
+
+	public function testRestoreKeepsTheBackupWhenTheDestinationPathIsUnusable(): void {
+		mkdir($this->root . '/app.appversion-backup', 0777, true);
+		file_put_contents($this->root . '/app.appversion-backup/marker.txt', 'OLD');
+
+		// A path PHP refuses outright (a NUL byte): the ValueError must not
+		// escape the restore, the caller only learns it did not happen.
+		$restored = $this->copier()->restore($this->root . "/app\0x", $this->root . '/app.appversion-backup');
+
+		$this->assertFalse($restored);
+		$this->assertSame('OLD', file_get_contents($this->root . '/app.appversion-backup/marker.txt'), 'the backup must survive');
+	}
+
+	public function testTheExtractedRootIsTheOneTopLevelFolder(): void {
+		$this->assertSame($this->root . '/src/lib', $this->copier()->single($this->root . '/src'));
+	}
+
+	public function testThereIsNoExtractedRootWhenThePathCannotBeListed(): void {
+		$this->assertNull(@$this->copier()->single($this->root . '/src/info.txt'));
+	}
+
+	public function testRemovingALeftoverDeletesAPlainFile(): void {
+		file_put_contents($this->root . '/leftover.tmp', 'x');
+
+		$this->copier()->remove($this->root . '/leftover.tmp');
+
+		$this->assertFileDoesNotExist($this->root . '/leftover.tmp');
+	}
+
+	public function testRemovingALeftoverDeletesADanglingSymlink(): void {
+		symlink($this->root . '/gone', $this->root . '/dangling');
+		$this->assertTrue(is_link($this->root . '/dangling'));
+
+		$this->copier()->remove($this->root . '/dangling');
+
+		$this->assertFalse(is_link($this->root . '/dangling'));
+	}
+
+	public function testRemovingALeftoverThatIsNotThereDoesNothing(): void {
+		$this->copier()->remove($this->root . '/never-existed');
+
+		$this->assertFileDoesNotExist($this->root . '/never-existed');
+		$this->assertDirectoryExists($this->root, 'the parent must be left alone');
+	}
+
 	private function copier(): object {
 		return new class {
 			use ReplacesAppFolder;
 
 			public function copy(string $source, string $destination): void {
 				$this->copyRecursive($source, $destination);
+			}
+
+			public function backup(string $destination): ?string {
+				return $this->backupExisting($destination);
+			}
+
+			public function restore(string $destination, ?string $backup): bool {
+				return $this->restoreFromBackup($destination, $backup);
+			}
+
+			public function single(string $path): ?string {
+				return $this->findSingleDirectory($path);
+			}
+
+			public function remove(string $path): void {
+				$this->rmdirr($path);
 			}
 
 			private function addDebug(string $stage, mixed $data = null): void {

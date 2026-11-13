@@ -429,6 +429,52 @@ final class ChildProcessFinalizerTest extends TestCase {
 		$this->assertSame(1, $exitCode);
 	}
 
+	public function testTheChildRefusesAnInfoXmlThatIsNotTheAppsOwn(): void {
+		// A stale or swapped-in folder: the path exists and parses, but it
+		// describes another app, so the child must not finalize anything.
+		$finalizer = $this->createMock(InstallFinalizer::class);
+		$finalizer->expects($this->never())->method('finalize');
+		$appPath = $this->appWithInfoXml();
+		$this->appManager->method('getAppInfoByPath')->willReturn(['id' => 'otherapp']);
+		$this->expectOutputString(self::RESULT_PREFIX . json_encode([
+			'ok' => false,
+			'class' => Exception::class,
+			'message' => 'appinfo/info.xml of openregister could not be read in the child process.',
+		], JSON_UNESCAPED_SLASHES) . "\n");
+
+		$services = [IAppManager::class => $this->appManager, InstallFinalizer::class => $finalizer];
+		$exit = $this->withServices($services, static fn (): int => ChildProcessFinalizer::main(['openregister', $appPath, 'yes', 'github:o/r']));
+
+		$this->assertSame(1, $exit);
+	}
+
+	public function testTheConfigSyncIsSkippedWithoutAConfigDirectory(): void {
+		// Nothing booted a server in this process, so \OC::$configDir is unset.
+		\OC::$configDir = null;
+		$this->config->expects($this->never())->method('setSystemValues');
+		$this->logger->expects($this->once())->method('warning')
+			->with($this->stringContains('could not read config/config.php, or it has no `version` key'));
+
+		$appId = $this->finalizerWithChild(self::printsResult(['ok' => true, 'appId' => 'openregister']))
+			->run('/apps/openregister', ['id' => 'openregister'], 'yes', 'appstore');
+
+		$this->assertSame('openregister', $appId);
+	}
+
+	public function testAConfigFileThatDoesNotParseSkipsTheSyncWithAWarning(): void {
+		// A child killed inside Config::writeData() can leave a file `include`
+		// refuses; that ParseError must not escape into the finalize.
+		file_put_contents($this->configDir . 'config.php', "<?php\n\$CONFIG = [ ;\n");
+		$this->config->expects($this->never())->method('setSystemValues');
+		$this->logger->expects($this->once())->method('warning')
+			->with($this->stringContains('could not read config/config.php, or it has no `version` key'));
+
+		$appId = $this->finalizerWithChild(self::printsResult(['ok' => true, 'appId' => 'openregister']))
+			->run('/apps/openregister', ['id' => 'openregister'], 'yes', 'appstore');
+
+		$this->assertSame('openregister', $appId);
+	}
+
 	public function testTheProbeReportsOkWhenInstallFinalizerResolves(): void {
 		$finalizer = $this->createMock(InstallFinalizer::class);
 		$finalizer->expects($this->never())->method('finalize');
