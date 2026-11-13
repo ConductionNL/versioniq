@@ -3804,9 +3804,13 @@
 				"change": "autoupdate-schedules",
 				"screen": {
 					"canvas": "design-system",
-					"board": "VqAutomatischeUpdates"
+					"board": "VqAutomatischeUpdates",
+					"drawn": "redrawn to the spec in design-system #1180 (decision 405): weekdays per kind of update, no cron expression, one window"
 				},
-				"requirement": "openspec/changes/autoupdate-schedules/specs/auto-update-policies :: Global kill switch and window [MVP]"
+				"requirement": [
+					"openspec/changes/autoupdate-schedules/specs/auto-update-policies :: Global kill switch and window [MVP]",
+					"openspec/changes/autoupdate-schedules/specs/auto-update-policies :: Each kind of update has its own schedule"
+				]
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3873,12 +3877,14 @@
 				"evidence": "lib/Service/AutoUpdate/AttemptLedger.php:49, lib/BackgroundJob/AutoUpdateJob.php:146, lib/BackgroundJob/AutoUpdateJob.php:181",
 				"reachedOn": "background job AutoUpdateJob",
 				"owner": "ConductionNL/versioniq",
-				"change": "add-auto-update-policies",
+				"change": "2026-07-23-add-auto-update-policies",
 				"screen": {
 					"canvas": "design-system",
-					"board": "VqAutomatischeUpdates"
+					"board": "VqAutomatischeUpdates",
+					"drawn": "redrawn to the spec in design-system #1180 (decision 405): a failed update is tried once and waits for Retry"
 				},
-				"requirement": "openspec/specs/auto-update-policies :: Nightly policy execution through the standard installer [MVP]"
+				"requirement": "openspec/specs/auto-update-policies :: Nightly policy execution through the standard installer [MVP]",
+				"spec": "openspec/specs/auto-update-policies"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4122,7 +4128,8 @@
 				"change": "autoupdate-default-and-config-file",
 				"screen": {
 					"canvas": "design-system",
-					"board": "VqAutomatischeUpdates"
+					"board": "VqAutomatischeUpdates",
+					"drawn": "redrawn to the spec in design-system #1180 (decision 405): occ versioniq:policies:export and import (JSON), read-only policy file from config.php"
 				},
 				"requirement": "openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies :: Policies can be kept in a file"
 			},
@@ -4790,7 +4797,8 @@
 				"readOn": "2026-10-07",
 				"screen": {
 					"canvas": "design-system",
-					"board": "VqInstellingen"
+					"board": "VqInstellingen",
+					"drawn": "redrawn to the spec in design-system #1180 (decision 405): advisory check interval of 1 to 24 hours"
 				},
 				"requirement": "openspec/specs/security-advisory-correlation :: The admin sets how often advisories are checked"
 			},
@@ -7450,7 +7458,8 @@
 				"change": "inventory-export-sbom-metrics",
 				"screen": {
 					"canvas": "design-system",
-					"board": "VqInstellingen"
+					"board": "VqInstellingen",
+					"drawn": "redrawn to the spec in design-system #1180 (decision 405): the server's /metrics with versioniq_app_version"
 				},
 				"requirement": "openspec/changes/inventory-export-sbom-metrics/specs/inventory-export :: Installed app versions are exposed as OpenMetrics"
 			},
