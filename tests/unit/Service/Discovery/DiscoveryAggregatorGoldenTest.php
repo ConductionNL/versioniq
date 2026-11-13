@@ -36,6 +36,8 @@ use RuntimeException;
  * @uses \OCA\Versioniq\Service\Discovery\DiscoveryHit
  * @uses \OCA\Versioniq\Service\Discovery\DiscoveryMerge
  * @uses \OCA\Versioniq\Service\Discovery\DiscoveryResult
+ * @uses \OCA\Versioniq\Service\Discovery\DiscoveryListing
+ * @uses \OCA\Versioniq\Service\Discovery\DiscoverySource
  */
 final class DiscoveryAggregatorGoldenTest extends TestCase {
 	private const FIXTURE = __DIR__ . '/fixtures/discovery-aggregator.golden.json';

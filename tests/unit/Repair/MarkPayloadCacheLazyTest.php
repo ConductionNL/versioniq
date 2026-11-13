@@ -29,6 +29,7 @@ use RuntimeException;
  * phpcs:disable CustomSniffs.Functions.NamedParameters
  *
  * @covers \OCA\Versioniq\Repair\MarkPayloadCacheLazy
+ * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
  *
  * @spec exclude Performance repair of a cache row's storage flag; no
  *  capability spec covers how the payload cache is stored.

@@ -32,6 +32,8 @@ use PHPUnit\Framework\TestCase;
  * Set RECORD_GOLDEN=1 to rewrite the fixture.
  *
  * @covers \OCA\Versioniq\Controller\SettingsController
+ * @uses \OCA\Versioniq\Service\Audit\AuditSubject
+ * @uses \OCA\Versioniq\Service\Audit\AuditedVersions
  */
 final class SettingsUpdateGoldenTest extends TestCase {
 	use DispatchesLikeNextcloud;

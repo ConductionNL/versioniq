@@ -27,6 +27,8 @@ use ReflectionMethod;
  *
  * @covers \OCA\Versioniq\Service\Source\AppStoreSource
  * @uses \OCA\Versioniq\Service\Source\ReleaseDate
+ * @uses \OCA\Versioniq\Service\Connection\ReportedHttp
+ * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
  */
 final class AppStoreNormalizeVersionsGoldenTest extends TestCase {
 	use BuildsByParameterName;

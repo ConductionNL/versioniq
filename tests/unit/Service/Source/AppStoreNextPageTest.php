@@ -22,6 +22,7 @@ use ReflectionMethod;
  * Which response shapes make the App Store catalogue walk ask for another page.
  *
  * @covers \OCA\Versioniq\Service\Source\AppStoreSource
+ * @uses \OCA\Versioniq\Service\Connection\ReportedHttp
  */
 final class AppStoreNextPageTest extends TestCase {
 	use BuildsByParameterName;

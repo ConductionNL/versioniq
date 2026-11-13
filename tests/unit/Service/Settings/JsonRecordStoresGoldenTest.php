@@ -40,6 +40,8 @@ use Psr\Log\LoggerInterface;
  * @uses \OCA\Versioniq\Service\Pin\PinDrift
  * @uses \OCA\Versioniq\Service\Settings\AppConfigJsonRecords
  * @uses \OCA\Versioniq\Service\Policy\Policy
+ * @uses \OCA\Versioniq\Service\Audit\AuditSubject
+ * @uses \OCA\Versioniq\Service\Audit\AuditedVersions
  */
 final class JsonRecordStoresGoldenTest extends TestCase {
 	private const FIXTURE = __DIR__ . '/fixtures/json-record-stores.golden.json';

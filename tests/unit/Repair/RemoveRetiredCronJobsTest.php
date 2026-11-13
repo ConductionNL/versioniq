@@ -30,6 +30,7 @@ use RuntimeException;
  * phpcs:disable CustomSniffs.Functions.NamedParameters
  *
  * @covers \OCA\Versioniq\Repair\RemoveRetiredCronJobs
+ * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
  *
  * @spec exclude No canonical spec covers the OCA\Versioniq\Cron ->
  *  OCA\Versioniq\BackgroundJob move (ADR-100 Decision 3 is an architecture

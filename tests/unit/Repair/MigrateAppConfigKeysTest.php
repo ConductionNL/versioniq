@@ -29,6 +29,8 @@ use RuntimeException;
  * phpcs:disable CustomSniffs.Functions.NamedParameters
  *
  * @covers \OCA\Versioniq\Repair\MigrateAppConfigKeys
+ * @uses \OCA\Versioniq\Repair\ConfigKeyMigrationRun
+ * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
  *
  * @spec exclude One-off app_versions->versioniq rename plumbing.
  */

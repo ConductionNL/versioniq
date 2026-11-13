@@ -40,6 +40,8 @@ use RuntimeException;
  * @uses \OCA\Versioniq\Service\Discovery\DiscoveryHit
  * @uses \OCA\Versioniq\Service\Discovery\DiscoveryResult
  * @uses \OCA\Versioniq\Db\Pat
+ * @uses \OCA\Versioniq\Service\Discovery\DiscoveryListing
+ * @uses \OCA\Versioniq\Service\Discovery\DiscoverySource
  */
 final class GithubDiscoveryGoldenTest extends TestCase {
 	private const FIXTURE = __DIR__ . '/fixtures/github-discovery.golden.json';

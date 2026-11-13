@@ -26,6 +26,7 @@ use RuntimeException;
  *
  * @covers \OCA\Versioniq\Service\Availability\AvailabilityService
  * @uses \OCA\Versioniq\Service\Pin\Pin
+ * @uses \OCA\Versioniq\Service\Availability\AppVersionCheck
  */
 final class AvailabilitySweepGoldenTest extends TestCase {
 	private const FIXTURE = __DIR__ . '/fixtures/availability-sweep.golden.json';

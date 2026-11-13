@@ -35,6 +35,7 @@ use RuntimeException;
  * RECORD_GOLDEN=1 to rewrite the fixture.
  *
  * @covers \OCA\Versioniq\Service\Cache\ArtifactCache
+ * @uses \OCA\Versioniq\Service\Installer\AppIdFormat
  */
 final class ArtifactCacheReadGoldenTest extends TestCase {
 	private const FIXTURE = __DIR__ . '/fixtures/artifact-cache-read.golden.json';

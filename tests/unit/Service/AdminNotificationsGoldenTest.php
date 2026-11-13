@@ -42,6 +42,7 @@ use RuntimeException;
  * @uses \OCA\Versioniq\Service\NotifiesAdmins
  * @uses \OCA\Versioniq\Service\Pin\Pin
  * @uses \OCA\Versioniq\Service\Pin\PinDrift
+ * @uses \OCA\Versioniq\Service\AdminNotificationServices
  */
 final class AdminNotificationsGoldenTest extends TestCase {
 	use BuildsByParameterName;

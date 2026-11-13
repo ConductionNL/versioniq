@@ -31,6 +31,13 @@ use ReflectionClass;
  * Set RECORD_GOLDEN=1 to rewrite it.
  *
  * @covers \OCA\Versioniq\Controller\ApiController
+ * @uses \OCA\Versioniq\Service\Api\AccessCollaborators
+ * @uses \OCA\Versioniq\Service\Api\ApiCaller
+ * @uses \OCA\Versioniq\Service\Api\InstallCollaborators
+ * @uses \OCA\Versioniq\Service\Api\PatServices
+ * @uses \OCA\Versioniq\Service\Api\ReportCollaborators
+ * @uses \OCA\Versioniq\Service\Api\ReportStores
+ * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores
  */
 final class ApiAdvisorySettingsGoldenTest extends TestCase {
 	use BuildsByParameterName;

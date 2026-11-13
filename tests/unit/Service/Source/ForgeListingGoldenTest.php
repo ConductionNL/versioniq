@@ -40,6 +40,7 @@ use PHPUnit\Framework\TestCase;
  * @uses \OCA\Versioniq\Service\Advisory\AdvisoryClauses
  * @uses \OCA\Versioniq\Service\Advisory\AdvisorySeverity
  * @uses \OCA\Versioniq\Service\Pat\PatAccess
+ * @uses \OCA\Versioniq\Service\Source\ForgeUrls
  */
 final class ForgeListingGoldenTest extends TestCase {
 	use BuildsByParameterName;

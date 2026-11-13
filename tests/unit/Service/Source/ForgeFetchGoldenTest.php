@@ -38,6 +38,7 @@ use ReflectionMethod;
  * @uses \OCA\Versioniq\Service\Source\Forge
  * @uses \OCA\Versioniq\Service\Source\ForgeRegistry
  * @uses \OCA\Versioniq\Service\Pat\PatAccess
+ * @uses \OCA\Versioniq\Service\Source\ForgeUrls
  */
 final class ForgeFetchGoldenTest extends TestCase {
 	use BuildsByParameterName;

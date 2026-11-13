@@ -22,6 +22,7 @@ use PHPUnit\Framework\TestCase;
  * fixtures/failure-category.golden.json. Set RECORD_GOLDEN=1 to rewrite it.
  *
  * @covers \OCA\Versioniq\Service\Installer\FailureClassifier
+ * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
  */
 final class FailureCategoryGoldenTest extends TestCase {
 	private const FIXTURE = __DIR__ . '/fixtures/failure-category.golden.json';

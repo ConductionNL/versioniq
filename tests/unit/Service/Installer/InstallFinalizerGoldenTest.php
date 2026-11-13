@@ -41,6 +41,7 @@ require_once __DIR__ . '/InstallerGoldenSupport.php';
  * @covers \OCA\Versioniq\Service\Installer\InstallFinalizer
  * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
  * @uses \OCA\Versioniq\Service\Lkg\Lkg
+ * @uses \OCA\Versioniq\Service\Settings\ConfigStores
  */
 final class InstallFinalizerGoldenTest extends TestCase {
 	private const FIXTURE = __DIR__ . '/fixtures/install-finalizer.golden.json';

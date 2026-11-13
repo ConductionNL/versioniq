@@ -34,6 +34,16 @@ use ReflectionClass;
  * fixtures/api-admin-caller.golden.json. Set RECORD_GOLDEN=1 to rewrite it.
  *
  * @covers \OCA\Versioniq\Controller\ApiController
+ * @uses \OCA\Versioniq\Service\Api\AccessCollaborators
+ * @uses \OCA\Versioniq\Service\Api\ApiCaller
+ * @uses \OCA\Versioniq\Service\Api\InstallCollaborators
+ * @uses \OCA\Versioniq\Service\Api\PatServices
+ * @uses \OCA\Versioniq\Service\Api\ReportCollaborators
+ * @uses \OCA\Versioniq\Service\Api\ReportStores
+ * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores
+ * @uses \OCA\Versioniq\Service\Discovery\DiscoveryFilter
+ * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
+ * @uses \OCA\Versioniq\Service\Policy\Policy
  */
 final class ApiAdminCallerGoldenTest extends TestCase {
 	use BuildsByParameterName;

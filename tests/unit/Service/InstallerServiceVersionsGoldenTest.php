@@ -40,6 +40,11 @@ use PHPUnit\Framework\TestCase;
  * @uses \OCA\Versioniq\Service\Source\AppStoreSource
  * @uses \OCA\Versioniq\Service\Source\UntrustedSourceException
  * @uses \OCA\Versioniq\Service\Installer\FailureClassifier
+ * @uses \OCA\Versioniq\Service\Installer\InstallState
+ * @uses \OCA\Versioniq\Service\Installer\ReleaseInstallers
+ * @uses \OCA\Versioniq\Service\Installer\ServerAccess
+ * @uses \OCA\Versioniq\Service\Settings\ConfigStores
+ * @uses \OCA\Versioniq\Service\Source\SourceLookup
  */
 final class InstallerServiceVersionsGoldenTest extends TestCase {
 	use BuildsByParameterName;

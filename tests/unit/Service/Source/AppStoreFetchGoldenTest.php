@@ -35,6 +35,8 @@ use ReflectionProperty;
  *
  * @covers \OCA\Versioniq\Service\Source\AppStoreSource
  * @uses \OCA\Versioniq\Service\Source\CatalogueQuery
+ * @uses \OCA\Versioniq\Service\Connection\ReportedHttp
+ * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
  */
 final class AppStoreFetchGoldenTest extends TestCase {
 	use BuildsByParameterName;

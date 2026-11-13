@@ -30,6 +30,14 @@ use PHPUnit\Framework\TestCase;
  * admin's token.
  *
  * @covers \OCA\Versioniq\Controller\ApiController
+ * @uses \OCA\Versioniq\Db\Pat
+ * @uses \OCA\Versioniq\Service\Api\AccessCollaborators
+ * @uses \OCA\Versioniq\Service\Api\ApiCaller
+ * @uses \OCA\Versioniq\Service\Api\InstallCollaborators
+ * @uses \OCA\Versioniq\Service\Api\PatServices
+ * @uses \OCA\Versioniq\Service\Api\ReportCollaborators
+ * @uses \OCA\Versioniq\Service\Api\ReportStores
+ * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores
  */
 final class ApiPatOwnershipTest extends TestCase {
 	use BuildsByParameterName;

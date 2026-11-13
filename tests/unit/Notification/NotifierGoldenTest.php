@@ -25,6 +25,7 @@ use Throwable;
  * fixtures/notifier-prepare.golden.json. Set RECORD_GOLDEN=1 to rewrite it.
  *
  * @covers \OCA\Versioniq\Notification\Notifier
+ * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
  */
 final class NotifierGoldenTest extends TestCase {
 	private const FIXTURE = __DIR__ . '/fixtures/notifier-prepare.golden.json';
