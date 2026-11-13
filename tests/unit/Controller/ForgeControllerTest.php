@@ -28,7 +28,7 @@ final class ForgeControllerTest extends TestCase {
 	/** @var array<string, string> */
 	private array $config = [];
 
-	private function controller(bool $admin = true): ForgeController {
+	private function controller(bool $admin = true, bool $signedIn = true): ForgeController {
 		$appConfig = $this->createMock(IAppConfig::class);
 		$appConfig->method('getValueString')->willReturnCallback(
 			fn (string $app, string $key, string $default = ''): string => $this->config[$key] ?? $default,
@@ -49,7 +49,7 @@ final class ForgeControllerTest extends TestCase {
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn('admin');
 		$session = $this->createMock(IUserSession::class);
-		$session->method('getUser')->willReturn($user);
+		$session->method('getUser')->willReturn($signedIn ? $user : null);
 		$groups = $this->createMock(IGroupManager::class);
 		$groups->method('isAdmin')->willReturn($admin);
 
@@ -67,6 +67,18 @@ final class ForgeControllerTest extends TestCase {
 
 		self::assertSame(403, $controller->forgejoHost()->getStatus());
 		self::assertSame(403, $controller->setForgejoHost('https://git.example.org')->getStatus());
+		self::assertSame([], $this->config);
+	}
+
+	public function testSignedOutCallerCannotReadOrWrite(): void {
+		$controller = $this->controller(true, false);
+
+		$read = $controller->forgejoHost();
+		$write = $controller->setForgejoHost('https://git.example.org');
+
+		self::assertSame(403, $read->getStatus());
+		self::assertSame(403, $write->getStatus());
+		self::assertSame(['message' => 'Forbidden'], $read->getData());
 		self::assertSame([], $this->config);
 	}
 
