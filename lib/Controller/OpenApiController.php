@@ -88,6 +88,7 @@ class OpenApiController extends OCSController {
 	#[AnonRateLimit(limit: 120, period: 60)]
 	#[OpenAPI(scope: OpenAPI::SCOPE_IGNORE)]
 	#[ApiRoute(verb: 'GET', url: '/api/openapi.json')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/openapi.json', postfix: 'v1')]
 	public function show(): JSONResponse {
 		$document = $this->document();
 		$response = new JSONResponse(
