@@ -119,6 +119,23 @@ final class EnvironmentCheckTest extends TestCase {
 	}
 	private const DEV_CHECKOUT_WARNING = 'This app looks like a development checkout (e.g. a Git working copy or a bind mount owned by another user). Version changes here will overwrite your working copy.';
 
+	private const NOT_WRITABLE_WARNING = 'This app\'s folder is not writable by the web-server user, so version changes will fail.'
+		. ' It is likely a bind-mounted dev checkout — fix the folder ownership/permissions to manage it here.';
+
+	/**
+	 * The authoritative check reads the PARENT directory, so a folder whose
+	 * parent is not there at all is not writable either — and unlike a chmod,
+	 * that holds for a process running as root, which bypasses permissions.
+	 * The card then carries the blocking warning and no advisory.
+	 */
+	public function testAnAppFolderWithoutAParentDirectoryIsNotManageable(): void {
+		$appPath = sys_get_temp_dir() . '/av-envcheck-gone-' . uniqid('', true) . '/sampleapp';
+		$check = $this->build();
+
+		self::assertFalse($check->isDestinationWritable($appPath));
+		self::assertSame(['manageable' => false, 'warning' => self::NOT_WRITABLE_WARNING], $check->inspect($appPath));
+	}
+
 	public function testGitCheckoutWarningIsTheDevCheckoutText(): void {
 		$appPath = $this->makeAppDir();
 		mkdir($appPath . '/.git', 0777, true);

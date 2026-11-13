@@ -170,6 +170,46 @@ final class InstallFinalizerGoldenTest extends TestCase {
 	}
 
 	/**
+	 * Nextcloud's container could not build a child finalizer, or the service
+	 * was constructed by hand: an UPDATE then finalizes in this process, where
+	 * the repair steps of the new version run against the previous version's
+	 * registrations (#611). That must not pass silently, so the warning is part
+	 * of the contract; the finalize itself still runs to the end.
+	 */
+	public function testAnUpgradeWithoutAChildFinalizerWarnsAndFinalizesInProcess(): void {
+		$outcome = $this->runCase([
+			'path' => 'plain', 'info' => ['id' => 'someapp', 'version' => '2.0.0'], 'enabled' => 'yes',
+			'output' => false, 'sourceId' => null, 'previous' => '1.0.0', 'appVersion' => '1.9.0',
+			'appInfo' => ['types' => []], 'throwAt' => null, 'noChild' => true,
+		]);
+
+		self::assertSame('someapp', $outcome['returned']);
+		$warnings = array_values(array_filter($outcome['calls'], static fn (array $call): bool => $call[0] === 'log.warning'));
+		self::assertCount(1, $warnings);
+		self::assertStringContainsString('no child finalizer available', $warnings[0][1]);
+		self::assertSame(['app' => 'someapp'], $warnings[0][2]);
+		// The in-process finalize still ran end to end.
+		self::assertContains(['Coordinator::runLazyRegistration', 'someapp'], $outcome['calls']);
+		self::assertContains(['config.setAppValue', 'someapp', 'installed_version', '2.0.0'], $outcome['calls']);
+		self::assertContains(['lkg.set', 'someapp', '2.0.0', '2026-11-03T12:34:56+00:00', 'appstore'], $outcome['calls']);
+	}
+
+	/**
+	 * A FRESH install has no previous version to clash with, so the same
+	 * missing child finalizer must stay silent.
+	 */
+	public function testAFreshInstallWithoutAChildFinalizerLogsNothing(): void {
+		$outcome = $this->runCase([
+			'path' => 'plain', 'info' => ['id' => 'someapp', 'version' => '2.0.0'], 'enabled' => 'yes',
+			'output' => false, 'sourceId' => null, 'previous' => '', 'appVersion' => '1.9.0',
+			'appInfo' => ['types' => []], 'throwAt' => null, 'noChild' => true,
+		]);
+
+		self::assertSame('someapp', $outcome['returned']);
+		self::assertSame([], array_values(array_filter($outcome['calls'], static fn (array $call): bool => $call[0] === 'log.warning')));
+	}
+
+	/**
 	 * @param array<string, mixed> $case
 	 * @return array<string, mixed>
 	 */
@@ -182,7 +222,7 @@ final class InstallFinalizerGoldenTest extends TestCase {
 			$this->logger(),
 			$this->lkgStore(),
 			$this->timeFactory(),
-			$this->childFinalizer(),
+			($case['noChild'] ?? false) === true ? null : $this->childFinalizer(),
 		);
 		if ($case['throwAt'] === 'migrate') {
 			\OC_App::$recorder = function (string $call, array $args): void {
