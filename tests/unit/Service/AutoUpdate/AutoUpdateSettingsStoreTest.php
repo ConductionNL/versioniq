@@ -12,6 +12,7 @@ namespace OCA\Versioniq\Tests\Unit\Service\AutoUpdate;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
+use OCA\Versioniq\Service\Policy\Policy;
 use OCP\IAppConfig;
 use PHPUnit\Framework\TestCase;
 
@@ -113,5 +114,35 @@ final class AutoUpdateSettingsStoreTest extends TestCase {
 		$store->markWindowSwept('01:00-05:00@2026-07-23');
 		$this->assertTrue($store->hasSweptWindow('01:00-05:00@2026-07-23'));
 		$this->assertFalse($store->hasSweptWindow('01:00-05:00@2026-07-24'));
+	}
+
+	public function testTheDefaultLevelIsNoneWhenUnsetOrNotALevel(): void {
+		foreach ([Policy::LEVEL_NONE, 'yolo', ''] as $stored) {
+			$config = $this->createMock(IAppConfig::class);
+			$config->method('getValueString')
+				->with(Application::APP_ID, AutoUpdateSettingsStore::CONFIG_DEFAULT_LEVEL, Policy::LEVEL_NONE)
+				->willReturn($stored);
+
+			$this->assertSame(Policy::LEVEL_NONE, (new AutoUpdateSettingsStore($config))->getDefaultLevel(), 'stored ' . var_export($stored, true));
+		}
+	}
+
+	public function testTheDefaultLevelReadsAStoredLevel(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getValueString')->willReturn(Policy::LEVEL_PATCH);
+
+		$this->assertSame(Policy::LEVEL_PATCH, (new AutoUpdateSettingsStore($config))->getDefaultLevel());
+	}
+
+	public function testSetDefaultLevelStoresALevelAndRefusesAnythingElse(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$config->expects($this->once())->method('setValueString')
+			->with(Application::APP_ID, AutoUpdateSettingsStore::CONFIG_DEFAULT_LEVEL, Policy::LEVEL_MINOR);
+		$store = new AutoUpdateSettingsStore($config);
+
+		$store->setDefaultLevel(Policy::LEVEL_MINOR);
+
+		$this->expectException(\InvalidArgumentException::class);
+		$store->setDefaultLevel('yolo');
 	}
 }

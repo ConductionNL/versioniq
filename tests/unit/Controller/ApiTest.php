@@ -636,6 +636,60 @@ final class ApiTest extends TestCase {
 		$this->assertSame('22:00-04:00', $response->getData()['autoUpdateWindow']);
 	}
 
+	public function testUpdateAutoUpdateSettingsStoresTheDefaultLevel(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'defaultLevel' => 'patch',
+				default => $default,
+			}
+		);
+
+		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore->expects($this->once())->method('setDefaultLevel')->with('patch');
+		$settingsStore->expects($this->never())->method('setEnabled');
+		$settingsStore->expects($this->never())->method('setWindow');
+		$settingsStore->method('getDefaultLevel')->willReturn('patch');
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', null, $settingsStore)->updateAutoUpdateSettings();
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame('patch', $response->getData()['autoUpdateDefaultLevel']);
+	}
+
+	public function testUpdateAutoUpdateSettingsRejectsAnUnknownDefaultLevelAndWritesNothing(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'defaultLevel' => 'everything',
+				'window' => '22:00-04:00',
+				default => $default,
+			}
+		);
+
+		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore->expects($this->never())->method('setDefaultLevel');
+		$settingsStore->expects($this->never())->method('setWindow');
+		$settingsStore->expects($this->never())->method('setEnabled');
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', null, $settingsStore)->updateAutoUpdateSettings('1');
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertStringContainsString('defaultLevel must be one of', $response->getData()['message']);
+	}
+
+	public function testPoliciesCarryTheDefaultLevel(): void {
+		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore->method('getDefaultLevel')->willReturn('minor');
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $this->createMock(IRequest::class), null, null, null, 'admin', $this->createMock(PolicyStore::class), $settingsStore)->policies();
+
+		$this->assertSame('minor', $response->getData()['autoUpdateDefaultLevel']);
+	}
+
 	// --- dryRun decoupled from debug (see MODIFIED "Debug Mode") ---
 
 	// These go through dispatch(), which fills the request values the way the

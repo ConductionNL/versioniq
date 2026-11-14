@@ -99,13 +99,13 @@ class AutoUpdateJob extends TimedJob {
 		}
 		$this->stores->settingsStore->markWindowSwept($openingKey);
 
-		foreach ($this->stores->policyStore->all() as $appId => $policy) {
-			if ($policy->level === Policy::LEVEL_NONE) {
+		foreach ($this->levelsByApp() as $appId => $level) {
+			if ($level === Policy::LEVEL_NONE) {
 				continue;
 			}
 
 			try {
-				$this->processApp($appId, $policy->level);
+				$this->processApp($appId, $level);
 			} catch (\Throwable $error) {
 				// Per-app isolation — see "the job MUST proceed to the next app
 				// after any failure".
@@ -115,6 +115,31 @@ class AutoUpdateJob extends TimedJob {
 				]);
 			}
 		}
+	}
+
+	/**
+	 * The level to apply per app: every stored policy, then every enabled app
+	 * without one at the instance default. With the default at none this is
+	 * exactly the stored policies, as before; see "Instance default level".
+	 *
+	 * @return array<string, string>
+	 */
+	private function levelsByApp(): array {
+		$levels = [];
+		foreach ($this->stores->policyStore->all() as $appId => $policy) {
+			$levels[$appId] = $policy->level;
+		}
+
+		$default = $this->stores->settingsStore->getDefaultLevel();
+		if (!Policy::isValidLevel($default) || $default === Policy::LEVEL_NONE) {
+			return $levels;
+		}
+
+		foreach ($this->install->appManager->getEnabledApps() as $appId) {
+			$levels[$appId] ??= $default;
+		}
+
+		return $levels;
 	}
 
 	private function processApp(string $appId, string $level): void {
