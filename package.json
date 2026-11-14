@@ -54,8 +54,11 @@
     "brace-expansion@2": "2.1.7",
     "brace-expansion@5": "5.0.12",
     "dompurify": "3.4.17",
-    "follow-redirects": "1.15.11",
+    "follow-redirects": "1.16.3",
     "source-map-js": "1.2.2",
-    "undici": "8.12.2"
+    "undici": "8.12.2",
+    "webdav": {
+      "minimatch": "^11.0.1"
+    }
   }
 }
