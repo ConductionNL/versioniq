@@ -41,6 +41,9 @@ final class InstanceSettingsFields extends RequestFields {
 	/** @var string|null Release lines an app may fall behind, 0 to 10; blank turns the check off */
 	public ?string $maxLinesBehind = null;
 
+	/** @var string|null Whether an archive upload the App Store does not sign may be installed: true or false */
+	public ?string $allowUnsignedUpload = null;
+
 	/**
 	 * The fields that were sent, by name, in declaration order.
 	 *

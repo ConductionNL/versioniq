@@ -34,6 +34,7 @@ const settings = {
 	advisoryFeedDefault: 'https://api.github.com/repos/nextcloud/security-advisories/security-advisories',
 	maxLinesBehind: null,
 	maxLinesBehindMax: 10,
+	allowUnsignedUpload: false,
 }
 
 describe('InstanceSettingsPanel', () => {
@@ -70,6 +71,37 @@ describe('InstanceSettingsPanel', () => {
 			artifactCacheKeep: '3',
 		}))
 		expect(wrapper.find('[data-testid="instance-settings-notice"]').exists()).toBe(true)
+	})
+
+	// install-manual-upload task 2.3
+	// @spec openspec/changes/install-manual-upload/tasks.md#task-2.3
+	it('shows the unsigned-upload switch off by default and saves it as true', async () => {
+		mockedGet.mockResolvedValue({ payload: settings })
+		mockedWrite.mockResolvedValue({ payload: { ...settings, allowUnsignedUpload: true } })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		const box = wrapper.find('[data-testid="setting-allow-unsigned-upload"]')
+		expect((box.element as HTMLInputElement).checked).toBe(false)
+		expect(wrapper.text()).toContain('runs whatever code it contains')
+
+		await box.setValue(true)
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		expect(mockedWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/instance-settings', expect.objectContaining({
+			allowUnsignedUpload: 'true',
+		}))
+		expect((wrapper.find('[data-testid="setting-allow-unsigned-upload"]').element as HTMLInputElement).checked).toBe(true)
+	})
+
+	it('shows the switch on when the server has it on', async () => {
+		mockedGet.mockResolvedValue({ payload: { ...settings, allowUnsignedUpload: true } })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+
+		expect((wrapper.find('[data-testid="setting-allow-unsigned-upload"]').element as HTMLInputElement).checked).toBe(true)
 	})
 
 	it('shows the server message when a value is refused', async () => {

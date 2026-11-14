@@ -300,7 +300,10 @@ OC.L10N.register(
         "Outside the update policy": "Buiten het updatebeleid",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Aantal releases dat een app achter mag lopen (0 tot {max}, laat leeg om de controle uit te zetten)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "Een app die verder achterloopt, wordt gemarkeerd op het tabblad Apps. 1 betekent de nieuwste release of de release daarvoor.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"]
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"],
+        "Installing from a file": "Installeren vanuit een bestand",
+        "Allow unsigned uploads": "Niet-ondertekende uploads toestaan",
+        "An archive the App Store does not sign runs whatever code it contains. Leave this off unless you install such archives and check them yourself.": "Een archief dat de App Store niet ondertekent, voert alle code uit die erin zit. Laat dit uit, tenzij je zulke archieven installeert en ze zelf controleert."
     },
     "nplurals=2; plural=(n != 1);"
 )

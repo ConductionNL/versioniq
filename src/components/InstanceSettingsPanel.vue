@@ -30,6 +30,7 @@ type Settings = {
 	advisoryFeedDefault: string
 	maxLinesBehind: number | null
 	maxLinesBehindMax: number
+	allowUnsignedUpload: boolean
 }
 
 const ENDPOINT = '/ocs/v2.php/apps/versioniq/api/instance-settings'
@@ -43,6 +44,7 @@ const form = ref({
 	githubWebBase: '',
 	advisoryFeedUrl: '',
 	maxLinesBehind: '',
+	allowUnsignedUpload: false,
 })
 const saving = ref(false)
 const error = ref('')
@@ -62,6 +64,7 @@ function fill (settings: Settings): void {
 		githubWebBase: settings.githubWebBase,
 		advisoryFeedUrl: settings.advisoryFeedUrl,
 		maxLinesBehind: settings.maxLinesBehind === null || settings.maxLinesBehind === undefined ? '' : String(settings.maxLinesBehind),
+		allowUnsignedUpload: settings.allowUnsignedUpload === true,
 	}
 }
 
@@ -151,6 +154,19 @@ onMounted(load)
 				<span :class="$style.hint">{{ t('versioniq', 'An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.') }}</span>
 			</label>
 
+			<h4>{{ t('versioniq', 'Installing from a file') }}</h4>
+			<label :class="$style.checkbox" for="setting-allow-unsigned-upload">
+				<input
+					id="setting-allow-unsigned-upload"
+					v-model="form.allowUnsignedUpload"
+					type="checkbox"
+					data-testid="setting-allow-unsigned-upload">
+				<span>{{ t('versioniq', 'Allow unsigned uploads') }}</span>
+			</label>
+			<p :class="$style.hint">
+				{{ t('versioniq', 'An archive the App Store does not sign runs whatever code it contains. Leave this off unless you install such archives and check them yourself.') }}
+			</p>
+
 			<h4>{{ t('versioniq', 'Sources and mirrors') }}</h4>
 			<p :class="$style.hint">
 				{{ t('versioniq', 'Leave a field empty to use the default shown under it.') }}
@@ -223,6 +239,12 @@ onMounted(load)
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
+}
+
+.checkbox {
+	display: flex;
+	gap: 8px;
+	align-items: center;
 }
 
 .hint {

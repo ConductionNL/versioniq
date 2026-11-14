@@ -56,7 +56,7 @@ class SettingsController extends OCSController {
 	/**
 	 * Returns the instance settings with their defaults
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array<string, int|string|null>, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array<string, int|string|bool|null>, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: The settings, each override ('' when unset) next to its default
 	 * 403: Caller is not an administrator
@@ -77,7 +77,7 @@ class SettingsController extends OCSController {
 	/**
 	 * Updates the instance settings (password-confirmed); an omitted field is left alone
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array<string, int|string|null>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array<string, int|string|bool|null>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: The settings after the change
 	 * 400: A value is out of range or not an acceptable URL; nothing was changed
@@ -119,13 +119,24 @@ class SettingsController extends OCSController {
 				new AuditedVersions(null, null, null),
 				AuditLogger::STATUS_SUCCESS,
 				'Settings changed: ' . implode(', ', array_map(
-					static fn (string $field): string => $field . '=' . (string)$after[$field],
+					static fn (string $field): string => $field . '=' . self::auditValue($after[$field]),
 					$applied,
 				)),
 			);
 		}
 
 		return new DataResponse($after);
+	}
+
+	/**
+	 * A setting's value as the audit message shows it; a switch reads on or off.
+	 */
+	private static function auditValue(int|string|bool|null $value): string {
+		if (is_bool($value)) {
+			return $value ? 'on' : 'off';
+		}
+
+		return (string)$value;
 	}
 
 	private function isAdmin(): bool {
