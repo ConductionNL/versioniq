@@ -7,6 +7,15 @@ export type InstallDebugEntry = {
 	data?: unknown
 }
 
+/** One update check of a dry run (safety-update-checks). */
+export type CheckResult = {
+	name: string
+	kind: 'verdict' | 'command' | string
+	outcome: 'passed' | 'failed' | 'skipped' | string
+	passed: boolean
+	detail: string
+}
+
 export type InstallResult = {
 	appId: string
 	fromVersion?: string | null
@@ -26,6 +35,8 @@ export type InstallResult = {
 	integrityWarning?: string | null
 	/** True when the artifact came from the local cache rather than the source (#438). */
 	servedFromCache?: boolean
+	/** The update checks a dry run ran; present only when the payload carried them. */
+	checks?: CheckResult[]
 }
 
 export type InstallPayload = {
@@ -44,6 +55,7 @@ export type InstallPayload = {
 	recordedShaMatched?: boolean
 	integrityWarning?: string | null
 	servedFromCache?: boolean
+	checks?: unknown
 }
 
 /**
@@ -129,6 +141,30 @@ export function normalizeInstallResult (payload: InstallPayload): InstallResult 
 		message: installMessage(payload),
 		...statusFields(payload),
 		...evidenceFields(payload),
+		...checkFields(payload),
+	}
+}
+
+/**
+ * The update checks of a dry run, kept only when the payload carried a list.
+ *
+ * @param payload The install endpoint's payload.
+ * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
+ */
+function checkFields (payload: InstallPayload): Pick<InstallResult, 'checks'> {
+	if (!Array.isArray(payload.checks)) {
+		return {}
+	}
+	return {
+		checks: payload.checks
+			.filter((check): check is Record<string, unknown> => typeof check === 'object' && check !== null)
+			.map((check) => ({
+				name: String(check.name ?? ''),
+				kind: String(check.kind ?? ''),
+				outcome: String(check.outcome ?? ''),
+				passed: check.passed === true,
+				detail: String(check.detail ?? ''),
+			})),
 	}
 }
 

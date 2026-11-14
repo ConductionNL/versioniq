@@ -54,6 +54,12 @@ class FailureClassifier {
 	 * refused pending acknowledgement.
 	 */
 	public const CATEGORY_DOWNGRADE_GUARD = 'downgrade_guard';
+	/**
+	 * A dry run or an update check that must pass before an automatic install
+	 * failed, so the nightly job did not install the version; see "The
+	 * nightly job installs only after the attached checks pass".
+	 */
+	public const CATEGORY_CHECKS_FAILED = 'checks_failed';
 	public const CATEGORY_UNKNOWN = 'unknown';
 
 	/**
@@ -88,7 +94,7 @@ class FailureClassifier {
 	 * guard already confirmed are correct.
 	 */
 	private const MESSAGE_CATEGORIES = [
-		[self::CATEGORY_INCOMPATIBLE, ['not compatible']],
+		[self::CATEGORY_INCOMPATIBLE, ['not compatible', 'dependencies are not fulfilled']],
 		[self::CATEGORY_APPID_MISMATCH, ['app id', 'appid']],
 		[self::CATEGORY_VERSION_MISMATCH, ['version does not match', 'declares version', 'version is missing']],
 		[self::CATEGORY_CHECKSUM_MISMATCH, ['sha-256', 'checksum']],
@@ -134,7 +140,8 @@ class FailureClassifier {
 			self::CATEGORY_VERSION_MISMATCH,
 			self::CATEGORY_APPID_MISMATCH,
 			self::CATEGORY_CHECKSUM_MISMATCH,
-			self::CATEGORY_SHA_MISMATCH => Http::STATUS_UNPROCESSABLE_ENTITY,
+			self::CATEGORY_SHA_MISMATCH,
+			self::CATEGORY_CHECKS_FAILED => Http::STATUS_UNPROCESSABLE_ENTITY,
 			self::CATEGORY_DOWNLOAD => Http::STATUS_BAD_GATEWAY,
 			default => Http::STATUS_INTERNAL_SERVER_ERROR,
 		};
@@ -178,6 +185,7 @@ class FailureClassifier {
 			self::CATEGORY_VERSION_MISMATCH => $l->t('The downloaded archive declares a different version than requested. The source metadata and asset may be out of sync.'),
 			self::CATEGORY_INCOMPATIBLE => $l->t('This version is not compatible with the current Nextcloud server version. Choose a compatible release.'),
 			self::CATEGORY_FILESYSTEM => $l->t('A filesystem operation (moving or creating the app folder) failed even though the pre-flight writability check passed. This can happen on a concurrent install, a momentarily busy filesystem, or a stale ".appversion-backup" folder left behind by a previous failure. Remove any leftover "*.appversion-backup" folder next to the app directory and retry.'),
+			self::CATEGORY_CHECKS_FAILED => $l->t('A check that must pass before an automatic update failed, so the version was not installed. Retry it once the check passes.'),
 			self::CATEGORY_FINALIZE => $l->t('The app files were updated but a migration or repair step failed. The previous files were restored, but database migrations may have already partially applied and cannot be rolled back automatically — verify the app and its data manually.'),
 			default => $l->t('An unexpected error occurred during installation. Check the server log for details.'),
 		};
@@ -221,6 +229,32 @@ class FailureClassifier {
 		return (string)$this->l10n()->t(
 			'%1$s is installed; %2$s is older. Downgrading cannot undo database migrations already applied by %1$s — pass allowDowngrade to proceed anyway.',
 			[$installedVersion, $targetVersion],
+		);
+	}
+
+	/**
+	 * Hint for a version the nightly job held back: the check that failed and
+	 * what it reported, and that Retry clears the block.
+	 *
+	 * @spec openspec/changes/safety-update-checks/specs/auto-update-policies/spec.md#requirement-the-nightly-job-installs-only-after-the-attached-checks-pass
+	 */
+	public function checksFailedHint(string $checkName, string $detail): string {
+		return (string)$this->l10n()->t(
+			'The check "%1$s" failed: %2$s. The version was not installed; retry it from the Automatic updates overview once the check passes.',
+			[$checkName, $detail],
+		);
+	}
+
+	/**
+	 * Hint for a version the nightly job held back because the dry run before
+	 * it failed: what the dry run reported, and that Retry clears the block.
+	 *
+	 * @spec openspec/changes/safety-update-checks/specs/auto-update-policies/spec.md#requirement-the-nightly-job-installs-only-after-the-attached-checks-pass
+	 */
+	public function dryRunFailedHint(string $message): string {
+		return (string)$this->l10n()->t(
+			'The dry run before the automatic update failed: %1$s. The version was not installed; retry it from the Automatic updates overview once it passes.',
+			[$message],
 		);
 	}
 

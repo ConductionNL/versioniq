@@ -72,9 +72,20 @@ namespace {
 		}
 
 		/**
+		 * What checkAppDependencies() does; unit tests set it to throw the
+		 * server's "dependencies are not fulfilled" exception.
+		 *
+		 * @var ?\Closure(array<string, mixed>): void
+		 */
+		public static ?\Closure $dependencyCheck = null;
+
+		/**
 		 * @param array<string, mixed> $info
 		 */
 		public static function checkAppDependencies(\OCP\IConfig $config, \OCP\IL10N $l, array $info, bool $ignoreMax = false): void {
+			if (self::$dependencyCheck !== null) {
+				(self::$dependencyCheck)($info);
+			}
 		}
 
 		public static function registerAutoloading(string $app, string $path): void {

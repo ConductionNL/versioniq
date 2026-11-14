@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Command;
 
+use OCA\Versioniq\Service\Checks\CheckRunner;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
@@ -46,7 +47,8 @@ class InstallVersion extends Command {
 	 * 0 success/dry-run-ok, 1 unknown/unclassified, 2 unknown app / bad
 	 * arguments, 3 downgrade refused, 4 preflight_permission, 5 download,
 	 * 6 integrity (checksum_mismatch|appid_mismatch|version_mismatch|sha_mismatch),
-	 * 7 incompatible, 8 finalize, 9 untrusted source.
+	 * 7 incompatible, 8 finalize, 9 untrusted source, 12 an update check failed
+	 * in a dry run (see "Admins and operators attach checks that every dry run runs").
 	 */
 	private const EXIT_OK = 0;
 	private const EXIT_UNKNOWN = 1;
@@ -58,6 +60,7 @@ class InstallVersion extends Command {
 	private const EXIT_INCOMPATIBLE = 7;
 	private const EXIT_FINALIZE = 8;
 	private const EXIT_UNTRUSTED_SOURCE = 9;
+	private const EXIT_CHECKS_FAILED = 12;
 
 	public function __construct(
 		private InstallerService $installerService,
@@ -81,7 +84,7 @@ class InstallVersion extends Command {
 			->addArgument('appId', InputArgument::REQUIRED, 'The app id to install.')
 			->addArgument('version', InputArgument::REQUIRED, 'The target version to install.')
 			->addOption('source', null, InputOption::VALUE_REQUIRED, 'One-off source id override (e.g. github:owner/repo), instead of the app\'s bound source.')
-			->addOption('dry-run', null, InputOption::VALUE_NONE, 'Evaluate the install (integrity checks, downgrade detection) without swapping any files.')
+			->addOption('dry-run', null, InputOption::VALUE_NONE, 'Evaluate the install (integrity, compatibility and dependency checks, downgrade detection, and the update checks that match the app) without swapping any files.')
 			->addOption('allow-downgrade', null, InputOption::VALUE_NONE, 'Acknowledge and proceed with a downgrade (target version older than installed). Refused without this flag.')
 			->addOption('accept-new-sha', null, InputOption::VALUE_NONE, 'Accept a changed SHA-256 for a version whose digest was previously recorded (trust-on-first-use), replacing the recorded digest. Refused without this flag when the digest differs.')
 			->addOption('json', null, InputOption::VALUE_NONE, 'Emit the structured outcome as JSON instead of human-readable text.')
@@ -89,7 +92,8 @@ class InstallVersion extends Command {
 				'Exit codes: 0 success/dry-run-ok, 1 unknown/unclassified, 2 unknown app / bad arguments, '
 				. '3 downgrade refused (pass --allow-downgrade to proceed), 4 preflight permission, '
 				. '5 download failure, 6 integrity failure (checksum/appId/version mismatch), '
-				. '7 incompatible version, 8 finalize failure (see installStatus), 9 untrusted source.'
+				. '7 incompatible version, 8 finalize failure (see installStatus), 9 untrusted source, '
+				. '12 an update check failed in a dry run.'
 			);
 	}
 
@@ -121,7 +125,7 @@ class InstallVersion extends Command {
 
 		$result = $this->installerService->installAppVersion(new InstallRequest(
 			new InstallTarget($appId, $version, $sourceOverride),
-			new InstallOptions(false, $dryRun, $acceptNewSha, $allowDowngrade),
+			new InstallOptions(false, $dryRun, $acceptNewSha, $allowDowngrade, CheckRunner::CONTEXT_CLI),
 			new PinChoice(null, false),
 		));
 
@@ -142,6 +146,12 @@ class InstallVersion extends Command {
 	}
 
 	private function renderHuman(OutputInterface $output, int $exitCode, array $payload): void {
+		$this->renderChecks($output, $payload);
+		if ($exitCode === self::EXIT_CHECKS_FAILED) {
+			$this->errorOutput($output)->writeln('<error>An update check failed; this version should not be installed until it passes.</error>');
+
+			return;
+		}
 		if ($exitCode === self::EXIT_OK) {
 			$output->writeln(sprintf('<info>%s</info>', $payload['message'] ?? 'App installed.'));
 			if (isset($payload['toVersion'])) {
@@ -163,6 +173,32 @@ class InstallVersion extends Command {
 			// "8 finalize (check installStatus: reverted vs installed-but-broken,
 			// printed explicitly)" — see design.md.
 			$error->writeln(sprintf('installStatus: %s', $payload['installStatus']));
+		}
+	}
+
+	/**
+	 * Prints each update check of a dry run: its outcome, name, kind and detail.
+	 *
+	 * @param array<string, mixed> $payload
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
+	 */
+	private function renderChecks(OutputInterface $output, array $payload): void {
+		$checks = $payload['checks'] ?? null;
+		if (!is_array($checks) || $checks === []) {
+			return;
+		}
+		$output->writeln('Update checks:');
+		foreach ($checks as $check) {
+			if (!is_array($check)) {
+				continue;
+			}
+			$output->writeln(sprintf(
+				'  [%s] %s (%s): %s',
+				(string)($check['outcome'] ?? ''),
+				(string)($check['name'] ?? ''),
+				(string)($check['kind'] ?? ''),
+				str_replace("\n", "\n    ", (string)($check['detail'] ?? '')),
+			), OutputInterface::OUTPUT_RAW);
 		}
 	}
 
@@ -189,7 +225,9 @@ class InstallVersion extends Command {
 	 */
 	private function exitCodeFor(int $statusCode, array $payload): int {
 		if ($statusCode === Http::STATUS_OK) {
-			return self::EXIT_OK;
+			return CheckRunner::firstFailure(is_array($payload['checks'] ?? null) ? $payload['checks'] : []) === null
+				? self::EXIT_OK
+				: self::EXIT_CHECKS_FAILED;
 		}
 
 		/** @var mixed $category */
@@ -205,6 +243,7 @@ class InstallVersion extends Command {
 				FailureClassifier::CATEGORY_VERSION_MISMATCH => self::EXIT_INTEGRITY,
 				FailureClassifier::CATEGORY_INCOMPATIBLE => self::EXIT_INCOMPATIBLE,
 				FailureClassifier::CATEGORY_FINALIZE => self::EXIT_FINALIZE,
+				FailureClassifier::CATEGORY_CHECKS_FAILED => self::EXIT_CHECKS_FAILED,
 				default => null,
 			};
 			if ($mapped !== null) {

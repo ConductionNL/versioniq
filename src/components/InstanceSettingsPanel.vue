@@ -1,15 +1,19 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
+import type { UpdateChecks } from './UpdateChecksPanel.vue'
+
 import { t } from '@nextcloud/l10n'
 import { onMounted, ref } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
+import UpdateChecksPanel from './UpdateChecksPanel.vue'
 import { ocsGet, ocsWrite } from '../ocs.ts'
 
 /**
  * The instance settings that were reachable only through `occ config:app:set`
  * (#438 item 7): audit retention, artifact cache size, a store mirror, GitHub
- * Enterprise and an internal advisory feed mirror.
+ * Enterprise and an internal advisory feed mirror; and the update checks,
+ * which GET carries under `updateChecks` and which save on their own.
  *
  * @spec openspec/specs/audit-trail/spec.md
  * @spec openspec/specs/external-sources/spec.md
@@ -30,6 +34,7 @@ type Settings = {
 	advisoryFeedDefault: string
 	maxLinesBehind: number | null
 	maxLinesBehindMax: number
+	updateChecks?: UpdateChecks
 }
 
 const ENDPOINT = '/ocs/v2.php/apps/versioniq/api/instance-settings'
@@ -53,7 +58,8 @@ const notice = ref('')
  * @spec openspec/specs/external-sources/spec.md
  */
 function fill (settings: Settings): void {
-	loaded.value = settings
+	// PUT /api/instance-settings answers without the update checks; keep the ones loaded.
+	loaded.value = { ...settings, updateChecks: settings.updateChecks ?? loaded.value?.updateChecks }
 	form.value = {
 		auditRetentionDays: String(settings.auditRetentionDays),
 		artifactCacheKeep: String(settings.artifactCacheKeep),
@@ -206,6 +212,8 @@ onMounted(load)
 				@click="save">
 				{{ t('versioniq', 'Save') }}
 			</NcButton>
+
+			<UpdateChecksPanel v-if="loaded.updateChecks" :checks="loaded.updateChecks" />
 		</template>
 	</section>
 </template>
