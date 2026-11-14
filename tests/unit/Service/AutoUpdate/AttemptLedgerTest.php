@@ -165,4 +165,33 @@ final class AttemptLedgerTest extends TestCase {
 		$this->assertFalse($ledger->hasAttempted('openregister', '3.0.0'));
 		$this->assertTrue($ledger->hasAttempted('openregister', '4.0.0'));
 	}
+
+	/**
+	 * countSince() counts every attempt, success or failure, across apps, at or
+	 * after the given time (autoupdate-run-batching D4).
+	 */
+	public function testCountSinceCountsAttemptsAcrossAppsInsideTheWindow(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$stored = [
+			'auto_attempt.openregister' => json_encode([
+				'2.3.4' => ['at' => '2026-11-10T02:00:00+00:00', 'outcome' => 'success'],
+				'2.3.3' => ['at' => '2026-11-01T02:00:00+00:00', 'outcome' => 'success'],
+			], JSON_THROW_ON_ERROR),
+			'auto_attempt.decidiq' => json_encode([
+				'1.0.1' => ['at' => '2026-11-13T03:00:00+01:00', 'outcome' => 'failure'],
+				'1.0.0' => ['at' => '2026-11-07T02:00:00+00:00', 'outcome' => 'success'],
+			], JSON_THROW_ON_ERROR),
+			'auto_attempt.broken' => '{not json',
+			'auto_attempt.empty' => '',
+		];
+		$config->method('getAllValues')->with(Application::APP_ID, 'auto_attempt.')->willReturn($stored);
+		$config->method('getValueString')->willReturnCallback(
+			static fn (string $app, string $key, string $default): string => $stored[$key] ?? $default
+		);
+
+		$ledger = new AttemptLedger($config, $this->logger());
+
+		$this->assertSame(3, $ledger->countSince('2026-11-07T02:00:00+00:00'));
+		$this->assertSame(0, $ledger->countSince('not a time'));
+	}
 }
