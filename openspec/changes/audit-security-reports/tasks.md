@@ -8,7 +8,7 @@
 ## 2. History filters and export
 
 - [x] 2.1 Add `AuditEntryMapper::findBetween()` and the `from`, `to`, `securityOnly` and `operation` parameters on `GET /api/audit`, with the D4 join. Verify: `tests/unit/Controller/ApiTest.php` asserts a period cut, a security-only result naming the fixed advisory, and that an install with no following resolution is left out.
-- [ ] 2.2 Add the period fields, the security filter and CSV and JSON export to `HistoryPanel.vue`. Verify: `src/components/HistoryPanel.spec.ts` covers the request parameters and the CSV columns, including the 5000-row notice.
+- [x] 2.2 Add the period fields, the security filter and CSV and JSON export to `HistoryPanel.vue`. Verify: `src/components/HistoryPanel.spec.ts` covers the request parameters and the CSV columns, including the 5000-row notice.
 
 ## 3. Remediation report
 

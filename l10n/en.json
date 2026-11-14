@@ -279,6 +279,14 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Outside the update policy: %n release behind",
             "Outside the update policy: %n releases behind"
-        ]
+        ],
+        "From": "From",
+        "To": "To",
+        "Security updates only": "Security updates only",
+        "Export CSV": "Export CSV",
+        "Export JSON": "Export JSON",
+        "Fixed advisories": "Fixed advisories",
+        "The export holds the first {limit} entries. Choose a shorter period for the rest.": "The export holds the first {limit} entries. Choose a shorter period for the rest.",
+        "Could not export the history.": "Could not export the history."
     }
 }
