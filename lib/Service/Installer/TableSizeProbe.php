@@ -64,7 +64,7 @@ class TableSizeProbe {
 		$queried = 0;
 		foreach (array_values(array_unique($tables)) as $table) {
 			if (preg_match(self::TABLE_NAME, $table) !== 1 || $queried >= self::MAX_TABLES) {
-				$result[] = ['name' => $table, 'rows' => null, 'sizeClass' => self::CLASS_UNKNOWN];
+				$result[] = self::row($table, null, self::CLASS_UNKNOWN);
 				continue;
 			}
 
@@ -94,26 +94,42 @@ class TableSizeProbe {
 	private function measure(string $table): array {
 		try {
 			if (!$this->db->tableExists($table)) {
-				return ['name' => $table, 'rows' => null, 'sizeClass' => self::CLASS_NEW];
+				return self::row($table, null, self::CLASS_NEW);
 			}
 
-			$query = $this->db->getQueryBuilder();
-			$query->select($query->func()->count('*', 'row_count'))->from($table);
-			$statement = $query->executeQuery();
-			$count = $statement->fetchOne();
-			$statement->closeCursor();
+			$count = $this->countRows($table);
 		} catch (\Throwable $error) {
 			$this->logger->warning('TableSizeProbe: could not count a table', ['table' => $table, 'exception' => $error::class]);
 
-			return ['name' => $table, 'rows' => null, 'sizeClass' => self::CLASS_UNKNOWN];
+			return self::row($table, null, self::CLASS_UNKNOWN);
 		}
 
 		if (!is_numeric($count)) {
-			return ['name' => $table, 'rows' => null, 'sizeClass' => self::CLASS_UNKNOWN];
+			return self::row($table, null, self::CLASS_UNKNOWN);
 		}
 
 		$rows = (int)$count;
 
-		return ['name' => $table, 'rows' => $rows, 'sizeClass' => self::sizeClass($rows)];
+		return self::row($table, $rows, self::sizeClass($rows));
+	}
+
+	/** The row count the database reports for an existing table. */
+	private function countRows(string $table): mixed {
+		$query = $this->db->getQueryBuilder();
+		$query->select($query->func()->count('*', 'row_count'))->from($table);
+		$statement = $query->executeQuery();
+		$count = $statement->fetchOne();
+		$statement->closeCursor();
+
+		return $count;
+	}
+
+	/**
+	 * One table's entry.
+	 *
+	 * @return array{name: string, rows: int|null, sizeClass: string}
+	 */
+	private static function row(string $table, ?int $rows, string $sizeClass): array {
+		return ['name' => $table, 'rows' => $rows, 'sizeClass' => $sizeClass];
 	}
 }

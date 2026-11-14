@@ -56,17 +56,14 @@ class MigrationAttributeReader {
 	 * @return array{actions: list<array{attribute: string, table: string, name: string, description: string}>, tables: list<string>, dataStep: bool, describes: bool}|null
 	 */
 	public function read(string $file): ?array {
-		$source = is_file($file) && is_readable($file) ? file_get_contents($file) : false;
-		if ($source === false) {
+		$source = self::source($file);
+		if ($source === null) {
 			return null;
 		}
 
 		$actions = $this->actions($source);
-		$tables = $actions === []
-			? self::schemaTables(self::methodBody($source, 'changeSchema') ?? '')
-			: self::actionTables($actions);
-		$dataStep = self::hasBody(self::methodBody($source, 'postSchemaChange'))
-			|| array_intersect(array_column($actions, 'attribute'), self::DATA_ATTRIBUTES) !== [];
+		$tables = self::tables($source, $actions);
+		$dataStep = self::isDataStep($source, $actions);
 
 		return [
 			'actions' => $actions,
@@ -74,6 +71,41 @@ class MigrationAttributeReader {
 			'dataStep' => $dataStep,
 			'describes' => $actions !== [] || $tables !== [] || $dataStep,
 		];
+	}
+
+	/** The text of a readable file, else null. */
+	private static function source(string $file): ?string {
+		if (is_file($file) === false || is_readable($file) === false) {
+			return null;
+		}
+
+		$source = file_get_contents($file);
+
+		return $source === false ? null : $source;
+	}
+
+	/**
+	 * The tables the actions name, or without actions the ones `changeSchema()` touches.
+	 *
+	 * @param list<array{attribute: string, table: string, name: string, description: string}> $actions
+	 * @return list<string>
+	 */
+	private static function tables(string $source, array $actions): array {
+		if ($actions !== []) {
+			return self::actionTables($actions);
+		}
+
+		return self::schemaTables(self::methodBody($source, 'changeSchema') ?? '');
+	}
+
+	/**
+	 * Whether the step moves data: a `postSchemaChange()` body or a data attribute.
+	 *
+	 * @param list<array{attribute: string, table: string, name: string, description: string}> $actions
+	 */
+	private static function isDataStep(string $source, array $actions): bool {
+		return self::hasBody(self::methodBody($source, 'postSchemaChange'))
+			|| array_intersect(array_column($actions, 'attribute'), self::DATA_ATTRIBUTES) !== [];
 	}
 
 	/**
@@ -102,22 +134,51 @@ class MigrationAttributeReader {
 	 * @return array<string, string>
 	 */
 	private static function importedAttributes(string $source): array {
-		$imported = [];
 		$namespace = preg_quote(self::ATTRIBUTE_NAMESPACE, '/');
-		if (preg_match_all('/^\s*use\s+\\\\?' . $namespace . '(\w+)(?:\s+as\s+(\w+))?\s*;/m', $source, $single, PREG_SET_ORDER) > 0) {
-			foreach ($single as $match) {
-				$imported[($match[2] ?? '') !== '' ? $match[2] : $match[1]] = $match[1];
+
+		return array_merge(self::singleImports($source, $namespace), self::groupImports($source, $namespace));
+	}
+
+	/**
+	 * `use Namespace\Name [as Alias];` imports.
+	 *
+	 * @return array<string, string>
+	 */
+	private static function singleImports(string $source, string $namespace): array {
+		preg_match_all('/^\s*use\s+\\\\?' . $namespace . '(\w+)(?:\s+as\s+(\w+))?\s*;/m', $source, $single, PREG_SET_ORDER);
+
+		return self::byAlias($single);
+	}
+
+	/**
+	 * `use Namespace\{A, B as C};` imports.
+	 *
+	 * @return array<string, string>
+	 */
+	private static function groupImports(string $source, string $namespace): array {
+		preg_match_all('/^\s*use\s+\\\\?' . $namespace . '\{([^}]*)\}\s*;/m', $source, $groups);
+		$entries = [];
+		foreach ($groups[1] ?? [] as $group) {
+			foreach (explode(',', $group) as $entry) {
+				if (preg_match('/^\s*(\w+)(?:\s+as\s+(\w+))?\s*$/', $entry, $match) === 1) {
+					$entries[] = $match;
+				}
 			}
 		}
 
-		if (preg_match_all('/^\s*use\s+\\\\?' . $namespace . '\{([^}]*)\}\s*;/m', $source, $groups) > 0) {
-			foreach ($groups[1] as $group) {
-				foreach (explode(',', $group) as $entry) {
-					if (preg_match('/^\s*(\w+)(?:\s+as\s+(\w+))?\s*$/', $entry, $match) === 1) {
-						$imported[($match[2] ?? '') !== '' ? $match[2] : $match[1]] = $match[1];
-					}
-				}
-			}
+		return self::byAlias($entries);
+	}
+
+	/**
+	 * Import matches keyed by the name the source uses: the alias, else the short name.
+	 *
+	 * @param list<array<int, string>> $matches
+	 * @return array<string, string>
+	 */
+	private static function byAlias(array $matches): array {
+		$imported = [];
+		foreach ($matches as $match) {
+			$imported[($match[2] ?? '') !== '' ? $match[2] : $match[1]] = $match[1];
 		}
 
 		return $imported;
@@ -137,13 +198,24 @@ class MigrationAttributeReader {
 				break;
 			}
 
-			foreach (self::splitArguments(substr($source, $start + 2, $end - $start - 2)) as $attribute) {
-				if (preg_match('/^\s*(\\\\?[A-Za-z_][\w\\\\]*)\s*(?:\((.*)\))?\s*$/s', $attribute, $match) === 1) {
-					$found[] = [$match[1], $match[2] ?? ''];
-				}
-			}
-
+			array_push($found, ...self::attributesIn(substr($source, $start + 2, $end - $start - 2)));
 			$offset = $end + 1;
+		}
+
+		return $found;
+	}
+
+	/**
+	 * The attributes of one `#[...]` block: the name as written and the raw arguments.
+	 *
+	 * @return list<array{0: string, 1: string}>
+	 */
+	private static function attributesIn(string $block): array {
+		$found = [];
+		foreach (self::splitArguments($block) as $attribute) {
+			if (preg_match('/^\s*(\\\\?[A-Za-z_][\w\\\\]*)\s*(?:\((.*)\))?\s*$/s', $attribute, $match) === 1) {
+				$found[] = [$match[1], $match[2] ?? ''];
+			}
 		}
 
 		return $found;
@@ -170,15 +242,7 @@ class MigrationAttributeReader {
 	 * @return array{attribute: string, table: string, name: string, description: string}
 	 */
 	private static function action(string $short, array $arguments): array {
-		$named = [];
-		$positional = [];
-		foreach ($arguments as $argument) {
-			if (preg_match('/^\s*(\w+)\s*:(?!:)\s*(.*)$/s', $argument, $match) === 1) {
-				$named[$match[1]] = self::stringValue($match[2]);
-			} else {
-				$positional[] = self::stringValue($argument);
-			}
-		}
+		[$named, $positional] = self::namedAndPositional($arguments);
 
 		$isColumn = in_array($short, self::COLUMN_ATTRIBUTES, true);
 		$descriptionAt = $isColumn ? self::DESCRIPTION_POSITION_COLUMN : self::DESCRIPTION_POSITION_OTHER;
@@ -189,6 +253,27 @@ class MigrationAttributeReader {
 			'name' => $named['name'] ?? ($isColumn ? ($positional[1] ?? '') : ''),
 			'description' => $named['description'] ?? ($positional[$descriptionAt] ?? ''),
 		];
+	}
+
+	/**
+	 * The arguments' string values: named ones by name, the others in order.
+	 *
+	 * @param list<string> $arguments
+	 * @return array{0: array<string, string>, 1: list<string>}
+	 */
+	private static function namedAndPositional(array $arguments): array {
+		$named = [];
+		$positional = [];
+		foreach ($arguments as $argument) {
+			if (preg_match('/^\s*(\w+)\s*:(?!:)\s*(.*)$/s', $argument, $match) === 1) {
+				$named[$match[1]] = self::stringValue($match[2]);
+				continue;
+			}
+
+			$positional[] = self::stringValue($argument);
+		}
+
+		return [$named, $positional];
 	}
 
 	/** The text of a quoted string literal, else an empty string. */
@@ -208,39 +293,17 @@ class MigrationAttributeReader {
 	 */
 	private static function splitArguments(string $text): array {
 		$parts = [];
+		$start = 0;
 		$depth = 0;
-		$quote = null;
-		$current = '';
-		$length = strlen($text);
-		for ($i = 0; $i < $length; $i++) {
-			$char = $text[$i];
-			if ($quote !== null) {
-				$current .= $char;
-				if ($char === '\\' && $i + 1 < $length) {
-					$current .= $text[++$i];
-				} elseif ($char === $quote) {
-					$quote = null;
-				}
-				continue;
+		foreach (self::unquoted($text, 0) as $i => $char) {
+			$depth += self::depthChange($char, '([', ')]');
+			if ($char === ',' && $depth === 0) {
+				$parts[] = substr($text, $start, $i - $start);
+				$start = $i + 1;
 			}
-
-			if ($char === '\'' || $char === '"') {
-				$quote = $char;
-			} elseif ($char === '(' || $char === '[') {
-				$depth++;
-			} elseif ($char === ')' || $char === ']') {
-				$depth--;
-			} elseif ($char === ',' && $depth === 0) {
-				$parts[] = $current;
-				$current = '';
-				continue;
-			}
-			$current .= $char;
 		}
 
-		if (trim($current) !== '') {
-			$parts[] = $current;
-		}
+		$parts[] = substr($text, $start);
 
 		return array_values(array_filter($parts, static fn (string $part): bool => trim($part) !== ''));
 	}
@@ -253,29 +316,63 @@ class MigrationAttributeReader {
 	/** The position of the delimiter closing the one at `$open`, skipping quoted text, else null. */
 	private static function closing(string $source, int $open, string $opening, string $closing): ?int {
 		$depth = 0;
-		$quote = null;
-		$length = strlen($source);
-		for ($i = $open; $i < $length; $i++) {
-			$char = $source[$i];
-			if ($quote !== null) {
-				if ($char === '\\') {
-					$i++;
-				} elseif ($char === $quote) {
-					$quote = null;
-				}
-				continue;
-			}
-
-			if ($char === '\'' || $char === '"') {
-				$quote = $char;
-			} elseif ($char === $opening) {
-				$depth++;
-			} elseif ($char === $closing && --$depth === 0) {
+		foreach (self::unquoted($source, $open) as $i => $char) {
+			$depth += self::depthChange($char, $opening, $closing);
+			if ($char === $closing && $depth === 0) {
 				return $i;
 			}
 		}
 
 		return null;
+	}
+
+	/**
+	 * Each character from `$from` on that sits outside a quoted string, keyed by its position.
+	 * The quotes themselves and an escaped character inside a string are skipped.
+	 *
+	 * @return \Generator<int, string>
+	 */
+	private static function unquoted(string $text, int $from): \Generator {
+		$quote = null;
+		$length = strlen($text);
+		for ($i = $from; $i < $length; $i++) {
+			if ($quote !== null) {
+				[$quote, $i] = self::insideQuote($text, $i, $quote);
+				continue;
+			}
+
+			$quote = self::quoteOpenedBy($text[$i]);
+			if ($quote === null) {
+				yield $i => $text[$i];
+			}
+		}
+	}
+
+	/**
+	 * The quote still open after the character at `$i` inside a string, and the position read up to.
+	 *
+	 * @return array{0: string|null, 1: int}
+	 */
+	private static function insideQuote(string $text, int $i, string $quote): array {
+		if ($text[$i] === '\\') {
+			return [$quote, $i + 1];
+		}
+
+		return [$text[$i] === $quote ? null : $quote, $i];
+	}
+
+	/** The quote a character opens, else null. */
+	private static function quoteOpenedBy(string $char): ?string {
+		return ($char === '\'' || $char === '"') ? $char : null;
+	}
+
+	/** +1 for an opening delimiter, -1 for a closing one, else 0. */
+	private static function depthChange(string $char, string $openers, string $closers): int {
+		if (str_contains($openers, $char)) {
+			return 1;
+		}
+
+		return str_contains($closers, $char) ? -1 : 0;
 	}
 
 	/** The text between the braces of a method, or null when the class does not declare it. */
