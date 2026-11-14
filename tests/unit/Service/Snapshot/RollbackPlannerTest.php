@@ -26,7 +26,7 @@ final class RollbackPlannerTest extends TestCase {
 	 * @param array<string, string> $apps Version by app id.
 	 */
 	private function snapshot(array $apps): InstanceSnapshot {
-		return new InstanceSnapshot('s1', '2026-11-01T00:00:00+00:00', 'admin', 'manual', array_map(
+		return new InstanceSnapshot(['id' => 's1', 'takenAt' => '2026-11-01T00:00:00+00:00', 'takenBy' => 'admin', 'reason' => 'manual'], array_map(
 			fn (string $version): array => ['version' => $version, 'sourceId' => 'forge', 'enabled' => true],
 			$apps
 		));
