@@ -20,8 +20,10 @@ use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\Api\AccessCollaborators;
 use OCA\Versioniq\Service\Api\InstallCollaborators;
 use OCA\Versioniq\Service\Api\ReportCollaborators;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
+use OCA\Versioniq\Service\AutoUpdate\UpdateType;
 use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
@@ -810,7 +812,27 @@ class ApiController extends OCSController {
 			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
 			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
 			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
-		]);
+		] + $this->scheduleView());
+	}
+
+	/**
+	 * The schedule per kind and when each kind runs next, in the window's zone, so the
+	 * page never works out dates in the browser's zone (autoupdate-schedules, design D5).
+	 *
+	 * @return array{autoUpdateSchedule: array<string, array{days: list<int>, monthly: bool}>, nextRuns: array<string, ?string>}
+	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	 */
+	private function scheduleView(): array {
+		$settings = $this->autoUpdate->settingsStore;
+		$schedule = $settings->getSchedule();
+		$zoneName = $settings->getTimeZoneName();
+		$now = new \DateTimeImmutable('now', new \DateTimeZone($zoneName !== '' ? $zoneName : 'UTC'));
+		$nextRuns = [];
+		foreach (UpdateType::ALL as $kind) {
+			$nextRuns[$kind] = $schedule->nextRun($kind, $settings->getWindow(), $now)?->format(\DateTimeInterface::ATOM);
+		}
+
+		return ['autoUpdateSchedule' => $schedule->toArray(), 'nextRuns' => $nextRuns];
 	}
 
 	/**
@@ -925,18 +947,30 @@ class ApiController extends OCSController {
 			);
 		}
 
+		// The schedule is checked in full before anything is written, so a bad one
+		// leaves the switch and the window as they were (autoupdate-schedules, D6).
+		/** @var mixed $scheduleParam */
+		$scheduleParam = $this->request->getParam('schedule');
+		$scheduleProblem = ($scheduleParam === null) ? null : AutoUpdateSchedule::invalidReason($scheduleParam);
+		if ($scheduleProblem !== null) {
+			return new DataResponse(['message' => $scheduleProblem . '.'], Http::STATUS_BAD_REQUEST);
+		}
+
 		if ($enabledParam !== null) {
 			$this->autoUpdate->settingsStore->setEnabled($this->readBinaryBool($enabledParam, $this->autoUpdate->settingsStore->isEnabled()));
 		}
 		if ($windowParam !== '') {
 			$this->autoUpdate->settingsStore->setWindow($windowParam);
 		}
+		if (is_array($scheduleParam)) {
+			$this->autoUpdate->settingsStore->setSchedule(AutoUpdateSchedule::fromArray($scheduleParam));
+		}
 
 		return new DataResponse([
 			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
 			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
 			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
-		]);
+		] + $this->scheduleView());
 	}
 
 	/**

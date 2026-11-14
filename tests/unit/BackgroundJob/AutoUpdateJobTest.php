@@ -16,8 +16,10 @@ require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 use OCA\Versioniq\BackgroundJob\AutoUpdateJob;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\AutoUpdate\UpdateType;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
@@ -57,7 +59,7 @@ final class AutoUpdateJobTest extends TestCase {
 			'appManager' => $this->createMock(IAppManager::class),
 			'candidateSelector' => $this->createMock(CandidateSelector::class),
 			'attemptLedger' => $this->createMock(AttemptLedger::class),
-			'settingsStore' => $this->createMock(AutoUpdateSettingsStore::class),
+			'settingsStore' => $this->settingsStoreMock(),
 			'notifier' => $this->createMock(AutoUpdateNotifier::class),
 			'logger' => $this->createMock(LoggerInterface::class),
 		];
@@ -446,5 +448,59 @@ final class AutoUpdateJobTest extends TestCase {
 			['record', 'openregister', '2.3.4', 'failure'],
 			['notifyFailure', 'openregister', '2.3.4', 'network', 'retry later'],
 		]];
+	}
+
+
+	public function testADayWithNoDueKindSweepsNothing(): void {
+		$mocks = $this->mocks();
+		$mocks['settingsStore'] = $this->createMock(AutoUpdateSettingsStore::class);
+		$mocks['settingsStore']->method('isEnabled')->willReturn(true);
+		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		// Thursday 23 July: every kind is scheduled for the weekend only.
+		$weekend = ['days' => [6, 7], 'monthly' => false];
+		$mocks['settingsStore']->method('getSchedule')->willReturn(
+			AutoUpdateSchedule::fromArray(['patch' => $weekend, 'minor' => $weekend, 'major' => $weekend])
+		);
+		$mocks['policyStore']->expects($this->never())->method('all');
+		$mocks['installerService']->expects($this->never())->method('getAppVersions');
+
+		$job = $this->buildJob($mocks, $this->timeFactory());
+		$this->runJob($job);
+	}
+
+	public function testOnlyTheKindsDueTodayReachTheSelector(): void {
+		$mocks = $this->mocks();
+		$mocks['settingsStore'] = $this->createMock(AutoUpdateSettingsStore::class);
+		$mocks['settingsStore']->method('isEnabled')->willReturn(true);
+		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$mocks['settingsStore']->method('getSchedule')->willReturn(
+			AutoUpdateSchedule::fromArray(['minor' => ['days' => [6]], 'major' => ['days' => [6]]])
+		);
+		$mocks['policyStore']->method('all')->willReturn([
+			'openregister' => new Policy(Policy::LEVEL_MINOR, 'admin', '2026-07-01T00:00:00+00:00'),
+		]);
+		$mocks['pinStore']->method('get')->willReturn(null);
+		$mocks['installerService']->method('isManageableApp')->willReturn(true);
+		$mocks['appManager']->method('getAppVersion')->willReturn('2.3.0');
+		$mocks['installerService']->method('getAppVersions')->willReturn([
+			'availableVersions' => [['version' => '2.3.4'], ['version' => '2.4.0']],
+			'hasError' => false,
+		]);
+		$mocks['candidateSelector']->expects($this->once())->method('select')
+			->with('2.3.0', ['2.3.4', '2.4.0'], Policy::LEVEL_MINOR, [UpdateType::PATCH])
+			->willReturn(null);
+
+		$job = $this->buildJob($mocks, $this->timeFactory());
+		$this->runJob($job);
+	}
+	/**
+	 * A settings-store double whose schedule is the default every-day schedule.
+	 *
+	 * @return AutoUpdateSettingsStore&\PHPUnit\Framework\MockObject\MockObject
+	 */
+	private function settingsStoreMock(): AutoUpdateSettingsStore {
+		$store = $this->createMock(AutoUpdateSettingsStore::class);
+		$store->method('getSchedule')->willReturn(AutoUpdateSchedule::everyDay());
+		return $store;
 	}
 }

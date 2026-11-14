@@ -73,9 +73,19 @@ final class AutoUpdateWindow {
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 */
 	public static function openingKey(string $window, \DateTimeInterface $now): string {
-		$window = trim($window);
+		return trim($window) . '@' . self::openedOn($window, $now)->format('Y-m-d');
+	}
+
+	/**
+	 * The date the window `$now` falls in opened: the day before after midnight
+	 * inside a midnight-crossing window. The weekday a schedule tests is this
+	 * date's, so the 00:30 wake-up in a 23:00-03:00 window opened on Friday is a
+	 * Friday run (autoupdate-schedules, design D3).
+	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	 */
+	public static function openedOn(string $window, \DateTimeInterface $now): \DateTimeImmutable {
 		$openedOn = \DateTimeImmutable::createFromInterface($now);
-		if (preg_match(self::PATTERN, $window, $matches) === 1) {
+		if (preg_match(self::PATTERN, trim($window), $matches) === 1) {
 			$start = ((int)$matches[1]) * 60 + (int)$matches[2];
 			$end = ((int)$matches[3]) * 60 + (int)$matches[4];
 			$current = ((int)$now->format('H')) * 60 + (int)$now->format('i');
@@ -84,6 +94,6 @@ final class AutoUpdateWindow {
 			}
 		}
 
-		return $window . '@' . $openedOn->format('Y-m-d');
+		return $openedOn;
 	}
 }
