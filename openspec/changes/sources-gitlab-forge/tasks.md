@@ -3,7 +3,8 @@
 ## 1. Forge and binding
 
 - [x] 1.1 Add `dialect` to `Forge` with GitLab endpoints, and the `gitlab` forge and host setting to `ForgeRegistry`. Verify: `tests/unit/Service/Source/ForgeRegistryTest.php` for gitlab.com, a self-managed host, and a refused http host.
-- [ ] 1.2 Accept `gitlab` bindings with nested paths in `SourceBinding` and `SourceRegistry::parseSourceId()`, refusing `.` and `..` segments and more than 20 segments. Verify: `tests/unit/Service/Source/SourceBindingTest.php` and `SourceRegistryTest.php` with `group/sub/project`, `group/../x` (refused) and a trusted pattern `gitlab:group/*`.
+- [x] 1.2 Accept `gitlab` bindings with nested paths in `SourceBinding` and `SourceRegistry::parseSourceId()`, refusing `.` and `..` segments and more than 20 segments. Verify: `tests/unit/Service/Source/SourceBindingTest.php` and `SourceRegistryTest.php` with `group/sub/project`, `group/../x` (refused) and a trusted pattern `gitlab:group/*`.
+  - `SourceBinding::gitlab()` stores the nested `path` (two to 20 segments in the owner/repo charset, no `.`, `..` or empty segment); `release('gitlab', …)` joins namespace and project into that path; `parseSourceId('gitlab:…')` keeps the whole remainder; `gitlab:group/*` trusts subgroups. Tests that used `gitlab` as the example of an unknown forge now use `bitbucket`. `SourceBindingTest`, `SourceRegistryTest`, `TrustedSourceListTest`.
 - [x] 1.3 Send the token only to the forge's own host in `authenticatedDownload()` and the checksum fetch. Verify: a unit test where an asset on another host is fetched without an `Authorization` header.
 
 ## 2. Releases

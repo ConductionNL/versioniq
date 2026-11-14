@@ -71,7 +71,7 @@ class SourceRegistry {
 	}
 
 	/**
-	 * Parses a source-id string (`appstore` / `github:owner/repo`) into a binding; see "Explicit source override".
+	 * Parses a source-id string (`appstore` / `github:owner/repo` / `gitlab:group/sub/project`) into a binding; see "Explicit source override".
 	 *
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
@@ -87,6 +87,10 @@ class SourceRegistry {
 				continue;
 			}
 			$ownerRepo = substr($sourceId, strlen($prefix));
+			if ($forge === SourceBinding::FORGE_GITLAB) {
+				// The whole remainder is the nested project path.
+				return SourceBinding::gitlab($ownerRepo);
+			}
 			if (!str_contains($ownerRepo, '/')) {
 				throw new InvalidArgumentException(sprintf('%s source id must be of the form %s:owner/repo', $forge, $forge));
 			}

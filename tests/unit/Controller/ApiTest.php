@@ -779,7 +779,7 @@ final class ApiTest extends TestCase {
 		$request->method('getParam')->willReturnCallback(
 			static fn (string $name, mixed $default = null): mixed => match ($name) {
 				'kind' => 'github-release',
-				'forge' => 'gitlab',
+				'forge' => 'bitbucket',
 				'owner' => 'acme',
 				'repo' => 'widget',
 				default => $default,

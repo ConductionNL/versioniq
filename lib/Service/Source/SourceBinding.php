@@ -33,6 +33,11 @@ final class SourceBinding {
 	public const FORGE_GITHUB = 'github';
 	public const FORGE_FORGEJO = 'forgejo';
 	public const FORGE_CODEBERG = 'codeberg';
+	/** GitLab: the binding holds a nested project `path` instead of owner and repo (sources-gitlab-forge D3). */
+	public const FORGE_GITLAB = 'gitlab';
+
+	/** Most segments a GitLab project path may have; GitLab nests at most 20 levels. */
+	public const MAX_PATH_SEGMENTS = 20;
 
 	/**
 	 * Every forge a stored binding, source id or trusted pattern may carry,
@@ -40,7 +45,7 @@ final class SourceBinding {
 	 *
 	 * @var list<string>
 	 */
-	public const FORGES = [self::FORGE_GITHUB, self::FORGE_FORGEJO, self::FORGE_CODEBERG];
+	public const FORGES = [self::FORGE_GITHUB, self::FORGE_FORGEJO, self::FORGE_CODEBERG, self::FORGE_GITLAB];
 	private const ALLOWED_FORGES = self::FORGES;
 
 	/**
@@ -85,6 +90,10 @@ final class SourceBinding {
 	 * @throws InvalidArgumentException
 	 */
 	private static function assertValidReleaseConfig(array $config): void {
+		if (($config['forge'] ?? null) === self::FORGE_GITLAB) {
+			self::requireSafePath($config);
+			return;
+		}
 		self::requireNonEmptyString($config, 'owner');
 		self::requireNonEmptyString($config, 'repo');
 		// Reject path-traversal characters in owner/repo. fnmatch in
@@ -118,6 +127,30 @@ final class SourceBinding {
 		$value = $config[$field];
 		if (!preg_match('/^[A-Za-z0-9_.\-]+$/', $value)) {
 			throw new InvalidArgumentException('github-release ' . $field . ' contains invalid characters');
+		}
+	}
+
+	/**
+	 * Requires a GitLab binding's `path`: two to 20 segments, each in the
+	 * owner/repo charset, and no `.` or `..` segment, so the path-traversal
+	 * guard holds for nested groups (CWE-22).
+	 *
+	 * @param array<string, mixed> $config
+	 * @throws InvalidArgumentException
+	 * @spec openspec/changes/sources-gitlab-forge/specs/external-sources/spec.md
+	 */
+	private static function requireSafePath(array $config): void {
+		self::requireNonEmptyString($config, 'path');
+		/** @var string $path */
+		$path = $config['path'];
+		$segments = explode('/', $path);
+		if (count($segments) < 2 || count($segments) > self::MAX_PATH_SEGMENTS) {
+			throw new InvalidArgumentException('gitlab path must have 2 to ' . self::MAX_PATH_SEGMENTS . ' segments');
+		}
+		foreach ($segments as $segment) {
+			if ($segment === '.' || $segment === '..' || preg_match('/^[A-Za-z0-9_.\-]+$/', $segment) !== 1) {
+				throw new InvalidArgumentException('gitlab path contains an invalid segment');
+			}
 		}
 	}
 
@@ -163,17 +196,22 @@ final class SourceBinding {
 
 		// Forge-qualified id. For github this is byte-identical to the legacy
 		// `github:owner/repo` form (getForge() defaults to github).
-		return $this->getForge() . ':' . $this->configString('owner') . '/' . $this->configString('repo');
+		return $this->getForge() . ':' . $this->getOwnerRepo();
 	}
 
 	/**
-	 * Returns the `owner/repo` for github bindings, null otherwise; see "GitHub releases as a source".
+	 * Returns the `owner/repo` for github bindings (the project path for gitlab), null otherwise; see "GitHub releases as a source".
 	 *
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
 	public function getOwnerRepo(): ?string {
 		if ($this->kind !== self::KIND_GITHUB_RELEASE) {
 			return null;
+		}
+
+		if ($this->getForge() === self::FORGE_GITLAB) {
+			// The whole nested project path (sources-gitlab-forge D3).
+			return $this->configString('path');
 		}
 
 		return $this->configString('owner') . '/' . $this->configString('repo');
@@ -401,7 +439,32 @@ final class SourceBinding {
 	}
 
 	public static function release(string $forge, string $owner, string $repo, string $assetPattern = '*.tar.gz'): self {
+		if ($forge === self::FORGE_GITLAB) {
+			// A GitLab project has a path, not an owner and a repo: the
+			// namespace and the project name together are that path.
+			return self::gitlab($owner . '/' . $repo, $assetPattern);
+		}
+
 		return self::forgeRelease($forge, $owner, $repo, $assetPattern);
+	}
+
+	/**
+	 * A GitLab release binding for a nested project path such as
+	 * `group/subgroup/project` (sources-gitlab-forge D3).
+	 *
+	 * @throws InvalidArgumentException When the path is not a safe project path.
+	 * @spec openspec/changes/sources-gitlab-forge/specs/external-sources/spec.md
+	 */
+	public static function gitlab(string $path, string $assetPattern = '*.tar.gz'): self {
+		return new self(
+			self::KIND_GITHUB_RELEASE,
+			[
+				'forge' => self::FORGE_GITLAB,
+				'path' => $path,
+				'assetPattern' => $assetPattern,
+			],
+			(new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format(\DateTimeInterface::ATOM),
+		);
 	}
 
 	/**
