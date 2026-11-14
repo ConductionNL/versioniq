@@ -1393,10 +1393,39 @@ class ApiController extends OCSController {
 		$entries = $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset);
 
 		return new DataResponse([
-			'entries' => $entries,
+			'entries' => $this->withSbomFlags($entries),
 			'limit' => $limit,
 			'offset' => $offset,
 		]);
+	}
+
+	/**
+	 * The history rows with `sbomAvailable` on each install row: whether an SBOM
+	 * of the state it produced was kept (inventory-export-sbom-metrics D4).
+	 * Without the archive the rows go out as before.
+	 *
+	 * @param list<\OCA\Versioniq\Db\AuditEntry> $entries
+	 *
+	 * @return list<mixed>
+	 *
+	 * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-every-update-leaves-an-sbom-of-the-state-it-produced
+	 */
+	private function withSbomFlags(array $entries): array {
+		$archive = $this->install->sbomArchive;
+		if ($archive === null) {
+			return $entries;
+		}
+
+		$stored = $archive->storedIds();
+
+		return array_map(static function ($entry) use ($stored) {
+			$row = $entry->jsonSerialize();
+			if ($entry->getOperation() === 'install') {
+				$row['sbomAvailable'] = isset($stored[$entry->getId()]);
+			}
+
+			return $row;
+		}, $entries);
 	}
 
 	/**

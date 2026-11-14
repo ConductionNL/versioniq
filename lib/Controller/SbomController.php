@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Controller;
 
+use OCA\Versioniq\Service\Inventory\SbomArchive;
 use OCA\Versioniq\Service\Inventory\SbomExporter;
 use OCA\Versioniq\Service\Inventory\SbomWriter;
 use OCP\AppFramework\Http;
@@ -35,6 +36,7 @@ class SbomController extends OCSController {
 		private SbomExporter $exporter,
 		private IGroupManager $groupManager,
 		private IUserSession $userSession,
+		private SbomArchive $archive,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -68,6 +70,34 @@ class SbomController extends OCSController {
 			$this->exporter->fileName($format),
 			SbomExporter::MEDIA_TYPES[$format],
 		);
+	}
+
+	/**
+	 * Downloads the SBOM kept for one install, by its history row id (admin-only).
+	 *
+	 * @param int $id The install's audit entry id
+	 *
+	 * @return DataDownloadResponse<Http::STATUS_OK, string, array{}>|DataResponse<Http::STATUS_FORBIDDEN|Http::STATUS_NOT_FOUND, array{message: string}, array{}>
+	 *
+	 * 200: The SBOM written after that install
+	 * 403: Caller is not an administrator
+	 * 404: No SBOM was kept for that install
+	 *
+	 * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-every-update-leaves-an-sbom-of-the-state-it-produced
+	 */
+	#[ApiRoute(verb: 'GET', url: '/api/sbom/{id}', requirements: ['id' => '\d+'])]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/sbom/{id}', requirements: ['id' => '\d+'], postfix: 'v1')]
+	public function archived(int $id): DataDownloadResponse|DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$sbom = $this->archive->read($id);
+		if ($sbom === null) {
+			return new DataResponse(['message' => 'No SBOM was kept for that install.'], Http::STATUS_NOT_FOUND);
+		}
+
+		return new DataDownloadResponse($sbom, 'nextcloud-sbom-install-' . $id . '.cdx.json', SbomExporter::MEDIA_TYPES[SbomWriter::FORMAT_CYCLONEDX]);
 	}
 
 	private function isAdmin(): bool {

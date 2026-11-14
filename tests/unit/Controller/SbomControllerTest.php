@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\Controller;
 
 use OCA\Versioniq\Controller\SbomController;
+use OCA\Versioniq\Service\Inventory\SbomArchive;
 use OCA\Versioniq\Service\Inventory\SbomExporter;
 use OCP\AppFramework\Http\DataDownloadResponse;
 use OCP\AppFramework\Http\DataResponse;
@@ -23,14 +24,15 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * GET /api/sbom (inventory-export-sbom-metrics task 2.1): a download for an
- * admin, 403 for anyone else, 400 for an unknown format.
+ * admin, 403 for anyone else, 400 for an unknown format; GET /api/sbom/{id}
+ * (task 3.2): the copy kept for one install, 404 when none was kept.
  *
  * @covers \OCA\Versioniq\Controller\SbomController
  *
  * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-an-admin-exports-the-inventory-as-an-sbom
  */
 final class SbomControllerTest extends TestCase {
-	private function controller(bool $admin, ?SbomExporter $exporter = null, bool $signedIn = true): SbomController {
+	private function controller(bool $admin, ?SbomExporter $exporter = null, bool $signedIn = true, ?SbomArchive $archive = null): SbomController {
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn('alice');
 		$session = $this->createMock(IUserSession::class);
@@ -38,7 +40,7 @@ final class SbomControllerTest extends TestCase {
 		$groups = $this->createMock(IGroupManager::class);
 		$groups->method('isAdmin')->with('alice')->willReturn($admin);
 
-		return new SbomController('versioniq', $this->createMock(IRequest::class), $exporter ?? $this->createMock(SbomExporter::class), $groups, $session);
+		return new SbomController('versioniq', $this->createMock(IRequest::class), $exporter ?? $this->createMock(SbomExporter::class), $groups, $session, $archive ?? $this->createMock(SbomArchive::class));
 	}
 
 	/**
@@ -91,5 +93,33 @@ final class SbomControllerTest extends TestCase {
 
 		self::assertSame(400, $response->getStatus());
 		self::assertSame(['message' => 'format must be one of: cyclonedx, spdx.'], $response->getData());
+	}
+
+	public function testAnAdminDownloadsTheCopyKeptForAnInstall(): void {
+		$archive = $this->createMock(SbomArchive::class);
+		$archive->method('read')->with(42)->willReturn('{"bomFormat":"CycloneDX"}');
+
+		$response = $this->controller(true, null, true, $archive)->archived(42);
+
+		self::assertInstanceOf(DataDownloadResponse::class, $response);
+		self::assertSame('{"bomFormat":"CycloneDX"}', $response->render());
+		self::assertSame('application/vnd.cyclonedx+json', self::headersOf($response)['Content-Type']);
+		self::assertStringContainsString('nextcloud-sbom-install-42.cdx.json', self::headersOf($response)['Content-Disposition']);
+	}
+
+	public function testAnInstallWithoutACopyIsA404(): void {
+		$archive = $this->createMock(SbomArchive::class);
+		$archive->method('read')->willReturn(null);
+
+		$response = $this->controller(true, null, true, $archive)->archived(7);
+
+		self::assertSame(404, $response->getStatus());
+	}
+
+	public function testANonAdminGetsNoCopy(): void {
+		$archive = $this->createMock(SbomArchive::class);
+		$archive->expects(self::never())->method('read');
+
+		self::assertSame(403, $this->controller(false, null, true, $archive)->archived(42)->getStatus());
 	}
 }

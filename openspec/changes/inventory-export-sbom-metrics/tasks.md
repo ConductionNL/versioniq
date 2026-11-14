@@ -17,7 +17,8 @@
 
 - [x] 3.1 Add `SbomArchive` and call it after a successful real install, inside a try/catch. Verify: a unit test that a throwing archive leaves the install result unchanged, and one that a dry run writes nothing.
   - `SbomArchive::writeFor()` keeps a CycloneDX copy in app data folder `sbom` under the id of the app's newest successful install row (`AuditEntryMapper::findLatestSuccessfulInstall()`), pruned to `sbom.keep` (200); `InstallerService` calls it after a real install only, and nothing it throws reaches the result. `InstallerServiceSbomArchiveTest` (a throwing archive leaves the result identical, a dry run writes nothing), `SbomArchiveTest`, `AuditEntryMapperLatestInstallTest`.
-- [ ] 3.2 Add `sbomAvailable` to install rows of `GET /api/audit`, `GET /api/sbom/{id}`, and the per-row download link. Verify: `tests/e2e/sbom.spec.ts` installs a fixture version and downloads its SBOM from the History tab.
+- [x] 3.2 Add `sbomAvailable` to install rows of `GET /api/audit`, `GET /api/sbom/{id}`, and the per-row download link. Verify: `tests/e2e/sbom.spec.ts` installs a fixture version and downloads its SBOM from the History tab.
+  - Install rows of `GET /api/audit` carry `sbomAvailable`; `GET /api/sbom/{id}` returns the kept copy (404 when none, 403 for a non-admin) and is in `openapi.json`; each install row with a copy gets an SBOM button. `ApiAuditSbomFlagTest`, `SbomControllerTest`, `src/components/HistoryPanel.sbom.spec.ts`. Left: `tests/e2e/sbom.spec.ts`, which needs the Playwright job.
 
 ## 4. Metrics
 
