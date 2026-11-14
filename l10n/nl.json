@@ -1,5 +1,7 @@
 {
     "translations": {
+        "New version of %1$s: %2$s": "Nieuwe versie van %1$s: %2$s",
+        "It does not run on this server version.": "Deze versie draait niet op deze serverversie.",
         "A pinned app was updated outside Versioniq": "Een vastgezette app is buiten Versioniq om bijgewerkt",
         "%1$s is pinned to %2$s but is now running %3$s. Re-pin to restore the pinned version, or accept the change.": "%1$s is vastgezet op %2$s, maar draait nu %3$s. Zet opnieuw vast om de vastgezette versie te herstellen, of accepteer de wijziging.",
         "Pinned {version}": "Vastgezet op {version}",
@@ -308,9 +310,7 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Buiten het updatebeleid: %n release achter",
             "Buiten het updatebeleid: %n releases achter"
-        ],
-        "New version of %1$s: %2$s": "Nieuwe versie van %1$s: %2$s",
-        "It does not run on this server version.": "Deze versie draait niet op deze serverversie."
+        ]
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }
