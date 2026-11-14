@@ -5,6 +5,7 @@ import type {PrefillBindPayload} from './components/DiscoverPanel.vue';
 import type {BlockedVersion, PolicyLevel} from './components/PolicySelector.vue';
 import type { PinRecord } from './dialogs/PinDialog.vue'
 import type {AdvisoryCorrelation} from './utils/advisories.ts';
+import type { AutoUpdateSchedule as AutoUpdateScheduleValue, UpdateKind } from './utils/autoUpdateSchedule.ts'
 import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
 import type {LkgRecord} from './utils/migrationSafety.ts';
 import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
@@ -17,6 +18,7 @@ import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import AdvisoriesPanel from './components/AdvisoriesPanel.vue'
 import AppSourceBadges from './components/AppSourceBadges.vue'
 import AutoUpdateOverview from './components/AutoUpdateOverview.vue'
+import AutoUpdateSchedule from './components/AutoUpdateSchedule.vue'
 import CachePanel from './components/CachePanel.vue'
 import ChangelogRangePanel from './components/ChangelogRangePanel.vue'
 import DiscoverPanel from './components/DiscoverPanel.vue'
@@ -40,6 +42,7 @@ import PinOverrideDialog from './dialogs/PinOverrideDialog.vue'
 import ShaMismatchDialog from './dialogs/ShaMismatchDialog.vue'
 import { advisoryBadgeText } from './utils/advisories.ts'
 import { advisoryFreshnessLabel as advisoryFreshnessLabelFor } from './utils/advisoryFreshness.ts'
+import { defaultSchedule, scheduleFrom } from './utils/autoUpdateSchedule.ts'
 import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow.ts'
 import { buildChangelogRange } from './utils/changelog.ts'
 import { tabForHash } from './utils/connectionRegistry.ts'
@@ -217,6 +220,10 @@ const autoUpdateWindowInput = ref(AUTO_UPDATE_WINDOW_DEFAULT)
 const savedAutoUpdateWindow = ref(AUTO_UPDATE_WINDOW_DEFAULT)
 // The zone the server reads the window in (Nextcloud's default_timezone, else UTC).
 const autoUpdateTimeZone = ref('UTC')
+// Which days each kind of update may install (autoupdate-schedules), and the next run per kind as the server computed it.
+const autoUpdateSchedule = ref<AutoUpdateScheduleValue>(defaultSchedule())
+const savedAutoUpdateSchedule = ref<AutoUpdateScheduleValue>(defaultSchedule())
+const autoUpdateNextRuns = ref<Partial<Record<UpdateKind, string | null>>>({})
 const isSavingAutoUpdateSettings = ref(false)
 const autoUpdateSettingsError = ref('')
 const autoUpdateSettingsNotice = ref('')
@@ -817,7 +824,7 @@ function pinTooltip (pin: PinRecord | null): string {
 async function loadPolicies (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/policies')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string }>(response)
+		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string, autoUpdateSchedule?: unknown, nextRuns?: Partial<Record<UpdateKind, string | null>> }>(response)
 		const map: Record<string, PolicyRecord> = {}
 		for (const policy of payload.policies || []) {
 			map[policy.appId] = policy
@@ -828,6 +835,9 @@ async function loadPolicies (): Promise<void> {
 		autoUpdateWindowInput.value = payload.autoUpdateWindow || AUTO_UPDATE_WINDOW_DEFAULT
 		autoUpdateTimeZone.value = payload.autoUpdateTimeZone || 'UTC'
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
+		autoUpdateSchedule.value = scheduleFrom(payload.autoUpdateSchedule)
+		savedAutoUpdateSchedule.value = scheduleFrom(payload.autoUpdateSchedule)
+		autoUpdateNextRuns.value = payload.nextRuns ?? {}
 	} catch {
 		// Non-fatal: the app list stays usable without policy badges.
 		policies.value = {}
@@ -930,9 +940,11 @@ async function onPolicyChange (appId: string, level: PolicyLevel): Promise<void>
 }
 
 const isAutoUpdateWindowValid = computed(() => isValidAutoUpdateWindow(autoUpdateWindowInput.value))
+const isScheduleDirty = computed(() => JSON.stringify(autoUpdateSchedule.value) !== JSON.stringify(savedAutoUpdateSchedule.value))
 const isAutoUpdateSettingsDirty = computed(() => (
 	autoUpdateEnabled.value !== savedAutoUpdateEnabled.value
 	|| autoUpdateWindowInput.value.trim() !== savedAutoUpdateWindow.value
+	|| isScheduleDirty.value
 ))
 
 /**
@@ -968,13 +980,20 @@ async function saveAutoUpdateSettings (): Promise<void> {
 			//
 			// The query string above already sends '1'/'0'; this makes the body
 			// agree with it so the value cannot depend on which one wins.
-			body: JSON.stringify({ enabled: autoUpdateEnabled.value ? '1' : '0', window }),
+			// The schedule travels in the body only (an object, which a query string cannot
+			// carry), and only when it changed, so a save that leaves it alone stores nothing.
+			body: JSON.stringify({ enabled: autoUpdateEnabled.value ? '1' : '0', window, ...(isScheduleDirty.value ? { schedule: autoUpdateSchedule.value } : {}) }),
 		})
-		const payload = await unwrapOcsResponse<{ autoUpdateEnabled?: boolean, autoUpdateWindow?: string }>(response)
+		const payload = await unwrapOcsResponse<{ autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateSchedule?: unknown, nextRuns?: Partial<Record<UpdateKind, string | null>> }>(response)
 		autoUpdateEnabled.value = Boolean(payload.autoUpdateEnabled)
 		autoUpdateWindowInput.value = payload.autoUpdateWindow || window
 		savedAutoUpdateEnabled.value = autoUpdateEnabled.value
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
+		if (payload.autoUpdateSchedule !== undefined) {
+			autoUpdateSchedule.value = scheduleFrom(payload.autoUpdateSchedule)
+		}
+		savedAutoUpdateSchedule.value = scheduleFrom(autoUpdateSchedule.value)
+		autoUpdateNextRuns.value = payload.nextRuns ?? autoUpdateNextRuns.value
 		autoUpdateSettingsNotice.value = t('versioniq', 'Automatic update settings saved.')
 	} catch (e) {
 		autoUpdateSettingsError.value = e instanceof Error ? e.message : t('versioniq', 'Could not save automatic update settings.')
@@ -2369,6 +2388,9 @@ watch(dryRunEnabled, () => {
 										:class="$style.appFilterInput"
 										:disabled="isSavingAutoUpdateSettings">
 								</label>
+								<AutoUpdateSchedule
+									v-model="autoUpdateSchedule"
+									:disabled="isSavingAutoUpdateSettings" />
 								<p v-if="autoUpdateWindowInput.trim() !== '' && !isAutoUpdateWindowValid" :class="$style.autoUpdateWindowError" data-testid="auto-update-window-error">
 									{{ t('versioniq', 'Use the HH:MM-HH:MM format, e.g. 01:00-05:00.') }}
 								</p>
@@ -2391,6 +2413,8 @@ watch(dryRunEnabled, () => {
 									:autoUpdateEnabled="autoUpdateEnabled"
 									:window="savedAutoUpdateWindow"
 									:timeZone="autoUpdateTimeZone"
+									:schedule="savedAutoUpdateSchedule"
+									:nextRuns="autoUpdateNextRuns"
 									:disabled="isSavingPolicy"
 									@retry="onRetryAttempt" />
 

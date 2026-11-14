@@ -15,9 +15,12 @@
 ## 3. API and page
 
 - [x] 3.1 Return `autoUpdateSchedule` and `nextRuns` from `GET /api/policies`, and accept and validate `schedule` in `PUT /api/auto-update/settings` per D6. Verify: `tests/unit/Controller/ApiTest.php` asserts 400 for day 8, for an unknown kind and for a string `monthly`, that nothing is written on 400, and the stored value on 200.
-- [ ] 3.2 Add `src/components/AutoUpdateSchedule.vue` and wire it into the Automatic updates block in `App.vue`, saved with the switch and window. Verify: `src/components/AutoUpdateSchedule.spec.ts` covers the same-days mode, the per-kind mode and the monthly checkbox, and asserts the emitted JSON.
-- [ ] 3.3 Show days and next run per kind in `AutoUpdateOverview.vue`, including "never automatically" and "nothing runs". Verify: extend `AutoUpdateOverview.spec.ts` with a weekday schedule and an empty one.
-- [ ] 3.4 Add the new strings to `l10n/en.json` and `l10n/nl.json`. Verify: `npm run check:l10n-js`.
+- [x] 3.2 Add `src/components/AutoUpdateSchedule.vue` and wire it into the Automatic updates block in `App.vue`, saved with the switch and window. Verify: `src/components/AutoUpdateSchedule.spec.ts` covers the same-days mode, the per-kind mode and the monthly checkbox, and asserts the emitted JSON.
+  - `src/components/AutoUpdateSchedule.vue` under the window field, emitted into `App.vue` and saved in the same PUT (sent only when it changed). `src/components/AutoUpdateSchedule.spec.ts` (same days, per kind, monthly, emitted JSON) and a save case in `src/App.pinAndSettings.spec.ts`.
+- [x] 3.3 Show days and next run per kind in `AutoUpdateOverview.vue`, including "never automatically" and "nothing runs". Verify: extend `AutoUpdateOverview.spec.ts` with a weekday schedule and an empty one.
+  - One line per kind a scheduled policy reaches: days ("Mon to Fri", "every day", "the first of each month") and the next run from `nextRuns` in the window's zone; "never automatically" for a kind with no days; "No kind of update is scheduled, so nothing runs" when none has a day. `AutoUpdateOverview.spec.ts`, `src/utils/autoUpdateSchedule.spec.ts`.
+- [x] 3.4 Add the new strings to `l10n/en.json` and `l10n/nl.json`. Verify: `npm run check:l10n-js`.
+  - en and nl; `npm run check:l10n-js` passes.
 - [ ] 3.5 Extend `tests/e2e/auto-update.spec.ts`: an admin saves weekdays Mon to Fri for every kind, reloads, and sees them and the next run. Verify: the spec passes in the Playwright job.
 - [ ] 3.6 Extend `tests/e2e/jobs.spec.ts` with the forge fixture app (1.0.0, with 1.0.1, 1.1.0 and 1.2.0 served): a schedule without today's weekday installs nothing; with today added, `runJob("AutoUpdateJob")` installs; policy `minor` with patches due today and minors not due installs 1.0.1, not 1.2.0. Verify: the spec passes in the Playwright job.
 
@@ -25,3 +28,4 @@
 
 - [ ] 4.1 Run the PHPUnit and Playwright jobs on the stable32, stable33 and stable34 legs of `nextcloud-test-refs`. Verify: every leg is green.
 - [ ] 4.2 Set the matrix rows `aut-schedule-days` and `aut-schedule-per-type` to `built` with evidence lines, then archive this change.
+  - Both matrix rows are `built` with evidence lines. Left: archiving the change, after the merge.
