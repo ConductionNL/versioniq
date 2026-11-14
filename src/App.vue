@@ -26,6 +26,7 @@ import InstanceSettingsPanel from './components/InstanceSettingsPanel.vue'
 import IntegrationsPanel from './components/IntegrationsPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
+import ProposedUpdatesPanel from './components/ProposedUpdatesPanel.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
 import SourceOverrideField from './components/SourceOverrideField.vue'
@@ -2419,6 +2420,7 @@ watch(dryRunEnabled, () => {
 									:timeZone="autoUpdateTimeZone"
 									:disabled="isSavingPolicy"
 									@retry="onRetryAttempt" />
+								<ProposedUpdatesPanel :labels="appLabels" />
 
 								<h3 id="section-advisories" :class="$style.advisorySettingsHeading">{{ t('versioniq', 'Security advisory checks') }}</h3>
 								<p :class="$style.hint">
