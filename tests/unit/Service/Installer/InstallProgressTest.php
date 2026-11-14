@@ -177,4 +177,16 @@ final class InstallProgressTest extends TestCase {
 
 		$this->assertSame([], $progress->read(self::TOKEN)['stages']);
 	}
+
+	public function testAFailingListenerNeverFailsTheInstall(): void {
+		$progress = $this->progress();
+		$progress->start(self::TOKEN);
+		$progress->listen(static function (string $stage): void {
+			throw new RuntimeException('console gone');
+		});
+
+		$progress->stage('downloaded');
+
+		$this->assertSame(['downloaded'], array_column($progress->read(self::TOKEN)['stages'], 'name'));
+	}
 }

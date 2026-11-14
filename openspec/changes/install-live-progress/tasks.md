@@ -14,7 +14,8 @@
 ## 3. Page and CLI
 
 - [ ] 3.1 Add `InstallProgress.vue` with the checklist, elapsed time and the stay-on-page line, polled once a second. Verify: `InstallProgress.spec.ts` with a running, a finished and a failed record.
-- [ ] 3.2 Print stages from `occ versioniq:install`, none with `--json`. Verify: `tests/unit/Command/InstallVersionTest.php`.
+- [x] 3.2 Print stages from `occ versioniq:install`, none with `--json`. Verify: `tests/unit/Command/InstallVersionTest.php`.
+  - `InstallProgress::listen()` is told each new stage, with or without a token; `InstallVersion` prints each as it starts and removes its listener afterwards, and `--json` registers none. A failing listener is swallowed. Tests: two `InstallVersionTest` cases and `InstallProgressTest::testAFailingListenerNeverFailsTheInstall`.
 - [ ] 3.3 Add strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
 - [ ] 3.4 Extend `tests/e2e/install-effects.spec.ts`: during a fixture install the page shows at least the download and extraction stages before the result.
 

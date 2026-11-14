@@ -52,6 +52,11 @@ class InstallProgress {
 	/** The cache, once resolved. */
 	private ?ICache $cache = null;
 
+	/** @var (callable(string): void)|null Told the name of each new stage, with or without a token (the CLI). */
+	private $listener = null;
+
+	private ?string $lastHeard = null;
+
 	public function __construct(
 		private ICacheFactory $cacheFactory,
 		private ITimeFactory $time,
@@ -93,6 +98,7 @@ class InstallProgress {
 	 * @spec openspec/changes/install-live-progress/specs/version-management/spec.md#requirement-an-admin-sees-each-stage-of-an-install-while-it-runs
 	 */
 	public function stage(string $name, array $detail = []): void {
+		$this->tell(name: $name);
 		if ($this->token === null) {
 			return;
 		}
@@ -184,6 +190,31 @@ class InstallProgress {
 		}
 
 		return ['stages' => array_values($record['stages']), 'outcome' => is_string($record['outcome'] ?? null) ? $record['outcome'] : null];
+	}
+
+	/**
+	 * Be told the name of each stage as it starts, for `occ versioniq:install`;
+	 * null stops it. A failing listener never fails the install.
+	 *
+	 * @spec openspec/changes/install-live-progress/specs/cli-commands/spec.md
+	 * @param (callable(string): void)|null $listener
+	 */
+	public function listen(?callable $listener): void {
+		$this->listener = $listener;
+		$this->lastHeard = null;
+	}
+
+	private function tell(string $name): void {
+		if ($this->listener === null || $name === $this->lastHeard) {
+			return;
+		}
+
+		$this->lastHeard = $name;
+		try {
+			($this->listener)($name);
+		} catch (Throwable $e) {
+			$this->logger->debug('Versioniq install progress listener failed: ' . $e->getMessage());
+		}
 	}
 
 	/**

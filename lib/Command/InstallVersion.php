@@ -14,6 +14,7 @@ namespace OCA\Versioniq\Command;
 
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallOptions;
+use OCA\Versioniq\Service\Installer\InstallProgress;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\PinChoice;
@@ -61,6 +62,8 @@ class InstallVersion extends Command {
 
 	public function __construct(
 		private InstallerService $installerService,
+		/** install-live-progress: prints each stage as it starts; null in hand-built tests. */
+		private ?InstallProgress $progress = null,
 	) {
 		parent::__construct();
 	}
@@ -119,11 +122,20 @@ class InstallVersion extends Command {
 		$allowDowngrade = (bool)$input->getOption('allow-downgrade');
 		$acceptNewSha = (bool)$input->getOption('accept-new-sha');
 
-		$result = $this->installerService->installAppVersion(new InstallRequest(
-			new InstallTarget($appId, $version, $sourceOverride),
-			new InstallOptions(false, $dryRun, $acceptNewSha, $allowDowngrade),
-			new PinChoice(null, false),
-		));
+		if (!$json) {
+			$this->progress?->listen(static function (string $stage) use ($output): void {
+				$output->writeln(sprintf('<comment>%s</comment>', $stage));
+			});
+		}
+		try {
+			$result = $this->installerService->installAppVersion(new InstallRequest(
+				new InstallTarget($appId, $version, $sourceOverride),
+				new InstallOptions(false, $dryRun, $acceptNewSha, $allowDowngrade),
+				new PinChoice(null, false),
+			));
+		} finally {
+			$this->progress?->listen(null);
+		}
 
 		$statusCode = $result['statusCode'] ?? Http::STATUS_INTERNAL_SERVER_ERROR;
 		/** @var array<string, mixed> $payload */
