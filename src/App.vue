@@ -73,6 +73,7 @@ type AppVersion = {
 	recordedSha?: string | null
 	cachedOffline?: boolean
 	serverCompatible?: boolean | null
+	phpCompatible?: boolean | null
 	releasedAt?: string | null
 }
 
@@ -2733,7 +2734,7 @@ watch(dryRunEnabled, () => {
 														<div :class="$style.versionItemMain">
 															<span>{{ version.version }}</span>
 															<ReleaseDate :releasedAt="version.releasedAt ?? null" />
-															<ServerCompatBadge :serverCompatible="version.serverCompatible ?? null" />
+															<ServerCompatBadge :serverCompatible="version.serverCompatible ?? null" :phpCompatible="version.phpCompatible ?? null" />
 															<span
 																v-if="version.cachedOffline"
 																:class="$style.cachedOfflineBadge"
