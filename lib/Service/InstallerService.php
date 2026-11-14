@@ -1133,13 +1133,7 @@ class InstallerService {
 		self::assertKnownForge($forge);
 		$pattern = self::forgePattern($forge, self::ownerRepoPath($owner, $repo));
 
-		$patterns = $this->state->trustedSources->getPatterns();
-		if (!in_array($pattern, $patterns, true)) {
-			$patterns[] = $pattern;
-			$this->state->trustedSources->setPatterns($patterns);
-		}
-
-		return $this->state->trustedSources->getPatterns();
+		return $this->state->trustedSources->trust($pattern);
 	}
 
 	/**
@@ -1149,13 +1143,7 @@ class InstallerService {
 	 * @return list<string> the updated pattern set
 	 */
 	public function removeTrustedPattern(string $pattern): array {
-		$patterns = array_values(array_filter(
-			$this->state->trustedSources->getPatterns(),
-			static fn (string $p): bool => $p !== $pattern,
-		));
-		$this->state->trustedSources->setPatterns($patterns);
-
-		return $this->state->trustedSources->getPatterns();
+		return $this->state->trustedSources->untrust($pattern);
 	}
 
 	/**

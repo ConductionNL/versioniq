@@ -13,7 +13,11 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Source;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Audit\AuditedVersions;
+use OCA\Versioniq\Service\Audit\AuditLogger;
+use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCP\IAppConfig;
+use OCP\IUserSession;
 
 /**
  * Reads and enforces the trusted-source allowlist. Bindings whose owner/repo
@@ -35,7 +39,56 @@ class TrustedSourceList {
 
 	public function __construct(
 		private IAppConfig $config,
+		private ?AuditLogger $auditLogger = null,
+		private ?IUserSession $userSession = null,
 	) {
+	}
+
+	/**
+	 * Add a pattern, and audit it when it was not trusted yet.
+	 *
+	 * @return list<string> The patterns after the change.
+	 * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/audit-trail/spec.md
+	 */
+	public function trust(string $pattern): array {
+		$patterns = $this->getPatterns();
+		if (!in_array($pattern, $patterns, true)) {
+			$patterns[] = $pattern;
+			$this->setPatterns($patterns);
+			$this->record(AuditLogger::OPERATION_TRUST_SOURCE, $pattern);
+		}
+
+		return $this->getPatterns();
+	}
+
+	/**
+	 * Remove a pattern, and audit it when it was trusted.
+	 *
+	 * @return list<string> The patterns after the change.
+	 * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/audit-trail/spec.md
+	 */
+	public function untrust(string $pattern): array {
+		$patterns = $this->getPatterns();
+		$kept = array_values(array_filter($patterns, static fn (string $p): bool => $p !== $pattern));
+		$this->setPatterns($kept);
+		if (count($kept) !== count($patterns)) {
+			$this->record(AuditLogger::OPERATION_UNTRUST_SOURCE, $pattern);
+		}
+
+		return $this->getPatterns();
+	}
+
+	/**
+	 * One audit row for a trust change: instance-wide, so the app is Versioniq
+	 * itself, and the pattern is the message.
+	 */
+	private function record(string $operation, string $pattern): void {
+		$this->auditLogger?->record(
+			new AuditSubject($this->userSession?->getUser()?->getUID() ?? 'system', Application::APP_ID, $operation),
+			new AuditedVersions(null, null, null),
+			AuditLogger::STATUS_SUCCESS,
+			$pattern,
+		);
 	}
 
 	/**

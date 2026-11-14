@@ -87,6 +87,34 @@ final class InstanceSettingsTest extends TestCase {
 		self::assertSame('http://mirror.internal/advisories', $this->config['advisory.feed_base']);
 	}
 
+	/**
+	 * The GitHub search switch is off until set, writes the key GithubSearchDiscovery
+	 * reads, and is reported as applied (sources-trust-audit-and-offline-feed 2.1).
+	 */
+	public function testTheGithubSearchSwitchIsOffUntilTurnedOn(): void {
+		self::assertFalse($this->store()->read()['githubSearchEnabled']);
+
+		$applied = $this->store()->update(['githubSearchEnabled' => 'true']);
+		self::assertSame(['githubSearchEnabled'], $applied);
+		self::assertSame('true', $this->config['discovery.github_search_enabled']);
+		self::assertTrue($this->store()->read()['githubSearchEnabled']);
+
+		$this->store()->update(['githubSearchEnabled' => '0']);
+		self::assertSame('false', $this->config['discovery.github_search_enabled']);
+		self::assertFalse($this->store()->read()['githubSearchEnabled']);
+	}
+
+	public function testTheGithubSearchSwitchRefusesAnythingButOnOrOffAndWritesNothing(): void {
+		$this->expectException(\InvalidArgumentException::class);
+		$this->expectExceptionMessage('GitHub search must be on or off.');
+
+		try {
+			$this->store()->update(['githubSearchEnabled' => 'maybe', 'auditRetentionDays' => '90']);
+		} finally {
+			self::assertSame([], $this->config);
+		}
+	}
+
 	public function testABlankUrlClearsTheOverride(): void {
 		$this->config['appstore.api_base'] = 'https://store.example.org';
 

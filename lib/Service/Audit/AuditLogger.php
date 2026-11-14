@@ -32,6 +32,12 @@ class AuditLogger {
 
 	public const OPERATION_INSTALL = 'install';
 	public const OPERATION_BIND_SOURCE = 'bind_source';
+	/** An app's source binding removed; the app falls back to the App Store (sources-trust-audit-and-offline-feed). */
+	public const OPERATION_UNBIND_SOURCE = 'unbind_source';
+	/** A trusted-source pattern added (sources-trust-audit-and-offline-feed). */
+	public const OPERATION_TRUST_SOURCE = 'trust_source';
+	/** A trusted-source pattern removed (sources-trust-audit-and-offline-feed). */
+	public const OPERATION_UNTRUST_SOURCE = 'untrust_source';
 	public const OPERATION_PIN = 'pin';
 	public const OPERATION_UNPIN = 'unpin';
 	public const OPERATION_PIN_DRIFT = 'pin_drift';

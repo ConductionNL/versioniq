@@ -119,7 +119,8 @@ class SourceBindingStore {
 	/**
 	 * Removes an app's source binding; see "Source binding". Reached from the
 	 * Sources tab's remove action (#438). The app falls back to the App
-	 * Store, and the change is audited like a rebind to it.
+	 * Store, and the change is audited as `unbind_source`
+	 * (sources-trust-audit-and-offline-feed).
 	 *
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
@@ -128,7 +129,7 @@ class SourceBindingStore {
 		$this->config->deleteKey(Application::APP_ID, $this->key($appId));
 
 		$this->auditLogger->record(
-			new AuditSubject($this->userSession->getUser()?->getUID() ?? 'system', $appId, AuditLogger::OPERATION_BIND_SOURCE),
+			new AuditSubject($this->userSession->getUser()?->getUID() ?? 'system', $appId, AuditLogger::OPERATION_UNBIND_SOURCE),
 			new AuditedVersions(null, null, SourceBinding::appStore()->getId()),
 			AuditLogger::STATUS_SUCCESS,
 			$previous !== null ? sprintf('Binding removed, was %s', $previous->getId()) : 'Binding removed',

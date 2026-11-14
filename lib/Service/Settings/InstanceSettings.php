@@ -44,6 +44,8 @@ class InstanceSettings {
 	public const KEY_ADVISORY_FEED = 'advisory.feed_base';
 	/** How many release lines an app may fall behind; absent means off (inventory-pending-updates D3). */
 	public const KEY_MAX_LINES_BEHIND = 'update.max_lines_behind';
+	/** Whether Discover also searches public GitHub; read by GithubSearchDiscovery (sources-trust-audit-and-offline-feed). */
+	public const KEY_GITHUB_SEARCH = 'discovery.github_search_enabled';
 
 	public const MAX_LINES_BEHIND = 10;
 
@@ -73,7 +75,7 @@ class InstanceSettings {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int}
+	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, githubSearchEnabled: bool}
 	 */
 	public function read(): array {
 		$retention = $this->config->getValueInt(Application::APP_ID, PruneAuditJob::CONFIG_KEY_RETENTION_DAYS, PruneAuditJob::DEFAULT_RETENTION_DAYS);
@@ -95,6 +97,7 @@ class InstanceSettings {
 			'advisoryFeedDefault' => NextcloudAdvisoryFeed::DEFAULT_FEED_URL,
 			'maxLinesBehind' => $this->maxLinesBehind(),
 			'maxLinesBehindMax' => self::MAX_LINES_BEHIND,
+			'githubSearchEnabled' => $this->config->getValueString(Application::APP_ID, self::KEY_GITHUB_SEARCH, 'false') === 'true',
 		];
 	}
 
@@ -114,8 +117,12 @@ class InstanceSettings {
 		$ints = $this->validatedInts($fields);
 		$lagLimit = $this->validatedLagLimit($fields);
 		$urls = $this->validatedUrls($fields);
+		$githubSearch = self::validatedSwitch($fields, 'githubSearchEnabled', 'GitHub search');
 
 		$this->storeInts($ints);
+		if ($githubSearch !== null) {
+			$this->config->setValueString(Application::APP_ID, self::KEY_GITHUB_SEARCH, $githubSearch);
+		}
 		if ($lagLimit !== null) {
 			$this->storeOrClear(self::KEY_MAX_LINES_BEHIND, $lagLimit);
 		}
@@ -134,9 +141,28 @@ class InstanceSettings {
 	 */
 	private static function appliedFields(array $fields): array {
 		return array_values(array_filter(
-			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS)],
+			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS), 'githubSearchEnabled'],
 			static fn (string $field): bool => isset($fields[$field]),
 		));
+	}
+
+	/**
+	 * A sent on/off switch as it is stored (`true` or `false`), null when not sent.
+	 *
+	 * @param array<string, string> $fields The sent fields.
+	 * @throws InvalidArgumentException When the value is not on or off.
+	 * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/app-discovery/spec.md
+	 */
+	private static function validatedSwitch(array $fields, string $field, string $label): ?string {
+		if (!isset($fields[$field])) {
+			return null;
+		}
+
+		return match (strtolower(trim($fields[$field]))) {
+			'true', '1' => 'true',
+			'false', '0' => 'false',
+			default => throw new InvalidArgumentException($label . ' must be on or off.'),
+		};
 	}
 
 	/**
