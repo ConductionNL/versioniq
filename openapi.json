@@ -316,7 +316,9 @@
                                                     "type": "object",
                                                     "required": [
                                                         "advisories",
-                                                        "checkedAt"
+                                                        "checkedAt",
+                                                        "libraries",
+                                                        "librariesCheckedAt"
                                                     ],
                                                     "properties": {
                                                         "advisories": {
@@ -326,6 +328,17 @@
                                                             }
                                                         },
                                                         "checkedAt": {
+                                                            "type": "integer",
+                                                            "format": "int64",
+                                                            "nullable": true
+                                                        },
+                                                        "libraries": {
+                                                            "type": "object",
+                                                            "additionalProperties": {
+                                                                "type": "object"
+                                                            }
+                                                        },
+                                                        "librariesCheckedAt": {
                                                             "type": "integer",
                                                             "format": "int64",
                                                             "nullable": true
@@ -4042,7 +4055,8 @@
                                                         "intervalHours",
                                                         "minIntervalHours",
                                                         "maxIntervalHours",
-                                                        "digestEnabled"
+                                                        "digestEnabled",
+                                                        "librariesEnabled"
                                                     ],
                                                     "properties": {
                                                         "intervalHours": {
@@ -4058,6 +4072,9 @@
                                                             "format": "int64"
                                                         },
                                                         "digestEnabled": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "librariesEnabled": {
                                                             "type": "boolean"
                                                         }
                                                     }
@@ -4200,6 +4217,12 @@
                                         "nullable": true,
                                         "default": null,
                                         "description": "Whether the weekly digest is sent ('1'/'0'). Omitted leaves it unchanged."
+                                    },
+                                    "librariesEnabled": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "Whether bundled libraries are checked against OSV ('1'/'0'). Omitted leaves it unchanged."
                                     }
                                 }
                             }
@@ -4245,7 +4268,8 @@
                                                         "intervalHours",
                                                         "minIntervalHours",
                                                         "maxIntervalHours",
-                                                        "digestEnabled"
+                                                        "digestEnabled",
+                                                        "librariesEnabled"
                                                     ],
                                                     "properties": {
                                                         "intervalHours": {
@@ -4261,6 +4285,9 @@
                                                             "format": "int64"
                                                         },
                                                         "digestEnabled": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "librariesEnabled": {
                                                             "type": "boolean"
                                                         }
                                                     }
@@ -6754,6 +6781,12 @@
                                         "nullable": true,
                                         "default": null,
                                         "description": "Advisory feed URL; blank uses the published Nextcloud feed"
+                                    },
+                                    "osvApiBase": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "OSV API base URL (https); blank uses api.osv.dev"
                                     },
                                     "maxLinesBehind": {
                                         "type": "string",

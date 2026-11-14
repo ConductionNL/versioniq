@@ -103,7 +103,7 @@ class ApiController extends OCSController {
 	 * six-hour-old one, or from an instance whose cron has never run — three
 	 * states that otherwise render as an identical empty map.
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{advisories: array<string, mixed>, checkedAt: ?int}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{advisories: array<string, mixed>, checkedAt: ?int, libraries: array<string, mixed>, librariesCheckedAt: ?int}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Stored advisory correlation returned
 	 * 403: Caller is not an administrator
@@ -118,10 +118,15 @@ class ApiController extends OCSController {
 		}
 
 		$snapshot = $this->reports->stores->advisoryResultStore->read();
+		// Kept beside, never merged into, the app advisories: a library
+		// finding has no app version known to fix it.
+		$libraries = $this->reports->libraryAdvisoryStore?->read() ?? ['libraries' => [], 'checkedAt' => null];
 
 		return new DataResponse([
 			'advisories' => $snapshot['advisories'],
 			'checkedAt' => $snapshot['checkedAt'],
+			'libraries' => $libraries['libraries'],
+			'librariesCheckedAt' => $libraries['checkedAt'],
 		]);
 	}
 
@@ -947,7 +952,7 @@ class ApiController extends OCSController {
 	 * hardcode the range in order to build a control will drift from the
 	 * server the first time the range changes.
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, librariesEnabled: bool}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Advisory settings returned
 	 * 403: Caller is not an administrator
@@ -974,7 +979,8 @@ class ApiController extends OCSController {
 	 *
 	 * @param ?string $intervalHours How often the sweep runs, in hours. Omitted leaves it unchanged.
 	 * @param ?string $digestEnabled Whether the weekly digest is sent ('1'/'0'). Omitted leaves it unchanged.
-	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @param ?string $librariesEnabled Whether bundled libraries are checked against OSV ('1'/'0'). Omitted leaves it unchanged.
+	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, librariesEnabled: bool}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Advisory settings updated
 	 * 400: intervalHours outside the supported range
@@ -985,7 +991,7 @@ class ApiController extends OCSController {
 	#[ApiRoute(verb: 'PUT', url: '/api/advisory/settings')]
 	#[ApiRoute(verb: 'PUT', url: '/api/v1/advisory/settings', postfix: 'v1')]
 	#[PasswordConfirmationRequired]
-	public function updateAdvisorySettings(?string $intervalHours = null, ?string $digestEnabled = null): DataResponse {
+	public function updateAdvisorySettings(?string $intervalHours = null, ?string $digestEnabled = null, ?string $librariesEnabled = null): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
@@ -997,13 +1003,36 @@ class ApiController extends OCSController {
 			}
 		}
 
-		// Same empty-string-is-an-explicit-false handling as the auto-update
-		// kill switch above: PHP casts a JSON `false` to "", not "0".
+		$this->storeAdvisoryFlags($digestEnabled, $librariesEnabled);
+
+		return $this->advisorySettingsResponse();
+	}
+
+	/**
+	 * Stores the two advisory switches that were sent: the weekly digest and
+	 * the bundled-library check (advisories-bundled-libraries). An omitted one
+	 * is left as it is. Same empty-string-is-an-explicit-false handling as the
+	 * auto-update kill switch: PHP casts a JSON `false` to "", not "0".
+	 */
+	private function storeAdvisoryFlags(?string $digestEnabled, ?string $librariesEnabled): void {
 		if ($digestEnabled !== null) {
 			$this->storeDigestEnabled($digestEnabled);
 		}
 
-		return $this->advisorySettingsResponse();
+		if ($librariesEnabled !== null) {
+			$this->storeLibrariesEnabled($librariesEnabled);
+		}
+	}
+
+	/**
+	 * Stores the bundled-library check switch; an empty string is an explicit
+	 * false, and an unknown value keeps the current one.
+	 */
+	private function storeLibrariesEnabled(string $librariesEnabled): void {
+		$librariesParam = ($librariesEnabled === '') ? '0' : $librariesEnabled;
+		$this->reports->stores->advisorySettingsStore->setLibraryCheckEnabled(
+			$this->readBinaryBool($librariesParam, $this->reports->stores->advisorySettingsStore->isLibraryCheckEnabled()),
+		);
 	}
 
 	/**
@@ -1058,7 +1087,7 @@ class ApiController extends OCSController {
 	/**
 	 * The advisory check settings as stored, with the supported interval range.
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, librariesEnabled: bool}, array{}>
 	 */
 	private function advisorySettingsResponse(): DataResponse {
 		return new DataResponse([
@@ -1066,6 +1095,7 @@ class ApiController extends OCSController {
 			'minIntervalHours' => AdvisorySettingsStore::MIN_INTERVAL_HOURS,
 			'maxIntervalHours' => AdvisorySettingsStore::MAX_INTERVAL_HOURS,
 			'digestEnabled' => $this->reports->stores->advisorySettingsStore->isDigestEnabled(),
+			'librariesEnabled' => $this->reports->stores->advisorySettingsStore->isLibraryCheckEnabled(),
 		]);
 	}
 

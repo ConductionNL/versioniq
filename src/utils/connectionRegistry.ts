@@ -52,6 +52,8 @@ export const CONNECTION_STATUS_LABELS: Readonly<Record<string, string>> = Object
 export const SECTION_TABS: Readonly<Record<string, string>> = Object.freeze({
 	'section-sources': 'sources',
 	'section-advisories': 'apps',
+	// The Bundled libraries block, which the app-card badge links to.
+	'section-bundled-libraries': 'advisories',
 	'section-integrations': 'integrations',
 })
 

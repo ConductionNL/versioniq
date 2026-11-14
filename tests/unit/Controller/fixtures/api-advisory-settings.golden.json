@@ -5,7 +5,8 @@
             "intervalHours": 6,
             "minIntervalHours": 1,
             "maxIntervalHours": 24,
-            "digestEnabled": true
+            "digestEnabled": true,
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -29,7 +30,8 @@
             "intervalHours": 6,
             "minIntervalHours": 1,
             "maxIntervalHours": 24,
-            "digestEnabled": true
+            "digestEnabled": true,
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -46,7 +48,8 @@
             "intervalHours": 6,
             "minIntervalHours": 1,
             "maxIntervalHours": 24,
-            "digestEnabled": true
+            "digestEnabled": true,
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -84,7 +87,8 @@
             "intervalHours": 1,
             "minIntervalHours": 1,
             "maxIntervalHours": 24,
-            "digestEnabled": true
+            "digestEnabled": true,
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -105,7 +109,8 @@
             "intervalHours": 24,
             "minIntervalHours": 1,
             "maxIntervalHours": 24,
-            "digestEnabled": true
+            "digestEnabled": true,
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -126,7 +131,8 @@
             "intervalHours": 12,
             "minIntervalHours": 1,
             "maxIntervalHours": 24,
-            "digestEnabled": true
+            "digestEnabled": true,
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -147,7 +153,8 @@
             "intervalHours": 6,
             "minIntervalHours": 1,
             "maxIntervalHours": 24,
-            "digestEnabled": false
+            "digestEnabled": false,
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -171,7 +178,8 @@
             "intervalHours": 6,
             "minIntervalHours": 1,
             "maxIntervalHours": 24,
-            "digestEnabled": true
+            "digestEnabled": true,
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -195,7 +203,8 @@
             "intervalHours": 6,
             "minIntervalHours": 1,
             "maxIntervalHours": 24,
-            "digestEnabled": false
+            "digestEnabled": false,
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -219,7 +228,8 @@
             "intervalHours": 6,
             "minIntervalHours": 1,
             "maxIntervalHours": 24,
-            "digestEnabled": true
+            "digestEnabled": true,
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -243,7 +253,8 @@
             "intervalHours": 6,
             "minIntervalHours": 1,
             "maxIntervalHours": 24,
-            "digestEnabled": false
+            "digestEnabled": false,
+            "librariesEnabled": false
         },
         "calls": [
             [

@@ -5,6 +5,7 @@ import type {PrefillBindPayload} from './components/DiscoverPanel.vue';
 import type {BlockedVersion, PolicyLevel} from './components/PolicySelector.vue';
 import type { PinRecord } from './dialogs/PinDialog.vue'
 import type {AdvisoryCorrelation} from './utils/advisories.ts';
+import type { LibraryCheck } from './utils/bundledLibraries.ts'
 import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
 import type {LkgRecord} from './utils/migrationSafety.ts';
 import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
@@ -41,6 +42,7 @@ import ShaMismatchDialog from './dialogs/ShaMismatchDialog.vue'
 import { advisoryBadgeText } from './utils/advisories.ts'
 import { advisoryFreshnessLabel as advisoryFreshnessLabelFor } from './utils/advisoryFreshness.ts'
 import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow.ts'
+import { BUNDLED_LIBRARIES_ANCHOR, hasLibraryFindings, librariesFreshnessLabel as librariesFreshnessLabelFor } from './utils/bundledLibraries.ts'
 import { buildChangelogRange } from './utils/changelog.ts'
 import { tabForHash } from './utils/connectionRegistry.ts'
 import { currentLoginName, enableApp } from './utils/enableApp.ts'
@@ -593,6 +595,9 @@ async function loadApps (): Promise<void> {
  */
 // Unix seconds of the last completed sweep; null means none has completed.
 const advisoriesCheckedAt = ref<number | null>(null)
+// The bundled-library check, kept apart from the app advisories (advisories-bundled-libraries).
+const libraryChecks = ref<Record<string, LibraryCheck>>({})
+const librariesCheckedAt = ref<number | null>(null)
 // True only when the fetch itself failed — never merely because the map is empty.
 const advisoriesUnavailable = ref(false)
 
@@ -602,15 +607,20 @@ const advisoriesUnavailable = ref(false)
 async function loadAdvisories (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/advisories')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ advisories: Record<string, AdvisoryCorrelation>, checkedAt: number | null }>(response)
+		const payload = await unwrapOcsResponse<{ advisories: Record<string, AdvisoryCorrelation>, checkedAt: number | null, libraries?: Record<string, LibraryCheck>, librariesCheckedAt?: number | null }>(response)
 		advisories.value = payload.advisories || {}
 		advisoriesCheckedAt.value = payload.checkedAt ?? null
+		// An empty snapshot is encoded as a JSON list, not an object.
+		libraryChecks.value = payload.libraries && !Array.isArray(payload.libraries) ? payload.libraries : {}
+		librariesCheckedAt.value = payload.librariesCheckedAt ?? null
 		advisoriesUnavailable.value = false
 	} catch {
 		// Non-fatal: the app list stays usable without advisory badges. The
 		// flag keeps "we could not ask" distinct from "nothing to report".
 		advisories.value = {}
 		advisoriesCheckedAt.value = null
+		libraryChecks.value = {}
+		librariesCheckedAt.value = null
 		advisoriesUnavailable.value = true
 	}
 }
@@ -657,6 +667,8 @@ const outsidePolicyFor = (appId: string): boolean => isOutsidePolicy(pendingUpda
 // range changes, and then rejects values the server would have accepted.
 const advisoryIntervalInput = ref('6')
 const advisoryDigestEnabled = ref(true)
+const advisoryLibrariesEnabled = ref(false)
+const advisorySavedLibraries = ref(false)
 const advisoryMinInterval = ref(1)
 const advisoryMaxInterval = ref(24)
 const advisorySavedInterval = ref('6')
@@ -676,7 +688,8 @@ const isAdvisoryIntervalValid = computed((): boolean => {
 
 const isAdvisorySettingsDirty = computed((): boolean =>
 	advisoryIntervalInput.value.trim() !== advisorySavedInterval.value
-	|| advisoryDigestEnabled.value !== advisorySavedDigest.value)
+	|| advisoryDigestEnabled.value !== advisorySavedDigest.value
+	|| advisoryLibrariesEnabled.value !== advisorySavedLibraries.value)
 
 /**
  *
@@ -684,13 +697,15 @@ const isAdvisorySettingsDirty = computed((): boolean =>
 async function loadAdvisorySettings (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/advisory/settings')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ intervalHours: number, minIntervalHours: number, maxIntervalHours: number, digestEnabled: boolean }>(response)
+		const payload = await unwrapOcsResponse<{ intervalHours: number, minIntervalHours: number, maxIntervalHours: number, digestEnabled: boolean, librariesEnabled?: boolean }>(response)
 		advisoryMinInterval.value = payload.minIntervalHours
 		advisoryMaxInterval.value = payload.maxIntervalHours
 		advisoryIntervalInput.value = String(payload.intervalHours)
 		advisorySavedInterval.value = String(payload.intervalHours)
 		advisoryDigestEnabled.value = payload.digestEnabled
 		advisorySavedDigest.value = payload.digestEnabled
+		advisoryLibrariesEnabled.value = payload.librariesEnabled === true
+		advisorySavedLibraries.value = payload.librariesEnabled === true
 	} catch {
 		// Non-fatal: the settings control simply keeps its defaults.
 	}
@@ -712,13 +727,16 @@ async function saveAdvisorySettings (): Promise<void> {
 				// '1'/'0' rather than a JSON boolean: PHP casts a JSON `false`
 				// to '' and the server would read that as "unspecified".
 				digestEnabled: advisoryDigestEnabled.value ? '1' : '0',
+				librariesEnabled: advisoryLibrariesEnabled.value ? '1' : '0',
 			}),
 		})
-		const payload = await unwrapOcsResponse<{ intervalHours: number, digestEnabled: boolean }>(response)
+		const payload = await unwrapOcsResponse<{ intervalHours: number, digestEnabled: boolean, librariesEnabled?: boolean }>(response)
 		advisoryIntervalInput.value = String(payload.intervalHours)
 		advisorySavedInterval.value = String(payload.intervalHours)
 		advisoryDigestEnabled.value = payload.digestEnabled
 		advisorySavedDigest.value = payload.digestEnabled
+		advisoryLibrariesEnabled.value = payload.librariesEnabled === true
+		advisorySavedLibraries.value = payload.librariesEnabled === true
 		advisorySettingsNotice.value = t('versioniq', 'Advisory settings saved.')
 	} catch (error) {
 		advisorySettingsError.value = error instanceof Error ? error.message : String(error)
@@ -737,6 +755,10 @@ const advisoryFreshnessLabel = computed((): string => advisoryFreshnessLabelFor(
 }))
 
 const advisoryFor = (appId: string): AdvisoryCorrelation | null => advisories.value[appId] ?? null
+
+const librariesFreshnessLabel = computed((): string => librariesFreshnessLabelFor(librariesCheckedAt.value, Date.now() / 1000))
+const hasLibraryAdvisory = (appId: string): boolean => hasLibraryFindings(libraryChecks.value[appId])
+const libraryAdvisoryHref = `#${BUNDLED_LIBRARIES_ANCHOR}`
 
 // Badge shown next to a version with a recorded SHA-256 on the binding — see
 // "Recorded digests are binding-scoped and surfaced". After a reinstall that
@@ -2423,6 +2445,14 @@ watch(dryRunEnabled, () => {
 										:disabled="isSavingAdvisorySettings">
 									<span>{{ t('versioniq', 'Send a weekly digest of non-urgent advisories') }}</span>
 								</label>
+								<label :class="$style.safeMode">
+									<input
+										v-model="advisoryLibrariesEnabled"
+										type="checkbox"
+										data-testid="advisory-libraries-enabled"
+										:disabled="isSavingAdvisorySettings">
+									<span>{{ t('versioniq', 'Check libraries bundled in apps against OSV (sends library names and versions to osv.dev)') }}</span>
+								</label>
 								<p v-if="advisorySettingsError" :class="$style.autoUpdateWindowError" data-testid="advisory-settings-error">
 									{{ advisorySettingsError }}
 								</p>
@@ -2517,6 +2547,14 @@ watch(dryRunEnabled, () => {
 																:title="advisoryFor(app.id)?.error ?? ''">
 																{{ t('versioniq', 'Advisories not checked') }}
 															</span>
+															<a
+																v-if="hasLibraryAdvisory(app.id)"
+																:href="libraryAdvisoryHref"
+																:class="$style.advisoryBadge"
+																data-testid="library-advisory-badge"
+																@click.stop>
+																{{ t('versioniq', 'Library advisory') }}
+															</a>
 														</div>
 														<p :class="$style.appCardMeta">
 															{{ app.id }}
@@ -2913,7 +2951,9 @@ watch(dryRunEnabled, () => {
 					role="tabpanel"
 					aria-labelledby="advisories-tab"
 					:advisories="advisories"
-					:freshnessLabel="advisoryFreshnessLabel" />
+					:freshnessLabel="advisoryFreshnessLabel"
+					:libraries="libraryChecks"
+					:librariesFreshnessLabel="librariesFreshnessLabel" />
 				<HistoryPanel v-if="currentTab === 'history'"
 					id="history-panel"
 					role="tabpanel"

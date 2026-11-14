@@ -26,6 +26,15 @@
             "settingsUrl": "/settings/admin/versioniq#section-advisories",
             "reportedOnly": true,
             "unconfiguredMessage": "Not checked yet. Versioniq reports here after its next advisory check."
+        },
+        {
+            "key": "osv",
+            "title": "OSV vulnerability database",
+            "description": "Checks the PHP libraries bundled in your apps for known vulnerabilities. Only library names and versions are sent.",
+            "order": 40,
+            "settingsUrl": "/settings/admin/versioniq#section-advisories",
+            "reportedOnly": true,
+            "unconfiguredMessage": "Not checked yet. Versioniq reports here after its next bundled-library check, once that check is switched on."
         }
     ]
 }
