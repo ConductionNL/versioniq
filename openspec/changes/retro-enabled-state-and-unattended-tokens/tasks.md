@@ -7,8 +7,8 @@
 
 ## 2. Tests
 
-- [ ] 2.1 Add a unit test that installs over a disabled app and over an app enabled for one group, and asserts `InstallFinalizer` writes the previous `enabled` value. Verify: `tests/unit/Service/Installer/InstallFinalizerTest.php`.
-- [ ] 2.2 Assert in `tests/unit/Service/Pat/PatResolverTest.php` that `findFor()` with a null uid skips an unshared token that matches better than a shared one.
+- [x] 2.1 Add a unit test that installs over a disabled app and over an app enabled for one group, and asserts `InstallFinalizer` writes the previous `enabled` value. Verify: `tests/unit/Service/Installer/InstallFinalizerTest.php`.
+- [x] 2.2 Assert in `tests/unit/Service/Pat/PatResolverTest.php` that `findFor()` with a null uid skips an unshared token that matches better than a shared one.
 
 ## 3. Close
 
