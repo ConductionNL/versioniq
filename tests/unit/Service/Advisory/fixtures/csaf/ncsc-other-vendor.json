@@ -1,0 +1,5 @@
+{
+  "document": {"category": "csaf_security_advisory", "csaf_version": "2.0", "title": "Kwetsbaarheid verholpen in Acme Gateway", "tracking": {"id": "NCSC-2026-0902", "initial_release_date": "2026-09-25T10:00:00Z", "version": "1.00"}},
+  "product_tree": {"branches": [{"category": "vendor", "name": "Acme", "branches": [{"category": "product_name", "name": "Gateway", "branches": [{"category": "product_version_range", "name": "vers:generic/<2.0", "product": {"product_id": "CSAFPID-0001", "name": "Acme Gateway"}}]}]}]},
+  "vulnerabilities": [{"cve": "CVE-2026-40003", "product_status": {"known_affected": ["CSAFPID-0001"]}}]
+}

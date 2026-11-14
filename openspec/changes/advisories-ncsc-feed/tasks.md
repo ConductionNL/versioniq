@@ -2,8 +2,8 @@
 
 ## 1. Reader
 
-- [ ] 1.1 Add `lib/Service/Advisory/VersRange.php` per design D4. Verify: `tests/unit/Service/Advisory/VersRangeTest.php` covers `<`, `>=` with `|`, `*`, `!=`, `vers:unknown/*` (null) and garbage (null).
-- [ ] 1.2 Add `lib/Service/Advisory/CsafProductMatcher.php` per D3. Verify: `tests/unit/Service/Advisory/CsafProductMatcherTest.php` with committed CSAF fixtures resolves "Nextcloud Server" to `:server`, "Nextcloud Talk" to `spreed`, drops a desktop client and a non-Nextcloud vendor, and ignores a product no vulnerability lists as known affected.
+- [x] 1.1 Add `lib/Service/Advisory/VersRange.php` per design D4. Verify: `tests/unit/Service/Advisory/VersRangeTest.php` covers `<`, `>=` with `|`, `*`, `!=`, `vers:unknown/*` (null) and garbage (null).
+- [x] 1.2 Add `lib/Service/Advisory/CsafProductMatcher.php` per D3. Verify: `tests/unit/Service/Advisory/CsafProductMatcherTest.php` with committed CSAF fixtures resolves "Nextcloud Server" to `:server`, "Nextcloud Talk" to `spreed`, drops a desktop client and a non-Nextcloud vendor, and ignores a product no vulnerability lists as known affected.
 - [ ] 1.3 Add `lib/Service/Advisory/NcscAdvisoryFeed.php` with the cursor, the 365-day first read, the 300-document and 120 s limits, the index and the error handling of D1 and D2. Verify: `tests/unit/Service/Advisory/NcscAdvisoryFeedTest.php` with a stubbed `IClientService` asserts only newer lines are fetched, the cursor stops at the last processed document when the limit hits, a changed document replaces its index entry, and a 500 on `changes.csv` returns the index with an error.
 
 ## 2. Correlation
