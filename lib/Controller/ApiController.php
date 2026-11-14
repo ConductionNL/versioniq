@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
+use OCA\Versioniq\BackgroundJob\UpgradeReadinessJob;
 use OCA\Versioniq\Db\Pat;
 use OCA\Versioniq\Http\InstallVersionFields;
 use OCA\Versioniq\Http\RequestFieldsFrom;
@@ -155,6 +156,82 @@ class ApiController extends OCSController {
 			'checkedAt' => $snapshot['checkedAt'],
 			'maxLinesBehind' => $this->reports->stores->instanceSettings?->maxLinesBehind(),
 		]);
+	}
+
+	/**
+	 * Returns the last upgrade readiness report (admin-only, read-only) with
+	 * its time and targets, and the PHP version this server runs, the default
+	 * PHP target of a new check. Reads what UpgradeReadinessJob stored and
+	 * never lists versions (issue #160).
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{report: ?array<string, mixed>, checkedAt: ?int, php: string}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 *
+	 * 200: Stored readiness report returned
+	 * 403: Caller is not an administrator
+	 *
+	 * @spec openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness/spec.md#requirement-an-admin-checks-every-installed-app-against-a-target-server-major-and-php-version
+	 */
+	#[ApiRoute(verb: 'GET', url: '/api/readiness')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/readiness', postfix: 'v1')]
+	public function readiness(): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$stored = $this->reports->stores->readinessResultStore?->read() ?? ['report' => null, 'checkedAt' => null];
+
+		return new DataResponse([
+			'report' => $stored['report'],
+			'checkedAt' => $stored['checkedAt'],
+			'php' => PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION,
+		]);
+	}
+
+	/**
+	 * Queues an upgrade readiness check against a target server major and PHP
+	 * version (admin-only, password-confirmed). The check runs in
+	 * UpgradeReadinessJob; GET /api/readiness reads its report.
+	 *
+	 * @param string $server The target Nextcloud major, such as `33`
+	 * @param string $php The target PHP version, such as `8.4`
+	 * @return DataResponse<Http::STATUS_ACCEPTED, array{queued: bool, server: string, php: string}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_SERVICE_UNAVAILABLE, array{message: string}, array{}>
+	 *
+	 * 202: Check queued
+	 * 400: A target is not a server major or a PHP version
+	 * 403: Caller is not an administrator
+	 * 503: Background jobs are not available
+	 *
+	 * @spec openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness/spec.md#requirement-an-admin-checks-every-installed-app-against-a-target-server-major-and-php-version
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'POST', url: '/api/readiness')]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/readiness', postfix: 'v1')]
+	public function startReadiness(string $server = '', string $php = ''): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$targets = UpgradeReadinessJob::targets(['server' => $server, 'php' => $php]);
+		if ($targets === null || !self::validTargets($targets)) {
+			return new DataResponse(['message' => 'Give a server major such as 33 and a PHP version such as 8.4'], Http::STATUS_BAD_REQUEST);
+		}
+		if ($this->reports->jobList === null) {
+			return new DataResponse(['message' => 'Background jobs are not available'], Http::STATUS_SERVICE_UNAVAILABLE);
+		}
+
+		$this->reports->jobList->add(UpgradeReadinessJob::class, $targets);
+
+		return new DataResponse(['queued' => true] + $targets, Http::STATUS_ACCEPTED);
+	}
+
+	/**
+	 * Whether the targets read as a server major and a PHP version.
+	 *
+	 * @param array{server: string, php: string} $targets
+	 */
+	private static function validTargets(array $targets): bool {
+		return preg_match('/^\d{1,3}$/', $targets['server']) === 1
+			&& preg_match('/^\d+\.\d+(\.\d+)?$/', $targets['php']) === 1;
 	}
 
 	/**

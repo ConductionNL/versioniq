@@ -2,15 +2,16 @@
 
 ## 1. Ranges on versions
 
-- [ ] 1.1 Read `phpVersionSpec` in `AppStoreSource::normalizeVersions()`, add `phpSpec`, `platformSpec` and `phpCompatible`, and add `satisfiesPhpSpec()`. Verify: `tests/unit/Service/Source/AppStoreSourceTest.php` covers a matching, a failing and an absent PHP range.
+- [x] 1.1 Read `phpVersionSpec` in `AppStoreSource::normalizeVersions()`, add `phpSpec`, `platformSpec` and `phpCompatible`, and add `satisfiesPhpSpec()`. Verify: `tests/unit/Service/Source/AppStoreSourceTest.php` covers a matching, a failing and an absent PHP range.
 - [ ] 1.2 Add `Forge::fileAtRefEndpoint()` and `ForgeRangeStore`, and stamp stored or freshly read ranges in `InstallerService::getAppVersions()` for at most five uncached forge versions. Verify: a unit test with a stubbed forge answer, one for a missing `info.xml` (stored as no range, not fetched again), and one that a cached archive still wins.
 - [ ] 1.3 Show the PHP verdict in `ServerCompatBadge.vue`. Verify: `ServerCompatBadge.spec.ts` renders the PHP line only when `phpCompatible` is not null.
 
 ## 2. Readiness
 
-- [ ] 2.1 Add `UpgradeReadinessService` with the five verdicts of design D3. Verify: `tests/unit/Service/Readiness/UpgradeReadinessServiceTest.php` has one case per verdict.
-- [ ] 2.2 Add `UpgradeReadinessJob`, `GET` and `POST /api/readiness`, admin-only, the POST password-confirmed. Verify: `tests/unit/Controller/ApiTest.php` asserts 403 for a non-admin and that POST queues a job with both targets.
+- [x] 2.1 Add `UpgradeReadinessService` with the five verdicts of design D3. Verify: `tests/unit/Service/Readiness/UpgradeReadinessServiceTest.php` has one case per verdict.
+- [x] 2.2 Add `UpgradeReadinessJob`, `GET` and `POST /api/readiness`, admin-only, the POST password-confirmed. Verify: `tests/unit/Controller/ApiTest.php` asserts 403 for a non-admin and that POST queues a job with both targets.
 - [ ] 2.3 Add `lib/Command/CheckReadiness.php` (`versioniq:readiness --server --php --json`) and register it. Verify: `tests/unit/Command/CheckReadinessTest.php` and one JSON run in `tests/e2e/cli.spec.ts`.
+  - Done in code with `CheckReadinessTest`; open: the e2e JSON run, which needs a live instance.
 
 ## 3. Page
 
