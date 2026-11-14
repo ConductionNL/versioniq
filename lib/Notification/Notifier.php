@@ -48,7 +48,8 @@ class Notifier implements INotifier {
 	 * "PAT expiry warnings" for the `pat_expiring` / `pat_expired` subjects,
 	 * "Drift response — notify and offer re-pin" for `pin_drift`, and
 	 * "Every auto-update outcome is reported" for `auto_update_success` /
-	 * `auto_update_failure`, and the weekly `advisory_digest`.
+	 * `auto_update_failure`, the weekly `advisory_digest`, and `server_eol`
+	 * before the running server major leaves support.
 	 *
 	 * @spec openspec/specs/pat-management/spec.md
 	 * @spec openspec/specs/version-pinning/spec.md
@@ -72,6 +73,7 @@ class Notifier implements INotifier {
 			// Sent weekly by AdvisoryDigestNotifier. Without this branch the
 			// digest was stored but skipped by the bell every time (#428).
 			'advisory_digest' => $this->renderAdvisoryDigest(...),
+			'server_eol' => $this->renderServerEol(...),
 			default => throw new UnknownNotificationException(),
 		};
 		$render($notification, $l);
@@ -183,6 +185,30 @@ class Notifier implements INotifier {
 					'%1$d installed apps have published security advisories (%2$d in total) that do not affect the installed versions. Review them on the Versioniq Apps tab.',
 					$apps,
 					[$apps, $advisories]
+				)
+			);
+	}
+
+	/**
+	 * The running server major reaches end of life within 90 or 30 days.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-admins-are-warned-before-the-server-leaves-support
+	 */
+	private function renderServerEol(INotification $notification, IL10N $l): void {
+		$major = $this->stringParameter($notification, 'major');
+		$date = $this->stringParameter($notification, 'date');
+		$days = $this->intParameter($notification, 'daysRemaining');
+
+		$notification
+			->setParsedSubject(
+				$l->t('Nextcloud %1$s reaches end of life soon', [$major])
+			)
+			->setParsedMessage(
+				$l->n(
+					'Nextcloud %1$s stops receiving updates on %2$s, in %3$d day. Plan the upgrade to a maintained version.',
+					'Nextcloud %1$s stops receiving updates on %2$s, in %3$d days. Plan the upgrade to a maintained version.',
+					$days,
+					[$major, $date, $days]
 				)
 			);
 	}

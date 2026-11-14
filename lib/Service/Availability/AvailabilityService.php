@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Availability;
 
 use OCA\Versioniq\Service\InstallerService;
+use OCA\Versioniq\Service\Lifecycle\LifecycleSignals;
 use OCA\Versioniq\Service\Pin\PinStore;
 use Psr\Log\LoggerInterface;
 
@@ -38,6 +39,7 @@ class AvailabilityService {
 		private InstallerService $installerService,
 		private PinStore $pinStore,
 		private LoggerInterface $logger,
+		private ?LifecycleSignals $lifecycle = null,
 	) {
 	}
 
@@ -48,7 +50,7 @@ class AvailabilityService {
 	 * than left out, so the page says "not checked" instead of nothing.
 	 *
 	 * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
-	 * @return array<string, array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string}>
+	 * @return array<string, array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, lifecycle?: array<string, mixed>}>
 	 */
 	public function sweep(float $budgetSeconds): array {
 		$deadline = microtime(true) + $budgetSeconds;
@@ -90,7 +92,7 @@ class AvailabilityService {
 	 * The row for an app from its source's version listing; a listing that
 	 * fails or reports an error is recorded as that error.
 	 *
-	 * @return array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string}
+	 * @return array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, lifecycle?: array<string, mixed>}
 	 */
 	private function listedEntry(string $appId, AppVersionCheck $check): array {
 		try {
@@ -112,7 +114,7 @@ class AvailabilityService {
 
 	/**
 	 * @param list<array<string, mixed>> $versions
-	 * @return array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string}
+	 * @return array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, lifecycle?: array<string, mixed>}
 	 */
 	private function entry(AppVersionCheck $check, array $versions, ?string $error): array {
 		$installedParts = $this->parse($check->installedVersion);
@@ -127,7 +129,18 @@ class AvailabilityService {
 			'pinned' => $check->pinned,
 			'sourceId' => $check->sourceId,
 			'error' => $error,
-		];
+		] + $this->lifecycleOf($error, $versions);
+	}
+
+	/**
+	 * The app's life cycle signals, under `lifecycle`, when the sweep reads them.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 * @param list<array<string, mixed>> $versions
+	 * @return array{lifecycle?: array{removedFromStore: bool, noReleaseFor12Months: ?bool, lastReleasedAt: ?string}}
+	 */
+	private function lifecycleOf(?string $error, array $versions): array {
+		return $this->lifecycle === null ? [] : ['lifecycle' => $this->lifecycle->signals($error, $versions)];
 	}
 
 	/**

@@ -38,6 +38,9 @@ final class InstanceSettingsFields extends RequestFields {
 	/** @var string|null Advisory feed URL; blank uses the published Nextcloud feed */
 	public ?string $advisoryFeedUrl = null;
 
+	/** @var string|null Server end-of-life feed URL; blank switches the end-of-life warnings off */
+	public ?string $eolFeedUrl = null;
+
 	/** @var string|null Release lines an app may fall behind, 0 to 10; blank turns the check off */
 	public ?string $maxLinesBehind = null;
 

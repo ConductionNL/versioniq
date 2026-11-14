@@ -38,6 +38,9 @@ use UnexpectedValueException;
  */
 class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	public const DEFAULT_API_BASE = 'https://garm3.nextcloud.com/api/v1';
+
+	/** The listing error for an app the catalogue does not list. */
+	public const NOT_IN_STORE = 'App is not available in the Nextcloud App Store.';
 	private const MAX_PAGES = 20;
 
 	/**
@@ -120,7 +123,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 		}
 
 		if ($payload === null) {
-			return ['versions' => [], 'error' => 'App is not available in the Nextcloud App Store.'];
+			return ['versions' => [], 'error' => self::NOT_IN_STORE];
 		}
 
 		$releases = $payload['releases'] ?? [];

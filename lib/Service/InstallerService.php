@@ -328,7 +328,7 @@ class InstallerService {
 	 */
 	private function listSourceVersions(string $appId, SourceBinding $binding): array {
 		$result = $this->sources->sourceRegistry->get($binding)->listVersions($appId, $binding);
-		if ($result['error'] === 'App is not available in the Nextcloud App Store.'
+		if ($result['error'] === AppStoreSource::NOT_IN_STORE
 			&& $this->server->appManager->isShipped($appId)
 		) {
 			$result['error'] = 'This app ships with Nextcloud itself: its version follows the server release and it is not distributed via the App Store. Bind a forge source to manage it from a repository instead.';

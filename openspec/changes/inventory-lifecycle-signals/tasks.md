@@ -3,7 +3,7 @@
 ## 1. Signals
 
 - [ ] 1.1 Record `removedFromStore`, `archived` and `noReleaseFor12Months` in the availability sweep. Verify: `tests/unit/Service/Lifecycle/LifecycleSignalsTest.php` with a removed store app, a shipped app (no signal), an archived repository and a stale app.
-- [ ] 1.2 Add `ServerEolFeed` with the instance setting and a one-day cache, and the `endOfSupport` rule. Verify: a unit test with a stubbed feed, an empty address (switched off) and an unreachable feed (unknown, not end of support).
+- [x] 1.2 Add `ServerEolFeed` with the instance setting and a one-day cache, and the `endOfSupport` rule. Verify: a unit test with a stubbed feed, an empty address (switched off) and an unreachable feed (unknown, not end of support).
 - [ ] 1.3 Render the strongest signal on the card and the rest in its tooltip. Verify: a vitest spec per signal.
 
 ## 2. Server end of life
