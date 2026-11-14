@@ -267,7 +267,7 @@
             "get": {
                 "operationId": "api-advisories-v1",
                 "summary": "Returns the most recent security-advisory correlation for each installed app (admin-only, read-only): a per-app map of advisory state (`none` | `advisory-available` | `pinned-to-vulnerable`), the matching advisories, and the recommended safe version. Never changes a version.",
-                "description": "READS A SNAPSHOT, DOES NOT COMPUTE ONE. Correlation costs two external calls per app — ~176 sequential calls on an 88-app instance — which this endpoint used to do inline. Measured on a live instance it then did not answer within 120s, twice, and while it held the PHP session lock the sibling `/api/pins` request never ran at all, so pin badges silently never rendered (issue #160). The sweep now runs in AdvisoryRefreshJob every 6 hours and this endpoint serves what it stored.\n`checkedAt` is part of the contract, not decoration: it is the unix time of the last completed sweep, and `null` means no sweep has completed yet. Without it the client cannot tell a fresh \"no advisories\" from a six-hour-old one, or from an instance whose cron has never run — three states that otherwise render as an identical empty map.\nopenspec/specs/security-advisory-correlation/spec.md\nThis endpoint requires admin access",
+                "description": "READS A SNAPSHOT, DOES NOT COMPUTE ONE. Correlation costs two external calls per app — ~176 sequential calls on an 88-app instance — which this endpoint used to do inline. Measured on a live instance it then did not answer within 120s, twice, and while it held the PHP session lock the sibling `/api/pins` request never ran at all, so pin badges silently never rendered (issue #160). The sweep now runs in AdvisoryRefreshJob every 6 hours and this endpoint serves what it stored.\n`checkedAt` is part of the contract, not decoration: it is the unix time of the last completed sweep, and `null` means no sweep has completed yet. Without it the client cannot tell a fresh \"no advisories\" from a six-hour-old one, or from an instance whose cron has never run — three states that otherwise render as an identical empty map.\n`triage` is the stored dismissals and owners, keyed `{appId}|{advisoryId}`, applied by the page; the snapshot itself stays raw (advisories-triage D1).\nopenspec/specs/security-advisory-correlation/spec.md\nopenspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason\nThis endpoint requires admin access",
                 "tags": [
                     "api"
                 ],
@@ -316,7 +316,8 @@
                                                     "type": "object",
                                                     "required": [
                                                         "advisories",
-                                                        "checkedAt"
+                                                        "checkedAt",
+                                                        "triage"
                                                     ],
                                                     "properties": {
                                                         "advisories": {
@@ -329,6 +330,12 @@
                                                             "type": "integer",
                                                             "format": "int64",
                                                             "nullable": true
+                                                        },
+                                                        "triage": {
+                                                            "type": "object",
+                                                            "additionalProperties": {
+                                                                "type": "object"
+                                                            }
                                                         }
                                                     }
                                                 }

@@ -11,7 +11,8 @@
 
 - [x] 2.1 Apply triage in `AdvisoryNotifier` and `AdvisoryDigestNotifier`. Verify: `AdvisoryNotifierTest` asserts no notification for a dismissed pair and none after a reopen; `AdvisoryDigestNotifierTest` counts only active advisories.
   - Done: both read `advisory.triage` through `AdvisoryTriageStore` and `AdvisoryTriage::apply()`; an actively dismissed pair is kept in the notified set, so a reopen fires nothing. `AdvisoryNotifierTest` (+3), `AdvisoryDigestNotifierTest` (+2).
-- [ ] 2.2 Add the `triage` map to `GET /api/advisories` and make the refresh job stamp and prune after saving. Verify: `ApiTest` asserts the map; `AdvisoryRefreshJobTest` asserts the prune runs after `save()`.
+- [x] 2.2 Add the `triage` map to `GET /api/advisories` and make the refresh job stamp and prune after saving. Verify: `ApiTest` asserts the map; `AdvisoryRefreshJobTest` asserts the prune runs after `save()`.
+  - Done: `ReportStores::$advisoryTriageStore`, `triage` on the response and in `openapi.json`; `AdvisoryRefreshSteps::$triageStore` and `AdvisoryRefreshJob::stampTriage()` (a failing prune is logged, notifications still run). `ApiTest` (+1), `AdvisoryRefreshJobTest` (+2), read-endpoints golden re-recorded (adds `triage: []`).
 
 ## 3. Routes
 
