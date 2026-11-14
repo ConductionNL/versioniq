@@ -15,7 +15,7 @@ namespace OCA\Versioniq\Service\Advisory;
 use OCP\ServerVersion;
 
 /**
- * Supplies the running server's version string.
+ * Supplies the running server's version string and update channel.
  *
  * This exists only to make the server's advisory row testable. `OCP\ServerVersion`
  * is declared `readonly`, so PHPUnit cannot double it, and its constructor
@@ -39,5 +39,14 @@ class ServerVersionProvider {
 	 */
 	public function current(): string {
 		return $this->serverVersion->getVersionString();
+	}
+
+	/**
+	 * The server's update channel, e.g. `stable`; the `server` release channel follows it.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-an-admin-sets-a-release-channel-for-the-instance-and-per-app
+	 */
+	public function channel(): string {
+		return $this->serverVersion->getChannel();
 	}
 }

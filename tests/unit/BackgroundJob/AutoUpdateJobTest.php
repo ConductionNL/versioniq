@@ -172,6 +172,48 @@ final class AutoUpdateJobTest extends TestCase {
 		$this->runJob($job);
 	}
 
+	/**
+	 * A policy of `all` on a stable channel never sees a pre-release; on a beta
+	 * channel the stamp admits it and the selector gets it.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-the-nightly-job-takes-only-versions-on-the-apps-channel
+	 * @dataProvider channelStamps
+	 * @param list<string> $expected
+	 */
+	public function testOnlyVersionsOnTheChannelReachTheSelector(bool $preReleaseOnChannel, array $expected): void {
+		$mocks = $this->mocks();
+		$mocks['settingsStore']->method('isEnabled')->willReturn(true);
+		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$mocks['policyStore']->method('all')->willReturn([
+			'openregister' => new Policy(Policy::LEVEL_ALL, 'admin', '2026-07-01T00:00:00+00:00'),
+		]);
+		$mocks['pinStore']->method('get')->willReturn(null);
+		$mocks['installerService']->method('isManageableApp')->willReturn(true);
+		$mocks['appManager']->method('getAppVersion')->willReturn('2.5.2');
+		$mocks['installerService']->method('getAppVersions')->willReturn([
+			'availableVersions' => [
+				['version' => '2.6.0-beta.1', 'onChannel' => $preReleaseOnChannel],
+				['version' => '2.5.3', 'onChannel' => true],
+			],
+			'channel' => $preReleaseOnChannel ? 'beta' : 'stable',
+			'hasError' => false,
+		]);
+		$mocks['candidateSelector']->expects($this->once())->method('select')
+			->with('2.5.2', $expected, Policy::LEVEL_ALL)->willReturn(null);
+
+		$this->runJob($this->buildJob($mocks, $this->timeFactory()));
+	}
+
+	/**
+	 * @return array<string, array{bool, list<string>}>
+	 */
+	public static function channelStamps(): array {
+		return [
+			'stable channel' => [false, ['2.5.3']],
+			'beta channel' => [true, ['2.6.0-beta.1', '2.5.3']],
+		];
+	}
+
 	public function testAlreadyAttemptedCandidateIsNotReattempted(): void {
 		$mocks = $this->mocks();
 		$mocks['settingsStore']->method('isEnabled')->willReturn(true);

@@ -149,6 +149,32 @@ final class AppStoreSourceTest extends TestCase {
 		], $byVersion);
 	}
 
+	/**
+	 * A release the store marks nightly carries `sourcePreRelease`; an unflagged
+	 * or absent flag carries nothing, so the suffix rule decides.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-every-listed-version-says-whether-it-is-a-pre-release
+	 */
+	public function testANightlyReleaseIsMarkedAsAPreRelease(): void {
+		$source = $this->buildSource([
+			'id' => 'deck',
+			'releases' => [
+				['version' => '1.15.0', 'isNightly' => true],
+				['version' => '1.14.0', 'isNightly' => false],
+				['version' => '1.13.0'],
+				['version' => '1.12.0', 'isNightly' => 'yes'],
+			],
+		]);
+
+		$result = $source->listVersions('deck', $this->binding());
+
+		$marked = [];
+		foreach ($result['versions'] as $entry) {
+			$marked[$entry['version']] = $entry['sourcePreRelease'] ?? 'absent';
+		}
+		$this->assertSame(['1.15.0' => true, '1.14.0' => 'absent', '1.13.0' => 'absent', '1.12.0' => 'absent'], $marked);
+	}
+
 	public function testFallsBackToEnglishWhenRequestedLanguageMissing(): void {
 		$source = $this->buildSource([
 			'id' => 'openregister',

@@ -160,7 +160,9 @@ class AutoUpdateJob extends TimedJob {
 	}
 
 	/**
-	 * The versions the app's source lists, or null when it reported an error.
+	 * The versions the app's source lists on its release channel, or null when it reported an error.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-the-nightly-job-takes-only-versions-on-the-apps-channel
 	 *
 	 * @return list<string>|null
 	 */
@@ -170,11 +172,17 @@ class AutoUpdateJob extends TimedJob {
 			return null;
 		}
 
-		/** @var list<string> $available */
-		$available = array_map(
-			static fn (array $entry): string => (string)$entry['version'],
-			$result['availableVersions'] ?? []
+		// Only versions on the app's release channel are candidates; an entry
+		// without the stamp predates channels and stays one.
+		$onChannel = array_filter(
+			$result['availableVersions'] ?? [],
+			static fn (array $entry): bool => ($entry['onChannel'] ?? true) !== false
 		);
+		/** @var list<string> $available */
+		$available = array_values(array_map(
+			static fn (array $entry): string => (string)$entry['version'],
+			$onChannel
+		));
 
 		return $available;
 	}

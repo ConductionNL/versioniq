@@ -34,7 +34,7 @@ use UnexpectedValueException;
  * to `SelectedReleaseInstallerService`, not the external installer.
  *
  * @psalm-api
- * @psalm-type VersionEntry = array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string}
+ * @psalm-type VersionEntry = array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string, sourcePreRelease?: true}
  */
 class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	public const DEFAULT_API_BASE = 'https://garm3.nextcloud.com/api/v1';
@@ -624,7 +624,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @param array<mixed> $releases
-	 * @return list<array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string}>
+	 * @return list<VersionEntry>
 	 */
 	private function normalizeVersions(array $releases): array {
 		$serverVersion = $this->getServerVersion();
@@ -670,12 +670,19 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 		/** @var mixed $spec */
 		$spec = $release['platformVersionSpec'] ?? null;
 
-		return [
+		$entry = [
 			'version' => $version,
 			'changelog' => $this->extractChangelog($release),
 			'serverCompatible' => is_string($spec) ? self::satisfiesPlatformSpec($serverVersion, $spec) : null,
 			'releasedAt' => ReleaseDate::normalize($release['created'] ?? null),
 		];
+		// The store marks a nightly build itself; an absent flag is not a nightly,
+		// and the version-suffix rule still applies (releases-channel-and-prereleases D1).
+		if (($release['isNightly'] ?? false) === true) {
+			$entry['sourcePreRelease'] = true;
+		}
+
+		return $entry;
 	}
 
 	/**
@@ -701,6 +708,9 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 		$known['changelog'] ??= $entry['changelog'];
 		$known['serverCompatible'] ??= $entry['serverCompatible'];
 		$known['releasedAt'] ??= $entry['releasedAt'];
+		if (isset($entry['sourcePreRelease'])) {
+			$known['sourcePreRelease'] = true;
+		}
 
 		return $known;
 	}

@@ -112,7 +112,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * One version entry per release with a non-empty tag.
 	 *
 	 * @param array<array-key, mixed> $releases
-	 * @return list<array{version: string, changelog: ?string, releasedAt: ?string}>
+	 * @return list<array{version: string, changelog: ?string, releasedAt: ?string, sourcePreRelease?: true, sourceLts?: true}>
 	 */
 	private function versionEntries(array $releases): array {
 		$versions = [];
@@ -128,10 +128,31 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 				'changelog' => $this->extractChangelog($release),
 				// A draft carries no published_at and stays null.
 				'releasedAt' => ReleaseDate::normalize($release['published_at'] ?? null),
-			];
+			] + self::publisherMarks($release, $tag);
 		}
 
 		return $versions;
+	}
+
+	/**
+	 * What the publisher said about the release itself: `sourcePreRelease` when
+	 * it is marked pre-release, `sourceLts` when its name or tag carries the
+	 * word LTS; absent otherwise (releases-channel-and-prereleases D1, D4).
+	 *
+	 * @param array<array-key, mixed> $release
+	 * @return array{sourcePreRelease?: true, sourceLts?: true}
+	 */
+	private static function publisherMarks(array $release, string $tag): array {
+		$marks = [];
+		if (($release['prerelease'] ?? false) === true) {
+			$marks['sourcePreRelease'] = true;
+		}
+		$name = isset($release['name']) && is_string($release['name']) ? $release['name'] : '';
+		if (preg_match('/\bLTS\b/i', $name . ' ' . $tag) === 1) {
+			$marks['sourceLts'] = true;
+		}
+
+		return $marks;
 	}
 
 	/**
@@ -586,12 +607,12 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	}
 
 	/**
-	 * @param list<array{version: string, changelog: ?string, releasedAt: ?string}> $versions
-	 * @return list<array{version: string, changelog: ?string, releasedAt: ?string}>
+	 * @param list<array{version: string, changelog: ?string, releasedAt: ?string, sourcePreRelease?: true, sourceLts?: true}> $versions
+	 * @return list<array{version: string, changelog: ?string, releasedAt: ?string, sourcePreRelease?: true, sourceLts?: true}>
 	 */
 	private function dedupeAndSort(array $versions): array {
 		$seenAt = [];
-		/** @var list<array{version: string, changelog: ?string, releasedAt: ?string}> $unique */
+		/** @var list<array{version: string, changelog: ?string, releasedAt: ?string, sourcePreRelease?: true, sourceLts?: true}> $unique */
 		$unique = [];
 		foreach ($versions as $entry) {
 			$index = $seenAt[$entry['version']] ?? null;
@@ -608,8 +629,8 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		usort(
 			$unique,
 			/**
-			 * @param array{version: string, changelog: ?string, releasedAt: ?string} $a
-			 * @param array{version: string, changelog: ?string, releasedAt: ?string} $b
+			 * @param array{version: string, changelog: ?string, releasedAt: ?string, sourcePreRelease?: true, sourceLts?: true} $a
+			 * @param array{version: string, changelog: ?string, releasedAt: ?string, sourcePreRelease?: true, sourceLts?: true} $b
 			 */
 			static fn (array $a, array $b): int => version_compare($b['version'], $a['version'])
 		);
@@ -621,9 +642,9 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * The kept entry with its empty changelog and release date taken from a
 	 * duplicate.
 	 *
-	 * @param array{version: string, changelog: ?string, releasedAt: ?string} $kept
-	 * @param array{version: string, changelog: ?string, releasedAt: ?string} $entry
-	 * @return array{version: string, changelog: ?string, releasedAt: ?string}
+	 * @param array{version: string, changelog: ?string, releasedAt: ?string, sourcePreRelease?: true, sourceLts?: true} $kept
+	 * @param array{version: string, changelog: ?string, releasedAt: ?string, sourcePreRelease?: true, sourceLts?: true} $entry
+	 * @return array{version: string, changelog: ?string, releasedAt: ?string, sourcePreRelease?: true, sourceLts?: true}
 	 */
 	private static function backfill(array $kept, array $entry): array {
 		$kept['changelog'] ??= $entry['changelog'];

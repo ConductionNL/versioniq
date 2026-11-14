@@ -481,6 +481,65 @@ final class InstallerServiceTest extends TestCase {
 		self::assertStringContainsString('cannot be managed', $result['error']);
 	}
 
+	/**
+	 * With channels wired, an app with its own channel and an app on the
+	 * default are both stamped, unfiltered, and the envelope names the channel.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-an-admin-sets-a-release-channel-for-the-instance-and-per-app
+	 */
+	public function testGetAppVersionsStampsEachAppsEffectiveChannel(): void {
+		$source = $this->createMock(SourceInterface::class);
+		$source->method('listVersions')->willReturn(['versions' => [
+			['version' => '2.6.0-beta.1', 'changelog' => null],
+			['version' => '2.5.2', 'changelog' => null],
+		], 'error' => null]);
+		$this->sourceRegistry->method('get')->willReturn($source);
+
+		$store = $this->createMock(\OCA\Versioniq\Service\Channel\ChannelStore::class);
+		$store->method('effectiveChannel')->willReturnMap([['hermiq', 'beta'], ['openregister', 'server']]);
+		$store->method('ltsLines')->willReturn([]);
+		$server = $this->createMock(\OCA\Versioniq\Service\Advisory\ServerVersionProvider::class);
+		$server->method('channel')->willReturn('stable');
+		$channels = new \OCA\Versioniq\Service\Channel\VersionChannels($store, $server);
+
+		$service = $this->buildByName(InstallerService::class, [
+			'appManager' => $this->appManager,
+			'config' => $this->config,
+			'appConfig' => $this->appConfig,
+			'sourceRegistry' => $this->sourceRegistry,
+			'bindingStore' => $this->bindingStore,
+			'trustedSources' => $this->trustedSources,
+			'pinStore' => $this->pinStore,
+			'userSession' => $this->userSession,
+			'timeFactory' => $this->timeFactory,
+			'lkgStore' => $this->lkgStore,
+			'artifactCache' => $this->artifactCache,
+			'channels' => $channels,
+		]);
+
+		$beta = $service->getAppVersions('hermiq');
+		$default = $service->getAppVersions('openregister');
+
+		self::assertSame('beta', $beta['channel']);
+		self::assertSame([true, true], array_column($beta['availableVersions'], 'onChannel'));
+		self::assertSame('server', $default['channel']);
+		self::assertSame(['2.6.0-beta.1', '2.5.2'], array_column($default['availableVersions'], 'version'));
+		self::assertSame([true, false], array_column($default['availableVersions'], 'preRelease'));
+		self::assertSame([false, true], array_column($default['availableVersions'], 'onChannel'));
+		self::assertSame($default['availableVersions'], $default['versions']);
+	}
+
+	public function testGetAppVersionsWithoutChannelsCarriesNoChannel(): void {
+		$source = $this->createMock(SourceInterface::class);
+		$source->method('listVersions')->willReturn(['versions' => [['version' => '2.5.2', 'changelog' => null]], 'error' => null]);
+		$this->sourceRegistry->method('get')->willReturn($source);
+
+		$result = $this->service()->getAppVersions('openregister');
+
+		self::assertArrayNotHasKey('channel', $result);
+		self::assertArrayNotHasKey('onChannel', $result['availableVersions'][0]);
+	}
+
 	public function testGetAppVersionsRefusesACoreProtectedAppWithADistinctMessage(): void {
 		$this->appManager = $this->createMock(IAppManager::class);
 		$this->appManager->method('getAlwaysEnabledApps')->willReturn(['dav']);
