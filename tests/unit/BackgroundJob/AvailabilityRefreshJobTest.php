@@ -59,9 +59,26 @@ final class AvailabilityRefreshJobTest extends TestCase {
 
 		$store = $this->createMock(AvailabilityResultStore::class);
 		$store->expects(self::never())->method('save');
+		$store->expects(self::once())->method('saveFailure')->with(1_790_000_000);
 
 		$logger = $this->createMock(LoggerInterface::class);
 		$logger->expects(self::once())->method('error');
+
+		$this->runJob($service, $store, $logger);
+	}
+
+	/**
+	 * Recording the failure must not throw out of the job either.
+	 *
+	 * @spec openspec/changes/inventory-pins-checks-and-pending/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+	 */
+	public function testAFailureThatCannotBeRecordedIsLogged(): void {
+		$service = $this->createMock(AvailabilityService::class);
+		$service->method('sweep')->willThrowException(new \RuntimeException('boom'));
+		$store = $this->createMock(AvailabilityResultStore::class);
+		$store->method('saveFailure')->willThrowException(new \RuntimeException('db'));
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->expects(self::exactly(2))->method('error');
 
 		$this->runJob($service, $store, $logger);
 	}

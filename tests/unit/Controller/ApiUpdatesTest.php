@@ -100,7 +100,7 @@ final class ApiUpdatesTest extends TestCase {
 	public function testAnAdminGetsTheSnapshotItsTimeAndTheLimitWithoutAnySourceCall(): void {
 		$snapshot = ['openregister' => ['installedVersion' => '2.3.0', 'newestCompatibleVersion' => '2.4.1', 'linesBehind' => 1]];
 		$store = $this->createMock(AvailabilityResultStore::class);
-		$store->method('read')->willReturn(['updates' => $snapshot, 'checkedAt' => 1_790_000_000]);
+		$store->method('read')->willReturn(['updates' => $snapshot, 'checkedAt' => 1_790_000_000, 'status' => 'partial', 'errors' => ['pipelinq']]);
 		$settings = $this->createMock(InstanceSettings::class);
 		$settings->method('maxLinesBehind')->willReturn(1);
 		$installer = $this->createMock(InstallerService::class);
@@ -109,6 +109,6 @@ final class ApiUpdatesTest extends TestCase {
 		$response = $this->controller(true, $store, $settings, $installer)->updates();
 
 		self::assertSame(Http::STATUS_OK, $response->getStatus());
-		self::assertSame(['updates' => $snapshot, 'checkedAt' => 1_790_000_000, 'maxLinesBehind' => 1], $response->getData());
+		self::assertSame(['updates' => $snapshot, 'checkedAt' => 1_790_000_000, 'status' => 'partial', 'errors' => ['pipelinq'], 'maxLinesBehind' => 1], $response->getData());
 	}
 }

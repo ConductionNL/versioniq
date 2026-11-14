@@ -185,7 +185,7 @@ final class ApiReadEndpointsGoldenTest extends TestCase {
 		$installer->method('getInstalledApps')->willReturn([['id' => 'notes', 'version' => '4.1.0']]);
 
 		$advisoryResults = $this->createMock(AdvisoryResultStore::class);
-		$advisoryResults->method('read')->willReturn(['advisories' => ['notes' => ['state' => 'advisory-available']], 'checkedAt' => 1_700_000_000]);
+		$advisoryResults->method('read')->willReturn(['advisories' => ['notes' => ['state' => 'advisory-available']], 'checkedAt' => 1_700_000_000, 'status' => 'ok', 'errors' => []]);
 
 		$advisorySettings = $this->createMock(AdvisorySettingsStore::class);
 		$advisorySettings->method('setIntervalHours')->willReturnCallback(function (int $hours): void {

@@ -271,7 +271,23 @@ OC.L10N.register(
         "Outside the update policy": "Outside the update policy",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"]
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"],
+        "{version} installed from {source}": "{version} installed from {source}",
+        "Set to {version} outside Versioniq": "Set to {version} outside Versioniq",
+        "Pending updates": "Pending updates",
+        "No app with a policy has a newer version available.": "No app with a policy has a newer version available.",
+        "Scheduled for the next window": "Scheduled for the next window",
+        "Held by the pin": "Held by the pin",
+        "Not covered by the policy": "Not covered by the policy",
+        "Failed earlier": "Failed earlier",
+        "just now": "just now",
+        "{minutes} min ago": "{minutes} min ago",
+        "{hours} h ago": "{hours} h ago",
+        "Advisories could not be checked ({age})": "Advisories could not be checked ({age})",
+        "Updates could not be checked ({age})": "Updates could not be checked ({age})",
+        "Advisories checked {age}, except for {apps}": "Advisories checked {age}, except for {apps}",
+        "Updates checked {age}, except for {apps}": "Updates checked {age}, except for {apps}",
+        "Pinned {count}": "Pinned {count}"
     },
     "nplurals=2; plural=(n != 1);"
 )

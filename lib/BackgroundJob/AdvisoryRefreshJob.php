@@ -69,6 +69,7 @@ class AdvisoryRefreshJob extends TimedJob {
 	 * @param mixed $argument
 	 */
 	protected function run($argument): void {
+		$saved = false;
 		try {
 			// The sweep passes its OWN budget. AdvisoryService's default is
 			// sized for a request someone is waiting on (5s); inheriting it
@@ -82,6 +83,7 @@ class AdvisoryRefreshJob extends TimedJob {
 			// admin UI can render is worth keeping even if the notification
 			// half then throws.
 			$this->steps->resultStore->save($correlations, $this->time->getTime());
+			$saved = true;
 
 			$unreached = count(array_filter(
 				$correlations,
@@ -112,6 +114,23 @@ class AdvisoryRefreshJob extends TimedJob {
 			}
 		} catch (\Throwable $error) {
 			$this->logger->error('AdvisoryRefreshJob: refresh failed', ['message' => $error->getMessage()]);
+			// Only the sweep itself failing makes the check line say so; a
+			// notification that fails after a stored sweep does not.
+			if (!$saved) {
+				$this->recordFailure();
+			}
+		}
+	}
+
+	/**
+	 * Says the sweep failed, so the check line does not read as checked.
+	 * Recording it must not throw out of the job either.
+	 */
+	private function recordFailure(): void {
+		try {
+			$this->steps->resultStore->saveFailure($this->time->getTime());
+		} catch (\Throwable $error) {
+			$this->logger->error('AdvisoryRefreshJob: could not record the failed sweep', ['message' => $error->getMessage()]);
 		}
 	}
 }

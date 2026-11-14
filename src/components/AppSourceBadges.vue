@@ -10,11 +10,25 @@ import { t } from '@nextcloud/l10n'
  *
  * @spec openspec/specs/version-management/spec.md
  */
-defineProps<{
+export interface Provenance {
+	kind: 'versioniq' | 'outside'
+	sourceId: string | null
+	version: string
+}
+
+/*
+ * The binding is where future versions come from; the provenance is where the
+ * installed one came from, which differs after a one-off install from another
+ * source or a change made outside Versioniq.
+ *
+ * @spec openspec/changes/inventory-pins-checks-and-pending/specs/external-sources/spec.md#requirement-the-card-names-where-the-installed-version-came-from
+ */
+withDefaults(defineProps<{
 	isShipped: boolean
 	isCore: boolean
 	boundSourceId: string | null
-}>()
+	provenance?: Provenance | null
+}>(), { provenance: null })
 </script>
 
 <template>
@@ -28,6 +42,18 @@ defineProps<{
 		</span>
 		<span :class="$style.source" data-testid="app-source">
 			{{ t('versioniq', 'Source: {source}', { source: boundSourceId ?? t('versioniq', 'App Store') }) }}
+		</span>
+		<span
+			v-if="provenance?.kind === 'versioniq'"
+			:class="$style.source"
+			data-testid="app-provenance">
+			{{ t('versioniq', '{version} installed from {source}', { version: provenance.version, source: provenance.sourceId ?? t('versioniq', 'App Store') }) }}
+		</span>
+		<span
+			v-else-if="provenance?.kind === 'outside'"
+			:class="$style.outside"
+			data-testid="app-provenance">
+			{{ t('versioniq', 'Set to {version} outside Versioniq', { version: provenance.version }) }}
 		</span>
 	</span>
 </template>
@@ -50,5 +76,10 @@ defineProps<{
 .source {
 	font-size: 12px;
 	color: var(--color-text-maxcontrast);
+}
+
+.outside {
+	font-size: 12px;
+	color: var(--color-warning-text, var(--color-main-text));
 }
 </style>

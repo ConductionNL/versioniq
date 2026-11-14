@@ -18,6 +18,11 @@
                     "version": "1.0.0",
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
+                },
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "1.0.1"
                 }
             },
             {
@@ -33,7 +38,12 @@
                 "warning": null,
                 "installedVersion": "2.0.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "2.0.0"
+                }
             },
             {
                 "id": "qfcore",
@@ -48,7 +58,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfdelta",
@@ -63,7 +74,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfepsilon",
@@ -78,7 +90,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfgamma",
@@ -97,6 +110,11 @@
                     "version": "2.9.0",
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
+                },
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "3.0.0"
                 }
             },
             {
@@ -112,7 +130,12 @@
                 "warning": "default for /apps/qfzeta",
                 "installedVersion": "0.1.0",
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "0.1.0"
+                }
             }
         ],
         "calls": [
@@ -339,6 +362,11 @@
                     "version": "1.0.0",
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
+                },
+                "provenance": {
+                    "kind": "versioniq",
+                    "sourceId": "appstore",
+                    "version": "1.0.0"
                 }
             },
             {
@@ -354,7 +382,12 @@
                 "warning": null,
                 "installedVersion": "2.0.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "2.0.0"
+                }
             },
             {
                 "id": "qfcore",
@@ -369,7 +402,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfdelta",
@@ -384,7 +418,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfepsilon",
@@ -399,7 +434,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfgamma",
@@ -418,6 +454,11 @@
                     "version": "2.9.0",
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
+                },
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "3.0.0"
                 }
             },
             {
@@ -433,7 +474,12 @@
                 "warning": null,
                 "installedVersion": "0.1.0",
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "0.1.0"
+                }
             }
         ],
         "calls": [
@@ -608,6 +654,11 @@
                     "version": "1.0.0",
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
+                },
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "1.0.1"
                 }
             },
             {
@@ -623,7 +674,12 @@
                 "warning": null,
                 "installedVersion": "2.0.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "2.0.0"
+                }
             },
             {
                 "id": "qfcore",
@@ -638,7 +694,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfdelta",
@@ -653,7 +710,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfepsilon",
@@ -668,7 +726,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfgamma",
@@ -687,6 +746,11 @@
                     "version": "2.9.0",
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
+                },
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "3.0.0"
                 }
             },
             {
@@ -702,7 +766,12 @@
                 "warning": null,
                 "installedVersion": "0.1.0",
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "0.1.0"
+                }
             }
         ],
         "calls": [
@@ -941,6 +1010,11 @@
                     "version": "1.0.0",
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
+                },
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "1.0.1"
                 }
             },
             {
@@ -956,7 +1030,12 @@
                 "warning": null,
                 "installedVersion": "2.0.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "2.0.0"
+                }
             },
             {
                 "id": "qfcore",
@@ -971,7 +1050,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfdelta",
@@ -986,7 +1066,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfepsilon",
@@ -1001,7 +1082,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfgamma",
@@ -1020,6 +1102,11 @@
                     "version": "2.9.0",
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
+                },
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "3.0.0"
                 }
             },
             {
@@ -1035,7 +1122,12 @@
                 "warning": null,
                 "installedVersion": "0.1.0",
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "0.1.0"
+                }
             }
         ],
         "calls": [
@@ -1206,7 +1298,12 @@
                 "warning": null,
                 "installedVersion": "1.0.0",
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "1.0.0"
+                }
             }
         ],
         "calls": [
@@ -1261,7 +1358,12 @@
                 "warning": null,
                 "installedVersion": "2.0.0",
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "2.0.0"
+                }
             },
             {
                 "id": "10",
@@ -1276,7 +1378,12 @@
                 "warning": null,
                 "installedVersion": "1.0.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "1.0.0"
+                }
             }
         ],
         "calls": [
@@ -1356,6 +1463,11 @@
                     "version": "1.0.0",
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
+                },
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "1.0.1"
                 }
             },
             {
@@ -1371,7 +1483,12 @@
                 "warning": null,
                 "installedVersion": "2.0.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "2.0.0"
+                }
             },
             {
                 "id": "qfcore",
@@ -1386,7 +1503,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfdelta",
@@ -1401,7 +1519,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfepsilon",
@@ -1416,7 +1535,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfgamma",
@@ -1435,6 +1555,11 @@
                     "version": "2.9.0",
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
+                },
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "3.0.0"
                 }
             },
             {
@@ -1450,7 +1575,12 @@
                 "warning": "default for /apps/qfzeta",
                 "installedVersion": "0.1.0",
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "0.1.0"
+                }
             }
         ],
         "calls": [
@@ -1641,6 +1771,11 @@
                     "version": "1.0.0",
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
+                },
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "1.0.1"
                 }
             },
             {
@@ -1656,7 +1791,12 @@
                 "warning": null,
                 "installedVersion": "2.0.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "2.0.0"
+                }
             },
             {
                 "id": "qfdelta",
@@ -1671,7 +1811,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfepsilon",
@@ -1686,7 +1827,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfgamma",
@@ -1705,6 +1847,11 @@
                     "version": "2.9.0",
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
+                },
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "3.0.0"
                 }
             },
             {
@@ -1720,7 +1867,12 @@
                 "warning": "default for /apps/qfzeta",
                 "installedVersion": "0.1.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "0.1.0"
+                }
             }
         ],
         "calls": [
@@ -1886,7 +2038,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfalpha",
@@ -1905,6 +2058,11 @@
                     "version": "1.0.0",
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
+                },
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "1.0.1"
                 }
             },
             {
@@ -1920,7 +2078,12 @@
                 "warning": null,
                 "installedVersion": "2.0.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "2.0.0"
+                }
             },
             {
                 "id": "qfdelta",
@@ -1935,7 +2098,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfepsilon",
@@ -1950,7 +2114,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfgamma",
@@ -1969,6 +2134,11 @@
                     "version": "2.9.0",
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
+                },
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "3.0.0"
                 }
             },
             {
@@ -1984,7 +2154,12 @@
                 "warning": "default for /apps/qfzeta",
                 "installedVersion": "0.1.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "0.1.0"
+                }
             }
         ],
         "calls": [
@@ -2175,6 +2350,11 @@
                     "version": "1.0.0",
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
+                },
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "1.0.1"
                 }
             },
             {
@@ -2190,7 +2370,12 @@
                 "warning": null,
                 "installedVersion": "2.0.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "2.0.0"
+                }
             },
             {
                 "id": "qfcore",
@@ -2205,7 +2390,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfdelta",
@@ -2220,7 +2406,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfepsilon",
@@ -2235,7 +2422,8 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "provenance": null
             },
             {
                 "id": "qfgamma",
@@ -2254,6 +2442,11 @@
                     "version": "2.9.0",
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
+                },
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "3.0.0"
                 }
             },
             {
@@ -2269,7 +2462,12 @@
                 "warning": "default for /apps/qfzeta",
                 "installedVersion": "0.1.0",
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "0.1.0"
+                }
             }
         ],
         "calls": [

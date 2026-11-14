@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: EUPL-1.2
 // Copyright (C) 2026 Conduction B.V.
+import type { SweepStatus } from './sweepOutcome.ts'
+
 import { n, t } from '@nextcloud/l10n'
+import { sweepOutcomeLabel } from './sweepOutcome.ts'
 
 /** One app's entry in the snapshot GET /api/updates serves. */
 export type PendingUpdate = {
@@ -93,6 +96,10 @@ export type UpdatesFreshnessState = {
 	checkedAt: number | null
 	/** Current time in unix seconds. */
 	nowSeconds: number
+	/** The outcome of the last sweep: ok, partial or failed. */
+	status?: SweepStatus | null
+	/** The apps the last sweep could not check. */
+	errors?: string[]
 }
 
 /**
@@ -107,6 +114,11 @@ export function updatesFreshnessLabel (state: UpdatesFreshnessState): string {
 	}
 	if (state.checkedAt === null) {
 		return t('versioniq', 'Updates not checked yet. The background job runs every 6 hours.')
+	}
+
+	const outcome = sweepOutcomeLabel('updates', state)
+	if (outcome !== null) {
+		return outcome
 	}
 
 	const ageMinutes = Math.max(0, Math.round((state.nowSeconds - state.checkedAt) / 60))
