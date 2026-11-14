@@ -34,7 +34,7 @@ use UnexpectedValueException;
  * to `SelectedReleaseInstallerService`, not the external installer.
  *
  * @psalm-api
- * @psalm-type VersionEntry = array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string}
+ * @psalm-type VersionEntry = array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string, platformSpec?: ?string, phpSpec?: ?string, phpCompatible?: ?bool}
  */
 class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	public const DEFAULT_API_BASE = 'https://garm3.nextcloud.com/api/v1';
@@ -675,7 +675,42 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 			'changelog' => $this->extractChangelog($release),
 			'serverCompatible' => is_string($spec) ? self::satisfiesPlatformSpec($serverVersion, $spec) : null,
 			'releasedAt' => ReleaseDate::normalize($release['created'] ?? null),
+			...self::rangeFields($release),
 		];
+	}
+
+	/**
+	 * The release's raw server and PHP ranges, and whether it runs on the PHP
+	 * this server runs (null when the release gives no readable PHP range), so
+	 * the upgrade readiness check can test other targets
+	 * (inventory-upgrade-readiness D1).
+	 *
+	 * @param array<array-key, mixed> $release
+	 * @return array{platformSpec: ?string, phpSpec: ?string, phpCompatible: ?bool}
+	 *
+	 * @spec openspec/changes/inventory-upgrade-readiness/specs/version-management/spec.md#requirement-versions-say-whether-they-run-on-this-servers-php
+	 */
+	private static function rangeFields(array $release): array {
+		$platform = $release['platformVersionSpec'] ?? null;
+		$php = $release['phpVersionSpec'] ?? null;
+		$php = is_string($php) && trim($php) !== '' ? trim($php) : null;
+
+		return [
+			'platformSpec' => is_string($platform) && trim($platform) !== '' ? trim($platform) : null,
+			'phpSpec' => $php,
+			'phpCompatible' => $php === null ? null : self::satisfiesPhpSpec(PHP_VERSION, $php),
+		];
+	}
+
+	/**
+	 * Whether a PHP version satisfies an App Store `phpVersionSpec` such as
+	 * `>=8.1.0 <8.4.0`, with the same bound rules as the server range; null
+	 * when either cannot be read.
+	 *
+	 * @spec openspec/changes/inventory-upgrade-readiness/specs/version-management/spec.md#requirement-versions-say-whether-they-run-on-this-servers-php
+	 */
+	public static function satisfiesPhpSpec(string $phpVersion, string $spec): ?bool {
+		return self::satisfiesPlatformSpec($phpVersion, $spec);
 	}
 
 	/**
@@ -701,6 +736,9 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 		$known['changelog'] ??= $entry['changelog'];
 		$known['serverCompatible'] ??= $entry['serverCompatible'];
 		$known['releasedAt'] ??= $entry['releasedAt'];
+		foreach (['platformSpec', 'phpSpec', 'phpCompatible'] as $key) {
+			$known[$key] ??= $entry[$key] ?? null;
+		}
 
 		return $known;
 	}

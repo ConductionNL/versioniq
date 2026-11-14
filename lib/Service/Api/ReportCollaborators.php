@@ -13,6 +13,7 @@ namespace OCA\Versioniq\Service\Api;
 
 use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
+use OCP\BackgroundJob\IJobList;
 
 /**
  * What the read-only report endpoints draw on: the stored reports, the
@@ -25,6 +26,8 @@ final class ReportCollaborators {
 		public readonly ReportStores $stores,
 		public readonly DiscoveryAggregator $discoveryAggregator,
 		public readonly AuditEntryMapper $auditEntryMapper,
+		// Optional: queues an upgrade readiness check (inventory-upgrade-readiness D4).
+		public readonly ?IJobList $jobList = null,
 	) {
 	}
 }
