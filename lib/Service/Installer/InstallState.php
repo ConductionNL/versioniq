@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Installer;
 
+use OCA\Versioniq\Service\Availability\WithdrawnVersionStore;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Lkg\LkgStore;
 use OCA\Versioniq\Service\Pin\PinStore;
@@ -29,6 +30,7 @@ final class InstallState {
 		public readonly ArtifactCache $artifactCache,
 		public readonly TrustedSourceList $trustedSources,
 		public readonly ForceOverrideStore $forceOverrides,
+		public readonly ?WithdrawnVersionStore $withdrawnVersions = null,
 	) {
 	}
 }
