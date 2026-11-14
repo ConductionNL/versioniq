@@ -312,7 +312,31 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Buiten het updatebeleid: %n release achter",
             "Buiten het updatebeleid: %n releases achter"
-        ]
+        ],
+        "Upgrade readiness": "Klaar voor upgrade",
+        "Check every installed app against the Nextcloud and PHP version you plan to move to.": "Controleer elke geïnstalleerde app tegen de Nextcloud- en PHP-versie waarnaar je wilt overstappen.",
+        "Target Nextcloud major": "Doelversie Nextcloud (hoofdversie)",
+        "Target PHP version": "Doelversie PHP",
+        "Check": "Controleren",
+        "The check is queued. The report appears here once the background job has run.": "De controle staat in de wachtrij. Het rapport verschijnt hier zodra de achtergrondtaak heeft gedraaid.",
+        "Reload the report": "Rapport opnieuw laden",
+        "No readiness check has run yet.": "Er is nog geen controle uitgevoerd.",
+        "The report lists no apps.": "Het rapport bevat geen apps.",
+        "Last checked {time} against Nextcloud {server} and PHP {php}.": "Laatst gecontroleerd op {time} tegen Nextcloud {server} en PHP {php}.",
+        "Could not load the readiness report.": "Het rapport kon niet worden geladen.",
+        "Could not start the readiness check.": "De controle kon niet worden gestart.",
+        "Blocked": "Geblokkeerd",
+        "Update first": "Eerst bijwerken",
+        "Unknown": "Onbekend",
+        "Ready": "Klaar",
+        "Ships with the server": "Wordt met de server meegeleverd",
+        "No listed version supports both targets.": "Geen enkele beschikbare versie ondersteunt beide doelversies.",
+        "A newer version supports both targets: install it before you upgrade.": "Een nieuwere versie ondersteunt beide doelversies: installeer die voordat je de upgrade uitvoert.",
+        "The source gives no range for the versions that matter.": "De bron geeft geen bereik op voor de versies waar het om gaat.",
+        "The installed version supports both targets.": "De geïnstalleerde versie ondersteunt beide doelversies.",
+        "These apps follow the server release.": "Deze apps volgen de serverrelease.",
+        "Installed version": "Geïnstalleerde versie",
+        "Version to take": "Te installeren versie"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

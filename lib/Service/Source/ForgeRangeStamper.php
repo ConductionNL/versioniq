@@ -30,6 +30,12 @@ class ForgeRangeStamper {
 	/** Forge reads one listing may make. */
 	public const MAX_READS = 5;
 
+	/** Per spec field: the verdict it gives, and the running version it is checked against. */
+	private const VERDICTS = [
+		'platformSpec' => ['serverCompatible', 'server'],
+		'phpSpec' => ['phpCompatible', 'php'],
+	];
+
 	/** Forge reads the listing being stamped may still make. */
 	private int $readsLeft = 0;
 
@@ -76,19 +82,15 @@ class ForgeRangeStamper {
 	 * @spec openspec/changes/inventory-upgrade-readiness/specs/version-management/spec.md#requirement-versions-say-whether-they-run-on-this-servers-php
 	 */
 	public static function withVerdicts(array $versions, array $running): array {
-		return array_map(
-			static function (array $entry) use ($running): array {
-				if (array_key_exists('platformSpec', $entry) && !array_key_exists('serverCompatible', $entry)) {
-					$entry['serverCompatible'] = self::verdict($running['server'], $entry['platformSpec']);
+		foreach ($versions as $index => $entry) {
+			foreach (self::VERDICTS as $spec => [$verdict, $target]) {
+				if (array_key_exists($spec, $entry) && !array_key_exists($verdict, $entry)) {
+					$versions[$index][$verdict] = self::verdict($running[$target], $entry[$spec]);
 				}
-				if (array_key_exists('phpSpec', $entry) && !array_key_exists('phpCompatible', $entry)) {
-					$entry['phpCompatible'] = self::verdict($running['php'], $entry['phpSpec']);
-				}
+			}
+		}
 
-				return $entry;
-			},
-			$versions
-		);
+		return $versions;
 	}
 
 	/**

@@ -26,6 +26,7 @@ import InstanceSettingsPanel from './components/InstanceSettingsPanel.vue'
 import IntegrationsPanel from './components/IntegrationsPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
+import ReadinessPanel from './components/ReadinessPanel.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
 import SourceOverrideField from './components/SourceOverrideField.vue'
@@ -234,6 +235,7 @@ const integriqInstalled = loadState<boolean>('versioniq', 'integriq-installed', 
 const tabs = [
 	{ id: 'apps' },
 	{ id: 'advisories' },
+	{ id: 'readiness' },
 	{ id: 'history' },
 	{ id: 'sources' },
 	{ id: 'tokens' },
@@ -255,6 +257,7 @@ function tabLabel (id: string): string {
   return {
 	apps: t('versioniq', 'Apps'),
 	advisories: t('versioniq', 'Advisories'),
+	readiness: t('versioniq', 'Upgrade readiness'),
 	history: t('versioniq', 'History'),
 	sources: t('versioniq', 'Sources'),
 	tokens: t('versioniq', 'Tokens'),
@@ -2915,6 +2918,10 @@ watch(dryRunEnabled, () => {
 					aria-labelledby="advisories-tab"
 					:advisories="advisories"
 					:freshnessLabel="advisoryFreshnessLabel" />
+				<ReadinessPanel v-if="currentTab === 'readiness'"
+					id="readiness-panel"
+					role="tabpanel"
+					aria-labelledby="readiness-tab" />
 				<HistoryPanel v-if="currentTab === 'history'"
 					id="history-panel"
 					role="tabpanel"
