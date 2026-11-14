@@ -7,7 +7,8 @@
 
 ## 2. Planner and job
 
-- [ ] 2.1 Add `lib/Service/AutoUpdate/AutoUpdatePlanner.php` (design D3, D5, D6). Verify: `tests/unit/Service/AutoUpdate/AutoUpdatePlannerTest.php` covers the newest eligible version taken while a newer one waits, nothing eligible, an exception, each of the three exception clean-ups, a security bypass inside the level, one outside the level, and newer versions still waiting after a bypass.
+- [x] 2.1 Add `lib/Service/AutoUpdate/AutoUpdatePlanner.php` (design D3, D5, D6). Verify: `tests/unit/Service/AutoUpdate/AutoUpdatePlannerTest.php` covers the newest eligible version taken while a newer one waits, nothing eligible, an exception, each of the three exception clean-ups, a security bypass inside the level, one outside the level, and newer versions still waiting after a bypass.
+  - With `lib/Service/AutoUpdate/MinAgeExceptionStore.php` (`min_age_exception.{appId}`, D5), which the planner reads and cleans up; the API of 3.1 writes it. A fix the level does not reach is reported as `securityBypass` with reason `outside_level` and is not installed. Tests: `AutoUpdatePlannerTest` (10), `MinAgeExceptionStoreTest` (2).
 - [ ] 2.2 Make `AutoUpdateJob::processApp()` install the planner's `next`, and add the security note to the audit message and to `AutoUpdateNotifier` and `Notifier`. Verify: `tests/unit/BackgroundJob/AutoUpdateJobTest.php` covers a held version not installed and a bypassed one installed with the note; `tests/unit/Notification/NotifierTest.php` renders the note.
 - [ ] 2.3 Add `lib/Service/AutoUpdate/AutoUpdatePlanStore.php` and `lib/BackgroundJob/AutoUpdatePlanJob.php` (6 hours, 600 s budget), registered in `appinfo/info.xml` (design D4). Verify: `tests/unit/BackgroundJob/AutoUpdatePlanJobTest.php` covers a run with the kill switch off, a pinned app without a source call, one failing app not stopping the rest, and the previous snapshot kept on an encoding failure.
 
