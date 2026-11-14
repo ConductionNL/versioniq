@@ -2,7 +2,7 @@
 
 ## 1. Release date and downloads
 
-- [ ] 1.1 Read `created` in `AppStoreSource::normalizeVersions()` and `published_at` in `ForgeReleaseSource::listVersions()` into `releasedAt` (design D1). Verify: `tests/unit/Service/Source/AppStoreSourceTest.php` and a forge source test cover a date, a missing date and an unreadable one.
+- [x] 1.1 Read `created` in `AppStoreSource::normalizeVersions()` and `published_at` in `ForgeReleaseSource::listVersions()` into `releasedAt` (design D1). Verify: `tests/unit/Service/Source/AppStoreSourceTest.php` and a forge source test cover a date, a missing date and an unreadable one.
 - [ ] 1.2 Read the matching asset's `download_count` into `downloads` in `ForgeReleaseSource::listVersions()`, with the `buildReleasePayload()` pattern rule (design D2). Verify: a forge source test covers one match, no match and two matches.
 
 ## 2. Outcomes
@@ -13,7 +13,7 @@
 
 ## 3. Release notes
 
-- [ ] 3.1 Add `lib/Service/Release/ReleaseNotesReader.php` with `isBreaking()` and `knownIssues()` (design D3, D4), and call it in `getAppVersions()` before `applyChangelogTruncation()`. Verify: `tests/unit/Service/Release/ReleaseNotesReaderTest.php` covers each heading form, the Conventional Commits footer, a marker past 8 KiB, a known-issues section ending at the next heading, and notes with neither.
+- [x] 3.1 Add `lib/Service/Release/ReleaseNotesReader.php` with `isBreaking()` and `knownIssues()` (design D3, D4), and call it in `getAppVersions()` before `applyChangelogTruncation()`. Verify: `tests/unit/Service/Release/ReleaseNotesReaderTest.php` covers each heading form, the Conventional Commits footer, a marker past 8 KiB, a known-issues section ending at the next heading, and notes with neither.
 - [ ] 3.2 Add `lib/Service/Release/KnownIssueStore.php` and `PUT /api/app/{appId}/versions/{version}/known-issues` and `DELETE .../known-issues/{index}`, admin-only, password-confirmed, audited as `settings`, https-only links, 20 entries per app. Verify: `tests/unit/Service/Release/KnownIssueStoreTest.php` and `tests/unit/Controller/ApiTest.php` cover the cap, an http link refused, 403 and the audit row.
 
 ## 4. Page and CLI
