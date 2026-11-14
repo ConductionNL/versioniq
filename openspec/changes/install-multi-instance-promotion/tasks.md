@@ -2,8 +2,8 @@
 
 ## 1. Connections
 
-- [ ] 1.1 Add `lib/Service/Instance/InstanceConnection.php` and `lib/Service/Instance/InstanceConnectionStore.php` (design D1): JSON under `instance.{id}`, https-only address checks, password encrypted with `ICrypto`, the local stage under `instance.self`. Verify: `tests/unit/Service/Instance/InstanceConnectionStoreTest.php` covers an http address refused, a stored value that holds no plaintext password, and a malformed value read as absent.
-- [ ] 1.2 Add `GET/POST /api/instances` and `PUT/DELETE /api/instances/{id}` on `lib/Controller/InstanceController.php`, admin-only, writes password-confirmed, audited as `instance_connection`. Verify: `tests/unit/Controller/InstanceControllerTest.php` asserts 403 for a non-admin, no password in any response, and one audit row per change.
+- [x] 1.1 Add `lib/Service/Instance/InstanceConnection.php` and `lib/Service/Instance/InstanceConnectionStore.php` (design D1): JSON under `instance.{id}`, https-only address checks, password encrypted with `ICrypto`, the local stage under `instance.self`. Verify: `tests/unit/Service/Instance/InstanceConnectionStoreTest.php` covers an http address refused, a stored value that holds no plaintext password, and a malformed value read as absent.
+- [x] 1.2 Add `GET/POST /api/instances` and `PUT/DELETE /api/instances/{id}` on `lib/Controller/InstanceController.php`, admin-only, writes password-confirmed, audited as `instance_connection`. Verify: `tests/unit/Controller/InstanceControllerTest.php` asserts 403 for a non-admin, no password in any response, and one audit row per change.
 
 ## 2. Manifest and remote reads
 
