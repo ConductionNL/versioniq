@@ -48,7 +48,7 @@ final class AvailabilityLifecycleTest extends TestCase {
 			return ['removedFromStore' => $error !== null, 'noReleaseFor12Months' => null, 'lastReleasedAt' => null];
 		});
 
-		$result = (new AvailabilityService($installer, $this->createMock(PinStore::class), new NullLogger(), $signals))->sweep(60.0);
+		$result = (new AvailabilityService($installer, $this->createMock(PinStore::class), new NullLogger(), lifecycle: $signals))->sweep(60.0);
 
 		$this->assertSame([[AppStoreSource::NOT_IN_STORE, []], [null, $calendarVersions]], $asked);
 		$this->assertTrue($result['oldmaps']['lifecycle']['removedFromStore']);
