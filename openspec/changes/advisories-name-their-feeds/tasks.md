@@ -7,7 +7,8 @@
 
 ## 2. Tests
 
-- [ ] 2.1 Confirm a unit test covers each new scenario, and add the missing one: the central feed for an App Store app (`tests/unit/Service/Advisory/AdvisoryServiceTest.php`, `testAnAppStoreAppIsCorrelatedFromTheCentralFeed`) and the repository advisories of a GitHub-bound app (`tests/unit/Service/Source/ForgeReleaseSourceTest.php`). Verify: `composer test:unit -- --filter 'Advisory'`.
+- [x] 2.1 Confirm a unit test covers each new scenario, and add the missing one: the central feed for an App Store app (`tests/unit/Service/Advisory/AdvisoryServiceTest.php`, `testAnAppStoreAppIsCorrelatedFromTheCentralFeed`) and the repository advisories of a GitHub-bound app (`tests/unit/Service/Source/ForgeReleaseSourceTest.php`). Verify: `composer test:unit -- --filter 'Advisory'`.
+  - 14 Nov 2026: `testAnAppStoreAppIsCorrelatedFromTheCentralFeed` and `testAdvisoriesUseTheSharedTokenWithoutASessionUser` already existed. Two tests were added. `AdvisoryServiceTest::testTheSweepReadsTheFeedOnceForEveryApp` is the calendar 5.1.2 to 5.1.3 scenario, with the feed read once for three apps. `ForgeReleaseSourceTest::testAGitHubBoundAppReadsItsRepositorysAdvisories` reads `/repos/ConductionNL/hermiq/security-advisories` and checks the mapped advisory. Unit suite: 1645 tests, the same 2 failures as development.
 
 ## 3. Close
 
