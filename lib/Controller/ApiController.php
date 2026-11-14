@@ -496,6 +496,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/external-sources/spec.md
 	 * @spec openspec/specs/migration-safety/spec.md
 	 * @spec openspec/specs/cli-commands/spec.md
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'POST', url: '/api/app/{appId}/versions/{version}/install')]
@@ -579,10 +580,11 @@ class ApiController extends OCSController {
 		$pinRequested = $this->readBinaryBool($fields->pin, false);
 		$acceptNewShaFlag = $this->readBinaryBool($fields->acceptNewSha, false);
 		$allowDowngradeFlag = $this->readBinaryBool($fields->allowDowngrade, false);
+		$forceIncompatibleFlag = $this->readBinaryBool($fields->forceIncompatible, false);
 
 		return new InstallRequest(
 			$target,
-			new InstallOptions($includeDebug, $dryRunFlag ?? $includeDebug, $acceptNewShaFlag, $allowDowngradeFlag),
+			new InstallOptions($includeDebug, $dryRunFlag ?? $includeDebug, $acceptNewShaFlag, $allowDowngradeFlag, $forceIncompatibleFlag),
 			new PinChoice($overridePin, $pinRequested),
 		);
 	}
@@ -618,6 +620,40 @@ class ApiController extends OCSController {
 			$payload,
 			$this->toHttpStatus($result['statusCode'] ?? Http::STATUS_INTERNAL_SERVER_ERROR, Http::STATUS_INTERNAL_SERVER_ERROR)
 		);
+	}
+
+	/**
+	 * "Enable anyway": enables a disabled app whose installed version only its
+	 * declared maximum keeps off this server, through `app_install_overwrite`
+	 * (admin-only, password-confirmed). A failed enable removes the entry again
+	 * when Versioniq added it.
+	 *
+	 * @param string $appId The app to enable
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_FORBIDDEN|Http::STATUS_NOT_FOUND|Http::STATUS_CONFLICT, array<string, mixed>, array{}>
+	 *
+	 * 200: The app is enabled and the override recorded
+	 * 403: Caller is not an administrator, or the app ships with the server
+	 * 404: The app is not installed
+	 * 409: The app is enabled already, an override cannot help it, or Nextcloud refused to enable it
+	 *
+	 * @psalm-suppress InvalidReturnType Status passthrough from ForceEnabler.
+	 *
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'POST', url: '/api/app/{appId}/force-enable')]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/app/{appId}/force-enable', postfix: 'v1')]
+	public function forceEnable(string $appId): DataResponse {
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
+		}
+
+		$result = $this->install->forceEnabler->enable(trim($appId), $user->getUID());
+
+		/** @psalm-suppress InvalidReturnStatement, ArgumentTypeCoercion Status passthrough. */
+		return new DataResponse($result['payload'], $result['statusCode']);
 	}
 
 	/**

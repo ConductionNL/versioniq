@@ -300,7 +300,21 @@ OC.L10N.register(
         "Outside the update policy": "Buiten het updatebeleid",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Aantal releases dat een app achter mag lopen (0 tot {max}, laat leeg om de controle uit te zetten)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "Een app die verder achterloopt, wordt gemarkeerd op het tabblad Apps. 1 betekent de nieuwste release of de release daarvoor.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"]
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"],
+        "Enable anyway": "Toch inschakelen",
+        "Install anyway": "Toch installeren",
+        "Forced to run on Nextcloud {major}. Lifted at the next major upgrade.": "Geforceerd om te draaien op Nextcloud {major}. Wordt opgeheven bij de volgende grote upgrade.",
+        "Needs a newer Nextcloud; cannot be forced": "Vereist een nieuwere Nextcloud; kan niet worden geforceerd",
+        "Nextcloud's compatibility check is overridden for this app.": "De compatibiliteitscontrole van Nextcloud is voor deze app uitgeschakeld.",
+        "This version declares a maximum below the running Nextcloud version. You can install it anyway at your own risk.": "Deze versie geeft een maximum op dat lager is dan de draaiende Nextcloud-versie. Je kunt hem op eigen risico toch installeren.",
+        "This version needs a newer Nextcloud than this one. An override only lifts the declared maximum, so it cannot help.": "Deze versie vereist een nieuwere Nextcloud dan deze. Een override heft alleen het opgegeven maximum op en helpt hier dus niet.",
+        "%1$s was forced to run past its declared maximum. After the upgrade to Nextcloud %2$s the override is lifted, and %1$s is disabled because its version does not declare support for Nextcloud %2$s. Update it, or choose \"Enable anyway\" again.": "%1$s was geforceerd om voorbij het opgegeven maximum te draaien. Na de upgrade naar Nextcloud %2$s is de override opgeheven, en %1$s is uitgeschakeld omdat de versie geen ondersteuning voor Nextcloud %2$s opgeeft. Werk de app bij, of kies opnieuw \"Toch inschakelen\".",
+        "%1$s was forced to run past its declared maximum. After the upgrade to Nextcloud %2$s the override is lifted; %1$s now runs under Nextcloud's own compatibility check.": "%1$s was geforceerd om voorbij het opgegeven maximum te draaien. Na de upgrade naar Nextcloud %2$s is de override opgeheven; %1$s valt nu weer onder de eigen compatibiliteitscontrole van Nextcloud.",
+        "Compatibility override lifted for %s": "Compatibiliteits-override opgeheven voor %s",
+        "Run {appId} {version} on a Nextcloud it does not declare": "{appId} {version} draaien op een Nextcloud die de app niet opgeeft",
+        "The publisher of {appId} {version} has not declared support for this Nextcloud version. Versioniq can add {appId} to Nextcloud's compatibility override (app_install_overwrite), so Nextcloud ignores the declared maximum. The app may not work, and it can break pages or background jobs that use it.": "De uitgever van {appId} {version} heeft geen ondersteuning voor deze Nextcloud-versie opgegeven. Versioniq kan {appId} toevoegen aan de compatibiliteits-override van Nextcloud (app_install_overwrite), zodat Nextcloud het opgegeven maximum negeert. De app werkt dan mogelijk niet, en kan pagina's of achtergrondtaken die hem gebruiken laten vastlopen.",
+        "Versioniq lifts the override at the next major Nextcloud upgrade, and disables the app then if its version still does not declare support.": "Versioniq heft de override op bij de volgende grote Nextcloud-upgrade, en schakelt de app dan uit als de versie nog steeds geen ondersteuning opgeeft.",
+        "You will be asked for your password before anything changes.": "Je wordt om je wachtwoord gevraagd voordat er iets verandert."
     },
     "nplurals=2; plural=(n != 1);"
 )

@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
 import { t } from '@nextcloud/l10n'
+import { computed } from 'vue'
 
 /**
  * Whether a version supports the running server, from `serverCompatible` on
@@ -8,11 +9,40 @@ import { t } from '@nextcloud/l10n'
  * forge release its info.xml range. The API carried it and the web picker
  * never showed it (#435). Unknown renders nothing rather than a guess.
  *
+ * An incompatible version also says whether an override can help:
+ * `serverTooNew` false means it needs a newer Nextcloud and cannot be forced.
+ *
  * @spec openspec/specs/version-management/spec.md
+ * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
  */
-defineProps<{
+// Without the default, Vue's boolean casting reads a left-out serverTooNew as false.
+const props = withDefaults(defineProps<{
 	serverCompatible: boolean | null
-}>()
+	serverTooNew?: boolean | null
+}>(), { serverTooNew: null })
+
+const needsNewerServer = computed(() => props.serverCompatible === false && props.serverTooNew === false)
+
+const label = computed(() => {
+	if (props.serverCompatible) {
+		return t('versioniq', 'Runs on this server')
+	}
+	return needsNewerServer.value
+		? t('versioniq', 'Needs a newer Nextcloud; cannot be forced')
+		: t('versioniq', 'Not for this server version')
+})
+
+const title = computed(() => {
+	if (props.serverCompatible) {
+		return t('versioniq', 'This version declares support for the running Nextcloud version.')
+	}
+	if (needsNewerServer.value) {
+		return t('versioniq', 'This version needs a newer Nextcloud than this one. An override only lifts the declared maximum, so it cannot help.')
+	}
+	return props.serverTooNew
+		? t('versioniq', 'This version declares a maximum below the running Nextcloud version. You can install it anyway at your own risk.')
+		: t('versioniq', 'This version does not declare support for the running Nextcloud version; installing it will likely fail.')
+})
 </script>
 
 <template>
@@ -21,10 +51,8 @@ defineProps<{
 		:class="[$style.badge, serverCompatible ? $style.yes : $style.no]"
 		data-testid="server-compat-badge"
 		:data-compatible="serverCompatible ? 'yes' : 'no'"
-		:title="serverCompatible
-			? t('versioniq', 'This version declares support for the running Nextcloud version.')
-			: t('versioniq', 'This version does not declare support for the running Nextcloud version; installing it will likely fail.')">
-		{{ serverCompatible ? t('versioniq', 'Runs on this server') : t('versioniq', 'Not for this server version') }}
+		:title="title">
+		{{ label }}
 	</span>
 </template>
 

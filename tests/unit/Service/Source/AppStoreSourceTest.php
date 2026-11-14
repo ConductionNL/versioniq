@@ -543,4 +543,51 @@ final class AppStoreSourceTest extends TestCase {
 
 		$this->assertSame(['unknown', 'high', 'medium'], array_column($result['advisories'], 'severity'));
 	}
+
+	/**
+	 * Which spec an override can lift: only one whose maximum is below the
+	 * server while every lower bound holds (install-force-incompatible D1).
+	 *
+	 * @return array<string, array{0: string, 1: string, 2: ?bool}>
+	 */
+	public static function aboveMaximumCases(): array {
+		return [
+			'maximum below the server' => ['33.0.2', '>=30 <=32', true],
+			'strict maximum reached' => ['33.0.2', '>=30.0.0 <33.0.0', true],
+			'minimum above the server' => ['32.0.5', '>=33 <=34', false],
+			'both bounds miss' => ['33.0.2', '>=34 <=32', false],
+			'inside the range' => ['32.0.5', '>=30 <=32', false],
+			'any server' => ['33.0.2', '*', false],
+			'exact other major above' => ['33.0.2', '==32', true],
+			'exact other major below' => ['31.0.2', '==32', false],
+			'unreadable spec' => ['33.0.2', '>=30 foo', null],
+			'unknown server' => ['', '>=30 <=32', null],
+		];
+	}
+
+	/**
+	 * @dataProvider aboveMaximumCases
+	 */
+	public function testServerAboveMaximumIsTrueOnlyWhenTheMaximumAloneKeepsTheServerOut(string $server, string $spec, ?bool $expected): void {
+		$this->assertSame($expected, AppStoreSource::serverAboveMaximum($server, $spec));
+	}
+
+	public function testAnIncompatibleReleaseCarriesServerTooNew(): void {
+		$config = $this->createMock(IConfig::class);
+		$config->method('getSystemValueString')->willReturn('33.0.2.1');
+		$normalize = new \ReflectionMethod(AppStoreSource::class, 'normalizeVersions');
+		$source = (new \ReflectionClass(AppStoreSource::class))->newInstanceWithoutConstructor();
+		(new \ReflectionProperty(AppStoreSource::class, 'config'))->setValue($source, $config);
+
+		$entries = $normalize->invoke($source, [
+			['version' => '3.0.0', 'platformVersionSpec' => '>=34'],
+			['version' => '2.0.0', 'platformVersionSpec' => '>=30 <=32'],
+			['version' => '1.0.0', 'platformVersionSpec' => '>=30 <=33'],
+		]);
+
+		$this->assertSame(
+			[['3.0.0', false, false], ['2.0.0', false, true], ['1.0.0', true, null]],
+			array_map(static fn (array $entry): array => [$entry['version'], $entry['serverCompatible'], $entry['serverTooNew'] ?? null], $entries)
+		);
+	}
 }

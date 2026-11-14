@@ -28,7 +28,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * `occ versioniq:install <appId> <version> [--source=] [--dry-run]
- * [--allow-downgrade] [--json]` — installs a specific version through the
+ * [--allow-downgrade] [--force-incompatible] [--json]` — installs a specific version through the
  * same `InstallerService::installAppVersion()` path the HTTP API uses
  * (source resolution, allowlist, integrity verification, backup/restore,
  * maintenance-mode, finalize) — no duplicated install logic.
@@ -38,6 +38,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  * applies; see "CLI trust context".
  *
  * @spec openspec/specs/cli-commands/spec.md
+ * @spec openspec/changes/install-force-incompatible/specs/cli-commands/spec.md
  * @psalm-api
  */
 class InstallVersion extends Command {
@@ -84,6 +85,7 @@ class InstallVersion extends Command {
 			->addOption('dry-run', null, InputOption::VALUE_NONE, 'Evaluate the install (integrity checks, downgrade detection) without swapping any files.')
 			->addOption('allow-downgrade', null, InputOption::VALUE_NONE, 'Acknowledge and proceed with a downgrade (target version older than installed). Refused without this flag.')
 			->addOption('accept-new-sha', null, InputOption::VALUE_NONE, 'Accept a changed SHA-256 for a version whose digest was previously recorded (trust-on-first-use), replacing the recorded digest. Refused without this flag when the digest differs.')
+			->addOption('force-incompatible', null, InputOption::VALUE_NONE, 'Install past the version\'s declared maximum Nextcloud version through app_install_overwrite; Versioniq lifts the override at the next major upgrade. A version that needs a newer Nextcloud still fails with exit code 7.')
 			->addOption('json', null, InputOption::VALUE_NONE, 'Emit the structured outcome as JSON instead of human-readable text.')
 			->setHelp(
 				'Exit codes: 0 success/dry-run-ok, 1 unknown/unclassified, 2 unknown app / bad arguments, '
@@ -118,10 +120,11 @@ class InstallVersion extends Command {
 		$dryRun = (bool)$input->getOption('dry-run');
 		$allowDowngrade = (bool)$input->getOption('allow-downgrade');
 		$acceptNewSha = (bool)$input->getOption('accept-new-sha');
+		$forceIncompatible = (bool)$input->getOption('force-incompatible');
 
 		$result = $this->installerService->installAppVersion(new InstallRequest(
 			new InstallTarget($appId, $version, $sourceOverride),
-			new InstallOptions(false, $dryRun, $acceptNewSha, $allowDowngrade),
+			new InstallOptions(false, $dryRun, $acceptNewSha, $allowDowngrade, $forceIncompatible),
 			new PinChoice(null, false),
 		));
 
@@ -137,6 +140,9 @@ class InstallVersion extends Command {
 		}
 
 		$this->renderHuman($output, $exitCode, $payload);
+		if ($forceIncompatible && $exitCode === self::EXIT_INCOMPATIBLE) {
+			$this->errorOutput($output)->writeln('An override only lifts the declared maximum, so it cannot help this version: it still does not fit this server, for example because it needs a newer Nextcloud.');
+		}
 
 		return $exitCode;
 	}

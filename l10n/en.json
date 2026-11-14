@@ -279,6 +279,20 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Outside the update policy: %n release behind",
             "Outside the update policy: %n releases behind"
-        ]
+        ],
+        "Enable anyway": "Enable anyway",
+        "Install anyway": "Install anyway",
+        "Forced to run on Nextcloud {major}. Lifted at the next major upgrade.": "Forced to run on Nextcloud {major}. Lifted at the next major upgrade.",
+        "Needs a newer Nextcloud; cannot be forced": "Needs a newer Nextcloud; cannot be forced",
+        "Nextcloud's compatibility check is overridden for this app.": "Nextcloud's compatibility check is overridden for this app.",
+        "This version declares a maximum below the running Nextcloud version. You can install it anyway at your own risk.": "This version declares a maximum below the running Nextcloud version. You can install it anyway at your own risk.",
+        "This version needs a newer Nextcloud than this one. An override only lifts the declared maximum, so it cannot help.": "This version needs a newer Nextcloud than this one. An override only lifts the declared maximum, so it cannot help.",
+        "%1$s was forced to run past its declared maximum. After the upgrade to Nextcloud %2$s the override is lifted, and %1$s is disabled because its version does not declare support for Nextcloud %2$s. Update it, or choose \"Enable anyway\" again.": "%1$s was forced to run past its declared maximum. After the upgrade to Nextcloud %2$s the override is lifted, and %1$s is disabled because its version does not declare support for Nextcloud %2$s. Update it, or choose \"Enable anyway\" again.",
+        "%1$s was forced to run past its declared maximum. After the upgrade to Nextcloud %2$s the override is lifted; %1$s now runs under Nextcloud's own compatibility check.": "%1$s was forced to run past its declared maximum. After the upgrade to Nextcloud %2$s the override is lifted; %1$s now runs under Nextcloud's own compatibility check.",
+        "Compatibility override lifted for %s": "Compatibility override lifted for %s",
+        "Run {appId} {version} on a Nextcloud it does not declare": "Run {appId} {version} on a Nextcloud it does not declare",
+        "The publisher of {appId} {version} has not declared support for this Nextcloud version. Versioniq can add {appId} to Nextcloud's compatibility override (app_install_overwrite), so Nextcloud ignores the declared maximum. The app may not work, and it can break pages or background jobs that use it.": "The publisher of {appId} {version} has not declared support for this Nextcloud version. Versioniq can add {appId} to Nextcloud's compatibility override (app_install_overwrite), so Nextcloud ignores the declared maximum. The app may not work, and it can break pages or background jobs that use it.",
+        "Versioniq lifts the override at the next major Nextcloud upgrade, and disables the app then if its version still does not declare support.": "Versioniq lifts the override at the next major Nextcloud upgrade, and disables the app then if its version still does not declare support.",
+        "You will be asked for your password before anything changes.": "You will be asked for your password before anything changes."
     }
 }
