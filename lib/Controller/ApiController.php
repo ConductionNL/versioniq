@@ -854,7 +854,9 @@ class ApiController extends OCSController {
 			$user->getUID(),
 			$this->access->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
 		);
+		$before = $this->reports->ruleAudit === null ? null : $this->autoUpdate->policyStore->get($appId)?->level;
 		$this->autoUpdate->policyStore->set($appId, $policy);
+		$this->reports->ruleAudit?->policySet($user->getUID(), $appId, $before, $level);
 
 		return new DataResponse(['appId' => $appId, 'policy' => $policy->toArray()]);
 	}
@@ -880,7 +882,11 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
+		$before = $this->reports->ruleAudit === null ? null : $this->autoUpdate->policyStore->get($appId)?->level;
 		$this->autoUpdate->policyStore->clear($appId);
+		if ($before !== null) {
+			$this->reports->ruleAudit?->policyCleared($this->callerUid(), $appId, $before);
+		}
 
 		return new DataResponse(['appId' => $appId, 'cleared' => true]);
 	}
@@ -930,12 +936,14 @@ class ApiController extends OCSController {
 			);
 		}
 
+		$before = $this->reports->ruleAudit === null ? [] : $this->autoUpdateRule();
 		if ($enabledParam !== null) {
 			$this->autoUpdate->settingsStore->setEnabled($this->readBinaryBool($enabledParam, $this->autoUpdate->settingsStore->isEnabled()));
 		}
 		if ($windowParam !== '') {
 			$this->autoUpdate->settingsStore->setWindow($windowParam);
 		}
+		$this->reports->ruleAudit?->autoUpdateSettings($this->callerUid(), $before, $this->autoUpdateRule());
 
 		return new DataResponse([
 			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
@@ -995,6 +1003,7 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
+		$before = $this->reports->ruleAudit === null ? [] : $this->advisoryRule();
 		if ($intervalHours !== null && $intervalHours !== '') {
 			$refusal = $this->storeIntervalHours($intervalHours);
 			if ($refusal !== null) {
@@ -1007,8 +1016,38 @@ class ApiController extends OCSController {
 		if ($digestEnabled !== null) {
 			$this->storeDigestEnabled($digestEnabled);
 		}
+		$this->reports->ruleAudit?->advisorySettings($this->callerUid(), $before, $this->advisoryRule());
 
 		return $this->advisorySettingsResponse();
+	}
+
+	/**
+	 * The automatic update switch and window as they stand, for the rule audit.
+	 *
+	 * @return array{enabled: bool, window: string}
+	 */
+	private function autoUpdateRule(): array {
+		return [
+			'enabled' => $this->autoUpdate->settingsStore->isEnabled(),
+			'window' => $this->autoUpdate->settingsStore->getWindow(),
+		];
+	}
+
+	/**
+	 * The advisory interval and digest switch as they stand, for the rule audit.
+	 *
+	 * @return array{intervalHours: int, digestEnabled: bool}
+	 */
+	private function advisoryRule(): array {
+		return [
+			'intervalHours' => $this->reports->stores->advisorySettingsStore->getIntervalHours(),
+			'digestEnabled' => $this->reports->stores->advisorySettingsStore->isDigestEnabled(),
+		];
+	}
+
+	/** The signed-in admin's uid, '' when there is none. */
+	private function callerUid(): string {
+		return $this->access->caller->userSession->getUser()?->getUID() ?? '';
 	}
 
 	/**

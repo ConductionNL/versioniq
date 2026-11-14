@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Api;
 
 use OCA\Versioniq\Db\AuditEntryMapper;
+use OCA\Versioniq\Service\Audit\RuleChangeAuditor;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
 
 /**
@@ -25,6 +26,8 @@ final class ReportCollaborators {
 		public readonly ReportStores $stores,
 		public readonly DiscoveryAggregator $discoveryAggregator,
 		public readonly AuditEntryMapper $auditEntryMapper,
+		// Optional: audits changes to the update rules (audit-attribution-and-forwarding D2).
+		public readonly ?RuleChangeAuditor $ruleAudit = null,
 	) {
 	}
 }

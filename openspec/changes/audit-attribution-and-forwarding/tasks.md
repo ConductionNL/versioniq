@@ -10,7 +10,8 @@
 
 ## 2. Rule changes
 
-- [ ] 2.1 Audit `setPolicy`, `clearPolicy`, `updateAutoUpdateSettings` and `updateAdvisorySettings` with before and after. Verify: `tests/unit/Controller/ApiTest.php` asserts one row per write with the expected message.
+- [x] 2.1 Audit `setPolicy`, `clearPolicy`, `updateAutoUpdateSettings` and `updateAdvisorySettings` with before and after. Verify: `tests/unit/Controller/ApiTest.php` asserts one row per write with the expected message.
+  - `RuleChangeAuditor` writes `policy_set`, `policy_clear`, `auto_update_settings` and `advisory_settings` rows as `field: before -> after` for the fields that changed; a refused call, an unchanged setting or a clear of a policy that did not exist writes none. `tests/unit/Controller/ApiRuleChangeAuditTest.php` (one row per write) and `tests/unit/Service/Audit/RuleChangeAuditorTest.php`.
 - [ ] 2.2 Show "Set by {user} on {date}" on the policy selector. Verify: `PolicySelector.spec.ts`.
 
 ## 3. Forwarding
