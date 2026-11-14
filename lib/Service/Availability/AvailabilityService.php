@@ -33,6 +33,8 @@ use Psr\Log\LoggerInterface;
 class AvailabilityService {
 	/** Plain major.minor.patch, the rule CandidateSelector applies. */
 	private const SEMVER_PATTERN = '/^(\d+)\.(\d+)\.(\d+)$/';
+	/** The release a version on the app's channel belongs to, a pre-release suffix allowed. */
+	private const CHANNEL_VERSION_PATTERN = '/^v?(\d+)\.(\d+)\.(\d+)(?:-.+)?$/';
 
 	public function __construct(
 		private InstallerService $installerService,
@@ -217,7 +219,7 @@ class AvailabilityService {
 		$parsed = [];
 		foreach ($versions as $entry) {
 			$version = is_string($entry['version'] ?? null) ? trim((string)$entry['version']) : '';
-			$parts = $this->parse($version);
+			$parts = self::countedParts($version, $entry['onChannel'] ?? null);
 			if ($parts !== null) {
 				$parsed[] = [$version, $parts, ($entry['serverCompatible'] ?? null) !== false];
 			}
@@ -236,6 +238,27 @@ class AvailabilityService {
 	 */
 	private static function isNewerLine(array $parts, ?array $installed): bool {
 		return $installed !== null && ($parts[0] > $installed[0] || ($parts[0] === $installed[0] && $parts[1] > $installed[1]));
+	}
+
+	/**
+	 * The parts of a version the sweep counts: one on the app's channel, a
+	 * pre-release included; none off it; a plain `x.y.z` when the listing
+	 * carries no channel.
+	 *
+	 * @return array{int, int, int}|null
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-the-nightly-job-takes-only-versions-on-the-apps-channel
+	 */
+	private static function countedParts(string $version, mixed $onChannel): ?array {
+		if ($onChannel === false) {
+			return null;
+		}
+		$pattern = $onChannel === true ? self::CHANNEL_VERSION_PATTERN : self::SEMVER_PATTERN;
+		if (preg_match($pattern, $version, $matches) !== 1) {
+			return null;
+		}
+
+		return [(int)$matches[1], (int)$matches[2], (int)$matches[3]];
 	}
 
 	/**

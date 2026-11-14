@@ -21,7 +21,7 @@
 ## 4. Nightly job and sweep
 
 - [x] 4.1 Filter entries on `onChannel` in `AutoUpdateJob::processApp()` before `select()`. Verify: `tests/unit/BackgroundJob/AutoUpdateJobTest.php` covers policy `all` on a stable channel skipping a pre-release, and on a beta channel taking it.
-- [ ] 4.2 When `inventory-pending-updates` has landed, make its availability sweep count versions with `onChannel` instead of the plain-version pattern. Verify: its `AvailabilityServiceTest` gains a beta-channel app whose newest version is a pre-release.
+- [x] 4.2 When `inventory-pending-updates` has landed, make its availability sweep count versions with `onChannel` instead of the plain-version pattern. Verify: its `AvailabilityServiceTest` gains a beta-channel app whose newest version is a pre-release.
 
 ## 5. Command
 
