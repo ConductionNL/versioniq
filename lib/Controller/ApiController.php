@@ -20,6 +20,7 @@ use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\Api\AccessCollaborators;
 use OCA\Versioniq\Service\Api\InstallCollaborators;
 use OCA\Versioniq\Service\Api\ReportCollaborators;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
@@ -822,7 +823,7 @@ class ApiController extends OCSController {
 	 * @return DataResponse<Http::STATUS_OK, array{appId: string, policy: array<string, mixed>}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: The stored policy
-	 * 400: The requested policy level is not recognised
+	 * 400: The requested policy level is not recognised, or minAgeDays is outside 0 to 90
 	 * 403: Caller is not an administrator
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
@@ -844,10 +845,16 @@ class ApiController extends OCSController {
 			);
 		}
 
+		$minAgeDays = $this->optionalMinAgeDays();
+		if ($minAgeDays === false) {
+			return self::minAgeRefusal();
+		}
+
 		$policy = new Policy(
 			$level,
 			$user->getUID(),
 			$this->access->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
+			$minAgeDays,
 		);
 		$this->autoUpdate->policyStore->set($appId, $policy);
 
@@ -890,7 +897,7 @@ class ApiController extends OCSController {
 	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: The stored global settings
-	 * 400: The maintenance window is malformed
+	 * 400: The maintenance window is malformed, or minAgeDays is outside 0 to 90
 	 * 403: Caller is not an administrator
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
@@ -925,17 +932,26 @@ class ApiController extends OCSController {
 			);
 		}
 
+		$minAgeDays = $this->optionalMinAgeDays();
+		if ($minAgeDays === false) {
+			return self::minAgeRefusal();
+		}
+
 		if ($enabledParam !== null) {
 			$this->autoUpdate->settingsStore->setEnabled($this->readBinaryBool($enabledParam, $this->autoUpdate->settingsStore->isEnabled()));
 		}
 		if ($windowParam !== '') {
 			$this->autoUpdate->settingsStore->setWindow($windowParam);
 		}
+		if ($minAgeDays !== null) {
+			$this->autoUpdate->settingsStore->setMinAgeDays($minAgeDays);
+		}
 
 		return new DataResponse([
 			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
 			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
 			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
+			'autoUpdateMinAgeDays' => $this->autoUpdate->settingsStore->getMinAgeDays(),
 		]);
 	}
 
@@ -1452,6 +1468,40 @@ class ApiController extends OCSController {
 		}
 
 		return $default;
+	}
+
+	/**
+	 * The optional `minAgeDays` parameter: null when absent or empty, the
+	 * number when it is a whole number from 0 to 90, false otherwise.
+	 *
+	 * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+	 */
+	private function optionalMinAgeDays(): int|false|null {
+		/** @var mixed $value */
+		$value = $this->request->getParam('minAgeDays', null);
+		if ($value === null || $value === '') {
+			return null;
+		}
+		if (is_string($value) && preg_match('/^\d+$/', trim($value)) === 1) {
+			$value = (int)trim($value);
+		}
+		if (!is_int($value) || !AutoUpdateSettingsStore::isValidMinAgeDays($value)) {
+			return false;
+		}
+
+		return $value;
+	}
+
+	/**
+	 * The 400 for a minimum age outside 0 to 90 days.
+	 *
+	 * @return DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>
+	 */
+	private static function minAgeRefusal(): DataResponse {
+		return new DataResponse(
+			['message' => 'minAgeDays must be a whole number from 0 to ' . AutoUpdateSettingsStore::MAX_MIN_AGE_DAYS . '.'],
+			Http::STATUS_BAD_REQUEST
+		);
 	}
 
 	private function stringParam(string $name, string $default): string {

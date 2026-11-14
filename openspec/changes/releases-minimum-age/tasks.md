@@ -2,8 +2,8 @@
 
 ## 1. Age rule
 
-- [ ] 1.1 Add `auto_update_min_age_days` to `AutoUpdateSettingsStore` and the optional `minAgeDays` to `Policy` (design D1), accepted by `PUT /api/auto-update/settings` and `PUT /api/app/{appId}/policy`. Verify: `tests/unit/Service/AutoUpdate/AutoUpdateSettingsStoreTest.php` rejects 91 and -1; a `Policy` test round-trips a policy with and without `minAgeDays`; `tests/unit/Controller/ApiTest.php` asserts 400 on an out-of-range value.
-- [ ] 1.2 Add `lib/Service/AutoUpdate/FirstSeenStore.php` and `lib/Service/AutoUpdate/MinimumAgeRule.php` (design D2). Verify: `tests/unit/Service/AutoUpdate/MinimumAgeRuleTest.php` covers a dated version, an undated one first seen days ago, an undated one seen now, age 0, and pruning of versions no longer listed.
+- [x] 1.1 Add `auto_update_min_age_days` to `AutoUpdateSettingsStore` and the optional `minAgeDays` to `Policy` (design D1), accepted by `PUT /api/auto-update/settings` and `PUT /api/app/{appId}/policy`. Verify: `tests/unit/Service/AutoUpdate/AutoUpdateSettingsStoreTest.php` rejects 91 and -1; a `Policy` test round-trips a policy with and without `minAgeDays`; `tests/unit/Controller/ApiTest.php` asserts 400 on an out-of-range value.
+- [x] 1.2 Add `lib/Service/AutoUpdate/FirstSeenStore.php` and `lib/Service/AutoUpdate/MinimumAgeRule.php` (design D2). Verify: `tests/unit/Service/AutoUpdate/MinimumAgeRuleTest.php` covers a dated version, an undated one first seen days ago, an undated one seen now, age 0, and pruning of versions no longer listed.
 
 ## 2. Planner and job
 
@@ -21,3 +21,13 @@
 ## 4. Close
 
 - [ ] 4.1 Set the matrix rows `rel-min-age`, `rel-held-back-visible`, `rel-min-age-exception` and `rel-security-bypass-min-age` to `built` with evidence lines, then archive this change.
+
+## Build notes
+
+Section 1 is built:
+- `auto_update_min_age_days` (0 to 90) lives in `AutoUpdateSettingsStore`. A stored value out of range reads as off.
+- `Policy` carries an optional `minAgeDays`, left out of the JSON when absent, so old policies read unchanged.
+- Both PUT endpoints answer 400 for a value outside 0 to 90, and settings now returns `autoUpdateMinAgeDays`.
+- `MinimumAgeRule` uses `releasedAt` when given, else the first-seen time from `FirstSeenStore`. An age of 0 holds nothing and records nothing.
+
+`openapi.json` is not regenerated: `generate-spec` is not in the cloud vendor. Sections 2 to 4 are open.

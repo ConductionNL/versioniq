@@ -56,4 +56,28 @@ final class PolicyTest extends TestCase {
 		$this->expectException(InvalidArgumentException::class);
 		Policy::fromArray(['level' => 'patch']);
 	}
+
+	public function testAPolicyRoundTripsWithAndWithoutMinAgeDays(): void {
+		$without = new Policy('patch', 'alice', '2026-11-14T10:00:00+00:00');
+		$with = new Policy('minor', 'alice', '2026-11-14T10:00:00+00:00', 7);
+
+		$this->assertArrayNotHasKey('minAgeDays', $without->toArray());
+		$this->assertNull(Policy::fromArray($without->toArray())->minAgeDays);
+		$this->assertSame(7, $with->toArray()['minAgeDays']);
+		$this->assertEquals($with, Policy::fromArray($with->toArray()));
+	}
+
+	public function testAPolicyRefusesAMinAgeOutsideZeroToNinety(): void {
+		foreach ([91, -1] as $days) {
+			try {
+				new Policy('patch', 'alice', '2026-11-14T10:00:00+00:00', $days);
+				$this->fail('accepted ' . $days);
+			} catch (\InvalidArgumentException $e) {
+				$this->assertStringContainsString('minAgeDays', $e->getMessage());
+			}
+		}
+
+		$this->expectException(\InvalidArgumentException::class);
+		Policy::fromArray(['level' => 'patch', 'setBy' => 'a', 'setAt' => 'b', 'minAgeDays' => '7']);
+	}
 }
