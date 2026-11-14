@@ -20,6 +20,7 @@ use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\InstallerService;
 use OCP\AppFramework\Http;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -58,6 +59,18 @@ class InstallVersion extends Command {
 	private const EXIT_INCOMPATIBLE = 7;
 	private const EXIT_FINALIZE = 8;
 	private const EXIT_UNTRUSTED_SOURCE = 9;
+
+	/** What each Nextcloud migration attribute does, by short class name. */
+	private const ACTION_PHRASES = [
+		'CreateTable' => 'creates a table',
+		'DropTable' => 'drops a table',
+		'AddColumn' => 'adds a column',
+		'DropColumn' => 'drops a column',
+		'ModifyColumn' => 'changes a column',
+		'AddIndex' => 'adds an index',
+		'DropIndex' => 'drops an index',
+		'DataCleansing' => 'cleans data',
+	];
 
 	public function __construct(
 		private InstallerService $installerService,
@@ -150,6 +163,9 @@ class InstallVersion extends Command {
 			if (isset($payload['updateType'])) {
 				$output->writeln(sprintf('Update type: %s', $payload['updateType']));
 			}
+			if (array_key_exists('migrationPreview', $payload)) {
+				$this->renderMigrationPreview($output, is_array($payload['migrationPreview']) ? $payload['migrationPreview'] : null);
+			}
 
 			return;
 		}
@@ -164,6 +180,134 @@ class InstallVersion extends Command {
 			// printed explicitly)" — see design.md.
 			$error->writeln(sprintf('installStatus: %s', $payload['installStatus']));
 		}
+	}
+
+	/**
+	 * The database changes of an upgrade dry run: one row per table a step
+	 * changes, with its rows and advice, then the repair steps. No duration
+	 * in seconds is printed; see design.md D3 and D5 of the
+	 * `safety-upgrade-migration-preview` change.
+	 *
+	 * @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
+	 * @param array<array-key, mixed>|null $preview
+	 */
+	private function renderMigrationPreview(OutputInterface $output, ?array $preview): void {
+		if ($preview === null) {
+			$output->writeln('Database changes: the target could not be read.');
+
+			return;
+		}
+
+		$steps = self::arrays($preview['steps'] ?? []);
+		$estimated = ($preview['estimated'] ?? false) === true ? ' (estimate: the migrations table could not be read)' : '';
+		if ($steps === []) {
+			$output->writeln('No database changes' . $estimated . '.');
+		} else {
+			$output->writeln('Database changes' . $estimated . ':');
+			$table = new Table($output);
+			$table->setHeaders(['Step', 'Changes', 'Table', 'Rows', 'Advice']);
+			foreach ($steps as $step) {
+				$table->addRows(self::stepRows($step));
+			}
+			$table->render();
+		}
+
+		$repairSteps = self::strings($preview['repairSteps'] ?? []);
+		if ($repairSteps !== []) {
+			$output->writeln('Repair steps after the migrations: ' . implode(', ', $repairSteps));
+		}
+	}
+
+	/**
+	 * The table rows of one step: one per table it changes, or one row
+	 * saying what it does without a table.
+	 *
+	 * @param array<array-key, mixed> $step
+	 * @return list<list<string>>
+	 */
+	private static function stepRows(array $step): array {
+		$name = (string)($step['name'] ?? '');
+		$changes = self::stepChanges($step);
+		$data = ($step['dataStep'] ?? false) === true ? 'Moves data; the time depends on the amount of data.' : '';
+		$tables = self::arrays($step['tables'] ?? []);
+		if ($tables === []) {
+			return [[$name, $changes, '', '', $data]];
+		}
+
+		$rows = [];
+		foreach ($tables as $table) {
+			$advice = trim(self::sizeAdvice((string)($table['sizeClass'] ?? '')) . ' ' . $data);
+			/** @var mixed $count */
+			$count = $table['rows'] ?? null;
+			$rowCount = is_int($count) ? number_format($count) : '';
+			$rows[] = [$name, $changes, (string)($table['name'] ?? ''), $rowCount, $advice];
+		}
+
+		return $rows;
+	}
+
+	/**
+	 * What a step declares, as short phrases; a step that describes nothing says so.
+	 *
+	 * @param array<array-key, mixed> $step
+	 */
+	private static function stepChanges(array $step): string {
+		if (($step['describes'] ?? true) === false) {
+			return 'This step does not describe what it changes.';
+		}
+
+		$phrases = [];
+		foreach (self::arrays($step['actions'] ?? []) as $action) {
+			$attribute = (string)($action['attribute'] ?? '');
+			$phrases[] = self::ACTION_PHRASES[$attribute] ?? $attribute;
+		}
+
+		return implode(', ', array_values(array_unique($phrases)));
+	}
+
+	/**
+	 * The array entries of a list-shaped value.
+	 *
+	 * @return list<array<array-key, mixed>>
+	 */
+	private static function arrays(mixed $value): array {
+		$out = [];
+		/** @var mixed $entry */
+		foreach (is_array($value) ? $value : [] as $entry) {
+			if (is_array($entry)) {
+				$out[] = $entry;
+			}
+		}
+
+		return $out;
+	}
+
+	/**
+	 * The string entries of a list-shaped value.
+	 *
+	 * @return list<string>
+	 */
+	private static function strings(mixed $value): array {
+		$out = [];
+		/** @var mixed $entry */
+		foreach (is_array($value) ? $value : [] as $entry) {
+			if (is_string($entry)) {
+				$out[] = $entry;
+			}
+		}
+
+		return $out;
+	}
+
+	/** The advice for a size class; never a duration in seconds. */
+	private static function sizeAdvice(string $sizeClass): string {
+		return match ($sizeClass) {
+			'new' => 'New table; fast.',
+			'small' => 'Takes seconds.',
+			'large' => 'May take minutes.',
+			'very_large' => 'May take long; plan a maintenance window.',
+			default => 'Size unknown.',
+		};
 	}
 
 	/**
