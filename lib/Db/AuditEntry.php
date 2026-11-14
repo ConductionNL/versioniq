@@ -47,6 +47,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setMessage(?string $value)
  * @method string getCreatedAt()
  * @method void setCreatedAt(string $value)
+ * @method ?string getOrigin()
+ * @method void setOrigin(?string $value)
  */
 class AuditEntry extends Entity implements JsonSerializable {
 	public const STATUS_SUCCESS = 'success';
@@ -61,6 +63,8 @@ class AuditEntry extends Entity implements JsonSerializable {
 	protected string $status = '';
 	protected ?string $message = null;
 	protected string $createdAt = '';
+	/** Where the operation came from (web, cli, job, listener); null on rows written before it was recorded. */
+	protected ?string $origin = null;
 
 	public function __construct() {
 		$this->addType('actorUid', 'string');
@@ -72,6 +76,7 @@ class AuditEntry extends Entity implements JsonSerializable {
 		$this->addType('status', 'string');
 		$this->addType('message', 'string');
 		$this->addType('createdAt', 'string');
+		$this->addType('origin', 'string');
 	}
 
 	/**
@@ -89,6 +94,7 @@ class AuditEntry extends Entity implements JsonSerializable {
 			'status' => $this->status,
 			'message' => $this->message,
 			'createdAt' => $this->createdAt,
+			'origin' => $this->origin,
 		];
 	}
 }

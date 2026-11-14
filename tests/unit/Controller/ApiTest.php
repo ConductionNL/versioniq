@@ -357,6 +357,8 @@ final class ApiTest extends TestCase {
 			'status' => 'success',
 			'message' => null,
 			'createdAt' => '2026-07-23 12:00:00',
+			// A row from before origins were recorded: unknown.
+			'origin' => null,
 		], $entry->jsonSerialize());
 	}
 

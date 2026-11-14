@@ -21,6 +21,8 @@ final class AuditSubject {
 		public readonly string $actorUid,
 		public readonly string $appId,
 		public readonly string $operation,
+		/** Where the operation came from; null reads {@see AuditOrigin::current()}. */
+		public readonly ?string $origin = null,
 	) {
 	}
 }
