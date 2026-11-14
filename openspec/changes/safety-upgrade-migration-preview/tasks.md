@@ -3,8 +3,10 @@
 ## 1. Reading the steps
 
 - [ ] 1.1 Confirm on a live Nextcloud 32 instance how `oc_migrations` records an app step (the `version` value against the class name), then add `MigrationDiffer::pending()` with the file fallback (design D1). Verify: `tests/unit/Service/Installer/MigrationDifferTest.php` covers steps recorded and not, a step that ran and ships again, an unreadable table (estimate), and an unreadable target (null).
-- [ ] 1.2 Confirm the attribute classes in `OCP\Migration\Attributes` of `nextcloud/ocp` stable32, then add `lib/Service/Installer/MigrationAttributeReader.php` (design D2). Verify: `tests/unit/Service/Installer/MigrationAttributeReaderTest.php` with fabricated step files: each attribute, several on one step, an unknown attribute, the `changeSchema()` fallback, a data step, and a step that describes nothing.
-- [ ] 1.3 Add `lib/Service/Installer/TableSizeProbe.php` (design D3). Verify: `tests/unit/Service/Installer/TableSizeProbeTest.php` covers each size class, a missing table (`new`), a name that fails the pattern (not queried), the 20-table cap, and a failing count ("size unknown").
+- [x] 1.2 Confirm the attribute classes in `OCP\Migration\Attributes` of `nextcloud/ocp` stable32, then add `lib/Service/Installer/MigrationAttributeReader.php` (design D2). Verify: `tests/unit/Service/Installer/MigrationAttributeReaderTest.php` with fabricated step files: each attribute, several on one step, an unknown attribute, the `changeSchema()` fallback, a data step, and a step that describes nothing.
+  - Done. The attribute classes were read from the `nextcloud/ocp` this app builds against (`^35.0`): `CreateTable`, `DropTable`, `AddColumn`, `DropColumn`, `ModifyColumn`, `AddIndex`, `DropIndex`, `DataCleansing`, plus the generic and base classes; they date from Nextcloud 30. Only attributes from `OCP\Migration\Attributes` (fully qualified or imported, group and alias imports included) count.
+- [x] 1.3 Add `lib/Service/Installer/TableSizeProbe.php` (design D3). Verify: `tests/unit/Service/Installer/TableSizeProbeTest.php` covers each size class, a missing table (`new`), a name that fails the pattern (not queried), the 20-table cap, and a failing count ("size unknown").
+  - Done. A name past the cap or failing the pattern reads `unknown`, like a failed count.
 
 ## 2. The dry run
 
