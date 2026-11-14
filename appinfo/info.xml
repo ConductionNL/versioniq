@@ -130,6 +130,7 @@ Versioniq gives Nextcloud administrators the ability to roll back apps to previo
 		<command>OCA\Versioniq\Command\ListVersions</command>
 		<command>OCA\Versioniq\Command\InstallVersion</command>
 		<command>OCA\Versioniq\Command\ListUpdates</command>
+		<command>OCA\Versioniq\Command\ListAdvisories</command>
 	</commands>
 	<settings>
 		<admin>OCA\Versioniq\Settings\Admin</admin>

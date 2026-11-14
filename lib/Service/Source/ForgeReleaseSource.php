@@ -14,6 +14,7 @@ namespace OCA\Versioniq\Service\Source;
 
 use Exception;
 use OCA\Versioniq\Service\Advisory\AdvisoryClauses;
+use OCA\Versioniq\Service\Advisory\AdvisoryReferences;
 use OCA\Versioniq\Service\Advisory\AdvisorySeverity;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
@@ -205,7 +206,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * `error` string rather than throwing.
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
-	 * @return array{advisories: list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string}>, error: ?string}
+	 * @return array{advisories: list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, error: ?string}
 	 */
 	public function listAdvisories(string $appId, SourceBinding $binding): array {
 		$ownerRepo = $binding->getOwnerRepo();
@@ -233,7 +234,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * object or has no id.
 	 *
 	 * @param array<array-key, mixed> $entries
-	 * @return list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string}>
+	 * @return list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>
 	 */
 	private function advisoriesIn(array $entries): array {
 		$advisories = [];
@@ -253,7 +254,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * the first vulnerability entry (forge advisories list one package).
 	 *
 	 * @param array<array-key, mixed> $entry
-	 * @return array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string}|null
+	 * @return array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}|null
 	 */
 	private function normalizeAdvisory(array $entry): ?array {
 		/** @var mixed $id */
@@ -274,7 +275,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			'summary' => is_string($summary) ? $summary : '',
 			'affected' => $affected,
 			'firstPatchedVersion' => $firstPatched,
-		];
+		] + AdvisoryReferences::from($entry);
 	}
 
 	/**

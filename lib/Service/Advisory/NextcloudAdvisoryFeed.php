@@ -87,7 +87,7 @@ class NextcloudAdvisoryFeed {
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
 	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
-	 * @return array{advisories: array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}>>, error: ?string}
+	 * @return array{advisories: array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>>, error: ?string}
 	 */
 	public function fetchAll(): array {
 		$client = $this->http->clientService->newClient();
@@ -193,7 +193,7 @@ class NextcloudAdvisoryFeed {
 	 * flattened to one entry per target here.
 	 *
 	 * @param array<array-key, mixed> $record
-	 * @return array<string, array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}>
+	 * @return array<string, array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>
 	 */
 	private function targetsFor(array $record, string $ghsa): array {
 		/** @var mixed $vulnerabilities */
@@ -245,22 +245,22 @@ class NextcloudAdvisoryFeed {
 	 * The id, severity and summary every target of one GHSA record shares.
 	 *
 	 * @param array<array-key, mixed> $record
-	 * @return array{id: string, severity: string, summary: string}
+	 * @return array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string}
 	 */
 	private static function advisoryHeader(array $record, string $ghsa): array {
 		return [
 			'id' => $ghsa,
 			'severity' => AdvisorySeverity::normalize($record['severity'] ?? null),
 			'summary' => is_string($record['summary'] ?? null) ? (string)$record['summary'] : '',
-		];
+		] + AdvisoryReferences::from($record);
 	}
 
 	/**
 	 * The advisory record for a target named once so far.
 	 *
-	 * @param array{id: string, severity: string, summary: string} $advisory
+	 * @param array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string} $advisory
 	 * @param array{target: string, affected: list<string>, patched: list<string>} $entry
-	 * @return array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}
+	 * @return array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}
 	 */
 	private static function newTarget(array $advisory, array $entry): array {
 		return $advisory + [
@@ -278,9 +278,9 @@ class NextcloudAdvisoryFeed {
 	 * merged rather than the second entry replacing the first and silently
 	 * dropping a branch.
 	 *
-	 * @param array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>} $known
+	 * @param array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string} $known
 	 * @param array{target: string, affected: list<string>, patched: list<string>} $entry
-	 * @return array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}
+	 * @return array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}
 	 */
 	private static function mergeVersions(array $known, array $entry): array {
 		$known['patchedVersions'] = array_values(array_unique([...$known['patchedVersions'], ...$entry['patched']]));
@@ -345,9 +345,9 @@ class NextcloudAdvisoryFeed {
 	 * failure this whole feature keeps hitting.
 	 *
 	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
-	 * @param array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}>> $collected
+	 * @param array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>> $collected
 	 * @param int $read How many advisories were read before the failure.
-	 * @return array{advisories: array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}>>, error: string}
+	 * @return array{advisories: array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>>, error: string}
 	 */
 	private function partial(array $collected, int $read, string $error): array {
 		$this->logger->warning('NextcloudAdvisoryFeed: ' . $error, ['collected' => count($collected)]);

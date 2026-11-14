@@ -403,4 +403,39 @@ final class ForgeReleaseSourceTest extends TestCase {
 		$this->assertNull($result['error']);
 		$this->assertSame(['unknown', 'unknown', 'critical'], array_column($result['advisories'], 'severity'));
 	}
+
+	/**
+	 * advisories-per-app-detail 1.1: a GHSA-shaped forge advisory keeps its
+	 * CVE ids, publication date and web link; one without them leaves them
+	 * empty.
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/tasks.md#1.1
+	 */
+	public function testAnAdvisoryKeepsItsCveIdsDateAndLink(): void {
+		$body = json_encode([
+			[
+				'ghsa_id' => 'GHSA-full',
+				'cve_id' => 'CVE-2026-1111',
+				'identifiers' => [['type' => 'GHSA', 'value' => 'GHSA-full'], ['type' => 'CVE', 'value' => 'CVE-2026-2222']],
+				'published_at' => '2026-08-01T10:00:00Z',
+				'html_url' => 'https://github.com/ConductionNL/openregister/security/advisories/GHSA-full',
+				'url' => 'https://api.github.com/repos/ConductionNL/openregister/security-advisories/GHSA-full',
+				'summary' => 'Full',
+			],
+			['ghsa_id' => 'GHSA-bare', 'summary' => 'Bare'],
+		], JSON_THROW_ON_ERROR);
+
+		$client = $this->createMock(IClient::class);
+		$client->method('get')->willReturn($this->mockResponse(200, $body));
+
+		$result = $this->buildSource($client)->listAdvisories('openregister', SourceBinding::github('ConductionNL', 'openregister'));
+
+		[$full, $bare] = $result['advisories'];
+		$this->assertSame(['CVE-2026-1111', 'CVE-2026-2222'], $full['cveIds']);
+		$this->assertSame('2026-08-01T10:00:00Z', $full['publishedAt']);
+		$this->assertSame('https://github.com/ConductionNL/openregister/security/advisories/GHSA-full', $full['url']);
+		$this->assertSame([], $bare['cveIds']);
+		$this->assertNull($bare['publishedAt']);
+		$this->assertNull($bare['url']);
+	}
 }

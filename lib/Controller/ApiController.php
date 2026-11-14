@@ -17,6 +17,8 @@ use OCA\Versioniq\Db\Pat;
 use OCA\Versioniq\Http\InstallVersionFields;
 use OCA\Versioniq\Http\RequestFieldsFrom;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Service\Advisory\ComplianceStatus;
+use OCA\Versioniq\Service\Advisory\FixStatus;
 use OCA\Versioniq\Service\Api\AccessCollaborators;
 use OCA\Versioniq\Service\Api\InstallCollaborators;
 use OCA\Versioniq\Service\Api\ReportCollaborators;
@@ -103,12 +105,17 @@ class ApiController extends OCSController {
 	 * six-hour-old one, or from an instance whose cron has never run — three
 	 * states that otherwise render as an identical empty map.
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{advisories: array<string, mixed>, checkedAt: ?int}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * `compliance` is the one patch compliance status of the server and all
+	 * apps (ComplianceStatus), and each row carries `heldByPin` when a pin
+	 * holds it below an installable fix (advisories-per-app-detail).
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{advisories: array<string, mixed>, checkedAt: ?int, compliance: array<string, mixed>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Stored advisory correlation returned
 	 * 403: Caller is not an administrator
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
+	 * @spec openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation/spec.md#requirement-the-instance-has-one-patch-compliance-status
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/advisories')]
 	#[ApiRoute(verb: 'GET', url: '/api/v1/advisories', postfix: 'v1')]
@@ -118,10 +125,18 @@ class ApiController extends OCSController {
 		}
 
 		$snapshot = $this->reports->stores->advisoryResultStore->read();
+		// A pin is read now, not at sweep time: it can change between sweeps.
+		$rows = FixStatus::withPins($snapshot['advisories'], $this->autoUpdate->pinStore->all());
 
 		return new DataResponse([
-			'advisories' => $snapshot['advisories'],
+			'advisories' => $rows,
 			'checkedAt' => $snapshot['checkedAt'],
+			'compliance' => ComplianceStatus::from(
+				$rows,
+				$snapshot['checkedAt'],
+				$this->reports->stores->advisorySettingsStore->getIntervalHours(),
+				$this->access->caller->timeFactory->getDateTime('now')->getTimestamp(),
+			),
 		]);
 	}
 
