@@ -24,6 +24,7 @@ use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Policy\Policy;
+use OCA\Versioniq\Service\Snapshot\SnapshotTaker;
 use OCP\AppFramework\Http;
 use OCP\BackgroundJob\TimedJob;
 use Psr\Log\LoggerInterface;
@@ -62,11 +63,15 @@ class AutoUpdateJob extends TimedJob {
 
 	private LoggerInterface $logger;
 
+	/** Whether this sweep already took its `before_auto_update` snapshot. */
+	private bool $snapshotTaken = false;
+
 	public function __construct(
 		JobRuntime $runtime,
 		private AutoUpdateStores $stores,
 		private AutoUpdateInstall $install,
 		private AutoUpdateNotifier $notifier,
+		private ?SnapshotTaker $snapshotTaker = null,
 	) {
 		parent::__construct($runtime->time);
 		$this->logger = $runtime->logger;
@@ -109,6 +114,7 @@ class AutoUpdateJob extends TimedJob {
 			return;
 		}
 		$this->stores->settingsStore->markWindowSwept($openingKey);
+		$this->snapshotTaken = false;
 
 		foreach ($this->stores->policyStore->all() as $appId => $policy) {
 			if ($policy->level === Policy::LEVEL_NONE) {
@@ -191,6 +197,7 @@ class AutoUpdateJob extends TimedJob {
 	}
 
 	private function attemptInstall(InstallTarget $target, string $installedVersion): void {
+		$this->snapshotBeforeFirstInstall();
 		$installResult = $this->install->installerService->installAppVersion(new InstallRequest(
 			$target,
 			new InstallOptions(false, false, false, false),
@@ -215,5 +222,24 @@ class AutoUpdateJob extends TimedJob {
 		$category = is_string($payload['category'] ?? null) ? $payload['category'] : 'unknown';
 		$hint = is_string($payload['hint'] ?? null) ? $payload['hint'] : '';
 		$this->notifier->notifyFailure($target->appId, $target->version, $category, $hint);
+	}
+
+	/**
+	 * Takes the `before_auto_update` snapshot once per sweep, right before its
+	 * first install; a sweep that installs nothing takes none. A failing
+	 * snapshot is logged and does not stop the sweep.
+	 *
+	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
+	 */
+	private function snapshotBeforeFirstInstall(): void {
+		if ($this->snapshotTaken || $this->snapshotTaker === null) {
+			return;
+		}
+		$this->snapshotTaken = true;
+		try {
+			$this->snapshotTaker->take('before_auto_update', 'system');
+		} catch (\Throwable $error) {
+			$this->logger->warning('AutoUpdateJob: the snapshot before the sweep failed', ['message' => $error->getMessage()]);
+		}
 	}
 }

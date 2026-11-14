@@ -39,6 +39,10 @@ class AuditLogger {
 	public const OPERATION_PIN_DRIFT = 'pin_drift';
 	/** An instance setting changed from the Settings tab (#438). */
 	public const OPERATION_SETTINGS = 'settings';
+	/** A snapshot of every app's version was taken (install-bulk-rollback D2). */
+	public const OPERATION_SNAPSHOT = 'snapshot';
+	/** A rollback to a snapshot started or finished (install-bulk-rollback D4). */
+	public const OPERATION_BULK_ROLLBACK = 'bulk_rollback';
 
 	private const OPERATION_PATTERN = '/^[a-z_]{1,32}$/';
 	private const MESSAGE_MAX_LENGTH = 4000;

@@ -132,4 +132,21 @@ final class SnapshotStoreTest extends TestCase {
 		$this->assertSame([], $this->store->index());
 		$this->assertArrayNotHasKey('snapshot.s001', $this->values);
 	}
+
+	public function testEndOfDayIsTheLastSecondOfAValidDateOnly(): void {
+		$this->assertSame('2026-09-23T23:59:59+00:00', SnapshotStore::endOfDay('2026-09-23')?->format(DATE_ATOM));
+		$this->assertNull(SnapshotStore::endOfDay('2026-02-30'));
+		$this->assertNull(SnapshotStore::endOfDay('23-09-2026'));
+		$this->assertNull(SnapshotStore::endOfDay('2026-09-23T00:00:00'));
+		$this->assertNull(SnapshotStore::endOfDay(''));
+	}
+
+	public function testADateOnTheDayOfASnapshotPicksIt(): void {
+		$this->store->save(new InstanceSnapshot('s20', '2026-09-20T10:00:00+00:00', 'admin', 'daily', []));
+		$this->store->save(new InstanceSnapshot('s25', '2026-09-25T10:00:00+00:00', 'admin', 'daily', []));
+
+		$this->assertSame('s20', $this->store->latestAtOrBefore(SnapshotStore::endOfDay('2026-09-23'))?->id);
+		$this->assertSame('s25', $this->store->latestAtOrBefore(SnapshotStore::endOfDay('2026-09-25'))?->id);
+		$this->assertNull($this->store->latestAtOrBefore(SnapshotStore::endOfDay('2026-09-19')));
+	}
 }

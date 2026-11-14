@@ -119,6 +119,23 @@ class SnapshotStore {
 	}
 
 	/**
+	 * The last second of a YYYY-MM-DD date in UTC, or null for anything else.
+	 *
+	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
+	 */
+	public static function endOfDay(string $date): ?\DateTimeImmutable {
+		if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1) {
+			return null;
+		}
+		$day = \DateTimeImmutable::createFromFormat('!Y-m-d', $date, new \DateTimeZone('UTC'));
+		if ($day === false || $day->format('Y-m-d') !== $date) {
+			return null;
+		}
+
+		return $day->setTime(23, 59, 59);
+	}
+
+	/**
 	 * Delete a snapshot; true when it existed.
 	 *
 	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md

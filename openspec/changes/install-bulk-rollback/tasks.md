@@ -3,7 +3,7 @@
 ## 1. Snapshots
 
 - [x] 1.1 Add `lib/Service/Snapshot/InstanceSnapshot.php` and `lib/Service/Snapshot/SnapshotStore.php` (design D1): lazy keys, the index, the 60 and 20 caps, named snapshots kept. Verify: `tests/unit/Service/Snapshot/SnapshotStoreTest.php` covers write and read, pruning of unnamed ones only, the named cap, and a malformed value read as absent.
-- [ ] 1.2 Add `lib/BackgroundJob/SnapshotJob.php` (24 hours) in `appinfo/info.xml`, the snapshot before the first install in `AutoUpdateJob`, and the audit operation `snapshot` (design D2). Verify: `tests/unit/BackgroundJob/SnapshotJobTest.php`; `tests/unit/BackgroundJob/AutoUpdateJobTest.php` asserts one snapshot before the first install and none for a sweep that installs nothing.
+- [x] 1.2 Add `lib/BackgroundJob/SnapshotJob.php` (24 hours) in `appinfo/info.xml`, the snapshot before the first install in `AutoUpdateJob`, and the audit operation `snapshot` (design D2). Verify: `tests/unit/BackgroundJob/SnapshotJobTest.php`; `tests/unit/BackgroundJob/AutoUpdateJobTest.php` asserts one snapshot before the first install and none for a sweep that installs nothing.
 - [ ] 1.3 Add `lib/Controller/SnapshotController.php`: `GET /api/snapshots` (with `at`), `POST /api/snapshots`, `DELETE /api/snapshots/{id}`, admin-only, writes password-confirmed. Verify: `tests/unit/Controller/SnapshotControllerTest.php` asserts 403, the date pick, and the audit row.
 
 ## 2. Plan

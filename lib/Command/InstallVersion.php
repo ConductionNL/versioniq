@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Command;
 
-use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallTarget;
@@ -48,16 +47,9 @@ class InstallVersion extends Command {
 	 * 6 integrity (checksum_mismatch|appid_mismatch|version_mismatch|sha_mismatch),
 	 * 7 incompatible, 8 finalize, 9 untrusted source.
 	 */
-	private const EXIT_OK = 0;
-	private const EXIT_UNKNOWN = 1;
-	private const EXIT_BAD_ARGUMENTS = 2;
-	private const EXIT_DOWNGRADE_REFUSED = 3;
-	private const EXIT_PREFLIGHT_PERMISSION = 4;
-	private const EXIT_DOWNLOAD = 5;
-	private const EXIT_INTEGRITY = 6;
-	private const EXIT_INCOMPATIBLE = 7;
-	private const EXIT_FINALIZE = 8;
-	private const EXIT_UNTRUSTED_SOURCE = 9;
+	private const EXIT_OK = InstallExitCode::OK;
+	private const EXIT_BAD_ARGUMENTS = InstallExitCode::BAD_ARGUMENTS;
+	private const EXIT_FINALIZE = InstallExitCode::FINALIZE;
 
 	public function __construct(
 		private InstallerService $installerService,
@@ -188,39 +180,7 @@ class InstallVersion extends Command {
 	 * @param array<string, mixed> $payload
 	 */
 	private function exitCodeFor(int $statusCode, array $payload): int {
-		if ($statusCode === Http::STATUS_OK) {
-			return self::EXIT_OK;
-		}
-
-		/** @var mixed $category */
-		$category = $payload['category'] ?? null;
-		if (is_string($category)) {
-			$mapped = match ($category) {
-				FailureClassifier::CATEGORY_DOWNGRADE_GUARD => self::EXIT_DOWNGRADE_REFUSED,
-				FailureClassifier::CATEGORY_PREFLIGHT_PERMISSION => self::EXIT_PREFLIGHT_PERMISSION,
-				FailureClassifier::CATEGORY_DOWNLOAD => self::EXIT_DOWNLOAD,
-				FailureClassifier::CATEGORY_CHECKSUM_MISMATCH,
-				FailureClassifier::CATEGORY_SHA_MISMATCH,
-				FailureClassifier::CATEGORY_APPID_MISMATCH,
-				FailureClassifier::CATEGORY_VERSION_MISMATCH => self::EXIT_INTEGRITY,
-				FailureClassifier::CATEGORY_INCOMPATIBLE => self::EXIT_INCOMPATIBLE,
-				FailureClassifier::CATEGORY_FINALIZE => self::EXIT_FINALIZE,
-				default => null,
-			};
-			if ($mapped !== null) {
-				return $mapped;
-			}
-		}
-
-		if ($statusCode === Http::STATUS_FORBIDDEN) {
-			return self::EXIT_UNTRUSTED_SOURCE;
-		}
-
-		if ($statusCode === Http::STATUS_BAD_REQUEST || $statusCode === Http::STATUS_NOT_FOUND) {
-			return self::EXIT_BAD_ARGUMENTS;
-		}
-
-		return self::EXIT_UNKNOWN;
+		return InstallExitCode::for($statusCode, $payload);
 	}
 
 	private function errorOutput(OutputInterface $output): OutputInterface {
