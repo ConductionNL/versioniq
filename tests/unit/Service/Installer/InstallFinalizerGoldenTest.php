@@ -195,6 +195,39 @@ final class InstallFinalizerGoldenTest extends TestCase {
 	}
 
 	/**
+	 * An install over a disabled app, or over an app enabled for one group,
+	 * writes back exactly the `enabled` value it was handed — the previous one
+	 * the installers read before the install (retro-enabled-state-and-unattended-tokens
+	 * task 2.1; version-management "Install Specific Version").
+	 *
+	 * @dataProvider previousEnabledValues
+	 * @spec openspec/changes/retro-enabled-state-and-unattended-tokens/specs/version-management/spec.md
+	 */
+	public function testTheFinalizeWritesThePreviousEnabledValue(string $previousEnabled): void {
+		$outcome = $this->runCase([
+			'path' => 'plain', 'info' => ['id' => 'someapp', 'version' => '2.0.0'], 'enabled' => $previousEnabled,
+			'output' => false, 'sourceId' => null, 'previous' => '1.0.0', 'appVersion' => '1.9.0',
+			'appInfo' => ['types' => []], 'throwAt' => null,
+		]);
+
+		$enabledWrites = array_values(array_filter(
+			$outcome['calls'],
+			static fn (array $call): bool => $call[0] === 'config.setAppValue' && ($call[2] ?? null) === 'enabled',
+		));
+		self::assertSame([['config.setAppValue', 'someapp', 'enabled', $previousEnabled]], $enabledWrites);
+	}
+
+	/**
+	 * @return array<string, array{0: string}>
+	 */
+	public static function previousEnabledValues(): array {
+		return [
+			'disabled' => ['no'],
+			'enabled for one group' => ['["admins"]'],
+		];
+	}
+
+	/**
 	 * A FRESH install has no previous version to clash with, so the same
 	 * missing child finalizer must stay silent.
 	 */
