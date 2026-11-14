@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\BackgroundJob;
 
+use OCA\Versioniq\Service\Audit\AuditOrigin;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
@@ -77,6 +78,16 @@ class AutoUpdateJob extends TimedJob {
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 */
 	protected function run($argument): void {
+		// Every audit row the run writes, by whichever installer, reads `job`.
+		AuditOrigin::during(AuditOrigin::JOB, fn () => $this->runUpdates());
+	}
+
+	/**
+	 * The run itself, under the job's audit origin.
+	 *
+	 * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-every-audit-row-says-where-it-came-from
+	 */
+	private function runUpdates(): void {
 		if (!$this->stores->settingsStore->isEnabled()) {
 			// Kill switch off — policies remain stored but inert; see "Global
 			// kill switch and window" ("Kill switch inert-but-stored").
