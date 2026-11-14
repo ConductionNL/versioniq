@@ -47,7 +47,7 @@ class AvailabilityRefreshJob extends TimedJob {
 	 */
 	protected function run($argument): void {
 		try {
-			$updates = $this->availabilityService->sweep(self::SWEEP_BUDGET_SECONDS);
+			$updates = $this->availabilityService->sweep(self::SWEEP_BUDGET_SECONDS, $this->recorder->followed());
 			$this->recorder->record($updates, $this->time->getTime());
 
 			$unreached = count(array_filter($updates, static fn (array $entry): bool => ($entry['error'] ?? null) !== null));

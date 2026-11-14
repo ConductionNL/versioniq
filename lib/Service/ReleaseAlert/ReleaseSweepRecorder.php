@@ -25,13 +25,23 @@ class ReleaseSweepRecorder {
 	public function __construct(
 		private AvailabilityResultStore $store,
 		private ReleaseNotifier $notifier,
+		private ?FollowList $follows = null,
 	) {
+	}
+
+	/**
+	 * The followed apps the sweep adds when they are not installed (releases-new-release-alerts D3).
+	 *
+	 * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-an-admin-follows-the-releases-of-an-app-that-is-not-installed
+	 * @return list<array{appId: string, sourceId: ?string, addedBy: string, addedAt: string}>
+	 */
+	public function followed(): array {
+		return $this->follows?->all() ?? [];
 	}
 
 	/**
 	 * The stored snapshot, as AvailabilityResultStore::read() gives it.
 	 *
-	 * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-a-new-release-is-detected-after-each-availability-sweep-and-logged
 	 * @return array{updates: array<string, mixed>, checkedAt: ?int}
 	 */
 	public function read(): array {

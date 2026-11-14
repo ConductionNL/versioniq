@@ -13,6 +13,7 @@ use OCA\Versioniq\Controller\AlertController;
 use OCA\Versioniq\Service\Api\ApiCaller;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Audit\AuditSubject;
+use OCA\Versioniq\Service\ReleaseAlert\FollowList;
 use OCA\Versioniq\Service\ReleaseAlert\ReleaseAlertSettings;
 use OCA\Versioniq\Service\ReleaseAlert\ReleaseEventLog;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
@@ -52,11 +53,13 @@ final class AlertControllerTest extends TestCase {
 		$session->method('getUser')->willReturn($user);
 		$groups = $this->createMock(IGroupManager::class);
 		$groups->method('isAdmin')->willReturn($admin);
+		$time = $this->createMock(ITimeFactory::class);
+		$time->method('getDateTime')->willReturn(new \DateTime('2026-11-14T10:00:00+00:00'));
 
 		return new AlertController(
 			'versioniq',
 			$this->createMock(IRequest::class),
-			new ReleaseAlertSettings($config, new ReleaseEventLog($config), $audit),
+			new ReleaseAlertSettings($config, new ReleaseEventLog($config), $audit, new FollowList($config, $audit, $time)),
 			new ApiCaller($session, $groups, $this->createMock(ITimeFactory::class)),
 		);
 	}
@@ -66,6 +69,8 @@ final class AlertControllerTest extends TestCase {
 
 		self::assertSame(403, $controller->releaseAlerts()->getStatus());
 		self::assertSame(403, $controller->setReleaseScope('all')->getStatus());
+		self::assertSame(403, $controller->follow('forms', 'appstore')->getStatus());
+		self::assertSame(403, $controller->unfollow('forms')->getStatus());
 		self::assertSame([], $this->stored);
 		self::assertSame([], $this->audited);
 	}
@@ -76,7 +81,7 @@ final class AlertControllerTest extends TestCase {
 		$response = $this->controller()->releaseAlerts();
 
 		self::assertSame(200, $response->getStatus());
-		self::assertSame(['scope' => 'forge', 'releases' => [['appId' => 'hermiq', 'version' => '1.5.0']]], $response->getData());
+		self::assertSame(['scope' => 'forge', 'releases' => [['appId' => 'hermiq', 'version' => '1.5.0']], 'follows' => []], $response->getData());
 	}
 
 	public function testChangingTheScopeIsStoredAndAuditedOnce(): void {
@@ -102,5 +107,42 @@ final class AlertControllerTest extends TestCase {
 		$method = new \ReflectionMethod(AlertController::class, 'setReleaseScope');
 
 		self::assertCount(1, $method->getAttributes(PasswordConfirmationRequired::class));
+	}
+
+	public function testFollowingAnAppIsStoredListedAndAudited(): void {
+		$controller = $this->controller();
+
+		$response = $controller->follow('forms', 'appstore');
+
+		self::assertSame(200, $response->getStatus());
+		self::assertSame(['follow' => ['appId' => 'forms', 'sourceId' => 'appstore', 'addedBy' => 'alice', 'addedAt' => '2026-11-14T10:00:00+00:00']], $response->getData());
+		self::assertSame([['appId' => 'forms', 'sourceId' => 'appstore', 'addedBy' => 'alice', 'addedAt' => '2026-11-14T10:00:00+00:00']], $controller->releaseAlerts()->getData()['follows']);
+		self::assertCount(1, $this->audited);
+		self::assertSame('forms', $this->audited[0][0]->appId);
+		self::assertSame(AuditLogger::OPERATION_SETTINGS, $this->audited[0][0]->operation);
+	}
+
+	public function testAMalformedAppIdIs400AndNotStored(): void {
+		$response = $this->controller()->follow('../etc', '');
+
+		self::assertSame(400, $response->getStatus());
+		self::assertSame([], $this->stored);
+		self::assertSame([], $this->audited);
+	}
+
+	public function testUnfollowingRemovesTheAppAndAnUnknownAppIs404(): void {
+		$controller = $this->controller();
+		$controller->follow('forms', '');
+
+		self::assertSame(200, $controller->unfollow('forms')->getStatus());
+		self::assertSame([], $controller->releaseAlerts()->getData()['follows']);
+		self::assertSame(404, $controller->unfollow('forms')->getStatus());
+		self::assertCount(2, $this->audited);
+	}
+
+	public function testFollowingNeedsThePassword(): void {
+		foreach (['follow', 'unfollow'] as $name) {
+			self::assertCount(1, (new \ReflectionMethod(AlertController::class, $name))->getAttributes(PasswordConfirmationRequired::class), $name);
+		}
 	}
 }

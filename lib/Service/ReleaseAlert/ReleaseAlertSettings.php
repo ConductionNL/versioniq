@@ -42,6 +42,7 @@ class ReleaseAlertSettings {
 		private IAppConfig $config,
 		private ReleaseEventLog $log,
 		private AuditLogger $auditLogger,
+		private ?FollowList $follows = null,
 	) {
 	}
 
@@ -108,7 +109,49 @@ class ReleaseAlertSettings {
 		return match ($this->scope()) {
 			self::SCOPE_ALL => true,
 			self::SCOPE_OFF => false,
-			default => !in_array($event['sourceId'] ?? null, [null, '', 'appstore'], true),
+			default => !in_array($event['sourceId'] ?? null, [null, '', 'appstore'], true) || $this->isFollowed($event),
 		};
+	}
+
+	/**
+	 * Whether the event is about a followed app, which the `forge` scope announces whatever its source (design D2).
+	 *
+	 * @param array<string, mixed> $event
+	 */
+	private function isFollowed(array $event): bool {
+		return $this->follows !== null && is_string($event['appId'] ?? null) && $this->follows->isFollowed($event['appId']);
+	}
+
+	/**
+	 * Every followed app.
+	 *
+	 * @return list<array{appId: string, sourceId: ?string, addedBy: string, addedAt: string}>
+	 */
+	public function follows(): array {
+		return $this->follows?->all() ?? [];
+	}
+
+	/**
+	 * Follow an app's releases (design D3); see FollowList::follow().
+	 *
+	 * @throws InvalidArgumentException on a malformed app or source id, a full list, or without a follow list
+	 * @return array{appId: string, sourceId: ?string, addedBy: string, addedAt: string}
+	 * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-an-admin-follows-the-releases-of-an-app-that-is-not-installed
+	 */
+	public function follow(string $appId, ?string $sourceId, string $uid): array {
+		if ($this->follows === null) {
+			throw new InvalidArgumentException('Following apps is not available.');
+		}
+
+		return $this->follows->follow($appId, $sourceId, $uid);
+	}
+
+	/**
+	 * Stop following an app; false when it was not followed.
+	 *
+	 * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-an-admin-follows-the-releases-of-an-app-that-is-not-installed
+	 */
+	public function unfollow(string $appId, string $uid): bool {
+		return $this->follows?->unfollow($appId, $uid) ?? false;
 	}
 }

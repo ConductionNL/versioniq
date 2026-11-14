@@ -3,7 +3,7 @@
 ## 1. Detection and log
 
 - [x] 1.1 Add `lib/Service/ReleaseAlert/ReleaseEventLog.php` and `lib/Service/ReleaseAlert/ReleaseEventDetector.php` (design D1), and call the detector after `AvailabilityResultStore::save()` in the sweep of `inventory-pending-updates`. Verify: `tests/unit/Service/ReleaseAlert/ReleaseEventDetectorTest.php` covers a higher newest version, an equal one, a lower one, an app with an error, an app new to the snapshot, the first snapshot, and the 200-entry cap.
-- [ ] 1.2 Add `lib/Service/ReleaseAlert/FollowList.php`, `POST /api/follow` and `DELETE /api/follow/{appId}` (admin-only, password-confirmed, audited), and include followed apps that are not installed in the availability sweep (design D3). Verify: `tests/unit/Service/ReleaseAlert/FollowListTest.php`; the `AvailabilityServiceTest` of `inventory-pending-updates` gains a followed, not installed app.
+- [x] 1.2 Add `lib/Service/ReleaseAlert/FollowList.php`, `POST /api/follow` and `DELETE /api/follow/{appId}` (admin-only, password-confirmed, audited), and include followed apps that are not installed in the availability sweep (design D3). Verify: `tests/unit/Service/ReleaseAlert/FollowListTest.php`; the `AvailabilityServiceTest` of `inventory-pending-updates` gains a followed, not installed app.
 
 ## 2. Notification and feed
 
@@ -24,3 +24,9 @@
 ## 5. Close
 
 - [ ] 5.1 Set the matrix rows `rel-new-release-notify`, `rel-subscribe-feed` and `adm-webhook` to `built` with evidence lines, then archive this change.
+
+## Build notes
+
+- 1.2: `FollowList` keeps `release_alerts.follow` (at most 50 apps, app ids checked against the Nextcloud app id shape). `POST /api/follow` and `DELETE /api/follow/{appId}` sit on `AlertController`, admin-only, password-confirmed, audited as `settings`; `GET /api/release-alerts` also returns `follows`. The job and `occ versioniq:updates --refresh` hand the follow list to `AvailabilityService::sweep()`, which adds each followed app that is not installed with `installedVersion` null, `updateAvailable` false and `followed: true`, listed from the followed source. The `forge` scope announces a followed app whatever its source.
+- 2.2: `FeedController` and `FeedControllerTest` (403, RSS 2.0, `pubDate`) landed in the first slice; the box stays open for its e2e part (`tests/e2e/shell.spec.ts`).
+

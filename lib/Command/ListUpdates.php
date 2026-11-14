@@ -80,7 +80,7 @@ class ListUpdates extends Command {
 	 */
 	private function refreshIfAsked(InputInterface $input): void {
 		if ((bool)$input->getOption('refresh')) {
-			$this->recorder->record($this->availabilityService->sweep(self::REFRESH_BUDGET_SECONDS), $this->time->getTime());
+			$this->recorder->record($this->availabilityService->sweep(self::REFRESH_BUDGET_SECONDS, $this->recorder->followed()), $this->time->getTime());
 		}
 	}
 
