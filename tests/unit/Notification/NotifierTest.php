@@ -204,4 +204,27 @@ final class NotifierTest extends TestCase {
 
 		$this->assertInstanceOf(INotification::class, $result);
 	}
+
+	/**
+	 * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-admins-are-notified-of-new-releases-in-the-scope-they-choose
+	 */
+	public function testNewReleaseNamesTheAppAndVersionAndSaysWhenItDoesNotRunHere(): void {
+		$notifier = new Notifier($this->l10nFactory());
+
+		$compatible = $this->createMock(INotification::class);
+		$compatible->method('getApp')->willReturn(Application::APP_ID);
+		$compatible->method('getSubject')->willReturn('new_release');
+		$compatible->method('getSubjectParameters')->willReturn(['app' => 'hermiq', 'version' => '1.5.0', 'sourceId' => 'github:ConductionNL/hermiq', 'compatible' => '1']);
+		$compatible->expects($this->once())->method('setParsedSubject')->with('New version of hermiq: 1.5.0')->willReturnSelf();
+		$compatible->expects($this->never())->method('setParsedMessage');
+		$notifier->prepare($compatible, 'en');
+
+		$incompatible = $this->createMock(INotification::class);
+		$incompatible->method('getApp')->willReturn(Application::APP_ID);
+		$incompatible->method('getSubject')->willReturn('new_release');
+		$incompatible->method('getSubjectParameters')->willReturn(['app' => 'calendar', 'version' => '5.2.0', 'sourceId' => 'appstore', 'compatible' => '0']);
+		$incompatible->expects($this->once())->method('setParsedSubject')->with('New version of calendar: 5.2.0')->willReturnSelf();
+		$incompatible->expects($this->once())->method('setParsedMessage')->with('It does not run on this server version.')->willReturnSelf();
+		$notifier->prepare($incompatible, 'en');
+	}
 }

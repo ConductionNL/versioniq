@@ -2,12 +2,12 @@
 
 ## 1. Detection and log
 
-- [ ] 1.1 Add `lib/Service/ReleaseAlert/ReleaseEventLog.php` and `lib/Service/ReleaseAlert/ReleaseEventDetector.php` (design D1), and call the detector after `AvailabilityResultStore::save()` in the sweep of `inventory-pending-updates`. Verify: `tests/unit/Service/ReleaseAlert/ReleaseEventDetectorTest.php` covers a higher newest version, an equal one, a lower one, an app with an error, an app new to the snapshot, the first snapshot, and the 200-entry cap.
+- [x] 1.1 Add `lib/Service/ReleaseAlert/ReleaseEventLog.php` and `lib/Service/ReleaseAlert/ReleaseEventDetector.php` (design D1), and call the detector after `AvailabilityResultStore::save()` in the sweep of `inventory-pending-updates`. Verify: `tests/unit/Service/ReleaseAlert/ReleaseEventDetectorTest.php` covers a higher newest version, an equal one, a lower one, an app with an error, an app new to the snapshot, the first snapshot, and the 200-entry cap.
 - [ ] 1.2 Add `lib/Service/ReleaseAlert/FollowList.php`, `POST /api/follow` and `DELETE /api/follow/{appId}` (admin-only, password-confirmed, audited), and include followed apps that are not installed in the availability sweep (design D3). Verify: `tests/unit/Service/ReleaseAlert/FollowListTest.php`; the `AvailabilityServiceTest` of `inventory-pending-updates` gains a followed, not installed app.
 
 ## 2. Notification and feed
 
-- [ ] 2.1 Add `lib/Service/ReleaseAlert/ReleaseNotifier.php`, the `release_alerts.scope` setting, and the `new_release` subject in `Notifier::prepare()` (design D2). Verify: `tests/unit/Service/ReleaseAlert/ReleaseNotifierTest.php` covers each scope with a forge app, an App Store app and a followed app; `tests/unit/Notification/NotifierTest.php` renders both texts.
+- [x] 2.1 Add `lib/Service/ReleaseAlert/ReleaseNotifier.php`, the `release_alerts.scope` setting, and the `new_release` subject in `Notifier::prepare()` (design D2). Verify: `tests/unit/Service/ReleaseAlert/ReleaseNotifierTest.php` covers each scope with a forge app, an App Store app and a followed app; `tests/unit/Notification/NotifierTest.php` renders both texts.
 - [ ] 2.2 Add `lib/Controller/FeedController.php` with the RSS route (design D4). Verify: `tests/unit/Controller/FeedControllerTest.php` asserts 403 for a non-admin, valid RSS 2.0 for an admin, and `pubDate` from `releasedAt` or `detectedAt`; extend `tests/e2e/shell.spec.ts` to fetch the feed with an app password.
 
 ## 3. Webhooks

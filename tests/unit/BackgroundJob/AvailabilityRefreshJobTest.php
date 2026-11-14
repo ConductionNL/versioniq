@@ -12,19 +12,25 @@ namespace OCA\Versioniq\Tests\Unit\BackgroundJob;
 use OCA\Versioniq\BackgroundJob\AvailabilityRefreshJob;
 use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
 use OCA\Versioniq\Service\Availability\AvailabilityService;
+use OCA\Versioniq\Service\ReleaseAlert\ReleaseNotifier;
+use OCA\Versioniq\Service\ReleaseAlert\ReleaseSweepRecorder;
 use OCP\AppFramework\Utility\ITimeFactory;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 /**
  * @spec openspec/specs/pending-updates/spec.md
+ *
+ * @uses \OCA\Versioniq\Service\ReleaseAlert\ReleaseSweepRecorder
+ * @uses \OCA\Versioniq\Service\ReleaseAlert\ReleaseEventDetector
  */
 final class AvailabilityRefreshJobTest extends TestCase {
 	private function runJob(AvailabilityService $service, AvailabilityResultStore $store, ?LoggerInterface $logger = null): AvailabilityRefreshJob {
 		$time = $this->createMock(ITimeFactory::class);
 		$time->method('getTime')->willReturn(1_790_000_000);
 
-		$job = new AvailabilityRefreshJob($time, $service, $store, $logger ?? $this->createMock(LoggerInterface::class));
+		$recorder = new ReleaseSweepRecorder($store, $this->createMock(ReleaseNotifier::class));
+		$job = new AvailabilityRefreshJob($time, $service, $recorder, $logger ?? $this->createMock(LoggerInterface::class));
 		$method = new \ReflectionMethod($job, 'run');
 		$method->setAccessible(true);
 		$method->invoke($job, null);

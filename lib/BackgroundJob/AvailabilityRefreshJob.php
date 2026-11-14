@@ -11,8 +11,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\BackgroundJob;
 
-use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
 use OCA\Versioniq\Service\Availability\AvailabilityService;
+use OCA\Versioniq\Service\ReleaseAlert\ReleaseSweepRecorder;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
 use Psr\Log\LoggerInterface;
@@ -34,7 +34,7 @@ class AvailabilityRefreshJob extends TimedJob {
 	public function __construct(
 		ITimeFactory $time,
 		private AvailabilityService $availabilityService,
-		private AvailabilityResultStore $resultStore,
+		private ReleaseSweepRecorder $recorder,
 		private LoggerInterface $logger,
 	) {
 		parent::__construct($time);
@@ -48,7 +48,7 @@ class AvailabilityRefreshJob extends TimedJob {
 	protected function run($argument): void {
 		try {
 			$updates = $this->availabilityService->sweep(self::SWEEP_BUDGET_SECONDS);
-			$this->resultStore->save($updates, $this->time->getTime());
+			$this->recorder->record($updates, $this->time->getTime());
 
 			$unreached = count(array_filter($updates, static fn (array $entry): bool => ($entry['error'] ?? null) !== null));
 			if ($unreached > 0) {
