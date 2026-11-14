@@ -3,7 +3,7 @@
 ## 1. Release date and downloads
 
 - [x] 1.1 Read `created` in `AppStoreSource::normalizeVersions()` and `published_at` in `ForgeReleaseSource::listVersions()` into `releasedAt` (design D1). Verify: `tests/unit/Service/Source/AppStoreSourceTest.php` and a forge source test cover a date, a missing date and an unreadable one.
-- [ ] 1.2 Read the matching asset's `download_count` into `downloads` in `ForgeReleaseSource::listVersions()`, with the `buildReleasePayload()` pattern rule (design D2). Verify: a forge source test covers one match, no match and two matches.
+- [x] 1.2 Read the matching asset's `download_count` into `downloads` in `ForgeReleaseSource::listVersions()`, with the `buildReleasePayload()` pattern rule (design D2). Verify: a forge source test covers one match, no match and two matches.
 
 ## 2. Outcomes
 
