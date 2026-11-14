@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Advisory;
 
 use OCA\Versioniq\Service\Source\SourceBinding;
+use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\SourceLookup;
 use OCP\App\IAppManager;
 use Psr\Log\LoggerInterface;
@@ -92,10 +93,10 @@ class AdvisoryService {
 	 * answer advisories, so callers can treat the map uniformly.
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
-	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>}> $feedAdvisories
-	 *                                                                                                                                                                         Advisories the central feed already resolved to this app. Passed in
-	 *                                                                                                                                                                         rather than fetched here because the feed is read ONCE per sweep.
-	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}
+	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}> $feedAdvisories
+	 *                                                                                                                                                                                                                                      Advisories the central feed already resolved to this app. Passed in
+	 *                                                                                                                                                                                                                                      rather than fetched here because the feed is read ONCE per sweep.
+	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, recommendedVersion: ?string, error: ?string, history?: list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool}>, fixStatus?: ?string}
 	 */
 	public function correlate(string $appId, array $feedAdvisories = []): array {
 		$installedVersion = $this->installedVersion($appId);
@@ -118,6 +119,7 @@ class AdvisoryService {
 			$evaluated = $this->evaluate($installedVersion, $feedAdvisories, []);
 			$evaluated['appId'] = $appId;
 			$evaluated['error'] = null;
+			$evaluated['fixStatus'] = FixStatus::for($evaluated, $this->versionsForFix($evaluated, $source, $appId, $binding));
 
 			return $evaluated;
 		}
@@ -135,8 +137,42 @@ class AdvisoryService {
 		$evaluated = $this->evaluate($installedVersion, $advisories, $available);
 		$evaluated['appId'] = $appId;
 		$evaluated['error'] = $error;
+		// The version list this sweep already fetched, with its server
+		// compatibility, says why an affected version has no fix (D2).
+		$evaluated['fixStatus'] = FixStatus::for($evaluated, $versionResult['versions']);
 
 		return $evaluated;
+	}
+
+	/**
+	 * The versions the source lists, fetched only for an affected row that
+	 * names a fix: a feed-covered app's source is otherwise not asked.
+	 *
+	 * @param array<string, mixed> $evaluated
+	 * @return list<array{version: string, changelog: ?string, serverCompatible?: ?bool, releasedAt?: ?string}>
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/tasks.md#2.1
+	 */
+	private function versionsForFix(array $evaluated, SourceInterface $source, string $appId, SourceBinding $binding): array {
+		if (($evaluated['state'] ?? null) !== self::STATE_VULNERABLE || ($evaluated['recommendedVersion'] ?? null) === null) {
+			return [];
+		}
+
+		// Fail-soft: the fix status is an explanation, so a source that cannot
+		// list its versions now must not cost the row its advisory state.
+		try {
+			$listing = $source->listVersions($appId, $binding);
+		} catch (\Throwable $error) {
+			$this->logger->info('AdvisoryService: versions for the fix status could not be listed', [
+				'app' => $appId,
+				'message' => $error->getMessage(),
+			]);
+
+			return [];
+		}
+
+		// A source that breaks its own contract and omits the list explains nothing.
+		return array_key_exists('versions', $listing) ? $listing['versions'] : [];
 	}
 
 	/**
@@ -150,7 +186,7 @@ class AdvisoryService {
 	 *                              background refresh passes its own, much larger budget so that moving
 	 *                              the work off the request path does not silently shrink what the
 	 *                              feature covers.
-	 * @return array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}>
+	 * @return array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, recommendedVersion: ?string, error: ?string, history?: list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool}>, fixStatus?: ?string}>
 	 */
 	public function correlateAll(?float $budgetSeconds = null): array {
 		$deadline = microtime(true) + ($budgetSeconds ?? self::CORRELATE_ALL_BUDGET_SECONDS);
@@ -173,7 +209,7 @@ class AdvisoryService {
 	 * published centrally, not per app, so asking each app's own source was
 	 * asking 87 of 88 apps a question their source cannot answer (#166).
 	 *
-	 * @return array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}>>
+	 * @return array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>>
 	 */
 	private function feedAdvisories(): array {
 		$feed = $this->matching->advisoryFeed->fetchAll();
@@ -189,8 +225,8 @@ class AdvisoryService {
 	/**
 	 * Correlates each enabled app until the deadline passes.
 	 *
-	 * @param array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}>> $feedAdvisories
-	 * @return array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}>
+	 * @param array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>> $feedAdvisories
+	 * @return array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, recommendedVersion: ?string, error: ?string, history?: list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool}>, fixStatus?: ?string}>
 	 */
 	private function correlateEnabledApps(array $feedAdvisories, float $deadline): array {
 		$results = [];
@@ -226,7 +262,7 @@ class AdvisoryService {
 	/**
 	 * The entry of an app the sweep had no time left for.
 	 *
-	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}
+	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, recommendedVersion: ?string, error: ?string, history?: list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool}>, fixStatus?: ?string}
 	 */
 	private function budgetExceeded(string $appId): array {
 		return $this->emptyResult(
@@ -239,8 +275,8 @@ class AdvisoryService {
 	/**
 	 * One app's correlation, or its failure logged and reported as the error.
 	 *
-	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}> $feedForApp The feed's advisories for this app.
-	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}
+	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}> $feedForApp The feed's advisories for this app.
+	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, recommendedVersion: ?string, error: ?string, history?: list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool}>, fixStatus?: ?string}
 	 */
 	private function correlateOrReport(string $appId, array $feedForApp): array {
 		try {
@@ -262,8 +298,8 @@ class AdvisoryService {
 	 * about it — the largest single subject in the feed — and an administrator
 	 * on a vulnerable server has to be told.
 	 *
-	 * @param array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}>> $feedAdvisories
-	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}|null
+	 * @param array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>> $feedAdvisories
+	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, recommendedVersion: ?string, error: ?string, history?: list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool}>, fixStatus?: ?string}|null
 	 */
 	private function serverResult(array $feedAdvisories): ?array {
 		$serverAdvisories = $feedAdvisories[self::SERVER_KEY] ?? [];
@@ -275,6 +311,7 @@ class AdvisoryService {
 		$evaluated = $this->evaluate($installed, $serverAdvisories, []);
 		$evaluated['appId'] = self::SERVER_KEY;
 		$evaluated['error'] = null;
+		$evaluated['fixStatus'] = FixStatus::for($evaluated, []);
 
 		return $evaluated;
 	}
@@ -286,24 +323,28 @@ class AdvisoryService {
 	 * core of the feature.
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
-	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>}> $advisories
-	 *                                                                                                                                                                     `patchedVersions` is present on records from the central Nextcloud
-	 *                                                                                                                                                                     feed and absent on the older per-source shape. Its presence is what
-	 *                                                                                                                                                                     selects branch-aware evaluation over clause evaluation, so it is part
-	 *                                                                                                                                                                     of the contract rather than an optional extra.
+	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}> $advisories
+	 *                                                                                                                                                                                                                                  `patchedVersions` is present on records from the central Nextcloud
+	 *                                                                                                                                                                                                                                  feed and absent on the older per-source shape. Its presence is what
+	 *                                                                                                                                                                                                                                  selects branch-aware evaluation over clause evaluation, so it is part
+	 *                                                                                                                                                                                                                                  of the contract rather than an optional extra.
 	 * @param list<string> $availableVersions
-	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}
+	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, recommendedVersion: ?string, error: ?string, history?: list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool}>, fixStatus?: ?string}
 	 */
 	public function evaluate(string $installedVersion, array $advisories, array $availableVersions): array {
 		if ($advisories === []) {
 			return self::evaluation($installedVersion, self::STATE_NONE);
 		}
 
-		[$active, $branchPatches] = $this->activeAdvisories($installedVersion, $advisories);
+		[$active, $branchPatches, $affects] = $this->activeAdvisories($installedVersion, $advisories);
+		$history = $this->history($advisories, $affects);
 		if ($active === []) {
 			// The app has advisories, but none affect the installed version:
 			// the installed version is already safe.
-			return array_replace(self::evaluation($installedVersion, self::STATE_AVAILABLE), ['advisories' => $this->summarise($advisories)]);
+			return array_replace(self::evaluation($installedVersion, self::STATE_AVAILABLE), [
+				'advisories' => $this->summarise($advisories),
+				'history' => $history,
+			]);
 		}
 
 		// The advisory's own patch beats a guess from the version list: it is
@@ -312,6 +353,7 @@ class AdvisoryService {
 		// happens to offer.
 		return array_replace(self::evaluation($installedVersion, self::STATE_VULNERABLE), [
 			'advisories' => $this->summarise($active),
+			'history' => $history,
 			'recommendedVersion' => $branchPatches !== [] ? $this->lowestVersion($branchPatches) : $this->nearestResolving($installedVersion, $active, $availableVersions),
 		]);
 	}
@@ -319,7 +361,7 @@ class AdvisoryService {
 	/**
 	 * An evaluation result with no advisories and no recommendation yet.
 	 *
-	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}
+	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, recommendedVersion: ?string, error: ?string, history?: list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool}>, fixStatus?: ?string}
 	 */
 	private static function evaluation(string $installedVersion, string $state): array {
 		return [
@@ -329,6 +371,8 @@ class AdvisoryService {
 			'advisories' => [],
 			'recommendedVersion' => null,
 			'error' => null,
+			'history' => [],
+			'fixStatus' => null,
 		];
 	}
 
@@ -349,14 +393,16 @@ class AdvisoryService {
 	 * A record without it came from a forge source in the older shape, and
 	 * keeps the original clause semantics.
 	 *
-	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>}> $advisories
-	 * @return array{0: list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>}>, 1: list<string>}
+	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}> $advisories
+	 * @return array{0: list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, 1: list<string>, 2: list<bool>}
 	 */
 	private function activeAdvisories(string $installedVersion, array $advisories): array {
 		$active = [];
 		$branchPatches = [];
+		$flags = [];
 		foreach ($advisories as $advisory) {
 			[$affects, $patch] = $this->assess($installedVersion, $advisory);
+			$flags[] = $affects;
 			if ($affects) {
 				$active[] = $advisory;
 			}
@@ -365,14 +411,14 @@ class AdvisoryService {
 			}
 		}
 
-		return [$active, $branchPatches];
+		return [$active, $branchPatches, $flags];
 	}
 
 	/**
 	 * Whether one advisory affects the installed version, and its branch
 	 * patch when it carries a patch list.
 	 *
-	 * @param array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>} $advisory
+	 * @param array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string} $advisory
 	 * @return array{0: bool, 1: ?string}
 	 */
 	private function assess(string $installedVersion, array $advisory): array {
@@ -407,8 +453,8 @@ class AdvisoryService {
 	 * Reduces advisory records to the id/severity/summary triple surfaced to
 	 * the admin (drops the internal affected-range / patch fields).
 	 *
-	 * @param list<array{id: string, severity: string, summary: string, affected?: list<string>, firstPatchedVersion?: ?string, patchedVersions?: list<string>}> $advisories
-	 * @return list<array{id: string, severity: string, summary: string}>
+	 * @param list<array{id: string, severity: string, summary: string, affected?: list<string>, firstPatchedVersion?: ?string, patchedVersions?: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}> $advisories
+	 * @return list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string}>
 	 */
 	private function summarise(array $advisories): array {
 		// No array_values(): $advisories is already a list, so mapping it
@@ -418,9 +464,48 @@ class AdvisoryService {
 				'id' => $a['id'],
 				'severity' => $a['severity'],
 				'summary' => $a['summary'],
+				'cveIds' => $a['cveIds'] ?? [],
+				'publishedAt' => $a['publishedAt'] ?? null,
+				'url' => $a['url'] ?? null,
 			],
 			$advisories,
 		);
+	}
+
+	/**
+	 * Every advisory for the target, each marked as affecting the installed
+	 * version or not, newest first and then by id; an undated advisory sorts
+	 * after the dated ones.
+	 *
+	 * @param list<array{id: string, severity: string, summary: string, affected?: list<string>, firstPatchedVersion?: ?string, patchedVersions?: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}> $advisories
+	 * @param list<bool> $affects Per advisory, in the same order
+	 * @return list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool}>
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation/spec.md#requirement-each-product-lists-its-recent-advisories-with-cve-ids-and-dates
+	 */
+	private function history(array $advisories, array $affects): array {
+		$history = [];
+		foreach ($this->summarise($advisories) as $index => $advisory) {
+			$history[] = $advisory + ['affectsInstalled' => $affects[$index] ?? false];
+		}
+		usort($history, self::newestFirst(...));
+
+		return $history;
+	}
+
+	/**
+	 * Orders two history entries newest first, an undated one after the
+	 * dated ones, and then by id.
+	 *
+	 * @param array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool} $a
+	 * @param array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool} $b
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/tasks.md#1.2
+	 */
+	private static function newestFirst(array $a, array $b): int {
+		$byDate = strcmp((string)$b['publishedAt'], (string)$a['publishedAt']);
+
+		return $byDate !== 0 ? $byDate : strcmp($a['id'], $b['id']);
 	}
 
 	/**
@@ -492,7 +577,7 @@ class AdvisoryService {
 	 * source; otherwise scans the available versions ascending. Returns null
 	 * when the source offers no resolving version (stuck-on-vulnerable).
 	 *
-	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>}> $active
+	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}> $active
 	 * @param list<string> $availableVersions
 	 */
 	private function nearestResolving(string $installedVersion, array $active, array $availableVersions): ?string {
@@ -511,7 +596,7 @@ class AdvisoryService {
 	/**
 	 * The non-empty first-patched versions the advisories publish.
 	 *
-	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>}> $active
+	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}> $active
 	 * @return list<string>
 	 */
 	private static function firstPatchedVersions(array $active): array {
@@ -542,7 +627,7 @@ class AdvisoryService {
 	}
 
 	/**
-	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>}> $active
+	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}> $active
 	 */
 	private function affectedByAny(string $version, array $active): bool {
 		foreach ($active as $advisory) {
@@ -565,7 +650,7 @@ class AdvisoryService {
 	}
 
 	/**
-	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}
+	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, recommendedVersion: ?string, error: ?string, history?: list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool}>, fixStatus?: ?string}
 	 */
 	private function emptyResult(string $appId, ?string $installedVersion, ?string $error = null): array {
 		return [
@@ -575,6 +660,8 @@ class AdvisoryService {
 			'advisories' => [],
 			'recommendedVersion' => null,
 			'error' => $error,
+			'history' => [],
+			'fixStatus' => null,
 		];
 	}
 }

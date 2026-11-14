@@ -1,11 +1,12 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
-import type {AdvisoryCorrelation} from '../utils/advisories.ts';
+import type {AdvisoryCorrelation, AdvisoryHistoryEntry, Compliance} from '../utils/advisories.ts';
 
 import { n, t } from '@nextcloud/l10n'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import NcButton from '@nextcloud/vue/components/NcButton'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
-import { normalizeSeverity, severityLabel, splitAdvisoryRows } from '../utils/advisories.ts'
+import { advisoryAnchor, advisoryHistory, complianceSentence, cveLabel, fixSentence, normalizeSeverity, publishedLabel, RECENT_ADVISORIES, severityLabel, splitAdvisoryRows } from '../utils/advisories.ts'
 
 /**
  * Every advisory the last sweep stored, in one place: the Nextcloud server's
@@ -14,17 +15,51 @@ import { normalizeSeverity, severityLabel, splitAdvisoryRows } from '../utils/ad
  *
  * @spec openspec/specs/security-advisory-correlation/spec.md
  */
-const props = defineProps<{
+const props = withDefaults(defineProps<{
 	advisories: Record<string, AdvisoryCorrelation>
 	freshnessLabel: string
-}>()
+	compliance?: Compliance | null
+}>(), {
+	compliance: null,
+})
 
 const rows = computed(() => splitAdvisoryRows(props.advisories))
+const complianceLine = computed(() => complianceSentence(props.compliance))
+
+/** The targets whose whole history is shown, not only the most recent ones. */
+const expanded = ref<Record<string, boolean>>({})
+
+/**
+ * The entries of a target to render: the most recent, or all once expanded.
+ *
+ * @param key The target key.
+ * @param row The target's correlation.
+ * @spec openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation/spec.md#requirement-each-product-lists-its-recent-advisories-with-cve-ids-and-dates
+ */
+function shownHistory (key: string, row: AdvisoryCorrelation): AdvisoryHistoryEntry[] {
+	const history = advisoryHistory(row)
+	return expanded.value[key] ? history : history.slice(0, RECENT_ADVISORIES)
+}
+
+/**
+ * Shows every advisory of a target.
+ *
+ * @param key The target key.
+ * @spec openspec/changes/advisories-per-app-detail/tasks.md#4.1
+ */
+function showAll (key: string): void {
+	expanded.value = { ...expanded.value, [key]: true }
+}
 </script>
 
 <template>
 	<section :class="$style.panel" data-testid="advisories-panel">
 		<h3>{{ t('versioniq', 'Security advisories') }}</h3>
+		<p v-if="complianceLine"
+			:class="[$style.compliance, { [$style.affected]: compliance?.status === 'not_compliant' }]"
+			data-testid="advisories-compliance">
+			{{ complianceLine }}
+		</p>
 		<p v-if="freshnessLabel" :class="$style.hint">
 			{{ freshnessLabel }}
 		</p>
@@ -37,7 +72,10 @@ const rows = computed(() => splitAdvisoryRows(props.advisories))
 				</p>
 				<NcNoteCard v-if="rows.server.state === 'pinned-to-vulnerable'" type="error">
 					{{ t('versioniq', 'This server version is affected by a published advisory.') }}
-					<template v-if="rows.server.recommendedVersion">
+					<template v-if="fixSentence(rows.server, true)">
+						{{ fixSentence(rows.server, true) }}
+					</template>
+					<template v-else-if="rows.server.recommendedVersion">
 						{{ t('versioniq', 'Upgrade to {version} or later.', { version: rows.server.recommendedVersion }) }}
 					</template>
 				</NcNoteCard>
@@ -47,15 +85,33 @@ const rows = computed(() => splitAdvisoryRows(props.advisories))
 				<details v-if="rows.server.advisories.length > 0" :open="rows.server.state === 'pinned-to-vulnerable'">
 					<summary>{{ t('versioniq', 'Show server advisories') }}</summary>
 					<ul :class="$style.list">
-						<li v-for="advisory in rows.server.advisories" :key="advisory.id" :class="$style.item">
+						<li v-for="advisory in shownHistory(':server', rows.server)"
+							:key="advisory.id"
+							:class="$style.item"
+							data-testid="advisory-entry">
 							<span
 								:class="[$style.severity, $style[`severity-${normalizeSeverity(advisory.severity)}`]]"
 								data-testid="advisory-severity"
 								:data-severity="normalizeSeverity(advisory.severity)">{{ severityLabel(advisory.severity) }}</span>
-							<code>{{ advisory.id }}</code>
+							<span data-testid="advisory-cve">{{ cveLabel(advisory) }}</span>
+							<a v-if="advisory.url"
+								:href="advisory.url"
+								target="_blank"
+								rel="noopener noreferrer"><code>{{ advisory.id }}</code></a>
+							<code v-else>{{ advisory.id }}</code>
+							<span data-testid="advisory-date">{{ publishedLabel(advisory) }}</span>
+							<span :class="{ [$style.affected]: advisory.affectsInstalled }" data-testid="advisory-affects">
+								{{ advisory.affectsInstalled ? t('versioniq', 'Affects the installed version') : t('versioniq', 'Fixed in the installed version') }}
+							</span>
 							<span>{{ advisory.summary }}</span>
 						</li>
 					</ul>
+					<NcButton v-if="!expanded[':server'] && advisoryHistory(rows.server).length > RECENT_ADVISORIES"
+						variant="tertiary"
+						data-testid="advisories-show-all"
+						@click="showAll(':server')">
+						{{ t('versioniq', 'Show all {count}', { count: String(advisoryHistory(rows.server).length) }) }}
+					</NcButton>
 				</details>
 			</template>
 			<p v-else :class="$style.hint">
@@ -70,6 +126,7 @@ const rows = computed(() => splitAdvisoryRows(props.advisories))
 			</p>
 			<article
 				v-for="row in rows.apps"
+				:id="advisoryAnchor(row.appId)"
 				:key="row.appId"
 				:class="$style.appRow"
 				data-testid="advisories-app-row">
@@ -83,19 +140,40 @@ const rows = computed(() => splitAdvisoryRows(props.advisories))
 						{{ t('versioniq', 'safe version: {version}', { version: row.recommendedVersion }) }}
 					</span>
 				</p>
+				<p v-if="fixSentence(row)" :class="$style.affected" data-testid="advisory-fix">
+					{{ fixSentence(row) }}
+				</p>
 				<p v-if="row.error" :class="$style.hint">
 					{{ row.error }}
 				</p>
 				<ul :class="$style.list">
-					<li v-for="advisory in row.advisories" :key="advisory.id" :class="$style.item">
+					<li v-for="advisory in shownHistory(row.appId, row)"
+						:key="advisory.id"
+						:class="$style.item"
+						data-testid="advisory-entry">
 						<span
 							:class="[$style.severity, $style[`severity-${normalizeSeverity(advisory.severity)}`]]"
 							data-testid="advisory-severity"
 							:data-severity="normalizeSeverity(advisory.severity)">{{ severityLabel(advisory.severity) }}</span>
-						<code>{{ advisory.id }}</code>
+						<span data-testid="advisory-cve">{{ cveLabel(advisory) }}</span>
+						<a v-if="advisory.url"
+							:href="advisory.url"
+							target="_blank"
+							rel="noopener noreferrer"><code>{{ advisory.id }}</code></a>
+						<code v-else>{{ advisory.id }}</code>
+						<span data-testid="advisory-date">{{ publishedLabel(advisory) }}</span>
+						<span :class="{ [$style.affected]: advisory.affectsInstalled }" data-testid="advisory-affects">
+							{{ advisory.affectsInstalled ? t('versioniq', 'Affects the installed version') : t('versioniq', 'Fixed in the installed version') }}
+						</span>
 						<span>{{ advisory.summary }}</span>
 					</li>
 				</ul>
+				<NcButton v-if="!expanded[row.appId] && advisoryHistory(row).length > RECENT_ADVISORIES"
+					variant="tertiary"
+					data-testid="advisories-show-all"
+					@click="showAll(row.appId)">
+					{{ t('versioniq', 'Show all {count}', { count: String(advisoryHistory(row).length) }) }}
+				</NcButton>
 			</article>
 		</div>
 	</section>
@@ -111,6 +189,10 @@ const rows = computed(() => splitAdvisoryRows(props.advisories))
 
 .hint {
 	color: var(--color-text-maxcontrast);
+}
+
+.compliance {
+	font-weight: bold;
 }
 
 .block {
