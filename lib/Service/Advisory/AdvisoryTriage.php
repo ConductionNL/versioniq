@@ -79,6 +79,29 @@ final class AdvisoryTriage {
 	}
 
 	/**
+	 * The ids of the advisories a triaged row holds as dismissed, as a set.
+	 *
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+	 * @param array<string, mixed> $row A row returned by {@see apply()}.
+	 * @return array<string, true>
+	 */
+	public static function dismissedIds(array $row): array {
+		$list = $row['dismissedAdvisories'] ?? null;
+		if (is_array($list) === false) {
+			return [];
+		}
+
+		$ids = [];
+		foreach (array_keys($list) as $index) {
+			if (is_array($list[$index]) === true && isset($list[$index]['id']) === true && is_string($list[$index]['id']) === true) {
+				$ids[$list[$index]['id']] = true;
+			}
+		}
+
+		return $ids;
+	}
+
+	/**
 	 * Split a row's advisories into the ones that count and the ones a dismissal
 	 * still holds for, each carrying its owner when one is set.
 	 *
