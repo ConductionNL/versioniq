@@ -53,6 +53,7 @@ final class FailureClassifierTest extends TestCase {
 			'appid' => [FailureClassifier::CATEGORY_APPID_MISMATCH, Http::STATUS_UNPROCESSABLE_ENTITY],
 			'checksum' => [FailureClassifier::CATEGORY_CHECKSUM_MISMATCH, Http::STATUS_UNPROCESSABLE_ENTITY],
 			'sha_mismatch' => [FailureClassifier::CATEGORY_SHA_MISMATCH, Http::STATUS_UNPROCESSABLE_ENTITY],
+			'checks_failed' => [FailureClassifier::CATEGORY_CHECKS_FAILED, Http::STATUS_UNPROCESSABLE_ENTITY],
 			'download' => [FailureClassifier::CATEGORY_DOWNLOAD, Http::STATUS_BAD_GATEWAY],
 			'extract' => [FailureClassifier::CATEGORY_EXTRACT, Http::STATUS_INTERNAL_SERVER_ERROR],
 			'filesystem' => [FailureClassifier::CATEGORY_FILESYSTEM, Http::STATUS_INTERNAL_SERVER_ERROR],
@@ -83,6 +84,8 @@ final class FailureClassifierTest extends TestCase {
 	public static function messageProvider(): array {
 		return [
 			'not compatible' => ['App "Foo" is not compatible with this version of the server.', FailureClassifier::CATEGORY_INCOMPATIBLE],
+			// What OC_App::checkAppDependencies() throws for a missing PHP extension.
+			'dependencies' => ['App "Foo" cannot be installed because the following dependencies are not fulfilled: The library intl is not available.', FailureClassifier::CATEGORY_INCOMPATIBLE],
 			'app id' => ["Downloaded archive declares appId 'bar', expected 'foo'.", FailureClassifier::CATEGORY_APPID_MISMATCH],
 			'version' => ["Downloaded archive declares version '1.2.3', expected '1.2.4'.", FailureClassifier::CATEGORY_VERSION_MISMATCH],
 			'checksum' => ['SHA-256 mismatch — expected abc, got def.', FailureClassifier::CATEGORY_CHECKSUM_MISMATCH],
@@ -122,6 +125,7 @@ final class FailureClassifierTest extends TestCase {
 			FailureClassifier::CATEGORY_INCOMPATIBLE,
 			FailureClassifier::CATEGORY_FILESYSTEM,
 			FailureClassifier::CATEGORY_FINALIZE,
+			FailureClassifier::CATEGORY_CHECKS_FAILED,
 			FailureClassifier::CATEGORY_UNKNOWN,
 		] as $category) {
 			self::assertNotSame('', $classifier->hintFor($category), $category . ' should have a hint');
@@ -163,6 +167,22 @@ final class FailureClassifierTest extends TestCase {
 
 		self::assertStringContainsString('2.5.0', $hint);
 		self::assertStringContainsString('2.3.0', $hint);
+	}
+
+	/**
+	 * @spec openspec/changes/safety-update-checks/specs/auto-update-policies/spec.md#requirement-the-nightly-job-installs-only-after-the-attached-checks-pass
+	 */
+	public function testTheChecksFailedHintsNameTheCheckAndItsDetail(): void {
+		$classifier = $this->build();
+
+		$hint = $classifier->checksFailedHint('Staging tests', 'HTTP 500');
+		self::assertStringContainsString('"Staging tests"', $hint);
+		self::assertStringContainsString('HTTP 500', $hint);
+		self::assertDoesNotMatchRegularExpression('/%\d+\$s/', $hint);
+
+		$dryRun = $classifier->dryRunFailedHint('not compatible with this version');
+		self::assertStringContainsString('not compatible with this version', $dryRun);
+		self::assertDoesNotMatchRegularExpression('/%\d+\$s/', $dryRun);
 	}
 
 	public function testDowngradeGuardHintLeavesNoUnsubstitutedPlaceholder(): void {

@@ -16,6 +16,7 @@ require_once __DIR__ . '/../Support/DispatchesLikeNextcloud.php';
 use InvalidArgumentException;
 use OCA\Versioniq\Controller\SettingsController;
 use OCA\Versioniq\Service\Audit\AuditLogger;
+use OCA\Versioniq\Service\Checks\CheckStore;
 use OCA\Versioniq\Service\Settings\InstanceSettings;
 use OCA\Versioniq\Tests\Unit\Support\DispatchesLikeNextcloud;
 use OCP\IGroupManager;
@@ -133,6 +134,6 @@ final class SettingsUpdateGoldenTest extends TestCase {
 		$groups = $this->createMock(IGroupManager::class);
 		$groups->method('isAdmin')->willReturn($admin);
 
-		return new SettingsController('versioniq', $request, $settings, $audit, $groups, $session);
+		return new SettingsController('versioniq', $request, $settings, $audit, $groups, $session, $this->createMock(CheckStore::class));
 	}
 }

@@ -290,4 +290,80 @@ final class InstallVersionTest extends TestCase {
 
 		self::assertSame($expectedExitCode, $exitCode);
 	}
+
+	/**
+	 * @return array{statusCode: int, payload: array<string, mixed>}
+	 */
+	private static function dryRunWithChecks(string $lintOutcome): array {
+		return [
+			'statusCode' => Http::STATUS_OK,
+			'payload' => [
+				'appId' => 'openregister',
+				'fromVersion' => '2.3.0',
+				'toVersion' => '2.4.0',
+				'message' => 'Dry run completed.',
+				'dryRun' => true,
+				'installStatus' => 'dry-run',
+				'checks' => [
+					['name' => 'Staging tests', 'kind' => 'verdict', 'outcome' => 'passed', 'passed' => true, 'detail' => 'HTTP 200'],
+					['name' => 'Lint', 'kind' => 'command', 'outcome' => $lintOutcome, 'passed' => $lintOutcome === 'passed', 'detail' => "Exit code 1.\n<error>lint</error> failed"],
+				],
+			],
+		];
+	}
+
+	/**
+	 * An operator's smoke test fails: its result is printed and the command exits 12.
+	 *
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
+	 */
+	public function testAFailedCheckInADryRunExitsTwelveAndPrintsEachCheck(): void {
+		$installer = $this->createMock(InstallerService::class);
+		$installer->method('isManageableApp')->willReturn(true);
+		$installer->expects(self::once())
+			->method('installAppVersion')
+			->with(self::callback(static fn (object $request): bool => $request->options->dryRun === true && $request->options->checkContext === 'cli'))
+			->willReturn(self::dryRunWithChecks('failed'));
+
+		$tester = new CommandTester(new InstallVersion($installer));
+		$exitCode = $tester->execute(['appId' => 'openregister', 'version' => '2.4.0', '--dry-run' => true], ['capture_stderr_separately' => true]);
+
+		self::assertSame(12, $exitCode);
+		self::assertStringContainsString('[passed] Staging tests (verdict): HTTP 200', $tester->getDisplay());
+		self::assertStringContainsString('[failed] Lint (command): Exit code 1.', $tester->getDisplay());
+		self::assertStringContainsString('<error>lint</error> failed', $tester->getDisplay(), 'check output is printed raw, not as console markup');
+		self::assertStringContainsString('An update check failed', $tester->getErrorOutput());
+	}
+
+	public function testPassingAndSkippedChecksExitZero(): void {
+		foreach (['passed', 'skipped'] as $outcome) {
+			$installer = $this->createMock(InstallerService::class);
+			$installer->method('isManageableApp')->willReturn(true);
+			$installer->method('installAppVersion')->willReturn(self::dryRunWithChecks($outcome));
+
+			$tester = new CommandTester(new InstallVersion($installer));
+
+			self::assertSame(0, $tester->execute(['appId' => 'openregister', 'version' => '2.4.0', '--dry-run' => true]), $outcome);
+			self::assertStringContainsString('[' . $outcome . '] Lint (command)', $tester->getDisplay());
+		}
+	}
+
+	public function testAFailedCheckExitsTwelveInJsonModeWithTheChecksInThePayload(): void {
+		$installer = $this->createMock(InstallerService::class);
+		$installer->method('isManageableApp')->willReturn(true);
+		$installer->method('installAppVersion')->willReturn(self::dryRunWithChecks('failed'));
+
+		$tester = new CommandTester(new InstallVersion($installer));
+
+		self::assertSame(12, $tester->execute(['appId' => 'openregister', 'version' => '2.4.0', '--dry-run' => true, '--json' => true]));
+		self::assertSame('Lint', json_decode($tester->getDisplay(), true)['checks'][1]['name']);
+	}
+
+	public function testTheChecksFailedCategoryMapsToTwelve(): void {
+		$installer = $this->createMock(InstallerService::class);
+		$installer->method('isManageableApp')->willReturn(true);
+		$installer->method('installAppVersion')->willReturn(['statusCode' => 422, 'payload' => ['category' => FailureClassifier::CATEGORY_CHECKS_FAILED, 'message' => 'held back']]);
+
+		self::assertSame(12, (new CommandTester(new InstallVersion($installer)))->execute(['appId' => 'openregister', 'version' => '2.4.0']));
+	}
 }

@@ -18,6 +18,8 @@ use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\Checks\CheckRunner;
+use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallTarget;
@@ -38,7 +40,10 @@ use Psr\Log\LoggerInterface;
  * unless that exact (appId, version) was already attempted — installs it
  * through {@see \OCA\Versioniq\Service\InstallerService::installAppVersion()}, the same verified
  * path (signature/integrity checks, backup/restore, structured outcomes,
- * audit trail) as every other install in this app. Every attempt is recorded
+ * audit trail) as every other install in this app. When an update check
+ * matches the app, a dry run with those checks runs first and the version is
+ * installed only when it and every check pass; see "The nightly job installs
+ * only after the attached checks pass". Every attempt is recorded
  * in the {@see AttemptLedger} (never-retry) and reported via
  * {@see AutoUpdateNotifier} (success or failure — a no-op app is never
  * notified).
@@ -179,14 +184,30 @@ class AutoUpdateJob extends TimedJob {
 		return $available;
 	}
 
+	/**
+	 * Installs the candidate, after a dry run with its checks when an update
+	 * check matches the app; a failed dry run or check blocks the version like
+	 * a failed install.
+	 *
+	 * @spec openspec/specs/auto-update-policies/spec.md
+	 * @spec openspec/changes/safety-update-checks/specs/auto-update-policies/spec.md#requirement-the-nightly-job-installs-only-after-the-attached-checks-pass
+	 */
 	private function attemptInstall(InstallTarget $target, string $installedVersion): void {
+		$at = $this->time->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM);
+		$blocked = $this->install->checkRunner->matches($target->appId) ? $this->gateHint($target) : null;
+		if ($blocked !== null) {
+			$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedger::OUTCOME_FAILURE, $at);
+			$this->notifier->notifyFailure($target->appId, $target->version, FailureClassifier::CATEGORY_CHECKS_FAILED, $blocked);
+
+			return;
+		}
+
 		$installResult = $this->install->installerService->installAppVersion(new InstallRequest(
 			$target,
-			new InstallOptions(false, false, false, false),
+			new InstallOptions(false, false, false, false, CheckRunner::CONTEXT_CLI),
 			new PinChoice(null, false),
 		));
 
-		$at = $this->time->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM);
 		$statusCode = $installResult['statusCode'] ?? Http::STATUS_INTERNAL_SERVER_ERROR;
 		$payload = $installResult['payload'] ?? [];
 
@@ -204,5 +225,39 @@ class AutoUpdateJob extends TimedJob {
 		$category = is_string($payload['category'] ?? null) ? $payload['category'] : 'unknown';
 		$hint = is_string($payload['hint'] ?? null) ? $payload['hint'] : '';
 		$this->notifier->notifyFailure($target->appId, $target->version, $category, $hint);
+	}
+
+	/**
+	 * Runs a dry run of the candidate with every matching check, as from the
+	 * command line, and returns the hint naming what failed, or null when the
+	 * dry run and every check passed.
+	 *
+	 * @spec openspec/changes/safety-update-checks/specs/auto-update-policies/spec.md#requirement-the-nightly-job-installs-only-after-the-attached-checks-pass
+	 */
+	private function gateHint(InstallTarget $target): ?string {
+		$dryRun = $this->install->installerService->installAppVersion(new InstallRequest(
+			$target,
+			new InstallOptions(false, true, false, false, CheckRunner::CONTEXT_CLI),
+			new PinChoice(null, false),
+		));
+		$statusCode = $dryRun['statusCode'];
+		$payload = $dryRun['payload'];
+		if ($statusCode < Http::STATUS_OK || $statusCode >= Http::STATUS_MULTIPLE_CHOICES) {
+			$message = is_string($payload['message'] ?? null) ? $payload['message'] : 'The dry run failed.';
+
+			return $this->install->failureClassifier->dryRunFailedHint($message);
+		}
+
+		$failure = CheckRunner::firstFailure(is_array($payload['checks'] ?? null) ? $payload['checks'] : []);
+		if ($failure === null) {
+			return null;
+		}
+		$this->logger->info('AutoUpdateJob: an update check held back a version', [
+			'appId' => $target->appId,
+			'version' => $target->version,
+			'check' => $failure['name'],
+		]);
+
+		return $this->install->failureClassifier->checksFailedHint($failure['name'], $failure['detail']);
 	}
 }

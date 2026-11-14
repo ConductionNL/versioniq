@@ -879,7 +879,8 @@ class InstallerService {
 	 */
 	private function runInstaller(ReleaseInstall $install): array {
 		if ($install->source->getInstallerKind() === SourceInterface::INSTALLER_SIGNED) {
-			$result = $this->installers->signedInstaller->installFromSelectedRelease($install->run->request->target->appId, $install->release, $install->run->request->options->dryRun);
+			$options = $install->run->request->options;
+			$result = $this->installers->signedInstaller->installFromSelectedRelease($install->run->request->target->appId, $install->release, $options->dryRun, $options->checkContext);
 			unset($result['integrityWarning'], $result['recordedShaMatched']);
 
 			return $result;
@@ -899,7 +900,8 @@ class InstallerService {
 	private function runExternalInstaller(ReleaseInstall $install): array {
 		$run = $install->run;
 		$target = $run->request->target;
-		$result = $this->installers->externalInstaller->installFromExternalRelease($target->appId, $target->version, $install->release, $run->binding, $run->request->options->dryRun, $run->request->options->acceptNewSha);
+		$options = $run->request->options;
+		$result = $this->installers->externalInstaller->installFromExternalRelease($target->appId, $target->version, $install->release, $run->binding, $options->dryRun, $options->acceptNewSha, $options->checkContext);
 		$run->binding = $result['binding'];
 
 		return $result;
@@ -960,8 +962,10 @@ class InstallerService {
 	 * reported them (see "Recorded SHA-256 enforced on reinstall"), and the
 	 * migration diff, present only for a downgrade (see "Migration diff on
 	 * downgrade"): `null` means it could not be computed, `[]` that no schema
-	 * steps differ.
+	 * steps differ. A dry run adds the results of the update checks as
+	 * `checks`, for either installer kind.
 	 *
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
 	 * @param array<string, mixed> $result
 	 * @return array<string, mixed>
 	 */
@@ -976,6 +980,9 @@ class InstallerService {
 			/** @var list<string>|null $orphanedMigrations */
 			$orphanedMigrations = $result['orphanedMigrations'];
 			$fields['orphanedMigrations'] = $orphanedMigrations;
+		}
+		if (isset($result['checks']) && is_array($result['checks'])) {
+			$fields['checks'] = array_values($result['checks']);
 		}
 
 		return $fields;

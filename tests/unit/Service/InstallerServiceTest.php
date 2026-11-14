@@ -16,15 +16,21 @@ require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 use Exception;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
+use OCA\Versioniq\Service\Checks\CheckRunner;
 use OCA\Versioniq\Service\ExternalReleaseInstallerService;
 use OCA\Versioniq\Service\Installer\EnvironmentCheck;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFailure;
+use OCA\Versioniq\Service\Installer\InstallOptions;
+use OCA\Versioniq\Service\Installer\InstallRequest;
+use OCA\Versioniq\Service\Installer\InstallTarget;
+use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Lkg\LkgStore;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\SelectedReleaseInstallerService;
+use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\SourceRegistry;
@@ -559,5 +565,65 @@ final class InstallerServiceTest extends TestCase {
 
 		self::assertSame(Http::STATUS_CONFLICT, $result['statusCode']);
 		self::assertSame(FailureClassifier::CATEGORY_DOWNGRADE_GUARD, $result['payload']['category']);
+	}
+
+	// --- update checks in a dry run (safety-update-checks 2.3) ---
+
+	private const CHECKS = [
+		['name' => 'Staging tests', 'kind' => 'verdict', 'outcome' => 'failed', 'passed' => false, 'detail' => 'HTTP 404'],
+		['name' => 'Lint', 'kind' => 'command', 'outcome' => 'skipped', 'passed' => false, 'detail' => 'Runs from the command line and the nightly job only.'],
+	];
+
+	/**
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
+	 */
+	public function testASignedDryRunPayloadCarriesTheChecks(): void {
+		$this->appManager->method('getAppPath')->willReturn('/writable/app');
+		$this->environmentCheck->method('isDestinationWritable')->willReturn(true);
+		$this->stubSignedSourceReturning();
+		$this->signedInstaller->expects(self::once())
+			->method('installFromSelectedRelease')
+			->with('someapp', self::anything(), true, CheckRunner::CONTEXT_WEB)
+			->willReturn(['status' => 'dry-run', 'dryRun' => true, 'checks' => self::CHECKS]);
+
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false, dryRun: true);
+
+		self::assertSame(Http::STATUS_OK, $result['statusCode']);
+		self::assertTrue($result['payload']['dryRun']);
+		self::assertSame(self::CHECKS, $result['payload']['checks']);
+	}
+
+	/**
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
+	 */
+	public function testAnExternalDryRunPayloadCarriesTheChecksAndTheCommandLineContext(): void {
+		$this->appManager->method('getAppPath')->willReturn('/writable/app');
+		$this->environmentCheck->method('isDestinationWritable')->willReturn(true);
+		$source = $this->createMock(SourceInterface::class);
+		$source->method('getInstallerKind')->willReturn(SourceInterface::INSTALLER_EXTERNAL);
+		$source->method('resolveRelease')->willReturn(['tag_name' => 'v2.0.0', 'assets' => []]);
+		$this->sourceRegistry->method('get')->willReturn($source);
+		$this->externalInstaller->expects(self::once())
+			->method('installFromExternalRelease')
+			->with('someapp', '2.0.0', self::anything(), self::isInstanceOf(SourceBinding::class), true, false, CheckRunner::CONTEXT_CLI)
+			->willReturn(['status' => 'dry-run', 'dryRun' => true, 'binding' => SourceBinding::appStore(), 'integrityWarning' => null, 'recordedShaMatched' => false, 'servedFromCache' => false, 'debug' => [], 'installedVersionBefore' => '1.0.0', 'checks' => [self::CHECKS[0]]]);
+
+		$result = $this->service()->installAppVersion(new InstallRequest(
+			new InstallTarget('someapp', '2.0.0', 'github:acme/someapp'),
+			new InstallOptions(false, true, false, false, CheckRunner::CONTEXT_CLI),
+			new PinChoice(null, false),
+		));
+
+		self::assertSame(Http::STATUS_OK, $result['statusCode']);
+		self::assertSame([self::CHECKS[0]], $result['payload']['checks']);
+	}
+
+	public function testARealInstallPayloadHasNoChecks(): void {
+		$this->stubSuccessfulSignedInstall('2.0.0');
+
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false, dryRun: false);
+
+		self::assertSame(Http::STATUS_OK, $result['statusCode']);
+		self::assertArrayNotHasKey('checks', $result['payload']);
 	}
 }
