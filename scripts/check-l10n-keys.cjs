@@ -46,6 +46,19 @@ const ALLOWED = new Set([
 	'OK',
 ])
 
+/** Directories under src/ the check does not read. */
+const SKIPPED_DIRS = new Set(['__golden__', 'node_modules'])
+
+/**
+ * Whether a file name is source the check reads: a component or script, not a spec or a declaration.
+ *
+ * @param {string} name The file name.
+ * @return {boolean}
+ */
+function isSourceFile(name) {
+	return /\.(vue|ts|js)$/.test(name) && !/\.spec\.(ts|js)$/.test(name) && !/\.d\.ts$/.test(name)
+}
+
 /**
  * Every source file the check reads.
  *
@@ -57,10 +70,8 @@ function sourceFiles(dir) {
 	for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
 		const full = path.join(dir, entry.name)
 		if (entry.isDirectory()) {
-			if (entry.name !== '__golden__' && entry.name !== 'node_modules') {
-				out.push(...sourceFiles(full))
-			}
-		} else if (/\.(vue|ts|js)$/.test(entry.name) && !/\.spec\.(ts|js)$/.test(entry.name) && !/\.d\.ts$/.test(entry.name)) {
+			out.push(...(SKIPPED_DIRS.has(entry.name) ? [] : sourceFiles(full)))
+		} else if (isSourceFile(entry.name)) {
 			out.push(full)
 		}
 	}
@@ -97,18 +108,33 @@ const STRING = String.raw`'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"`
  * @return {Array<{key: string, line: number}>} The keys.
  */
 function usedKeys(text) {
-	const keys = []
+	return [...singularKeys(text), ...pluralKeys(text)]
+}
+
+/**
+ * The keys of a file's t() calls, with their lines.
+ *
+ * @param {string} text The file text.
+ * @return {Array<{key: string, line: number}>} The keys.
+ */
+function singularKeys(text) {
 	const tCall = new RegExp(String.raw`\bt\(\s*['"]${APP}['"]\s*,\s*(?:${STRING})`, 'g')
-	for (const match of text.matchAll(tCall)) {
-		keys.push({ key: unescape(match[1] ?? match[2]), line: lineOf(text, match.index) })
-	}
+	return [...text.matchAll(tCall)].map((match) => ({ key: unescape(match[1] ?? match[2]), line: lineOf(text, match.index) }))
+}
+
+/**
+ * The keys of a file's n() calls, with their lines. Nextcloud keys a plural
+ * by both forms: `_<singular>_::_<plural>_`.
+ *
+ * @param {string} text The file text.
+ * @return {Array<{key: string, line: number}>} The keys.
+ */
+function pluralKeys(text) {
 	const nCall = new RegExp(String.raw`\bn\(\s*['"]${APP}['"]\s*,\s*(?:${STRING})\s*,\s*(?:${STRING})`, 'g')
-	for (const match of text.matchAll(nCall)) {
-		// Nextcloud keys a plural by both forms: `_<singular>_::_<plural>_`.
-		const key = '_' + unescape(match[1] ?? match[2]) + '_::_' + unescape(match[3] ?? match[4]) + '_'
-		keys.push({ key, line: lineOf(text, match.index) })
-	}
-	return keys
+	return [...text.matchAll(nCall)].map((match) => ({
+		key: '_' + unescape(match[1] ?? match[2]) + '_::_' + unescape(match[3] ?? match[4]) + '_',
+		line: lineOf(text, match.index),
+	}))
 }
 
 /**
@@ -118,27 +144,50 @@ function usedKeys(text) {
  * @return {Array<{text: string, line: number}>} The bare texts.
  */
 function bareTexts(text) {
-	const open = text.indexOf('<template')
-	const close = text.lastIndexOf('</template>')
-	if (open === -1 || close === -1) {
+	const template = templateTextNodes(text)
+	if (template === null) {
 		return []
 	}
-	const start = text.indexOf('>', open) + 1
-	let body = text.slice(start, close)
-	// Blank out what is not a text node, keeping offsets for line numbers.
-	const blank = (whole) => whole.replace(/[^\n]/g, ' ')
-	body = body.replace(/<!--[\s\S]*?-->/g, blank)
-	body = body.replace(/<(?:[^>"']|"[^"]*"|'[^']*')*>/g, blank)
-	body = body.replace(/\{\{[\s\S]*?\}\}/g, blank)
 	const found = []
-	for (const match of body.matchAll(/[^\s<>][^<>]*?(?=\s*(?:$|\n|\s{2,}))/g)) {
+	for (const match of template.body.matchAll(/[^\s<>][^<>]*?(?=\s*(?:$|\n|\s{2,}))/g)) {
 		const value = match[0].trim()
-		const letters = (value.match(/\p{L}/gu) || []).length
-		if (letters >= 2 && !ALLOWED.has(value)) {
-			found.push({ text: value, line: lineOf(text, start + match.index) })
+		if (isLanguage(value)) {
+			found.push({ text: value, line: lineOf(text, template.start + match.index) })
 		}
 	}
 	return found
+}
+
+/**
+ * A component's template with everything but its text nodes blanked out,
+ * offsets kept for line numbers; null without a template.
+ *
+ * @param {string} text The file text.
+ * @return {{body: string, start: number}|null} The template body and where it starts.
+ */
+function templateTextNodes(text) {
+	const open = text.indexOf('<template')
+	const close = text.lastIndexOf('</template>')
+	if (open === -1 || close === -1) {
+		return null
+	}
+	const start = text.indexOf('>', open) + 1
+	const blank = (whole) => whole.replace(/[^\n]/g, ' ')
+	const body = text.slice(start, close)
+		.replace(/<!--[\s\S]*?-->/g, blank)
+		.replace(/<(?:[^>"']|"[^"]*"|'[^']*')*>/g, blank)
+		.replace(/\{\{[\s\S]*?\}\}/g, blank)
+	return { body, start }
+}
+
+/**
+ * Whether a text node holds language: two letters or more, and not a name every language writes the same.
+ *
+ * @param {string} value The trimmed text.
+ * @return {boolean}
+ */
+function isLanguage(value) {
+	return (value.match(/\p{L}/gu) || []).length >= 2 && !ALLOWED.has(value)
 }
 
 /**
@@ -159,27 +208,30 @@ function catalogue(locale) {
  * @return {string[]} The problems.
  */
 function check(files) {
-	const en = catalogue('en')
-	const nl = catalogue('nl')
+	const catalogues = { en: catalogue('en'), nl: catalogue('nl') }
+	return files.flatMap((file) => fileProblems(file, catalogues))
+}
+
+/**
+ * The problems of one file: keys a catalogue lacks, and in a component, text outside t().
+ *
+ * @param {string} file The file.
+ * @param {Object<string, Set<string>>} catalogues The keys of each catalogue, by locale.
+ * @return {string[]} The problems.
+ */
+function fileProblems(file, catalogues) {
+	const text = fs.readFileSync(file, 'utf8')
+	const rel = path.relative(ROOT, file)
 	const problems = []
-	for (const file of files) {
-		const text = fs.readFileSync(file, 'utf8')
-		const rel = path.relative(ROOT, file)
-		for (const { key, line } of usedKeys(text)) {
-			if (!en.has(key)) {
-				problems.push(`${rel}:${line} key missing from l10n/en.json: ${JSON.stringify(key)}`)
-			}
-			if (!nl.has(key)) {
-				problems.push(`${rel}:${line} key missing from l10n/nl.json: ${JSON.stringify(key)}`)
-			}
-		}
-		if (file.endsWith('.vue')) {
-			for (const { text: bare, line } of bareTexts(text)) {
-				problems.push(`${rel}:${line} text outside t(): ${JSON.stringify(bare)}`)
+	for (const { key, line } of usedKeys(text)) {
+		for (const [locale, keys] of Object.entries(catalogues)) {
+			if (!keys.has(key)) {
+				problems.push(`${rel}:${line} key missing from l10n/${locale}.json: ${JSON.stringify(key)}`)
 			}
 		}
 	}
-	return problems
+	const bare = file.endsWith('.vue') ? bareTexts(text) : []
+	return problems.concat(bare.map(({ text: value, line }) => `${rel}:${line} text outside t(): ${JSON.stringify(value)}`))
 }
 
 if (require.main === module) {
