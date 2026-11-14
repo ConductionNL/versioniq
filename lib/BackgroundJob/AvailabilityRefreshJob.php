@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\BackgroundJob;
 
+use OCA\Versioniq\Service\AutoUpdate\ProposalService;
 use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
 use OCA\Versioniq\Service\Availability\AvailabilityService;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -36,6 +37,9 @@ class AvailabilityRefreshJob extends TimedJob {
 		private AvailabilityService $availabilityService,
 		private AvailabilityResultStore $resultStore,
 		private LoggerInterface $logger,
+		// Works out the proposed updates from what the sweep listed;
+		// optional and last so existing callers keep working.
+		private ?ProposalService $proposalService = null,
 	) {
 		parent::__construct($time);
 		$this->setInterval(self::INTERVAL_SECONDS);
@@ -49,6 +53,7 @@ class AvailabilityRefreshJob extends TimedJob {
 		try {
 			$updates = $this->availabilityService->sweep(self::SWEEP_BUDGET_SECONDS);
 			$this->resultStore->save($updates, $this->time->getTime());
+			$this->refreshProposals();
 
 			$unreached = count(array_filter($updates, static fn (array $entry): bool => ($entry['error'] ?? null) !== null));
 			if ($unreached > 0) {
@@ -59,6 +64,26 @@ class AvailabilityRefreshJob extends TimedJob {
 			}
 		} catch (\Throwable $error) {
 			$this->logger->error('AvailabilityRefreshJob: the update check failed; the previous snapshot is kept', ['message' => $error->getMessage()]);
+		}
+	}
+
+	/**
+	 * Runs the proposal step on the version lists the sweep just fetched; a
+	 * failure keeps the previous proposals and never undoes the saved sweep.
+	 *
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
+	 */
+	private function refreshProposals(): void {
+		if ($this->proposalService === null) {
+			return;
+		}
+		try {
+			$this->proposalService->refresh(
+				$this->availabilityService->lastListings(),
+				\DateTimeImmutable::createFromInterface($this->time->getDateTime('now', new \DateTimeZone('UTC'))),
+			);
+		} catch (\Throwable $error) {
+			$this->logger->error('AvailabilityRefreshJob: the proposed updates could not be worked out; the previous ones are kept', ['message' => $error->getMessage()]);
 		}
 	}
 }

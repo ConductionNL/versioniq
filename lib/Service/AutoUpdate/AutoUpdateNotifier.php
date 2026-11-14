@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\AutoUpdate;
 
+use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\AdminNotice;
 use OCA\Versioniq\Service\AdminNotificationServices;
 use OCA\Versioniq\Service\NotifiesAdmins;
@@ -66,6 +67,48 @@ class AutoUpdateNotifier {
 			'category' => $category,
 			'hint' => $hint,
 		])->withObject('auto_update', $appId . ':' . $targetVersion));
+	}
+
+	/**
+	 * Announces a proposed update ahead of its window to every admin and every
+	 * member of the notice group, each once, with both versions, the planned
+	 * time and the release notes excerpt. The group gains no access by it:
+	 * the text carries the notes itself, not only the link.
+	 *
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
+	 */
+	public function notifyPlanned(ProposedUpdate $proposal, string $noticeGroup): void {
+		$notice = $this->notice('auto_update_planned', [
+			'app' => $proposal->appId,
+			'fromVersion' => $proposal->fromVersion,
+			'toVersion' => $proposal->toVersion,
+			'plannedFor' => $proposal->plannedFor ?? '',
+			'releaseNotes' => $proposal->releaseNotes,
+		])->withObject('auto_update_planned', $proposal->appId . ':' . $proposal->toVersion)
+			->withLink($this->admin->urlGenerator->linkToRouteAbsolute(
+				'settings.AdminSettings.index',
+				['section' => Application::APP_ID],
+			));
+
+		foreach ($this->plannedRecipients($noticeGroup) as $uid) {
+			$this->notifyAdmin($uid, $notice);
+		}
+	}
+
+	/**
+	 * The admins, then the notice group's members, each once.
+	 *
+	 * @return list<string>
+	 */
+	private function plannedRecipients(string $noticeGroup): array {
+		$uids = $this->adminUids();
+		if ($noticeGroup !== '') {
+			foreach ($this->admin->groupManager->get($noticeGroup)?->getUsers() ?? [] as $user) {
+				$uids[] = $user->getUID();
+			}
+		}
+
+		return array_values(array_unique($uids));
 	}
 
 	/**

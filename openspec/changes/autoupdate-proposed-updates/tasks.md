@@ -2,20 +2,20 @@
 
 ## 1. Proposals
 
-- [ ] 1.1 Add `ProposedUpdate` and `ProposalStore` per design D1. Verify: `tests/unit/Service/AutoUpdate/ProposalStoreTest.php` round-trips a snapshot and keeps the previous one when encoding fails.
-- [ ] 1.2 Add `ProposalService::refresh()` fed by the availability sweep's version lists, with the D2 rule for announced proposals, and call it from `AvailabilityRefreshJob` after the sweep is saved. Verify: `tests/unit/Service/AutoUpdate/ProposalServiceTest.php` asserts no source call, a `planned` proposal moving to a newer version, an announced one keeping its version, and planner reasons stored for apps without a proposal.
-- [ ] 1.3 Add `GET /api/auto-update/proposals`, admin-only, reading the store only. Verify: `tests/unit/Controller/ApiTest.php` asserts 403 for a non-admin and the stored shape with `computedAt`.
+- [x] 1.1 Add `ProposedUpdate` and `ProposalStore` per design D1. Verify: `tests/unit/Service/AutoUpdate/ProposalStoreTest.php` round-trips a snapshot and keeps the previous one when encoding fails.
+- [x] 1.2 Add `ProposalService::refresh()` fed by the availability sweep's version lists, with the D2 rule for announced proposals, and call it from `AvailabilityRefreshJob` after the sweep is saved. Verify: `tests/unit/Service/AutoUpdate/ProposalServiceTest.php` asserts no source call, a `planned` proposal moving to a newer version, an announced one keeping its version, and planner reasons stored for apps without a proposal.
+- [x] 1.3 Add `GET /api/auto-update/proposals`, admin-only, reading the store only. Verify: `tests/unit/Controller/ApiTest.php` asserts 403 for a non-admin and the stored shape with `computedAt`.
 
 ## 2. Approval and declines
 
-- [ ] 2.1 Add `requireApproval` to `Policy`, `PUT /api/app/{appId}/policy` and `GET /api/policies`, and the checkbox to `PolicySelector.vue`. Verify: `PolicyTest` round-trips it and reads its absence as false; `PolicySelector.spec.ts` emits it.
-- [ ] 2.2 Add the approve, decline and withdraw routes per D4 with their audit entries. Verify: `ApiTest` asserts password confirmation, 404 for a version with no proposal, and one audit entry per call with the version in `to_version`.
-- [ ] 2.3 Make the job honour declines and approval per D6. Verify: `AutoUpdateJobTest` covers an app requiring approval with 2.3.4 approved and 2.3.4 installed, with 2.3.4 approved while the plan says 2.3.5 (nothing installed), and a declined version skipped.
+- [x] 2.1 Add `requireApproval` to `Policy`, `PUT /api/app/{appId}/policy` and `GET /api/policies`, and the checkbox to `PolicySelector.vue`. Verify: `PolicyTest` round-trips it and reads its absence as false; `PolicySelector.spec.ts` emits it.
+- [x] 2.2 Add the approve, decline and withdraw routes per D4 with their audit entries. Verify: `ApiTest` asserts password confirmation, 404 for a version with no proposal, and one audit entry per call with the version in `to_version`.
+- [x] 2.3 Make the job honour declines and approval per D6. Verify: `AutoUpdateJobTest` covers an app requiring approval with 2.3.4 approved and 2.3.4 installed, with 2.3.4 approved while the plan says 2.3.5 (nothing installed), and a declined version skipped.
 
 ## 3. Notice
 
-- [ ] 3.1 Add `notice_days` (0 to 60) and `notice_group` to the settings store and `PUT /api/auto-update/settings`. Verify: `ApiTest` refuses 61 and an unknown group with 400.
-- [ ] 3.2 Send `auto_update_planned` on a new proposal, set `announcedAt` and `plannedFor`, and render it in `Notifier::prepare()` with the release notes excerpt. Verify: `AutoUpdateNotifierTest` asserts admins plus group members as recipients and no repeat for the same version; `NotifierTest` renders the planned date and notes.
+- [x] 3.1 Add `notice_days` (0 to 60) and `notice_group` to the settings store and `PUT /api/auto-update/settings`. Verify: `ApiTest` refuses 61 and an unknown group with 400.
+- [x] 3.2 Send `auto_update_planned` on a new proposal, set `announcedAt` and `plannedFor`, and render it in `Notifier::prepare()` with the release notes excerpt. Verify: `AutoUpdateNotifierTest` asserts admins plus group members as recipients and no repeat for the same version; `NotifierTest` renders the planned date and notes.
 - [ ] 3.3 Make the job wait until `plannedFor`, and plan `next_window` security fixes without the notice period. Verify: `AutoUpdateJobTest` covers an opening before and after `plannedFor`, and a critical fix installed in the next opening.
 
 ## 4. Page and command

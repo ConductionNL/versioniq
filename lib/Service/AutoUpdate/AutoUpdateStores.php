@@ -17,7 +17,8 @@ use OCA\Versioniq\Service\Policy\PolicyStore;
 /**
  * The stored state automatic updates run on: the per-app policies, the pins
  * that hold an app back, the global settings (on/off, window, time zone) and
- * the ledger of versions already attempted.
+ * the ledger of versions already attempted, and the proposed updates with
+ * their approvals and declines.
  *
  * @psalm-api
  */
@@ -27,6 +28,9 @@ final class AutoUpdateStores {
 		public readonly PinStore $pinStore,
 		public readonly AutoUpdateSettingsStore $settingsStore,
 		public readonly AttemptLedger $attemptLedger,
+		// Proposed updates and the admins' decisions on them; optional and
+		// last so existing callers keep working, the container always passes it.
+		public readonly ?ProposalStore $proposalStore = null,
 	) {
 	}
 }

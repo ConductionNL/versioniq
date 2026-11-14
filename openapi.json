@@ -3376,8 +3376,8 @@
         "/app/{appId}/policy": {
             "put": {
                 "operationId": "api-set-policy-v1",
-                "summary": "Sets an app's auto-update policy level (password-confirmed); rejects an unknown level with 400; see \"Per-app update policy\"",
-                "description": "openspec/specs/auto-update-policies/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
+                "summary": "Sets an app's auto-update policy level and whether its automatic updates need approval (password-confirmed); rejects an unknown level with 400; see \"Per-app update policy\"",
+                "description": "openspec/specs/auto-update-policies/spec.md\nopenspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
                     "api"
                 ],
@@ -3389,6 +3389,24 @@
                         "basic_auth": []
                     }
                 ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "requireApproval": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "`1`/`0`: install only versions an admin approved; OMIT to keep the current value"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "parameters": [
                     {
                         "name": "appId",
@@ -3774,7 +3792,7 @@
             "put": {
                 "operationId": "api-update-auto-update-settings-v1",
                 "summary": "Updates the global auto-update kill switch and/or maintenance window (password-confirmed); rejects a malformed window with 400; see \"Global * kill switch and window\"",
-                "description": "openspec/specs/auto-update-policies/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
+                "description": "openspec/specs/auto-update-policies/spec.md\nopenspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
                     "api"
                 ],
@@ -3798,6 +3816,18 @@
                                         "nullable": true,
                                         "default": null,
                                         "description": "`1`/`0` to set the global kill switch; OMIT to leave it untouched"
+                                    },
+                                    "noticeDays": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "Days a planned update is announced before it installs, 0 to 60 (0 is off); OMIT to leave it untouched"
+                                    },
+                                    "noticeGroup": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "Group whose members are told of planned updates besides the admins, empty to clear; OMIT to leave it untouched"
                                     }
                                 }
                             }
@@ -3856,7 +3886,7 @@
                         }
                     },
                     "400": {
-                        "description": "The maintenance window is malformed",
+                        "description": "The maintenance window is malformed, the notice period is outside 0 to 60 days, or the notice group does not exist",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -3952,6 +3982,940 @@
                                             }
                                         }
                                     ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Current user is not logged in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auto-update/proposals": {
+            "get": {
+                "operationId": "proposal-index-v1",
+                "summary": "Lists the stored proposed updates in planned order, the reason each app without one has none, and when they were computed (admin-only)",
+                "description": "openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md\nThis endpoint requires admin access",
+                "tags": [
+                    "proposal"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The stored proposals",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "proposals",
+                                                        "reasons",
+                                                        "computedAt"
+                                                    ],
+                                                    "properties": {
+                                                        "proposals": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "additionalProperties": {
+                                                                    "type": "object"
+                                                                }
+                                                            }
+                                                        },
+                                                        "reasons": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "required": [
+                                                                    "appId",
+                                                                    "reason"
+                                                                ],
+                                                                "properties": {
+                                                                    "appId": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "reason": {
+                                                                        "type": "string"
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        "computedAt": {
+                                                            "type": "string",
+                                                            "nullable": true
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Caller is not an administrator",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {
+                                                            "type": "object",
+                                                            "required": [
+                                                                "message"
+                                                            ],
+                                                            "properties": {
+                                                                "message": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {}
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Current user is not logged in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auto-update/proposals/{appId}/approve": {
+            "post": {
+                "operationId": "proposal-approve-v1",
+                "summary": "Approves exactly this version of an app's proposed update (password-confirmed)",
+                "description": "openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
+                "tags": [
+                    "proposal"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "appId",
+                        "in": "path",
+                        "description": "The app the proposal is for",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The approved proposal",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "proposal"
+                                                    ],
+                                                    "properties": {
+                                                        "proposal": {
+                                                            "type": "object",
+                                                            "additionalProperties": {
+                                                                "type": "object"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "No version was given",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "message"
+                                                    ],
+                                                    "properties": {
+                                                        "message": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Caller is not an administrator",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {
+                                                            "type": "object",
+                                                            "required": [
+                                                                "message"
+                                                            ],
+                                                            "properties": {
+                                                                "message": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {}
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "There is no proposal for that version",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "message"
+                                                    ],
+                                                    "properties": {
+                                                        "message": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Current user is not logged in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auto-update/proposals/{appId}/decline": {
+            "post": {
+                "operationId": "proposal-decline-v1",
+                "summary": "Declines this version of an app's proposed update, with a reason (password-confirmed); the job skips it until the decline is withdrawn",
+                "description": "openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
+                "tags": [
+                    "proposal"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "appId",
+                        "in": "path",
+                        "description": "The app the proposal is for",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The declined proposal",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "proposal"
+                                                    ],
+                                                    "properties": {
+                                                        "proposal": {
+                                                            "type": "object",
+                                                            "additionalProperties": {
+                                                                "type": "object"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "No version was given",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "message"
+                                                    ],
+                                                    "properties": {
+                                                        "message": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Caller is not an administrator",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {
+                                                            "type": "object",
+                                                            "required": [
+                                                                "message"
+                                                            ],
+                                                            "properties": {
+                                                                "message": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {}
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "There is no proposal for that version",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "message"
+                                                    ],
+                                                    "properties": {
+                                                        "message": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Current user is not logged in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auto-update/proposals/{appId}/decline/{version}": {
+            "delete": {
+                "operationId": "proposal-withdraw-v1",
+                "summary": "Withdraws the decline of a version (password-confirmed); the next proposal step may propose it again",
+                "description": "openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
+                "tags": [
+                    "proposal"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "appId",
+                        "in": "path",
+                        "description": "The app the decline is for",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "version",
+                        "in": "path",
+                        "description": "The declined version",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The decline was withdrawn",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "appId",
+                                                        "version",
+                                                        "withdrawn"
+                                                    ],
+                                                    "properties": {
+                                                        "appId": {
+                                                            "type": "string"
+                                                        },
+                                                        "version": {
+                                                            "type": "string"
+                                                        },
+                                                        "withdrawn": {
+                                                            "type": "boolean"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Caller is not an administrator",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {
+                                                            "type": "object",
+                                                            "required": [
+                                                                "message"
+                                                            ],
+                                                            "properties": {
+                                                                "message": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {}
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "That version is not declined",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "message"
+                                                    ],
+                                                    "properties": {
+                                                        "message": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

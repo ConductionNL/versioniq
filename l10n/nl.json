@@ -308,7 +308,12 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Buiten het updatebeleid: %n release achter",
             "Buiten het updatebeleid: %n releases achter"
-        ]
+        ],
+        "Ask me before installing": "Vraag het mij voordat er wordt geïnstalleerd",
+        "Update planned for %1$s": "Update gepland voor %1$s",
+        "%1$s will be updated from %2$s to %3$s on or after %4$s.": "%1$s wordt bijgewerkt van %2$s naar %3$s op of na %4$s.",
+        "%1$s will be updated from %2$s to %3$s at a coming update window.": "%1$s wordt bijgewerkt van %2$s naar %3$s in een komend updatevenster.",
+        "Release notes:": "Wijzigingen in deze versie:"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

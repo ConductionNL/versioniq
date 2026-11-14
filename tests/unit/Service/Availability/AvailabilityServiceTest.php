@@ -185,4 +185,23 @@ final class AvailabilityServiceTest extends TestCase {
 		self::assertNotNull($entry['error']);
 		self::assertNull($entry['newestVersion']);
 	}
+
+	public function testTheSweepKeepsWhatItListedForTheProposalStep(): void {
+		$service = $this->service(
+			[self::app('openregister', '2.3.0'), self::app('hermiq', '1.0.0'), self::app('deck', '1.0.0')],
+			[
+				'openregister' => self::envelope([['2.3.4', true], ['2.4.0', false]]),
+				'hermiq' => self::envelope([], 'GitHub refused the request (HTTP 403).'),
+				'deck' => new \RuntimeException('connection reset'),
+			],
+		);
+
+		$service->sweep(60.0);
+		$listings = $service->lastListings();
+
+		self::assertSame('2.3.0', $listings['openregister']['installedVersion']);
+		self::assertSame(['2.3.4', '2.4.0'], array_column($listings['openregister']['versions'] ?? [], 'version'));
+		self::assertSame(['installedVersion' => '1.0.0', 'versions' => null], $listings['hermiq']);
+		self::assertSame(['installedVersion' => '1.0.0', 'versions' => null], $listings['deck']);
+	}
 }
