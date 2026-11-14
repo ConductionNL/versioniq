@@ -9,7 +9,7 @@ export type SweepStatus = 'ok' | 'partial' | 'failed'
  *
  * @param checkedAt Unix seconds of the sweep.
  * @param nowSeconds Current time in unix seconds.
- * @spec openspec/changes/inventory-pins-checks-and-pending/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+ * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
  */
 export function sweepAge (checkedAt: number, nowSeconds: number): string {
 	const ageMinutes = Math.max(0, Math.round((nowSeconds - checkedAt) / 60))
@@ -34,7 +34,7 @@ export function sweepAge (checkedAt: number, nowSeconds: number): string {
  * @param state.errors The apps that could not be checked.
  * @param state.checkedAt Unix seconds of the sweep.
  * @param state.nowSeconds Current time in unix seconds.
- * @spec openspec/changes/inventory-pins-checks-and-pending/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+ * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
  */
 export function sweepOutcomeLabel (
 	kind: 'advisories' | 'updates',

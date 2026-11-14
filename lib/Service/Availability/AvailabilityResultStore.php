@@ -58,7 +58,7 @@ class AvailabilityResultStore {
 	 * Records a sweep that failed as a whole: the previous snapshot stays, the
 	 * outcome says `failed` at the time of the attempt.
 	 *
-	 * @spec openspec/changes/inventory-pins-checks-and-pending/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+	 * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
 	 */
 	public function saveFailure(int $checkedAt): void {
 		$this->snapshot()->writeOutcome(SweepOutcome::FAILED, [], $checkedAt);

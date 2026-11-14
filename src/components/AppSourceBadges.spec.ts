@@ -31,7 +31,7 @@ describe('AppSourceBadges', () => {
 		expect(store.find('[data-testid="app-source"]').text()).toContain('App Store')
 	})
 
-	// @spec openspec/changes/inventory-pins-checks-and-pending/specs/external-sources/spec.md#requirement-the-card-names-where-the-installed-version-came-from
+	// @spec openspec/specs/external-sources/spec.md#requirement-the-card-names-where-the-installed-version-came-from
 	it('names the source of the installed version apart from the binding', () => {
 		const wrapper = mount(AppSourceBadges, {
 			props: { isShipped: false, isCore: false, boundSourceId: null, provenance: { kind: 'versioniq', sourceId: 'github:ConductionNL/pipelinq', version: '1.12.0' } },

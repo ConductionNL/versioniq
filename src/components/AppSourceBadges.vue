@@ -21,7 +21,7 @@ export interface Provenance {
  * installed one came from, which differs after a one-off install from another
  * source or a change made outside Versioniq.
  *
- * @spec openspec/changes/inventory-pins-checks-and-pending/specs/external-sources/spec.md#requirement-the-card-names-where-the-installed-version-came-from
+ * @spec openspec/specs/external-sources/spec.md#requirement-the-card-names-where-the-installed-version-came-from
  */
 withDefaults(defineProps<{
 	isShipped: boolean

@@ -70,7 +70,7 @@ final class AvailabilityRefreshJobTest extends TestCase {
 	/**
 	 * Recording the failure must not throw out of the job either.
 	 *
-	 * @spec openspec/changes/inventory-pins-checks-and-pending/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+	 * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
 	 */
 	public function testAFailureThatCannotBeRecordedIsLogged(): void {
 		$service = $this->createMock(AvailabilityService::class);

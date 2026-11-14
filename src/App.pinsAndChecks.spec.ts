@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: EUPL-1.2
 // Covers the Pinned filter (pin-list) and the check line saying whether the
 // last sweep succeeded (adv-last-checked).
-// @spec openspec/changes/inventory-pins-checks-and-pending/specs/version-pinning/spec.md
-// @spec openspec/changes/inventory-pins-checks-and-pending/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+// @spec openspec/specs/version-pinning/spec.md
+// @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'

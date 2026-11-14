@@ -5,7 +5,7 @@
  * now and whether it is scheduled, held by the pin, not covered by the policy
  * level, or skipped because an earlier attempt failed.
  *
- * @spec openspec/changes/inventory-pins-checks-and-pending/specs/auto-update-policies/spec.md#requirement-the-overview-lists-the-updates-that-are-pending-now
+ * @spec openspec/specs/auto-update-policies/spec.md#requirement-the-overview-lists-the-updates-that-are-pending-now
  */
 import type { PendingUpdate } from './pendingUpdates.ts'
 

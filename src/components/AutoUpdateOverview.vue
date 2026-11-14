@@ -45,7 +45,7 @@ const pending = computed(() => pendingAutoUpdates(props.policies, props.updates 
 
 /**
  * @param state The pending state.
- * @spec openspec/changes/inventory-pins-checks-and-pending/specs/auto-update-policies/spec.md#requirement-the-overview-lists-the-updates-that-are-pending-now
+ * @spec openspec/specs/auto-update-policies/spec.md#requirement-the-overview-lists-the-updates-that-are-pending-now
  */
 function stateLabel (state: PendingState): string {
 	return {

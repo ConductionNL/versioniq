@@ -67,7 +67,7 @@ final class AvailabilityResultStoreTest extends TestCase {
 	 * A sweep that could not reach some sources is partial and names them; one
 	 * that reached none is failed.
 	 *
-	 * @spec openspec/changes/inventory-pins-checks-and-pending/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+	 * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
 	 */
 	public function testAPartialAndAFailedSweepSaySo(): void {
 		$store = $this->store();
@@ -85,7 +85,7 @@ final class AvailabilityResultStoreTest extends TestCase {
 	 * failed at the time of the attempt; with no snapshot at all it is still
 	 * reported, not "never checked".
 	 *
-	 * @spec openspec/changes/inventory-pins-checks-and-pending/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+	 * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
 	 */
 	public function testAWholeFailureKeepsTheSnapshotAndSaysFailed(): void {
 		$store = $this->store();

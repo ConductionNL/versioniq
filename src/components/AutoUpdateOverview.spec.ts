@@ -44,7 +44,7 @@ describe('AutoUpdateOverview', () => {
 		expect(wrapper.find('[data-testid="overview-disabled"]').exists()).toBe(true)
 	})
 
-	// @spec openspec/changes/inventory-pins-checks-and-pending/specs/auto-update-policies/spec.md#requirement-the-overview-lists-the-updates-that-are-pending-now
+	// @spec openspec/specs/auto-update-policies/spec.md#requirement-the-overview-lists-the-updates-that-are-pending-now
 	it('lists each pending version with its state, from the stored sweep and its time', () => {
 		const update = (installedVersion: string, newest: string, pinned = false) => ({ installedVersion, newestVersion: newest, newestCompatibleVersion: newest, linesBehind: 0, updateAvailable: true, pinned, sourceId: null, error: null })
 		const wrapper = mount(AutoUpdateOverview, {

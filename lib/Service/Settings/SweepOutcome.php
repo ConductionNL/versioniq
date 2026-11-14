@@ -16,7 +16,7 @@ namespace OCA\Versioniq\Service\Settings;
  * error, `failed` when every app does (or the sweep itself failed), `partial`
  * otherwise, with the ids of the apps that could not be checked.
  *
- * @spec openspec/changes/inventory-pins-checks-and-pending/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+ * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
  */
 final class SweepOutcome {
 	public const OK = 'ok';
@@ -28,7 +28,7 @@ final class SweepOutcome {
 	 *
 	 * @param array<array-key, mixed> $map
 	 * @return array{status: string, errors: list<string>}
-	 * @spec openspec/changes/inventory-pins-checks-and-pending/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+	 * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
 	 */
 	public static function of(array $map): array {
 		$errors = [];

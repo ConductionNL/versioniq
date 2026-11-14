@@ -219,7 +219,7 @@ class InstallerService {
 	 *
 	 * @param array{version: string, recordedAt: string, sourceId: ?string}|null $lkg
 	 * @return array{kind: 'versioniq'|'outside', sourceId: ?string, version: string}|null
-	 * @spec openspec/changes/inventory-pins-checks-and-pending/specs/external-sources/spec.md#requirement-the-card-names-where-the-installed-version-came-from
+	 * @spec openspec/specs/external-sources/spec.md#requirement-the-card-names-where-the-installed-version-came-from
 	 */
 	public static function provenance(?string $installedVersion, ?array $lkg): ?array {
 		if ($installedVersion === null) {

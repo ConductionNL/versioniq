@@ -130,7 +130,7 @@ final class InstallerServiceAppListTest extends TestCase {
 	 * A version Versioniq put in place names that install's source; a version
 	 * that differs from the record, or has none, was changed outside Versioniq.
 	 *
-	 * @spec openspec/changes/inventory-pins-checks-and-pending/specs/external-sources/spec.md#requirement-the-card-names-where-the-installed-version-came-from
+	 * @spec openspec/specs/external-sources/spec.md#requirement-the-card-names-where-the-installed-version-came-from
 	 */
 	public function testProvenanceComesFromTheLastFinalizedInstall(): void {
 		$record = ['version' => '1.12.0', 'recordedAt' => '2026-11-01T10:00:00+00:00', 'sourceId' => 'github:ConductionNL/pipelinq'];

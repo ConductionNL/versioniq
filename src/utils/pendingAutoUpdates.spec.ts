@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EUPL-1.2
-// @spec openspec/changes/inventory-pins-checks-and-pending/specs/auto-update-policies/spec.md#requirement-the-overview-lists-the-updates-that-are-pending-now
+// @spec openspec/specs/auto-update-policies/spec.md#requirement-the-overview-lists-the-updates-that-are-pending-now
 import { describe, expect, it } from 'vitest'
 import { levelAllows, pendingAutoUpdates } from './pendingAutoUpdates.ts'
 

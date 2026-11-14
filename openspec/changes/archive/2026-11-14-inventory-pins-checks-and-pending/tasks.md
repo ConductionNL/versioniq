@@ -24,4 +24,4 @@
 
 ## 5. Close
 
-- [ ] 5.1 Set the matrix rows `pin-list`, `adv-last-checked`, `aut-dashboard` and `inv-source-shown` to `built` with evidence lines, then archive this change.
+- [x] 5.1 Set the matrix rows `pin-list`, `adv-last-checked`, `aut-dashboard` and `inv-source-shown` to `built` with evidence lines, then archive this change.

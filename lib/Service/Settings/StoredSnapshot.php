@@ -79,7 +79,7 @@ final class StoredSnapshot {
 	 * of the apps it could not check.
 	 *
 	 * @param list<string> $errors
-	 * @spec openspec/changes/inventory-pins-checks-and-pending/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+	 * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
 	 */
 	public function writeOutcome(string $status, array $errors, ?int $checkedAt = null): void {
 		$this->config->setValueString(Application::APP_ID, $this->key . '.status', $status);
