@@ -44,6 +44,14 @@ final class SourceBinding {
 	private const ALLOWED_FORGES = self::FORGES;
 
 	/**
+	 * Forges kept only for what was stored under them: never offered for a
+	 * new binding, token or trusted pattern (codeberg-is-no-release-source).
+	 *
+	 * @var list<string>
+	 */
+	public const RETIRED_FORGES = [self::FORGE_CODEBERG];
+
+	/**
 	 * Cap on the number of `version => sha256` entries carried in the binding's
 	 * `sha256` map, oldest evicted first; see "Recorded digests are
 	 * binding-scoped and surfaced".
@@ -383,6 +391,15 @@ final class SourceBinding {
 	 * @spec openspec/specs/external-sources/spec.md
 	 * @throws InvalidArgumentException
 	 */
+	/**
+	 * Whether a forge is retired, so a new binding or pattern may not name it.
+	 *
+	 * @spec openspec/changes/codeberg-is-no-release-source/specs/external-sources/spec.md
+	 */
+	public static function isRetiredForge(string $forge): bool {
+		return in_array($forge, self::RETIRED_FORGES, true);
+	}
+
 	public static function release(string $forge, string $owner, string $repo, string $assetPattern = '*.tar.gz'): self {
 		return self::forgeRelease($forge, $owner, $repo, $assetPattern);
 	}

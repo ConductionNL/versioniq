@@ -18,6 +18,7 @@ use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\SelectedReleaseInstallerService;
+use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceRegistry;
@@ -67,10 +68,69 @@ final class InstallerServiceTrustedPatternTest extends TestCase {
 	}
 
 	public function testCuratedAddWithRepoPersistsForgeQualifiedPattern(): void {
-		$result = $this->service()->addTrustedPattern('codeberg', 'Conduction', 'openregister');
+		$result = $this->service()->addTrustedPattern('forgejo', 'Conduction', 'openregister');
 
-		self::assertContains('codeberg:Conduction/openregister', $result);
-		self::assertContains('codeberg:Conduction/openregister', $this->stored);
+		self::assertContains('forgejo:Conduction/openregister', $result);
+		self::assertContains('forgejo:Conduction/openregister', $this->stored);
+	}
+
+	/**
+	 * A new pattern for the retired codeberg forge is refused and nothing is
+	 * stored; a codeberg pattern stored before stays (codeberg-is-no-release-source).
+	 */
+	public function testARetiredForgePatternIsRefusedAndAStoredOneStays(): void {
+		$svc = $this->service(['codeberg:Conduction/*']);
+
+		try {
+			$svc->addTrustedPattern('codeberg', 'Conduction', 'openregister');
+			self::fail('a codeberg pattern was accepted');
+		} catch (RetiredForgeException $e) {
+			self::assertSame('codeberg', $e->forge);
+		}
+
+		self::assertSame(['codeberg:Conduction/*'], $this->stored);
+		self::assertSame([], $svc->removeTrustedPattern('codeberg:Conduction/*'));
+	}
+
+	/**
+	 * A new binding on the retired codeberg forge is refused before the
+	 * allowlist is asked or anything is stored, even when a stored codeberg
+	 * pattern would trust it.
+	 */
+	public function testANewCodebergBindingIsRefusedAndStoresNothing(): void {
+		$trusted = $this->createMock(TrustedSourceList::class);
+		$trusted->expects($this->never())->method('assertBindingAllowed');
+		$bindingStore = $this->createMock(SourceBindingStore::class);
+		$bindingStore->expects($this->never())->method('set');
+
+		$service = $this->buildByName(InstallerService::class, [
+			'trustedSources' => $trusted,
+			'bindingStore' => $bindingStore,
+		]);
+
+		$this->expectException(RetiredForgeException::class);
+		$service->bindSource('openregister', SourceBinding::release('codeberg', 'Conduction', 'openregister'));
+	}
+
+	/**
+	 * GitHub, self-hosted Forgejo and App Store bindings are still stored.
+	 */
+	public function testBindingsOnOfferedForgesAreStored(): void {
+		$stored = [];
+		$bindingStore = $this->createMock(SourceBindingStore::class);
+		$bindingStore->method('set')->willReturnCallback(function (string $appId, SourceBinding $binding) use (&$stored): void {
+			$stored[$appId] = $binding->getId();
+		});
+
+		$service = $this->buildByName(InstallerService::class, [
+			'trustedSources' => $this->createMock(TrustedSourceList::class),
+			'bindingStore' => $bindingStore,
+		]);
+		$service->bindSource('a', SourceBinding::release('github', 'ConductionNL', 'openregister'));
+		$service->bindSource('b', SourceBinding::release('forgejo', 'acme', 'tool'));
+		$service->bindSource('c', SourceBinding::appStore());
+
+		self::assertSame(['a' => 'github:ConductionNL/openregister', 'b' => 'forgejo:acme/tool', 'c' => 'appstore'], $stored);
 	}
 
 	public function testOwnerOnlyAddPersistsWildcardRepo(): void {
@@ -151,7 +211,8 @@ final class InstallerServiceTrustedPatternTest extends TestCase {
 		yield 'owner only' => ['github', 'acme', null, 'github:acme/*'];
 		yield 'empty repo means every repo' => ['forgejo', 'acme', '', 'forgejo:acme/*'];
 		yield 'blank repo means every repo' => ['forgejo', 'acme', '   ', 'forgejo:acme/*'];
-		yield 'owner and repo are trimmed' => ['codeberg', ' acme ', ' tool ', 'codeberg:acme/tool'];
+		yield 'owner and repo are trimmed' => ['forgejo', ' acme ', ' tool ', 'forgejo:acme/tool'];
+		yield 'retired forge' => ['codeberg', 'acme', 'tool', 'REFUSED Forge "codeberg" is no longer offered for a new binding or trusted pattern. Use github, or a self-hosted forgejo host.'];
 		yield 'dots dashes underscores' => ['github', 'a.b-c_d', 'R.e-p_0', 'github:a.b-c_d/R.e-p_0'];
 		yield 'unknown forge' => ['gitlab', 'acme', 'tool', 'REFUSED Unknown forge: gitlab'];
 		yield 'unknown forge beats bad owner' => ['gitlab', '*', 'wid*get', 'REFUSED Unknown forge: gitlab'];
