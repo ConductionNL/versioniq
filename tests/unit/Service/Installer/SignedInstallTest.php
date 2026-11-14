@@ -29,6 +29,13 @@ final class SignedInstallTest extends TestCase {
 		self::assertSame('["admin"]', $install->enabledAfter());
 	}
 
+	/**
+	 * An upgrade over a disabled app leaves it disabled (retro-enabled-state-and-unattended-tokens task 2.1).
+	 */
+	public function testAnUpgradeOverADisabledAppStaysDisabled(): void {
+		self::assertSame('no', (new SignedInstall('sampleapp', ['version' => '2.0.0'], '1.4.0', 'no'))->enabledAfter());
+	}
+
 	public function testRequestedVersionIsTheReleaseVersionString(): void {
 		$install = new SignedInstall('sampleapp', ['version' => '2.0.0'], '1.0.0', 'yes');
 
