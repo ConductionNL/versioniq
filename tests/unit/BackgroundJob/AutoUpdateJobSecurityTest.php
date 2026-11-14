@@ -41,6 +41,8 @@ use ReflectionMethod;
  * The nightly job on the `security` level (autoupdate-security-first D1, D2).
  *
  * @covers \OCA\Versioniq\BackgroundJob\AutoUpdateJob
+ * @uses \OCA\Versioniq\Service\Policy\PatchPolicy
+ * @uses \OCA\Versioniq\Service\Advisory\AdvisorySeverity
  * @uses \OCA\Versioniq\Service\AutoUpdate\SecurityCandidate
  * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow
  * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores

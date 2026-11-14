@@ -14,13 +14,15 @@ namespace OCA\Versioniq\Service\AutoUpdate;
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Policy\PatchPolicyStore;
 use OCA\Versioniq\Service\Policy\PolicyStore;
 
 /**
  * The stored state automatic updates run on: the per-app policies, the pins
  * that hold an app back, the global settings (on/off, window, time zone) and
  * the ledger of versions already attempted, and the last advisory snapshot
- * with its sweep interval, which the `security` level reads.
+ * with its sweep interval, which the `security` level reads, the patch
+ * policy, and why the last run held a security fix back.
  *
  * @psalm-api
  */
@@ -32,6 +34,8 @@ final class AutoUpdateStores {
 		public readonly AttemptLedger $attemptLedger,
 		public readonly AdvisoryResultStore $advisoryResults,
 		public readonly AdvisorySettingsStore $advisorySettings,
+		public readonly PatchPolicyStore $patchPolicyStore,
+		public readonly SecurityHoldStore $securityHolds,
 	) {
 	}
 }
