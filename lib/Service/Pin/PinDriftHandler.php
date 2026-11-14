@@ -14,6 +14,7 @@ namespace OCA\Versioniq\Service\Pin;
 
 use OCA\Versioniq\Service\AdminNotice;
 use OCA\Versioniq\Service\AdminNotificationServices;
+use OCA\Versioniq\Service\Audit\AuditOrigin;
 use OCA\Versioniq\Service\NotifiesAdmins;
 use OCA\Versioniq\Service\ResolvesAdminUids;
 use Psr\Log\LoggerInterface;
@@ -51,6 +52,16 @@ class PinDriftHandler {
 	 * @spec openspec/specs/version-pinning/spec.md
 	 */
 	public function handle(string $appId, string $installedVersion): void {
+		// The drift row reads `listener`, whatever request or job noticed it.
+		AuditOrigin::during(AuditOrigin::LISTENER, fn () => $this->handleDrift($appId, $installedVersion));
+	}
+
+	/**
+	 * The drift check itself, under the listener's audit origin.
+	 *
+	 * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-every-audit-row-says-where-it-came-from
+	 */
+	private function handleDrift(string $appId, string $installedVersion): void {
 		$pin = $this->pinStore->get($appId);
 		if ($pin === null || $pin->version === $installedVersion) {
 			// No pin, or it matches — nothing drifted (also covers the "adjusted
