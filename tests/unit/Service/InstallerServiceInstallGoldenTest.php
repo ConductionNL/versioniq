@@ -21,6 +21,7 @@ use OCA\Versioniq\Service\Installer\EnvironmentCheck;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFailure;
 use OCA\Versioniq\Service\Installer\ShaMismatchException;
+use OCA\Versioniq\Service\Availability\WithdrawnVersionStore;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Lkg\LkgStore;
 use OCA\Versioniq\Service\Pin\Pin;
@@ -530,7 +531,61 @@ final class InstallerServiceInstallGoldenTest extends TestCase {
 			'lkgStore' => $this->createMock(LkgStore::class),
 			'artifactCache' => $this->createMock(ArtifactCache::class),
 			'eventDispatcher' => $eventDispatcher,
+			'withdrawnVersions' => $this->withdrawnStore($case),
 		]);
+	}
+
+	/**
+	 * The withdrawn-version record of a case, or none when the case has no `withdrawn` list.
+	 *
+	 * @param array<string, mixed> $case
+	 */
+	private function withdrawnStore(array $case): ?WithdrawnVersionStore {
+		if (!isset($case['withdrawn'])) {
+			return null;
+		}
+
+		$store = $this->createMock(WithdrawnVersionStore::class);
+		$store->method('isWithdrawn')->willReturnCallback(function (string $appId, string $version) use ($case): bool {
+			$this->log('withdrawnVersions.isWithdrawn', func_get_args());
+
+			return in_array($version, $case['withdrawn'], true);
+		});
+
+		return $store;
+	}
+
+	/**
+	 * A version its publisher withdrew is refused before any source is asked,
+	 * so a stale catalogue that still lists it cannot install it
+	 * (safety-withdrawn-and-revoked, design D3).
+	 *
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-a-withdrawn-installed-version-is-marked-and-never-reinstalled-by-accident
+	 */
+	public function testAWithdrawnTargetIsRefusedBeforeTheSourceIsAsked(): void {
+		$result = json_decode($this->runCase(['withdrawn' => ['2.0.0']]), true, 512, JSON_THROW_ON_ERROR);
+
+		$this->assertSame(409, $result['result']['statusCode']);
+		$this->assertSame('withdrawn', $result['result']['payload']['category']);
+		$this->assertSame('Version 2.0.0 of someapp was withdrawn by its publisher.', $result['result']['payload']['message']);
+		$this->assertSame('failed', $result['result']['payload']['installStatus']);
+		$called = array_column($result['calls'], 0);
+		$this->assertContains('withdrawnVersions.isWithdrawn', $called);
+		$this->assertNotContains('signedInstaller.installFromSelectedRelease', $called);
+		$this->assertNotContains('externalInstaller.installFromExternalRelease', $called);
+		$this->assertSame([], array_values(array_filter($called, static fn (string $call): bool => str_starts_with($call, 'source.'))));
+	}
+
+	/**
+	 * Another version being withdrawn does not stand in the way.
+	 *
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-a-withdrawn-installed-version-is-marked-and-never-reinstalled-by-accident
+	 */
+	public function testAnotherWithdrawnVersionDoesNotBlockTheInstall(): void {
+		$plain = json_decode($this->runCase([]), true, 512, JSON_THROW_ON_ERROR);
+		$other = json_decode($this->runCase(['withdrawn' => ['1.9.0']]), true, 512, JSON_THROW_ON_ERROR);
+
+		$this->assertSame($plain['result'], $other['result']);
 	}
 
 	/**

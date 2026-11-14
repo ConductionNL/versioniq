@@ -13,7 +13,9 @@
 ## 3. Withdrawn versions
 
 - [ ] 3.1 Add `installedWithdrawn` to the availability sweep and the card badge. Verify: a unit test where a failed listing never marks a version withdrawn.
-- [ ] 3.2 Refuse a withdrawn target in `installAppVersion()` with category `withdrawn`. Verify: `tests/unit/Service/InstallerServiceTest.php` with a stale catalogue that still lists the version; `tests/e2e/withdrawn.spec.ts` removes a release from the forge fixture and sees the badge.
+  - Sweep half done: `WithdrawnVersionStore` and `installedWithdrawn` on every swept row (null when the listing failed or named no versions); `tests/unit/Service/Availability/WithdrawnVersionsTest.php`. The card badge is left.
+- [x] 3.2 Refuse a withdrawn target in `installAppVersion()` with category `withdrawn`. Verify: `tests/unit/Service/InstallerServiceTest.php` with a stale catalogue that still lists the version; `tests/e2e/withdrawn.spec.ts` removes a release from the forge fixture and sees the badge.
+  - Done in code: `InstallerService::withdrawnRefusal()` answers 409 with category `withdrawn` before any source is asked; cases in `InstallerServiceInstallGoldenTest`. The e2e `withdrawn.spec.ts` is left.
 
 ## 4. Close
 

@@ -675,7 +675,31 @@ class InstallerService {
 		}
 		$run->pin = $this->state->pinStore->get($run->request->target->appId);
 
-		return $this->pinRefusal($run) ?? $this->sameVersionOutcome($run) ?? $this->preflightRefusal($run);
+		return $this->pinRefusal($run) ?? $this->sameVersionOutcome($run) ?? $this->withdrawnRefusal($run) ?? $this->preflightRefusal($run);
+	}
+
+	/**
+	 * Withdrawn guard: a version its publisher withdrew is never installed by
+	 * accident, even while a stale catalogue still resolves it
+	 * (safety-withdrawn-and-revoked, design D3). Reinstalling the version that
+	 * already runs is answered before this, as a no-op.
+	 *
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-a-withdrawn-installed-version-is-marked-and-never-reinstalled-by-accident
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 */
+	private function withdrawnRefusal(InstallRun $run): ?array {
+		$withdrawn = $this->state->withdrawnVersions;
+		$target = $run->request->target;
+		if ($withdrawn === null || !$withdrawn->isWithdrawn($target->appId, $target->version)) {
+			return null;
+		}
+
+		return $this->installEnvelope(Http::STATUS_CONFLICT, $this->outcomePayload($run, [
+			'message' => sprintf('Version %s of %s was withdrawn by its publisher.', $target->version, $target->appId),
+			'category' => 'withdrawn',
+			'hint' => 'Choose another version from the list.',
+			'installStatus' => 'failed',
+		]));
 	}
 
 	/**
