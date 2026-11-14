@@ -308,7 +308,9 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Buiten het updatebeleid: %n release achter",
             "Buiten het updatebeleid: %n releases achter"
-        ]
+        ],
+        "New version of %1$s: %2$s": "Nieuwe versie van %1$s: %2$s",
+        "It does not run on this server version.": "Deze versie draait niet op deze serverversie."
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

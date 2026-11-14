@@ -12,6 +12,8 @@ namespace OCA\Versioniq\Tests\Unit\Command;
 use OCA\Versioniq\Command\ListUpdates;
 use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
 use OCA\Versioniq\Service\Availability\AvailabilityService;
+use OCA\Versioniq\Service\ReleaseAlert\ReleaseNotifier;
+use OCA\Versioniq\Service\ReleaseAlert\ReleaseSweepRecorder;
 use OCA\Versioniq\Service\Settings\InstanceSettings;
 use OCP\AppFramework\Utility\ITimeFactory;
 use PHPUnit\Framework\TestCase;
@@ -39,7 +41,9 @@ final class ListUpdatesTest extends TestCase {
 		$time = $this->createMock(ITimeFactory::class);
 		$time->method('getTime')->willReturn(1_790_000_600);
 
-		return new CommandTester(new ListUpdates($service ?? $this->createMock(AvailabilityService::class), $store, $settings, $time));
+		$recorder = new ReleaseSweepRecorder($store, $this->createMock(ReleaseNotifier::class));
+
+		return new CommandTester(new ListUpdates($service ?? $this->createMock(AvailabilityService::class), $recorder, $settings, $time));
 	}
 
 	public function testTheTableListsEveryAppWithItsVersionsLinesAndPin(): void {

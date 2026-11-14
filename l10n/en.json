@@ -279,6 +279,8 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Outside the update policy: %n release behind",
             "Outside the update policy: %n releases behind"
-        ]
+        ],
+        "New version of %1$s: %2$s": "New version of %1$s: %2$s",
+        "It does not run on this server version.": "It does not run on this server version."
     }
 }
