@@ -27,7 +27,9 @@ use OCA\Versioniq\Service\Installer\ReleaseInstallers;
 use OCA\Versioniq\Service\Installer\ServerAccess;
 use OCA\Versioniq\Service\Installer\ShaMismatchException;
 use OCA\Versioniq\Service\Pin\Pin;
+use OCA\Versioniq\Service\Release\ReleaseNotesReader;
 use OCA\Versioniq\Service\Source\AppStoreSource;
+use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
@@ -305,7 +307,9 @@ class InstallerService {
 		$result = $this->listSourceVersions($appId, $binding);
 		$installedVersion = $this->installedVersionOrNull($appId);
 
-		$versions = $this->applyChangelogTruncation($result['versions']);
+		// releases-version-facts D3/D4: read the full notes, before truncation.
+		$versions = self::applyReleaseNotesFacts($result['versions']);
+		$versions = $this->applyChangelogTruncation($versions);
 		$versions = $this->applyRecordedSha($versions, $binding);
 		$versions = $this->applyCachedOffline($versions, $appId);
 		/** @var list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool}> $versions */
@@ -387,6 +391,28 @@ class InstallerService {
 		}
 
 		return ['hasError' => $result['versions'] === [], 'error' => $result['error']];
+	}
+
+	/**
+	 * Stamps `breaking` and `knownIssues` on each version from its full
+	 * release notes (releases-version-facts D3, D4).
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-a-version-its-publisher-marks-as-breaking-is-flagged
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+	 * @param list<array<string, mixed>> $versions
+	 * @return list<array<string, mixed>>
+	 */
+	private static function applyReleaseNotesFacts(array $versions): array {
+		$reader = new ReleaseNotesReader();
+		return array_map(
+			static function (array $entry) use ($reader): array {
+				$notes = is_string($entry['changelog'] ?? null) ? $entry['changelog'] : '';
+				$entry['breaking'] = $reader->isBreaking($notes);
+				$entry['knownIssues'] = $reader->knownIssues($notes);
+				return $entry;
+			},
+			$versions
+		);
 	}
 
 	/**
@@ -699,7 +725,31 @@ class InstallerService {
 		}
 		$run->pin = $this->state->pinStore->get($run->request->target->appId);
 
-		return $this->pinRefusal($run) ?? $this->sameVersionOutcome($run) ?? $this->preflightRefusal($run);
+		return $this->pinRefusal($run) ?? $this->sameVersionOutcome($run) ?? $this->withdrawnRefusal($run) ?? $this->preflightRefusal($run);
+	}
+
+	/**
+	 * Withdrawn guard: a version its publisher withdrew is never installed by
+	 * accident, even while a stale catalogue still resolves it
+	 * (safety-withdrawn-and-revoked, design D3). Reinstalling the version that
+	 * already runs is answered before this, as a no-op.
+	 *
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-a-withdrawn-installed-version-is-marked-and-never-reinstalled-by-accident
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 */
+	private function withdrawnRefusal(InstallRun $run): ?array {
+		$withdrawn = $this->state->withdrawnVersions;
+		$target = $run->request->target;
+		if ($withdrawn === null || !$withdrawn->isWithdrawn($target->appId, $target->version)) {
+			return null;
+		}
+
+		return $this->installEnvelope(Http::STATUS_CONFLICT, $this->outcomePayload($run, [
+			'message' => sprintf('Version %s of %s was withdrawn by its publisher.', $target->version, $target->appId),
+			'category' => 'withdrawn',
+			'hint' => 'Choose another version from the list.',
+			'installStatus' => 'failed',
+		]));
 	}
 
 	/**
@@ -1115,6 +1165,9 @@ class InstallerService {
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
 	public function bindSource(string $appId, SourceBinding $binding): void {
+		if (SourceBinding::isRetiredForge($binding->getForge())) {
+			throw new RetiredForgeException($binding->getForge());
+		}
 		$this->state->trustedSources->assertBindingAllowed($binding);
 		$this->sources->bindingStore->set($appId, $binding);
 	}
@@ -1155,6 +1208,9 @@ class InstallerService {
 	 */
 	public function addTrustedPattern(string $forge, string $owner, ?string $repo): array {
 		self::assertKnownForge($forge);
+		if (SourceBinding::isRetiredForge($forge)) {
+			throw new RetiredForgeException($forge);
+		}
 		$pattern = self::forgePattern($forge, self::ownerRepoPath($owner, $repo));
 
 		$patterns = $this->state->trustedSources->getPatterns();

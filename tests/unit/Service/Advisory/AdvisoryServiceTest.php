@@ -63,9 +63,11 @@ final class AdvisoryServiceTest extends TestCase {
 	 * @param array<string, list<array<string, mixed>>> $feedAdvisories
 	 * @param array<string, string> $installedVersions app id => version
 	 */
-	private function serviceWithFeed(array $feedAdvisories, array $installedVersions, string $serverVersion = '31.0.2'): AdvisoryService {
-		$feed = $this->createMock(NextcloudAdvisoryFeed::class);
-		$feed->method('fetchAll')->willReturn(['advisories' => $feedAdvisories, 'error' => null]);
+	private function serviceWithFeed(array $feedAdvisories, array $installedVersions, string $serverVersion = '31.0.2', ?NextcloudAdvisoryFeed $feed = null): AdvisoryService {
+		if ($feed === null) {
+			$feed = $this->createMock(NextcloudAdvisoryFeed::class);
+			$feed->method('fetchAll')->willReturn(['advisories' => $feedAdvisories, 'error' => null]);
+		}
 
 		$appManager = $this->createMock(IAppManager::class);
 		$appManager->method('getEnabledApps')->willReturn(array_keys($installedVersions));
@@ -328,6 +330,30 @@ final class AdvisoryServiceTest extends TestCase {
 		$this->assertSame(AdvisoryService::STATE_VULNERABLE, $results['mail']['state']);
 		$this->assertSame('3.7.25', $results['mail']['recommendedVersion']);
 		$this->assertNull($results['mail']['error']);
+	}
+
+	/**
+	 * Scenario "An App Store app is checked against Nextcloud's advisory feed"
+	 * (advisories-name-their-feeds): calendar 5.1.2 from the App Store is
+	 * affected by a feed advisory fixed in 5.1.3, and the sweep reads the feed
+	 * once for every app, not once per app.
+	 *
+	 * @spec openspec/changes/advisories-name-their-feeds/specs/security-advisory-correlation/spec.md
+	 */
+	public function testTheSweepReadsTheFeedOnceForEveryApp(): void {
+		$advisories = ['calendar' => [$this->feedAdvisory('GHSA-cal1', ['5.1.3'])]];
+		$feed = $this->createMock(NextcloudAdvisoryFeed::class);
+		$feed->expects($this->once())->method('fetchAll')->willReturn(['advisories' => $advisories, 'error' => null]);
+
+		$service = $this->serviceWithFeed($advisories, ['calendar' => '5.1.2', 'contacts' => '7.0.0', 'mail' => '5.5.0'], '31.0.2', $feed);
+
+		$results = $service->correlateAll(60.0);
+
+		$this->assertSame(AdvisoryService::STATE_VULNERABLE, $results['calendar']['state']);
+		$this->assertSame('5.1.3', $results['calendar']['recommendedVersion']);
+		$this->assertSame(['GHSA-cal1'], array_column($results['calendar']['advisories'], 'id'));
+		$this->assertSame(AdvisoryService::STATE_NONE, $results['contacts']['state']);
+		$this->assertSame(AdvisoryService::STATE_NONE, $results['mail']['state']);
 	}
 
 	/**
