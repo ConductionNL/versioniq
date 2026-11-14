@@ -23,3 +23,9 @@ foreach (['ConnectionStatusReportedEvent', 'ConnectionRefreshRequestedEvent'] as
 }
 
 unset($integriqStubEvent);
+
+// OpenRegister's MCP provider contract (admin-mcp-assistant D1), the same way:
+// a real OpenRegister on the server wins, the stub fills in when it is absent.
+if (!interface_exists('\\OCA\\OpenRegister\\Mcp\\IMcpToolProvider')) {
+	require_once __DIR__ . '/stubs/OpenRegister/Mcp/IMcpToolProvider.php';
+}
