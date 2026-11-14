@@ -39,6 +39,8 @@ class AuditLogger {
 	public const OPERATION_PIN_DRIFT = 'pin_drift';
 	/** An instance setting changed from the Settings tab (#438). */
 	public const OPERATION_SETTINGS = 'settings';
+	/** A per-app auto-update policy changed; the versions hold the old and new level. */
+	public const OPERATION_POLICY = 'policy';
 
 	private const OPERATION_PATTERN = '/^[a-z_]{1,32}$/';
 	private const MESSAGE_MAX_LENGTH = 4000;
