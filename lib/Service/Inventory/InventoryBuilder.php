@@ -47,6 +47,23 @@ class InventoryBuilder {
 	 */
 	public function build(): array {
 		$serverVersion = $this->serverVersion->current();
+
+		return [
+			'server' => [
+				'name' => 'nextcloud-server',
+				'version' => $serverVersion,
+				'purl' => 'pkg:generic/nextcloud-server@' . rawurlencode($serverVersion),
+			],
+			'apps' => $this->installedApps(),
+		];
+	}
+
+	/**
+	 * Every app that is installed, enabled or disabled, as an inventory entry.
+	 *
+	 * @return list<InventoryApp>
+	 */
+	private function installedApps(): array {
 		$apps = [];
 		foreach ($this->installer->getInstalledApps() as $card) {
 			if ($card['state'] === 'notInstalled' || $card['installedVersion'] === null) {
@@ -56,14 +73,7 @@ class InventoryBuilder {
 			$apps[] = $this->appEntry(card: $card);
 		}
 
-		return [
-			'server' => [
-				'name' => 'nextcloud-server',
-				'version' => $serverVersion,
-				'purl' => 'pkg:generic/nextcloud-server@' . rawurlencode($serverVersion),
-			],
-			'apps' => $apps,
-		];
+		return $apps;
 	}
 
 	/**
@@ -76,7 +86,6 @@ class InventoryBuilder {
 	private function appEntry(array $card): array {
 		$version = (string)$card['installedVersion'];
 		$binding = $this->binding(appId: $card['id']);
-		$ownerRepo = $binding?->getOwnerRepo();
 
 		return [
 			'id' => $card['id'],
@@ -84,9 +93,9 @@ class InventoryBuilder {
 			'version' => $version,
 			'licence' => $this->licence(appId: $card['id']),
 			'shipped' => $card['isShipped'],
-			'source' => self::sourceLabel(binding: $binding, ownerRepo: $ownerRepo),
+			'source' => self::sourceLabel(binding: $binding),
 			'sha256' => $binding?->getRecordedSha($version),
-			'purl' => self::purl(appId: $card['id'], version: $version, binding: $binding, ownerRepo: $ownerRepo),
+			'purl' => self::purl(appId: $card['id'], version: $version, binding: $binding),
 		];
 	}
 
@@ -134,12 +143,12 @@ class InventoryBuilder {
 	/**
 	 * Where the app comes from: `appstore`, or `<forge>:<owner>/<repo>` for a bound release.
 	 *
-	 * @param SourceBinding|null $binding   The binding.
-	 * @param string|null        $ownerRepo Its owner/repo.
+	 * @param SourceBinding|null $binding The binding.
 	 *
 	 * @return string
 	 */
-	private static function sourceLabel(?SourceBinding $binding, ?string $ownerRepo): string {
+	private static function sourceLabel(?SourceBinding $binding): string {
+		$ownerRepo = $binding?->getOwnerRepo();
 		if ($binding === null || $ownerRepo === null) {
 			return 'appstore';
 		}
@@ -150,14 +159,14 @@ class InventoryBuilder {
 	/**
 	 * The package URL (design D2): pkg:github for a GitHub-bound app, pkg:generic otherwise.
 	 *
-	 * @param string             $appId     The app.
-	 * @param string             $version   Its version.
-	 * @param SourceBinding|null $binding   Its binding.
-	 * @param string|null        $ownerRepo The binding's owner/repo.
+	 * @param string             $appId   The app.
+	 * @param string             $version Its version.
+	 * @param SourceBinding|null $binding Its binding.
 	 *
 	 * @return string
 	 */
-	private static function purl(string $appId, string $version, ?SourceBinding $binding, ?string $ownerRepo): string {
+	private static function purl(string $appId, string $version, ?SourceBinding $binding): string {
+		$ownerRepo = $binding?->getOwnerRepo();
 		if ($binding !== null && $ownerRepo !== null && $binding->getForge() === SourceBinding::FORGE_GITHUB) {
 			[$owner, $repo] = explode('/', $ownerRepo, 2);
 

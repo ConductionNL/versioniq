@@ -38,7 +38,7 @@ class SbomWriterTest extends TestCase {
 
 	private static function decoded(string $format): array {
 		return json_decode(
-			(new SbomWriter())->write(self::inventory(), $format, 'oc123', '2026-11-14T10:00:00+00:00', self::UUID),
+			(new SbomWriter())->write(self::inventory(), $format, ['instanceId' => 'oc123', 'timestamp' => '2026-11-14T10:00:00+00:00', 'uuid' => self::UUID]),
 			true,
 			flags: JSON_THROW_ON_ERROR
 		);
@@ -99,7 +99,7 @@ class SbomWriterTest extends TestCase {
 
 	public function testAnUnknownFormatIsRefused(): void {
 		$this->expectException(InvalidArgumentException::class);
-		(new SbomWriter())->write(self::inventory(), 'xml', 'oc123', 'now', self::UUID);
+		(new SbomWriter())->write(self::inventory(), 'xml', ['instanceId' => 'oc123', 'timestamp' => 'now', 'uuid' => self::UUID]);
 	}
 
 	public function testSpdxIdMapping(): void {

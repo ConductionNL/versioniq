@@ -19,6 +19,8 @@ namespace OCA\Versioniq\Service\Inventory;
  *
  * @psalm-import-type Inventory from InventoryBuilder
  * @psalm-import-type InventoryApp from InventoryBuilder
+ * @psalm-type SbomStamp = array{instanceId:string,timestamp:string,uuid:string}
+ * @psalm-type SpdxComponent = array{name:string,version:string,purl:string,licence:?string,sha256:?string}
  *
  * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md
  */
@@ -40,20 +42,20 @@ class SbomWriter {
 	/**
 	 * The SBOM in the given format, as a JSON string.
 	 *
-	 * @param Inventory $inventory  The inventory.
-	 * @param string    $format     cyclonedx or spdx.
-	 * @param string    $instanceId A stable id of this instance, used in the document name.
-	 * @param string    $timestamp  The creation time, ISO 8601.
-	 * @param string    $uuid       A random UUID for the serial number or namespace.
+	 * @param Inventory $inventory The inventory.
+	 * @param string    $format    cyclonedx or spdx.
+	 * @param SbomStamp $stamp     A stable id of this instance (used in the document name), the
+	 *                             creation time (ISO 8601) and a random UUID for the serial number
+	 *                             or namespace.
 	 *
 	 * @throws \InvalidArgumentException For an unknown format.
 	 *
 	 * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md
 	 */
-	public function write(array $inventory, string $format, string $instanceId, string $timestamp, string $uuid): string {
+	public function write(array $inventory, string $format, array $stamp): string {
 		$document = match ($format) {
-			self::FORMAT_CYCLONEDX => self::cycloneDx(inventory: $inventory, timestamp: $timestamp, uuid: $uuid),
-			self::FORMAT_SPDX => self::spdx(inventory: $inventory, instanceId: $instanceId, timestamp: $timestamp, uuid: $uuid),
+			self::FORMAT_CYCLONEDX => self::cycloneDx(inventory: $inventory, stamp: $stamp),
+			self::FORMAT_SPDX => self::spdx(inventory: $inventory, stamp: $stamp),
 			default => throw new \InvalidArgumentException('Unknown SBOM format: ' . $format),
 		};
 
@@ -83,35 +85,46 @@ class SbomWriter {
 	 * A CycloneDX 1.5 BOM: the instance as metadata.component, the server and apps as components.
 	 *
 	 * @param Inventory $inventory The inventory.
-	 * @param string    $timestamp The creation time.
-	 * @param string    $uuid      The serial number's UUID.
+	 * @param SbomStamp $stamp     The creation time and the serial number's UUID.
 	 *
 	 * @return array<string, mixed>
 	 */
-	private static function cycloneDx(array $inventory, string $timestamp, string $uuid): array {
+	private static function cycloneDx(array $inventory, array $stamp): array {
+		return [
+			'bomFormat' => 'CycloneDX',
+			'specVersion' => '1.5',
+			'serialNumber' => 'urn:uuid:' . $stamp['uuid'],
+			'version' => 1,
+			'metadata' => [
+				'timestamp' => $stamp['timestamp'],
+				'tools' => ['components' => [['type' => 'application', 'name' => 'versioniq']]],
+				'component' => ['type' => 'platform', 'name' => 'nextcloud', 'version' => $inventory['server']['version']],
+			],
+			'components' => self::cycloneDxComponents(inventory: $inventory),
+		];
+	}
+
+	/**
+	 * The server as a platform component, then every app.
+	 *
+	 * @param Inventory $inventory The inventory.
+	 *
+	 * @return list<array<string, mixed>>
+	 */
+	private static function cycloneDxComponents(array $inventory): array {
+		$server = $inventory['server'];
 		$components = [[
 			'type' => 'platform',
-			'bom-ref' => $inventory['server']['purl'],
-			'name' => $inventory['server']['name'],
-			'version' => $inventory['server']['version'],
-			'purl' => $inventory['server']['purl'],
+			'bom-ref' => $server['purl'],
+			'name' => $server['name'],
+			'version' => $server['version'],
+			'purl' => $server['purl'],
 		]];
 		foreach ($inventory['apps'] as $app) {
 			$components[] = self::cycloneDxApp(app: $app);
 		}
 
-		return [
-			'bomFormat' => 'CycloneDX',
-			'specVersion' => '1.5',
-			'serialNumber' => 'urn:uuid:' . $uuid,
-			'version' => 1,
-			'metadata' => [
-				'timestamp' => $timestamp,
-				'tools' => ['components' => [['type' => 'application', 'name' => 'versioniq']]],
-				'component' => ['type' => 'platform', 'name' => 'nextcloud', 'version' => $inventory['server']['version']],
-			],
-			'components' => $components,
-		];
+		return $components;
 	}
 
 	/**
@@ -134,6 +147,19 @@ class SbomWriter {
 				['name' => 'versioniq:source', 'value' => $app['source']],
 			],
 		];
+
+		return self::withCycloneDxEvidence(component: $component, app: $app);
+	}
+
+	/**
+	 * The component with the app's licence and hash, where it has them.
+	 *
+	 * @param array<string, mixed> $component The component.
+	 * @param InventoryApp         $app       The app.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function withCycloneDxEvidence(array $component, array $app): array {
 		if ($app['licence'] !== null) {
 			$id = self::spdxId(licence: $app['licence']);
 			$component['licenses'] = [['license' => $id !== null ? ['id' => $id] : ['name' => $app['licence']]]];
@@ -149,34 +175,21 @@ class SbomWriter {
 	/**
 	 * An SPDX 2.3 document: one package per component, each described by the document.
 	 *
-	 * @param Inventory $inventory  The inventory.
-	 * @param string    $instanceId The instance id.
-	 * @param string    $timestamp  The creation time.
-	 * @param string    $uuid       The namespace's UUID.
+	 * @param Inventory $inventory The inventory.
+	 * @param SbomStamp $stamp     The instance id, the creation time and the namespace's UUID.
 	 *
 	 * @return array<string, mixed>
 	 */
-	private static function spdx(array $inventory, string $instanceId, string $timestamp, string $uuid): array {
-		$server = $inventory['server'];
-		$packages = [self::spdxPackage(ref: 'SPDXRef-Package-nextcloud-server', name: $server['name'], version: $server['version'], purl: $server['purl'], licence: 'AGPL-3.0-or-later', sha256: null)];
-		foreach ($inventory['apps'] as $app) {
-			$packages[] = self::spdxPackage(
-				ref: 'SPDXRef-Package-' . preg_replace('/[^A-Za-z0-9.\-]/', '-', $app['id']),
-				name: $app['id'],
-				version: $app['version'],
-				purl: $app['purl'],
-				licence: $app['licence'],
-				sha256: $app['sha256']
-			);
-		}
+	private static function spdx(array $inventory, array $stamp): array {
+		$packages = self::spdxPackages(inventory: $inventory);
 
 		return [
 			'spdxVersion' => 'SPDX-2.3',
 			'dataLicense' => 'CC0-1.0',
 			'SPDXID' => 'SPDXRef-DOCUMENT',
-			'name' => 'nextcloud-' . $instanceId,
-			'documentNamespace' => 'https://spdx.org/spdxdocs/versioniq-' . $instanceId . '-' . $uuid,
-			'creationInfo' => ['created' => $timestamp, 'creators' => ['Tool: versioniq']],
+			'name' => 'nextcloud-' . $stamp['instanceId'],
+			'documentNamespace' => 'https://spdx.org/spdxdocs/versioniq-' . $stamp['instanceId'] . '-' . $stamp['uuid'],
+			'creationInfo' => ['created' => $stamp['timestamp'], 'creators' => ['Tool: versioniq']],
 			'packages' => $packages,
 			'relationships' => array_map(
 				static fn (array $package): array => [
@@ -190,37 +203,67 @@ class SbomWriter {
 	}
 
 	/**
+	 * The server package, then one package per app.
+	 *
+	 * @param Inventory $inventory The inventory.
+	 *
+	 * @return list<array<string, mixed>>
+	 */
+	private static function spdxPackages(array $inventory): array {
+		$server = $inventory['server'] + ['licence' => 'AGPL-3.0-or-later', 'sha256' => null];
+		$packages = [self::spdxPackage(ref: 'SPDXRef-Package-nextcloud-server', component: $server)];
+		foreach ($inventory['apps'] as $app) {
+			$packages[] = self::spdxPackage(
+				ref: 'SPDXRef-Package-' . preg_replace('/[^A-Za-z0-9.\-]/', '-', $app['id']),
+				component: ['name' => $app['id']] + $app
+			);
+		}
+
+		return $packages;
+	}
+
+	/**
 	 * One SPDX package.
 	 *
-	 * @param string      $ref     Its SPDXID.
-	 * @param string      $name    Its name.
-	 * @param string      $version Its version.
-	 * @param string      $purl    Its package URL.
-	 * @param string|null $licence The declared licence.
-	 * @param string|null $sha256  The recorded SHA-256.
+	 * @param string        $ref       Its SPDXID.
+	 * @param SpdxComponent $component Its name, version, package URL, declared licence and recorded SHA-256.
 	 *
 	 * @return array<string, mixed>
 	 */
-	private static function spdxPackage(string $ref, string $name, string $version, string $purl, ?string $licence, ?string $sha256): array {
-		$id = self::spdxId(licence: $licence);
+	private static function spdxPackage(string $ref, array $component): array {
+		$id = self::spdxId(licence: $component['licence']);
 		$package = [
 			'SPDXID' => $ref,
-			'name' => $name,
-			'versionInfo' => $version,
+			'name' => $component['name'],
+			'versionInfo' => $component['version'],
 			'downloadLocation' => 'NOASSERTION',
 			'licenseConcluded' => 'NOASSERTION',
 			'licenseDeclared' => ($id ?? 'NOASSERTION'),
 			'copyrightText' => 'NOASSERTION',
-			'externalRefs' => [['referenceCategory' => 'PACKAGE-MANAGER', 'referenceType' => 'purl', 'referenceLocator' => $purl]],
+			'externalRefs' => [['referenceCategory' => 'PACKAGE-MANAGER', 'referenceType' => 'purl', 'referenceLocator' => $component['purl']]],
 		];
-		if ($id === null && $licence !== null) {
+
+		return self::withSpdxEvidence(package: $package, component: $component, spdxId: $id);
+	}
+
+	/**
+	 * The package with the licence comment and checksum, where they apply.
+	 *
+	 * @param array<string, mixed> $package   The package.
+	 * @param SpdxComponent        $component The component.
+	 * @param string|null          $spdxId    The licence as an SPDX id, or null.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function withSpdxEvidence(array $package, array $component, ?string $spdxId): array {
+		if ($spdxId === null && $component['licence'] !== null) {
 			// Not an SPDX id: an undefined LicenseRef would make the document invalid, so the
 			// declared text is kept as a comment instead.
-			$package['licenseComments'] = 'Declared licence: ' . $licence;
+			$package['licenseComments'] = 'Declared licence: ' . $component['licence'];
 		}
 
-		if ($sha256 !== null) {
-			$package['checksums'] = [['algorithm' => 'SHA256', 'checksumValue' => $sha256]];
+		if ($component['sha256'] !== null) {
+			$package['checksums'] = [['algorithm' => 'SHA256', 'checksumValue' => $component['sha256']]];
 		}
 
 		return $package;
