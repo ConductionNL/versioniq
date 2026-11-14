@@ -308,7 +308,30 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Buiten het updatebeleid: %n release achter",
             "Buiten het updatebeleid: %n releases achter"
-        ]
+        ],
+        "New table; fast": "Nieuwe tabel; snel",
+        "Takes seconds": "Duurt seconden",
+        "May take minutes": "Kan minuten duren",
+        "May take long; plan a maintenance window": "Kan lang duren; plan een onderhoudsvenster",
+        "Size unknown": "Grootte onbekend",
+        "creates a table": "maakt een tabel aan",
+        "drops a table": "verwijdert een tabel",
+        "adds a column": "voegt een kolom toe",
+        "drops a column": "verwijdert een kolom",
+        "changes a column": "wijzigt een kolom",
+        "adds an index": "voegt een index toe",
+        "drops an index": "verwijdert een index",
+        "cleans data": "schoont gegevens op",
+        "No database changes": "Geen databasewijzigingen",
+        "The database changes of this version could not be read.": "De databasewijzigingen van deze versie konden niet worden gelezen.",
+        "Estimate: the list of migrations already run could not be read.": "Schatting: de lijst met al uitgevoerde migraties kon niet worden gelezen.",
+        "Moves data; the time depends on the amount of data.": "Verplaatst gegevens; de duur hangt af van de hoeveelheid gegevens.",
+        "This step does not describe what it changes.": "Deze stap beschrijft niet wat hij wijzigt.",
+        "Repair steps after the migrations": "Herstelstappen na de migraties",
+        "Database changes": "Databasewijzigingen",
+        "{rows} rows": "{rows} rijen",
+        "Preview database changes": "Databasewijzigingen bekijken",
+        "Previewing database changes…": "Databasewijzigingen worden bekeken…"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

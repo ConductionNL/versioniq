@@ -20,7 +20,7 @@
   - Done. The button shows for a selected upgrade, runs a dry run like the downgrade preview, and the panel renders what it returns; the preview is cleared when the app or version changes.
 - [x] 3.2 Print the preview in `lib/Command/InstallVersion.php` after a dry run. Verify: `tests/unit/Command/InstallVersionTest.php` covers the table output and the JSON key.
   - Done. One row per table a step changes (step, changes, table, rows, advice), "No database changes" without steps, then the repair steps; `--json` passes `migrationPreview` through unchanged.
-- [ ] 3.3 Add the new strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
+- [x] 3.3 Add the new strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
 - [ ] 3.4 Extend `tests/e2e/version-management.spec.ts`: add a migration step to one release in `tests/e2e/fixtures/forge/build-artifacts.sh`, then preview the upgrade to it and assert the step and its table in the panel.
 
 ## 4. Close
