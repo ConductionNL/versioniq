@@ -8,7 +8,8 @@
 
 ## 2. Endpoint and session
 
-- [ ] 2.1 Accept `progressToken` on the install route, close the session after the middleware, and add `GET /api/install-progress/{token}`. Verify: `tests/unit/Controller/ApiTest.php` (403 for a non-admin, 404 for an unknown token) and a unit test that `installAppVersion()` never writes to the session.
+- [x] 2.1 Accept `progressToken` on the install route, close the session after the middleware, and add `GET /api/install-progress/{token}`. Verify: `tests/unit/Controller/ApiTest.php` (403 for a non-admin, 404 for an unknown token) and a unit test that `installAppVersion()` never writes to the session.
+  - `InstallVersionFields::$progressToken`; `installVersion()` closes the session (after the admin check and the middleware) and starts the record when a token came, and finishes it with the install's status, or `failed` for a 4xx/5xx. `GET /api/install-progress/{token}` and its `/api/v1/` twin (admin-only, 404 for an unknown or expired token) are in `openapi.json`. Tests: `ApiInstallProgressTest` (404, 200, the order close → start → install → finish with no session write, a failed install, and that no installer class uses `ISession`) and the route in `ApiNonAdminRefusalTest`.
 
 ## 3. Page and CLI
 

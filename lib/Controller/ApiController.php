@@ -526,11 +526,54 @@ class ApiController extends OCSController {
 		}
 
 		$request = $this->installRequest($fields, $target);
+		$this->startProgress($fields->progressToken);
 		$result = $this->install->installerService->installAppVersion($request);
+		$this->install->progress?->finish((int)($result['statusCode'] ?? 500) < 400 ? (string)($result['payload']['status'] ?? 'installed') : 'failed');
 		$echo = ['requestedVersion' => $target->version, 'routeVersion' => $version] + self::deprecationNotice($fields, $request);
 
 		/** @psalm-suppress InvalidReturnStatement Dynamic status passthrough — see the docblock. */
 		return $this->installResponse($result, $echo);
+	}
+
+	/**
+	 * Before an install: close the session, so the page's progress polls are not
+	 * blocked by its lock (the install writes nothing to it), and start the
+	 * progress record when the page sent a token.
+	 *
+	 * @spec openspec/changes/install-live-progress/specs/version-management/spec.md
+	 */
+	private function startProgress(?string $token): void {
+		$this->install->session?->close();
+		if ($token !== null && $token !== '') {
+			$this->install->progress?->start($token);
+		}
+	}
+
+	/**
+	 * The stages of a running or just finished install (admin-only); see
+	 * install-live-progress, "An admin sees each stage of an install while it runs".
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{stages: list<array<string, mixed>>, outcome: ?string}, array{}>|DataResponse<Http::STATUS_FORBIDDEN|Http::STATUS_NOT_FOUND, array{message: string}, array{}>
+	 *
+	 * 200: The progress record
+	 * 403: Caller is not an administrator
+	 * 404: The token is unknown or its record expired
+	 *
+	 * @spec openspec/changes/install-live-progress/specs/version-management/spec.md
+	 */
+	#[ApiRoute(verb: 'GET', url: '/api/install-progress/{token}')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/install-progress/{token}', postfix: 'v1')]
+	public function installProgress(string $token): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$record = $this->install->progress?->read($token);
+		if ($record === null) {
+			return new DataResponse(['message' => 'No install progress for this token.'], Http::STATUS_NOT_FOUND);
+		}
+
+		return new DataResponse($record);
 	}
 
 	/**
