@@ -40,7 +40,11 @@ final class InstallerServiceTrustedPatternTest extends TestCase {
 	private function service(array $initial = []): InstallerService {
 		$this->stored = $initial;
 
-		$trusted = $this->createMock(TrustedSourceList::class);
+		// Only the store is doubled: trust() and untrust() run for real on it.
+		$trusted = $this->getMockBuilder(TrustedSourceList::class)
+			->setConstructorArgs([$this->createMock(IAppConfig::class)])
+			->onlyMethods(['getPatterns', 'setPatterns'])
+			->getMock();
 		$trusted->method('getPatterns')->willReturnCallback(fn (): array => $this->stored);
 		$trusted->method('setPatterns')->willReturnCallback(function (array $patterns): void {
 			$this->stored = array_values($patterns);

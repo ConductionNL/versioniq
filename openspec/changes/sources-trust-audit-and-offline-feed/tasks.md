@@ -2,12 +2,14 @@
 
 ## 1. Trusted-source audit
 
-- [ ] 1.1 Add `OPERATION_TRUST_SOURCE`, `OPERATION_UNTRUST_SOURCE` and `OPERATION_UNBIND_SOURCE` to `lib/Service/Audit/AuditLogger.php` and record them in `ApiController::addTrustedSource()`, `removeTrustedSource()` and `clearBinding()`. Verify: `tests/unit/Controller/ApiTest.php` asserts one entry per call with pattern or app.
+- [x] 1.1 Add `OPERATION_TRUST_SOURCE`, `OPERATION_UNTRUST_SOURCE` and `OPERATION_UNBIND_SOURCE` to `lib/Service/Audit/AuditLogger.php` and record them in `ApiController::addTrustedSource()`, `removeTrustedSource()` and `clearBinding()`. Verify: `tests/unit/Controller/ApiTest.php` asserts one entry per call with pattern or app.
+  - `trust_source`, `untrust_source` and `unbind_source`. Trust and untrust are recorded by `TrustedSourceList::trust()`/`untrust()` (which `InstallerService::addTrustedPattern()`/`removeTrustedPattern()` now call), once per real change, with the pattern as the message and Versioniq as the app; `SourceBindingStore::clear()` records `unbind_source` instead of `bind_source`. Recording at the store rather than in `ApiController` covers every caller. PHPUnit `tests/unit/Service/Source/TrustedSourceAuditTest.php` and `SourceBindingStoreTest`.
 - [ ] 1.2 Render the three operations in `src/components/HistoryPanel.vue`. Verify: `src/components/HistoryPanel.spec.ts`.
 
 ## 2. GitHub search switch
 
-- [ ] 2.1 Expose `discovery.github_search_enabled` through `InstanceSettings::read()` and `update()` (audited as `settings`). Verify: `tests/unit/Service/Settings/InstanceSettingsTest.php`.
+- [x] 2.1 Expose `discovery.github_search_enabled` through `InstanceSettings::read()` and `update()` (audited as `settings`). Verify: `tests/unit/Service/Settings/InstanceSettingsTest.php`.
+  - `githubSearchEnabled` in `InstanceSettings::read()` (bool) and `update()` (`true`/`false`, stored in `discovery.github_search_enabled`, which `GithubSearchDiscovery` reads), audited with the other settings as `githubSearchEnabled=on|off`; the request field and the OpenAPI document follow. `InstanceSettingsTest`.
 - [ ] 2.2 Add the switch and the state line to `src/components/DiscoverPanel.vue`. Verify: `src/components/DiscoverPanel.spec.ts` toggles and re-searches.
 
 ## 3. Local advisory copy
