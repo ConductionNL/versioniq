@@ -308,7 +308,16 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Buiten het updatebeleid: %n release achter",
             "Buiten het updatebeleid: %n releases achter"
-        ]
+        ],
+        "Admin page": "Beheerpagina",
+        "Command line": "Opdrachtregel",
+        "Automatic": "Automatisch",
+        "Drift check": "Afwijkingscontrole",
+        "Unknown": "Onbekend",
+        "All origins": "Alle herkomsten",
+        "Origin": "Herkomst",
+        "Set by {user}": "Ingesteld door {user}",
+        "Set by {user} on {date}": "Ingesteld door {user} op {date}"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

@@ -41,7 +41,7 @@ final class AuditEntryMapperTest extends TestCase {
 	 */
 	private function queryBuilder(array $rows = [], array $ones = [], int $affected = 0): IQueryBuilder {
 		$qb = $this->createMock(IQueryBuilder::class);
-		foreach (['select', 'from', 'where', 'orderBy', 'addOrderBy', 'setMaxResults', 'setFirstResult', 'delete'] as $method) {
+		foreach (['select', 'from', 'where', 'andWhere', 'orderBy', 'addOrderBy', 'setMaxResults', 'setFirstResult', 'delete'] as $method) {
 			$qb->method($method)->willReturnCallback(function (mixed ...$args) use ($method, $qb): IQueryBuilder {
 				// The double receives defaulted arguments as null; record what was passed.
 				while ($args !== [] && end($args) === null) {
@@ -64,6 +64,7 @@ final class AuditEntryMapperTest extends TestCase {
 		foreach (['eq' => '=', 'lt' => '<', 'in' => 'IN'] as $method => $operator) {
 			$expr->method($method)->willReturnCallback(static fn (string $column, string $value): string => "$column $operator $value");
 		}
+		$expr->method('isNull')->willReturnCallback(static fn (string $column): string => "$column IS NULL");
 		$expr->method('orX')->willReturnCallback(function (string ...$parts): ICompositeExpression {
 			$this->log[] = array_merge(['orX'], $parts);
 
@@ -142,6 +143,34 @@ final class AuditEntryMapperTest extends TestCase {
 			['executeQuery'],
 			['closeCursor'],
 		], $this->log);
+	}
+
+	/**
+	 * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-every-audit-row-says-where-it-came-from
+	 */
+	public function testAnOriginFiltersThePageBesideTheAppId(): void {
+		$mapper = new AuditEntryMapper($this->connection($this->queryBuilder()));
+
+		$mapper->findPage('mail', 10, 0, 'job');
+
+		$this->assertSame([
+			['param', ':p0', 'mail', IQueryBuilder::PARAM_STR],
+			['param', ':p1', 'job', IQueryBuilder::PARAM_STR],
+			['where', 'app_id = :p0'],
+			['andWhere', 'origin = :p1'],
+		], array_values(array_filter($this->log, static fn (array $call): bool => in_array($call[0], ['param', 'where', 'andWhere'], true))));
+	}
+
+	/**
+	 * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-every-audit-row-says-where-it-came-from
+	 */
+	public function testTheUnknownOriginSelectsRowsWithoutOne(): void {
+		$mapper = new AuditEntryMapper($this->connection($this->queryBuilder()));
+
+		$mapper->findPage(null, 10, 0, AuditEntryMapper::ORIGIN_UNKNOWN);
+
+		$this->assertContains(['where', 'origin IS NULL'], $this->log);
+		$this->assertNotContains('param', array_column($this->log, 0));
 	}
 
 	public function testAnEmptyAppIdDoesNotFilter(): void {

@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
+use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Db\Pat;
 use OCA\Versioniq\Http\InstallVersionFields;
 use OCA\Versioniq\Http\RequestFieldsFrom;
@@ -20,6 +21,7 @@ use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\Api\AccessCollaborators;
 use OCA\Versioniq\Service\Api\InstallCollaborators;
 use OCA\Versioniq\Service\Api\ReportCollaborators;
+use OCA\Versioniq\Service\Audit\AuditOrigin;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
@@ -49,6 +51,9 @@ use OCP\IUser;
 class ApiController extends OCSController {
 	/** The spellings readBinaryBool() understands. */
 	private const BINARY_FLAGS = ['1', 'true', '0', 'false'];
+
+	/** The origins `GET /api/audit?origin=` filters on; anything else lists every row. */
+	private const AUDIT_ORIGINS = [AuditOrigin::WEB, AuditOrigin::CLI, AuditOrigin::JOB, AuditOrigin::LISTENER, AuditEntryMapper::ORIGIN_UNKNOWN];
 
 	/**
 	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
@@ -1406,7 +1411,10 @@ class ApiController extends OCSController {
 
 	/**
 	 * Lists audit entries, newest-first, admin-only, paginated and optionally
-	 * filtered by app id; see "Audit entries are immutable and admin-readable".
+	 * filtered by app id and by origin (`web`, `cli`, `job`, `listener`, or
+	 * `unknown` for rows written before origins were recorded); see "Audit
+	 * entries are immutable and admin-readable" and "Every audit row says where
+	 * it came from".
 	 * No mutation endpoint exists for this resource — the retention prune job
 	 * is the only deletion path.
 	 *
@@ -1429,7 +1437,10 @@ class ApiController extends OCSController {
 		$limit = max(1, min($limit, 200));
 		$offset = max(0, $this->intParam('offset', 0));
 
-		$entries = $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset);
+		$origin = $this->stringParam('origin', '');
+		$entries = in_array($origin, self::AUDIT_ORIGINS, true)
+			? $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset, $origin)
+			: $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset);
 
 		return new DataResponse([
 			'entries' => $entries,
