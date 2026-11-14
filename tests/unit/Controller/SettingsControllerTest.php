@@ -37,7 +37,7 @@ final class SettingsControllerTest extends TestCase {
 	/** @var array<string, string|int> */
 	private array $config = [];
 
-	private function controller(bool $admin, ?AuditLogger $audit = null, ?IRequest $request = null): SettingsController {
+	private function controller(bool $admin, ?AuditLogger $audit = null, ?IRequest $request = null, bool $signedIn = true): SettingsController {
 		$appConfig = $this->createMock(IAppConfig::class);
 		$appConfig->method('getValueString')->willReturnCallback(
 			fn (string $app, string $key, string $default = ''): string => (string)($this->config[$key] ?? $default),
@@ -55,7 +55,7 @@ final class SettingsControllerTest extends TestCase {
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn('admin');
 		$session = $this->createMock(IUserSession::class);
-		$session->method('getUser')->willReturn($user);
+		$session->method('getUser')->willReturn($signedIn ? $user : null);
 		$groups = $this->createMock(IGroupManager::class);
 		$groups->method('isAdmin')->willReturn($admin);
 
@@ -75,6 +75,16 @@ final class SettingsControllerTest extends TestCase {
 		self::assertSame(403, $controller->instanceSettings()->getStatus());
 		$request = $this->requestWith(['auditRetentionDays' => '90']);
 		self::assertSame(403, $this->dispatch($this->controller(false, null, $request), 'updateInstanceSettings', $request)->getStatus());
+		self::assertSame([], $this->config);
+	}
+
+	public function testSignedOutCallerCannotReadOrWrite(): void {
+		$audit = $this->createMock(AuditLogger::class);
+		$audit->expects(self::never())->method(self::anything());
+
+		self::assertSame(403, $this->controller(true, $audit, null, false)->instanceSettings()->getStatus());
+		$request = $this->requestWith(['auditRetentionDays' => '90']);
+		self::assertSame(403, $this->dispatch($this->controller(true, $audit, $request, false), 'updateInstanceSettings', $request)->getStatus());
 		self::assertSame([], $this->config);
 	}
 
