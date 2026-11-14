@@ -225,6 +225,9 @@ OC.L10N.register(
         "(retired forge)": "(uitgefaseerde forge)",
         "Automatic updates skip these versions because an earlier attempt failed:": "Automatische updates slaan deze versies over omdat een eerdere poging mislukte:",
         "Retry {version}": "{version} opnieuw proberen",
+        "Roll back to the last good version ({version})": "Terugrollen naar de laatste goede versie ({version})",
+        "unknown": "onbekend",
+        "Environment checked: {apps} free in the apps folder, {temp} free in the temp folder; the app folder is writable.": "Omgeving gecontroleerd: {apps} vrij in de apps-map, {temp} vrij in de tijdelijke map; de app-map is schrijfbaar.",
         "Automation is disabled. Enable it in settings to take effect.": "Automatisering staat uit. Zet deze aan in de instellingen om effect te hebben.",
         "Could not clear the failed attempt.": "Kon de mislukte poging niet wissen.",
         "Binding removed. {appId} reads its versions from the App Store again.": "Koppeling verwijderd. {appId} haalt zijn versies weer uit de App Store.",
@@ -300,10 +303,7 @@ OC.L10N.register(
         "Outside the update policy": "Buiten het updatebeleid",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Aantal releases dat een app achter mag lopen (0 tot {max}, laat leeg om de controle uit te zetten)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "Een app die verder achterloopt, wordt gemarkeerd op het tabblad Apps. 1 betekent de nieuwste release of de release daarvoor.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"],
-        "Roll back to the last good version ({version})": "Terugrollen naar de laatste goede versie ({version})",
-        "unknown": "onbekend",
-        "Environment checked: {apps} free in the apps folder, {temp} free in the temp folder; the app folder is writable.": "Omgeving gecontroleerd: {apps} vrij in de apps-map, {temp} vrij in de tijdelijke map; de app-map is schrijfbaar."
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"]
     },
     "nplurals=2; plural=(n != 1);"
 )

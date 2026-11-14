@@ -200,6 +200,9 @@
         "(retired forge)": "(retired forge)",
         "Automatic updates skip these versions because an earlier attempt failed:": "Automatic updates skip these versions because an earlier attempt failed:",
         "Retry {version}": "Retry {version}",
+        "Roll back to the last good version ({version})": "Roll back to the last good version ({version})",
+        "unknown": "unknown",
+        "Environment checked: {apps} free in the apps folder, {temp} free in the temp folder; the app folder is writable.": "Environment checked: {apps} free in the apps folder, {temp} free in the temp folder; the app folder is writable.",
         "Automation is disabled. Enable it in settings to take effect.": "Automation is disabled. Enable it in settings to take effect.",
         "Could not clear the failed attempt.": "Could not clear the failed attempt.",
         "Binding removed. {appId} reads its versions from the App Store again.": "Binding removed. {appId} reads its versions from the App Store again.",
@@ -279,9 +282,6 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Outside the update policy: %n release behind",
             "Outside the update policy: %n releases behind"
-        ],
-        "Roll back to the last good version ({version})": "Roll back to the last good version ({version})",
-        "unknown": "unknown",
-        "Environment checked: {apps} free in the apps folder, {temp} free in the temp folder; the app folder is writable.": "Environment checked: {apps} free in the apps folder, {temp} free in the temp folder; the app folder is writable."
+        ]
     }
 }

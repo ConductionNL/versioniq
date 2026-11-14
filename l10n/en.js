@@ -198,6 +198,9 @@ OC.L10N.register(
         "(retired forge)": "(retired forge)",
         "Automatic updates skip these versions because an earlier attempt failed:": "Automatic updates skip these versions because an earlier attempt failed:",
         "Retry {version}": "Retry {version}",
+        "Roll back to the last good version ({version})": "Roll back to the last good version ({version})",
+        "unknown": "unknown",
+        "Environment checked: {apps} free in the apps folder, {temp} free in the temp folder; the app folder is writable.": "Environment checked: {apps} free in the apps folder, {temp} free in the temp folder; the app folder is writable.",
         "Automation is disabled. Enable it in settings to take effect.": "Automation is disabled. Enable it in settings to take effect.",
         "Could not clear the failed attempt.": "Could not clear the failed attempt.",
         "Binding removed. {appId} reads its versions from the App Store again.": "Binding removed. {appId} reads its versions from the App Store again.",
@@ -271,10 +274,7 @@ OC.L10N.register(
         "Outside the update policy": "Outside the update policy",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"],
-        "Roll back to the last good version ({version})": "Roll back to the last good version ({version})",
-        "unknown": "unknown",
-        "Environment checked: {apps} free in the apps folder, {temp} free in the temp folder; the app folder is writable.": "Environment checked: {apps} free in the apps folder, {temp} free in the temp folder; the app folder is writable."
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"]
     },
     "nplurals=2; plural=(n != 1);"
 )
