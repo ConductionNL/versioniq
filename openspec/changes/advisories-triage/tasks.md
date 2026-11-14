@@ -23,8 +23,10 @@
 
 ## 4. Page
 
-- [ ] 4.1 Add `src/dialogs/DismissAdvisoryDialog.vue` and the Dismiss, Assign, Dismissed and Reopen controls and the "assigned to me" filter in `AdvisoriesPanel.vue`; make the card badge use active advisories only. Verify: `src/components/AdvisoriesPanel.spec.ts` covers a dismissed advisory moving to the Dismissed list and the filter; `src/utils/advisories.spec.ts` covers the badge without dismissed advisories.
-- [ ] 4.2 Add the new strings to `l10n/en.json` and `l10n/nl.json`. Verify: `npm run check:l10n-js`.
+- [x] 4.1 Add `src/dialogs/DismissAdvisoryDialog.vue` and the Dismiss, Assign, Dismissed and Reopen controls and the "assigned to me" filter in `AdvisoriesPanel.vue`; make the card badge use active advisories only. Verify: `src/components/AdvisoriesPanel.spec.ts` covers a dismissed advisory moving to the Dismissed list and the filter; `src/utils/advisories.spec.ts` covers the badge without dismissed advisories.
+  - Done: `src/dialogs/DismissAdvisoryDialog.vue`, `src/dialogs/AssignAdvisoryDialog.vue`, `src/components/AdvisoryItem.vue`, `src/components/DismissedAdvisories.vue`; `applyTriage()` / `isAssignedTo()` in `src/utils/advisories.ts`, used by the panel and by `App.vue`'s card badge. Specs: `AdvisoriesPanel.spec.ts` (+7), `advisories.spec.ts` (+6), `DismissAdvisoryDialog.spec.ts` (4), `AssignAdvisoryDialog.spec.ts` (4).
+- [x] 4.2 Add the new strings to `l10n/en.json` and `l10n/nl.json`. Verify: `npm run check:l10n-js`.
+  - Done: page and notification strings in both, `.js` regenerated with `npm run l10n:build`; `check:l10n-js` reports both up to date. A new key "Dismiss advisory" is used because the existing "Dismiss" renders as "Sluiten" (close) in Dutch.
 - [ ] 4.3 Extend `tests/e2e/advisories.spec.ts` with the advisory fixture: an admin dismisses a server advisory as "not used" with a comment, sees it under Dismissed with their name, and reopens it. Verify: the spec passes in the Playwright job.
 - [ ] 4.4 Extend `tests/e2e/advisories.spec.ts` with a fixture advisory on `fixtureapp` for versions below 1.1.0: dismiss it on 1.0.0, install 1.0.1, `runJob("AdvisoryRefreshJob")`, and see it counted again; then create a second admin with `occ user:add` and `occ group:adduser admin`, assign the advisory to them, assert their `advisory_assigned` notification row, and in a browser context logged in as them see it under "Assigned to me". Verify: the spec passes in the Playwright job.
 
