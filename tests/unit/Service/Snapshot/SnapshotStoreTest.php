@@ -144,8 +144,8 @@ final class SnapshotStoreTest extends TestCase {
 	}
 
 	public function testADateOnTheDayOfASnapshotPicksIt(): void {
-		$this->store->save(new InstanceSnapshot('s20', '2026-09-20T10:00:00+00:00', 'admin', 'daily', []));
-		$this->store->save(new InstanceSnapshot('s25', '2026-09-25T10:00:00+00:00', 'admin', 'daily', []));
+		$this->store->save(new InstanceSnapshot(['id' => 's20', 'takenAt' => '2026-09-20T10:00:00+00:00', 'takenBy' => 'admin', 'reason' => 'daily'], []));
+		$this->store->save(new InstanceSnapshot(['id' => 's25', 'takenAt' => '2026-09-25T10:00:00+00:00', 'takenBy' => 'admin', 'reason' => 'daily'], []));
 
 		$this->assertSame('s20', $this->store->latestAtOrBefore(SnapshotStore::endOfDay('2026-09-23'))?->id);
 		$this->assertSame('s25', $this->store->latestAtOrBefore(SnapshotStore::endOfDay('2026-09-25'))?->id);

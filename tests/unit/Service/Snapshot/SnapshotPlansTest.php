@@ -61,7 +61,7 @@ final class SnapshotPlansTest extends TestCase {
 				default => [],
 			};
 		});
-		$snapshot = new InstanceSnapshot('s1', '2026-09-26T01:00:00+00:00', 'system', 'before_auto_update', [
+		$snapshot = new InstanceSnapshot(['id' => 's1', 'takenAt' => '2026-09-26T01:00:00+00:00', 'takenBy' => 'system', 'reason' => 'before_auto_update'], [
 			'calendar' => ['version' => '4.0.0', 'sourceId' => null, 'enabled' => true],
 			'mail' => ['version' => '3.0.0', 'sourceId' => null, 'enabled' => true],
 			'opencatalogi' => ['version' => '1.8.0', 'sourceId' => 'github:c/oc', 'enabled' => true],
@@ -90,7 +90,7 @@ final class SnapshotPlansTest extends TestCase {
 		$pins->method('all')->willReturn([]);
 		$mapper = $this->createMock(AuditEntryMapper::class);
 		$mapper->method('findPage')->willReturn([]);
-		$snapshot = new InstanceSnapshot('s1', '2026-09-26T01:00:00+00:00', 'system', 'daily', [
+		$snapshot = new InstanceSnapshot(['id' => 's1', 'takenAt' => '2026-09-26T01:00:00+00:00', 'takenBy' => 'system', 'reason' => 'daily'], [
 			'zeta' => ['version' => '1.0.0', 'sourceId' => null, 'enabled' => true],
 			'alpha' => ['version' => '1.0.0', 'sourceId' => null, 'enabled' => true],
 		]);

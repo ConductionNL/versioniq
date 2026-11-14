@@ -492,7 +492,7 @@ final class AutoUpdateJobTest extends TestCase {
 			->willReturnCallback(function () use (&$events): InstanceSnapshot {
 				$events[] = 'snapshot';
 
-				return new InstanceSnapshot('s1', '2026-07-23T02:00:00+00:00', 'system', 'before_auto_update', []);
+				return new InstanceSnapshot(['id' => 's1', 'takenAt' => '2026-07-23T02:00:00+00:00', 'takenBy' => 'system', 'reason' => 'before_auto_update'], []);
 			});
 
 		$job = $this->buildByName(AutoUpdateJob::class, $this->named($mocks) + ['snapshotTaker' => $taker]);

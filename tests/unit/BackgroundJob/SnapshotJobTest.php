@@ -39,7 +39,7 @@ final class SnapshotJobTest extends TestCase {
 			->willReturnCallback(function () use (&$origin): InstanceSnapshot {
 				$origin = AuditOrigin::current();
 
-				return new InstanceSnapshot('s1', '2026-09-26T00:00:00+00:00', 'system', 'daily', []);
+				return new InstanceSnapshot(['id' => 's1', 'takenAt' => '2026-09-26T00:00:00+00:00', 'takenBy' => 'system', 'reason' => 'daily'], []);
 			});
 		$job = new SnapshotJob(new JobRuntime($this->createMock(ITimeFactory::class), $this->createMock(LoggerInterface::class)), $taker);
 

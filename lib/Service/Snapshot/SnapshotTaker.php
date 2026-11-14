@@ -49,12 +49,14 @@ class SnapshotTaker {
 		$now = $this->time->getDateTime('now', new \DateTimeZone('UTC'));
 		$name = $name !== null && trim($name) !== '' ? trim($name) : null;
 		$snapshot = InstanceSnapshot::fromInstalledApps(
-			$this->newId($now),
-			$now->format(DATE_ATOM),
-			$takenBy !== '' ? $takenBy : 'system',
-			$reason,
+			[
+				'id' => $this->newId($now),
+				'takenAt' => $now->format(DATE_ATOM),
+				'takenBy' => $takenBy !== '' ? $takenBy : 'system',
+				'reason' => $reason,
+				'name' => $name,
+			],
 			$this->installerService->getInstalledApps(),
-			$name,
 		);
 		$this->store->save($snapshot);
 
