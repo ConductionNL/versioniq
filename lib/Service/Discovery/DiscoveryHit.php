@@ -30,6 +30,9 @@ final class DiscoveryHit {
 	public readonly bool $installable;
 	public readonly ?string $installableReason;
 	public readonly ?string $homepageUrl;
+	public readonly ?string $publisher;
+	/** @var list<string> */
+	public readonly array $marks;
 
 	public function __construct(
 		public readonly string $appId,
@@ -44,6 +47,8 @@ final class DiscoveryHit {
 		$this->installable = $source->installable;
 		$this->installableReason = $source->installableReason;
 		$this->homepageUrl = $listing->homepageUrl;
+		$this->publisher = $listing->publisher;
+		$this->marks = $listing->featured ? [PublisherTrust::MARK_FEATURED] : [];
 	}
 
 	/**
@@ -64,6 +69,8 @@ final class DiscoveryHit {
 			'installable' => $this->installable,
 			'installableReason' => $this->installableReason,
 			'homepageUrl' => $this->homepageUrl,
+			'publisher' => $this->publisher,
+			'marks' => $this->marks,
 		];
 	}
 }
