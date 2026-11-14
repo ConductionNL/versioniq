@@ -23,3 +23,4 @@
 ## 4. Close
 
 - [ ] 4.1 Set the matrix rows `inv-server-upgrade-readiness`, `inv-compat-php` and `inv-compat-server` to `built` with evidence lines, then archive this change.
+  - The three rows are set to `built` with evidence lines. Open: archiving, which waits for the e2e runs of 2.3 and 3.3 on a live instance.
