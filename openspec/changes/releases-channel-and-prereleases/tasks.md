@@ -25,7 +25,7 @@
 
 ## 5. Command
 
-- [ ] 5.1 Add the channel column to `lib/Command/ListVersions.php`, and `lib/Command/SetChannel.php` (`versioniq:channel`, `--lts-lines`) registered in `appinfo/info.xml`. Verify: `tests/unit/Command/ListVersionsTest.php` asserts the column and JSON keys; `tests/unit/Command/SetChannelTest.php` covers set, read and an unknown channel; extend `tests/e2e/cli.spec.ts` with one `versioniq:channel` run.
+- [ ] 5.1 (code and unit tests done; the `tests/e2e/cli.spec.ts` run is still open) Add the channel column to `lib/Command/ListVersions.php`, and `lib/Command/SetChannel.php` (`versioniq:channel`, `--lts-lines`) registered in `appinfo/info.xml`. Verify: `tests/unit/Command/ListVersionsTest.php` asserts the column and JSON keys; `tests/unit/Command/SetChannelTest.php` covers set, read and an unknown channel; extend `tests/e2e/cli.spec.ts` with one `versioniq:channel` run.
 
 ## 6. Close
 
