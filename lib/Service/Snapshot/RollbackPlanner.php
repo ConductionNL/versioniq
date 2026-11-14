@@ -64,8 +64,8 @@ final class RollbackPlanner {
 	private static function currentVersions(array $installedApps): array {
 		$current = [];
 		foreach ($installedApps as $card) {
-			$version = $card['installedVersion'] ?? null;
-			if (($card['state'] ?? 'notInstalled') !== 'notInstalled' && is_string($version) && $version !== '' && is_string($card['id'] ?? null)) {
+			$version = InstanceSnapshot::installedVersion($card);
+			if ($version !== null && is_string($card['id'] ?? null)) {
 				$current[$card['id']] = $version;
 			}
 		}

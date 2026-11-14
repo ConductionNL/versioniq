@@ -69,6 +69,14 @@ class SnapshotStore {
 		if ($raw === '') {
 			return null;
 		}
+
+		return $this->decoded($id, $raw);
+	}
+
+	/**
+	 * The stored snapshot JSON as a snapshot, or null (logged) when it is malformed.
+	 */
+	private function decoded(string $id, string $raw): ?InstanceSnapshot {
 		try {
 			$payload = json_decode($raw, true, self::JSON_DEPTH, JSON_THROW_ON_ERROR);
 
@@ -191,7 +199,7 @@ class SnapshotStore {
 			'id' => $line['id'],
 			'takenAt' => $line['takenAt'],
 			'reason' => (string)($line['reason'] ?? ''),
-			'name' => is_string($line['name'] ?? null) ? $line['name'] : null,
+			'name' => InstanceSnapshot::stringOrNull($line['name'] ?? null),
 			'appCount' => (int)($line['appCount'] ?? 0),
 		];
 	}

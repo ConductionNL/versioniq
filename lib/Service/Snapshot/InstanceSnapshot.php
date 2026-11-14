@@ -22,49 +22,43 @@ final class InstanceSnapshot {
 	/** The moments a snapshot is taken (design D2). */
 	public const REASONS = ['daily', 'before_auto_update', 'manual', 'before_rollback'];
 
+	public readonly string $id;
+	public readonly string $takenAt;
+	public readonly string $takenBy;
+	public readonly string $reason;
+	public readonly ?string $name;
+
 	/**
+	 * @param array{id?: string, takenAt?: string, takenBy?: string, reason?: string, name?: ?string} $meta
+	 *        Who took the snapshot, when, why and, optionally, its name.
 	 * @param array<string, array{version: string, sourceId: ?string, enabled: bool}> $apps
+	 * @throws \InvalidArgumentException without an id, a time or who took it, or with an unknown reason
 	 */
-	public function __construct(
-		public readonly string $id,
-		public readonly string $takenAt,
-		public readonly string $takenBy,
-		public readonly string $reason,
-		public readonly array $apps,
-		public readonly ?string $name = null,
-	) {
-		if ($id === '' || $takenAt === '' || $takenBy === '') {
-			throw new \InvalidArgumentException('A snapshot needs an id, a time and who took it');
-		}
-		if (!in_array($reason, self::REASONS, true)) {
-			throw new \InvalidArgumentException('Unknown snapshot reason: ' . $reason);
-		}
+	public function __construct(array $meta, public readonly array $apps) {
+		$this->id = (string)($meta['id'] ?? '');
+		$this->takenAt = (string)($meta['takenAt'] ?? '');
+		$this->takenBy = (string)($meta['takenBy'] ?? '');
+		$this->reason = (string)($meta['reason'] ?? '');
+		$this->name = self::stringOrNull($meta['name'] ?? null);
+		$this->assertValid();
 	}
 
 	/**
 	 * The snapshot of the apps `InstallerService::getInstalledApps()` lists:
 	 * every app with a state other than `notInstalled` and a known version.
 	 *
+	 * @param array{id?: string, takenAt?: string, takenBy?: string, reason?: string, name?: ?string} $meta
 	 * @param list<array<string, mixed>> $installedApps The app cards.
 	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
 	 */
-	public static function fromInstalledApps(string $id, string $takenAt, string $takenBy, string $reason, array $installedApps, ?string $name = null): self {
+	public static function fromInstalledApps(array $meta, array $installedApps): self {
 		$apps = [];
 		foreach ($installedApps as $card) {
-			$appId = (string)($card['id'] ?? '');
-			$version = $card['installedVersion'] ?? null;
-			if ($appId === '' || ($card['state'] ?? 'notInstalled') === 'notInstalled' || !is_string($version) || $version === '') {
-				continue;
-			}
-			$apps[$appId] = [
-				'version' => $version,
-				'sourceId' => isset($card['boundSourceId']) && is_string($card['boundSourceId']) ? $card['boundSourceId'] : null,
-				'enabled' => ($card['state'] ?? '') === 'enabled',
-			];
+			$apps = array_replace($apps, self::installedEntry($card));
 		}
 		ksort($apps);
 
-		return new self($id, $takenAt, $takenBy, $reason, $apps, $name);
+		return new self($meta, $apps);
 	}
 
 	/**
@@ -74,25 +68,95 @@ final class InstanceSnapshot {
 	public static function fromArray(array $payload): self {
 		$apps = [];
 		foreach ((array)($payload['apps'] ?? []) as $appId => $app) {
-			if (!is_string($appId) || !is_array($app) || !is_string($app['version'] ?? null)) {
-				throw new \InvalidArgumentException('Malformed app entry in snapshot');
-			}
-			$apps[$appId] = [
-				'version' => $app['version'],
-				'sourceId' => is_string($app['sourceId'] ?? null) ? $app['sourceId'] : null,
-				'enabled' => (bool)($app['enabled'] ?? false),
-			];
+			$apps[$appId] = self::storedApp($appId, $app);
 		}
-		$name = $payload['name'] ?? null;
+		$name = self::stringOrNull($payload['name'] ?? null);
+		if ($name === '') {
+			$name = null;
+		}
 
 		return new self(
-			(string)($payload['id'] ?? ''),
-			(string)($payload['takenAt'] ?? ''),
-			(string)($payload['takenBy'] ?? ''),
-			(string)($payload['reason'] ?? ''),
+			[
+				'id' => (string)($payload['id'] ?? ''),
+				'takenAt' => (string)($payload['takenAt'] ?? ''),
+				'takenBy' => (string)($payload['takenBy'] ?? ''),
+				'reason' => (string)($payload['reason'] ?? ''),
+				'name' => $name,
+			],
 			$apps,
-			is_string($name) && $name !== '' ? $name : null,
 		);
+	}
+
+	/**
+	 * The installed version on an app card: the card's version when its state
+	 * is not `notInstalled` and the version is a non-empty string, else null.
+	 *
+	 * @param array<array-key, mixed> $card An app card of `InstallerService::getInstalledApps()`.
+	 */
+	public static function installedVersion(array $card): ?string {
+		$version = $card['installedVersion'] ?? null;
+		if (($card['state'] ?? 'notInstalled') === 'notInstalled' || !is_string($version)) {
+			return null;
+		}
+
+		return $version === '' ? null : $version;
+	}
+
+	/**
+	 * The value when it is a string, else null.
+	 */
+	public static function stringOrNull(mixed $value): ?string {
+		return is_string($value) ? $value : null;
+	}
+
+	/**
+	 * One app card as a snapshot entry keyed by app id, or [] for an app without an id or an installed version.
+	 *
+	 * @param array<array-key, mixed> $card
+	 * @return array<string, array{version: string, sourceId: ?string, enabled: bool}>
+	 */
+	private static function installedEntry(array $card): array {
+		$appId = (string)($card['id'] ?? '');
+		$version = self::installedVersion($card);
+		if ($appId === '' || $version === null) {
+			return [];
+		}
+
+		return [$appId => [
+			'version' => $version,
+			'sourceId' => self::stringOrNull($card['boundSourceId'] ?? null),
+			'enabled' => ($card['state'] ?? '') === 'enabled',
+		]];
+	}
+
+	/**
+	 * One stored app entry.
+	 *
+	 * @throws \InvalidArgumentException on an entry without a string app id and version
+	 * @return array{version: string, sourceId: ?string, enabled: bool}
+	 */
+	private static function storedApp(mixed $appId, mixed $app): array {
+		if (!is_string($appId) || !is_array($app) || !is_string($app['version'] ?? null)) {
+			throw new \InvalidArgumentException('Malformed app entry in snapshot');
+		}
+
+		return [
+			'version' => $app['version'],
+			'sourceId' => self::stringOrNull($app['sourceId'] ?? null),
+			'enabled' => (bool)($app['enabled'] ?? false),
+		];
+	}
+
+	/**
+	 * @throws \InvalidArgumentException without an id, a time or who took it, or with an unknown reason
+	 */
+	private function assertValid(): void {
+		if ($this->id === '' || $this->takenAt === '' || $this->takenBy === '') {
+			throw new \InvalidArgumentException('A snapshot needs an id, a time and who took it');
+		}
+		if (!in_array($this->reason, self::REASONS, true)) {
+			throw new \InvalidArgumentException('Unknown snapshot reason: ' . $this->reason);
+		}
 	}
 
 	/**

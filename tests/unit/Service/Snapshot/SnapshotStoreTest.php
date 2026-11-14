@@ -53,17 +53,19 @@ final class SnapshotStoreTest extends TestCase {
 
 	private function snapshot(int $n, ?string $name = null): InstanceSnapshot {
 		return new InstanceSnapshot(
-			sprintf('s%03d', $n),
-			gmdate(DATE_ATOM, 1_700_000_000 + $n * 3600),
-			'admin',
-			$name === null ? 'daily' : 'manual',
+			[
+				'id' => sprintf('s%03d', $n),
+				'takenAt' => gmdate(DATE_ATOM, 1_700_000_000 + $n * 3600),
+				'takenBy' => 'admin',
+				'reason' => $name === null ? 'daily' : 'manual',
+				'name' => $name,
+			],
 			['files_x' => ['version' => '1.' . $n . '.0', 'sourceId' => 'forge', 'enabled' => true]],
-			$name,
 		);
 	}
 
 	public function testASnapshotIsWrittenLazilyAndReadBack(): void {
-		$snapshot = InstanceSnapshot::fromInstalledApps('s1', '2026-11-01T00:00:00+00:00', 'system', 'daily', [
+		$snapshot = InstanceSnapshot::fromInstalledApps(['id' => 's1', 'takenAt' => '2026-11-01T00:00:00+00:00', 'takenBy' => 'system', 'reason' => 'daily'], [
 			['id' => 'b', 'state' => 'enabled', 'installedVersion' => '2.0.0', 'boundSourceId' => 'forge'],
 			['id' => 'a', 'state' => 'disabled', 'installedVersion' => '1.0.0', 'boundSourceId' => null],
 			['id' => 'c', 'state' => 'notInstalled', 'installedVersion' => null],
