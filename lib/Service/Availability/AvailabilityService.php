@@ -46,6 +46,7 @@ class AvailabilityService {
 		private InstallerService $installerService,
 		private PinStore $pinStore,
 		private LoggerInterface $logger,
+		private ?WithdrawnVersionStore $withdrawnVersions = null,
 	) {
 	}
 
@@ -56,7 +57,7 @@ class AvailabilityService {
 	 * than left out, so the page says "not checked" instead of nothing.
 	 *
 	 * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
-	 * @return array<string, array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string}>
+	 * @return array<string, array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, installedWithdrawn: ?bool}>
 	 */
 	public function sweep(float $budgetSeconds): array {
 		$deadline = microtime(true) + $budgetSeconds;
@@ -113,7 +114,7 @@ class AvailabilityService {
 	 * The row for an app from its source's version listing; a listing that
 	 * fails or reports an error is recorded as that error.
 	 *
-	 * @return array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string}
+	 * @return array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, installedWithdrawn: ?bool}
 	 */
 	private function listedEntry(string $appId, AppVersionCheck $check): array {
 		try {
@@ -134,12 +135,27 @@ class AvailabilityService {
 			$this->listings[$appId] = ['installedVersion' => $check->installedVersion, 'versions' => array_values($versions)];
 		}
 
-		return $this->entry($check->withSource($sourceId), $versions, $error);
+		$listed = self::listedVersions($versions);
+		// Only a successful listing that names versions says anything about
+		// withdrawal. A failed, malformed or empty one withdraws nothing: an
+		// empty answer from a misconfigured source would otherwise mark every
+		// earlier version withdrawn and block reinstalling it.
+		$judged = $error === null && $listed !== [];
+		if ($judged && $this->withdrawnVersions !== null) {
+			$this->withdrawnVersions->recordListing($appId, $listed);
+		}
+
+		$entry = $this->entry($check->withSource($sourceId), $versions, $error);
+		if (!$judged) {
+			$entry['installedWithdrawn'] = null;
+		}
+
+		return $entry;
 	}
 
 	/**
 	 * @param list<array<string, mixed>> $versions
-	 * @return array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string}
+	 * @return array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, installedWithdrawn: ?bool}
 	 */
 	private function entry(AppVersionCheck $check, array $versions, ?string $error): array {
 		$installedParts = $this->parse($check->installedVersion);
@@ -154,7 +170,39 @@ class AvailabilityService {
 			'pinned' => $check->pinned,
 			'sourceId' => $check->sourceId,
 			'error' => $error,
+			'installedWithdrawn' => $error === null ? $this->installedWithdrawn($check->installedVersion, $versions, $installedParts) : null,
 		];
+	}
+
+	/**
+	 * Whether a successful listing no longer offers the installed version:
+	 * only for a plain major.minor.patch version, since a build the source
+	 * never listed (a development or forge build) is not a withdrawal. The
+	 * caller sets null instead for a listing that names no versions.
+	 *
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-a-withdrawn-installed-version-is-marked-and-never-reinstalled-by-accident
+	 * @param list<array<string, mixed>> $versions
+	 * @param array{0: int, 1: int, 2: int}|null $installedParts
+	 */
+	private function installedWithdrawn(string $installedVersion, array $versions, ?array $installedParts): bool {
+		return $installedParts !== null && !in_array($installedVersion, self::listedVersions($versions), true);
+	}
+
+	/**
+	 * The version strings of a listing.
+	 *
+	 * @param list<array<string, mixed>> $versions
+	 * @return list<string>
+	 */
+	private static function listedVersions(array $versions): array {
+		$listed = [];
+		foreach ($versions as $entry) {
+			if (is_string($entry['version'] ?? null) && trim($entry['version']) !== '') {
+				$listed[] = trim($entry['version']);
+			}
+		}
+
+		return $listed;
 	}
 
 	/**
