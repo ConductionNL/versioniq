@@ -196,6 +196,19 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		return is_string($tag) && ($this->normalizeVersion($tag) === $version || $tag === $version);
 	}
 	/**
+	 * Whether the binding's forge publishes repository security advisories.
+	 * GitLab does not (sources-gitlab-forge D6), so an app bound there has no
+	 * advisory source of its own.
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/specs/external-sources/spec.md
+	 */
+	public function publishesAdvisories(SourceBinding $binding): bool {
+		$ownerRepo = $binding->getOwnerRepo();
+
+		return $ownerRepo !== null && $this->forgeRegistry->get($binding->getForge())->advisoriesEndpoint($ownerRepo) !== null;
+	}
+
+	/**
 	 * Lists published security advisories for the bound `owner/repo` from the
 	 * forge's `/security-advisories` endpoint (GitHub GHSA / Forgejo), reusing
 	 * the same PAT-authenticated fetch path as release listing — no new HTTP

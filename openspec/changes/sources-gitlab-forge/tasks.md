@@ -10,7 +10,8 @@
 ## 2. Releases
 
 - [ ] 2.1 Normalise GitLab releases and asset links in `ForgeReleaseSource`. Verify: a unit test with a recorded GitLab releases payload: versions, changelogs, the selected asset and the sibling checksum.
-- [ ] 2.2 Treat a forge without an advisories endpoint as "no advisory source" in `AdvisoryService`. Verify: `tests/unit/Service/Advisory/AdvisoryServiceTest.php`.
+- [x] 2.2 Treat a forge without an advisories endpoint as "no advisory source" in `AdvisoryService`. Verify: `tests/unit/Service/Advisory/AdvisoryServiceTest.php`.
+  - `ForgeReleaseSource::publishesAdvisories()` is false for a GitLab binding; `AdvisoryService::correlate()` then checks only the central feed and stores "No advisory source: gitlab publishes no repository security advisories." as the entry's reason, so the app never reads as clean. `AdvisoryServiceTest`.
 
 ## 3. Tokens
 

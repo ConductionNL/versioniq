@@ -19,6 +19,7 @@ use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
 use OCA\Versioniq\Service\Advisory\BranchAwareRange;
 use OCA\Versioniq\Service\Advisory\NextcloudAdvisoryFeed;
 use OCA\Versioniq\Service\Advisory\ServerVersionProvider;
+use OCA\Versioniq\Service\Source\ForgeReleaseSource;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
@@ -475,5 +476,66 @@ final class AdvisoryServiceTest extends TestCase {
 			['AdvisoryService: correlation failed for app', ['app' => 'mail', 'message' => 'store down']],
 			['AdvisoryService: correlation failed for app', ['app' => 'deck', 'message' => 'store down']],
 		], $logged);
+	}
+
+	/**
+	 * sources-gitlab-forge 2.2: an app bound to a forge without repository
+	 * advisories reads "no advisory source", is never asked for advisories,
+	 * and still gets the central feed's findings.
+	 */
+	private function gitlabBoundService(ForgeReleaseSource $source): AdvisoryService {
+		$appManager = $this->createMock(IAppManager::class);
+		$appManager->method('getAppVersion')->willReturn('1.2.0');
+		$registry = $this->createMock(SourceRegistry::class);
+		$registry->method('get')->willReturn($source);
+		$bindingStore = $this->createMock(SourceBindingStore::class);
+		$bindingStore->method('get')->willReturn(SourceBinding::gitlab('gemeente/team/zaakapp'));
+
+		return $this->buildByName(AdvisoryService::class, [
+			'sourceRegistry' => $registry,
+			'bindingStore' => $bindingStore,
+			'appManager' => $appManager,
+			'advisoryFeed' => $this->quietFeed(),
+			'branchRange' => new BranchAwareRange(),
+			'serverVersion' => $this->createMock(ServerVersionProvider::class),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
+	}
+
+	public function testAGitlabBoundAppReadsNoAdvisorySourceAndIsNeverClean(): void {
+		$source = $this->createMock(ForgeReleaseSource::class);
+		$source->method('publishesAdvisories')->willReturn(false);
+		$source->expects($this->never())->method('listAdvisories');
+		$source->expects($this->never())->method('listVersions');
+
+		$result = $this->gitlabBoundService($source)->correlate('zaakapp');
+
+		$this->assertSame(AdvisoryService::STATE_NONE, $result['state']);
+		$this->assertSame([], $result['advisories']);
+		$this->assertSame('No advisory source: gitlab publishes no repository security advisories.', $result['error']);
+	}
+
+	public function testAGitlabBoundAppStillGetsTheFeedFindings(): void {
+		$source = $this->createMock(ForgeReleaseSource::class);
+		$source->method('publishesAdvisories')->willReturn(false);
+
+		$result = $this->gitlabBoundService($source)->correlate('zaakapp', [
+			['id' => 'GHSA-zaak', 'severity' => 'high', 'summary' => 'x', 'affected' => ['< 1.3.0'], 'firstPatchedVersion' => '1.3.0', 'patchedVersions' => ['1.3.0']],
+		]);
+
+		$this->assertSame('GHSA-zaak', $result['advisories'][0]['id']);
+		$this->assertNotSame(AdvisoryService::STATE_NONE, $result['state']);
+		$this->assertSame('No advisory source: gitlab publishes no repository security advisories.', $result['error']);
+	}
+
+	public function testAForgeThatPublishesAdvisoriesIsStillAsked(): void {
+		$source = $this->createMock(ForgeReleaseSource::class);
+		$source->method('publishesAdvisories')->willReturn(true);
+		$source->expects($this->once())->method('listAdvisories')->willReturn(['advisories' => [], 'error' => null]);
+		$source->method('listVersions')->willReturn(['versions' => [], 'error' => null]);
+
+		$result = $this->gitlabBoundService($source)->correlate('zaakapp');
+
+		$this->assertNull($result['error']);
 	}
 }

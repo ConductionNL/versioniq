@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Advisory;
 
+use OCA\Versioniq\Service\Source\ForgeReleaseSource;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceLookup;
 use OCP\App\IAppManager;
@@ -120,6 +121,10 @@ class AdvisoryService {
 			$evaluated['error'] = null;
 
 			return $evaluated;
+		}
+
+		if ($source instanceof ForgeReleaseSource && !$source->publishesAdvisories($binding)) {
+			return $this->withoutAdvisorySource($appId, $installedVersion, $feedAdvisories, $binding->getForge());
 		}
 
 		$advisoryResult = $source->listAdvisories($appId, $binding);
@@ -562,6 +567,28 @@ class AdvisoryService {
 		}
 
 		return $installed !== '' ? $installed : null;
+	}
+
+	/**
+	 * An app bound to a forge that publishes no repository advisories: only
+	 * the central feed is checked, and the entry says there is no advisory
+	 * source of its own, so it never reads as clean (sources-gitlab-forge D6).
+	 *
+	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>}> $feedAdvisories The feed's advisories for this app.
+	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}
+	 * @spec openspec/changes/sources-gitlab-forge/specs/external-sources/spec.md
+	 */
+	private function withoutAdvisorySource(string $appId, string $installedVersion, array $feedAdvisories, string $forge): array {
+		$reason = sprintf('No advisory source: %s publishes no repository security advisories.', $forge);
+		if ($feedAdvisories === []) {
+			return $this->emptyResult($appId, $installedVersion, $reason);
+		}
+
+		$evaluated = $this->evaluate($installedVersion, $feedAdvisories, []);
+		$evaluated['appId'] = $appId;
+		$evaluated['error'] = $reason;
+
+		return $evaluated;
 	}
 
 	/**
