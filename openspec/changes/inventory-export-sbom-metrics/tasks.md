@@ -22,11 +22,13 @@
 
 ## 4. Metrics
 
-- [ ] 4.1 Add `AppVersionMetricFamily` and the `<openmetrics>` entry, with a psalm stub for `OCP\OpenMetrics`. Verify: a unit test of the metric labels, and on a Nextcloud 33 test instance `curl /metrics` shows `nextcloud_versioniq_app_version`.
+- [x] 4.1 Add `AppVersionMetricFamily` and the `<openmetrics>` entry, with a psalm stub for `OCP\OpenMetrics`. Verify: a unit test of the metric labels, and on a Nextcloud 33 test instance `curl /metrics` shows `nextcloud_versioniq_app_version`.
+  - `lib/OpenMetrics/AppVersionMetricFamily.php`: a gauge of 1 per installed app with `app_id`, `version`, `shipped`, `source` and `behind` (`unknown` before the first sweep), listed under `<openmetrics>` in `info.xml`. No psalm stub was needed: `nextcloud/ocp` ^35 already ships the 33 interface. `tests/unit/OpenMetrics/AppVersionMetricFamilyTest.php`. Left: the `curl /metrics` check on a Nextcloud 33 test instance.
 
 ## 5. Close
 
 - [ ] 5.1 Add strings to `l10n/en` and `l10n/nl` (verify `npm run check:l10n-js`), set the matrix rows `inv-export-inventory`, `inv-sbom-per-update` and `inv-metrics-endpoint` to `built` with evidence lines, then archive this change.
+  - Strings for the export menu and the row link are in `l10n/en` and `l10n/nl` (`npm run check:l10n-js` passes), and the three matrix rows are `built` with evidence lines. Left: archiving the change, after the merge.
 
 ## Build notes
 
@@ -34,4 +36,4 @@ Done in a first slice:
 - 1.1: `lib/Service/Inventory/InventoryBuilder.php` reads the server version through `ServerVersionProvider` (`OCP\ServerVersion` is readonly and cannot be doubled) and every installed app with its licence, source and recorded SHA-256.
 - 1.2's writer: `lib/Service/Inventory/SbomWriter.php` writes CycloneDX 1.5 and SPDX 2.3 JSON with the purl rules of D2 and the licence rules of D3. A licence that is not an SPDX id goes into an SPDX licence comment rather than an undefined `LicenseRef`, which would make the document invalid.
 
-1.2 stays open because its check, validation against the official JSON schemas vendored under `tests/fixtures/sbom/`, is not done. `SbomWriterTest` asserts the required fields of both formats instead. Sections 2 to 5 are open.
+Second slice: 1.2's schema check, 2.1 to 3.2 and 4.1 are built (see each task). Left: the e2e check of 3.2, the live `/metrics` check of 4.1, and archiving.
