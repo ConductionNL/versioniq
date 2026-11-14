@@ -1,0 +1,40 @@
+{
+  "document": {
+    "category": "csaf_security_advisory",
+    "csaf_version": "2.0",
+    "title": "Kwetsbaarheden verholpen in Nextcloud Server en Nextcloud Talk",
+    "tracking": {"id": "NCSC-2026-0901", "initial_release_date": "2026-09-24T09:14:33Z", "version": "1.00"},
+    "notes": [
+      {"category": "other", "title": "Kans", "text": "medium"},
+      {"category": "other", "title": "Schade", "text": "high"}
+    ]
+  },
+  "product_tree": {
+    "branches": [
+      {"category": "vendor", "name": "Nextcloud", "branches": [
+        {"category": "product_name", "name": "Nextcloud Server", "branches": [
+          {"category": "product_version_range", "name": "vers:generic/>=30.0.0|<30.0.14", "product": {"product_id": "CSAFPID-0001", "name": "Nextcloud Server vers:generic/>=30.0.0|<30.0.14"}},
+          {"category": "product_version", "name": "31.0.2", "product": {"product_id": "CSAFPID-0002", "name": "Nextcloud Server 31.0.2"}}
+        ]},
+        {"category": "product_name", "name": "Nextcloud Talk", "branches": [
+          {"category": "product_version_range", "name": "vers:unknown/*", "product": {"product_id": "CSAFPID-0003", "name": "Nextcloud Talk vers:unknown/*"}}
+        ]},
+        {"category": "product_name", "name": "Nextcloud Desktop Client", "branches": [
+          {"category": "product_version_range", "name": "vers:generic/<3.14.0", "product": {"product_id": "CSAFPID-0004", "name": "Nextcloud Desktop Client"}}
+        ]},
+        {"category": "product_name", "name": "Nextcloud Mail", "branches": [
+          {"category": "product_version_range", "name": "vers:generic/<4.0.0", "product": {"product_id": "CSAFPID-0005", "name": "Nextcloud Mail"}}
+        ]}
+      ]},
+      {"category": "vendor", "name": "Acme", "branches": [
+        {"category": "product_name", "name": "Server", "branches": [
+          {"category": "product_version_range", "name": "vers:generic/*", "product": {"product_id": "CSAFPID-0006", "name": "Acme Server"}}
+        ]}
+      ]}
+    ]
+  },
+  "vulnerabilities": [
+    {"cve": "CVE-2026-40001", "product_status": {"known_affected": ["CSAFPID-0001", "CSAFPID-0002", "CSAFPID-0004", "CSAFPID-0006"]}, "scores": [{"products": ["CSAFPID-0001"], "cvss_v3": {"baseSeverity": "HIGH"}}]},
+    {"cve": "CVE-2026-40002", "product_status": {"known_affected": ["CSAFPID-0003"], "fixed": ["CSAFPID-0005"]}}
+  ]
+}
