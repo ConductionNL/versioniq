@@ -3,7 +3,8 @@
 ## 1. Inventory and formats
 
 - [x] 1.1 Add `InventoryBuilder` (server plus installed apps, licence, source, recorded SHA-256). Verify: `tests/unit/Service/Inventory/InventoryBuilderTest.php` with a shipped, an App Store and a GitHub-bound app.
-- [ ] 1.2 Add `SbomWriter` for CycloneDX 1.5 and SPDX 2.3 JSON with the purl rules of design D2. Verify: unit tests validate both outputs against the published JSON schemas (vendored under `tests/fixtures/sbom/`), and a GitHub-bound app gets `pkg:github/...`.
+- [x] 1.2 Add `SbomWriter` for CycloneDX 1.5 and SPDX 2.3 JSON with the purl rules of design D2. Verify: unit tests validate both outputs against the published JSON schemas (vendored under `tests/fixtures/sbom/`), and a GitHub-bound app gets `pkg:github/...`.
+  - `tests/unit/Service/Inventory/SbomSchemaTest.php` validates both documents with opis/json-schema against CycloneDX 1.5 (with the SPDX licence and JSF schemas it references) and SPDX 2.3, copied unchanged into `tests/fixtures/sbom/` (licences in `REUSE.toml`), and checks the schemas refuse a broken document.
 
 ## 2. Export
 
