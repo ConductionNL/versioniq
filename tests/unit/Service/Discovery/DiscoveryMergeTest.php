@@ -61,6 +61,9 @@ final class DiscoveryMergeTest extends TestCase {
 			'summary' => 'Store summary',
 			'iconUrl' => 'https://store/icon.svg',
 			'homepageUrl' => 'https://example.org/mail',
+			'publisher' => null,
+			'marks' => [],
+			'similarTo' => [],
 			'installedVersion' => null,
 			'sourceCandidates' => [
 				[

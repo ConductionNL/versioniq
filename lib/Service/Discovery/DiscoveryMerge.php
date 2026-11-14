@@ -18,7 +18,7 @@ namespace OCA\Versioniq\Service\Discovery;
  * wins over other providers', and provider errors are collected.
  *
  * @spec openspec/specs/app-discovery/spec.md
- * @psalm-type Group = array{appId: string, name: string, summary: string, iconUrl: ?string, homepageUrl: ?string, installedVersion: ?string, sourceCandidates: list<array{providerId: string, sourceBinding: array<string, mixed>, installable: bool, installableReason: ?string}>}
+ * @psalm-type Group = array{appId: string, name: string, summary: string, iconUrl: ?string, homepageUrl: ?string, publisher: ?string, marks: list<string>, similarTo: list<array{appId: string, name: string, publisher: ?string}>, installedVersion: ?string, sourceCandidates: list<array{providerId: string, sourceBinding: array<string, mixed>, installable: bool, installableReason: ?string}>}
  */
 final class DiscoveryMerge {
 	/** @var array<string, Group> */
@@ -83,6 +83,8 @@ final class DiscoveryMerge {
 		if ($hit->sourceProviderId === AppStoreDiscovery::ID) {
 			$this->preferAppStoreMetadata($hit);
 		}
+		$this->grouped[$hit->appId]['publisher'] ??= $hit->publisher;
+		$this->grouped[$hit->appId]['marks'] = array_values(array_unique([...$this->grouped[$hit->appId]['marks'], ...$hit->marks]));
 
 		$this->grouped[$hit->appId]['sourceCandidates'][] = [
 			'providerId' => $hit->sourceProviderId,
@@ -102,13 +104,16 @@ final class DiscoveryMerge {
 			'summary' => $hit->summary,
 			'iconUrl' => $hit->iconUrl,
 			'homepageUrl' => $hit->homepageUrl,
+			'publisher' => $hit->publisher,
+			'marks' => [],
+			'similarTo' => [],
 			'installedVersion' => $this->installed[$hit->appId] ?? null,
 			'sourceCandidates' => [],
 		];
 	}
 
 	/**
-	 * Takes the App Store summary and icon when present, never overwriting with an empty value.
+	 * Takes the App Store summary, icon and publisher when present, never overwriting with an empty value.
 	 */
 	private function preferAppStoreMetadata(DiscoveryHit $hit): void {
 		if ($hit->summary !== '') {
@@ -116,6 +121,9 @@ final class DiscoveryMerge {
 		}
 		if ($hit->iconUrl !== null) {
 			$this->grouped[$hit->appId]['iconUrl'] = $hit->iconUrl;
+		}
+		if ($hit->publisher !== null) {
+			$this->grouped[$hit->appId]['publisher'] = $hit->publisher;
 		}
 	}
 

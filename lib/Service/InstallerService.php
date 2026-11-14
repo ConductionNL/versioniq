@@ -15,6 +15,7 @@ namespace OCA\Versioniq\Service;
 use Exception;
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Discovery\PublisherTrust;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFailure;
@@ -50,7 +51,7 @@ use OCP\IUserSession;
  *
  * @psalm-api
  * @psalm-type AppLists = array{enabled: array<string>, versions: array<string, string>, core: array<string>, info: array<string, array<string, mixed>>}
- * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string}}
+ * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,publisher:?string,marks:list<string>,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string}}
  */
 class InstallerService {
 	/** Server-side changelog size cap; see "Version listings carry release notes". */
@@ -75,6 +76,7 @@ class InstallerService {
 		private InstallState $state,
 		private IUserSession $userSession,
 		private ITimeFactory $timeFactory,
+		private ?PublisherTrust $publisherTrust = null,
 	) {
 	}
 
@@ -151,10 +153,34 @@ class InstallerService {
 	 * @return InstalledAppCard
 	 */
 	private function appCard(string $appId, array $lists): array {
+		$binding = $this->sources->bindingStore->get($appId);
+
 		return [
 			'id' => $appId,
 			...self::appTexts($lists['info'][$appId] ?? [], $appId),
-			...$this->appStatus($appId, $lists),
+			...$this->appStatus($appId, $lists, $binding),
+			...$this->appPublisher($appId, $lists['info'][$appId] ?? [], $binding),
+		];
+	}
+
+	/**
+	 * The app's publisher (its info.xml authors) and the trust marks a named
+	 * source backs for it; see "Hits and cards name the publisher and the
+	 * trust marks the data backs". The App Store's featured flag is not read
+	 * here: the card list does not load the catalogue.
+	 *
+	 * @spec openspec/changes/inventory-verified-publisher/specs/app-discovery/spec.md#requirement-hits-and-cards-name-the-publisher-and-the-trust-marks-the-data-backs
+	 * @param array<string, mixed> $info
+	 * @return array{publisher: ?string, marks: list<string>}
+	 */
+	private function appPublisher(string $appId, array $info, ?SourceBinding $binding): array {
+		return [
+			'publisher' => PublisherTrust::publisherFromAuthors($info['author'] ?? null),
+			'marks' => $this->publisherTrust?->marksFor(
+				$appId,
+				$binding?->toArray() ?? ['kind' => SourceBinding::KIND_APPSTORE],
+				false
+			) ?? [],
 		];
 	}
 
@@ -188,10 +214,10 @@ class InstallerService {
 	 * last-known-good record for its card.
 	 *
 	 * @param AppLists $lists
+	 * @param ?SourceBinding $binding The app's source binding, read once per card.
 	 * @return array{isCore: bool, isShipped: bool, boundSourceId: ?string, manageable: bool, warning: ?string, installedVersion: ?string, state: 'enabled'|'disabled'|'notInstalled', lkg: ?array{version: string, recordedAt: string, sourceId: ?string}}
 	 */
-	private function appStatus(string $appId, array $lists): array {
-		$binding = $this->sources->bindingStore->get($appId);
+	private function appStatus(string $appId, array $lists, ?SourceBinding $binding): array {
 		$env = $this->appEnvironment($appId);
 		$installedVersion = $this->installedVersion($appId, $lists);
 
