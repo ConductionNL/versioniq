@@ -37,6 +37,7 @@ final class Policy {
 		public readonly string $level,
 		public readonly string $setBy,
 		public readonly string $setAt,
+		public readonly ?int $minAgeDays = null,
 	) {
 		if (!self::isValidLevel($level)) {
 			throw new InvalidArgumentException('Policy level must be one of: ' . implode(', ', self::VALID_LEVELS));
@@ -46,6 +47,9 @@ final class Policy {
 		}
 		if ($setAt === '') {
 			throw new InvalidArgumentException('Policy requires a non-empty setAt');
+		}
+		if ($minAgeDays !== null && ($minAgeDays < 0 || $minAgeDays > 90)) {
+			throw new InvalidArgumentException('Policy minAgeDays must be 0 to 90, or absent to use the instance value');
 		}
 	}
 
@@ -66,11 +70,16 @@ final class Policy {
 	 * @return array<string, mixed>
 	 */
 	public function toArray(): array {
-		return [
+		$payload = [
 			'level' => $this->level,
 			'setBy' => $this->setBy,
 			'setAt' => $this->setAt,
 		];
+		if ($this->minAgeDays !== null) {
+			$payload['minAgeDays'] = $this->minAgeDays;
+		}
+
+		return $payload;
 	}
 
 	/**
@@ -87,6 +96,11 @@ final class Policy {
 			throw new InvalidArgumentException('Policy payload missing required string fields');
 		}
 
-		return new self($level, $setBy, $setAt);
+		$minAgeDays = $payload['minAgeDays'] ?? null;
+		if ($minAgeDays !== null && !is_int($minAgeDays)) {
+			throw new InvalidArgumentException('Policy minAgeDays must be an integer');
+		}
+
+		return new self($level, $setBy, $setAt, $minAgeDays);
 	}
 }

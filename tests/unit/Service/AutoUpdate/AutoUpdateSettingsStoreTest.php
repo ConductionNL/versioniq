@@ -114,4 +114,39 @@ final class AutoUpdateSettingsStoreTest extends TestCase {
 		$this->assertTrue($store->hasSweptWindow('01:00-05:00@2026-07-23'));
 		$this->assertFalse($store->hasSweptWindow('01:00-05:00@2026-07-24'));
 	}
+
+	public function testMinAgeDaysDefaultsToOffAndReadsAStoredValue(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getValueInt')->willReturnOnConsecutiveCalls(0, 14, 91);
+		$store = new AutoUpdateSettingsStore($config);
+
+		$this->assertSame(0, $store->getMinAgeDays());
+		$this->assertSame(14, $store->getMinAgeDays());
+		$this->assertSame(0, $store->getMinAgeDays(), 'an out-of-range stored value counts as off');
+	}
+
+	public function testSetMinAgeDaysStoresZeroToNinety(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$config->expects($this->exactly(2))->method('setValueInt')
+			->with('versioniq', AutoUpdateSettingsStore::CONFIG_MIN_AGE_DAYS, $this->logicalOr(0, 90));
+		$store = new AutoUpdateSettingsStore($config);
+
+		$store->setMinAgeDays(0);
+		$store->setMinAgeDays(90);
+	}
+
+	public function testSetMinAgeDaysRejectsNinetyOneAndMinusOne(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$config->expects($this->never())->method('setValueInt');
+		$store = new AutoUpdateSettingsStore($config);
+
+		foreach ([91, -1] as $days) {
+			try {
+				$store->setMinAgeDays($days);
+				$this->fail('accepted ' . $days);
+			} catch (\InvalidArgumentException $e) {
+				$this->assertStringContainsString('0 to 90', $e->getMessage());
+			}
+		}
+	}
 }
