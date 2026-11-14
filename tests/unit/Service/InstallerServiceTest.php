@@ -175,6 +175,31 @@ final class InstallerServiceTest extends TestCase {
 	}
 
 	/**
+	 * safety-rollback-backup-and-preflight 2.2: an install that fits reports
+	 * the free space the pre-flight found, for the progress step.
+	 */
+	public function testTheOutcomeCarriesTheFreeSpaceThePreflightFound(): void {
+		$space = ['fits' => true, 'appsFree' => 9000000000, 'appsNeeded' => 157286400, 'tempFree' => 5000000000, 'tempNeeded' => 104857600];
+		$this->environmentCheck->method('hasSpaceFor')->willReturn($space);
+		$this->stubSuccessfulSignedInstall('2.0.0');
+
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
+
+		self::assertSame(Http::STATUS_OK, $result['statusCode']);
+		self::assertSame($space, $result['payload']['space']);
+	}
+
+	public function testAnOutcomeWithoutAMeasurementCarriesNoSpace(): void {
+		$this->environmentCheck->method('hasSpaceFor')->willReturn([]);
+		$this->stubSuccessfulSignedInstall('2.0.0');
+
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
+
+		self::assertSame(Http::STATUS_OK, $result['statusCode']);
+		self::assertArrayNotHasKey('space', $result['payload']);
+	}
+
+	/**
 	 * A non-writable folder is reported as such; the space check does not run on top of it.
 	 */
 	public function testThePermissionRefusalComesBeforeTheSpaceCheck(): void {

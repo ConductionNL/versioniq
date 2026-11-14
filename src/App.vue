@@ -1641,6 +1641,7 @@ type InstallApiPayload = {
 	recordedShaMatched?: boolean
 	orphanedMigrations?: string[] | null
 	integrityWarning?: string | null
+	space?: { appsFree: number | null, tempFree: number | null } | null
 	servedFromCache?: boolean
 }
 
@@ -2837,7 +2838,8 @@ watch(dryRunEnabled, () => {
 									</p>
 									<InstallResultNotices
 										:integrityWarning="lastInstallResult.integrityWarning ?? null"
-										:servedFromCache="lastInstallResult.servedFromCache === true" />
+										:servedFromCache="lastInstallResult.servedFromCache === true"
+										:space="lastInstallResult.space ?? null" />
 									<p v-if="installedAppNeedsEnabling" :class="$style.resultHint" data-testid="install-enable-hint">
 										{{ t('versioniq', 'This app is installed but not enabled.') }}
 										<NcButton

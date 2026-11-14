@@ -9,7 +9,7 @@
 ## 2. Disk space
 
 - [x] 2.1 Add `EnvironmentCheck::hasSpaceFor()` and category `preflight_space` in `FailureClassifier` (HTTP 409). Call it from both installers before download. Verify: `tests/unit/Service/Installer/EnvironmentCheckTest.php` with a free-space double; `InstallerServiceTest` asserts no download after a refusal. Built 14 Nov: checked once in `InstallerService` before release resolution, which both installers go through, with the 50 MB default size since the release is not resolved yet; unknown free space does not block.
-- [ ] 2.2 Show the free space on the progress step in `src/components/InstallResultNotices.vue`. Verify: `InstallResultNotices.spec.ts`.
+- [x] 2.2 Show the free space on the progress step in `src/components/InstallResultNotices.vue`. Verify: `InstallResultNotices.spec.ts`. Built 14 Nov: the outcome carries the pre-flight `space` (`InstallRun::$space`, `InstallerServiceTest`); "Environment checked: <free> in the apps folder, <free> in the temp folder; the app folder is writable." in `InstallResultNotices.vue`, kept by `normalizeInstallResult()` only when measured.
 
 ## 3. Backup and restore
 

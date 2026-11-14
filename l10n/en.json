@@ -280,6 +280,8 @@
             "Outside the update policy: %n release behind",
             "Outside the update policy: %n releases behind"
         ],
-        "Roll back to the last good version ({version})": "Roll back to the last good version ({version})"
+        "Roll back to the last good version ({version})": "Roll back to the last good version ({version})",
+        "unknown": "unknown",
+        "Environment checked: {apps} free in the apps folder, {temp} free in the temp folder; the app folder is writable.": "Environment checked: {apps} free in the apps folder, {temp} free in the temp folder; the app folder is writable."
     }
 }

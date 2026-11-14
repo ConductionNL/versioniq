@@ -301,7 +301,9 @@ OC.L10N.register(
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Aantal releases dat een app achter mag lopen (0 tot {max}, laat leeg om de controle uit te zetten)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "Een app die verder achterloopt, wordt gemarkeerd op het tabblad Apps. 1 betekent de nieuwste release of de release daarvoor.",
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"],
-        "Roll back to the last good version ({version})": "Terugrollen naar de laatste goede versie ({version})"
+        "Roll back to the last good version ({version})": "Terugrollen naar de laatste goede versie ({version})",
+        "unknown": "onbekend",
+        "Environment checked: {apps} free in the apps folder, {temp} free in the temp folder; the app folder is writable.": "Omgeving gecontroleerd: {apps} vrij in de apps-map, {temp} vrij in de tijdelijke map; de app-map is schrijfbaar."
     },
     "nplurals=2; plural=(n != 1);"
 )

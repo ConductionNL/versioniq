@@ -52,7 +52,7 @@ use OCP\IUserSession;
  *
  * @psalm-api
  * @psalm-type AppLists = array{enabled: array<string>, versions: array<string, string>, core: array<string>, info: array<string, array<string, mixed>>}
- * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string}}
+ * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string,previous?:array{version:string,recordedAt:string,sourceId:?string}}}
  */
 class InstallerService {
 	/** Server-side changelog size cap; see "Version listings carry release notes". */
@@ -190,7 +190,7 @@ class InstallerService {
 	 * last-known-good record for its card.
 	 *
 	 * @param AppLists $lists
-	 * @return array{isCore: bool, isShipped: bool, boundSourceId: ?string, manageable: bool, warning: ?string, installedVersion: ?string, state: 'enabled'|'disabled'|'notInstalled', lkg: ?array{version: string, recordedAt: string, sourceId: ?string}}
+	 * @return array{isCore: bool, isShipped: bool, boundSourceId: ?string, manageable: bool, warning: ?string, installedVersion: ?string, state: 'enabled'|'disabled'|'notInstalled', lkg: ?array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}}
 	 */
 	private function appStatus(string $appId, array $lists): array {
 		$binding = $this->sources->bindingStore->get($appId);
@@ -853,6 +853,9 @@ class InstallerService {
 	 */
 	private function spaceRefusal(InstallRun $run, ?string $existingPath): ?array {
 		$space = $this->installers->environmentCheck->hasSpaceFor($existingPath);
+		if (isset($space['fits'])) {
+			$run->space = $space;
+		}
 		// No verdict counts as room, like a folder whose free space is unknown.
 		if (($space['fits'] ?? true) !== false) {
 			return null;
@@ -1039,6 +1042,10 @@ class InstallerService {
 			// states when the download fell back to a locally cached artifact.
 			'servedFromCache' => (bool)($result['servedFromCache'] ?? false),
 		];
+		if ($run->space !== null) {
+			// The progress shows the free space the pre-flight found (D2).
+			$payload['space'] = $run->space;
+		}
 
 		return $payload + $this->optionalResultFields($result) + $run->debugSuffix((array)($result['debug'] ?? []));
 	}

@@ -272,7 +272,9 @@ OC.L10N.register(
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.",
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"],
-        "Roll back to the last good version ({version})": "Roll back to the last good version ({version})"
+        "Roll back to the last good version ({version})": "Roll back to the last good version ({version})",
+        "unknown": "unknown",
+        "Environment checked: {apps} free in the apps folder, {temp} free in the temp folder; the app folder is writable.": "Environment checked: {apps} free in the apps folder, {temp} free in the temp folder; the app folder is writable."
     },
     "nplurals=2; plural=(n != 1);"
 )
