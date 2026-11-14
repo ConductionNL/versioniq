@@ -27,6 +27,7 @@ import IntegrationsPanel from './components/IntegrationsPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
+import RollbackPanel from './components/RollbackPanel.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
 import SourceOverrideField from './components/SourceOverrideField.vue'
 import SourcesPanel from './components/SourcesPanel.vue'
@@ -2914,10 +2915,13 @@ watch(dryRunEnabled, () => {
 					aria-labelledby="advisories-tab"
 					:advisories="advisories"
 					:freshnessLabel="advisoryFreshnessLabel" />
-				<HistoryPanel v-if="currentTab === 'history'"
+				<div v-if="currentTab === 'history'"
 					id="history-panel"
 					role="tabpanel"
-					aria-labelledby="history-tab" />
+					aria-labelledby="history-tab">
+					<RollbackPanel />
+					<HistoryPanel />
+				</div>
 				<SourcesPanel v-show="currentTab === 'sources'"
 					id="sources-panel"
 					role="tabpanel"
