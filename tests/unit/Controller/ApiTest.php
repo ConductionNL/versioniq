@@ -577,6 +577,30 @@ final class ApiTest extends TestCase {
 		$this->assertSame('alice', $response->getData()['policy']['setBy']);
 	}
 
+	/**
+	 * @spec openspec/changes/autoupdate-security-first/tasks.md#task-1.1
+	 */
+	public function testSetPolicyStoresTheSecurityLevel(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'level' => 'security',
+				default => $default,
+			}
+		);
+
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->expects($this->once())
+			->method('set')
+			->with('openregister', $this->callback(static fn ($policy): bool => $policy->level === 'security'));
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'alice', $policyStore)->setPolicy('openregister');
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame('security', $response->getData()['policy']['level']);
+	}
+
 	public function testClearPolicyClearsTheStore(): void {
 		$request = $this->createMock(IRequest::class);
 

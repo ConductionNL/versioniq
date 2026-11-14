@@ -2,9 +2,9 @@
 
 ## 1. The security level
 
-- [ ] 1.1 Add `Policy::LEVEL_SECURITY` to `VALID_LEVELS`, and the option "Security fixes only" to `PolicySelector.vue`. Verify: `tests/unit/Service/Policy/PolicyTest.php` accepts `security`; `tests/unit/Controller/ApiTest.php` stores it via `PUT /api/app/{appId}/policy`; `PolicySelector.spec.ts` renders the option.
-- [ ] 1.2 Add `lib/Service/AutoUpdate/SecurityCandidate.php` per design D1 and D2. Verify: `tests/unit/Service/AutoUpdate/SecurityCandidateTest.php` covers each reason: `not_affected`, `no_fix`, `needs_major`, `not_in_source`, `stale`, and the happy path.
-- [ ] 1.3 In `AutoUpdateJob`, read the advisory snapshot once per run and install `security` apps through `SecurityCandidate`. Verify: `AutoUpdateJobTest` installs the recommended 2.3.5 for an affected app on `security`, installs nothing for an unaffected one, and still skips a pinned affected app without a source query.
+- [x] 1.1 Add `Policy::LEVEL_SECURITY` to `VALID_LEVELS`, and the option "Security fixes only" to `PolicySelector.vue`. Verify: `tests/unit/Service/Policy/PolicyTest.php` accepts `security`; `tests/unit/Controller/ApiTest.php` stores it via `PUT /api/app/{appId}/policy`; `PolicySelector.spec.ts` renders the option.
+- [x] 1.2 Add `lib/Service/AutoUpdate/SecurityCandidate.php` per design D1 and D2. Verify: `tests/unit/Service/AutoUpdate/SecurityCandidateTest.php` covers each reason: `not_affected`, `no_fix`, `needs_major`, `not_in_source`, `stale`, and the happy path.
+- [x] 1.3 In `AutoUpdateJob`, read the advisory snapshot once per run and install `security` apps through `SecurityCandidate`. Verify: `AutoUpdateJobTest` installs the recommended 2.3.5 for an affected app on `security`, installs nothing for an unaffected one, and still skips a pinned affected app without a source query. Built in `tests/unit/BackgroundJob/AutoUpdateJobSecurityTest.php`, which also covers a stale snapshot. The snapshot and its interval reach the job through `AutoUpdateStores`.
 
 ## 2. Patch policy
 
@@ -17,11 +17,11 @@
 
 - [ ] 3.1 Order the run in two passes per D4, with `next_window`, `scheduled` and `manual` handling, and `manual` regular kinds skipped. Verify: `AutoUpdateJobTest` covers an affected `minor` app installed before an unaffected one, a `manual` critical left alone, and a `manual` major not installed for an `all` app.
 - [ ] 3.2 Show, per `security` app with an affected version, the reason nothing installed, and the stale-snapshot line, in `AutoUpdateOverview.vue`. Verify: `AutoUpdateOverview.spec.ts` renders `needs_major` and `stale`.
-- [ ] 3.3 Assert that `AdvisoryNotifier` and `AdvisoryRefreshJob` still take no installer or policy dependency. Verify: a reflection test in `tests/unit/BackgroundJob/AdvisoryRefreshJobTest.php` on both constructors.
+- [x] 3.3 Assert that `AdvisoryNotifier` and `AdvisoryRefreshJob` still take no installer or policy dependency. Verify: a reflection test in `tests/unit/BackgroundJob/AdvisoryRefreshJobTest.php` on both constructors. Also covers `AdvisoryRefreshSteps`, the job's collaborator bundle.
 
 ## 4. Page and strings
 
-- [ ] 4.1 Add the new strings to `l10n/en.json` and `l10n/nl.json`. Verify: `npm run check:l10n-js`.
+- [ ] 4.1 Add the new strings to `l10n/en.json` and `l10n/nl.json`. Verify: `npm run check:l10n-js`. "Security fixes only" is in; the strings of the patch policy and the overview reasons come with those tasks.
 - [ ] 4.2 Add `tests/e2e/patch-policy.spec.ts`: an admin saves a patch policy with a critical deadline of 3 days, reloads, and sees the sentence and their name; then sets one app to "Security fixes only". Verify: the spec passes in the Playwright job.
 - [ ] 4.3 Extend `tests/e2e/jobs.spec.ts` with a fixture advisory (`/control/repo` advisories) that affects `fixtureapp` 1.0.0 and is patched in 1.0.1: after `runJob("AdvisoryRefreshJob")` the version is unchanged; with no policy, `runJob("AutoUpdateJob")` still changes nothing; on level `security`, it installs 1.0.1; without the advisory, level `security` installs nothing; with patch updates set to by hand and level `patch`, nothing installs; with a critical advisory, `next_window` and minors not due today, level `minor` installs the fix. Verify: the spec passes in the Playwright job.
 

@@ -308,7 +308,8 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Buiten het updatebeleid: %n release achter",
             "Buiten het updatebeleid: %n releases achter"
-        ]
+        ],
+        "Security fixes only": "Alleen beveiligingsupdates"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

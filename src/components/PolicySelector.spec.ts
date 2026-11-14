@@ -36,6 +36,18 @@ describe('PolicySelector', () => {
 		expect(wrapper.find('[data-testid="policy-disabled-hint"]').exists()).toBe(false)
 	})
 
+	it('offers and shows the security-fixes-only level', () => {
+		const wrapper = shallowMount(PolicySelector, {
+			props: { appId: 'openregister', level: 'security', autoUpdateEnabled: true },
+		})
+
+		// The NcSelect stub declares no props, so the options arrive as an attribute.
+		const options = wrapper.findComponent({ name: 'NcSelect' }).vm.$attrs.options as Array<{ id: string, label: string }>
+		expect(options.map((option) => option.id)).toEqual(['none', 'patch', 'minor', 'all', 'security'])
+		expect(options.at(-1)?.label).toBe('Security fixes only')
+		expect(wrapper.find('[data-testid="policy-active-badge"]').text()).toContain('Security fixes only')
+	})
+
 	it('shows the automation-disabled hint when a policy is active but the kill switch is off', () => {
 		const wrapper = shallowMount(PolicySelector, {
 			props: { appId: 'openregister', level: 'minor', autoUpdateEnabled: false },

@@ -18,6 +18,7 @@ use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\AutoUpdate\SecurityCandidate;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallTarget;
@@ -99,13 +100,16 @@ class AutoUpdateJob extends TimedJob {
 		}
 		$this->stores->settingsStore->markWindowSwept($openingKey);
 
+		// The advisory snapshot is read once per run (autoupdate-security-first D2).
+		$advisories = $this->advisorySnapshot();
+
 		foreach ($this->stores->policyStore->all() as $appId => $policy) {
 			if ($policy->level === Policy::LEVEL_NONE) {
 				continue;
 			}
 
 			try {
-				$this->processApp($appId, $policy->level);
+				$this->processApp($appId, $policy->level, $advisories);
 			} catch (\Throwable $error) {
 				// Per-app isolation — see "the job MUST proceed to the next app
 				// after any failure".
@@ -117,7 +121,10 @@ class AutoUpdateJob extends TimedJob {
 		}
 	}
 
-	private function processApp(string $appId, string $level): void {
+	/**
+	 * @param array{rows: array<string, mixed>, fresh: bool} $advisories The run's advisory snapshot.
+	 */
+	private function processApp(string $appId, string $level, array $advisories): void {
 		if ($this->isSkipped($appId)) {
 			return;
 		}
@@ -128,13 +135,59 @@ class AutoUpdateJob extends TimedJob {
 			return;
 		}
 
-		$candidate = $this->install->candidateSelector->select($installedVersion, $available, $level);
+		$candidate = $this->candidateFor($appId, $level, $installedVersion, $available, $advisories);
 		if ($candidate === null || $this->stores->attemptLedger->hasAttempted($appId, $candidate)) {
 			// Never-retry — see "Failed attempt is not retried".
 			return;
 		}
 
 		$this->attemptInstall(new InstallTarget($appId, $candidate, null), $installedVersion);
+	}
+
+	/**
+	 * The version to install: for the `security` level the fix the advisory
+	 * check recommends (see SecurityCandidate), for any other level the
+	 * highest version within it.
+	 *
+	 * @param list<string>                                    $available  The versions the source lists.
+	 * @param array{rows: array<string, mixed>, fresh: bool} $advisories The run's advisory snapshot.
+	 *
+	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md
+	 */
+	private function candidateFor(string $appId, string $level, string $installedVersion, array $available, array $advisories): ?string {
+		if ($level !== Policy::LEVEL_SECURITY) {
+			return $this->install->candidateSelector->select($installedVersion, $available, $level);
+		}
+
+		$row = $advisories['rows'][$appId] ?? null;
+		$decision = SecurityCandidate::decide($installedVersion, is_array($row) ? $row : null, $available, $advisories['fresh']);
+		if ($decision['version'] === null && $decision['reason'] !== SecurityCandidate::REASON_NOT_AFFECTED) {
+			$this->logger->info('AutoUpdateJob: no security fix installed', ['appId' => $appId, 'reason' => $decision['reason']]);
+		}
+
+		return $decision['version'];
+	}
+
+	/**
+	 * The last advisory snapshot, and whether it is fresh enough to decide
+	 * security installs (autoupdate-security-first D2).
+	 *
+	 * @return array{rows: array<string, mixed>, fresh: bool}
+	 *
+	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md
+	 */
+	private function advisorySnapshot(): array {
+		$snapshot = $this->stores->advisoryResults->read();
+		$checkedAt = $snapshot['checkedAt'] ?? null;
+
+		return [
+			'rows' => is_array($snapshot['advisories'] ?? null) ? $snapshot['advisories'] : [],
+			'fresh' => SecurityCandidate::isFresh(
+				is_int($checkedAt) ? $checkedAt : null,
+				$this->time->getTime(),
+				$this->stores->advisorySettings->getIntervalSeconds()
+			),
+		];
 	}
 
 	/**
