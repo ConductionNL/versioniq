@@ -9,7 +9,7 @@
 ## 2. Patch policy
 
 - [x] 2.1 Add `PatchPolicy` and `PatchPolicyStore` per D3, with the no-policy reading equal to today's behaviour. Verify: `tests/unit/Service/Policy/PatchPolicyStoreTest.php` round-trips the example and reads malformed JSON as no policy.
-- [ ] 2.2 Add `GET` and `PUT /api/patch-policy`, admin-only, `PUT` password-confirmed, validating everything before writing, and writing a `patch_policy` audit entry on change. Verify: `ApiTest` asserts 403 for a non-admin, 400 for `deadlineDays` 0 and 366 and an unknown handling, nothing written on 400, and one audit entry on 200.
+- [x] 2.2 Add `GET` and `PUT /api/patch-policy`, admin-only, `PUT` password-confirmed, validating everything before writing, and writing a `patch_policy` audit entry on change. Verify: `ApiTest` asserts 403 for a non-admin, 400 for `deadlineDays` 0 and 366 and an unknown handling, nothing written on 400, and one audit entry on 200. Built in `PatchPolicyController` (ApiController is already past its size), tested in `tests/unit/Controller/PatchPolicyControllerTest.php`; `openapi.json` regenerated.
 - [x] 2.3 Render the statement lines with `IL10N` per D5. Verify: a unit test asserts the sentence for a critical `next_window` row with 3 days and for a `manual` major. Built as `PatchPolicyStatement`, tested in `tests/unit/Service/Policy/PatchPolicyStatementTest.php`.
 - [ ] 2.4 Add `src/components/PatchPolicyPanel.vue` on the Settings tab: form, statement, last change, text download. Verify: `src/components/PatchPolicyPanel.spec.ts` covers the form payload and the downloaded text equal to the shown lines.
 
