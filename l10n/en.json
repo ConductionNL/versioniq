@@ -279,6 +279,8 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Outside the update policy: %n release behind",
             "Outside the update policy: %n releases behind"
-        ]
+        ],
+        "Tell an app's users what changed after Versioniq updates it": "Tell an app's users what changed after Versioniq updates it",
+        "They get the same notice as after an update from the Apps page. A dry run never sends it.": "They get the same notice as after an update from the Apps page. A dry run never sends it."
     }
 }

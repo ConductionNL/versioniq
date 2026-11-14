@@ -17,6 +17,7 @@ use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\BackgroundJob\PruneAuditJob;
 use OCA\Versioniq\Service\Advisory\NextcloudAdvisoryFeed;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
+use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Source\AppStoreSource;
 use OCA\Versioniq\Service\Source\ForgeRegistry;
 use OCP\IAppConfig;
@@ -44,6 +45,12 @@ class InstanceSettings {
 	public const KEY_ADVISORY_FEED = 'advisory.feed_base';
 	/** How many release lines an app may fall behind; absent means off (inventory-pending-updates D3). */
 	public const KEY_MAX_LINES_BEHIND = 'update.max_lines_behind';
+
+	/**
+	 * Whether an update through Versioniq tells the app's users, as the
+	 * platform's own updates do (releases-notes-reach D1). On by default.
+	 */
+	public const KEY_NOTIFY_USERS_ON_UPDATE = InstallerService::KEY_NOTIFY_USERS_ON_UPDATE;
 
 	public const MAX_LINES_BEHIND = 10;
 
@@ -73,7 +80,7 @@ class InstanceSettings {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int}
+	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, notifyUsersOnUpdate: bool}
 	 */
 	public function read(): array {
 		$retention = $this->config->getValueInt(Application::APP_ID, PruneAuditJob::CONFIG_KEY_RETENTION_DAYS, PruneAuditJob::DEFAULT_RETENTION_DAYS);
@@ -95,6 +102,7 @@ class InstanceSettings {
 			'advisoryFeedDefault' => NextcloudAdvisoryFeed::DEFAULT_FEED_URL,
 			'maxLinesBehind' => $this->maxLinesBehind(),
 			'maxLinesBehindMax' => self::MAX_LINES_BEHIND,
+			'notifyUsersOnUpdate' => $this->config->getValueBool(Application::APP_ID, self::KEY_NOTIFY_USERS_ON_UPDATE, true),
 		];
 	}
 
@@ -114,8 +122,12 @@ class InstanceSettings {
 		$ints = $this->validatedInts($fields);
 		$lagLimit = $this->validatedLagLimit($fields);
 		$urls = $this->validatedUrls($fields);
+		$notify = $this->validatedSwitch($fields, 'notifyUsersOnUpdate', 'Telling users about updates');
 
 		$this->storeInts($ints);
+		if ($notify !== null) {
+			$this->config->setValueBool(Application::APP_ID, self::KEY_NOTIFY_USERS_ON_UPDATE, $notify);
+		}
 		if ($lagLimit !== null) {
 			$this->storeOrClear(self::KEY_MAX_LINES_BEHIND, $lagLimit);
 		}
@@ -134,7 +146,7 @@ class InstanceSettings {
 	 */
 	private static function appliedFields(array $fields): array {
 		return array_values(array_filter(
-			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS)],
+			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', 'notifyUsersOnUpdate', ...array_keys(self::URL_FIELDS)],
 			static fn (string $field): bool => isset($fields[$field]),
 		));
 	}
@@ -170,6 +182,27 @@ class InstanceSettings {
 		}
 
 		return $ints;
+	}
+
+	/**
+	 * An on/off setting among $fields, or null when it is not given.
+	 *
+	 * @param array<string, string> $fields
+	 * @throws InvalidArgumentException when the value is not on or off
+	 *
+	 * @spec openspec/changes/releases-notes-reach/tasks.md#task-1.2
+	 */
+	private function validatedSwitch(array $fields, string $field, string $label): ?bool {
+		if (!isset($fields[$field])) {
+			return null;
+		}
+
+		$value = filter_var(trim($fields[$field]), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+		if ($value === null) {
+			throw new InvalidArgumentException($label . ' must be on or off.');
+		}
+
+		return $value;
 	}
 
 	/**

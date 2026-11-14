@@ -2,8 +2,8 @@
 
 ## 1. Users hear about updates
 
-- [ ] 1.1 Dispatch `AppUpdateEvent` from `InstallerService::installAppVersion()` after the pin is settled, for real version changes only, behind `notify_users_on_update`. Verify: `tests/unit/Service/InstallerServiceTest.php` asserts one dispatch for an upgrade, none for a dry run, none for a reinstall of the same version, none with the switch off; `tests/unit/Listener/AppUpdatedListenerTest.php` asserts no drift after a re-pin install.
-- [ ] 1.2 Add the switch to `InstanceSettings` and `InstanceSettingsPanel.vue`. Verify: `InstanceSettingsPanel.spec.ts`.
+- [x] 1.1 Dispatch `AppUpdateEvent` from `InstallerService::installAppVersion()` after the pin is settled, for real version changes only, behind `notify_users_on_update`. Verify: `tests/unit/Service/InstallerServiceTest.php` asserts one dispatch for an upgrade, none for a dry run, none for a reinstall of the same version, none with the switch off; `tests/unit/Listener/AppUpdatedListenerTest.php` asserts no drift after a re-pin install. Landed in #486 (`InstallerService::dispatchUpdateEvent()`); the cases are in `tests/unit/Service/InstallerServiceUpdateEventTest.php`, including the dispatch after a re-pin.
+- [x] 1.2 Add the switch to `InstanceSettings` and `InstanceSettingsPanel.vue`. Verify: `InstanceSettingsPanel.spec.ts`. `notifyUsersOnUpdate` on the Settings tab, on by default, sharing the installer's `notify_users_on_update` key; `InstanceSettingsTest` and the settings golden cover the store and the audit line.
 - [ ] 1.3 On a test instance, update a fixture app through Versioniq and confirm a user of that app gets the platform's app updated notification. Verify: `tests/e2e/whats-new.spec.ts` reads the user's notifications through the notifications OCS API.
 
 ## 2. Notes in the admin's language
