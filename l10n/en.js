@@ -271,7 +271,26 @@ OC.L10N.register(
         "Outside the update policy": "Outside the update policy",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"]
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"],
+        "Checking access to the source": "Checking access to the source",
+        "Checking the certificate": "Checking the certificate",
+        "Checking the checksum": "Checking the checksum",
+        "Checking the signature": "Checking the signature",
+        "Comparing migrations": "Comparing migrations",
+        "Downloaded": "Downloaded",
+        "Downloading": "Downloading",
+        "Extracting": "Extracting",
+        "Finishing the install": "Finishing the install",
+        "Maintenance mode is on while the app installs. Keep this page open until the install finishes.": "Maintenance mode is on while the app installs. Keep this page open until the install finishes.",
+        "Reading the release": "Reading the release",
+        "Resolving the release": "Resolving the release",
+        "Running migrations": "Running migrations",
+        "Running repair steps": "Running repair steps",
+        "Swapping the files": "Swapping the files",
+        "Using the cached download": "Using the cached download",
+        "Validating info.xml": "Validating info.xml",
+        "failed": "failed",
+        "{seconds} s": "{seconds} s"
     },
     "nplurals=2; plural=(n != 1);"
 )

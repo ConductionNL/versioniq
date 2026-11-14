@@ -279,6 +279,25 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Outside the update policy: %n release behind",
             "Outside the update policy: %n releases behind"
-        ]
+        ],
+        "Checking access to the source": "Checking access to the source",
+        "Checking the certificate": "Checking the certificate",
+        "Checking the checksum": "Checking the checksum",
+        "Checking the signature": "Checking the signature",
+        "Comparing migrations": "Comparing migrations",
+        "Downloaded": "Downloaded",
+        "Downloading": "Downloading",
+        "Extracting": "Extracting",
+        "Finishing the install": "Finishing the install",
+        "Maintenance mode is on while the app installs. Keep this page open until the install finishes.": "Maintenance mode is on while the app installs. Keep this page open until the install finishes.",
+        "Reading the release": "Reading the release",
+        "Resolving the release": "Resolving the release",
+        "Running migrations": "Running migrations",
+        "Running repair steps": "Running repair steps",
+        "Swapping the files": "Swapping the files",
+        "Using the cached download": "Using the cached download",
+        "Validating info.xml": "Validating info.xml",
+        "failed": "failed",
+        "{seconds} s": "{seconds} s"
     }
 }

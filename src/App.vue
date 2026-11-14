@@ -21,6 +21,7 @@ import CachePanel from './components/CachePanel.vue'
 import ChangelogRangePanel from './components/ChangelogRangePanel.vue'
 import DiscoverPanel from './components/DiscoverPanel.vue'
 import HistoryPanel from './components/HistoryPanel.vue'
+import InstallProgress from './components/InstallProgress.vue'
 import InstallResultNotices from './components/InstallResultNotices.vue'
 import InstanceSettingsPanel from './components/InstanceSettingsPanel.vue'
 import IntegrationsPanel from './components/IntegrationsPanel.vue'
@@ -91,6 +92,8 @@ const versionFilter = ref('')
 const hasCheckedVersions = ref(false)
 const isCheckingVersions = ref(false)
 const isInstallingVersion = ref(false)
+// install-live-progress: the token the running install reports its stages under.
+const installProgressToken = ref('')
 const installedVersion = ref('')
 const availableSource = ref('')
 // One-off source for the selected app's version list and next install; the
@@ -1674,6 +1677,9 @@ function installQuery (request: InstallRequest): Record<string, string> {
 		dryRun: (request.forceDryRun || dryRunRequested.value) ? '1' : '0',
 		targetVersion: request.version,
 	}, sourceOverride.value)
+	if (installProgressToken.value !== '' && !request.forceDryRun) {
+		query.progressToken = installProgressToken.value
+	}
 	return addInstallFlags(query, request)
 }
 
@@ -1859,12 +1865,24 @@ function selectedInstallTarget (): InstallTarget {
 }
 
 /**
+ * A random token for one install's progress record (install-live-progress).
+ *
+ * @spec openspec/changes/install-live-progress/specs/version-management/spec.md
+ */
+function newProgressToken (): string {
+	const bytes = new Uint8Array(16)
+	globalThis.crypto.getRandomValues(bytes)
+	return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+/**
  * Marks an install as running and clears the previous result.
  *
  * @param target The install about to run.
  */
 function startInstall (target: InstallTarget): void {
 	isInstallingVersion.value = true
+	installProgressToken.value = newProgressToken()
 	errorMessage.value = ''
 	hasInstallResult.value = false
 	lastInstallResult.value = null
@@ -2056,6 +2074,7 @@ async function runInstall (target: InstallTarget): Promise<void> {
 		showInstallError(error, target)
 	} finally {
 		isInstallingVersion.value = false
+		installProgressToken.value = ''
 	}
 }
 
@@ -2818,6 +2837,7 @@ watch(dryRunEnabled, () => {
 								</div>
 							</div>
 							<div v-if="hasSplitLayout && appDetailTab === 'versions'" :class="$style.rightColumn">
+								<InstallProgress v-if="isInstallingVersion && installProgressToken" :token="installProgressToken" />
 								<div v-if="hasInstallResult && lastInstallResult" :class="$style.resultPanel">
 									<p :class="$style.versionSummary">
 										Install result

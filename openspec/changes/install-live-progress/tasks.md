@@ -13,10 +13,12 @@
 
 ## 3. Page and CLI
 
-- [ ] 3.1 Add `InstallProgress.vue` with the checklist, elapsed time and the stay-on-page line, polled once a second. Verify: `InstallProgress.spec.ts` with a running, a finished and a failed record.
+- [x] 3.1 Add `InstallProgress.vue` with the checklist, elapsed time and the stay-on-page line, polled once a second. Verify: `InstallProgress.spec.ts` with a running, a finished and a failed record.
+  - `src/components/InstallProgress.vue` polls `GET /api/install-progress/{token}` once a second and shows each stage ticked, the running one with its elapsed seconds (and the download percentage), the failed one marked, and the maintenance-mode line. `App.vue` makes a random token per install, sends it as `progressToken` (not on the downgrade preview's forced dry run) and shows the checklist above the result panel while the install runs. `InstallProgress.spec.ts` (4): running, finished, failed, polling stops on unmount. The App request snapshots and the performInstall golden gain only the token; those specs pin it and stub the checklist.
 - [x] 3.2 Print stages from `occ versioniq:install`, none with `--json`. Verify: `tests/unit/Command/InstallVersionTest.php`.
   - `InstallProgress::listen()` is told each new stage, with or without a token; `InstallVersion` prints each as it starts and removes its listener afterwards, and `--json` registers none. A failing listener is swallowed. Tests: two `InstallVersionTest` cases and `InstallProgressTest::testAFailingListenerNeverFailsTheInstall`.
-- [ ] 3.3 Add strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
+- [x] 3.3 Add strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
+  - en and nl strings for every new label, built into `l10n/*.js`; `npm run check:l10n-js` passes.
 - [ ] 3.4 Extend `tests/e2e/install-effects.spec.ts`: during a fixture install the page shows at least the download and extraction stages before the result.
 
 ## 4. Close
