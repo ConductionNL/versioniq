@@ -263,12 +263,23 @@ final class NcscDocument {
 	 */
 	private static function pick(array $items, array $where): ?string {
 		foreach ($items as $item) {
-			if (is_array($item) && ($item[$where['key']] ?? null) === $where['is'] && is_string($item[$where['take']] ?? null)) {
+			if (self::isPicked(item: $item, where: $where)) {
 				return $item[$where['take']];
 			}
 		}
 
 		return null;
+	}
+
+	/**
+	 * Whether an item is the one {@see pick()} looks for.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/specs/security-advisory-correlation/spec.md#requirement-ncsc-nl-advisories-are-matched-to-the-installed-server-and-apps
+	 * @param array{key: string, is: string, take: string} $where Which item, and which of its fields.
+	 * @psalm-assert-if-true array<array-key, mixed> $item
+	 */
+	private static function isPicked(mixed $item, array $where): bool {
+		return is_array($item) && ($item[$where['key']] ?? null) === $where['is'] && is_string($item[$where['take']] ?? null);
 	}
 	/**
 	 * A string field, or '' when it is not one.

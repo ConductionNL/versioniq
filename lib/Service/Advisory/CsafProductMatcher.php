@@ -50,25 +50,11 @@ class CsafProductMatcher {
 		}
 
 		$found = [];
-		foreach ($this->branches(node: $document['product_tree'] ?? null) as $vendor) {
-			if (($vendor['category'] ?? '') !== 'vendor' || !in_array($this->normalise((string)($vendor['name'] ?? '')), self::VENDORS, true)) {
-				continue;
-			}
-			foreach ($this->productNames(node: $vendor) as $product) {
-				$target = $this->packages->resolve($this->withoutVendor(name: (string)($product['name'] ?? '')));
-				if ($target === null) {
-					continue;
-				}
-				foreach ($this->leaves(branch: $product) as [$range, $productId]) {
-					if (!isset($affected[$productId])) {
-						continue;
-					}
-					$key = $target . "\n" . ($range ?? '');
-					$found[$key] ??= ['target' => $target, 'range' => $range, 'productIds' => []];
-					if (!in_array($productId, $found[$key]['productIds'], true)) {
-						$found[$key]['productIds'][] = $productId;
-					}
-				}
+		foreach ($this->nextcloudProducts(document: $document) as $product) {
+			foreach ($this->hits(product: $product, affected: $affected) as [$target, $range, $productId]) {
+				$key = $target . "\n" . ($range ?? '');
+				$found[$key] ??= ['target' => $target, 'range' => $range, 'productIds' => []];
+				$found[$key]['productIds'] = array_values(array_unique([...$found[$key]['productIds'], $productId]));
 			}
 		}
 
@@ -76,25 +62,85 @@ class CsafProductMatcher {
 	}
 
 	/**
+	 * The `product_name` branches under every Nextcloud vendor branch.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
+	 * @param array<array-key, mixed> $document The CSAF document.
+	 * @return list<array<array-key, mixed>>
+	 */
+	private function nextcloudProducts(array $document): array {
+		$products = [];
+		foreach ($this->branches(node: $document['product_tree'] ?? null) as $vendor) {
+			if ($this->isNextcloudVendor(branch: $vendor)) {
+				array_push($products, ...$this->productNames(node: $vendor));
+			}
+		}
+
+		return $products;
+	}
+
+	/**
+	 * Whether a branch is the vendor Nextcloud (or Nextcloud GmbH).
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
+	 * @param array<array-key, mixed> $branch The branch.
+	 */
+	private function isNextcloudVendor(array $branch): bool {
+		return ($branch['category'] ?? '') === 'vendor' && in_array($this->normalise((string)($branch['name'] ?? '')), self::VENDORS, true);
+	}
+
+	/**
+	 * The known-affected products of one product branch, as target, range and
+	 * product id; none when the name resolves to nothing or to a client.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
+	 * @param array<array-key, mixed> $product The product_name branch.
+	 * @param array<string, true> $affected The known-affected product ids.
+	 * @return list<array{0: string, 1: ?string, 2: string}>
+	 */
+	private function hits(array $product, array $affected): array {
+		$target = $this->packages->resolve($this->withoutVendor(name: (string)($product['name'] ?? '')));
+		if ($target === null) {
+			return [];
+		}
+
+		$hits = [];
+		foreach ($this->leaves(branch: $product) as [$range, $productId]) {
+			if (isset($affected[$productId])) {
+				$hits[] = [$target, $range, $productId];
+			}
+		}
+
+		return $hits;
+	}
+
+	/**
 	 * The product ids any vulnerability lists as known affected.
 	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
 	 * @param array<array-key, mixed> $document The CSAF document.
-	 *
 	 * @return array<string, true> The ids.
 	 */
 	private function knownAffected(array $document): array {
 		$ids = [];
 		foreach ((array)($document['vulnerabilities'] ?? []) as $vulnerability) {
-			if (!is_array($vulnerability)) {
-				continue;
-			}
-			foreach ((array)($vulnerability['product_status']['known_affected'] ?? []) as $id) {
-				if (is_string($id) && $id !== '') {
-					$ids[$id] = true;
-				}
+			foreach (self::affectedIdsOf(vulnerability: $vulnerability) as $id) {
+				$ids[$id] = true;
 			}
 		}
 		return $ids;
+	}
+
+	/**
+	 * One vulnerability's known-affected product ids.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
+	 * @return list<string>
+	 */
+	private static function affectedIdsOf(mixed $vulnerability): array {
+		$ids = is_array($vulnerability) ? (array)($vulnerability['product_status']['known_affected'] ?? []) : [];
+
+		return array_values(array_filter($ids, static fn (mixed $id): bool => is_string($id) && $id !== ''));
 	}
 
 	/**
@@ -144,25 +190,48 @@ class CsafProductMatcher {
 	 * @return list<array{0: ?string, 1: string}> Pairs of range and product id.
 	 */
 	private function leaves(array $branch): array {
-		$leaves = [];
 		$own = (string)($branch['product']['product_id'] ?? '');
-		if ($own !== '') {
-			$leaves[] = [null, $own];
-		}
+		$leaves = $own !== '' ? [[null, $own]] : [];
 		foreach ($this->branches(node: $branch) as $child) {
-			$id = (string)($child['product']['product_id'] ?? '');
-			if ($id === '') {
-				continue;
+			$leaf = self::leaf(child: $child);
+			if ($leaf !== null) {
+				$leaves[] = $leaf;
 			}
-			$name = trim((string)($child['name'] ?? ''));
-			$range = match ($child['category'] ?? '') {
-				'product_version_range' => $name !== '' ? $name : null,
-				'product_version' => $name !== '' ? 'vers:generic/=' . $name : null,
-				default => null,
-			};
-			$leaves[] = [$range, $id];
 		}
 		return $leaves;
+	}
+
+	/**
+	 * A child branch's range and product id, or null when it names no product.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
+	 * @param array<array-key, mixed> $child The branch.
+	 * @return array{0: ?string, 1: string}|null
+	 */
+	private static function leaf(array $child): ?array {
+		$id = (string)($child['product']['product_id'] ?? '');
+
+		return $id === '' ? null : [self::rangeOf(child: $child), $id];
+	}
+
+	/**
+	 * The range a branch covers: its `vers:` name for a version range, an
+	 * exact version as `vers:generic/=<version>`, otherwise unstated (null).
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
+	 * @param array<array-key, mixed> $child The branch.
+	 */
+	private static function rangeOf(array $child): ?string {
+		$name = trim((string)($child['name'] ?? ''));
+		if ($name === '') {
+			return null;
+		}
+
+		return match ($child['category'] ?? '') {
+			'product_version_range' => $name,
+			'product_version' => 'vers:generic/=' . $name,
+			default => null,
+		};
 	}
 
 	/**

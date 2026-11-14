@@ -47,38 +47,68 @@ final class VersRange {
 			return null;
 		}
 
+		return self::decide(constraints: $constraints, installed: $installed);
+	}
+
+	/**
+	 * The VERS answer for parsed constraints: `*` holds every version, `=` and
+	 * `!=` decide first, and the ordering constraints form intervals.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
+	 * @param list<array{0: string, 1: string}> $constraints The constraints.
+	 */
+	private static function decide(array $constraints, string $installed): bool {
 		if ($constraints === []) {
 			// `*`: every version.
 			return true;
 		}
 
-		foreach ($constraints as [$comparator, $bound]) {
-			if ($comparator === '=' && version_compare($installed, $bound, '==') === true) {
-				return true;
-			}
-			if ($comparator === '!=' && version_compare($installed, $bound, '==') === true) {
-				return false;
-			}
+		$equality = self::equality(constraints: $constraints, installed: $installed);
+		if ($equality !== null) {
+			return $equality;
 		}
 
-		$ordered = array_values(array_filter(
-			$constraints,
-			static fn (array $c): bool => $c[0] !== '=' && $c[0] !== '!='
-		));
+		$ordered = self::ordered(constraints: $constraints);
 		if ($ordered === []) {
-			// Only `=` and `!=`: inside when not excluded and some `!=` stands
-			// for "everything but", outside when only `=` clauses missed.
-			foreach ($constraints as [$comparator]) {
-				if ($comparator === '!=') {
-					return true;
-				}
-			}
-			return false;
+			// Only `=` and `!=`: inside when some `!=` stands for "everything
+			// but", outside when only `=` clauses missed.
+			return in_array('!=', array_column($constraints, 0), true);
 		}
-
-		usort($ordered, static fn (array $x, array $y): int => version_compare($x[1], $y[1]));
 
 		return self::inIntervals(constraints: $ordered, version: $installed);
+	}
+
+	/**
+	 * True when an `=` names the version, false when a `!=` does, else null.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
+	 * @param list<array{0: string, 1: string}> $constraints The constraints.
+	 */
+	private static function equality(array $constraints, string $installed): ?bool {
+		foreach ($constraints as [$comparator, $bound]) {
+			if (in_array($comparator, ['=', '!='], true) && version_compare($installed, $bound, '==')) {
+				return $comparator === '=';
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * The `<`, `<=`, `>`, `>=` constraints, sorted by version.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
+	 * @param list<array{0: string, 1: string}> $constraints The constraints.
+	 * @return list<array{0: string, 1: string}>
+	 */
+	private static function ordered(array $constraints): array {
+		$ordered = array_values(array_filter(
+			$constraints,
+			static fn (array $c): bool => !in_array($c[0], ['=', '!='], true)
+		));
+		usort($ordered, static fn (array $x, array $y): int => version_compare($x[1], $y[1]));
+
+		return $ordered;
 	}
 
 	/**
@@ -88,6 +118,8 @@ final class VersRange {
 	 * @param string $version The installed version.
 	 *
 	 * @return bool Whether the version falls in one of the intervals.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
 	 */
 	private static function inIntervals(array $constraints, string $version): bool {
 		$count = count($constraints);
@@ -96,26 +128,79 @@ final class VersRange {
 		}
 
 		for ($i = 0; $i < $count - 1; $i++) {
-			$current = $constraints[$i];
-			$next = $constraints[$i + 1];
-			$currentLess = in_array($current[0], ['<', '<='], true);
-			$nextGreater = in_array($next[0], ['>', '>='], true);
-
-			if ($i === 0 && $currentLess && self::satisfies(version: $version, constraint: $current)) {
-				return true;
-			}
-			if ($i === $count - 2 && $nextGreater && self::satisfies(version: $version, constraint: $next)) {
-				return true;
-			}
-			if ($currentLess === false && $nextGreater === false
-				&& self::satisfies(version: $version, constraint: $current)
-				&& self::satisfies(version: $version, constraint: $next)
-			) {
+			$pair = ['current' => $constraints[$i], 'next' => $constraints[$i + 1], 'first' => $i === 0, 'last' => $i === $count - 2];
+			if (self::pairHolds(pair: $pair, version: $version)) {
 				return true;
 			}
 		}
 
 		return false;
+	}
+
+	/**
+	 * Whether one adjacent pair holds the version: an open lower end before
+	 * the first pair, an open upper end after the last, or the closed
+	 * interval between a lower and an upper bound.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
+	 * @param array{current: array{0: string, 1: string}, next: array{0: string, 1: string}, first: bool, last: bool} $pair The pair.
+	 */
+	private static function pairHolds(array $pair, string $version): bool {
+		return self::openBelow(pair: $pair, version: $version)
+			|| self::openAbove(pair: $pair, version: $version)
+			|| self::between(pair: $pair, version: $version);
+	}
+
+	/**
+	 * A leading `<` or `<=` the version satisfies.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
+	 * @param array{current: array{0: string, 1: string}, next: array{0: string, 1: string}, first: bool, last: bool} $pair The pair.
+	 */
+	private static function openBelow(array $pair, string $version): bool {
+		return $pair['first'] && self::isUpper(constraint: $pair['current']) && self::satisfies(version: $version, constraint: $pair['current']);
+	}
+
+	/**
+	 * A trailing `>` or `>=` the version satisfies.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
+	 * @param array{current: array{0: string, 1: string}, next: array{0: string, 1: string}, first: bool, last: bool} $pair The pair.
+	 */
+	private static function openAbove(array $pair, string $version): bool {
+		return $pair['last'] && self::isLower(constraint: $pair['next']) && self::satisfies(version: $version, constraint: $pair['next']);
+	}
+
+	/**
+	 * A lower bound followed by an upper bound, both satisfied.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
+	 * @param array{current: array{0: string, 1: string}, next: array{0: string, 1: string}, first: bool, last: bool} $pair The pair.
+	 */
+	private static function between(array $pair, string $version): bool {
+		$bounds = !self::isUpper(constraint: $pair['current']) && !self::isLower(constraint: $pair['next']);
+
+		return $bounds && self::satisfies(version: $version, constraint: $pair['current']) && self::satisfies(version: $version, constraint: $pair['next']);
+	}
+
+	/**
+	 * Whether a constraint is `<` or `<=`.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
+	 * @param array{0: string, 1: string} $constraint The constraint.
+	 */
+	private static function isUpper(array $constraint): bool {
+		return in_array($constraint[0], ['<', '<='], true);
+	}
+
+	/**
+	 * Whether a constraint is `>` or `>=`.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
+	 * @param array{0: string, 1: string} $constraint The constraint.
+	 */
+	private static function isLower(array $constraint): bool {
+		return in_array($constraint[0], ['>', '>='], true);
 	}
 
 	/**
@@ -125,6 +210,8 @@ final class VersRange {
 	 * @param array{0: string, 1: string} $constraint The comparator and bound.
 	 *
 	 * @return bool The answer.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
 	 */
 	private static function satisfies(string $version, array $constraint): bool {
 		$operator = ['<' => '<', '<=' => '<=', '>' => '>', '>=' => '>='][$constraint[0]];
@@ -137,39 +224,69 @@ final class VersRange {
 	 * @param string $vers The range.
 	 *
 	 * @return list<array{0: string, 1: string}>|null The constraints.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
 	 */
 	private static function parse(string $vers): ?array {
+		$body = self::body(vers: $vers);
+		if ($body === null) {
+			return null;
+		}
+
+		return $body === '*' ? [] : self::constraints(body: $body);
+	}
+
+	/**
+	 * The part after `vers:<scheme>/`, or null for `vers:unknown` or anything that is not a range.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
+	 */
+	private static function body(string $vers): ?string {
 		if (preg_match('#^vers:([a-z0-9.+-]+)/(.+)$#i', trim($vers), $m) !== 1) {
 			return null;
 		}
-		if (strtolower($m[1]) === 'unknown') {
-			return null;
-		}
 
-		$body = trim($m[2]);
-		if ($body === '*') {
-			return [];
-		}
+		return strtolower($m[1]) === 'unknown' ? null : trim($m[2]);
+	}
 
+	/**
+	 * The `|`-joined constraints of a body, or null when one cannot be read.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
+	 * @return list<array{0: string, 1: string}>|null
+	 */
+	private static function constraints(string $body): ?array {
 		$constraints = [];
 		foreach (explode('|', $body) as $raw) {
-			$raw = trim($raw);
-			$comparator = '=';
-			foreach (self::COMPARATORS as $candidate) {
-				if (str_starts_with($raw, $candidate)) {
-					$comparator = $candidate;
-					$raw = substr($raw, strlen($candidate));
-					break;
-				}
-			}
-			$bound = self::version(raw: $raw);
-			if ($bound === null) {
+			$constraint = self::constraint(raw: $raw);
+			if ($constraint === null) {
 				return null;
 			}
-			$constraints[] = [$comparator, $bound];
+			$constraints[] = $constraint;
 		}
 
 		return $constraints;
+	}
+
+	/**
+	 * One constraint as comparator and bound; a bare version means `=`.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/design.md
+	 * @return array{0: string, 1: string}|null
+	 */
+	private static function constraint(string $raw): ?array {
+		$raw = trim($raw);
+		$comparator = '=';
+		foreach (self::COMPARATORS as $candidate) {
+			if (str_starts_with($raw, $candidate)) {
+				$comparator = $candidate;
+				$raw = substr($raw, strlen($candidate));
+				break;
+			}
+		}
+		$bound = self::version(raw: $raw);
+
+		return $bound === null ? null : [$comparator, $bound];
 	}
 
 	/**
