@@ -131,7 +131,10 @@ class InstallFinalizer {
 		// Reached only on success: every earlier step throws on failure and
 		// aborts before this line, so a failed or reverted install never
 		// touches the record — see "Last-known-good version record".
-		$this->lkgStore->set($appId, new Lkg(
+		// The record it replaces becomes `previous`, so an update can be rolled
+		// back one step (safety-rollback-backup-and-preflight D1).
+		$this->lkgStore->set($appId, Lkg::after(
+			$this->lkgStore->get($appId),
 			$installedVersion,
 			$this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
 			$sourceId,

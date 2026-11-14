@@ -2,13 +2,13 @@
 
 ## 1. Rollback target
 
-- [ ] 1.1 Add `previous` to `lib/Service/Lkg/Lkg.php` and its array form, and read and write it in `LkgStore`. Verify: `tests/unit/Service/Lkg/LkgStoreTest.php` reads an old record without `previous`.
-- [ ] 1.2 In `InstallFinalizer`, move the current record into `previous` before writing the new one, unless the version is unchanged. Verify: `tests/unit/Service/Installer/InstallFinalizerTest.php`.
+- [x] 1.1 Add `previous` to `lib/Service/Lkg/Lkg.php` and its array form, and read and write it in `LkgStore`. Verify: `tests/unit/Service/Lkg/LkgStoreTest.php` reads an old record without `previous`. Built 14 Nov: `Lkg::$previous` (one deep), omitted from the stored JSON when absent; `LkgStoreTest::testAnOldRecordReadsWithoutPreviousAndANewOneWithIt`, `LkgTest`.
+- [x] 1.2 In `InstallFinalizer`, move the current record into `previous` before writing the new one, unless the version is unchanged. Verify: `tests/unit/Service/Installer/InstallFinalizerTest.php`. Built 14 Nov: `Lkg::after()`; covered in `InstallFinalizerGoldenTest::testASuccessfulUpdateKeepsTheReplacedRecordAsPrevious` (there is no `InstallFinalizerTest.php`).
 - [ ] 1.3 Show "Roll back to <previous>" and, when different, "Roll back to the last good version" on the card in `src/App.vue`. Verify: `src/App.appCard.spec.ts` covers one and two targets.
 
 ## 2. Disk space
 
-- [ ] 2.1 Add `EnvironmentCheck::hasSpaceFor()` and category `preflight_space` in `FailureClassifier` (HTTP 409). Call it from both installers before download. Verify: `tests/unit/Service/Installer/EnvironmentCheckTest.php` with a free-space double; `InstallerServiceTest` asserts no download after a refusal.
+- [x] 2.1 Add `EnvironmentCheck::hasSpaceFor()` and category `preflight_space` in `FailureClassifier` (HTTP 409). Call it from both installers before download. Verify: `tests/unit/Service/Installer/EnvironmentCheckTest.php` with a free-space double; `InstallerServiceTest` asserts no download after a refusal. Built 14 Nov: checked once in `InstallerService` before release resolution, which both installers go through, with the 50 MB default size since the release is not resolved yet; unknown free space does not block.
 - [ ] 2.2 Show the free space on the progress step in `src/components/InstallResultNotices.vue`. Verify: `InstallResultNotices.spec.ts`.
 
 ## 3. Backup and restore

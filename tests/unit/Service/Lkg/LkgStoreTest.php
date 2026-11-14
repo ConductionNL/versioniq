@@ -86,4 +86,33 @@ final class LkgStoreTest extends TestCase {
 		self::assertSame('2.5.0', $decoded['version']);
 		self::assertSame('appstore', $decoded['sourceId']);
 	}
+
+	/**
+	 * safety-rollback-backup-and-preflight 1.1: a record stored before
+	 * `previous` existed reads with none, and one stored with it reads it back.
+	 */
+	public function testAnOldRecordReadsWithoutPreviousAndANewOneWithIt(): void {
+		$old = $this->createMock(IAppConfig::class);
+		$old->method('getValueString')->willReturn(json_encode(['version' => '0.4.46', 'recordedAt' => '2026-10-01T08:00:00+00:00', 'sourceId' => 'appstore'], JSON_THROW_ON_ERROR));
+		$lkg = (new LkgStore($old, $this->logger()))->get('procest');
+		self::assertNotNull($lkg);
+		self::assertNull($lkg->previous);
+
+		$written = null;
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('setValueString')->willReturnCallback(function (string $app, string $key, string $value) use (&$written): bool {
+			$written = $value;
+
+			return true;
+		});
+		$config->method('getValueString')->willReturnCallback(static function () use (&$written): string {
+			return (string)$written;
+		});
+		$store = new LkgStore($config, $this->logger());
+		$store->set('procest', new Lkg('0.4.48', '2026-10-15T08:00:00+00:00', 'appstore', new Lkg('0.4.46', '2026-10-01T08:00:00+00:00', 'github:ConductionNL/procest')));
+
+		$read = $store->get('procest');
+		self::assertSame('0.4.48', $read?->version);
+		self::assertSame(['version' => '0.4.46', 'recordedAt' => '2026-10-01T08:00:00+00:00', 'sourceId' => 'github:ConductionNL/procest'], $read?->previous?->toArray());
+	}
 }
