@@ -130,4 +130,20 @@ class AdvisorySettingsStore {
 	public function setNcscEnabled(bool $enabled): void {
 		$this->config->setValueBool(Application::APP_ID, self::CONFIG_NCSC_ENABLED, $enabled);
 	}
+
+	/**
+	 * How far the NCSC-NL read got: the newest changes.csv time processed
+	 * (null before the first read) and whether the last sweep caught up.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/specs/security-advisory-correlation/spec.md#requirement-ncsc-nl-advisories-are-matched-to-the-installed-server-and-apps
+	 * @return array{readUpTo: ?string, caughtUp: bool}
+	 */
+	public function ncscStatus(): array {
+		$cursor = $this->config->getValueString(Application::APP_ID, NcscAdvisoryFeed::CONFIG_CURSOR, '');
+
+		return [
+			'readUpTo' => $cursor !== '' ? $cursor : null,
+			'caughtUp' => $this->config->getValueBool(Application::APP_ID, NcscAdvisoryFeed::CONFIG_CAUGHT_UP, false),
+		];
+	}
 }
