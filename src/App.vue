@@ -24,6 +24,7 @@ import HistoryPanel from './components/HistoryPanel.vue'
 import InstallResultNotices from './components/InstallResultNotices.vue'
 import InstanceSettingsPanel from './components/InstanceSettingsPanel.vue'
 import IntegrationsPanel from './components/IntegrationsPanel.vue'
+import PatchPolicyPanel from './components/PatchPolicyPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
@@ -217,6 +218,12 @@ const autoUpdateWindowInput = ref(AUTO_UPDATE_WINDOW_DEFAULT)
 const savedAutoUpdateWindow = ref(AUTO_UPDATE_WINDOW_DEFAULT)
 // The zone the server reads the window in (Nextcloud's default_timezone, else UTC).
 const autoUpdateTimeZone = ref('UTC')
+// Why the last run held a security fix back, whether the advisory check is
+// recent enough to act on, and the kinds the patch policy sets to by hand
+// (autoupdate-security-first).
+const securityHolds = ref<Record<string, string>>({})
+const advisoriesFresh = ref(true)
+const manualKinds = ref<string[]>([])
 const isSavingAutoUpdateSettings = ref(false)
 const autoUpdateSettingsError = ref('')
 const autoUpdateSettingsNotice = ref('')
@@ -817,7 +824,7 @@ function pinTooltip (pin: PinRecord | null): string {
 async function loadPolicies (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/policies')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string }>(response)
+		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string, securityHolds?: Record<string, string>, advisoriesFresh?: boolean, manualKinds?: string[] }>(response)
 		const map: Record<string, PolicyRecord> = {}
 		for (const policy of payload.policies || []) {
 			map[policy.appId] = policy
@@ -827,6 +834,9 @@ async function loadPolicies (): Promise<void> {
 		savedAutoUpdateEnabled.value = autoUpdateEnabled.value
 		autoUpdateWindowInput.value = payload.autoUpdateWindow || AUTO_UPDATE_WINDOW_DEFAULT
 		autoUpdateTimeZone.value = payload.autoUpdateTimeZone || 'UTC'
+		securityHolds.value = payload.securityHolds ?? {}
+		advisoriesFresh.value = payload.advisoriesFresh !== false
+		manualKinds.value = payload.manualKinds ?? []
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
 	} catch {
 		// Non-fatal: the app list stays usable without policy badges.
@@ -2391,6 +2401,9 @@ watch(dryRunEnabled, () => {
 									:autoUpdateEnabled="autoUpdateEnabled"
 									:window="savedAutoUpdateWindow"
 									:timeZone="autoUpdateTimeZone"
+									:securityHolds="securityHolds"
+									:advisoriesFresh="advisoriesFresh"
+									:manualKinds="manualKinds"
 									:disabled="isSavingPolicy"
 									@retry="onRetryAttempt" />
 
@@ -2944,10 +2957,13 @@ watch(dryRunEnabled, () => {
 					id="cache-panel"
 					role="tabpanel"
 					aria-labelledby="cache-tab" />
-				<InstanceSettingsPanel v-if="currentTab === 'settings'"
+				<div v-if="currentTab === 'settings'"
 					id="settings-panel"
 					role="tabpanel"
-					aria-labelledby="settings-tab" />
+					aria-labelledby="settings-tab">
+					<InstanceSettingsPanel />
+					<PatchPolicyPanel />
+				</div>
 				<IntegrationsPanel v-if="integriqInstalled && currentTab === 'integrations'"
 					id="integrations-panel"
 					role="tabpanel"
