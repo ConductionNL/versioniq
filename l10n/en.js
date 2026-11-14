@@ -280,7 +280,14 @@ OC.L10N.register(
         "All origins": "All origins",
         "Origin": "Origin",
         "Set by {user}": "Set by {user}",
-        "Set by {user} on {date}": "Set by {user} on {date}"
+        "Set by {user} on {date}": "Set by {user} on {date}",
+        "App versions installed, rolled back, pinned or given an update policy": "App versions installed, rolled back, pinned or given an update policy",
+        "{actor} updated {app} from {from} to {to}": "{actor} updated {app} from {from} to {to}",
+        "{actor} rolled back {app} from {from} to {to}": "{actor} rolled back {app} from {from} to {to}",
+        "{actor} pinned {app} to {to}": "{actor} pinned {app} to {to}",
+        "{actor} unpinned {app}": "{actor} unpinned {app}",
+        "{actor} set the automatic update policy of {app} to {level}": "{actor} set the automatic update policy of {app} to {level}",
+        "{actor} cleared the automatic update policy of {app}": "{actor} cleared the automatic update policy of {app}"
     },
     "nplurals=2; plural=(n != 1);"
 )

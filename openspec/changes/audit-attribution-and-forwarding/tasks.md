@@ -20,8 +20,10 @@
 
 - [x] 3.1 Dispatch `CriticalActionPerformedEvent` after each insert, with the sanitised message. Verify: `tests/unit/Service/Audit/AuditLoggerTest.php` asserts the event and that a token in a message is redacted in it.
   - `AuditLogger` dispatches `CriticalActionPerformedEvent` after each successful insert with the sanitised message (a token in a message reaches the event redacted), and never when the row was not written; a failing listener is logged and never reaches the operation. `AuditOriginAndForwardingTest`.
-- [ ] 3.2 Add the activity provider and setting, register them in `info.xml`, and publish one event per admin. Verify: unit tests of the provider's rendering and of a failing activity manager (install result unchanged); on a test instance the admin's activity stream shows the install.
+- [x] 3.2 Add the activity provider and setting, register them in `info.xml`, and publish one event per admin. Verify: unit tests of the provider's rendering and of a failing activity manager (install result unchanged); on a test instance the admin's activity stream shows the install.
+  - `lib/Activity/Provider.php` renders install, rollback (a lower target version), pin, unpin, policy set and policy cleared; `lib/Activity/Setting.php` is on for the stream and off for mail; both are registered under `<activity>` in `info.xml`. `ActivityPublisher` publishes one event per admin after the row is written, only for a successful version change; a failing activity manager is logged and the row and the operation are unchanged. `tests/unit/Activity/ProviderTest.php`, `tests/unit/Service/Audit/ActivityPublisherTest.php`. The check on a live instance is left for the test-instance pass.
 
 ## 4. Close
 
 - [ ] 4.1 Add strings to `l10n/en` and `l10n/nl` (verify `npm run check:l10n-js`), set the matrix rows `aud-auto-attributed`, `aud-log-policy`, `aud-siem` and `aud-activity-stream` to `built` with evidence lines, then archive this change.
+  - Strings for the origin column and filter, the policy setter and the activity provider are in `l10n/en` and `l10n/nl` (`npm run check:l10n-js` passes), and the four matrix rows are `built` with evidence lines. Left: archiving the change, which follows the merge.

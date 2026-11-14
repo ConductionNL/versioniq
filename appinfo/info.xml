@@ -135,4 +135,12 @@ Versioniq gives Nextcloud administrators the ability to roll back apps to previo
 		<admin>OCA\Versioniq\Settings\Admin</admin>
 		<admin-section>OCA\Versioniq\Sections\AdminSection</admin-section>
 	</settings>
+	<activity>
+		<settings>
+			<setting>OCA\Versioniq\Activity\Setting</setting>
+		</settings>
+		<providers>
+			<provider>OCA\Versioniq\Activity\Provider</provider>
+		</providers>
+	</activity>
 </info>

@@ -52,6 +52,7 @@ class AuditLogger {
 		private ITimeFactory $timeFactory,
 		private LoggerInterface $logger,
 		private ?IEventDispatcher $eventDispatcher = null,
+		private ?ActivityPublisher $activity = null,
 	) {
 	}
 
@@ -91,6 +92,21 @@ class AuditLogger {
 		}
 
 		$this->forward($entry);
+		$this->publishActivity($entry);
+	}
+
+	/**
+	 * Publish the recorded change to the admins' activity stream (audit-attribution-and-forwarding D4);
+	 * a failure is logged and never reaches the operation.
+	 *
+	 * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-audit-rows-reach-the-platforms-audit-log-and-activity-stream
+	 */
+	private function publishActivity(AuditEntry $entry): void {
+		try {
+			$this->activity?->publish($entry);
+		} catch (\Throwable $error) {
+			$this->logger->warning('Versioniq: publishing an audit entry to the activity stream failed', ['exception' => $error]);
+		}
 	}
 
 	/**
