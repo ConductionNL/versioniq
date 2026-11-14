@@ -2,8 +2,10 @@
 
 ## 1. Store and rules
 
-- [ ] 1.1 Add `AdvisoryTriageStore` (read, write, `prune()` with `lastSeenAt`) per design D1. Verify: `tests/unit/Service/Advisory/AdvisoryTriageStoreTest.php` round-trips an entry for `:server` and for an app, reads malformed JSON as empty, and prunes an entry unseen for 31 days.
-- [ ] 1.2 Add `AdvisoryTriage::apply()` per D2: active and lapsed dismissals (end date, version change), recomputed `state` and `recommendedVersion`. Verify: `tests/unit/Service/Advisory/AdvisoryTriageTest.php` covers each lapse, a row falling from `pinned-to-vulnerable` to `advisory-available`, and a row with one of two advisories dismissed.
+- [x] 1.1 Add `AdvisoryTriageStore` (read, write, `prune()` with `lastSeenAt`) per design D1. Verify: `tests/unit/Service/Advisory/AdvisoryTriageStoreTest.php` round-trips an entry for `:server` and for an app, reads malformed JSON as empty, and prunes an entry unseen for 31 days.
+  - Done: `lib/Service/Advisory/AdvisoryTriageStore.php` (`read`, `write`, `stampAndPrune`, `prune`); `tests/unit/Service/Advisory/AdvisoryTriageStoreTest.php` (7).
+- [x] 1.2 Add `AdvisoryTriage::apply()` per D2: active and lapsed dismissals (end date, version change), recomputed `state` and `recommendedVersion`. Verify: `tests/unit/Service/Advisory/AdvisoryTriageTest.php` covers each lapse, a row falling from `pinned-to-vulnerable` to `advisory-available`, and a row with one of two advisories dismissed.
+  - Done: `lib/Service/Advisory/AdvisoryTriage.php`; `tests/unit/Service/Advisory/AdvisoryTriageTest.php` (9). An unreadable end date counts as passed, so the advisory counts again.
 
 ## 2. Readers
 
