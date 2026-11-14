@@ -312,6 +312,43 @@ final class ForgeReleaseSourceTest extends TestCase {
 		], $byVersion);
 	}
 
+	/**
+	 * The publisher's own pre-release mark and an LTS name or tag are copied
+	 * onto the entry; an unmarked release carries neither.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-every-listed-version-says-whether-it-is-a-pre-release
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-the-long-term-support-channel-offers-only-marked-release-lines
+	 */
+	public function testListVersionsCarriesThePublishersMarks(): void {
+		$body = json_encode([
+			['tag_name' => 'v2.5.0', 'prerelease' => true, 'name' => 'Release 2.5.0'],
+			['tag_name' => 'v2.4.3', 'prerelease' => false, 'name' => 'Release 2.4.3'],
+			['tag_name' => 'v2.3.9', 'name' => '2.3.9 (lts)'],
+			['tag_name' => 'v2.3.8-LTS'],
+			['tag_name' => 'v2.2.0', 'name' => 'Pilots and saltshakers'],
+		], JSON_THROW_ON_ERROR);
+
+		$client = $this->createMock(IClient::class);
+		$client->method('get')->willReturn($this->mockResponse(200, $body));
+
+		$result = $this->buildSource($client)->listVersions(
+			'hermiq',
+			SourceBinding::github('ConductionNL', 'hermiq')
+		);
+
+		$marks = [];
+		foreach ($result['versions'] as $entry) {
+			$marks[$entry['version']] = [$entry['sourcePreRelease'] ?? false, $entry['sourceLts'] ?? false];
+		}
+		$this->assertSame([
+			'2.5.0' => [true, false],
+			'2.4.3' => [false, false],
+			'2.3.9' => [false, true],
+			'2.3.8-LTS' => [false, true],
+			'2.2.0' => [false, false],
+		], $marks);
+	}
+
 	public function testListVersionsMapsReleaseBodyAsChangelog(): void {
 		$body = json_encode([
 			['tag_name' => 'v2.3.0', 'body' => 'Fixes LDAP sync'],
