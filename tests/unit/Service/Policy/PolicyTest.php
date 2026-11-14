@@ -39,6 +39,7 @@ final class PolicyTest extends TestCase {
 	public function testIsValidLevel(): void {
 		$this->assertTrue(Policy::isValidLevel('patch'));
 		$this->assertTrue(Policy::isValidLevel('none'));
+		$this->assertTrue(Policy::isValidLevel('security'), 'Security fixes only (autoupdate-security-first 1.1)');
 		$this->assertFalse(Policy::isValidLevel('yolo'));
 		$this->assertFalse(Policy::isValidLevel(''));
 	}

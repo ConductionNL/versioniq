@@ -279,6 +279,7 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Outside the update policy: %n release behind",
             "Outside the update policy: %n releases behind"
-        ]
+        ],
+        "Security fixes only": "Security fixes only"
     }
 }

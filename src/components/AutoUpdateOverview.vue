@@ -56,6 +56,7 @@ function levelLabel (level: PolicyLevel): string {
 		patch: t('versioniq', 'Patch'),
 		minor: t('versioniq', 'Minor'),
 		all: t('versioniq', 'All'),
+		security: t('versioniq', 'Security fixes only'),
 	}[level] ?? level
 }
 </script>
