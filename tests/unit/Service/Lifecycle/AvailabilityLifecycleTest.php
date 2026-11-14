@@ -47,12 +47,15 @@ final class AvailabilityLifecycleTest extends TestCase {
 
 			return ['removedFromStore' => $error !== null, 'noReleaseFor12Months' => null, 'lastReleasedAt' => null];
 		});
+		$signals->expects($this->once())->method('archived')->with('calendar')->willReturn(true);
 
 		$result = (new AvailabilityService($installer, $this->createMock(PinStore::class), new NullLogger(), lifecycle: $signals))->sweep(60.0);
 
 		$this->assertSame([[AppStoreSource::NOT_IN_STORE, []], [null, $calendarVersions]], $asked);
 		$this->assertTrue($result['oldmaps']['lifecycle']['removedFromStore']);
 		$this->assertFalse($result['calendar']['lifecycle']['removedFromStore']);
+		$this->assertTrue($result['calendar']['lifecycle']['archived'], 'the archived flag is asked for a listed app');
+		$this->assertNull($result['oldmaps']['lifecycle']['archived'], 'and not for one whose listing failed');
 		$this->assertSame('5.1.0', $result['calendar']['newestVersion'], 'the existing fields are unchanged');
 	}
 

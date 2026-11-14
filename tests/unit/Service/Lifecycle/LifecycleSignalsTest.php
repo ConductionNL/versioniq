@@ -13,6 +13,12 @@ require_once __DIR__ . '/InMemoryAppConfig.php';
 
 use OCA\Versioniq\Service\Lifecycle\LifecycleSignals;
 use OCA\Versioniq\Service\Source\AppStoreSource;
+use OCA\Versioniq\Service\Source\ForgeReleaseSource;
+use OCA\Versioniq\Service\Source\SourceBinding;
+use OCA\Versioniq\Service\Source\SourceBindingStore;
+use OCA\Versioniq\Service\Source\SourceInterface;
+use OCA\Versioniq\Service\Source\SourceLookup;
+use OCA\Versioniq\Service\Source\SourceRegistry;
 use OCP\AppFramework\Utility\ITimeFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -69,5 +75,40 @@ final class LifecycleSignalsTest extends TestCase {
 
 		$this->assertTrue($this->signals([LifecycleSignals::KEY_STALE_MONTHS => 3])->signals(null, $versions)['noReleaseFor12Months']);
 		$this->assertFalse($this->signals([LifecycleSignals::KEY_STALE_MONTHS => 0])->signals(null, $versions)['noReleaseFor12Months'], 'a nonsense value falls back to twelve months');
+	}
+
+	/**
+	 * @param array<string, ?SourceBinding> $bindings
+	 */
+	private function withSources(array $bindings, ?bool $archived): LifecycleSignals {
+		$store = $this->createMock(SourceBindingStore::class);
+		$store->method('get')->willReturnCallback(static fn (string $appId): ?SourceBinding => $bindings[$appId] ?? null);
+		$forge = $this->createMock(ForgeReleaseSource::class);
+		$forge->method('isArchived')->willReturn($archived);
+		$registry = $this->createMock(SourceRegistry::class);
+		$registry->method('get')->willReturnCallback(
+			fn (SourceBinding $binding): SourceInterface => $binding->kind === SourceBinding::KIND_APPSTORE ? $this->createMock(AppStoreSource::class) : $forge
+		);
+
+		[$appConfig] = InMemoryAppConfig::for($this, []);
+
+		return new LifecycleSignals($appConfig, $this->createMock(ITimeFactory::class), new SourceLookup($registry, $store));
+	}
+
+	public function testAnArchivedForgeRepositoryIsArchived(): void {
+		$this->assertTrue($this->withSources(['oldapp' => SourceBinding::github('ConductionNL', 'oldapp')], true)->archived('oldapp'));
+		$this->assertFalse($this->withSources(['deck' => SourceBinding::github('nextcloud', 'deck')], false)->archived('deck'));
+	}
+
+	public function testAStoreAppAnUnboundAppAndAnUnaskedForgeAreUnknown(): void {
+		$signals = $this->withSources(['maps' => SourceBinding::appStore(), 'deck' => SourceBinding::github('nextcloud', 'deck')], null);
+
+		$this->assertNull($signals->archived('maps'));
+		$this->assertNull($signals->archived('unbound'));
+		$this->assertNull($signals->archived('deck'));
+	}
+
+	public function testWithoutTheSourcesNothingIsAsked(): void {
+		$this->assertNull($this->signals()->archived('deck'));
 	}
 }

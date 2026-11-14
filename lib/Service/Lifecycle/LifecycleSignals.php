@@ -14,13 +14,16 @@ namespace OCA\Versioniq\Service\Lifecycle;
 
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Source\AppStoreSource;
+use OCA\Versioniq\Service\Source\ForgeReleaseSource;
+use OCA\Versioniq\Service\Source\SourceLookup;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IAppConfig;
 
 /**
  * The life cycle signals of one app, read from the version listing the
  * availability sweep already fetched: removed from the App Store, and no
- * release for a year.
+ * release for a year; and whether the forge repository is archived, which
+ * takes one request per forge app.
  *
  * A signal that cannot be told is null, never false: an app without release
  * dates is "unknown", not "maintained".
@@ -36,7 +39,28 @@ class LifecycleSignals {
 	public function __construct(
 		private IAppConfig $config,
 		private ITimeFactory $timeFactory,
+		private ?SourceLookup $sources = null,
 	) {
+	}
+
+	/**
+	 * Whether the app's forge repository is archived: null for an app not
+	 * bound to a forge, and when the forge could not be asked.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 */
+	public function archived(string $appId): ?bool {
+		$binding = $this->sources?->bindingStore->get($appId);
+		if ($binding === null) {
+			return null;
+		}
+		try {
+			$source = $this->sources?->sourceRegistry->get($binding);
+		} catch (\Throwable) {
+			return null;
+		}
+
+		return $source instanceof ForgeReleaseSource ? $source->isArchived($binding) : null;
 	}
 
 	/**

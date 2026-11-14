@@ -123,6 +123,9 @@ class AvailabilityService {
 		if (!$judged) {
 			$entry['installedWithdrawn'] = null;
 		}
+		if (isset($entry['lifecycle']) && $this->lifecycle !== null) {
+			$entry['lifecycle']['archived'] = $error === null ? $this->lifecycle->archived($appId) : null;
+		}
 
 		return $entry;
 	}

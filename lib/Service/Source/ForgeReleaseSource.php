@@ -109,6 +109,56 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	}
 
 	/**
+	 * Whether the forge reports the bound repository as archived; null when
+	 * the binding is no forge binding or the forge could not be asked. One
+	 * request, made by the availability sweep only.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 */
+	public function isArchived(SourceBinding $binding): ?bool {
+		$ownerRepo = $binding->getOwnerRepo();
+		if ($ownerRepo === null) {
+			return null;
+		}
+		$forge = $this->forgeRegistry->get($binding->getForge());
+		$uid = $this->pats->userSession->getUser()?->getUID();
+		$pat = $this->pats->patResolver->findFor($forge->id, $ownerRepo, $uid);
+		$endpoint = $forge->repositoryEndpoint($ownerRepo);
+
+		if ($pat === null) {
+			return $this->archivedFlag($forge, $endpoint, null);
+		}
+
+		/** @var ?bool */
+		return $this->pats->patManager->useToken($pat, fn (string $token): ?bool => $this->archivedFlag($forge, $endpoint, $token));
+	}
+
+	/**
+	 * The `archived` field of a repository answer, or null for a failed or unreadable one.
+	 */
+	private function archivedFlag(Forge $forge, string $endpoint, ?string $token): ?bool {
+		try {
+			$response = $this->clientService->newClient()->get($endpoint, $this->requestOptions($forge, $token));
+		} catch (Exception $error) {
+			$this->logger->info('ForgeReleaseSource: repository lookup failed', ['forge' => $forge->id, 'message' => $error->getMessage()]);
+
+			return null;
+		}
+		if ($response->getStatusCode() !== 200) {
+			return null;
+		}
+
+		try {
+			/** @var mixed $decoded */
+			$decoded = json_decode((string)$response->getBody(), true, 32, JSON_THROW_ON_ERROR);
+		} catch (\JsonException) {
+			return null;
+		}
+
+		return is_array($decoded) && is_bool($decoded['archived'] ?? null) ? $decoded['archived'] : null;
+	}
+
+	/**
 	 * One version entry per release with a non-empty tag.
 	 *
 	 * @param array<array-key, mixed> $releases
@@ -357,16 +407,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 */
 	private function performFetch(Forge $forge, string $endpoint, ?string $token): array {
 		try {
-			$response = $this->clientService->newClient()->get($endpoint, [
-				'headers' => $this->requestHeaders($forge, $token),
-				'timeout' => 30,
-				// IClient throws on 4xx by default; we want to inspect the
-				// status code ourselves to produce useful errors.
-				'http_errors' => false,
-				// SSRF defence-in-depth: local addresses are blocked unless the
-				// operator has enabled Nextcloud's allow_local_remote_servers.
-				'nextcloud' => ['allow_local_address' => $this->allowLocalAddress()],
-			]);
+			$response = $this->clientService->newClient()->get($endpoint, $this->requestOptions($forge, $token));
 		} catch (Exception $error) {
 			$this->logger->warning('ForgeReleaseSource: fetch failed', [
 				'forge' => $forge->id,
@@ -380,6 +421,24 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		}
 
 		return $this->readReleaseList($forge, $response);
+	}
+
+	/**
+	 * The client options of one forge call.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function requestOptions(Forge $forge, ?string $token): array {
+		return [
+			'headers' => $this->requestHeaders($forge, $token),
+			'timeout' => 30,
+			// IClient throws on 4xx by default; we want to inspect the
+			// status code ourselves to produce useful errors.
+			'http_errors' => false,
+			// SSRF defence-in-depth: local addresses are blocked unless the
+			// operator has enabled Nextcloud's allow_local_remote_servers.
+			'nextcloud' => ['allow_local_address' => $this->allowLocalAddress()],
+		];
 	}
 
 	/**
