@@ -33,6 +33,8 @@ const settings = {
 	githubWebDefault: 'https://github.com',
 	advisoryFeedUrl: '',
 	advisoryFeedDefault: 'https://api.github.com/repos/nextcloud/security-advisories/security-advisories',
+	osvApiBase: '',
+	osvApiDefault: 'https://api.osv.dev',
 	maxLinesBehind: 2,
 	maxLinesBehindMax: 10,
 }
@@ -126,6 +128,7 @@ describe('InstanceSettingsPanel saving', () => {
 			githubApiBase: 'https://ghe.example.org/api/v3',
 			githubWebBase: '',
 			advisoryFeedUrl: 'https://mirror.example.org/feed',
+			osvApiBase: '',
 			maxLinesBehind: '',
 		})
 		expect(wrapper.find('[data-testid="instance-settings-notice"]').text()).toBe('Settings saved.')
