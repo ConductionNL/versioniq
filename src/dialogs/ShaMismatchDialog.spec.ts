@@ -46,4 +46,14 @@ describe('ShaMismatchDialog', () => {
 		expect(wrapper.emitted('update:open')).toEqual([[false]])
 		expect(wrapper.emitted('resolve')).toEqual([[accept]])
 	})
+	it('ignores a re-open and only resolves on an explicit close', async () => {
+		const wrapper = mount(ShaMismatchDialog, { props })
+
+		wrapper.findComponent({ name: 'NcDialog' }).vm.$emit('update:open', true)
+		await wrapper.vm.$nextTick()
+
+		expect(wrapper.emitted('resolve')).toBeUndefined()
+		expect(wrapper.emitted('update:open')).toBeUndefined()
+	})
+
 })

@@ -89,4 +89,14 @@ describe('DowngradeConfirmDialog', () => {
 		expect(wrapper.find('[data-label="Downgrade"]').attributes('disabled')).toBeUndefined()
 		expect(wrapper.find('[data-label="Cancel"]').attributes('disabled')).toBeUndefined()
 	})
+	it('ignores a re-open and only resolves on an explicit close', async () => {
+		const wrapper = mount(DowngradeConfirmDialog, { props })
+
+		wrapper.findComponent({ name: 'NcDialog' }).vm.$emit('update:open', true)
+		await wrapper.vm.$nextTick()
+
+		expect(wrapper.emitted('resolve')).toBeUndefined()
+		expect(wrapper.emitted('update:open')).toBeUndefined()
+	})
+
 })
