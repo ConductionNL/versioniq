@@ -39,16 +39,34 @@ final class Policy {
 		public readonly string $setAt,
 		public readonly ?int $minAgeDays = null,
 	) {
-		if (!self::isValidLevel($level)) {
+		$this->assertRequiredFields();
+		$this->assertMinAgeDays();
+	}
+
+	/**
+	 * Refuses an unknown level or an empty setBy or setAt.
+	 *
+	 * @throws InvalidArgumentException When a required field is invalid.
+	 */
+	private function assertRequiredFields(): void {
+		if (!self::isValidLevel($this->level)) {
 			throw new InvalidArgumentException('Policy level must be one of: ' . implode(', ', self::VALID_LEVELS));
 		}
-		if ($setBy === '') {
+		if ($this->setBy === '') {
 			throw new InvalidArgumentException('Policy requires a non-empty setBy');
 		}
-		if ($setAt === '') {
+		if ($this->setAt === '') {
 			throw new InvalidArgumentException('Policy requires a non-empty setAt');
 		}
-		if ($minAgeDays !== null && ($minAgeDays < 0 || $minAgeDays > 90)) {
+	}
+
+	/**
+	 * Refuses a minimum age outside 0 to 90 days; absent uses the instance value.
+	 *
+	 * @throws InvalidArgumentException When minAgeDays is out of range.
+	 */
+	private function assertMinAgeDays(): void {
+		if ($this->minAgeDays !== null && ($this->minAgeDays < 0 || $this->minAgeDays > 90)) {
 			throw new InvalidArgumentException('Policy minAgeDays must be 0 to 90, or absent to use the instance value');
 		}
 	}
@@ -96,11 +114,21 @@ final class Policy {
 			throw new InvalidArgumentException('Policy payload missing required string fields');
 		}
 
+		return new self($level, $setBy, $setAt, self::minAgeDaysFrom($payload));
+	}
+
+	/**
+	 * The optional `minAgeDays` of a persisted payload.
+	 *
+	 * @param array<array-key, mixed> $payload
+	 * @throws InvalidArgumentException When it is present and not an integer.
+	 */
+	private static function minAgeDaysFrom(array $payload): ?int {
 		$minAgeDays = $payload['minAgeDays'] ?? null;
 		if ($minAgeDays !== null && !is_int($minAgeDays)) {
 			throw new InvalidArgumentException('Policy minAgeDays must be an integer');
 		}
 
-		return new self($level, $setBy, $setAt, $minAgeDays);
+		return $minAgeDays;
 	}
 }

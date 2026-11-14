@@ -948,10 +948,28 @@ class ApiController extends OCSController {
 		if ($windowParam !== '') {
 			$this->autoUpdate->settingsStore->setWindow($windowParam);
 		}
+		$this->storeMinAgeDays($minAgeDays);
+
+		return $this->autoUpdateSettingsResponse();
+	}
+
+	/**
+	 * Store the instance's minimum age when the request sent one.
+	 *
+	 * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+	 */
+	private function storeMinAgeDays(?int $minAgeDays): void {
 		if ($minAgeDays !== null) {
 			$this->autoUpdate->settingsStore->setMinAgeDays($minAgeDays);
 		}
+	}
 
+	/**
+	 * The stored global auto-update settings.
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>
+	 */
+	private function autoUpdateSettingsResponse(): DataResponse {
 		return new DataResponse([
 			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
 			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
@@ -1487,11 +1505,21 @@ class ApiController extends OCSController {
 		if ($value === null || $value === '') {
 			return null;
 		}
-		if (is_string($value) && preg_match('/^\d+$/', trim($value)) === 1) {
-			$value = (int)trim($value);
-		}
+		/** @var mixed $value */
+		$value = self::wholeNumberString($value);
 		if (!is_int($value) || !AutoUpdateSettingsStore::isValidMinAgeDays($value)) {
 			return false;
+		}
+
+		return $value;
+	}
+
+	/**
+	 * A string of digits as its integer; any other value unchanged.
+	 */
+	private static function wholeNumberString(mixed $value): mixed {
+		if (is_string($value) && preg_match('/^\d+$/', trim($value)) === 1) {
+			return (int)trim($value);
 		}
 
 		return $value;
