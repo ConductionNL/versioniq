@@ -308,7 +308,15 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Buiten het updatebeleid: %n release achter",
             "Buiten het updatebeleid: %n releases achter"
-        ]
+        ],
+        "About {app}": "Over {app}",
+        "Publisher": "Uitgever",
+        "Licence": "Licentie",
+        "Installed": "Geïnstalleerd",
+        "Website": "Website",
+        "Report a problem": "Probleem melden",
+        "disabled": "uitgeschakeld",
+        "enabled": "ingeschakeld"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

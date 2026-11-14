@@ -279,6 +279,14 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Outside the update policy: %n release behind",
             "Outside the update policy: %n releases behind"
-        ]
+        ],
+        "About {app}": "About {app}",
+        "Publisher": "Publisher",
+        "Licence": "Licence",
+        "Installed": "Installed",
+        "Website": "Website",
+        "Report a problem": "Report a problem",
+        "disabled": "disabled",
+        "enabled": "enabled"
     }
 }
