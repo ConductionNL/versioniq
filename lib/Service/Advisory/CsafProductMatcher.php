@@ -50,29 +50,68 @@ class CsafProductMatcher {
 		}
 
 		$found = [];
-		foreach ($this->branches(node: $document['product_tree'] ?? null) as $vendor) {
-			if (($vendor['category'] ?? '') !== 'vendor' || !in_array($this->normalise((string)($vendor['name'] ?? '')), self::VENDORS, true)) {
-				continue;
-			}
+		foreach ($this->nextcloudVendors(document: $document) as $vendor) {
 			foreach ($this->productNames(node: $vendor) as $product) {
-				$target = $this->packages->resolve($this->withoutVendor(name: (string)($product['name'] ?? '')));
-				if ($target === null) {
-					continue;
-				}
-				foreach ($this->leaves(branch: $product) as [$range, $productId]) {
-					if (!isset($affected[$productId])) {
-						continue;
-					}
-					$key = $target . "\n" . ($range ?? '');
-					$found[$key] ??= ['target' => $target, 'range' => $range, 'productIds' => []];
-					if (!in_array($productId, $found[$key]['productIds'], true)) {
-						$found[$key]['productIds'][] = $productId;
-					}
-				}
+				$this->collect(found: $found, product: $product, affected: $affected);
 			}
 		}
 
 		return array_values($found);
+	}
+
+	/**
+	 * The vendor branches of the product tree that are Nextcloud.
+	 *
+	 * @param array<string, mixed> $document The CSAF document.
+	 *
+	 * @return list<array<string, mixed>> The vendor branches, in tree order.
+	 */
+	private function nextcloudVendors(array $document): array {
+		return array_values(array_filter(
+			$this->branches(node: $document['product_tree'] ?? null),
+			fn (array $branch): bool => ($branch['category'] ?? '') === 'vendor'
+				&& in_array($this->normalise((string)($branch['name'] ?? '')), self::VENDORS, true)
+		));
+	}
+
+	/**
+	 * Add the known-affected leaves of one product to the targets found.
+	 *
+	 * @param array<string, array{target: string, range: string|null, productIds: list<string>}> $found The targets so far, by target and range.
+	 * @param array<string, mixed> $product The product_name branch.
+	 * @param array<string, true> $affected The known-affected product ids.
+	 *
+	 * @return void
+	 */
+	private function collect(array &$found, array $product, array $affected): void {
+		$target = $this->packages->resolve($this->withoutVendor(name: (string)($product['name'] ?? '')));
+		if ($target === null) {
+			return;
+		}
+
+		foreach ($this->leaves(branch: $product) as [$range, $productId]) {
+			if (isset($affected[$productId]) === true) {
+				self::add(found: $found, target: $target, range: $range, productId: $productId);
+			}
+		}
+	}
+
+	/**
+	 * Record one affected product id under its target and range, once.
+	 *
+	 * @param array<string, array{target: string, range: string|null, productIds: list<string>}> $found The targets so far.
+	 * @param string $target The resolved target.
+	 * @param string|null $range The VERS range, or null for every version.
+	 * @param string $productId The product id.
+	 *
+	 * @return void
+	 */
+	private static function add(array &$found, string $target, ?string $range, string $productId): void {
+		$key = $target . "\n" . ($range ?? '');
+		$found[$key] ??= ['target' => $target, 'range' => $range, 'productIds' => []];
+		if (in_array($productId, $found[$key]['productIds'], true) === false) {
+			$found[$key]['productIds'][] = $productId;
+		}
 	}
 
 	/**
@@ -85,16 +124,30 @@ class CsafProductMatcher {
 	private function knownAffected(array $document): array {
 		$ids = [];
 		foreach ((array)($document['vulnerabilities'] ?? []) as $vulnerability) {
-			if (!is_array($vulnerability)) {
-				continue;
-			}
-			foreach ((array)($vulnerability['product_status']['known_affected'] ?? []) as $id) {
-				if (is_string($id) && $id !== '') {
-					$ids[$id] = true;
-				}
+			foreach (self::affectedIdsOf(vulnerability: $vulnerability) as $id) {
+				$ids[$id] = true;
 			}
 		}
+
 		return $ids;
+	}
+
+	/**
+	 * The known-affected product ids of one vulnerability.
+	 *
+	 * @param mixed $vulnerability The vulnerability entry.
+	 *
+	 * @return list<string> The non-empty ids; none when the entry is not an object.
+	 */
+	private static function affectedIdsOf(mixed $vulnerability): array {
+		if (is_array($vulnerability) === false) {
+			return [];
+		}
+
+		return array_values(array_filter(
+			(array)($vulnerability['product_status']['known_affected'] ?? []),
+			static fn (mixed $id): bool => is_string($id) && $id !== ''
+		));
 	}
 
 	/**
@@ -149,20 +202,35 @@ class CsafProductMatcher {
 		if ($own !== '') {
 			$leaves[] = [null, $own];
 		}
+
 		foreach ($this->branches(node: $branch) as $child) {
 			$id = (string)($child['product']['product_id'] ?? '');
-			if ($id === '') {
-				continue;
+			if ($id !== '') {
+				$leaves[] = [self::rangeOf(child: $child), $id];
 			}
-			$name = trim((string)($child['name'] ?? ''));
-			$range = match ($child['category'] ?? '') {
-				'product_version_range' => $name !== '' ? $name : null,
-				'product_version' => $name !== '' ? 'vers:generic/=' . $name : null,
-				default => null,
-			};
-			$leaves[] = [$range, $id];
 		}
+
 		return $leaves;
+	}
+
+	/**
+	 * The VERS range a version branch names, or null.
+	 *
+	 * @param array<string, mixed> $child The branch.
+	 *
+	 * @return string|null A range as written, `vers:generic/=<version>` for one version, null otherwise.
+	 */
+	private static function rangeOf(array $child): ?string {
+		$name = trim((string)($child['name'] ?? ''));
+		if ($name === '') {
+			return null;
+		}
+
+		return match ($child['category'] ?? '') {
+			'product_version_range' => $name,
+			'product_version' => 'vers:generic/=' . $name,
+			default => null,
+		};
 	}
 
 	/**
