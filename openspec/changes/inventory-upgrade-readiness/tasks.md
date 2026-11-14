@@ -3,7 +3,8 @@
 ## 1. Ranges on versions
 
 - [x] 1.1 Read `phpVersionSpec` in `AppStoreSource::normalizeVersions()`, add `phpSpec`, `platformSpec` and `phpCompatible`, and add `satisfiesPhpSpec()`. Verify: `tests/unit/Service/Source/AppStoreSourceTest.php` covers a matching, a failing and an absent PHP range.
-- [ ] 1.2 Add `Forge::fileAtRefEndpoint()` and `ForgeRangeStore`, and stamp stored or freshly read ranges in `InstallerService::getAppVersions()` for at most five uncached forge versions. Verify: a unit test with a stubbed forge answer, one for a missing `info.xml` (stored as no range, not fetched again), and one that a cached archive still wins.
+- [x] 1.2 Add `Forge::fileAtRefEndpoint()` and `ForgeRangeStore`, and stamp stored or freshly read ranges in `InstallerService::getAppVersions()` for at most five uncached forge versions. Verify: a unit test with a stubbed forge answer, one for a missing `info.xml` (stored as no range, not fetched again), and one that a cached archive still wins.
+  - Built as `Forge::infoXmlEndpoint()` (the one file it reads), `ForgeReleaseSource::infoXmlAtTag()` (tries `v<version>`, then `<version>`), `InfoXmlRanges`, `ForgeRangeStore` (key `forge_range.` plus a digest of source id and version, since an app config key is at most 64 characters) and `ForgeRangeStamper`, wired through `SourceLookup`.
 - [ ] 1.3 Show the PHP verdict in `ServerCompatBadge.vue`. Verify: `ServerCompatBadge.spec.ts` renders the PHP line only when `phpCompatible` is not null.
 
 ## 2. Readiness

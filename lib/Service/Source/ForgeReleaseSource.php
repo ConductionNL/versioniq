@@ -315,38 +315,106 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * @return array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string}
 	 */
 	private function fetchAdvisories(Forge $forge, string $ownerRepo): array {
-		// No session user means a background job; the resolver then picks from
-		// tokens shared with admins instead of going anonymous (#430).
-		$uid = $this->pats->userSession->getUser()?->getUID();
-		$pat = $this->pats->patResolver->findFor($forge->id, $ownerRepo, $uid);
-
-		$endpoint = $forge->advisoriesEndpoint($ownerRepo);
-
-		if ($pat === null) {
-			return $this->performFetch($forge, $endpoint, null);
-		}
+		$call = new ForgeCall($forge, $ownerRepo, $forge->advisoriesEndpoint($ownerRepo));
 
 		/** @var array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string} */
-		return $this->pats->patManager->useToken($pat, fn (string $token): array => $this->performFetch($forge, $endpoint, $token));
+		return $this->authorized($call, fn (?string $token): array => $this->performFetch($forge, $call->url, $token));
 	}
 
 	/**
 	 * @return array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string}
 	 */
 	private function fetchReleases(Forge $forge, string $ownerRepo): array {
-		// No session user means a background job; the resolver then picks from
-		// tokens shared with admins instead of going anonymous (#430).
-		$uid = $this->pats->userSession->getUser()?->getUID();
-		$pat = $this->pats->patResolver->findFor($forge->id, $ownerRepo, $uid);
-
-		$endpoint = $forge->releasesEndpoint($ownerRepo);
-
-		if ($pat === null) {
-			return $this->performFetch($forge, $endpoint, null);
-		}
+		$call = new ForgeCall($forge, $ownerRepo, $forge->releasesEndpoint($ownerRepo));
 
 		/** @var array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string} */
-		return $this->pats->patManager->useToken($pat, fn (string $token): array => $this->performFetch($forge, $endpoint, $token));
+		return $this->authorized($call, fn (?string $token): array => $this->performFetch($forge, $call->url, $token));
+	}
+
+	/**
+	 * Runs a forge request with the PAT that applies to the repository, or
+	 * anonymously when none does. No session user means a background job; the
+	 * resolver then picks from tokens shared with admins instead of going
+	 * anonymous (#430).
+	 *
+	 * @template T
+	 * @param callable(?string): T $fetch
+	 * @return T
+	 */
+	private function authorized(ForgeCall $call, callable $fetch): mixed {
+		$uid = $this->pats->userSession->getUser()?->getUID();
+		$pat = $this->pats->patResolver->findFor($call->forge->id, $call->ownerRepo, $uid);
+		if ($pat === null) {
+			return $fetch(null);
+		}
+
+		return $this->pats->patManager->useToken($pat, fn (string $token): mixed => $fetch($token));
+	}
+
+	/**
+	 * The release's `appinfo/info.xml` at its tag (`v<version>`, else
+	 * `<version>`): '' when the forge has no such file at either tag or its
+	 * answer cannot be read, null when the request failed and may work later
+	 * (network, authentication, rate limit, server error).
+	 *
+	 * @spec openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness/spec.md#requirement-a-forge-releases-ranges-are-read-without-downloading-the-release
+	 */
+	public function infoXmlAtTag(SourceBinding $binding, string $version): ?string {
+		$ownerRepo = $binding->getOwnerRepo();
+		if ($ownerRepo === null) {
+			return '';
+		}
+
+		$forge = $this->forgeRegistry->get($binding->getForge());
+		foreach (self::tagCandidates($version) as $tag) {
+			$call = new ForgeCall($forge, $ownerRepo, $forge->infoXmlEndpoint($ownerRepo, $tag));
+			/** @var string|null $content */
+			$content = $this->authorized($call, fn (?string $token): ?string => $this->fetchFile($call, $token));
+			if ($content !== '') {
+				return $content;
+			}
+		}
+
+		return '';
+	}
+
+	/**
+	 * The tags a version may be released under, most usual first.
+	 *
+	 * @return list<string>
+	 */
+	private static function tagCandidates(string $version): array {
+		return str_starts_with($version, 'v') ? [$version] : ['v' . $version, $version];
+	}
+
+	/**
+	 * One file from the forge's contents endpoint: its text, '' when absent
+	 * or unreadable, null when the request failed.
+	 */
+	private function fetchFile(ForgeCall $call, ?string $token): ?string {
+		$response = $this->send($call, $token);
+		if (!$response instanceof IResponse) {
+			return null;
+		}
+
+		$status = $response->getStatusCode();
+		if ($status === 404) {
+			return '';
+		}
+
+		return $status === 200 ? self::fileContent((string)$response->getBody()) : null;
+	}
+
+	/** The decoded `content` of a contents answer, or '' when it carries none. */
+	private static function fileContent(string $body): string {
+		$decoded = json_decode($body, true);
+		if (!is_array($decoded) || !is_string($decoded['content'] ?? null)) {
+			return '';
+		}
+
+		$content = base64_decode($decoded['content']);
+
+		return $content === false ? '' : $content;
 	}
 
 	/**
@@ -356,9 +424,22 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * @return array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string}
 	 */
 	private function performFetch(Forge $forge, string $endpoint, ?string $token): array {
+		$response = $this->send(new ForgeCall($forge, '', $endpoint), $token);
+		if (!$response instanceof IResponse) {
+			return ['ok' => false, 'error' => $this->humanizeError($forge, $response)];
+		}
+
+		return $this->readReleaseList($forge, $response);
+	}
+
+	/**
+	 * One GET to the forge: the response, or the error message when the
+	 * request did not get one (logged, and reported to integriq).
+	 */
+	private function send(ForgeCall $call, ?string $token): IResponse|string {
 		try {
-			$response = $this->clientService->newClient()->get($endpoint, [
-				'headers' => $this->requestHeaders($forge, $token),
+			return $this->clientService->newClient()->get($call->url, [
+				'headers' => $this->requestHeaders($call->forge, $token),
 				'timeout' => 30,
 				// IClient throws on 4xx by default; we want to inspect the
 				// status code ourselves to produce useful errors.
@@ -369,17 +450,15 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			]);
 		} catch (Exception $error) {
 			$this->logger->warning('ForgeReleaseSource: fetch failed', [
-				'forge' => $forge->id,
-				'endpoint' => $endpoint,
+				'forge' => $call->forge->id,
+				'endpoint' => $call->url,
 				'message' => $error->getMessage(),
 			]);
 
-			$this->connectionReports?->forgeAnswered($forge->id, $forge->apiBaseUrl, null);
+			$this->connectionReports?->forgeAnswered($call->forge->id, $call->forge->apiBaseUrl, null);
 
-			return ['ok' => false, 'error' => $this->humanizeError($forge, $error->getMessage())];
+			return $error->getMessage();
 		}
-
-		return $this->readReleaseList($forge, $response);
 	}
 
 	/**

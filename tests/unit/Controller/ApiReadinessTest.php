@@ -53,7 +53,7 @@ final class ApiReadinessTest extends TestCase {
 			'connectionReports' => null,
 			'readinessResultStore' => $store,
 			'jobList' => $jobs,
-		]);
+		] + ($jobs === null ? ['readiness' => null] : []));
 	}
 
 	public function testANonAdminGets403AndNoJobIsQueued(): void {

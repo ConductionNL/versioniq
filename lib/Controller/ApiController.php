@@ -179,7 +179,7 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$stored = $this->reports->stores->readinessResultStore?->read() ?? ['report' => null, 'checkedAt' => null];
+		$stored = $this->reports->readiness?->readinessResultStore->read() ?? ['report' => null, 'checkedAt' => null];
 
 		return new DataResponse([
 			'report' => $stored['report'],
@@ -216,11 +216,12 @@ class ApiController extends OCSController {
 		if ($targets === null || !self::validTargets($targets)) {
 			return new DataResponse(['message' => 'Give a server major such as 33 and a PHP version such as 8.4'], Http::STATUS_BAD_REQUEST);
 		}
-		if ($this->reports->jobList === null) {
+		$jobList = $this->reports->readiness?->jobList;
+		if ($jobList === null) {
 			return new DataResponse(['message' => 'Background jobs are not available'], Http::STATUS_SERVICE_UNAVAILABLE);
 		}
 
-		$this->reports->jobList->add(UpgradeReadinessJob::class, $targets);
+		$jobList->add(UpgradeReadinessJob::class, $targets);
 
 		return new DataResponse(['queued' => true] + $targets, Http::STATUS_ACCEPTED);
 	}
