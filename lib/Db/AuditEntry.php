@@ -104,7 +104,7 @@ class AuditEntry extends Entity implements JsonSerializable {
 	 *
 	 * @return list<array{id: string, severity: string}>|null
 	 */
-	private function decodedAdvisories(): ?array {
+	public function decodedAdvisories(): ?array {
 		if ($this->advisories === null || $this->advisories === '') {
 			return null;
 		}

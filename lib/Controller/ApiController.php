@@ -18,6 +18,8 @@ use OCA\Versioniq\Http\InstallVersionFields;
 use OCA\Versioniq\Http\RequestFieldsFrom;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\Api\AccessCollaborators;
+use OCA\Versioniq\Service\Audit\AuditPeriod;
+use OCA\Versioniq\Service\Audit\AuditPeriodQuery;
 use OCA\Versioniq\Service\Api\InstallCollaborators;
 use OCA\Versioniq\Service\Api\ReportCollaborators;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
@@ -1385,13 +1387,33 @@ class ApiController extends OCSController {
 		$limit = max(1, min($limit, 200));
 		$offset = max(0, $this->intParam('offset', 0));
 
-		$entries = $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset);
+		$from = $this->stringParam('from', '');
+		$to = $this->stringParam('to', '');
+		$operation = $this->stringParam('operation', '');
+		$securityOnly = $this->readBinaryBool($this->request->getParam('securityOnly'), false);
+		if ($from === '' && $to === '' && $operation === '' && $securityOnly === false) {
+			$entries = $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset);
 
-		return new DataResponse([
-			'entries' => $entries,
-			'limit' => $limit,
-			'offset' => $offset,
-		]);
+			return new DataResponse([
+				'entries' => $entries,
+				'limit' => $limit,
+				'offset' => $offset,
+			]);
+		}
+
+		// audit-security-reports D5: a period in the admin's time zone, a
+		// single operation, and the security updates only.
+		try {
+			$period = AuditPeriod::fromDays($from, $to, $this->stringParam('timeZone', ''));
+		} catch (InvalidArgumentException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
+
+		return new DataResponse((new AuditPeriodQuery($this->reports->auditEntryMapper))->page(
+			$period,
+			['appId' => $appId, 'operation' => $operation, 'securityOnly' => $securityOnly],
+			['limit' => $limit, 'offset' => $offset],
+		));
 	}
 
 	/**
