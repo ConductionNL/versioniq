@@ -17,8 +17,8 @@
 
 ## 4. Page
 
-- [ ] 4.1 Add `src/components/AlertsPanel.vue` as an Alerts tab (scope, followed apps, targets with their last delivery and Send test), and "Follow releases" in `src/components/DiscoverPanel.vue`. Verify: `src/components/AlertsPanel.spec.ts` covers each part; `src/components/DiscoverPanel.spec.ts` covers Follow.
-- [ ] 4.2 Add the new strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
+- [x] 4.1 Add `src/components/AlertsPanel.vue` as an Alerts tab (scope, followed apps, targets with their last delivery and Send test), and "Follow releases" in `src/components/DiscoverPanel.vue`. Verify: `src/components/AlertsPanel.spec.ts` covers each part; `src/components/DiscoverPanel.spec.ts` covers Follow.
+- [x] 4.2 Add the new strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
 - [ ] 4.3 Add `tests/e2e/alerts.spec.ts`: the forge fixture publishes a newer release, the sweep runs with `occ background-job:execute --force-execute`, and the admin sees the notification and the feed item; a webhook target stored with `occ config:app:set versioniq webhook.fixture` (the form accepts https only; `tests/e2e/fixtures/forge/bootstrap.sh` sets the http forge addresses the same way) points at a new route on `tests/e2e/fixtures/forge/server.mjs`, which records the `new_release` delivery for the test to read.
 
 ## 5. Close
@@ -31,4 +31,7 @@
 - 2.2: `FeedController` and `FeedControllerTest` (403, RSS 2.0, `pubDate`) landed in the first slice; the box stays open for its e2e part (`tests/e2e/shell.spec.ts`).
 - 3.1: `WebhookTargetStore` (with `WebhookTargetInput` for the field checks) and the routes on `AlertController`, which reaches the release settings and the targets through one `AlertServices` holder so it keeps four collaborators. `POST /api/webhooks/{id}/test` sends right away and records the outcome as the last delivery. A target stored with `occ config:app:set` may carry an http address (the e2e fixture); the form refuses anything but https.
 - 3.2: `AlertDispatcher::dispatch(subject, parameters)` maps the subject to its kind and queues one `WebhookDeliveryJob` per enabled matching target; it is called once at the end of `NotifiesAdmins::notifyAdmins()`, which `AutoUpdateNotifier`, `PinDriftHandler`, `AdvisoryNotifier`, `AdvisoryDigestNotifier` and `ReleaseNotifier` all use, and by `PatExpiryNotifier` after its own notification. `AlertText` renders the English text with the app's `Notifier`. Tests: `WebhookSenderTest` (both formats, the signature against a vector computed outside PHP), `AlertDeliveryTest` (dispatch, success, retry, failure after the third attempt), `NotifiesAdminsTest` and `PatExpiryNotifierTest` (one dispatch per alert).
+- 4.1: `AlertsPanel.vue` is the Alerts tab (after Advisories): the scope, the followed apps with Unfollow and a follow-by-app-id form, the recent releases, and the webhook targets with their last delivery, Send test, on/off and Remove, plus an add form. `DiscoverPanel.vue` offers "Follow releases" on every hit that is not installed, with the hit's GitHub source or else the app's default source. Specs: `AlertsPanel.spec.ts`, `DiscoverPanel.spec.ts`; `App.navigation.spec.ts` lists the new tab.
+- 4.2: the new strings sit at the top of `l10n/en.json` and `l10n/nl.json`; `npm run l10n:build` regenerated the `.js` catalogues and `npm run check:l10n-js` passes.
+- Left open: 2.2 and 4.3 (the e2e specs), and 5.1 (close and archive).
 
