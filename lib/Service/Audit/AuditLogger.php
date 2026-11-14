@@ -37,6 +37,8 @@ class AuditLogger {
 	public const OPERATION_PIN_DRIFT = 'pin_drift';
 	/** An instance setting changed from the Settings tab (#438). */
 	public const OPERATION_SETTINGS = 'settings';
+	/** A connection to another Versioniq instance was added, changed or removed (install-multi-instance-promotion D1). */
+	public const OPERATION_INSTANCE_CONNECTION = 'instance_connection';
 
 	private const OPERATION_PATTERN = '/^[a-z_]{1,32}$/';
 	private const MESSAGE_MAX_LENGTH = 4000;
