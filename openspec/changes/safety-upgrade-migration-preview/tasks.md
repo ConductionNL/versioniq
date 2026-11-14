@@ -16,7 +16,8 @@
 
 ## 3. Page and CLI
 
-- [ ] 3.1 Add "Preview database changes" and `src/components/MigrationPreviewPanel.vue`, with the texts in `src/utils/migrationSafety.ts` (design D5). Verify: `src/components/MigrationPreviewPanel.spec.ts` covers each size class, a data step, repair steps, an estimate, and no changes; `src/utils/migrationSafety.spec.ts` covers the advice texts.
+- [x] 3.1 Add "Preview database changes" and `src/components/MigrationPreviewPanel.vue`, with the texts in `src/utils/migrationSafety.ts` (design D5). Verify: `src/components/MigrationPreviewPanel.spec.ts` covers each size class, a data step, repair steps, an estimate, and no changes; `src/utils/migrationSafety.spec.ts` covers the advice texts.
+  - Done. The button shows for a selected upgrade, runs a dry run like the downgrade preview, and the panel renders what it returns; the preview is cleared when the app or version changes.
 - [x] 3.2 Print the preview in `lib/Command/InstallVersion.php` after a dry run. Verify: `tests/unit/Command/InstallVersionTest.php` covers the table output and the JSON key.
   - Done. One row per table a step changes (step, changes, table, rows, advice), "No database changes" without steps, then the repair steps; `--json` passes `migrationPreview` through unchanged.
 - [ ] 3.3 Add the new strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.

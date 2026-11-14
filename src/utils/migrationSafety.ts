@@ -65,3 +65,99 @@ export function orphanedMigrationsSummary(orphanedMigrations: string[] | null): 
 		{ count: orphanedMigrations.length },
 	)
 }
+
+// Upgrade migration preview (safety-upgrade-migration-preview, design D3/D5).
+// The advice names a size class, never a duration in seconds.
+
+export type MigrationPreviewTable = {
+	name: string
+	rows: number | null
+	sizeClass: 'new' | 'small' | 'large' | 'very_large' | 'unknown' | string
+}
+
+export type MigrationPreviewAction = {
+	attribute: string
+	table: string
+	name: string
+	description: string
+}
+
+export type MigrationPreviewStep = {
+	name: string
+	actions: MigrationPreviewAction[]
+	tables: MigrationPreviewTable[]
+	dataStep: boolean
+	describes: boolean
+}
+
+export type MigrationPreview = {
+	steps: MigrationPreviewStep[]
+	repairSteps: string[]
+	estimated: boolean
+}
+
+/**
+ * The advice for a table's size class.
+ *
+ * @param sizeClass `new`, `small`, `large`, `very_large`, or anything else for unknown.
+ * @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
+ */
+export function sizeClassAdvice(sizeClass: string): string {
+	switch (sizeClass) {
+	case 'new':
+		return t('versioniq', 'New table; fast')
+	case 'small':
+		return t('versioniq', 'Takes seconds')
+	case 'large':
+		return t('versioniq', 'May take minutes')
+	case 'very_large':
+		return t('versioniq', 'May take long; plan a maintenance window')
+	default:
+		return t('versioniq', 'Size unknown')
+	}
+}
+
+/**
+ * What a Nextcloud migration attribute does; an unknown attribute is shown by its name.
+ *
+ * @param attribute The attribute's short class name.
+ * @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
+ */
+export function migrationActionText(attribute: string): string {
+	switch (attribute) {
+	case 'CreateTable':
+		return t('versioniq', 'creates a table')
+	case 'DropTable':
+		return t('versioniq', 'drops a table')
+	case 'AddColumn':
+		return t('versioniq', 'adds a column')
+	case 'DropColumn':
+		return t('versioniq', 'drops a column')
+	case 'ModifyColumn':
+		return t('versioniq', 'changes a column')
+	case 'AddIndex':
+		return t('versioniq', 'adds an index')
+	case 'DropIndex':
+		return t('versioniq', 'drops an index')
+	case 'DataCleansing':
+		return t('versioniq', 'cleans data')
+	default:
+		return attribute
+	}
+}
+
+/**
+ * The fixed texts of the preview panel.
+ *
+ * @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
+ */
+export function migrationPreviewTexts(): Record<'noChanges' | 'unreadable' | 'estimated' | 'dataStep' | 'undescribed' | 'repairSteps', string> {
+	return {
+		noChanges: t('versioniq', 'No database changes'),
+		unreadable: t('versioniq', 'The database changes of this version could not be read.'),
+		estimated: t('versioniq', 'Estimate: the list of migrations already run could not be read.'),
+		dataStep: t('versioniq', 'Moves data; the time depends on the amount of data.'),
+		undescribed: t('versioniq', 'This step does not describe what it changes.'),
+		repairSteps: t('versioniq', 'Repair steps after the migrations'),
+	}
+}
