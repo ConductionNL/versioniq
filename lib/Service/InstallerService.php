@@ -28,6 +28,7 @@ use OCA\Versioniq\Service\Installer\ServerAccess;
 use OCA\Versioniq\Service\Installer\ShaMismatchException;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Source\AppStoreSource;
+use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
@@ -1091,6 +1092,9 @@ class InstallerService {
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
 	public function bindSource(string $appId, SourceBinding $binding): void {
+		if (SourceBinding::isRetiredForge($binding->getForge())) {
+			throw new RetiredForgeException($binding->getForge());
+		}
 		$this->state->trustedSources->assertBindingAllowed($binding);
 		$this->sources->bindingStore->set($appId, $binding);
 	}
@@ -1131,6 +1135,9 @@ class InstallerService {
 	 */
 	public function addTrustedPattern(string $forge, string $owner, ?string $repo): array {
 		self::assertKnownForge($forge);
+		if (SourceBinding::isRetiredForge($forge)) {
+			throw new RetiredForgeException($forge);
+		}
 		$pattern = self::forgePattern($forge, self::ownerRepoPath($owner, $repo));
 
 		$patterns = $this->state->trustedSources->getPatterns();

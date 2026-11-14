@@ -31,6 +31,7 @@ use OCA\Versioniq\Service\Pat\PatManager;
 use OCA\Versioniq\Service\Pat\PatValidator;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\PolicyStore;
+use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCA\Versioniq\Tests\Unit\Support\DispatchesLikeNextcloud;
@@ -789,6 +790,58 @@ final class ApiTest extends TestCase {
 		$response = $this->buildAdminController($installer, $request)->bindSource('widget');
 
 		$this->assertSame(400, $response->getStatus());
+	}
+
+	/**
+	 * codeberg-is-no-release-source: a new Codeberg binding is a 400 naming
+	 * the forge, and the binding is not stored.
+	 */
+	public function testBindSourceOnTheRetiredCodebergForgeIsRefused(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'kind' => 'github-release',
+				'forge' => 'codeberg',
+				'owner' => 'Conduction',
+				'repo' => 'openregister',
+				default => $default,
+			}
+		);
+
+		$installer = $this->createMock(InstallerService::class);
+		$installer->expects($this->once())->method('bindSource')->willThrowException(new RetiredForgeException('codeberg'));
+		$installer->expects($this->never())->method('getBinding');
+
+		$response = $this->buildAdminController($installer, $request)->bindSource('openregister');
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertStringContainsString('"codeberg" is no longer offered', $response->getData()['message']);
+	}
+
+	/**
+	 * codeberg-is-no-release-source: a new Codeberg trusted pattern is a 400
+	 * naming the forge, not the 422 of a malformed pattern.
+	 */
+	public function testAddTrustedSourceOnTheRetiredCodebergForgeIsRefused(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'forge' => 'codeberg',
+				'owner' => 'Conduction',
+				default => $default,
+			}
+		);
+
+		$installer = $this->createMock(InstallerService::class);
+		$installer->expects($this->once())
+			->method('addTrustedPattern')
+			->with('codeberg', 'Conduction', null)
+			->willThrowException(new RetiredForgeException('codeberg'));
+
+		$response = $this->buildAdminController($installer, $request)->addTrustedSource();
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertStringContainsString('"codeberg" is no longer offered', $response->getData()['message']);
 	}
 
 	public function testPoliciesListEachAppsBlockedVersions(): void {
