@@ -18,6 +18,7 @@ use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCA\Versioniq\Service\Instance\InstanceConnection;
 use OCA\Versioniq\Service\Instance\InstanceConnectionStore;
+use OCA\Versioniq\Service\Instance\ManifestBuilder;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
@@ -46,6 +47,7 @@ class InstanceController extends OCSController {
 		private AuditLogger $auditLogger,
 		private IGroupManager $groupManager,
 		private IUserSession $userSession,
+		private ?ManifestBuilder $manifest = null,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -71,6 +73,31 @@ class InstanceController extends OCSController {
 			'self' => $this->store->self(),
 			'instances' => array_map(static fn (InstanceConnection $connection): array => $connection->toPublicArray(), $this->store->all()),
 		]);
+	}
+
+	/**
+	 * This instance's manifest: its name and stage, server and Versioniq versions, and every app it runs
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{instanceName: string, stage: string, serverVersion: string, versioniqVersion: string, apps: list<array{appId: string, installedVersion: ?string, state: string, sourceId: ?string, sha256: ?string, runningSince: ?string}>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN|Http::STATUS_SERVICE_UNAVAILABLE, array{message: string}, array{}>
+	 *
+	 * 200: The manifest, read from local state only
+	 * 403: Caller is not an administrator
+	 * 503: The manifest cannot be built on this instance
+	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/design.md
+	 */
+	#[ApiRoute(verb: 'GET', url: '/api/instance/manifest')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/instance/manifest', postfix: 'v1')]
+	public function manifest(): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		if ($this->manifest === null) {
+			return new DataResponse(['message' => 'Unavailable'], Http::STATUS_SERVICE_UNAVAILABLE);
+		}
+
+		return new DataResponse($this->manifest->build());
 	}
 
 	/**

@@ -18,6 +18,7 @@ use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCA\Versioniq\Service\Instance\InstanceConnectionStore;
+use OCA\Versioniq\Service\Instance\ManifestBuilder;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IAppConfig;
@@ -45,7 +46,7 @@ final class InstanceControllerTest extends TestCase {
 	/** @var list<array{0: AuditSubject, 1: AuditedVersions, 2: string, 3: ?string}> */
 	private array $audits = [];
 
-	private function controller(bool $admin = true): InstanceController {
+	private function controller(bool $admin = true, ?ManifestBuilder $manifest = null): InstanceController {
 		$appConfig = $this->createMock(IAppConfig::class);
 		$appConfig->method('getKeys')->willReturnCallback(fn (): array => array_keys($this->config));
 		$appConfig->method('getValueString')->willReturnCallback(fn (string $app, string $key, string $default = ''): string => $this->config[$key] ?? $default);
@@ -73,7 +74,7 @@ final class InstanceControllerTest extends TestCase {
 		$groups = $this->createMock(IGroupManager::class);
 		$groups->method('isAdmin')->with('alice')->willReturn($admin);
 
-		return new InstanceController('versioniq', $this->createMock(IRequest::class), new InstanceConnectionStore($appConfig, $crypto, $time), $audit, $groups, $session);
+		return new InstanceController('versioniq', $this->createMock(IRequest::class), new InstanceConnectionStore($appConfig, $crypto, $time), $audit, $groups, $session, $manifest);
 	}
 
 	private function add(InstanceController $controller, string $id = 'acceptance', string $password = 'secret-app-password'): \OCP\AppFramework\Http\DataResponse {
@@ -152,5 +153,27 @@ final class InstanceControllerTest extends TestCase {
 			self::assertCount(1, (new ReflectionMethod(InstanceController::class, $method))->getAttributes(PasswordConfirmationRequired::class), $method);
 		}
 		self::assertCount(0, (new ReflectionMethod(InstanceController::class, 'index'))->getAttributes(PasswordConfirmationRequired::class));
+	}
+
+	public function testTheManifestIsForAdminsOnly(): void {
+		$builder = $this->createMock(ManifestBuilder::class);
+		$builder->expects(self::never())->method('build');
+
+		self::assertSame(403, $this->controller(admin: false, manifest: $builder)->manifest()->getStatus());
+	}
+
+	public function testAnAdminGetsTheManifest(): void {
+		$manifest = ['instanceName' => 'Test', 'stage' => 'test', 'serverVersion' => '32.0.1', 'versioniqVersion' => '1.9.0', 'apps' => []];
+		$builder = $this->createMock(ManifestBuilder::class);
+		$builder->expects(self::once())->method('build')->willReturn($manifest);
+
+		$response = $this->controller(manifest: $builder)->manifest();
+
+		self::assertSame(200, $response->getStatus());
+		self::assertSame($manifest, $response->getData());
+	}
+
+	public function testWithoutABuilderTheManifestIsUnavailable(): void {
+		self::assertSame(503, $this->controller()->manifest()->getStatus());
 	}
 }

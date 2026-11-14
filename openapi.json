@@ -6958,6 +6958,208 @@
                 }
             }
         },
+        "/instance/manifest": {
+            "get": {
+                "operationId": "instance-manifest-v1",
+                "summary": "This instance's manifest: its name and stage, server and Versioniq versions, and every app it runs",
+                "description": "openspec/changes/install-multi-instance-promotion/design.md\nThis endpoint requires admin access",
+                "tags": [
+                    "instance"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The manifest, read from local state only",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "instanceName",
+                                                        "stage",
+                                                        "serverVersion",
+                                                        "versioniqVersion",
+                                                        "apps"
+                                                    ],
+                                                    "properties": {
+                                                        "instanceName": {
+                                                            "type": "string"
+                                                        },
+                                                        "stage": {
+                                                            "type": "string"
+                                                        },
+                                                        "serverVersion": {
+                                                            "type": "string"
+                                                        },
+                                                        "versioniqVersion": {
+                                                            "type": "string"
+                                                        },
+                                                        "apps": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "required": [
+                                                                    "appId",
+                                                                    "installedVersion",
+                                                                    "state",
+                                                                    "sourceId",
+                                                                    "sha256",
+                                                                    "runningSince"
+                                                                ],
+                                                                "properties": {
+                                                                    "appId": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "installedVersion": {
+                                                                        "type": "string",
+                                                                        "nullable": true
+                                                                    },
+                                                                    "state": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "sourceId": {
+                                                                        "type": "string",
+                                                                        "nullable": true
+                                                                    },
+                                                                    "sha256": {
+                                                                        "type": "string",
+                                                                        "nullable": true
+                                                                    },
+                                                                    "runningSince": {
+                                                                        "type": "string",
+                                                                        "nullable": true
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Caller is not an administrator",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "message"
+                                                    ],
+                                                    "properties": {
+                                                        "message": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "The manifest cannot be built on this instance",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "message"
+                                                    ],
+                                                    "properties": {
+                                                        "message": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/instances": {
             "get": {
                 "operationId": "instance-index-v1",
