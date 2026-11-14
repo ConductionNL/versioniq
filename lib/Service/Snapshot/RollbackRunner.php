@@ -23,7 +23,8 @@ use OCP\AppFramework\Http;
  * snapshot's source, in plan order. A `downgrade` step passes allowDowngrade,
  * because the plan was acknowledged; a `pinned` step runs only when the pins
  * are moved, with overridePin=repin. The run stops at the first failure unless
- * told to continue; the steps it did not reach count as skipped.
+ * told to continue; the steps it did not reach, and pinned steps whose pin
+ * stays, count as skipped.
  *
  * A dry run installs nothing: it runs a dry-run install for every downgrade
  * it would make and reports the migrations each would orphan.
@@ -42,6 +43,7 @@ class RollbackRunner {
 	 * Whether a step installs anything in a run.
 	 *
 	 * @param RollbackStep $step
+	 * @spec openspec/changes/install-bulk-rollback/specs/cli-commands/spec.md
 	 */
 	public static function isRunnable(array $step, bool $movePins): bool {
 		return $step['kind'] === 'downgrade'
@@ -54,18 +56,18 @@ class RollbackRunner {
 	 *
 	 * @param list<RollbackStep> $steps
 	 * @param callable(array<string, mixed>): void|null $onStep Called after each step with its outcome.
-	 * @return list<StepOutcome> One outcome per runnable step, in order.
+	 * @return list<StepOutcome> One outcome per move and per pinned step, in order.
 	 * @spec openspec/changes/install-bulk-rollback/specs/cli-commands/spec.md
 	 */
 	public function run(array $steps, bool $dryRun, bool $movePins, bool $continue, ?callable $onStep = null): array {
 		$outcomes = [];
 		$stopped = false;
 		foreach ($steps as $step) {
-			if (!self::isRunnable($step, $movePins)) {
+			if (!self::isRunnable($step, $movePins) && $step['kind'] !== 'pinned') {
 				continue;
 			}
 			$isDowngrade = $step['from'] !== null && $step['to'] !== null && version_compare($step['to'], $step['from'], '<');
-			if ($stopped || ($dryRun && !$isDowngrade)) {
+			if ($stopped || !self::isRunnable($step, $movePins) || ($dryRun && !$isDowngrade)) {
 				$outcome = self::outcome($step, 'skipped', null, []);
 			} else {
 				$outcome = $this->install($step, $dryRun, $isDowngrade);
@@ -85,6 +87,7 @@ class RollbackRunner {
 	 *
 	 * @param list<array{outcome: string}> $outcomes
 	 * @return array{succeeded: int, failed: int, skipped: int}
+	 * @spec openspec/changes/install-bulk-rollback/specs/cli-commands/spec.md
 	 */
 	public static function counts(array $outcomes): array {
 		$counts = ['succeeded' => 0, 'failed' => 0, 'skipped' => 0];

@@ -62,6 +62,7 @@ class SnapshotController extends OCSController {
 	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/snapshots')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/snapshots', postfix: 'v1')]
 	public function index(string $at = ''): DataResponse {
 		if (!$this->isAdmin()) {
 			return $this->forbidden();
@@ -96,6 +97,7 @@ class SnapshotController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'POST', url: '/api/snapshots')]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/snapshots', postfix: 'v1')]
 	public function create(string $name = '', string $reason = 'manual'): DataResponse {
 		if (!$this->isAdmin()) {
 			return $this->forbidden();
@@ -128,6 +130,7 @@ class SnapshotController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'DELETE', url: '/api/snapshots/{id}')]
+	#[ApiRoute(verb: 'DELETE', url: '/api/v1/snapshots/{id}', postfix: 'v1')]
 	public function destroy(string $id): DataResponse {
 		if (!$this->isAdmin()) {
 			return $this->forbidden();
@@ -153,6 +156,7 @@ class SnapshotController extends OCSController {
 	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/snapshots/{id}/plan')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/snapshots/{id}/plan', postfix: 'v1')]
 	public function plan(string $id): DataResponse {
 		if (!$this->isAdmin()) {
 			return $this->forbidden();
@@ -186,6 +190,7 @@ class SnapshotController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'POST', url: '/api/snapshots/{id}/run-log')]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/snapshots/{id}/run-log', postfix: 'v1')]
 	public function runLog(string $id, string $phase, int $steps = 0, int $succeeded = 0, int $failed = 0, int $skipped = 0): DataResponse {
 		if (!$this->isAdmin()) {
 			return $this->forbidden();

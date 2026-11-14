@@ -19,7 +19,7 @@
 
 ## 4. Commands
 
-- [ ] 4.1 Add `lib/Command/TakeSnapshot.php`, `lib/Command/ListSnapshots.php` and `lib/Command/RollbackToSnapshot.php` (design D5), registered in `appinfo/info.xml`. Verify: `tests/unit/Command/RollbackToSnapshotTest.php` covers `--to`, `--dry-run`, `--continue`, `--move-pins` and the exit code of a failed step; extend `tests/e2e/cli.spec.ts` with a snapshot and a dry-run rollback.
+- [x] 4.1 Add `lib/Command/TakeSnapshot.php`, `lib/Command/ListSnapshots.php` and `lib/Command/RollbackToSnapshot.php` (design D5), registered in `appinfo/info.xml`. Verify: `tests/unit/Command/RollbackToSnapshotTest.php` covers `--to`, `--dry-run`, `--continue`, `--move-pins` and the exit code of a failed step; extend `tests/e2e/cli.spec.ts` with a snapshot and a dry-run rollback.
 
 ## 5. Close
 

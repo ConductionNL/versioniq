@@ -64,6 +64,7 @@ final class InstanceSnapshot {
 	/**
 	 * @param array<array-key, mixed> $payload
 	 * @throws \InvalidArgumentException on a payload that is not a snapshot
+	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
 	 */
 	public static function fromArray(array $payload): self {
 		$apps = [];
@@ -92,6 +93,7 @@ final class InstanceSnapshot {
 	 * is not `notInstalled` and the version is a non-empty string, else null.
 	 *
 	 * @param array<array-key, mixed> $card An app card of `InstallerService::getInstalledApps()`.
+	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
 	 */
 	public static function installedVersion(array $card): ?string {
 		$version = $card['installedVersion'] ?? null;
@@ -104,6 +106,7 @@ final class InstanceSnapshot {
 
 	/**
 	 * The value when it is a string, else null.
+	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
 	 */
 	public static function stringOrNull(mixed $value): ?string {
 		return is_string($value) ? $value : null;
@@ -161,6 +164,7 @@ final class InstanceSnapshot {
 
 	/**
 	 * @return array{id: string, takenAt: string, takenBy: string, reason: string, name: ?string, apps: array<string, array{version: string, sourceId: ?string, enabled: bool}>}
+	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
 	 */
 	public function toArray(): array {
 		return [
@@ -177,6 +181,7 @@ final class InstanceSnapshot {
 	 * The index line of this snapshot.
 	 *
 	 * @return array{id: string, takenAt: string, reason: string, name: ?string, appCount: int}
+	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
 	 */
 	public function summary(): array {
 		return [

@@ -79,8 +79,9 @@ final class RollbackRunnerTest extends TestCase {
 		$this->assertFalse($this->requests[0]->options->dryRun);
 		$this->assertFalse($this->requests[2]->options->allowDowngrade, 'an upgrade needs no downgrade acknowledgement');
 		$this->assertNull($this->requests[0]->pinChoice->overridePin);
-		$this->assertSame(['succeeded', 'succeeded', 'succeeded'], array_column($outcomes, 'outcome'));
-		$this->assertSame(['succeeded' => 3, 'failed' => 0, 'skipped' => 0], RollbackRunner::counts($outcomes));
+		$this->assertSame(['succeeded', 'succeeded', 'succeeded', 'skipped'], array_column($outcomes, 'outcome'));
+		$this->assertSame('calendar', $outcomes[3]['appId'], 'a pinned step whose pin stays is skipped, not installed');
+		$this->assertSame(['succeeded' => 3, 'failed' => 0, 'skipped' => 1], RollbackRunner::counts($outcomes));
 	}
 
 	public function testPinnedStepsRunOnlyWhenThePinsMove(): void {
@@ -99,17 +100,17 @@ final class RollbackRunnerTest extends TestCase {
 		});
 
 		$this->assertCount(2, $this->requests, 'the third app is not touched');
-		$this->assertSame(['opencatalogi:succeeded', 'openregister:failed', 'mail:skipped'], $seen);
+		$this->assertSame(['opencatalogi:succeeded', 'openregister:failed', 'mail:skipped', 'calendar:skipped'], $seen);
 		$this->assertSame(502, $outcomes[1]['statusCode']);
 		$this->assertSame('checksum_mismatch', $outcomes[1]['payload']['category']);
-		$this->assertSame(['succeeded' => 1, 'failed' => 1, 'skipped' => 1], RollbackRunner::counts($outcomes));
+		$this->assertSame(['succeeded' => 1, 'failed' => 1, 'skipped' => 2], RollbackRunner::counts($outcomes));
 	}
 
 	public function testContinueGoesOnAfterAFailure(): void {
 		$outcomes = $this->runner(['opencatalogi' => 502])->run(self::plan(), false, false, true);
 
 		$this->assertCount(3, $this->requests);
-		$this->assertSame(['failed', 'succeeded', 'succeeded'], array_column($outcomes, 'outcome'));
+		$this->assertSame(['failed', 'succeeded', 'succeeded', 'skipped'], array_column($outcomes, 'outcome'));
 	}
 
 	public function testADryRunChecksOnlyTheDowngrades(): void {
@@ -117,9 +118,9 @@ final class RollbackRunnerTest extends TestCase {
 
 		$this->assertSame(['opencatalogi', 'openregister'], array_map(static fn (InstallRequest $r): string => $r->target->appId, $this->requests));
 		$this->assertTrue($this->requests[0]->options->dryRun);
-		$this->assertSame(['checked', 'checked', 'skipped'], array_column($outcomes, 'outcome'));
+		$this->assertSame(['checked', 'checked', 'skipped', 'skipped'], array_column($outcomes, 'outcome'));
 		$this->assertSame(['Version2Date'], $outcomes[0]['payload']['orphanedMigrations']);
-		$this->assertSame(['succeeded' => 0, 'failed' => 0, 'skipped' => 1], RollbackRunner::counts($outcomes));
+		$this->assertSame(['succeeded' => 0, 'failed' => 0, 'skipped' => 2], RollbackRunner::counts($outcomes));
 	}
 
 	public function testRunnableKinds(): void {

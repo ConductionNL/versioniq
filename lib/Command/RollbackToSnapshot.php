@@ -159,10 +159,7 @@ class RollbackToSnapshot extends Command {
 
 			return false;
 		}
-		/** @var QuestionHelper $helper */
-		$helper = $this->getHelper('question');
-
-		return (bool)$helper->ask($input, $output, new ConfirmationQuestion(sprintf('Install %d apps? [y/N] ', $runnable), false));
+		return (bool)(new QuestionHelper())->ask($input, $output, new ConfirmationQuestion(sprintf('Install %d apps? [y/N] ', $runnable), false));
 	}
 
 	/**
