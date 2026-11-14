@@ -466,6 +466,32 @@ class ApiController extends OCSController {
 	}
 
 	/**
+	 * How installs of each version of an app went on this instance
+	 * (admin-only), so another Versioniq can add them to its own totals; see
+	 * "Every version shows how widely it runs and how installs of it went"
+	 *
+	 * @param string $appId The app to count install outcomes for
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, outcomes: array<string, array{succeeded: int, failed: int}>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 *
+	 * 200: Successful and failed installs per version
+	 * 403: Caller is not an administrator
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+	 */
+	#[ApiRoute(verb: 'GET', url: '/api/app/{appId}/outcomes')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/app/{appId}/outcomes', postfix: 'v1')]
+	public function appOutcomes(string $appId): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$appId = trim($appId);
+
+		return new DataResponse(['appId' => $appId, 'outcomes' => $this->reports->auditEntryMapper->countOutcomesByVersion($appId)]);
+	}
+
+	/**
 	 * Installs a specific version (password-confirmed); see "Install Specific
 	 * Version" and, when the app is pinned, "Pins are enforced on App
 	 * Versions' own install path" (`overridePin=repin|unpin`, `pin=1`). For an

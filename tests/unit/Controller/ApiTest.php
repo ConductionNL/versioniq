@@ -267,6 +267,33 @@ final class ApiTest extends TestCase {
 		$this->assertSame(['trustedPatterns' => []], $response->getData());
 	}
 
+	/**
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+	 */
+	public function testAppOutcomesForbiddenForNonAdmin(): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->never())->method('countOutcomesByVersion');
+
+		$response = $this->buildController(null, $mapper)->appOutcomes('hermiq');
+
+		$this->assertSame(403, $response->getStatus());
+		$this->assertSame(['message' => 'Forbidden'], $response->getData());
+	}
+
+	/**
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+	 */
+	public function testAppOutcomesAsAdminReturnsTheCountsPerVersion(): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->once())->method('countOutcomesByVersion')->with('hermiq')
+			->willReturn(['1.4.0' => ['succeeded' => 3, 'failed' => 1]]);
+
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->createMock(IRequest::class), $mapper)->appOutcomes(' hermiq ');
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame(['appId' => 'hermiq', 'outcomes' => ['1.4.0' => ['succeeded' => 3, 'failed' => 1]]], $response->getData());
+	}
+
 	public function testAuditLogForbiddenForNonAdmin(): void {
 		$response = $this->buildController()->auditLog();
 
