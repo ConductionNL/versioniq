@@ -31,6 +31,7 @@ final class Lkg {
 		public readonly string $version,
 		public readonly string $recordedAt,
 		public readonly ?string $sourceId = null,
+		public readonly ?Lkg $previous = null,
 	) {
 		if ($version === '' || preg_match(self::VERSION_PATTERN, $version) !== 1) {
 			throw new InvalidArgumentException('Lkg version is empty or contains invalid characters');
@@ -45,14 +46,20 @@ final class Lkg {
 	 * "Last-known-good version record".
 	 *
 	 * @spec openspec/specs/migration-safety/spec.md
-	 * @return array{version: string, recordedAt: string, sourceId: ?string}
+	 * @return array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}
 	 */
 	public function toArray(): array {
-		return [
+		$record = [
 			'version' => $this->version,
 			'recordedAt' => $this->recordedAt,
 			'sourceId' => $this->sourceId,
 		];
+		// Only when there is one, so a record without it keeps its stored shape.
+		if ($this->previous !== null) {
+			$record['previous'] = $this->previous->withPrevious(null)->toArray();
+		}
+
+		return $record;
 	}
 
 	/**
@@ -73,6 +80,47 @@ final class Lkg {
 			? $payload['sourceId']
 			: null;
 
-		return new self($version, $recordedAt, $sourceId);
+		return new self($version, $recordedAt, $sourceId, self::previousFrom($payload['previous'] ?? null));
+	}
+
+	/**
+	 * The same record with another version before it; null drops it. A
+	 * previous record never carries one of its own, so the chain is one deep.
+	 *
+	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/version-management/spec.md
+	 */
+	public function withPrevious(?Lkg $previous): self {
+		return new self($this->version, $this->recordedAt, $this->sourceId, $previous?->withPrevious(null));
+	}
+
+	/**
+	 * The record that follows this one after a successful install of
+	 * $version: this record becomes `previous` when the version changed, and
+	 * a reinstall of the same version keeps the `previous` it had.
+	 *
+	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/version-management/spec.md
+	 */
+	public static function after(?Lkg $current, string $version, string $recordedAt, ?string $sourceId): self {
+		$previous = $current?->previous;
+		if ($current !== null && $current->version !== $version) {
+			$previous = $current;
+		}
+
+		return new self($version, $recordedAt, $sourceId, $previous?->withPrevious(null));
+	}
+
+	/**
+	 * An older stored record has no `previous`; a malformed one is ignored
+	 * rather than losing the record it belongs to.
+	 */
+	private static function previousFrom(mixed $payload): ?self {
+		if (!is_array($payload)) {
+			return null;
+		}
+		try {
+			return self::fromArray(['previous' => null] + $payload)->withPrevious(null);
+		} catch (InvalidArgumentException) {
+			return null;
+		}
 	}
 }
