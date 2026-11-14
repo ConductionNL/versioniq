@@ -7,7 +7,7 @@
 
 ## 2. Tests
 
-- [ ] 2.1 Add a unit test that reflects over every write route of `ApiController`, `ForgeController` and `SettingsController` and fails when one lacks `#[PasswordConfirmationRequired]`. Verify: `tests/unit/Controller/PasswordConfirmationTest.php`.
+- [x] 2.1 Add a unit test that reflects over every write route of `ApiController`, `ForgeController` and `SettingsController` and fails when one lacks `#[PasswordConfirmationRequired]`. Verify: `tests/unit/Controller/PasswordConfirmationTest.php`.
 
 ## 3. Close
 
