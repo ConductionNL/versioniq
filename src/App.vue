@@ -2912,16 +2912,16 @@ watch(dryRunEnabled, () => {
 						</div>
 					</main>
 				</div>
+				<ReadinessPanel v-if="currentTab === 'readiness'"
+					id="readiness-panel"
+					role="tabpanel"
+					aria-labelledby="readiness-tab" />
 				<AdvisoriesPanel v-if="currentTab === 'advisories'"
 					id="advisories-panel"
 					role="tabpanel"
 					aria-labelledby="advisories-tab"
 					:advisories="advisories"
 					:freshnessLabel="advisoryFreshnessLabel" />
-				<ReadinessPanel v-if="currentTab === 'readiness'"
-					id="readiness-panel"
-					role="tabpanel"
-					aria-labelledby="readiness-tab" />
 				<HistoryPanel v-if="currentTab === 'history'"
 					id="history-panel"
 					role="tabpanel"
