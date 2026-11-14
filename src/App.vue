@@ -4,7 +4,7 @@
 import type {PrefillBindPayload} from './components/DiscoverPanel.vue';
 import type {BlockedVersion, PolicyLevel} from './components/PolicySelector.vue';
 import type { PinRecord } from './dialogs/PinDialog.vue'
-import type {AdvisoryCorrelation} from './utils/advisories.ts';
+import type {AdvisoryCorrelation, Compliance} from './utils/advisories.ts';
 import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
 import type {LkgRecord} from './utils/migrationSafety.ts';
 import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
@@ -38,7 +38,7 @@ import EnableAppDialog from './dialogs/EnableAppDialog.vue'
 import PinDialog from './dialogs/PinDialog.vue'
 import PinOverrideDialog from './dialogs/PinOverrideDialog.vue'
 import ShaMismatchDialog from './dialogs/ShaMismatchDialog.vue'
-import { advisoryBadgeText } from './utils/advisories.ts'
+import { advisoryAnchor, advisoryBadgeText, complianceSentence } from './utils/advisories.ts'
 import { advisoryFreshnessLabel as advisoryFreshnessLabelFor } from './utils/advisoryFreshness.ts'
 import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow.ts'
 import { buildChangelogRange } from './utils/changelog.ts'
@@ -593,6 +593,8 @@ async function loadApps (): Promise<void> {
  */
 // Unix seconds of the last completed sweep; null means none has completed.
 const advisoriesCheckedAt = ref<number | null>(null)
+// The instance's one patch compliance status (advisories-per-app-detail D4).
+const advisoryCompliance = ref<Compliance | null>(null)
 // True only when the fetch itself failed — never merely because the map is empty.
 const advisoriesUnavailable = ref(false)
 
@@ -602,15 +604,17 @@ const advisoriesUnavailable = ref(false)
 async function loadAdvisories (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/advisories')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ advisories: Record<string, AdvisoryCorrelation>, checkedAt: number | null }>(response)
+		const payload = await unwrapOcsResponse<{ advisories: Record<string, AdvisoryCorrelation>, checkedAt: number | null, compliance?: Compliance }>(response)
 		advisories.value = payload.advisories || {}
 		advisoriesCheckedAt.value = payload.checkedAt ?? null
+		advisoryCompliance.value = payload.compliance ?? null
 		advisoriesUnavailable.value = false
 	} catch {
 		// Non-fatal: the app list stays usable without advisory badges. The
 		// flag keeps "we could not ask" distinct from "nothing to report".
 		advisories.value = {}
 		advisoriesCheckedAt.value = null
+		advisoryCompliance.value = null
 		advisoriesUnavailable.value = true
 	}
 }
@@ -729,6 +733,9 @@ async function saveAdvisorySettings (): Promise<void> {
 
 // See utils/advisoryFreshness.ts; the interval is the saved one, so the
 // label names what the background job actually uses (issue #436).
+// One line for the instance, above the freshness line (advisories-per-app-detail D4).
+const complianceLine = computed((): string => complianceSentence(advisoryCompliance.value))
+
 const advisoryFreshnessLabel = computed((): string => advisoryFreshnessLabelFor({
 	unavailable: advisoriesUnavailable.value,
 	checkedAt: advisoriesCheckedAt.value,
@@ -2298,6 +2305,11 @@ watch(dryRunEnabled, () => {
 						{{ tabLabel(tab.id) }}
 					</NcButton>
 				</div>
+				<p v-show="currentTab === 'apps' && complianceLine"
+					:class="[$style.advisoryFreshness, $style.complianceLine]"
+					data-testid="advisory-compliance">
+					{{ complianceLine }}
+				</p>
 				<p v-show="currentTab === 'apps'"
 					:class="$style.advisoryFreshness"
 					data-testid="advisory-freshness">
@@ -2504,12 +2516,14 @@ watch(dryRunEnabled, () => {
 																:title="pinTooltip(pinFor(app.id))">
 																📌 {{ t('versioniq', 'Pinned {version}', { version: pinFor(app.id)?.version ?? '' }) }}
 															</span>
-															<span
+															<a
 																v-if="advisoryFor(app.id)?.state && advisoryFor(app.id)?.state !== 'none'"
+																:href="'#' + advisoryAnchor(app.id)"
 																:class="[$style.advisoryBadge, { [$style.advisoryBadgeVulnerable]: advisoryFor(app.id)?.state === 'pinned-to-vulnerable' }]"
-																:title="advisoryFor(app.id)?.advisories?.[0]?.summary ?? ''">
+																data-testid="advisory-badge"
+																:title="t('versioniq', 'Show the advisories for this app')">
 																⚠ {{ advisoryBadgeLabel(app.id) }}
-															</span>
+															</a>
 															<span
 																v-if="advisoryFor(app.id)?.state === 'none' && advisoryFor(app.id)?.error"
 																:class="$style.advisoryBadge"
@@ -2913,6 +2927,7 @@ watch(dryRunEnabled, () => {
 					role="tabpanel"
 					aria-labelledby="advisories-tab"
 					:advisories="advisories"
+					:compliance="advisoryCompliance"
 					:freshnessLabel="advisoryFreshnessLabel" />
 				<HistoryPanel v-if="currentTab === 'history'"
 					id="history-panel"
@@ -3009,6 +3024,10 @@ watch(dryRunEnabled, () => {
 /* Freshness line for the advisory snapshot. Muted, because it is context for
    the badges rather than a finding of its own — but always present, since the
    age of a security answer is part of the answer. */
+.complianceLine {
+	font-weight: bold;
+}
+
 .advisoryFreshness {
 	margin: 0 0 12px;
 	color: var(--color-text-maxcontrast);

@@ -49,6 +49,9 @@ export const CONNECTION_STATUS_LABELS: Readonly<Record<string, string>> = Object
  * Maps a registry anchor to the tab that renders it. A hidden tab's anchor
  * scrolls nowhere, so the page selects the tab first.
  */
+/** The prefix of one app's block on the Advisories tab: `section-advisories-{appId}`. */
+export const ADVISORIES_APP_PREFIX = 'section-advisories-'
+
 export const SECTION_TABS: Readonly<Record<string, string>> = Object.freeze({
 	'section-sources': 'sources',
 	'section-advisories': 'apps',
@@ -122,9 +125,16 @@ export function ownConnectionRows (body: unknown): ConnectionRow[] {
  *
  * @param hash The location hash, with or without the leading `#`.
  * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-003-an-admin-reads-the-connections-on-an-integrations-tab
+ * @spec openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation/spec.md#requirement-each-product-lists-its-recent-advisories-with-cve-ids-and-dates
  */
 export function tabForHash (hash: string): { tab: string, anchor: string } | null {
 	const anchor = hash.replace(/^#/, '')
+	if (Object.hasOwn(SECTION_TABS, anchor)) {
+		return { tab: SECTION_TABS[anchor], anchor }
+	}
 
-	return Object.hasOwn(SECTION_TABS, anchor) ? { tab: SECTION_TABS[anchor], anchor } : null
+	// One app's block on the Advisories tab (advisories-per-app-detail D3).
+	return anchor.startsWith(ADVISORIES_APP_PREFIX) && anchor.length > ADVISORIES_APP_PREFIX.length
+		? { tab: 'advisories', anchor }
+		: null
 }
