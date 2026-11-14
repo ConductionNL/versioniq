@@ -27,6 +27,7 @@ import IntegrationsPanel from './components/IntegrationsPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
+import SecurityReportPanel from './components/SecurityReportPanel.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
 import SourceOverrideField from './components/SourceOverrideField.vue'
 import SourcesPanel from './components/SourcesPanel.vue'
@@ -2918,6 +2919,8 @@ watch(dryRunEnabled, () => {
 					id="history-panel"
 					role="tabpanel"
 					aria-labelledby="history-tab" />
+				<!-- audit-security-reports D6: the remediation report under the history. -->
+				<SecurityReportPanel v-if="currentTab === 'history'" />
 				<SourcesPanel v-show="currentTab === 'sources'"
 					id="sources-panel"
 					role="tabpanel"

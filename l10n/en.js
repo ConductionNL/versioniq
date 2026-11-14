@@ -279,7 +279,26 @@ OC.L10N.register(
         "Export JSON": "Export JSON",
         "Fixed advisories": "Fixed advisories",
         "The export holds the first {limit} entries. Choose a shorter period for the rest.": "The export holds the first {limit} entries. Choose a shorter period for the rest.",
-        "Could not export the history.": "Could not export the history."
+        "Could not export the history.": "Could not export the history.",
+        "Unknown": "Unknown",
+        "Could not load the security report.": "Could not load the security report.",
+        "Security report": "Security report",
+        "How fast advisories that affected this instance were fixed, per severity, against the patch policy deadlines.": "How fast advisories that affected this instance were fixed, per severity, against the patch policy deadlines.",
+        "Loading the security report…": "Loading the security report…",
+        "Tracking since {date}. The history keeps {days} days.": "Tracking since {date}. The history keeps {days} days.",
+        "No advisory has been tracked yet. The history keeps {days} days.": "No advisory has been tracked yet. The history keeps {days} days.",
+        "No deadline is set for {severities}, so the share fixed within the deadline is unavailable. Set deadlines in the patch policy.": "No deadline is set for {severities}, so the share fixed within the deadline is unavailable. Set deadlines in the patch policy.",
+        "Per severity": "Per severity",
+        "Severity": "Severity",
+        "Opened": "Opened",
+        "Fixed by update": "Fixed by update",
+        "Dismissed": "Dismissed",
+        "Within deadline": "Within deadline",
+        "Open past deadline": "Open past deadline",
+        "Median days to fix": "Median days to fix",
+        "Per month": "Per month",
+        "Month": "Month",
+        "Resolved": "Resolved"
     },
     "nplurals=2; plural=(n != 1);"
 )
