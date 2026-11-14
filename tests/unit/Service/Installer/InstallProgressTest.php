@@ -33,6 +33,9 @@ final class InstallProgressTest extends TestCase {
 	/** @var array<string, array{string, int}> What the cache holds, with each entry's lifetime. */
 	private array $store = [];
 
+	/** @var list<array<int, mixed>> The stages of every write, in order. */
+	private array $writes = [];
+
 	private int $now = 1_763_100_000;
 
 	/** @var ICacheFactory&MockObject */
@@ -55,6 +58,7 @@ final class InstallProgressTest extends TestCase {
 		$cache = $this->createMock(ICache::class);
 		$cache->method('set')->willReturnCallback(function (string $key, mixed $value, int $ttl): bool {
 			$this->store[$key] = [$value, $ttl];
+			$this->writes[] = (array)(json_decode((string)$value, true)['stages'] ?? []);
 			return true;
 		});
 		$cache->method('get')->willReturnCallback(fn (string $key): mixed => $this->store[$key][0] ?? null);
@@ -141,5 +145,36 @@ final class InstallProgressTest extends TestCase {
 		$this->assertNull($progress->read(self::TOKEN));
 		$this->store[self::TOKEN] = ['not json', 600];
 		$this->assertNull($progress->read(self::TOKEN));
+	}
+
+	public function testTheDownloadIsReportedEveryFivePercentOnce(): void {
+		$progress = $this->progress();
+		$progress->start(self::TOKEN);
+		$report = $progress->downloadProgress();
+
+		$report(0, 0);
+		$report(1000, 10);
+		$report(1000, 49);
+		$report(1000, 50);
+		$report(1000, 74);
+		$report(1000, 1000);
+		$report(1000, 1000);
+
+		$record = $progress->read(self::TOKEN);
+		$this->assertCount(1, $record['stages']);
+		$this->assertSame('downloading', $record['stages'][0]['name']);
+		$this->assertSame(['percent' => 100], $record['stages'][0]['detail']);
+		$this->assertSame(3, count(array_filter(
+			$this->writes,
+			static fn (array $stages): bool => $stages !== [],
+		)), 'one write per new 5 % step: 0 (1 %), 5 (5 %) and 100; 4 % and 7 % add none');
+	}
+
+	public function testADownloadWithoutALengthReportsNothing(): void {
+		$progress = $this->progress();
+		$progress->start(self::TOKEN);
+		($progress->downloadProgress())(0, 5000);
+
+		$this->assertSame([], $progress->read(self::TOKEN)['stages']);
 	}
 }

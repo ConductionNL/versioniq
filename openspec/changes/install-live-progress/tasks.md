@@ -3,7 +3,8 @@
 ## 1. Reporter
 
 - [x] 1.1 Add `InstallProgress` on the distributed cache with a ten-minute lifetime and a swallowing `stage()`. Verify: `tests/unit/Service/Installer/InstallProgressTest.php`, including a cache that throws.
-- [ ] 1.2 Call `stage()` next to each `addDebug()` in both installers, and in `InstallFinalizer` for migrations and repair steps, with download progress every 5 %. Verify: installer unit tests assert the stage order for a signed install, an external install and a failed checksum.
+- [x] 1.2 Call `stage()` next to each `addDebug()` in both installers, and in `InstallFinalizer` for migrations and repair steps, with download progress every 5 %. Verify: installer unit tests assert the stage order for a signed install, an external install and a failed checksum.
+  - Both installers report from inside their `addDebug()`, so every debug stage is reported under the same name, without the debug detail (temp paths, URLs). `InstallFinalizer` reports `finalize`, the repair step groups and `migrations`. Downloads use Guzzle's `progress` option through `InstallProgress::downloadProgress()`, as `downloading` with `percent` every 5 %. Tests: `InstallerProgressFeedTest` (signed order, an external install that stops at the checksum, no reporter) and two `InstallProgressTest` cases. The golden installer tests fail with and without this change in this environment (they expect an unwritable apps folder).
 
 ## 2. Endpoint and session
 

@@ -111,6 +111,32 @@ class InstallProgress {
 	}
 
 	/**
+	 * A Guzzle `progress` callback that reports the download as the `downloading`
+	 * stage every 5 %, when the response carries a length.
+	 *
+	 * @spec openspec/changes/install-live-progress/specs/version-management/spec.md
+	 * @return callable(mixed, mixed, mixed=, mixed=): void
+	 */
+	public function downloadProgress(): callable {
+		$reported = -1;
+
+		return function (mixed $total, mixed $done) use (&$reported): void {
+			$total = (int)$total;
+			if ($total <= 0) {
+				return;
+			}
+
+			$step = intdiv(intdiv(min((int)$done, $total) * 100, $total), 5) * 5;
+			if ($step <= $reported) {
+				return;
+			}
+
+			$reported = $step;
+			$this->stage(name: 'downloading', detail: ['percent' => $step]);
+		};
+	}
+
+	/**
 	 * The install ended: the running stage ends and the outcome is recorded.
 	 *
 	 * @param string $outcome `success`, `failed` or `rolled-back`.
