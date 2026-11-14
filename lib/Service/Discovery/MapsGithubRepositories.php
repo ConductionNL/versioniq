@@ -114,7 +114,6 @@ trait MapsGithubRepositories {
 				summary: $this->stringField($repo, 'description') ?? '',
 				iconUrl: null,
 				homepageUrl: $this->stringField($repo, 'html_url'),
-				publisher: $binding['owner'] !== '' ? $binding['owner'] : null,
 			),
 			source: new DiscoverySource(
 				providerId: self::ID,
@@ -122,6 +121,7 @@ trait MapsGithubRepositories {
 				installable: $installable,
 				installableReason: $installable ? null : sprintf(self::UNTRUSTED_REASON, $binding['owner']),
 			),
+			publisher: new DiscoveryPublisher(name: $binding['owner'] !== '' ? $binding['owner'] : null),
 		);
 	}
 

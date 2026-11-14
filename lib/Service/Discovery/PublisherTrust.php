@@ -11,14 +11,9 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Discovery;
 
-use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
 use OCP\App\IAppManager;
-use OCP\AppFramework\Utility\ITimeFactory;
-use OCP\Http\Client\IClientService;
-use OCP\IAppConfig;
-use Psr\Log\LoggerInterface;
 
 /**
  * Who publishes an app, and the trust marks a named source backs.
@@ -41,10 +36,10 @@ class PublisherTrust {
 	public const MARKS = [self::MARK_SHIPPED, self::MARK_FEATURED, self::MARK_VERIFIED_ORG, self::MARK_TRUSTED];
 
 	/** App config key prefix of the per-owner GitHub organisation answer. */
-	public const CACHE_PREFIX = 'publisher.github.';
+	public const CACHE_PREFIX = PublisherTrustCache::CACHE_PREFIX;
 
 	/** How long a GitHub organisation answer is reused: one week. */
-	public const CACHE_TTL_SECONDS = 604800;
+	public const CACHE_TTL_SECONDS = PublisherTrustCache::CACHE_TTL_SECONDS;
 
 	/** A GitHub login: letters, digits and single dashes, at most 39 characters. */
 	private const OWNER_PATTERN = '/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/';
@@ -58,10 +53,8 @@ class PublisherTrust {
 	public function __construct(
 		private IAppManager $appManager,
 		private TrustedSourceList $trustedSources,
-		private IClientService $clientService,
-		private IAppConfig $appConfig,
-		private ITimeFactory $timeFactory,
-		private LoggerInterface $logger,
+		private GithubOrganisationLookup $github,
+		private PublisherTrustCache $cache,
 	) {
 	}
 
@@ -74,25 +67,7 @@ class PublisherTrust {
 	 * @return list<string>
 	 */
 	public function marksFor(string $appId, array $binding, bool $featured): array {
-		$marks = [];
-		if ($this->isShipped($appId)) {
-			$marks[] = self::MARK_SHIPPED;
-		}
-		if ($featured) {
-			$marks[] = self::MARK_FEATURED;
-		}
-
-		$forgeSource = self::forgeSourceId($binding);
-		if ($forgeSource !== null && $forgeSource['forge'] === SourceBinding::FORGE_GITHUB
-			&& $this->isVerifiedOrganisation($forgeSource['owner'])
-		) {
-			$marks[] = self::MARK_VERIFIED_ORG;
-		}
-		if ($forgeSource !== null && $this->trustedSources->isAllowed($forgeSource['id'])) {
-			$marks[] = self::MARK_TRUSTED;
-		}
-
-		return $marks;
+		return [...$this->ownMarks($appId, $featured), ...$this->forgeMarks(self::forgeSourceId($binding))];
 	}
 
 	/**
@@ -109,28 +84,11 @@ class PublisherTrust {
 		}
 
 		$key = strtolower($owner);
-		if (array_key_exists($key, $this->verified)) {
-			return $this->verified[$key];
+		if (!array_key_exists($key, $this->verified)) {
+			$this->verified[$key] = $this->answerFor($owner, $key);
 		}
 
-		$now = $this->timeFactory->getTime();
-		$cached = $this->cachedAnswer($key, $now);
-		if ($cached !== null) {
-			return $this->verified[$key] = $cached;
-		}
-
-		$answer = $this->askGithub($owner);
-		if ($answer === null) {
-			return $this->verified[$key] = false;
-		}
-
-		$this->appConfig->setValueString(
-			Application::APP_ID,
-			self::CACHE_PREFIX . $key,
-			json_encode(['verified' => $answer, 'at' => $now], JSON_THROW_ON_ERROR)
-		);
-
-		return $this->verified[$key] = $answer;
+		return $this->verified[$key];
 	}
 
 	/**
@@ -154,24 +112,78 @@ class PublisherTrust {
 	 * @return list<array{name: string}>
 	 */
 	public static function authorNames(mixed $authors): array {
-		if (!is_array($authors)) {
-			return is_string($authors) && trim($authors) !== '' ? [['name' => trim($authors)]] : [];
-		}
-		if (isset($authors['name']) || isset($authors['@value'])) {
-			$authors = [$authors];
-		}
-
 		$names = [];
 		/** @var mixed $author */
-		foreach ($authors as $author) {
-			/** @var mixed $name */
-			$name = is_array($author) ? ($author['name'] ?? $author['@value'] ?? null) : $author;
-			if (is_string($name) && trim($name) !== '') {
-				$names[] = ['name' => trim($name)];
+		foreach (self::authorEntries($authors) as $author) {
+			$name = self::authorName($author);
+			if ($name !== null) {
+				$names[] = ['name' => $name];
 			}
 		}
 
 		return $names;
+	}
+
+	/**
+	 * The author entries as a list: one string or one entry becomes a list of one.
+	 *
+	 * @return array<array-key, mixed>
+	 */
+	private static function authorEntries(mixed $authors): array {
+		if (!is_array($authors)) {
+			return [$authors];
+		}
+
+		return isset($authors['name']) || isset($authors['@value']) ? [$authors] : $authors;
+	}
+
+	/**
+	 * One author's trimmed name, or null when it has none.
+	 */
+	private static function authorName(mixed $author): ?string {
+		/** @var mixed $name */
+		$name = is_array($author) ? ($author['name'] ?? $author['@value'] ?? null) : $author;
+
+		return is_string($name) && trim($name) !== '' ? trim($name) : null;
+	}
+
+	/**
+	 * The shipped and featured marks.
+	 *
+	 * @return list<string>
+	 */
+	private function ownMarks(string $appId, bool $featured): array {
+		$marks = [];
+		if ($this->isShipped($appId)) {
+			$marks[] = self::MARK_SHIPPED;
+		}
+		if ($featured) {
+			$marks[] = self::MARK_FEATURED;
+		}
+
+		return $marks;
+	}
+
+	/**
+	 * The verified-organisation and trusted-source marks of a forge source.
+	 *
+	 * @param array{forge: string, owner: string, id: string}|null $forgeSource
+	 * @return list<string>
+	 */
+	private function forgeMarks(?array $forgeSource): array {
+		if ($forgeSource === null) {
+			return [];
+		}
+
+		$marks = [];
+		if ($forgeSource['forge'] === SourceBinding::FORGE_GITHUB && $this->isVerifiedOrganisation($forgeSource['owner'])) {
+			$marks[] = self::MARK_VERIFIED_ORG;
+		}
+		if ($this->trustedSources->isAllowed($forgeSource['id'])) {
+			$marks[] = self::MARK_TRUSTED;
+		}
+
+		return $marks;
 	}
 
 	/**
@@ -182,19 +194,39 @@ class PublisherTrust {
 	 * @return array{forge: string, owner: string, id: string}|null
 	 */
 	private static function forgeSourceId(array $binding): ?array {
-		if (($binding['kind'] ?? null) !== SourceBinding::KIND_GITHUB_RELEASE) {
+		$owner = self::filled($binding['owner'] ?? null);
+		$repo = self::filled($binding['repo'] ?? null);
+		if (($binding['kind'] ?? null) !== SourceBinding::KIND_GITHUB_RELEASE || $owner === null || $repo === null) {
 			return null;
 		}
-		$owner = $binding['owner'] ?? null;
-		$repo = $binding['repo'] ?? null;
-		if (!is_string($owner) || $owner === '' || !is_string($repo) || $repo === '') {
-			return null;
-		}
-		/** @var mixed $forge */
-		$forge = $binding['forge'] ?? null;
-		$forge = is_string($forge) && $forge !== '' ? $forge : SourceBinding::FORGE_GITHUB;
+		$forge = self::filled($binding['forge'] ?? null) ?? SourceBinding::FORGE_GITHUB;
 
 		return ['forge' => $forge, 'owner' => $owner, 'id' => $forge . ':' . $owner . '/' . $repo];
+	}
+
+	/**
+	 * A non-empty string, or null.
+	 */
+	private static function filled(mixed $value): ?string {
+		return is_string($value) && $value !== '' ? $value : null;
+	}
+
+	/**
+	 * The cached answer, else GitHub's, cached; false when GitHub could not be asked.
+	 */
+	private function answerFor(string $owner, string $key): bool {
+		$cached = $this->cache->get($key);
+		if ($cached !== null) {
+			return $cached;
+		}
+
+		$answer = $this->github->isVerified($owner);
+		if ($answer === null) {
+			return false;
+		}
+		$this->cache->put($key, $answer);
+
+		return $answer;
 	}
 
 	private function isShipped(string $appId): bool {
@@ -203,72 +235,5 @@ class PublisherTrust {
 		} catch (\Throwable) {
 			return false;
 		}
-	}
-
-	/**
-	 * The cached answer when it is younger than a week, otherwise null.
-	 */
-	private function cachedAnswer(string $key, int $now): ?bool {
-		$raw = $this->appConfig->getValueString(Application::APP_ID, self::CACHE_PREFIX . $key, '');
-		if ($raw === '') {
-			return null;
-		}
-
-		try {
-			/** @var mixed $decoded */
-			$decoded = json_decode($raw, true, 4, JSON_THROW_ON_ERROR);
-		} catch (\JsonException) {
-			return null;
-		}
-		if (!is_array($decoded)) {
-			return null;
-		}
-		/** @var mixed $verified */
-		$verified = $decoded['verified'] ?? null;
-		/** @var mixed $at */
-		$at = $decoded['at'] ?? null;
-		if (!is_bool($verified) || !is_int($at)) {
-			return null;
-		}
-
-		return ($now - $at) < self::CACHE_TTL_SECONDS ? $verified : null;
-	}
-
-	/**
-	 * GitHub's answer: true or false for an organisation, false for a personal
-	 * account (404), null when GitHub could not be asked.
-	 */
-	private function askGithub(string $owner): ?bool {
-		try {
-			$response = $this->clientService->newClient()->get(
-				'https://api.github.com/orgs/' . rawurlencode($owner),
-				[
-					'headers' => ['Accept' => 'application/vnd.github+json'],
-					'timeout' => 10,
-					'http_errors' => false,
-				]
-			);
-		} catch (\Exception $error) {
-			$this->logger->info('PublisherTrust: could not ask GitHub about an owner', ['errorMessage' => $error->getMessage()]);
-
-			return null;
-		}
-
-		$status = $response->getStatusCode();
-		if ($status === 404) {
-			return false;
-		}
-		if ($status !== 200) {
-			return null;
-		}
-
-		try {
-			/** @var mixed $body */
-			$body = json_decode((string)$response->getBody(), true, 16, JSON_THROW_ON_ERROR);
-		} catch (\JsonException) {
-			return null;
-		}
-
-		return is_array($body) && ($body['is_verified'] ?? false) === true;
 	}
 }

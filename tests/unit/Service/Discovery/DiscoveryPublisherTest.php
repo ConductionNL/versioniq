@@ -11,6 +11,8 @@ namespace OCA\Versioniq\Tests\Unit\Service\Discovery;
 
 use OCA\Versioniq\Service\Discovery\AppStoreDiscovery;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
+use OCA\Versioniq\Service\Discovery\DiscoveryPublisher;
+use OCA\Versioniq\Service\Discovery\DiscoveryProviders;
 use OCA\Versioniq\Service\Discovery\DiscoveryHit;
 use OCA\Versioniq\Service\Discovery\DiscoveryListing;
 use OCA\Versioniq\Service\Discovery\DiscoveryResult;
@@ -30,8 +32,9 @@ final class DiscoveryPublisherTest extends TestCase {
 	private static function hit(string $providerId, string $appId, string $name, ?string $publisher, bool $featured = false, array $binding = ['kind' => 'appstore']): DiscoveryHit {
 		return new DiscoveryHit(
 			appId: $appId,
-			listing: new DiscoveryListing(name: $name, summary: '', iconUrl: null, homepageUrl: null, publisher: $publisher, featured: $featured),
+			listing: new DiscoveryListing(name: $name, summary: '', iconUrl: null, homepageUrl: null),
 			source: new DiscoverySource(providerId: $providerId, binding: $binding, installable: true, installableReason: null),
+			publisher: new DiscoveryPublisher(name: $publisher, featured: $featured),
 		);
 	}
 
@@ -53,7 +56,7 @@ final class DiscoveryPublisherTest extends TestCase {
 		$appManager = $this->createMock(IAppManager::class);
 		$appManager->method('getEnabledApps')->willReturn([]);
 
-		return new DiscoveryAggregator($appManager, $appStore, $private, $public, $trust);
+		return new DiscoveryAggregator($appManager, new DiscoveryProviders($appStore, $private, $public), $trust);
 	}
 
 	/**

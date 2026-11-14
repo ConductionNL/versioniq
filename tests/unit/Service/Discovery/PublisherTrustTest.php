@@ -9,7 +9,9 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Discovery;
 
+use OCA\Versioniq\Service\Discovery\GithubOrganisationLookup;
 use OCA\Versioniq\Service\Discovery\PublisherTrust;
+use OCA\Versioniq\Service\Discovery\PublisherTrustCache;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -70,7 +72,7 @@ final class PublisherTrustTest extends TestCase {
 		$time = $this->createMock(ITimeFactory::class);
 		$time->method('getTime')->willReturn(self::NOW);
 
-		return new PublisherTrust($appManager, $allow, $clients, $config, $time, $this->createMock(LoggerInterface::class));
+		return new PublisherTrust($appManager, $allow, new GithubOrganisationLookup($clients, $this->createMock(LoggerInterface::class)), new PublisherTrustCache($config, $time));
 	}
 
 	/**

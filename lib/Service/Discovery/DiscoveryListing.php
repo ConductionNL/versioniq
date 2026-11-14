@@ -24,8 +24,6 @@ final class DiscoveryListing {
 		public readonly string $summary,
 		public readonly ?string $iconUrl,
 		public readonly ?string $homepageUrl,
-		public readonly ?string $publisher = null,
-		public readonly bool $featured = false,
 	) {
 	}
 }

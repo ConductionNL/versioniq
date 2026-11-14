@@ -154,8 +154,6 @@ class AppStoreDiscovery implements DiscoveryProviderInterface {
 			summary: $this->stringField($app, 'summary', ''),
 			iconUrl: $this->stringField($app, 'preview', '') ?: null,
 			homepageUrl: $this->stringField($app, 'website', '') ?: null,
-			publisher: PublisherTrust::publisherFromAuthors($app['authors'] ?? null),
-			featured: ($app['isFeatured'] ?? false) === true,
 		);
 	}
 
@@ -173,6 +171,10 @@ class AppStoreDiscovery implements DiscoveryProviderInterface {
 				binding: ['kind' => SourceBinding::KIND_APPSTORE],
 				installable: true,
 				installableReason: null,
+			),
+			publisher: new DiscoveryPublisher(
+				name: PublisherTrust::publisherFromAuthors($app['authors'] ?? null),
+				featured: ($app['isFeatured'] ?? false) === true,
 			),
 		);
 	}

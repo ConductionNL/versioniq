@@ -35,12 +35,10 @@ class DiscoveryAggregator {
 	 */
 	public function __construct(
 		private IAppManager $appManager,
-		AppStoreDiscovery $appStore,
-		GithubPrivateDiscovery $githubPrivate,
-		GithubSearchDiscovery $githubSearch,
+		DiscoveryProviders $providers,
 		private ?PublisherTrust $trust = null,
 	) {
-		$this->providers = [$appStore, $githubPrivate, $githubSearch];
+		$this->providers = $providers->all();
 	}
 
 	/**
@@ -76,21 +74,21 @@ class DiscoveryAggregator {
 		}
 
 		return [
-			'results' => self::withSimilarNames($this->withTrustMarks($merge->results($filter->installedOnly))),
+			'results' => self::withSimilarNames($this->markedResults($merge->results($filter->installedOnly))),
 			'providers' => $this->listProviders(),
 			'errors' => $merge->errors(),
 		];
 	}
 
 	/**
-	 * Gives each result every trust mark a named source backs for any of its
-	 * source candidates; see "Hits and cards name the publisher".
+	 * The results with every trust mark a named source backs; see "Hits and
+	 * cards name the publisher".
 	 *
 	 * @spec openspec/changes/inventory-verified-publisher/specs/app-discovery/spec.md#requirement-hits-and-cards-name-the-publisher-and-the-trust-marks-the-data-backs
 	 * @param list<Group> $results
 	 * @return list<Group>
 	 */
-	private function withTrustMarks(array $results): array {
+	private function markedResults(array $results): array {
 		if ($this->trust === null) {
 			return $results;
 		}

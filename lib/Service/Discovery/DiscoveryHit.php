@@ -38,6 +38,7 @@ final class DiscoveryHit {
 		public readonly string $appId,
 		DiscoveryListing $listing,
 		DiscoverySource $source,
+		?DiscoveryPublisher $publisher = null,
 	) {
 		$this->name = $listing->name;
 		$this->summary = $listing->summary;
@@ -47,8 +48,8 @@ final class DiscoveryHit {
 		$this->installable = $source->installable;
 		$this->installableReason = $source->installableReason;
 		$this->homepageUrl = $listing->homepageUrl;
-		$this->publisher = $listing->publisher;
-		$this->marks = $listing->featured ? [PublisherTrust::MARK_FEATURED] : [];
+		$this->publisher = $publisher?->name;
+		$this->marks = $publisher?->featured === true ? [PublisherTrust::MARK_FEATURED] : [];
 	}
 
 	/**
