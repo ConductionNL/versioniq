@@ -1,5 +1,7 @@
 {
     "translations": {
+        "New version of %1$s: %2$s": "New version of %1$s: %2$s",
+        "It does not run on this server version.": "It does not run on this server version.",
         "A verified copy of this version is cached locally and can be used if the source becomes unreachable.": "A verified copy of this version is cached locally and can be used if the source becomes unreachable.",
         "Access tokens": "Access tokens",
         "Add token": "Add token",
@@ -279,8 +281,6 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Outside the update policy: %n release behind",
             "Outside the update policy: %n releases behind"
-        ],
-        "New version of %1$s: %2$s": "New version of %1$s: %2$s",
-        "It does not run on this server version.": "It does not run on this server version."
+        ]
     }
 }

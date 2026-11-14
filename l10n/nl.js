@@ -1,6 +1,8 @@
 OC.L10N.register(
     "versioniq",
     {
+        "New version of %1$s: %2$s": "Nieuwe versie van %1$s: %2$s",
+        "It does not run on this server version.": "Deze versie draait niet op deze serverversie.",
         "A pinned app was updated outside Versioniq": "Een vastgezette app is buiten Versioniq om bijgewerkt",
         "%1$s is pinned to %2$s but is now running %3$s. Re-pin to restore the pinned version, or accept the change.": "%1$s is vastgezet op %2$s, maar draait nu %3$s. Zet opnieuw vast om de vastgezette versie te herstellen, of accepteer de wijziging.",
         "Pinned {version}": "Vastgezet op {version}",
@@ -300,9 +302,7 @@ OC.L10N.register(
         "Outside the update policy": "Buiten het updatebeleid",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Aantal releases dat een app achter mag lopen (0 tot {max}, laat leeg om de controle uit te zetten)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "Een app die verder achterloopt, wordt gemarkeerd op het tabblad Apps. 1 betekent de nieuwste release of de release daarvoor.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"],
-        "New version of %1$s: %2$s": "Nieuwe versie van %1$s: %2$s",
-        "It does not run on this server version.": "Deze versie draait niet op deze serverversie."
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"]
     },
     "nplurals=2; plural=(n != 1);"
 )
