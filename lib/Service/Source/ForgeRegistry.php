@@ -9,7 +9,6 @@ declare(strict_types=1);
  * SPDX-License-Identifier: EUPL-1.2
  */
 
-
 namespace OCA\Versioniq\Service\Source;
 
 use InvalidArgumentException;
@@ -45,6 +44,9 @@ class ForgeRegistry {
 	public const FORGE_GITHUB = 'github';
 	public const FORGE_FORGEJO = 'forgejo';
 	public const FORGE_CODEBERG = 'codeberg';
+	public const FORGE_GITLAB = 'gitlab';
+
+	public const GITLAB_WEB_DEFAULT = 'https://gitlab.com';
 
 	/** Public GitHub; overridden by `forge.github.api_base` / `web_base` for GitHub Enterprise. */
 	public const GITHUB_API_DEFAULT = 'https://api.github.com';
@@ -93,6 +95,28 @@ class ForgeRegistry {
 			);
 		}
 		$this->registerForgejo();
+		$this->registerGitlab();
+	}
+
+	/**
+	 * GitLab: gitlab.com unless a self-managed host is set, the API under
+	 * `/api/v4` unless an `api_base` override names another (design D2).
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-1.1
+	 */
+	private function registerGitlab(): void {
+		$web = $this->baseUrl(self::FORGE_GITLAB, 'web_base', self::GITLAB_WEB_DEFAULT);
+		$this->forges[self::FORGE_GITLAB] = new Forge(
+			self::FORGE_GITLAB,
+			new ForgeUrls(
+				$this->baseUrl(self::FORGE_GITLAB, 'api_base', $web . '/api/v4'),
+				$web,
+				$web . '/-/user_settings/personal_access_tokens',
+			),
+			Forge::SCHEME_BEARER,
+			false,
+			Forge::DIALECT_GITLAB,
+		);
 	}
 
 	/**
@@ -199,6 +223,41 @@ class ForgeRegistry {
 	 * @throws InvalidArgumentException when the host is not acceptable
 	 */
 	public function setForgejoHost(string $host): void {
+		$this->storeHost(forgeId: self::FORGE_FORGEJO, host: $host);
+		$this->registerForgejo();
+	}
+
+	/**
+	 * The GitLab host releases come from: gitlab.com, or the self-managed
+	 * host set on the Sources tab.
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-1.1
+	 */
+	public function gitlabHost(): string {
+		return $this->forges[self::FORGE_GITLAB]->webBaseUrl;
+	}
+
+	/**
+	 * Point GitLab at a self-managed host, or back at gitlab.com with an
+	 * empty value. https only, no credentials, query or fragment; a stale
+	 * `api_base` override is dropped (design D2).
+	 *
+	 * @throws InvalidArgumentException when the host is not a bare https address
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-1.1
+	 */
+	public function setGitlabHost(string $host): void {
+		$this->storeHost(forgeId: self::FORGE_GITLAB, host: $host);
+		$this->registerGitlab();
+	}
+
+	/**
+	 * Store a forge's web host, refusing anything but a bare https address,
+	 * and drop its stale `api_base` override.
+	 *
+	 * @throws InvalidArgumentException when the host is not a bare https address
+	 */
+	private function storeHost(string $forgeId, string $host): void {
 		$host = rtrim(trim($host), '/');
 		if ($host !== '') {
 			$parts = parse_url($host);
@@ -214,12 +273,11 @@ class ForgeRegistry {
 			}
 		}
 
-		$this->appConfig->deleteKey(Application::APP_ID, 'forge.' . self::FORGE_FORGEJO . '.api_base');
+		$this->appConfig->deleteKey(Application::APP_ID, 'forge.' . $forgeId . '.api_base');
 		if ($host === '') {
-			$this->appConfig->deleteKey(Application::APP_ID, 'forge.' . self::FORGE_FORGEJO . '.web_base');
+			$this->appConfig->deleteKey(Application::APP_ID, 'forge.' . $forgeId . '.web_base');
 		} else {
-			$this->appConfig->setValueString(Application::APP_ID, 'forge.' . self::FORGE_FORGEJO . '.web_base', $host);
+			$this->appConfig->setValueString(Application::APP_ID, 'forge.' . $forgeId . '.web_base', $host);
 		}
-		$this->registerForgejo();
 	}
 }

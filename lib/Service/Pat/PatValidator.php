@@ -9,7 +9,6 @@ declare(strict_types=1);
  * SPDX-License-Identifier: EUPL-1.2
  */
 
-
 namespace OCA\Versioniq\Service\Pat;
 
 use Exception;
@@ -39,6 +38,11 @@ class PatValidator {
 
 	/** @var list<string> */
 	public const ALLOWED_CLASSIC_SCOPES = ['repo', 'public_repo'];
+
+	/**
+	 * The GitLab token scopes that only read (sources-gitlab-forge D5).
+	 */
+	public const ALLOWED_GITLAB_SCOPES = ['read_api', 'read_repository'];
 
 	public function __construct(
 		private IClientService $clientService,
@@ -83,7 +87,10 @@ class PatValidator {
 		$f = $this->forgeRegistry->get($forge);
 		$kind = $this->detectKind($token);
 
-		$response = $this->probe($f, $token);
+		// GitLab describes the token itself: probe that, so its scopes and
+		// expiry are read rather than guessed (sources-gitlab-forge D5).
+		$tokenInfo = $f->tokenInfoEndpoint();
+		$response = $this->probe($f, $token, $tokenInfo ?? $f->userEndpoint());
 		if ($response instanceof ValidationResult) {
 			return $response;
 		}
@@ -91,6 +98,10 @@ class PatValidator {
 		$rejection = $this->statusRejection($f, $response->getStatusCode());
 		if ($rejection !== null) {
 			return $rejection;
+		}
+
+		if ($tokenInfo !== null) {
+			return $this->tokenInfoResult((string)$response->getBody());
 		}
 
 		// Forges that do not expose token scopes to the holder (e.g.
@@ -110,11 +121,11 @@ class PatValidator {
 	/**
 	 * Calls the forge's user endpoint with the token; a rejection when the forge cannot be reached.
 	 */
-	private function probe(Forge $f, string $token): IResponse|ValidationResult {
+	private function probe(Forge $f, string $token, string $endpoint): IResponse|ValidationResult {
 		$client = $this->clientService->newClient();
 
 		try {
-			return $client->get($f->userEndpoint(), [
+			return $client->get($endpoint, [
 				'headers' => $this->probeHeaders($f, $token),
 				'timeout' => 30,
 				// IClient (Guzzle) throws on 4xx by default; we want to inspect
@@ -144,6 +155,42 @@ class PatValidator {
 		}
 
 		return $headers;
+	}
+
+	/**
+	 * GitLab's own description of the token: accepted only when every scope
+	 * is read-only (`read_api`, `read_repository`), refused when it can write
+	 * or impersonate, with its expiry captured (design D5).
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-3.1
+	 */
+	private function tokenInfoResult(string $body): ValidationResult {
+		try {
+			/** @var mixed $decoded */
+			$decoded = json_decode($body, true, 16, JSON_THROW_ON_ERROR);
+		} catch (\JsonException) {
+			return ValidationResult::rejected('GitLab did not describe the token.');
+		}
+
+		$info = is_array($decoded) ? $decoded : [];
+		/** @var mixed $rawScopes */
+		$rawScopes = $info['scopes'] ?? null;
+		$scopes = is_array($rawScopes) ? array_values(array_filter($rawScopes, static fn (mixed $scope): bool => is_string($scope))) : [];
+
+		if ($scopes === []) {
+			return ValidationResult::rejected('GitLab reports no scopes for this token; create one with read_api.');
+		}
+
+		$disallowed = array_values(array_diff($scopes, self::ALLOWED_GITLAB_SCOPES));
+		if ($disallowed !== []) {
+			return ValidationResult::rejected(sprintf('The token has write or admin scopes (%s); create one with only read_api.', implode(', ', $disallowed)));
+		}
+
+		/** @var mixed $rawExpires */
+		$rawExpires = $info['expires_at'] ?? null;
+		$expires = is_string($rawExpires) ? $rawExpires : null;
+
+		return ValidationResult::accepted($scopes, [], $this->parseExpires($expires));
 	}
 
 	private function hostLabel(Forge $f): string {

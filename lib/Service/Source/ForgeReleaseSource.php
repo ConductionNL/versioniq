@@ -9,7 +9,6 @@ declare(strict_types=1);
  * SPDX-License-Identifier: EUPL-1.2
  */
 
-
 namespace OCA\Versioniq\Service\Source;
 
 use Exception;
@@ -321,6 +320,11 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		$pat = $this->pats->patResolver->findFor($forge->id, $ownerRepo, $uid);
 
 		$endpoint = $forge->advisoriesEndpoint($ownerRepo);
+		if ($endpoint === null) {
+			// A forge without repository advisories is never read as "no
+			// advisories": the check reports it could not look.
+			return ['ok' => false, 'error' => sprintf('%s publishes no repository security advisories.', $forge->id)];
+		}
 
 		if ($pat === null) {
 			return $this->performFetch($forge, $endpoint, null);
