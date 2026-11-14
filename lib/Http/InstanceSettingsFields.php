@@ -44,6 +44,9 @@ final class InstanceSettingsFields extends RequestFields {
 	/** @var string|null Whether Discover also searches public GitHub: true or false */
 	public ?string $githubSearchEnabled = null;
 
+	/** @var string|null Where advisories are read from: remote (the feed address) or local (the imported copy) */
+	public ?string $advisoryFeedSource = null;
+
 	/**
 	 * The fields that were sent, by name, in declaration order.
 	 *

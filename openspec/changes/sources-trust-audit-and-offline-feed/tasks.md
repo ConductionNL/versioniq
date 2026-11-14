@@ -14,8 +14,10 @@
 
 ## 3. Local advisory copy
 
-- [ ] 3.1 Add `lib/Service/Advisory/LocalFeedCopy.php` (validate, store in IAppData `advisories/feed.json`, date of copy). Verify: `tests/unit/Service/Advisory/LocalFeedCopyTest.php` for a valid file, a broken file keeping the old copy, and the 30-day warning.
-- [ ] 3.2 Add `advisory.feed_source` (`remote` or `local`) to `InstanceSettings`, and read the local copy in `NextcloudAdvisoryFeed` when it is `local`. Verify: `tests/unit/Service/Advisory/NextcloudAdvisoryFeedTest.php` asserts no HTTP call with a local source.
+- [x] 3.1 Add `lib/Service/Advisory/LocalFeedCopy.php` (validate, store in IAppData `advisories/feed.json`, date of copy). Verify: `tests/unit/Service/Advisory/LocalFeedCopyTest.php` for a valid file, a broken file keeping the old copy, and the 30-day warning.
+  - `LocalFeedCopy::import()` refuses a file that is not a non-empty JSON list of records with a `ghsa_id` before writing anything, so the previous copy stays; a valid file goes to IAppData `advisories/feed.json` with its import time (`advisory.feed_copy_at`) and record count. `isStale()` is true past 30 days. `LocalFeedCopyTest`.
+- [x] 3.2 Add `advisory.feed_source` (`remote` or `local`) to `InstanceSettings`, and read the local copy in `NextcloudAdvisoryFeed` when it is `local`. Verify: `tests/unit/Service/Advisory/NextcloudAdvisoryFeedTest.php` asserts no HTTP call with a local source.
+  - `advisoryFeedSource` (`remote`/`local`) in `InstanceSettings::read()`/`update()`, audited with the other settings, with `advisoryFeedCopiedAt` and `advisoryFeedCopyMaxAgeDays` for the page. `NextcloudAdvisoryFeed::fetchAll()` reads the copy with no HTTP client when the source is `local`, and reports a missing copy as an error, not as no advisories. `NextcloudAdvisoryFeedTest`, `InstanceSettingsTest`.
 - [ ] 3.3 Add `POST /api/advisory/feed-copy` (admin, `PasswordConfirmationRequired`, audited) and the import control in `src/components/InstanceSettingsPanel.vue`. Verify: `ApiTest.php` and `InstanceSettingsPanel.spec.ts`.
 - [ ] 3.4 Add the strings to `l10n/en.json`, `l10n/en.js`, `l10n/nl.json`, `l10n/nl.js`. Verify: `npm run check:l10n-js`.
 

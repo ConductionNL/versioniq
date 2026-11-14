@@ -115,6 +115,45 @@ final class InstanceSettingsTest extends TestCase {
 		}
 	}
 
+	/**
+	 * The advisory feed source is the feed address until set to the local
+	 * copy, writes the key NextcloudAdvisoryFeed reads, and reports the
+	 * copy's import time (sources-trust-audit-and-offline-feed 3.2).
+	 */
+	public function testTheFeedSourceIsRemoteUntilSetToTheLocalCopy(): void {
+		$settings = $this->store()->read();
+		self::assertSame('remote', $settings['advisoryFeedSource']);
+		self::assertNull($settings['advisoryFeedCopiedAt']);
+		self::assertSame(30, $settings['advisoryFeedCopyMaxAgeDays']);
+
+		self::assertSame(['advisoryFeedSource'], $this->store()->update(['advisoryFeedSource' => 'Local']));
+		self::assertSame('local', $this->config['advisory.feed_source']);
+		$this->config['advisory.feed_copy_at'] = 1792800000;
+		$settings = $this->store()->read();
+		self::assertSame('local', $settings['advisoryFeedSource']);
+		self::assertSame(1792800000, $settings['advisoryFeedCopiedAt']);
+
+		$this->store()->update(['advisoryFeedSource' => 'remote']);
+		self::assertSame('remote', $this->config['advisory.feed_source']);
+	}
+
+	public function testTheFeedSourceRefusesAnythingButRemoteOrLocalAndWritesNothing(): void {
+		$this->expectException(\InvalidArgumentException::class);
+		$this->expectExceptionMessage('The advisory feed source must be remote or local.');
+
+		try {
+			$this->store()->update(['advisoryFeedSource' => 'mirror', 'auditRetentionDays' => '90']);
+		} finally {
+			self::assertSame([], $this->config);
+		}
+	}
+
+	public function testAnUnknownStoredFeedSourceReadsAsRemote(): void {
+		$this->config['advisory.feed_source'] = 'something';
+
+		self::assertSame('remote', $this->store()->read()['advisoryFeedSource']);
+	}
+
 	public function testABlankUrlClearsTheOverride(): void {
 		$this->config['appstore.api_base'] = 'https://store.example.org';
 

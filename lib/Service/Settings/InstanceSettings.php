@@ -15,6 +15,7 @@ namespace OCA\Versioniq\Service\Settings;
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\BackgroundJob\PruneAuditJob;
+use OCA\Versioniq\Service\Advisory\LocalFeedCopy;
 use OCA\Versioniq\Service\Advisory\NextcloudAdvisoryFeed;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Source\AppStoreSource;
@@ -75,7 +76,7 @@ class InstanceSettings {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, githubSearchEnabled: bool}
+	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int}
 	 */
 	public function read(): array {
 		$retention = $this->config->getValueInt(Application::APP_ID, PruneAuditJob::CONFIG_KEY_RETENTION_DAYS, PruneAuditJob::DEFAULT_RETENTION_DAYS);
@@ -98,6 +99,7 @@ class InstanceSettings {
 			'maxLinesBehind' => $this->maxLinesBehind(),
 			'maxLinesBehindMax' => self::MAX_LINES_BEHIND,
 			'githubSearchEnabled' => $this->config->getValueString(Application::APP_ID, self::KEY_GITHUB_SEARCH, 'false') === 'true',
+			...$this->feedSource(),
 		];
 	}
 
@@ -118,10 +120,14 @@ class InstanceSettings {
 		$lagLimit = $this->validatedLagLimit($fields);
 		$urls = $this->validatedUrls($fields);
 		$githubSearch = self::validatedSwitch($fields, 'githubSearchEnabled', 'GitHub search');
+		$feedSource = self::validatedFeedSource($fields);
 
 		$this->storeInts($ints);
 		if ($githubSearch !== null) {
 			$this->config->setValueString(Application::APP_ID, self::KEY_GITHUB_SEARCH, $githubSearch);
+		}
+		if ($feedSource !== null) {
+			$this->config->setValueString(Application::APP_ID, NextcloudAdvisoryFeed::CONFIG_FEED_SOURCE, $feedSource);
 		}
 		if ($lagLimit !== null) {
 			$this->storeOrClear(self::KEY_MAX_LINES_BEHIND, $lagLimit);
@@ -141,7 +147,7 @@ class InstanceSettings {
 	 */
 	private static function appliedFields(array $fields): array {
 		return array_values(array_filter(
-			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS), 'githubSearchEnabled'],
+			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS), 'githubSearchEnabled', 'advisoryFeedSource'],
 			static fn (string $field): bool => isset($fields[$field]),
 		));
 	}
@@ -162,6 +168,44 @@ class InstanceSettings {
 			'true', '1' => 'true',
 			'false', '0' => 'false',
 			default => throw new InvalidArgumentException($label . ' must be on or off.'),
+		};
+	}
+
+	/**
+	 * Where advisories are read from, and the state of the imported copy: when
+	 * it was imported and the age past which the page warns about it.
+	 *
+	 * @return array{advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int}
+	 * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/security-advisory-correlation/spec.md
+	 */
+	private function feedSource(): array {
+		$copiedAt = $this->config->getValueInt(Application::APP_ID, LocalFeedCopy::CONFIG_COPIED_AT, 0);
+
+		return [
+			'advisoryFeedSource' => $this->config->getValueString(Application::APP_ID, NextcloudAdvisoryFeed::CONFIG_FEED_SOURCE, NextcloudAdvisoryFeed::SOURCE_REMOTE) === NextcloudAdvisoryFeed::SOURCE_LOCAL
+				? NextcloudAdvisoryFeed::SOURCE_LOCAL
+				: NextcloudAdvisoryFeed::SOURCE_REMOTE,
+			'advisoryFeedCopiedAt' => $copiedAt > 0 ? $copiedAt : null,
+			'advisoryFeedCopyMaxAgeDays' => LocalFeedCopy::MAX_AGE_DAYS,
+		];
+	}
+
+	/**
+	 * A sent feed source as it is stored (`remote` or `local`), null when not sent.
+	 *
+	 * @param array<string, string> $fields The sent fields.
+	 * @throws InvalidArgumentException When the value is neither.
+	 * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/security-advisory-correlation/spec.md
+	 */
+	private static function validatedFeedSource(array $fields): ?string {
+		if (!isset($fields['advisoryFeedSource'])) {
+			return null;
+		}
+
+		return match (strtolower(trim($fields['advisoryFeedSource']))) {
+			NextcloudAdvisoryFeed::SOURCE_REMOTE => NextcloudAdvisoryFeed::SOURCE_REMOTE,
+			NextcloudAdvisoryFeed::SOURCE_LOCAL => NextcloudAdvisoryFeed::SOURCE_LOCAL,
+			default => throw new InvalidArgumentException('The advisory feed source must be remote or local.'),
 		};
 	}
 
