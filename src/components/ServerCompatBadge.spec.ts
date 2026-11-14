@@ -29,4 +29,18 @@ describe('ServerCompatBadge', () => {
 
 		expect(wrapper.find('[data-testid="server-compat-badge"]').exists()).toBe(false)
 	})
+
+	it('says a version that needs a newer Nextcloud cannot be forced', () => {
+		const wrapper = mount(ServerCompatBadge, { props: { serverCompatible: false, serverTooNew: false } })
+
+		expect(wrapper.text()).toBe('Needs a newer Nextcloud; cannot be forced')
+		expect(wrapper.find('[data-testid="server-compat-badge"]').attributes('title')).toContain('cannot help')
+	})
+
+	it('keeps the incompatible text for a version only its maximum keeps out, and says it can be installed anyway', () => {
+		const wrapper = mount(ServerCompatBadge, { props: { serverCompatible: false, serverTooNew: true } })
+
+		expect(wrapper.text()).toBe('Not for this server version')
+		expect(wrapper.find('[data-testid="server-compat-badge"]').attributes('title')).toContain('install it anyway')
+	})
 })

@@ -125,4 +125,52 @@ final class InstallerServiceAppListTest extends TestCase {
 	public function testVersioniqItselfIsNeverListed(): void {
 		self::assertArrayNotHasKey('versioniq', $this->appsById());
 	}
+
+	/**
+	 * The card says when an app runs under an override: `forcedOn` for one
+	 * Versioniq set, `compatibilityOverridden` for one someone else set, and
+	 * `serverTooNew` on a disabled app only its maximum keeps off
+	 * (install-force-incompatible D5).
+	 */
+	public function testTheCardShowsTheOverridesAndWhatMayBeEnabledAnyway(): void {
+		$overrides = $this->createMock(\OCA\Versioniq\Service\Installer\ForceOverrideStore::class);
+		$overrides->method('get')->willReturnCallback(
+			static fn (string $appId): ?\OCA\Versioniq\Service\Installer\ForceOverride => $appId === 'deck'
+				? new \OCA\Versioniq\Service\Installer\ForceOverride('1.14.0', 33, 'alice', '2026-11-01T00:00:00+00:00', true)
+				: null
+		);
+		$overrides->method('isOverridden')->willReturnCallback(static fn (string $appId): bool => in_array($appId, ['deck', 'calendar'], true));
+		$config = $this->createMock(IConfig::class);
+		$config->method('getSystemValueString')->willReturnCallback(static fn (string $key, string $default = ''): string => $key === 'version' ? '33.0.2.1' : $default);
+		\OC_App::$allApps = [
+			['id' => 'deck', 'name' => 'Deck', 'dependencies' => ['nextcloud' => ['@attributes' => ['min-version' => '30', 'max-version' => '32']]]],
+			['id' => 'calendar', 'name' => 'Calendar', 'dependencies' => ['nextcloud' => ['@attributes' => ['min-version' => '30', 'max-version' => '32']]]],
+		];
+
+		try {
+			$apps = [];
+			$service = $this->buildByName(InstallerService::class, [
+				'appManager' => $this->appManager,
+				'config' => $config,
+				'appConfig' => $this->createMock(IAppConfig::class),
+				'bindingStore' => $this->bindingStore,
+				'failureClassifier' => new FailureClassifier($this->createMock(IFactory::class)),
+				'forceOverrides' => $overrides,
+			]);
+			foreach ($service->getInstalledApps() as $app) {
+				$apps[$app['id']] = $app;
+			}
+		} finally {
+			\OC_App::$allApps = [];
+		}
+
+		// Enabled, so never offered "Enable anyway", even though it declares 32.
+		self::assertSame(33, $apps['deck']['forcedOn']);
+		self::assertArrayNotHasKey('compatibilityOverridden', $apps['deck']);
+		self::assertArrayNotHasKey('serverTooNew', $apps['deck']);
+		self::assertTrue($apps['calendar']['compatibilityOverridden']);
+		self::assertTrue($apps['calendar']['serverTooNew']);
+		self::assertArrayNotHasKey('forcedOn', $apps['calendar']);
+		self::assertSame([], array_intersect(['forcedOn', 'compatibilityOverridden', 'serverTooNew'], array_keys($apps['hermiq'])));
+	}
 }

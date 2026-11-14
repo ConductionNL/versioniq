@@ -54,6 +54,7 @@ class Notifier implements INotifier {
 	 * @spec openspec/specs/version-pinning/spec.md
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
 	 */
 	public function prepare(INotification $notification, string $languageCode): INotification {
 		if ($notification->getApp() !== Application::APP_ID) {
@@ -72,11 +73,30 @@ class Notifier implements INotifier {
 			// Sent weekly by AdvisoryDigestNotifier. Without this branch the
 			// digest was stored but skipped by the bell every time (#428).
 			'advisory_digest' => $this->renderAdvisoryDigest(...),
+			'force_lifted' => $this->renderForceLifted(...),
 			default => throw new UnknownNotificationException(),
 		};
 		$render($notification, $l);
 
 		return $notification;
+	}
+
+	/**
+	 * `force_lifted`: Versioniq lifted an override it set, after a major
+	 * upgrade, and says whether the app was disabled.
+	 *
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+	 */
+	private function renderForceLifted(INotification $notification, IL10N $l): void {
+		$app = $this->stringParameter($notification, 'app');
+		$major = $this->stringParameter($notification, 'major');
+		$message = $this->stringParameter($notification, 'disabled') === '1'
+			? $l->t('%1$s was forced to run past its declared maximum. After the upgrade to Nextcloud %2$s the override is lifted, and %1$s is disabled because its version does not declare support for Nextcloud %2$s. Update it, or choose "Enable anyway" again.', [$app, $major])
+			: $l->t('%1$s was forced to run past its declared maximum. After the upgrade to Nextcloud %2$s the override is lifted; %1$s now runs under Nextcloud\'s own compatibility check.', [$app, $major]);
+
+		$notification
+			->setParsedSubject($l->t('Compatibility override lifted for %s', [$app]))
+			->setParsedMessage($message);
 	}
 
 	private function renderPinnedToVulnerable(INotification $notification, IL10N $l): void {

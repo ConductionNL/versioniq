@@ -16,6 +16,7 @@ use Exception;
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
+use OCA\Versioniq\Service\Installer\DeclaredServerRange;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFailure;
 use OCA\Versioniq\Service\Installer\InstallRequest;
@@ -50,7 +51,7 @@ use OCP\IUserSession;
  *
  * @psalm-api
  * @psalm-type AppLists = array{enabled: array<string>, versions: array<string, string>, core: array<string>, info: array<string, array<string, mixed>>}
- * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string}}
+ * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string},forcedOn?:int,compatibilityOverridden?:true,serverTooNew?:true}
  */
 class InstallerService {
 	/** Server-side changelog size cap; see "Version listings carry release notes". */
@@ -155,7 +156,36 @@ class InstallerService {
 			'id' => $appId,
 			...self::appTexts($lists['info'][$appId] ?? [], $appId),
 			...$this->appStatus($appId, $lists),
+			...$this->forceStatus($appId, $lists),
 		];
+	}
+
+	/**
+	 * The card's compatibility override fields, each present only when it
+	 * applies: `forcedOn` (the major Versioniq forced the app on), or
+	 * `compatibilityOverridden` (someone else put it on `app_install_overwrite`),
+	 * and `serverTooNew` on a disabled app only its declared maximum keeps off,
+	 * which may be enabled anyway.
+	 *
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+	 * @param AppLists $lists
+	 * @return array{forcedOn?: int, compatibilityOverridden?: true, serverTooNew?: true}
+	 */
+	private function forceStatus(string $appId, array $lists): array {
+		$fields = [];
+		$override = $this->state->forceOverrides->get($appId);
+		if ($override !== null) {
+			$fields['forcedOn'] = $override->serverMajor;
+		} elseif ($this->state->forceOverrides->isOverridden($appId)) {
+			$fields['compatibilityOverridden'] = true;
+		}
+		if (self::appState($appId, $lists) === 'disabled'
+			&& DeclaredServerRange::serverTooNew($this->serverCoreVersion(), $lists['info'][$appId] ?? null)
+		) {
+			$fields['serverTooNew'] = true;
+		}
+
+		return $fields;
 	}
 
 	/**
@@ -445,7 +475,11 @@ class InstallerService {
 	 * (#435). A verdict the source already gave (the App Store's
 	 * platformVersionSpec) is kept; an uncached forge release stays unknown.
 	 *
+	 * An incompatible one also gets `serverTooNew`: whether only its maximum
+	 * keeps it out, so an admin may force it.
+	 *
 	 * @spec openspec/specs/version-management/spec.md
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
 	 * @param list<array<string, mixed>> $versions
 	 * @return list<array<string, mixed>>
 	 */
@@ -464,6 +498,9 @@ class InstallerService {
 				$spec = $this->state->artifactCache->platformSpecFor($appId, $version);
 				if ($spec !== null) {
 					$entry['serverCompatible'] = AppStoreSource::satisfiesPlatformSpec($serverVersion, $spec);
+					if ($entry['serverCompatible'] === false) {
+						$entry['serverTooNew'] = AppStoreSource::serverAboveMaximum($serverVersion, $spec) === true;
+					}
 				}
 
 				return $entry;
@@ -816,13 +853,21 @@ class InstallerService {
 	 */
 	private function installFromSource(ReleaseInstall $install): array {
 		$maintenanceWasSet = false;
+		$overrideAdded = false;
+		$installed = false;
 		try {
 			if ($this->shouldEnterMaintenance($install->run)) {
 				$maintenanceWasSet = true;
 				$this->server->configs->config->setSystemValue('maintenance', true);
 			}
+			$overrideAdded = $this->applyForceOverride($install->run);
+			$outcome = $this->installAndReport($install);
+			$installed = $outcome['statusCode'] === Http::STATUS_OK;
+			if ($installed) {
+				$this->recordForceOverride($install, $overrideAdded);
+			}
 
-			return $this->installAndReport($install);
+			return $outcome;
 		} catch (UntrustedSourceException $error) {
 			return $this->installEnvelope(Http::STATUS_FORBIDDEN, $this->briefPayload($install->run, $error->getMessage()));
 		} catch (ShaMismatchException $error) {
@@ -832,10 +877,64 @@ class InstallerService {
 		} catch (Exception $error) {
 			return $this->classifiedFailureOutcome($install, $error);
 		} finally {
+			if ($overrideAdded && !$installed) {
+				$this->state->forceOverrides->remove($install->run->request->target->appId);
+			}
 			if ($maintenanceWasSet) {
 				$this->server->configs->config->setSystemValue('maintenance', false);
 			}
 		}
+	}
+
+	/**
+	 * For a real forced install, puts the app on `app_install_overwrite` before
+	 * the installer runs, so its compatibility check ignores the maximum.
+	 * Returns whether Versioniq added the entry. A dry run changes no config.
+	 *
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+	 */
+	private function applyForceOverride(InstallRun $run): bool {
+		$options = $run->request->options;
+		if (!$options->forceIncompatible || $options->dryRun) {
+			return false;
+		}
+
+		return $this->state->forceOverrides->apply($run->request->target->appId);
+	}
+
+	/**
+	 * After a successful real forced install, records the override with the
+	 * server major it was set on and writes its audit row.
+	 *
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+	 */
+	private function recordForceOverride(ReleaseInstall $install, bool $overrideAdded): void {
+		$run = $install->run;
+		if (!$run->request->options->forceIncompatible || $run->request->options->dryRun) {
+			return;
+		}
+		$major = $this->serverMajor();
+		if ($major === null) {
+			return;
+		}
+		$this->state->forceOverrides->record(
+			$run->request->target->appId,
+			$install->appVersion !== '' ? $install->appVersion : $run->request->target->version,
+			$major,
+			$this->userSession->getUser()?->getUID() ?? 'system',
+			$overrideAdded,
+		);
+	}
+
+	/**
+	 * The running server's major version, or null when unknown.
+	 *
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+	 */
+	public function serverMajor(): ?int {
+		$core = $this->serverCoreVersion();
+
+		return $core === '' ? null : (int)explode('.', $core)[0];
 	}
 
 	private function shouldEnterMaintenance(InstallRun $run): bool {
@@ -951,6 +1050,10 @@ class InstallerService {
 			// states when the download fell back to a locally cached artifact.
 			'servedFromCache' => (bool)($result['servedFromCache'] ?? false),
 		];
+		if ($run->request->options->forceIncompatible) {
+			// A forced dry run reports the flag and changes no config.
+			$payload['forceIncompatible'] = true;
+		}
 
 		return $payload + $this->optionalResultFields($result) + $run->debugSuffix((array)($result['debug'] ?? []));
 	}

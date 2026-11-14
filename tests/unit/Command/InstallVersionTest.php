@@ -271,6 +271,61 @@ final class InstallVersionTest extends TestCase {
 		self::assertSame(1, $exitCode);
 	}
 
+	/**
+	 * The force flag reaches the installer as `forceIncompatible` and a
+	 * success exits 0 (install-force-incompatible, CLI).
+	 */
+	public function testForceIncompatibleReachesTheInstallerAndExitsZero(): void {
+		$installer = $this->createMock(InstallerService::class);
+		$installer->method('isManageableApp')->willReturn(true);
+		$installer->expects(self::once())
+			->method('installAppVersion')
+			->with(self::callback(static fn (\OCA\Versioniq\Service\Installer\InstallRequest $request): bool => $request->options->forceIncompatible === true
+				&& $request->options->dryRun === false
+				&& $request->target->appId === 'hermiq'))
+			->willReturn(['statusCode' => Http::STATUS_OK, 'payload' => ['toVersion' => '1.4.0', 'forceIncompatible' => true]]);
+
+		$tester = new CommandTester(new InstallVersion($installer));
+
+		self::assertSame(0, $tester->execute(['appId' => 'hermiq', 'version' => '1.4.0', '--force-incompatible' => true]));
+	}
+
+	/**
+	 * Without the flag the request does not force, and an incompatible
+	 * version keeps exiting 7.
+	 */
+	public function testWithoutTheFlagNothingIsForcedAndIncompatibleExitsSeven(): void {
+		$installer = $this->createMock(InstallerService::class);
+		$installer->method('isManageableApp')->willReturn(true);
+		$installer->expects(self::once())
+			->method('installAppVersion')
+			->with(self::callback(static fn (\OCA\Versioniq\Service\Installer\InstallRequest $request): bool => $request->options->forceIncompatible === false))
+			->willReturn(['statusCode' => Http::STATUS_CONFLICT, 'payload' => ['message' => 'Not compatible.', 'category' => FailureClassifier::CATEGORY_INCOMPATIBLE]]);
+
+		$tester = new CommandTester(new InstallVersion($installer));
+
+		self::assertSame(7, $tester->execute(['appId' => 'hermiq', 'version' => '1.4.0']));
+		self::assertStringNotContainsString('cannot help', $tester->getDisplay());
+	}
+
+	/**
+	 * With the flag, a version that needs a newer server still exits 7 and
+	 * stderr says an override cannot help it.
+	 */
+	public function testAForcedVersionThatNeedsANewerServerExitsSevenAndSaysWhy(): void {
+		$installer = $this->createMock(InstallerService::class);
+		$installer->method('isManageableApp')->willReturn(true);
+		$installer->method('installAppVersion')->willReturn([
+			'statusCode' => Http::STATUS_CONFLICT,
+			'payload' => ['message' => 'Not compatible.', 'category' => FailureClassifier::CATEGORY_INCOMPATIBLE],
+		]);
+
+		$tester = new CommandTester(new InstallVersion($installer));
+
+		self::assertSame(7, $tester->execute(['appId' => 'openregister', 'version' => '3.0.0', '--force-incompatible' => true]));
+		self::assertStringContainsString('An override only lifts the declared maximum, so it cannot help this version', $tester->getDisplay());
+	}
+
 	private function assertExitCodeForCategory(string $category, int $expectedExitCode, int $statusCode): void {
 		$installer = $this->createMock(InstallerService::class);
 		$installer->method('isManageableApp')->willReturn(true);

@@ -28,6 +28,7 @@ final class InstallState {
 		public readonly LkgStore $lkgStore,
 		public readonly ArtifactCache $artifactCache,
 		public readonly TrustedSourceList $trustedSources,
+		public readonly ForceOverrideStore $forceOverrides,
 	) {
 	}
 }

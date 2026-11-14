@@ -37,6 +37,8 @@ class AuditLogger {
 	public const OPERATION_PIN_DRIFT = 'pin_drift';
 	/** An instance setting changed from the Settings tab (#438). */
 	public const OPERATION_SETTINGS = 'settings';
+	/** An `app_install_overwrite` override set, or lifted after a major upgrade. */
+	public const OPERATION_FORCE_INCOMPATIBLE = 'force_incompatible';
 
 	private const OPERATION_PATTERN = '/^[a-z_]{1,32}$/';
 	private const MESSAGE_MAX_LENGTH = 4000;
