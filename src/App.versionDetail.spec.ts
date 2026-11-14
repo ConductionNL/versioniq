@@ -412,7 +412,7 @@ describe('App install result panel', () => {
 		await flushPromises()
 
 		expect(wrapper.find('[data-testid="install-enable-hint"]').exists()).toBe(false)
-		expect(wrapper.text()).toContain('Dry-run (no write)')
+		expect(wrapper.text()).toContain('Dry run (no write)')
 	})
 
 	it('renders the debug steps as indented lines, with "No details" for an empty step', async () => {
@@ -451,7 +451,8 @@ describe('App install result panel', () => {
 		expect(steps[2].text()).toContain('No details')
 		expect(steps[3].findAll('li').map((line) => line.text())).toEqual(['done'])
 		expect(steps[4].findAll('li').map((line) => line.text())).toEqual(['[]'])
-		expect(wrapper.text()).toContain('Install debug (5 step(s))')
+		// The n() mock above picks the form and leaves %n for the real library to fill.
+		expect(wrapper.text()).toContain('Install debug (%n steps)')
 		expect(wrapper.text()).toContain('Failure category')
 		expect(wrapper.text()).toContain('Failed at stage')
 	})

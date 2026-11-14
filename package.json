@@ -6,7 +6,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite --mode development build",
-    "lint": "eslint src tests scripts",
+    "lint": "eslint src tests scripts && node scripts/check-l10n-keys.cjs",
     "stylelint": "stylelint \"src/**/*.{vue,scss,css}\"",
     "watch": "vite --mode development build --watch",
     "test": "vitest run",
