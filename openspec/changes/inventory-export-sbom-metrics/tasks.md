@@ -2,7 +2,7 @@
 
 ## 1. Inventory and formats
 
-- [ ] 1.1 Add `InventoryBuilder` (server plus installed apps, licence, source, recorded SHA-256). Verify: `tests/unit/Service/Inventory/InventoryBuilderTest.php` with a shipped, an App Store and a GitHub-bound app.
+- [x] 1.1 Add `InventoryBuilder` (server plus installed apps, licence, source, recorded SHA-256). Verify: `tests/unit/Service/Inventory/InventoryBuilderTest.php` with a shipped, an App Store and a GitHub-bound app.
 - [ ] 1.2 Add `SbomWriter` for CycloneDX 1.5 and SPDX 2.3 JSON with the purl rules of design D2. Verify: unit tests validate both outputs against the published JSON schemas (vendored under `tests/fixtures/sbom/`), and a GitHub-bound app gets `pkg:github/...`.
 
 ## 2. Export
@@ -22,3 +22,11 @@
 ## 5. Close
 
 - [ ] 5.1 Add strings to `l10n/en` and `l10n/nl` (verify `npm run check:l10n-js`), set the matrix rows `inv-export-inventory`, `inv-sbom-per-update` and `inv-metrics-endpoint` to `built` with evidence lines, then archive this change.
+
+## Build notes
+
+Done in a first slice:
+- 1.1: `lib/Service/Inventory/InventoryBuilder.php` reads the server version through `ServerVersionProvider` (`OCP\ServerVersion` is readonly and cannot be doubled) and every installed app with its licence, source and recorded SHA-256.
+- 1.2's writer: `lib/Service/Inventory/SbomWriter.php` writes CycloneDX 1.5 and SPDX 2.3 JSON with the purl rules of D2 and the licence rules of D3. A licence that is not an SPDX id goes into an SPDX licence comment rather than an undefined `LicenseRef`, which would make the document invalid.
+
+1.2 stays open because its check, validation against the official JSON schemas vendored under `tests/fixtures/sbom/`, is not done. `SbomWriterTest` asserts the required fields of both formats instead. Sections 2 to 5 are open.
