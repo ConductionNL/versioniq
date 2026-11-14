@@ -14,7 +14,8 @@ namespace OCA\Versioniq\Service\Installer;
 
 /**
  * The flags of one install request: debug output, dry run, accepting a new
- * recorded SHA-256 and acknowledging a downgrade.
+ * recorded SHA-256, acknowledging a downgrade and overriding a policy that
+ * holds manual installs to its level (pinning-ranges-and-skips).
  *
  * @spec openspec/specs/version-management/spec.md
  */
@@ -24,6 +25,7 @@ final class InstallOptions {
 		public readonly bool $dryRun,
 		public readonly bool $acceptNewSha,
 		public readonly bool $allowDowngrade,
+		public readonly bool $overrideRange = false,
 	) {
 	}
 }

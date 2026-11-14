@@ -207,7 +207,7 @@ describe('App panel hand-overs', () => {
 		await flushPromises()
 
 		expect([vm.currentTab, vm.appFilter, vm.selectedApp]).toEqual(['apps', 'deck', 'deck'])
-		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['GET /api/app/deck/versions'])
+		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['GET /api/app/deck/versions', 'GET /api/app/deck/skips'])
 		expect([vm.installedVersion, vm.availableSource]).toEqual(['1.0.0', 'appstore'])
 	})
 
@@ -241,7 +241,7 @@ describe('App panel hand-overs', () => {
 		wrapper.findComponent({ name: 'SourcesPanel' }).vm.$emit('bound', 'deck')
 		await flushPromises()
 
-		expect(calls.map((call) => call.path)).toEqual(['/api/app/deck/versions'])
+		expect(calls.map((call) => call.path)).toEqual(['/api/app/deck/versions', '/api/app/deck/skips'])
 		expect(vm.availableSource).toBe('github')
 		expect(vm.hasInstallResult).toBe(true)
 	})

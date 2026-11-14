@@ -20,10 +20,19 @@ use OCA\Versioniq\Service\ExternalReleaseInstallerService;
 use OCA\Versioniq\Service\Installer\EnvironmentCheck;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFailure;
+use OCA\Versioniq\Service\Installer\InstallOptions;
+use OCA\Versioniq\Service\Installer\InstallRequest;
+use OCA\Versioniq\Service\Installer\InstallTarget;
+use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Lkg\LkgStore;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Audit\AuditLogger;
+use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\Policy\Policy;
+use OCA\Versioniq\Service\Policy\PolicyStore;
+use OCA\Versioniq\Service\Policy\RangeGuard;
 use OCA\Versioniq\Service\SelectedReleaseInstallerService;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
@@ -559,5 +568,107 @@ final class InstallerServiceTest extends TestCase {
 
 		self::assertSame(Http::STATUS_CONFLICT, $result['statusCode']);
 		self::assertSame(FailureClassifier::CATEGORY_DOWNGRADE_GUARD, $result['payload']['category']);
+	}
+
+	// --- Range guard (pinning-ranges-and-skips: a policy can hold manual installs to its level) ---
+
+	/**
+	 * The service with a policy for `someapp` (installed 1.0.0) and an audit logger to watch.
+	 */
+	private function serviceHolding(?Policy $policy, AuditLogger&MockObject $audit): InstallerService {
+		$policies = $this->createMock(PolicyStore::class);
+		$policies->method('get')->willReturn($policy);
+
+		return $this->buildByName(InstallerService::class, [
+			'appManager' => $this->appManager,
+			'config' => $this->config,
+			'appConfig' => $this->appConfig,
+			'sourceRegistry' => $this->sourceRegistry,
+			'bindingStore' => $this->bindingStore,
+			'trustedSources' => $this->trustedSources,
+			'signedInstaller' => $this->signedInstaller,
+			'externalInstaller' => $this->externalInstaller,
+			'failureClassifier' => $this->failureClassifier,
+			'environmentCheck' => $this->environmentCheck,
+			'pinStore' => $this->pinStore,
+			'userSession' => $this->userSession,
+			'timeFactory' => $this->timeFactory,
+			'lkgStore' => $this->lkgStore,
+			'artifactCache' => $this->artifactCache,
+			'eventDispatcher' => $this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
+			'rangeGuard' => new RangeGuard($policies, new CandidateSelector(), $audit),
+		]);
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private static function install(InstallerService $service, string $version, bool $overrideRange): array {
+		return $service->installAppVersion(new InstallRequest(
+			new InstallTarget('someapp', $version, null),
+			new InstallOptions(false, false, false, false, $overrideRange),
+			new PinChoice(null, false),
+		));
+	}
+
+	public function testAnInstallWithinTheHeldLevelGoesAhead(): void {
+		$this->stubSuccessfulSignedInstall('1.0.5');
+		$audit = $this->createMock(AuditLogger::class);
+		$audit->expects(self::never())->method('record');
+
+		$result = self::install($this->serviceHolding(new Policy('patch', 'admin', '2026-01-01T00:00:00+00:00', true), $audit), '1.0.5', false);
+
+		self::assertNotSame('outOfRange', $result['payload']['category'] ?? null);
+		self::assertNotSame(Http::STATUS_CONFLICT, $result['statusCode']);
+	}
+
+	public function testAnInstallOutsideTheHeldLevelIsRefusedNamingTheLevel(): void {
+		$this->sourceRegistry->expects(self::never())->method('get');
+		$audit = $this->createMock(AuditLogger::class);
+		$audit->expects(self::never())->method('record');
+
+		$result = self::install($this->serviceHolding(new Policy('patch', 'admin', '2026-01-01T00:00:00+00:00', true), $audit), '2.0.0', false);
+
+		self::assertSame(Http::STATUS_CONFLICT, $result['statusCode']);
+		self::assertSame('outOfRange', $result['payload']['category']);
+		self::assertSame('patch', $result['payload']['level']);
+		self::assertStringContainsString('patch', $result['payload']['message']);
+	}
+
+	public function testAPolicyThatDoesNotHoldManualInstallsLetsThemThrough(): void {
+		$this->stubSuccessfulSignedInstall('2.0.0');
+		$audit = $this->createMock(AuditLogger::class);
+		$audit->expects(self::never())->method('record');
+
+		$result = self::install($this->serviceHolding(new Policy('patch', 'admin', '2026-01-01T00:00:00+00:00'), $audit), '2.0.0', false);
+
+		self::assertNotSame('outOfRange', $result['payload']['category'] ?? null);
+	}
+
+	public function testTheOverrideInstallsAndWritesARangeOverrideAuditRow(): void {
+		$this->stubSuccessfulSignedInstall('2.0.0');
+		$audit = $this->createMock(AuditLogger::class);
+		$audit->expects(self::once())->method('record')->with(
+			self::callback(static fn ($subject): bool => $subject->operation === AuditLogger::OPERATION_RANGE_OVERRIDE && $subject->appId === 'someapp' && $subject->actorUid === 'admin'),
+			self::callback(static fn ($versions): bool => $versions->fromVersion === '1.0.0' && $versions->toVersion === '2.0.0'),
+			AuditLogger::STATUS_SUCCESS,
+			self::stringContains('patch'),
+		);
+
+		$result = self::install($this->serviceHolding(new Policy('patch', 'admin', '2026-01-01T00:00:00+00:00', true), $audit), '2.0.0', true);
+
+		self::assertNotSame('outOfRange', $result['payload']['category'] ?? null);
+		self::assertNotSame(Http::STATUS_CONFLICT, $result['statusCode']);
+	}
+
+	public function testAPinnedAppHitsThePinGuardFirst(): void {
+		$this->pinStore->method('get')->willReturn(new Pin('1.0.0', 'alice', '2026-01-01T00:00:00+00:00'));
+		$audit = $this->createMock(AuditLogger::class);
+		$audit->expects(self::never())->method('record');
+
+		$result = self::install($this->serviceHolding(new Policy('patch', 'admin', '2026-01-01T00:00:00+00:00', true), $audit), '2.0.0', false);
+
+		self::assertSame(Http::STATUS_CONFLICT, $result['statusCode']);
+		self::assertSame('pinned', $result['payload']['category']);
 	}
 }

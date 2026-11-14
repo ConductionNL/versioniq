@@ -37,6 +37,7 @@ final class Policy {
 		public readonly string $level,
 		public readonly string $setBy,
 		public readonly string $setAt,
+		public readonly bool $holdManual = false,
 	) {
 		if (!self::isValidLevel($level)) {
 			throw new InvalidArgumentException('Policy level must be one of: ' . implode(', ', self::VALID_LEVELS));
@@ -70,7 +71,18 @@ final class Policy {
 			'level' => $this->level,
 			'setBy' => $this->setBy,
 			'setAt' => $this->setAt,
+			'holdManual' => $this->holdManual,
 		];
+	}
+
+	/**
+	 * Whether Versioniq's own installs are held to this policy's level: the
+	 * switch is on and the level is `patch` or `minor`.
+	 *
+	 * @spec openspec/changes/pinning-ranges-and-skips/specs/auto-update-policies/spec.md#requirement-a-policy-can-hold-manual-installs-to-its-level
+	 */
+	public function holdsManualInstalls(): bool {
+		return $this->holdManual && in_array($this->level, [self::LEVEL_PATCH, self::LEVEL_MINOR], true);
 	}
 
 	/**
@@ -87,6 +99,7 @@ final class Policy {
 			throw new InvalidArgumentException('Policy payload missing required string fields');
 		}
 
-		return new self($level, $setBy, $setAt);
+		// A policy stored before pinning-ranges-and-skips has no holdManual: off.
+		return new self($level, $setBy, $setAt, ($payload['holdManual'] ?? false) === true);
 	}
 }

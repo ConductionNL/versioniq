@@ -41,9 +41,14 @@ class CandidateSelector {
 	 * installer" ("Patch-level update applied").
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
+	 * Versions in `$skipped` are dropped before choosing, so the next qualifying
+	 * version is chosen instead (pinning-ranges-and-skips D2).
+	 *
+	 * @spec openspec/changes/pinning-ranges-and-skips/specs/version-pinning/spec.md#requirement-an-admin-skips-one-version-and-keeps-later-ones
 	 * @param list<string> $availableVersions
+	 * @param list<string> $skipped Versions an admin skipped.
 	 */
-	public function select(string $installedVersion, array $availableVersions, string $level): ?string {
+	public function select(string $installedVersion, array $availableVersions, string $level, array $skipped = []): ?string {
 		if ($level === Policy::LEVEL_NONE) {
 			return null;
 		}
@@ -51,6 +56,7 @@ class CandidateSelector {
 		$candidates = array_values(array_filter(
 			$availableVersions,
 			fn (string $candidate): bool => version_compare($candidate, $installedVersion, '>')
+				&& !in_array($candidate, $skipped, true)
 				&& $this->withinLevel($installedVersion, $candidate, $level)
 		));
 
@@ -63,7 +69,14 @@ class CandidateSelector {
 		return end($candidates);
 	}
 
-	private function withinLevel(string $installedVersion, string $candidate, string $level): bool {
+	/**
+	 * Whether a version is within a level's semver bound from the installed
+	 * version: the range rule the nightly job applies, and the one a policy
+	 * that holds manual installs applies to them.
+	 *
+	 * @spec openspec/changes/pinning-ranges-and-skips/specs/auto-update-policies/spec.md#requirement-a-policy-can-hold-manual-installs-to-its-level
+	 */
+	public function withinLevel(string $installedVersion, string $candidate, string $level): bool {
 		if ($level === Policy::LEVEL_ALL) {
 			return true;
 		}

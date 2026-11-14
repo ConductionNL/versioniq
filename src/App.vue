@@ -8,6 +8,7 @@ import type {AdvisoryCorrelation} from './utils/advisories.ts';
 import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
 import type {LkgRecord} from './utils/migrationSafety.ts';
 import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
+import type {SkipEntry} from './utils/skips.ts';
 
 import { loadState } from '@nextcloud/initial-state'
 import { t } from '@nextcloud/l10n'
@@ -33,8 +34,10 @@ import SourcesPanel from './components/SourcesPanel.vue'
 import TokensPanel from './components/TokensPanel.vue'
 import TrustedSourcesPanel from './components/TrustedSourcesPanel.vue'
 import VersionChangelog from './components/VersionChangelog.vue'
+import VersionSkipControl from './components/VersionSkipControl.vue'
 import DowngradeConfirmDialog from './dialogs/DowngradeConfirmDialog.vue'
 import EnableAppDialog from './dialogs/EnableAppDialog.vue'
+import InstallConfirmDialog from './dialogs/InstallConfirmDialog.vue'
 import PinDialog from './dialogs/PinDialog.vue'
 import PinOverrideDialog from './dialogs/PinOverrideDialog.vue'
 import ShaMismatchDialog from './dialogs/ShaMismatchDialog.vue'
@@ -49,6 +52,7 @@ import { shouldOfferLkgRollback } from './utils/migrationSafety.ts'
 import { filterByUpdates, isOutsidePolicy, outsidePolicyLabel, updateBadge, updatesFreshnessLabel as updatesFreshnessLabelFor } from './utils/pendingUpdates.ts'
 import { repinApp } from './utils/repin.ts'
 import { isBlockedBySafeMode } from './utils/safeMode.ts'
+import { fetchSkips } from './utils/skips.ts'
 import { compareVersions, parseVersionCore } from './utils/versionCompare.ts'
 
 type AppOption = {
@@ -195,6 +199,14 @@ const pinOverridePinnedVersion = ref('')
 const pinOverrideTargetVersion = ref('')
 let pinOverrideResolve: ((choice: 'repin' | 'unpin' | 'cancel') => void) | null = null
 
+// pinning-ranges-and-skips: the selected app's skipped versions, and the one
+// confirmation an install a rule would hold back asks (out of range, skipped).
+const skips = ref<Record<string, SkipEntry>>({})
+const isInstallConfirmOpen = ref(false)
+const installConfirmTitle = ref('')
+const installConfirmMessage = ref('')
+let installConfirmResolve: ((accept: boolean) => void) | null = null
+
 // SHA-256 mismatch on reinstall (trust-on-first-use enforcement) — see
 // "Recorded SHA-256 enforced on reinstall".
 const isShaMismatchDialogOpen = ref(false)
@@ -208,7 +220,7 @@ let shaMismatchResolve: ((accept: boolean) => void) | null = null
 // execution through the standard installer", "Global kill switch and
 // window"). Policies and the two global settings are fetched together from
 // GET /api/policies, mirroring the `pins`/`advisories` per-appId map pattern.
-type PolicyRecord = { appId: string, level: PolicyLevel, setBy: string, setAt: string, blockedVersions?: BlockedVersion[] }
+type PolicyRecord = { appId: string, level: PolicyLevel, setBy: string, setAt: string, holdManual?: boolean, blockedVersions?: BlockedVersion[] }
 const policies = ref<Record<string, PolicyRecord>>({})
 const isSavingPolicy = ref(false)
 const autoUpdateEnabled = ref(false)
@@ -836,6 +848,67 @@ async function loadPolicies (): Promise<void> {
 
 const policyLevelFor = (appId: string): PolicyLevel => policies.value[appId]?.level ?? 'none'
 const blockedVersionsFor = (appId: string): BlockedVersion[] => policies.value[appId]?.blockedVersions ?? []
+const holdManualFor = (appId: string): boolean => policies.value[appId]?.holdManual === true
+
+/**
+ * Turns "Also hold manual installs to this level" on or off for an app's policy.
+ *
+ * @param appId The app.
+ * @param hold Whether Versioniq's own installs are held to the policy's level.
+ * @spec openspec/changes/pinning-ranges-and-skips/specs/auto-update-policies/spec.md#requirement-a-policy-can-hold-manual-installs-to-its-level
+ */
+async function onHoldManualChange (appId: string, hold: boolean): Promise<void> {
+	const level = policyLevelFor(appId)
+	if (isSavingPolicy.value || level === 'none') {
+		return
+	}
+	isSavingPolicy.value = true
+	errorMessage.value = ''
+	try {
+		await ensurePasswordConfirmation()
+		await setPolicy(appId, level, hold)
+	} catch (e) {
+		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not update the auto-update policy.')
+	} finally {
+		isSavingPolicy.value = false
+	}
+}
+
+/**
+ * Reads the selected app's skip list again after a skip or unskip.
+ *
+ * @spec openspec/changes/pinning-ranges-and-skips/specs/version-pinning/spec.md#requirement-an-admin-skips-one-version-and-keeps-later-ones
+ */
+async function reloadSkips (): Promise<void> {
+	if (selectedApp.value) {
+		skips.value = await fetchSkips(selectedApp.value)
+	}
+}
+
+/**
+ * Asks once before an install a rule would hold back.
+ *
+ * @param title The dialog title.
+ * @param message What holds the install back.
+ * @return Whether to install anyway.
+ */
+function confirmInstall (title: string, message: string): Promise<boolean> {
+	installConfirmResolve?.(false)
+	installConfirmTitle.value = title
+	installConfirmMessage.value = message
+	return new Promise((resolve) => {
+		installConfirmResolve = resolve
+		isInstallConfirmOpen.value = true
+	})
+}
+
+/**
+ * @param accept Whether the admin chose to install anyway.
+ */
+function onInstallConfirmResolve (accept: boolean): void {
+	installConfirmResolve?.(accept)
+	installConfirmResolve = null
+}
 
 /**
  * Clears a failed automatic-update attempt so the next run inside the window
@@ -893,12 +966,16 @@ async function clearPolicy (appId: string): Promise<void> {
  *
  * @param appId The app whose policy is set.
  * @param level The policy level to set.
+ * @param holdManual Whether to hold manual installs to the level; left out, unchanged.
  */
-async function setPolicy (appId: string, level: PolicyLevel): Promise<void> {
-	const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/policy`, { level })), {
+async function setPolicy (appId: string, level: PolicyLevel, holdManual?: boolean): Promise<void> {
+	// Left out, the server keeps the stored "hold manual installs" switch.
+	const fields: Record<string, string | boolean> = holdManual === undefined ? { level } : { level, holdManual }
+	const query: Record<string, string> = holdManual === undefined ? { level } : { level, holdManual: holdManual ? '1' : '0' }
+	const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/policy`, query)), {
 		method: 'PUT',
 		headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
-		body: JSON.stringify({ level }),
+		body: JSON.stringify(fields),
 	})
 	const payload = await unwrapOcsResponse<{ appId: string, policy: PolicyRecord }>(response)
 	policies.value = { ...policies.value, [appId]: { ...payload.policy, appId } }
@@ -1074,6 +1151,7 @@ async function checkVersions (preserveInstallResult = false): Promise<void> {
 
 	try {
 		applyVersionsPayload(await fetchVersionsPayload(appId))
+		skips.value = await fetchSkips(appId)
 	} catch (error) {
 		errorMessage.value = error instanceof Error ? error.message : 'Could not fetch app versions.'
 		availableSource.value = ''
@@ -1636,6 +1714,7 @@ type InstallApiPayload = {
 	category?: string
 	code?: string
 	pinnedVersion?: string
+	level?: string
 	expectedSha?: string
 	actualSha?: string
 	recordedShaMatched?: boolean
@@ -1651,6 +1730,7 @@ type InstallRequest = {
 	pinRequested?: boolean
 	acceptNewSha?: boolean
 	allowDowngrade?: boolean
+	overrideRange?: boolean
 	forceDryRun?: boolean
 }
 
@@ -1658,6 +1738,7 @@ const INSTALL_FLAG_PARAMS: Array<[keyof InstallRequest, string]> = [
 	['pinRequested', 'pin'],
 	['acceptNewSha', 'acceptNewSha'],
 	['allowDowngrade', 'allowDowngrade'],
+	['overrideRange', 'overrideRange'],
 ]
 
 /**
@@ -1924,7 +2005,31 @@ async function retryShaMismatchInstall (request: InstallRequest, response: Insta
  */
 async function requestInstallWithRetries (request: InstallRequest): Promise<InstallResponse | null> {
 	const pinResolved = await retryPinnedInstall(request, await requestInstall(request))
-	return pinResolved === null ? null : retryShaMismatchInstall(request, pinResolved)
+	const rangeResolved = pinResolved === null ? null : await retryOutOfRangeInstall(request, pinResolved)
+	return rangeResolved === null ? null : retryShaMismatchInstall(request, rangeResolved)
+}
+
+/**
+ * Retries an install the policy's level held back once the admin chooses the
+ * audited override (pinning-ranges-and-skips).
+ *
+ * @param request The install request that was refused.
+ * @param response The installer's answer to it.
+ * @return The final answer, or null when the admin cancelled.
+ * @spec openspec/changes/pinning-ranges-and-skips/specs/auto-update-policies/spec.md#requirement-a-policy-can-hold-manual-installs-to-its-level
+ */
+async function retryOutOfRangeInstall (request: InstallRequest, response: InstallResponse): Promise<InstallResponse | null> {
+	if (!response.metaMessage || response.payload?.category !== 'outOfRange') {
+		return response
+	}
+	const accept = await confirmInstall(
+		t('versioniq', '{appId} is held to {level} updates', { appId: request.appId, level: response.payload.level || '' }),
+		t('versioniq', 'The update policy holds {appId} to {level} updates, and {version} is outside it. Installing it anyway is recorded in the history.', { appId: request.appId, level: response.payload.level || '', version: request.version }),
+	)
+	if (!accept) {
+		return null
+	}
+	return requestInstall({ ...request, overrideRange: true })
 }
 
 /**
@@ -2070,6 +2175,15 @@ async function performInstall (): Promise<void> {
 	}
 	const target = selectedInstallTarget()
 	if (target.allowDowngrade && !(await confirmDowngrade(target.appId, target.fromVersion, target.toVersion))) {
+		return
+	}
+	const skip = skips.value[target.toVersion]
+	if (skip && !(await confirmInstall(
+		t('versioniq', '{version} was skipped', { version: target.toVersion }),
+		skip.reason
+			? t('versioniq', '{version} of {appId} was skipped: {reason}. Install it anyway?', { version: target.toVersion, appId: target.appId, reason: skip.reason })
+			: t('versioniq', '{version} of {appId} was skipped. Install it anyway?', { version: target.toVersion, appId: target.appId }),
+	))) {
 		return
 	}
 	await runInstall(target)
@@ -2257,6 +2371,12 @@ watch(dryRunEnabled, () => {
 				:version="pinDialogVersion"
 				@update:open="isPinDialogOpen = $event"
 				@pinned="onPinned" />
+			<InstallConfirmDialog
+				:open="isInstallConfirmOpen"
+				:title="installConfirmTitle"
+				:message="installConfirmMessage"
+				@update:open="isInstallConfirmOpen = $event"
+				@resolve="onInstallConfirmResolve" />
 			<PinOverrideDialog
 				:open="isPinOverrideDialogOpen"
 				:appId="pinOverrideAppId"
@@ -2583,6 +2703,8 @@ watch(dryRunEnabled, () => {
 													:autoUpdateEnabled="autoUpdateEnabled"
 													:disabled="isSavingPolicy"
 													:blockedVersions="blockedVersionsFor(app.id)"
+													:holdManual="holdManualFor(app.id)"
+													@holdManual="onHoldManualChange"
 													@change="onPolicyChange"
 													@retry="onRetryAttempt" />
 											</div>
@@ -2761,6 +2883,13 @@ watch(dryRunEnabled, () => {
 																Selected
 															</span>
 														</div>
+														<VersionSkipControl
+															:appId="selectedApp"
+															:version="version.version"
+															:skip="skips[version.version] ?? null"
+															:disabled="isInstallingVersion"
+															@changed="reloadSkips"
+															@error="(message: string) => { errorMessage = message }" />
 														<VersionChangelog :version="version.version" :changelog="version.changelog ?? null" />
 														<div
 															v-if="selectedVersion === version.version && selectedVersion !== ''"

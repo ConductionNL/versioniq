@@ -13,6 +13,7 @@ namespace OCA\Versioniq\Service\Availability;
 
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Pin\SkipList;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -38,6 +39,7 @@ class AvailabilityService {
 		private InstallerService $installerService,
 		private PinStore $pinStore,
 		private LoggerInterface $logger,
+		private ?SkipList $skipList = null,
 	) {
 	}
 
@@ -107,7 +109,27 @@ class AvailabilityService {
 		$versions = $error === null && is_array($listing['availableVersions'] ?? null) ? $listing['availableVersions'] : [];
 		$sourceId = is_string($listing['sourceId'] ?? null) ? $listing['sourceId'] : $check->sourceId;
 
-		return $this->entry($check->withSource($sourceId), $versions, $error);
+		return $this->entry($check->withSource($sourceId), $this->withoutSkipped($appId, $versions), $error);
+	}
+
+	/**
+	 * The listed versions an admin did not skip: a skipped version is never
+	 * the pending update, and later versions are offered as usual.
+	 *
+	 * @spec openspec/changes/pinning-ranges-and-skips/specs/version-pinning/spec.md#requirement-an-admin-skips-one-version-and-keeps-later-ones
+	 * @param list<array<string, mixed>> $versions
+	 * @return list<array<string, mixed>>
+	 */
+	private function withoutSkipped(string $appId, array $versions): array {
+		$skipped = $this->skipList?->versions($appId) ?? [];
+		if ($skipped === []) {
+			return $versions;
+		}
+
+		return array_values(array_filter(
+			$versions,
+			static fn (array $entry): bool => !in_array(trim((string)($entry['version'] ?? '')), $skipped, true)
+		));
 	}
 
 	/**

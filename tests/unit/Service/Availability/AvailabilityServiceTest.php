@@ -13,6 +13,7 @@ use OCA\Versioniq\Service\Availability\AvailabilityService;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Pin\SkipList;
 use OCP\AppFramework\Http;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -28,7 +29,7 @@ final class AvailabilityServiceTest extends TestCase {
 	 * @param array<string, array<string, mixed>|\Throwable> $versionsByApp
 	 * @param array<string, Pin> $pins
 	 */
-	private function service(array $apps, array $versionsByApp, array $pins = [], array $unmanageable = []): AvailabilityService {
+	private function service(array $apps, array $versionsByApp, array $pins = [], array $unmanageable = [], array $skipped = []): AvailabilityService {
 		$installer = $this->createMock(InstallerService::class);
 		$installer->method('getInstalledApps')->willReturn($apps);
 		$installer->method('isManageableApp')->willReturnCallback(static fn (string $id): bool => !in_array($id, $unmanageable, true));
@@ -44,7 +45,10 @@ final class AvailabilityServiceTest extends TestCase {
 		$pinStore = $this->createMock(PinStore::class);
 		$pinStore->method('get')->willReturnCallback(static fn (string $id): ?Pin => $pins[$id] ?? null);
 
-		return new AvailabilityService($installer, $pinStore, new NullLogger());
+		$skipList = $this->createMock(SkipList::class);
+		$skipList->method('versions')->willReturnCallback(static fn (string $id): array => $skipped[$id] ?? []);
+
+		return new AvailabilityService($installer, $pinStore, new NullLogger(), $skipList);
 	}
 
 	private static function app(string $id, ?string $installed, string $state = 'enabled', ?string $boundSourceId = null): array {
@@ -184,5 +188,26 @@ final class AvailabilityServiceTest extends TestCase {
 
 		self::assertNotNull($entry['error']);
 		self::assertNull($entry['newestVersion']);
+	}
+
+	/**
+	 * pinning-ranges-and-skips: a skipped version is never the pending update; a later one still is.
+	 */
+	public function testASkippedVersionIsNotThePendingUpdate(): void {
+		$service = $this->service(
+			[self::app('openregister', '2.3.3'), self::app('notes', '1.0.0')],
+			[
+				'openregister' => self::envelope([['2.3.5', true], ['2.3.4', true], ['2.3.3', true]]),
+				'notes' => self::envelope([['1.0.1', true], ['1.0.0', true]]),
+			],
+			skipped: ['openregister' => ['2.3.4'], 'notes' => ['1.0.1']],
+		);
+
+		$result = $service->sweep(30.0);
+
+		$this->assertSame('2.3.5', $result['openregister']['newestCompatibleVersion']);
+		$this->assertTrue($result['openregister']['updateAvailable']);
+		$this->assertSame('1.0.0', $result['notes']['newestCompatibleVersion']);
+		$this->assertFalse($result['notes']['updateAvailable']);
 	}
 }

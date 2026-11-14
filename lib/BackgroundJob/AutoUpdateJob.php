@@ -128,7 +128,8 @@ class AutoUpdateJob extends TimedJob {
 			return;
 		}
 
-		$candidate = $this->install->candidateSelector->select($installedVersion, $available, $level);
+		$skipped = $this->stores->skipList?->versions($appId) ?? [];
+		$candidate = $this->install->candidateSelector->select($installedVersion, $available, $level, $skipped);
 		if ($candidate === null || $this->stores->attemptLedger->hasAttempted($appId, $candidate)) {
 			// Never-retry — see "Failed attempt is not retried".
 			return;

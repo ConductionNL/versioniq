@@ -579,10 +579,11 @@ class ApiController extends OCSController {
 		$pinRequested = $this->readBinaryBool($fields->pin, false);
 		$acceptNewShaFlag = $this->readBinaryBool($fields->acceptNewSha, false);
 		$allowDowngradeFlag = $this->readBinaryBool($fields->allowDowngrade, false);
+		$overrideRangeFlag = $this->readBinaryBool($this->request->getParam('overrideRange'), false);
 
 		return new InstallRequest(
 			$target,
-			new InstallOptions($includeDebug, $dryRunFlag ?? $includeDebug, $acceptNewShaFlag, $allowDowngradeFlag),
+			new InstallOptions($includeDebug, $dryRunFlag ?? $includeDebug, $acceptNewShaFlag, $allowDowngradeFlag, $overrideRangeFlag),
 			new PinChoice($overridePin, $pinRequested),
 		);
 	}
@@ -814,6 +815,106 @@ class ApiController extends OCSController {
 	}
 
 	/**
+	 * The versions of an app an admin skipped, with who, when and why.
+	 *
+	 * @param string $appId The app
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, skipped: list<array<string, string>>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 *
+	 * 200: The skip list, oldest first
+	 * 403: Caller is not an administrator
+	 *
+	 * @spec openspec/changes/pinning-ranges-and-skips/specs/version-pinning/spec.md#requirement-an-admin-skips-one-version-and-keeps-later-ones
+	 */
+	#[ApiRoute(verb: 'GET', url: '/api/app/{appId}/skips')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/app/{appId}/skips', postfix: 'v1')]
+	public function skippedVersions(string $appId): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		return new DataResponse(['appId' => $appId, 'skipped' => $this->autoUpdate->skipList?->entries($appId) ?? []]);
+	}
+
+	/**
+	 * Skips one version of an app (password-confirmed), with an optional
+	 * `reason`: the nightly job never chooses it and it is not shown as the
+	 * pending update; later versions arrive as usual.
+	 *
+	 * @param string $appId   The app
+	 * @param string $version The version to skip
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, version: string, skipped: bool}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_SERVICE_UNAVAILABLE, array{message: string}, array{}>
+	 *
+	 * 200: The version is on the skip list (`skipped` false when it already was)
+	 * 400: The version is empty
+	 * 403: Caller is not an administrator
+	 * 503: The skip list is not available
+	 *
+	 * @spec openspec/changes/pinning-ranges-and-skips/specs/version-pinning/spec.md#requirement-an-admin-skips-one-version-and-keeps-later-ones
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'PUT', url: '/api/app/{appId}/skip/{version}')]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/app/{appId}/skip/{version}', postfix: 'v1')]
+	public function skipVersion(string $appId, string $version): DataResponse {
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
+		}
+
+		$skipList = $this->autoUpdate->skipList;
+		$version = trim($version);
+		if ($skipList === null) {
+			return new DataResponse(['message' => 'The skip list is not available.'], Http::STATUS_SERVICE_UNAVAILABLE);
+		}
+
+		if ($version === '') {
+			return new DataResponse(['message' => 'version is required.'], Http::STATUS_BAD_REQUEST);
+		}
+
+		$added = $skipList->skip(
+			$appId,
+			$version,
+			$user->getUID(),
+			$this->access->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
+			$this->stringParam('reason', ''),
+		);
+
+		return new DataResponse(['appId' => $appId, 'version' => $version, 'skipped' => $added]);
+	}
+
+	/**
+	 * Takes a version off an app's skip list (password-confirmed).
+	 *
+	 * @param string $appId   The app
+	 * @param string $version The version to unskip
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, version: string, unskipped: bool}, array{}>|DataResponse<Http::STATUS_FORBIDDEN|Http::STATUS_SERVICE_UNAVAILABLE, array{message: string}, array{}>
+	 *
+	 * 200: The version is off the skip list (`unskipped` false when it was not on it)
+	 * 403: Caller is not an administrator
+	 * 503: The skip list is not available
+	 *
+	 * @spec openspec/changes/pinning-ranges-and-skips/specs/version-pinning/spec.md#requirement-an-admin-skips-one-version-and-keeps-later-ones
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'DELETE', url: '/api/app/{appId}/skip/{version}')]
+	#[ApiRoute(verb: 'DELETE', url: '/api/v1/app/{appId}/skip/{version}', postfix: 'v1')]
+	public function unskipVersion(string $appId, string $version): DataResponse {
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
+		}
+
+		$skipList = $this->autoUpdate->skipList;
+		if ($skipList === null) {
+			return new DataResponse(['message' => 'The skip list is not available.'], Http::STATUS_SERVICE_UNAVAILABLE);
+		}
+
+		return new DataResponse(['appId' => $appId, 'version' => trim($version), 'unskipped' => $skipList->unskip($appId, trim($version), $user->getUID())]);
+	}
+
+	/**
 	 * Sets an app's auto-update policy level (password-confirmed); rejects an
 	 * unknown level with 400; see "Per-app update policy"
 	 *
@@ -844,10 +945,16 @@ class ApiController extends OCSController {
 			);
 		}
 
+		// Left out, the switch keeps its stored value (pinning-ranges-and-skips).
+		$holdManual = $this->readBinaryBool(
+			$this->request->getParam('holdManual'),
+			$this->autoUpdate->policyStore->get($appId)?->holdManual ?? false
+		);
 		$policy = new Policy(
 			$level,
 			$user->getUID(),
 			$this->access->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
+			$holdManual,
 		);
 		$this->autoUpdate->policyStore->set($appId, $policy);
 
