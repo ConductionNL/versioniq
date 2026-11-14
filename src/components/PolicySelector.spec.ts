@@ -13,6 +13,7 @@ vi.mock('@nextcloud/l10n', () => ({
 
 vi.mock('@nextcloud/vue/components/NcButton', () => ({ default: { name: 'NcButton', emits: ['click'], template: '<button type="button" @click="$emit(\'click\')"><slot /></button>' } }))
 vi.mock('@nextcloud/vue/components/NcSelect', () => ({ default: { name: 'NcSelect', template: '<select><slot /></select>' } }))
+vi.mock('@nextcloud/vue/components/NcCheckboxRadioSwitch', () => ({ default: { name: 'NcCheckboxRadioSwitch', props: ['modelValue'], emits: ['update:modelValue'], template: '<label :data-checked="modelValue" @click="$emit(\'update:modelValue\', !modelValue)"><slot /></label>' } }))
 
 describe('PolicySelector', () => {
 	it('renders the selector without an active badge when the level is none', () => {
@@ -91,5 +92,26 @@ describe('PolicySelector', () => {
 		})
 
 		expect(wrapper.find('[data-testid="policy-disabled-hint"]').text()).not.toContain('\u2014')
+	})
+
+	// pinning-ranges-and-skips: "Also hold manual installs to this level"
+	// @spec openspec/changes/pinning-ranges-and-skips/specs/auto-update-policies/spec.md#requirement-a-policy-can-hold-manual-installs-to-its-level
+	it('offers the hold-manual switch for patch and minor only, with help text that leaves the platform updater out', () => {
+		for (const [level, shown] of [['none', false], ['patch', true], ['minor', true], ['all', false]] as const) {
+			const wrapper = shallowMount(PolicySelector, { props: { appId: 'openregister', level, autoUpdateEnabled: true }, global: { renderStubDefaultSlot: true } })
+			expect(wrapper.find('[data-testid="policy-hold-manual"]').exists()).toBe(shown)
+			if (shown) {
+				expect(wrapper.text()).toContain('Nextcloud\'s own updater is not held')
+			}
+		}
+	})
+
+	it('saves the switch by emitting it with the app', async () => {
+		const wrapper = shallowMount(PolicySelector, { props: { appId: 'openregister', level: 'patch', autoUpdateEnabled: true, holdManual: false } })
+
+		await wrapper.findComponent({ name: 'NcCheckboxRadioSwitch' }).vm.$emit('update:modelValue', true)
+
+		expect(wrapper.emitted('holdManual')).toEqual([['openregister', true]])
+		expect(wrapper.findComponent({ name: 'NcCheckboxRadioSwitch' }).props('modelValue')).toBe(false)
 	})
 })

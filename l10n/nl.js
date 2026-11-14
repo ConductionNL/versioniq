@@ -300,7 +300,22 @@ OC.L10N.register(
         "Outside the update policy": "Buiten het updatebeleid",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Aantal releases dat een app achter mag lopen (0 tot {max}, laat leeg om de controle uit te zetten)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "Een app die verder achterloopt, wordt gemarkeerd op het tabblad Apps. 1 betekent de nieuwste release of de release daarvoor.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"]
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"],
+        "Also hold manual installs to this level": "Ook handmatige installaties aan dit niveau houden",
+        "Installs through Versioniq outside this level then ask for an explicit override. Nextcloud's own updater is not held.": "Installaties via Versioniq buiten dit niveau vragen dan om een uitdrukkelijke bevestiging. De eigen updater van Nextcloud wordt niet tegengehouden.",
+        "The update policy holds {appId} to {level} updates, and {version} is outside it. Installing it anyway is recorded in the history.": "Het updatebeleid houdt {appId} aan {level}-updates, en {version} valt daarbuiten. Toch installeren wordt vastgelegd in de geschiedenis.",
+        "{appId} is held to {level} updates": "{appId} wordt aan {level}-updates gehouden",
+        "{version} of {appId} was skipped. Install it anyway?": "{version} van {appId} is overgeslagen. Toch installeren?",
+        "{version} of {appId} was skipped: {reason}. Install it anyway?": "{version} van {appId} is overgeslagen: {reason}. Toch installeren?",
+        "{version} was skipped": "{version} is overgeslagen",
+        "Could not skip this version.": "Deze versie kon niet worden overgeslagen.",
+        "Could not unskip this version.": "Het overslaan van deze versie kon niet worden opgeheven.",
+        "Install anyway": "Toch installeren",
+        "Skip this version": "Deze versie overslaan",
+        "Skip {version}": "{version} overslaan",
+        "Skipped": "Overgeslagen",
+        "Unskip": "Niet meer overslaan",
+        "Why skip {version}? (optional)": "Waarom {version} overslaan? (optioneel)"
     },
     "nplurals=2; plural=(n != 1);"
 )

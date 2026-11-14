@@ -3,6 +3,7 @@
 import { t } from '@nextcloud/l10n'
 import { computed } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 
 export type PolicyLevel = 'none' | 'patch' | 'minor' | 'all'
@@ -16,14 +17,17 @@ const props = withDefaults(defineProps<{
 	autoUpdateEnabled: boolean
 	disabled?: boolean
 	blockedVersions?: BlockedVersion[]
+	holdManual?: boolean
 }>(), {
 	disabled: false,
 	blockedVersions: () => [],
+	holdManual: false,
 })
 
 const emit = defineEmits<{
 	(event: 'change', appId: string, level: PolicyLevel): void
 	(event: 'retry', appId: string, version: string): void
+	(event: 'holdManual', appId: string, hold: boolean): void
 }>()
 
 type SelectOption = { id: PolicyLevel, label: string }
@@ -43,6 +47,9 @@ const selected = computed<SelectOption>({
 })
 
 const isActive = computed(() => props.level !== 'none')
+
+/** Only Patch and Minor have a range to hold manual installs to (pinning-ranges-and-skips). */
+const canHoldManual = computed(() => props.level === 'patch' || props.level === 'minor')
 </script>
 
 <template>
@@ -58,6 +65,18 @@ const isActive = computed(() => props.level !== 'none')
 		<span v-if="isActive" :class="$style.badge" data-testid="policy-active-badge">
 			{{ t('versioniq', 'Auto-update: {level}', { level: selected.label }) }}
 		</span>
+		<template v-if="canHoldManual">
+			<NcCheckboxRadioSwitch
+				:modelValue="holdManual"
+				:disabled="disabled"
+				data-testid="policy-hold-manual"
+				@update:modelValue="(value: boolean) => emit('holdManual', appId, value)">
+				{{ t('versioniq', 'Also hold manual installs to this level') }}
+			</NcCheckboxRadioSwitch>
+			<span :class="$style.badge">
+				{{ t('versioniq', 'Installs through Versioniq outside this level then ask for an explicit override. Nextcloud\'s own updater is not held.') }}
+			</span>
+		</template>
 		<span v-if="isActive && !autoUpdateEnabled" :class="$style.disabledHint" data-testid="policy-disabled-hint">
 			{{ t('versioniq', 'Automation is disabled. Enable it in settings to take effect.') }}
 		</span>

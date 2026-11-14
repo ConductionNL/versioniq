@@ -271,7 +271,23 @@ OC.L10N.register(
         "Outside the update policy": "Outside the update policy",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"]
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"],
+        "Also hold manual installs to this level": "Also hold manual installs to this level",
+        "Installs through Versioniq outside this level then ask for an explicit override. Nextcloud's own updater is not held.": "Installs through Versioniq outside this level then ask for an explicit override. Nextcloud's own updater is not held.",
+        "The update policy holds {appId} to {level} updates, and {version} is outside it. Installing it anyway is recorded in the history.": "The update policy holds {appId} to {level} updates, and {version} is outside it. Installing it anyway is recorded in the history.",
+        "{appId} is held to {level} updates": "{appId} is held to {level} updates",
+        "{version} of {appId} was skipped. Install it anyway?": "{version} of {appId} was skipped. Install it anyway?",
+        "{version} of {appId} was skipped: {reason}. Install it anyway?": "{version} of {appId} was skipped: {reason}. Install it anyway?",
+        "{version} was skipped": "{version} was skipped",
+        "Could not skip this version.": "Could not skip this version.",
+        "Could not unskip this version.": "Could not unskip this version.",
+        "Install anyway": "Install anyway",
+        "Skip this version": "Skip this version",
+        "Skip {version}": "Skip {version}",
+        "Skipped": "Skipped",
+        "Unskip": "Unskip",
+        "Why skip {version}? (optional)": "Why skip {version}? (optional)",
+        "Cancel": "Cancel"
     },
     "nplurals=2; plural=(n != 1);"
 )

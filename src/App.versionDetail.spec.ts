@@ -200,7 +200,7 @@ describe('App version list', () => {
 		await flushPromises()
 
 		expect(vm.sourceOverride).toBe('github:acme/deck')
-		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['GET /api/app/deck/versions'])
+		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['GET /api/app/deck/versions', 'GET /api/app/deck/skips'])
 		expect(Object.values(calls[0].query)).toContain('github:acme/deck')
 	})
 
@@ -281,7 +281,7 @@ describe('App detail pin', () => {
 		wrapper.findComponent({ name: 'PinDriftBanner' }).vm.$emit('repinRequested', 'deck', '1.4.0')
 		await flushPromises()
 
-		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['POST /api/app/deck/versions/1.4.0/install', 'GET /api/pins', 'GET /api/app/deck/versions'])
+		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['POST /api/app/deck/versions/1.4.0/install', 'GET /api/pins', 'GET /api/app/deck/versions', 'GET /api/app/deck/skips'])
 		expect(calls[0].query).toEqual({ debug: '0', dryRun: '0', targetVersion: '1.4.0' })
 		expect([vm.isInstallingVersion, vm.errorMessage]).toEqual([false, ''])
 	})

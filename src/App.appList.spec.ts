@@ -219,7 +219,7 @@ describe('App card buttons', () => {
 		await card(wrapper, 'mail').findAll('button').find((button) => button.text() === 'Choose app')!.trigger('click')
 		await flushPromises()
 
-		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['GET /api/app/mail/versions'])
+		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['GET /api/app/mail/versions', 'GET /api/app/mail/skips'])
 		expect([vm.selectedApp, vm.installedVersion, vm.availableSource]).toEqual(['mail', '3.0.0', 'appstore'])
 		expect(vm.versions).toEqual([{ version: '3.1.0' }])
 	})
@@ -327,15 +327,15 @@ describe('App card buttons', () => {
 		await rollback.trigger('click')
 		await flushPromises()
 
-		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['GET /api/app/deck/versions', 'POST /api/app/deck/versions/1.0.0/install'])
-		expect(calls[1].query).toEqual({ debug: '0', dryRun: '1', targetVersion: '1.0.0' })
+		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['GET /api/app/deck/versions', 'GET /api/app/deck/skips', 'POST /api/app/deck/versions/1.0.0/install'])
+		expect(calls[2].query).toEqual({ debug: '0', dryRun: '1', targetVersion: '1.0.0' })
 		expect(wrapper.findComponent({ name: 'DowngradeConfirmDialog' }).props()).toMatchObject({ open: true, appId: 'deck', fromVersion: '1.2.0', toVersion: '1.0.0', orphanedMigrations: ['Version1002Date'] })
 		// Safe mode would otherwise clear a selected downgrade.
 		expect(vm.selectedVersion).toBe('1.0.0')
 
 		wrapper.findComponent({ name: 'DowngradeConfirmDialog' }).vm.$emit('resolve', false)
 		await flushPromises()
-		expect(calls).toHaveLength(2)
+		expect(calls).toHaveLength(3)
 		expect(vm.isDowngradeConfirmOpen).toBe(false)
 	})
 

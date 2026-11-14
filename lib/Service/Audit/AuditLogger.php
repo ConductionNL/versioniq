@@ -37,6 +37,12 @@ class AuditLogger {
 	public const OPERATION_PIN_DRIFT = 'pin_drift';
 	/** An instance setting changed from the Settings tab (#438). */
 	public const OPERATION_SETTINGS = 'settings';
+	/** An admin skipped one version of an app (pinning-ranges-and-skips D3). */
+	public const OPERATION_SKIP_VERSION = 'skip_version';
+	/** An admin took a version off an app's skip list. */
+	public const OPERATION_UNSKIP_VERSION = 'unskip_version';
+	/** An install outside a policy that holds manual installs went ahead on an explicit override. */
+	public const OPERATION_RANGE_OVERRIDE = 'range_override';
 
 	private const OPERATION_PATTERN = '/^[a-z_]{1,32}$/';
 	private const MESSAGE_MAX_LENGTH = 4000;
