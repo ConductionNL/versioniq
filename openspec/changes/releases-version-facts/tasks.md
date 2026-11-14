@@ -19,7 +19,7 @@
 ## 4. Page and CLI
 
 - [ ] 4.1 Add `src/components/VersionFacts.vue` to each picker row (date, downloads, outcomes, "Breaking", "Major version", known issues) and `src/dialogs/KnownIssueDialog.vue`; add the breaking sentence to the range summary and the downgrade dialog; add the card notice. Verify: `src/components/VersionFacts.spec.ts` covers each fact present and absent; a vitest spec covers the range sentence.
-- [ ] 4.2 Add the "Released" column and the new JSON keys to `lib/Command/ListVersions.php`. Verify: `tests/unit/Command/ListVersionsTest.php`.
+- [x] 4.2 Add the "Released" column and the new JSON keys to `lib/Command/ListVersions.php`. Verify: `tests/unit/Command/ListVersionsTest.php`.
 - [ ] 4.3 Add the new strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
 - [ ] 4.4 Extend `tests/e2e/versions.spec.ts`: the forge fixture serves a release with `published_at`, a breaking heading and a known-issues section; assert the date, the badge and the section.
 
