@@ -12,7 +12,7 @@
 
 ## 3. Webhooks
 
-- [ ] 3.1 Add `lib/Service/Alert/WebhookTargetStore.php` and `lib/Controller/AlertController.php` with the target routes and the test route (design D5). Verify: `tests/unit/Controller/AlertControllerTest.php` asserts 403, 400 on http, no secret in any response, and one audit row per change.
+- [x] 3.1 Add `lib/Service/Alert/WebhookTargetStore.php` and `lib/Controller/AlertController.php` with the target routes and the test route (design D5). Verify: `tests/unit/Controller/AlertControllerTest.php` asserts 403, 400 on http, no secret in any response, and one audit row per change.
 - [ ] 3.2 Add `lib/Service/Alert/AlertDispatcher.php`, `lib/Service/Alert/WebhookSender.php` and `lib/BackgroundJob/WebhookDeliveryJob.php` (design D6), and call the dispatcher from `AutoUpdateNotifier`, `PinDriftHandler`, `AdvisoryNotifier`, `AdvisoryDigestNotifier`, `PatExpiryNotifier` and `ReleaseNotifier`. Verify: `tests/unit/Service/Alert/WebhookSenderTest.php` checks both formats and the signature against a known vector; `tests/unit/BackgroundJob/WebhookDeliveryJobTest.php` covers success, a retry, and failure after the third attempt; each notifier test asserts one dispatch per alert.
 
 ## 4. Page
@@ -29,4 +29,5 @@
 
 - 1.2: `FollowList` keeps `release_alerts.follow` (at most 50 apps, app ids checked against the Nextcloud app id shape). `POST /api/follow` and `DELETE /api/follow/{appId}` sit on `AlertController`, admin-only, password-confirmed, audited as `settings`; `GET /api/release-alerts` also returns `follows`. The job and `occ versioniq:updates --refresh` hand the follow list to `AvailabilityService::sweep()`, which adds each followed app that is not installed with `installedVersion` null, `updateAvailable` false and `followed: true`, listed from the followed source. The `forge` scope announces a followed app whatever its source.
 - 2.2: `FeedController` and `FeedControllerTest` (403, RSS 2.0, `pubDate`) landed in the first slice; the box stays open for its e2e part (`tests/e2e/shell.spec.ts`).
+- 3.1: `WebhookTargetStore` (with `WebhookTargetInput` for the field checks) and the routes. The routes sit on a new `WebhookController` rather than `AlertController`, so neither controller takes more than four collaborators; paths and behaviour are as design D5 says. `POST /api/webhooks/{id}/test` sends right away and records the outcome as the last delivery. A target stored with `occ config:app:set` may carry an http address (the e2e fixture); the form refuses anything but https.
 
