@@ -8,7 +8,8 @@
 
 ## 2. Export
 
-- [ ] 2.1 Add `GET /api/sbom?format=` and `occ versioniq:sbom`. Verify: `tests/unit/Controller/ApiTest.php` (403 for a non-admin, a download for an admin) and `tests/unit/Command/ExportSbomTest.php`.
+- [x] 2.1 Add `GET /api/sbom?format=` and `occ versioniq:sbom`. Verify: `tests/unit/Controller/ApiTest.php` (403 for a non-admin, a download for an admin) and `tests/unit/Command/ExportSbomTest.php`.
+  - `SbomExporter` builds the document (instance id, time, a version 4 UUID); `SbomController` serves `GET /api/sbom?format=` as a download for admins (403 otherwise, 400 for another format), and `occ versioniq:sbom --format= [--output=]` prints or writes it. The route is in `openapi.json`. `SbomControllerTest`, `ExportSbomTest`, `SbomExporterTest`.
 - [ ] 2.2 Add the Export SBOM menu to `HistoryPanel.vue`. Verify: a vitest spec that both menu items call the right URL.
 
 ## 3. A copy per update
