@@ -59,6 +59,19 @@ class AvailabilityRefreshJob extends TimedJob {
 			}
 		} catch (\Throwable $error) {
 			$this->logger->error('AvailabilityRefreshJob: the update check failed; the previous snapshot is kept', ['message' => $error->getMessage()]);
+			$this->recordFailure();
+		}
+	}
+
+	/**
+	 * Says the sweep failed, so the check line does not read as checked.
+	 * Recording it must not throw out of the job either.
+	 */
+	private function recordFailure(): void {
+		try {
+			$this->resultStore->saveFailure($this->time->getTime());
+		} catch (\Throwable $error) {
+			$this->logger->error('AvailabilityRefreshJob: could not record the failed sweep', ['message' => $error->getMessage()]);
 		}
 	}
 }

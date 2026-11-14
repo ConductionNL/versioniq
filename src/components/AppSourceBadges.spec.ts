@@ -30,4 +30,28 @@ describe('AppSourceBadges', () => {
 		const store = mount(AppSourceBadges, { props: { isShipped: false, isCore: false, boundSourceId: null } })
 		expect(store.find('[data-testid="app-source"]').text()).toContain('App Store')
 	})
+
+	// @spec openspec/changes/inventory-pins-checks-and-pending/specs/external-sources/spec.md#requirement-the-card-names-where-the-installed-version-came-from
+	it('names the source of the installed version apart from the binding', () => {
+		const wrapper = mount(AppSourceBadges, {
+			props: { isShipped: false, isCore: false, boundSourceId: null, provenance: { kind: 'versioniq', sourceId: 'github:ConductionNL/pipelinq', version: '1.12.0' } },
+		})
+
+		expect(wrapper.find('[data-testid="app-source"]').text()).toContain('App Store')
+		expect(wrapper.find('[data-testid="app-provenance"]').text()).toBe('1.12.0 installed from github:ConductionNL/pipelinq')
+	})
+
+	it('says a version was set outside Versioniq', () => {
+		const wrapper = mount(AppSourceBadges, {
+			props: { isShipped: false, isCore: false, boundSourceId: null, provenance: { kind: 'outside', sourceId: null, version: '1.15.0' } },
+		})
+
+		expect(wrapper.find('[data-testid="app-provenance"]').text()).toBe('Set to 1.15.0 outside Versioniq')
+	})
+
+	it('shows no provenance for an app that is not installed', () => {
+		const wrapper = mount(AppSourceBadges, { props: { isShipped: false, isCore: false, boundSourceId: null } })
+
+		expect(wrapper.find('[data-testid="app-provenance"]').exists()).toBe(false)
+	})
 })

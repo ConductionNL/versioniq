@@ -43,4 +43,35 @@ describe('AutoUpdateOverview', () => {
 
 		expect(wrapper.find('[data-testid="overview-disabled"]').exists()).toBe(true)
 	})
+
+	// @spec openspec/changes/inventory-pins-checks-and-pending/specs/auto-update-policies/spec.md#requirement-the-overview-lists-the-updates-that-are-pending-now
+	it('lists each pending version with its state, from the stored sweep and its time', () => {
+		const update = (installedVersion: string, newest: string, pinned = false) => ({ installedVersion, newestVersion: newest, newestCompatibleVersion: newest, linesBehind: 0, updateAvailable: true, pinned, sourceId: null, error: null })
+		const wrapper = mount(AutoUpdateOverview, {
+			props: {
+				policies: {
+					dossiq: { appId: 'dossiq', level: 'patch', blockedVersions: [] },
+					decidiq: { appId: 'decidiq', level: 'all', blockedVersions: [] },
+				},
+				labels: { dossiq: 'Dossiq', decidiq: 'Decidiq' },
+				autoUpdateEnabled: true,
+				window: '01:00-05:00',
+				timeZone: 'Europe/Amsterdam',
+				updates: { dossiq: update('0.4.49', '0.4.50'), decidiq: update('0.9.3', '0.10.1', true) },
+				updatesCheckedLabel: 'Updates checked today at 06:02',
+			},
+		})
+
+		const rows = wrapper.findAll('[data-testid="overview-pending-row"]').map((row) => row.text())
+		expect(rows).toEqual(['Decidiq0.10.1Held by the pin', 'Dossiq0.4.50Scheduled for the next window'])
+		expect(wrapper.find('[data-testid="overview-pending-checked"]').text()).toBe('Updates checked today at 06:02')
+	})
+
+	it('says when no app with a policy has a newer version', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies, labels: {}, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'UTC' },
+		})
+
+		expect(wrapper.find('[data-testid="overview-pending-none"]').exists()).toBe(true)
+	})
 })

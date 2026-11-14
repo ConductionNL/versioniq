@@ -29,7 +29,7 @@ final class AdvisoryResultStoreTest extends TestCase {
 		$config->method('getValueString')->willReturn('');
 
 		$this->assertSame(
-			['advisories' => [], 'checkedAt' => null],
+			['advisories' => [], 'checkedAt' => null, 'status' => null, 'errors' => []],
 			$this->store($config)->read(),
 		);
 	}
@@ -38,11 +38,13 @@ final class AdvisoryResultStoreTest extends TestCase {
 		$snapshot = ['notes' => ['appId' => 'notes', 'state' => 'none']];
 
 		$config = $this->createMock(IAppConfig::class);
-		$config->method('getValueString')->willReturn(json_encode($snapshot, JSON_THROW_ON_ERROR));
+		$config->method('getValueString')->willReturnCallback(
+			fn (string $app, string $key, string $default = ''): string => $key === 'advisory.results' ? json_encode($snapshot, JSON_THROW_ON_ERROR) : $default
+		);
 		$config->method('getValueInt')->willReturn(1_700_000_000);
 
 		$this->assertSame(
-			['advisories' => $snapshot, 'checkedAt' => 1_700_000_000],
+			['advisories' => $snapshot, 'checkedAt' => 1_700_000_000, 'status' => 'ok', 'errors' => []],
 			$this->store($config)->read(),
 		);
 	}
@@ -71,23 +73,37 @@ final class AdvisoryResultStoreTest extends TestCase {
 		$logger->expects($this->once())->method('warning');
 
 		$this->assertSame(
-			['advisories' => [], 'checkedAt' => null],
+			['advisories' => [], 'checkedAt' => null, 'status' => null, 'errors' => []],
 			$this->store($config, $logger)->read(),
 		);
 	}
 
-	public function testSavesTheSnapshotAndTheTime(): void {
-		$snapshot = ['notes' => ['appId' => 'notes', 'state' => 'none']];
+	public function testSavesTheSnapshotTheTimeAndTheOutcome(): void {
+		$snapshot = ['notes' => ['appId' => 'notes', 'state' => 'none', 'error' => null], 'deck' => ['appId' => 'deck', 'error' => 'feed timed out']];
 
-		$config = $this->createMock(IAppConfig::class);
-		$config->expects($this->once())
-			->method('setValueString')
-			->with($this->anything(), 'advisory.results', json_encode($snapshot, JSON_THROW_ON_ERROR));
-		$config->expects($this->once())
-			->method('setValueInt')
-			->with($this->anything(), 'advisory.results.checkedAt', 1_700_000_000);
+		$strings = [];
+		$ints    = [];
+		$config  = $this->createMock(IAppConfig::class);
+		$config->method('setValueString')->willReturnCallback(function (string $app, string $key, string $value) use (&$strings): bool {
+			$strings[$key] = $value;
+			return true;
+		});
+		$config->method('setValueInt')->willReturnCallback(function (string $app, string $key, int $value) use (&$ints): bool {
+			$ints[$key] = $value;
+			return true;
+		});
 
 		$this->store($config)->save($snapshot, 1_700_000_000);
+
+		$this->assertSame(
+			[
+				'advisory.results' => json_encode($snapshot, JSON_THROW_ON_ERROR),
+				'advisory.results.status' => 'partial',
+				'advisory.results.errors' => '["deck"]',
+			],
+			$strings
+		);
+		$this->assertSame(['advisory.results.checkedAt' => 1_700_000_000], $ints);
 	}
 
 	/**

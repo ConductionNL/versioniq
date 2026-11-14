@@ -1,6 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2024 Conduction B.V. <info@conduction.nl> -->
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
+import type {Provenance} from './components/AppSourceBadges.vue';
 import type {PrefillBindPayload} from './components/DiscoverPanel.vue';
 import type {BlockedVersion, PolicyLevel} from './components/PolicySelector.vue';
 import type { PinRecord } from './dialogs/PinDialog.vue'
@@ -8,6 +9,7 @@ import type {AdvisoryCorrelation} from './utils/advisories.ts';
 import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
 import type {LkgRecord} from './utils/migrationSafety.ts';
 import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
+import type { SweepStatus } from './utils/sweepOutcome.ts'
 
 import { loadState } from '@nextcloud/initial-state'
 import { t } from '@nextcloud/l10n'
@@ -65,6 +67,7 @@ type AppOption = {
 	installedVersion?: string | null
 	state?: 'enabled' | 'disabled' | 'notInstalled'
 	lkg?: LkgRecord | null
+	provenance?: Provenance | null
 }
 
 type AppVersion = {
@@ -84,6 +87,8 @@ const showFilters = ref(false)
 const coreAppsVisibility = ref<'show' | 'hide'>('show')
 // inventory-pending-updates: narrows the list to apps with an update, or past the lag limit.
 const updatesFilter = ref<UpdatesFilter>('all')
+// The pinned filter of the status bar (pin-list): only the pinned apps.
+const pinnedOnly = ref(false)
 const updateChannel = ref('')
 const selectedApp = ref('')
 const versions = ref<AppVersion[]>([])
@@ -593,6 +598,8 @@ async function loadApps (): Promise<void> {
  */
 // Unix seconds of the last completed sweep; null means none has completed.
 const advisoriesCheckedAt = ref<number | null>(null)
+const advisoriesStatus = ref<SweepStatus | null>(null)
+const advisoriesErrors = ref<string[]>([])
 // True only when the fetch itself failed — never merely because the map is empty.
 const advisoriesUnavailable = ref(false)
 
@@ -602,9 +609,11 @@ const advisoriesUnavailable = ref(false)
 async function loadAdvisories (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/advisories')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ advisories: Record<string, AdvisoryCorrelation>, checkedAt: number | null }>(response)
+		const payload = await unwrapOcsResponse<{ advisories: Record<string, AdvisoryCorrelation>, checkedAt: number | null, status?: SweepStatus | null, errors?: string[] }>(response)
 		advisories.value = payload.advisories || {}
 		advisoriesCheckedAt.value = payload.checkedAt ?? null
+		advisoriesStatus.value = payload.status ?? null
+		advisoriesErrors.value = payload.errors ?? []
 		advisoriesUnavailable.value = false
 	} catch {
 		// Non-fatal: the app list stays usable without advisory badges. The
@@ -621,6 +630,8 @@ async function loadAdvisories (): Promise<void> {
 // out in issue #160.
 const pendingUpdates = ref<Record<string, PendingUpdate>>({})
 const updatesCheckedAt = ref<number | null>(null)
+const updatesStatus = ref<SweepStatus | null>(null)
+const updatesErrors = ref<string[]>([])
 const updatesUnavailable = ref(false)
 const maxLinesBehind = ref<number | null>(null)
 
@@ -630,9 +641,11 @@ const maxLinesBehind = ref<number | null>(null)
 async function loadUpdates (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/updates')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ updates: Record<string, PendingUpdate>, checkedAt: number | null, maxLinesBehind: number | null }>(response)
+		const payload = await unwrapOcsResponse<{ updates: Record<string, PendingUpdate>, checkedAt: number | null, status?: SweepStatus | null, errors?: string[], maxLinesBehind: number | null }>(response)
 		pendingUpdates.value = payload.updates || {}
 		updatesCheckedAt.value = payload.checkedAt ?? null
+		updatesStatus.value = payload.status ?? null
+		updatesErrors.value = payload.errors ?? []
 		maxLinesBehind.value = payload.maxLinesBehind ?? null
 		updatesUnavailable.value = false
 	} catch {
@@ -646,6 +659,8 @@ const updatesFreshnessLabel = computed((): string => updatesFreshnessLabelFor({
 	unavailable: updatesUnavailable.value,
 	checkedAt: updatesCheckedAt.value,
 	nowSeconds: Date.now() / 1000,
+	status: updatesStatus.value,
+	errors: updatesErrors.value.map((appId) => apps.value.find((app) => app.id === appId)?.label ?? appId),
 }))
 
 const updateBadgeFor = (appId: string) => updateBadge(pendingUpdates.value[appId])
@@ -734,6 +749,8 @@ const advisoryFreshnessLabel = computed((): string => advisoryFreshnessLabelFor(
 	checkedAt: advisoriesCheckedAt.value,
 	intervalHours: Number(advisorySavedInterval.value) || 6,
 	nowSeconds: Date.now() / 1000,
+	status: advisoriesStatus.value,
+	errors: advisoriesErrors.value.map((appId) => apps.value.find((app) => app.id === appId)?.label ?? appId),
 }))
 
 const advisoryFor = (appId: string): AdvisoryCorrelation | null => advisories.value[appId] ?? null
@@ -1234,14 +1251,20 @@ function clearSelectedApp () {
 	resetSelectedAppState()
 }
 
+// How many listed apps are pinned, for the status bar's Pinned filter.
+const pinnedCount = computed((): number => apps.value.filter((app) => pins.value[app.id] !== undefined).length)
+
 const filteredApps = computed(() => {
 	const filter = appFilter.value.trim().toLowerCase()
-	const visibleApps = filterByUpdates(
+	const filteredByUpdates = filterByUpdates(
 		coreAppsVisibility.value === 'hide' ? apps.value.filter((app) => !app.isCore) : apps.value,
 		pendingUpdates.value,
 		updatesFilter.value,
 		maxLinesBehind.value,
 	)
+	const visibleApps = pinnedOnly.value
+		? filteredByUpdates.filter((app) => pins.value[app.id] !== undefined)
+		: filteredByUpdates
 
 	if (filter === '') {
 		return visibleApps
@@ -2392,6 +2415,8 @@ watch(dryRunEnabled, () => {
 									:window="savedAutoUpdateWindow"
 									:timeZone="autoUpdateTimeZone"
 									:disabled="isSavingPolicy"
+									:updates="pendingUpdates"
+									:updatesCheckedLabel="updatesFreshnessLabel"
 									@retry="onRetryAttempt" />
 
 								<h3 id="section-advisories" :class="$style.advisorySettingsHeading">{{ t('versioniq', 'Security advisory checks') }}</h3>
@@ -2448,6 +2473,15 @@ watch(dryRunEnabled, () => {
 											:class="$style.filterToggleButton"
 											@click="showFilters = !showFilters">
 											{{ showFilters ? 'Hide filters' : 'Show filters' }}
+										</button>
+										<button
+											type="button"
+											:class="[$style.filterToggleButton, { [$style.filterToggleActive]: pinnedOnly }]"
+											:aria-pressed="pinnedOnly ? 'true' : 'false'"
+											:disabled="pinnedCount === 0 && !pinnedOnly"
+											data-testid="pinned-filter"
+											@click="pinnedOnly = !pinnedOnly">
+											{{ t('versioniq', 'Pinned {count}', { count: pinnedCount }) }}
 										</button>
 									</div>
 									<div v-if="showFilters" :class="$style.filterPanel">
@@ -2547,7 +2581,8 @@ watch(dryRunEnabled, () => {
 														<AppSourceBadges
 															:isShipped="app.isShipped === true"
 															:isCore="app.isCore"
-															:boundSourceId="app.boundSourceId ?? null" />
+															:boundSourceId="app.boundSourceId ?? null"
+															:provenance="app.provenance ?? null" />
 														<p
 															v-if="advisoryFor(app.id)?.state === 'pinned-to-vulnerable'"
 															:class="$style.advisoryDetail">
@@ -3099,6 +3134,11 @@ watch(dryRunEnabled, () => {
 
 .filterToggleButton {
 	align-self: flex-start;
+}
+
+.filterToggleActive {
+	font-weight: bold;
+	border-color: var(--color-primary-element);
 }
 
 .filterPanel {

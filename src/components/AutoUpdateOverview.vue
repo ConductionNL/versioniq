@@ -1,10 +1,13 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
+import type {PendingState} from '../utils/pendingAutoUpdates.ts';
+import type { PendingUpdate } from '../utils/pendingUpdates.ts'
 import type { BlockedVersion, PolicyLevel } from './PolicySelector.vue'
 
 import { t } from '@nextcloud/l10n'
 import { computed } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import { pendingAutoUpdates } from '../utils/pendingAutoUpdates.ts'
 
 type PolicyRecord = { appId: string, level: PolicyLevel, blockedVersions?: BlockedVersion[] }
 
@@ -23,6 +26,8 @@ const props = defineProps<{
 	window: string
 	timeZone: string
 	disabled?: boolean
+	updates?: Record<string, PendingUpdate>
+	updatesCheckedLabel?: string
 }>()
 
 const emit = defineEmits<{
@@ -33,6 +38,23 @@ const scheduled = computed(() => Object.entries(props.policies)
 	.filter(([, policy]) => policy.level !== 'none')
 	.map(([appId, policy]) => ({ appId: policy.appId || appId, level: policy.level }))
 	.sort((a, b) => a.appId.localeCompare(b.appId)))
+
+// The newer version each app with a policy can go to now, from the stored
+// availability sweep: no source is asked when the page opens.
+const pending = computed(() => pendingAutoUpdates(props.policies, props.updates ?? {}))
+
+/**
+ * @param state The pending state.
+ * @spec openspec/changes/inventory-pins-checks-and-pending/specs/auto-update-policies/spec.md#requirement-the-overview-lists-the-updates-that-are-pending-now
+ */
+function stateLabel (state: PendingState): string {
+	return {
+		scheduled: t('versioniq', 'Scheduled for the next window'),
+		pinned: t('versioniq', 'Held by the pin'),
+		outsidePolicy: t('versioniq', 'Not covered by the policy'),
+		failed: t('versioniq', 'Failed earlier'),
+	}[state]
+}
 
 const blocked = computed(() => Object.entries(props.policies)
 	.flatMap(([appId, policy]) => (policy.blockedVersions ?? []).map((entry) => ({ appId: policy.appId || appId, version: entry.version, at: entry.at })))
@@ -78,6 +100,26 @@ function levelLabel (level: PolicyLevel): string {
 				{{ t('versioniq', 'policy: {level}', { level: levelLabel(row.level) }) }}
 			</li>
 		</ul>
+		<h5 :class="$style.subheading">
+			{{ t('versioniq', 'Pending updates') }}
+		</h5>
+		<p v-if="updatesCheckedLabel" :class="$style.hint" data-testid="overview-pending-checked">
+			{{ updatesCheckedLabel }}
+		</p>
+		<p v-if="pending.length === 0" :class="$style.hint" data-testid="overview-pending-none">
+			{{ t('versioniq', 'No app with a policy has a newer version available.') }}
+		</p>
+		<ul v-else :class="$style.list">
+			<li
+				v-for="row in pending"
+				:key="row.appId"
+				:class="$style.blockedRow"
+				data-testid="overview-pending-row">
+				<strong>{{ labelFor(row.appId) }}</strong>
+				<code>{{ row.version }}</code>
+				<span :data-state="row.state">{{ stateLabel(row.state) }}</span>
+			</li>
+		</ul>
 		<template v-if="blocked.length > 0">
 			<p :class="$style.warning">
 				{{ t('versioniq', 'Automatic updates skip these versions because an earlier attempt failed:') }}
@@ -108,6 +150,10 @@ function levelLabel (level: PolicyLevel): string {
 
 .hint {
 	color: var(--color-text-maxcontrast);
+}
+
+.subheading {
+	margin: 8px 0 0;
 }
 
 .warning {

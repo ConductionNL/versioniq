@@ -74,6 +74,45 @@ final class StoredSnapshot {
 		return $checkedAt > 0 ? $checkedAt : null;
 	}
 
+	/**
+	 * Records the outcome of a sweep: `ok`, `partial` or `failed`, and the ids
+	 * of the apps it could not check.
+	 *
+	 * @param list<string> $errors
+	 * @spec openspec/changes/inventory-pins-checks-and-pending/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+	 */
+	public function writeOutcome(string $status, array $errors, ?int $checkedAt = null): void {
+		$this->config->setValueString(Application::APP_ID, $this->key . '.status', $status);
+		$this->config->setValueString(Application::APP_ID, $this->key . '.errors', json_encode(array_values($errors)) ?: '[]');
+		if ($checkedAt !== null) {
+			// A sweep that failed as a whole wrote no snapshot: its time is the attempt's.
+			$this->config->setValueInt(Application::APP_ID, $this->checkedAtKey(), $checkedAt);
+		}
+	}
+
+	/**
+	 * The outcome of the last sweep, null when none is recorded.
+	 */
+	public function status(): ?string {
+		$status = $this->config->getValueString(Application::APP_ID, $this->key . '.status', '');
+
+		return $status === '' ? null : $status;
+	}
+
+	/**
+	 * The apps the last sweep could not check.
+	 *
+	 * @return list<string>
+	 */
+	public function errors(): array {
+		$decoded = json_decode($this->config->getValueString(Application::APP_ID, $this->key . '.errors', '[]'), true);
+		if (!is_array($decoded)) {
+			return [];
+		}
+
+		return array_values(array_map('strval', array_filter($decoded, 'is_scalar')));
+	}
+
 	private function checkedAtKey(): string {
 		return $this->key . '.checkedAt';
 	}

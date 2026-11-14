@@ -300,7 +300,23 @@ OC.L10N.register(
         "Outside the update policy": "Buiten het updatebeleid",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Aantal releases dat een app achter mag lopen (0 tot {max}, laat leeg om de controle uit te zetten)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "Een app die verder achterloopt, wordt gemarkeerd op het tabblad Apps. 1 betekent de nieuwste release of de release daarvoor.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"]
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"],
+        "{version} installed from {source}": "{version} geïnstalleerd vanaf {source}",
+        "Set to {version} outside Versioniq": "Buiten Versioniq om naar {version} gezet",
+        "Pending updates": "Openstaande updates",
+        "No app with a policy has a newer version available.": "Geen app met een beleid heeft een nieuwere versie beschikbaar.",
+        "Scheduled for the next window": "Gepland voor het volgende venster",
+        "Held by the pin": "Tegengehouden door de vastzetting",
+        "Not covered by the policy": "Valt niet onder het beleid",
+        "Failed earlier": "Eerder mislukt",
+        "just now": "zojuist",
+        "{minutes} min ago": "{minutes} min geleden",
+        "{hours} h ago": "{hours} uur geleden",
+        "Advisories could not be checked ({age})": "Adviezen konden niet worden gecontroleerd ({age})",
+        "Updates could not be checked ({age})": "Updates konden niet worden gecontroleerd ({age})",
+        "Advisories checked {age}, except for {apps}": "Adviezen gecontroleerd {age}, behalve voor {apps}",
+        "Updates checked {age}, except for {apps}": "Updates gecontroleerd {age}, behalve voor {apps}",
+        "Pinned {count}": "Vastgezet {count}"
     },
     "nplurals=2; plural=(n != 1);"
 )

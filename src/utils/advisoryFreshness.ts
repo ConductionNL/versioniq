@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: EUPL-1.2
 // Copyright (C) 2026 Conduction B.V.
+import type { SweepStatus } from './sweepOutcome.ts'
+
 import { n, t } from '@nextcloud/l10n'
+import { sweepOutcomeLabel } from './sweepOutcome.ts'
 
 export type AdvisoryFreshnessState = {
 	/** True only when the fetch itself failed. */
@@ -11,6 +14,10 @@ export type AdvisoryFreshnessState = {
 	intervalHours: number
 	/** Current time in unix seconds. */
 	nowSeconds: number
+	/** The outcome of the last sweep: ok, partial or failed. */
+	status?: SweepStatus | null
+	/** The apps the last sweep could not check. */
+	errors?: string[]
 }
 
 /**
@@ -32,6 +39,11 @@ export function advisoryFreshnessLabel (state: AdvisoryFreshnessState): string {
 			'Advisories not checked yet. The background job runs every %n hours.',
 			state.intervalHours,
 		)
+	}
+
+	const outcome = sweepOutcomeLabel('advisories', state)
+	if (outcome !== null) {
+		return outcome
 	}
 
 	const ageMinutes = Math.max(0, Math.round((state.nowSeconds - state.checkedAt) / 60))

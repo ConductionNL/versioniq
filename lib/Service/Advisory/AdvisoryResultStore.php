@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Advisory;
 
 use OCA\Versioniq\Service\Settings\StoredSnapshot;
+use OCA\Versioniq\Service\Settings\SweepOutcome;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
 
@@ -61,6 +62,8 @@ class AdvisoryResultStore {
 	public function save(array $correlations, int $checkedAt): void {
 		try {
 			$this->snapshot()->write($correlations, $checkedAt);
+			$outcome = SweepOutcome::of($correlations);
+			$this->snapshot()->writeOutcome($outcome['status'], $outcome['errors']);
 		} catch (\JsonException $error) {
 			// A snapshot that cannot be encoded must not clear the previous
 			// one: a stale answer is worth more than no answer, and the UI
@@ -72,12 +75,22 @@ class AdvisoryResultStore {
 	}
 
 	/**
+	 * Records a sweep that failed as a whole: the previous snapshot stays, the
+	 * outcome says `failed` at the time of the attempt.
+	 *
+	 * @spec openspec/changes/inventory-pins-checks-and-pending/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+	 */
+	public function saveFailure(int $checkedAt): void {
+		$this->snapshot()->writeOutcome(SweepOutcome::FAILED, [], $checkedAt);
+	}
+
+	/**
 	 * Reads the stored snapshot. Returns an empty map with a null `checkedAt`
 	 * when no sweep has completed yet — which is a real state on a fresh
 	 * install and must be distinguishable from "swept, found nothing".
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
-	 * @return array{advisories: array<string, mixed>, checkedAt: ?int}
+	 * @return array{advisories: array<string, mixed>, checkedAt: ?int, status: ?string, errors: list<string>}
 	 */
 	public function read(): array {
 		try {
@@ -87,16 +100,36 @@ class AdvisoryResultStore {
 				'message' => $error->getMessage(),
 			]);
 
-			return ['advisories' => [], 'checkedAt' => null];
+			return ['advisories' => [], 'checkedAt' => null, 'status' => null, 'errors' => []];
 		}
 
-		if ($advisories === null) {
-			return ['advisories' => [], 'checkedAt' => null];
+		return ['advisories' => $advisories ?? []] + $this->outcome(map: $advisories);
+	}
+
+	/**
+	 * The time and outcome of the last sweep. Without a snapshot only a failed
+	 * sweep has a time: "never checked" stays null.
+	 *
+	 * A snapshot stored before outcomes were recorded gets the outcome its own
+	 * entries give.
+	 *
+	 * @param array<string, mixed>|null $map The stored snapshot, null when there is none.
+	 * @return array{checkedAt: ?int, status: ?string, errors: list<string>}
+	 */
+	private function outcome(?array $map): array {
+		$status = $this->snapshot()->status();
+		if ($map === null && $status !== SweepOutcome::FAILED) {
+			return ['checkedAt' => null, 'status' => null, 'errors' => []];
+		}
+
+		if ($status === null) {
+			return ['checkedAt' => $this->snapshot()->checkedAt()] + SweepOutcome::of($map ?? []);
 		}
 
 		return [
-			'advisories' => $advisories,
 			'checkedAt' => $this->snapshot()->checkedAt(),
+			'status' => $status,
+			'errors' => $this->snapshot()->errors(),
 		];
 	}
 

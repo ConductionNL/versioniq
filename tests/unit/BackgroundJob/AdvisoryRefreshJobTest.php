@@ -137,6 +137,7 @@ final class AdvisoryRefreshJobTest extends TestCase {
 
 		$store = $this->createMock(AdvisoryResultStore::class);
 		$store->expects($this->once())->method('save')->with($correlations, 1_700_000_000);
+		$store->expects($this->never())->method('saveFailure');
 
 		$notifier = $this->createMock(AdvisoryNotifier::class);
 		$notifier->method('notifyNewAdvisories')->willThrowException(new \RuntimeException('notifications app is gone'));
@@ -179,6 +180,7 @@ final class AdvisoryRefreshJobTest extends TestCase {
 
 		$store = $this->createMock(AdvisoryResultStore::class);
 		$store->expects($this->never())->method('save');
+		$store->expects($this->once())->method('saveFailure')->with(1_700_000_000);
 
 		$logger = $this->createMock(LoggerInterface::class);
 		$logger->expects($this->once())->method('error');
