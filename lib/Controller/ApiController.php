@@ -810,6 +810,7 @@ class ApiController extends OCSController {
 			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
 			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
 			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
+			'autoUpdateDefaultLevel' => $this->autoUpdate->settingsStore->getDefaultLevel(),
 		]);
 	}
 
@@ -881,19 +882,21 @@ class ApiController extends OCSController {
 	}
 
 	/**
-	 * Updates the global auto-update kill switch and/or maintenance window
-	 * (password-confirmed); rejects a malformed window with 400; see "Global
-	 * kill switch and window"
+	 * Updates the global auto-update kill switch, maintenance window and/or
+	 * default level (password-confirmed); rejects a malformed window or an
+	 * unknown default level with 400; see "Global kill switch and window"
+	 * and "Instance default level"
 	 *
 	 * @param string|null $enabled `1`/`0` to set the global kill switch; OMIT to leave it untouched
 	 *
 	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: The stored global settings
-	 * 400: The maintenance window is malformed
+	 * 400: The maintenance window is malformed, or the default level is unknown
 	 * 403: Caller is not an administrator
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PUT', url: '/api/auto-update/settings')]
@@ -925,17 +928,29 @@ class ApiController extends OCSController {
 			);
 		}
 
+		$defaultLevelParam = $this->stringParam('defaultLevel', '');
+		if ($defaultLevelParam !== '' && !Policy::isValidLevel($defaultLevelParam)) {
+			return new DataResponse(
+				['message' => 'defaultLevel must be one of: ' . implode(', ', Policy::VALID_LEVELS) . '.'],
+				Http::STATUS_BAD_REQUEST
+			);
+		}
+
 		if ($enabledParam !== null) {
 			$this->autoUpdate->settingsStore->setEnabled($this->readBinaryBool($enabledParam, $this->autoUpdate->settingsStore->isEnabled()));
 		}
 		if ($windowParam !== '') {
 			$this->autoUpdate->settingsStore->setWindow($windowParam);
 		}
+		if ($defaultLevelParam !== '') {
+			$this->autoUpdate->settingsStore->setDefaultLevel($defaultLevelParam);
+		}
 
 		return new DataResponse([
 			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
 			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
 			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
+			'autoUpdateDefaultLevel' => $this->autoUpdate->settingsStore->getDefaultLevel(),
 		]);
 	}
 

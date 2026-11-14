@@ -2,8 +2,10 @@
 
 ## 1. Default level
 
-- [ ] 1.1 Add `auto_update_default_level` to `AutoUpdateSettingsStore` and the settings API, and `PolicyStore::effectiveLevelFor()`. Verify: `tests/unit/Service/Policy/PolicyStoreTest.php` for a stored level, a default and none.
+- [x] 1.1 Add `auto_update_default_level` to `AutoUpdateSettingsStore` and the settings API, and `PolicyStore::effectiveLevelFor()`. Verify: `tests/unit/Service/Policy/PolicyStoreTest.php` for a stored level, a default and none.
+  - Done: `PUT /api/auto-update/settings` takes `defaultLevel` (400 on an unknown level, nothing written), `GET /api/policies` and the settings answer carry `autoUpdateDefaultLevel`; `PolicyStore::effectiveLevelFor()` and `levelSourceFor()`.
 - [ ] 1.2 Make `AutoUpdateJob` visit every enabled manageable app with its effective level. Verify: `tests/unit/BackgroundJob/AutoUpdateJobTest.php`: with default none nothing changes; with default patch an app without a policy gets a patch update; a pinned app is still skipped; drive it once in `tests/e2e/jobs.spec.ts` with the `fixtureapp` fixture.
+  - Unit part done: the job visits every stored policy and every enabled app without one at the default (`AutoUpdateJobTest::testWithTheDefaultAtNoneOnlyStoredPoliciesAreVisited`, `::testWithTheDefaultAtPatchAnAppWithoutAPolicyGetsAPatchUpdate`). Left open for the e2e run against a live instance.
 - [ ] 1.3 Show own or default on each card, the reset action, and the default on the Automatic updates section with the count of apps that follow it. Verify: `PolicySelector.spec.ts` and `AutoUpdateOverview.spec.ts`.
 
 ## 2. File

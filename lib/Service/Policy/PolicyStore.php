@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Policy;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\Settings\AppConfigJsonRecords;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
@@ -38,6 +39,9 @@ class PolicyStore {
 	public function __construct(
 		private IAppConfig $config,
 		private LoggerInterface $logger,
+		// Optional and last so existing callers keep working; the container
+		// always passes it. Without it the default is none.
+		private ?AutoUpdateSettingsStore $settings = null,
 	) {
 	}
 
@@ -59,6 +63,31 @@ class PolicyStore {
 	 */
 	public function levelFor(string $appId): string {
 		return $this->get($appId)?->level ?? Policy::LEVEL_NONE;
+	}
+
+	/**
+	 * The level the job applies to an app: its own stored level, else the
+	 * instance default; see "Instance default level".
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
+	 */
+	public function effectiveLevelFor(string $appId): string {
+		return $this->get($appId)?->level ?? $this->defaultLevel();
+	}
+
+	/**
+	 * Whether an app's level is its own (`policy`) or the instance default (`default`).
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
+	 */
+	public function levelSourceFor(string $appId): string {
+		return $this->get($appId) !== null ? 'policy' : 'default';
+	}
+
+	/**
+	 * The instance default level, `none` when no settings store is wired.
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
+	 */
+	public function defaultLevel(): string {
+		return $this->settings?->getDefaultLevel() ?? Policy::LEVEL_NONE;
 	}
 
 	/**

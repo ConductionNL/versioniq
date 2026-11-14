@@ -447,4 +447,48 @@ final class AutoUpdateJobTest extends TestCase {
 			['notifyFailure', 'openregister', '2.3.4', 'network', 'retry later'],
 		]];
 	}
+
+	public function testWithTheDefaultAtNoneOnlyStoredPoliciesAreVisited(): void {
+		$mocks = $this->mocks();
+		$mocks['settingsStore']->method('isEnabled')->willReturn(true);
+		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$mocks['settingsStore']->method('getDefaultLevel')->willReturn(Policy::LEVEL_NONE);
+		$mocks['policyStore']->method('all')->willReturn([]);
+		$mocks['appManager']->expects($this->never())->method('getEnabledApps');
+		$mocks['installerService']->expects($this->never())->method('getAppVersions');
+
+		$this->runJob($this->buildJob($mocks, $this->timeFactory()));
+	}
+
+	public function testWithTheDefaultAtPatchAnAppWithoutAPolicyGetsAPatchUpdate(): void {
+		$mocks = $this->mocks();
+		$mocks['settingsStore']->method('isEnabled')->willReturn(true);
+		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$mocks['settingsStore']->method('getDefaultLevel')->willReturn(Policy::LEVEL_PATCH);
+		$mocks['policyStore']->method('all')->willReturn([
+			'calendar' => new Policy(Policy::LEVEL_NONE, 'admin', '2026-07-01T00:00:00+00:00'),
+		]);
+		$mocks['appManager']->method('getEnabledApps')->willReturn(['calendar', 'openregister', 'pinnedapp']);
+		$mocks['pinStore']->method('get')->willReturnCallback(
+			static fn (string $appId): ?Pin => $appId === 'pinnedapp' ? new Pin('1.0.0', 'alice', '2026-07-01T00:00:00+00:00') : null
+		);
+		$mocks['installerService']->method('isManageableApp')->willReturn(true);
+		$mocks['appManager']->method('getAppVersion')->willReturn('2.3.0');
+		$asked = [];
+		$mocks['installerService']->method('getAppVersions')->willReturnCallback(
+			static function (string $appId) use (&$asked): array {
+				$asked[] = $appId;
+				return ['availableVersions' => [['version' => '2.3.1']], 'hasError' => false];
+			}
+		);
+		$mocks['candidateSelector']->expects($this->once())->method('select')
+			->with('2.3.0', ['2.3.1'], Policy::LEVEL_PATCH)->willReturn('2.3.1');
+		$mocks['installerService']->expects($this->once())->method('installAppVersion')
+			->willReturn(['statusCode' => 200, 'payload' => ['installedVersion' => '2.3.1']]);
+
+		$this->runJob($this->buildJob($mocks, $this->timeFactory()));
+
+		// calendar keeps its own none; the pinned app is skipped before any source query.
+		$this->assertSame(['openregister'], $asked);
+	}
 }
