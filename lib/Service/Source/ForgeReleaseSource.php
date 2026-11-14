@@ -112,7 +112,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * One version entry per release with a non-empty tag.
 	 *
 	 * @param array<array-key, mixed> $releases
-	 * @return list<array{version: string, changelog: ?string, releasedAt: ?string}>
+	 * @return list<array{version: string, changelog: ?string, changelogLanguage: null, releasedAt: ?string}>
 	 */
 	private function versionEntries(array $releases): array {
 		$versions = [];
@@ -126,6 +126,8 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			$versions[] = [
 				'version' => $this->normalizeVersion($tag),
 				'changelog' => $this->extractChangelog($release),
+				// A release body names no language (releases-notes-reach D2).
+				'changelogLanguage' => null,
 				// A draft carries no published_at and stays null.
 				'releasedAt' => ReleaseDate::normalize($release['published_at'] ?? null),
 			];

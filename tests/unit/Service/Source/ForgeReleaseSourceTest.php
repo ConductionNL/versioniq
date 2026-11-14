@@ -326,6 +326,10 @@ final class ForgeReleaseSourceTest extends TestCase {
 		);
 
 		$this->assertSame('Fixes LDAP sync', $result['versions'][0]['changelog']);
+		// A release body names no language, so the page offers to translate it
+		// (releases-notes-reach D2).
+		$this->assertArrayHasKey('changelogLanguage', $result['versions'][0]);
+		$this->assertNull($result['versions'][0]['changelogLanguage']);
 	}
 
 	public function testListVersionsMissingBodyYieldsNullChangelog(): void {

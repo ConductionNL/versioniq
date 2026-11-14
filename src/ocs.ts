@@ -130,3 +130,20 @@ export async function ocsWrite <T>(method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
 	})
 	return unwrap<T>(response)
 }
+
+/**
+ * POST to an OCS endpoint that needs no password confirmation, with a JSON
+ * body. Returns the unwrapped payload (+ error). The OCS-APIRequest header is
+ * the request's CSRF proof, as for every OCS call.
+ *
+ * @param path
+ * @param body
+ */
+export async function ocsPost <T>(path: string, body: Record<string, unknown> = {}): Promise<OcsResult<T>> {
+	const response = await fetch(apiUrl(withOcsJson(path)), {
+		method: 'POST',
+		headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
+		body: JSON.stringify(body),
+	})
+	return unwrap<T>(response)
+}

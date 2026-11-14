@@ -302,7 +302,12 @@ OC.L10N.register(
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "Een app die verder achterloopt, wordt gemarkeerd op het tabblad Apps. 1 betekent de nieuwste release of de release daarvoor.",
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"],
         "Tell an app's users what changed after Versioniq updates it": "Laat de gebruikers van een app weten wat er veranderd is nadat Versioniq de app heeft bijgewerkt",
-        "They get the same notice as after an update from the Apps page. A dry run never sends it.": "Ze krijgen dezelfde melding als na een update vanaf de Apps-pagina. Een proefrun stuurt die nooit."
+        "They get the same notice as after an update from the Apps page. A dry run never sends it.": "Ze krijgen dezelfde melding als na een update vanaf de Apps-pagina. Een proefrun stuurt die nooit.",
+        "Translate to {language}": "Vertalen naar het {language}",
+        "Machine translation": "Machinevertaling",
+        "Show original": "Origineel tonen",
+        "Translating…": "Bezig met vertalen…",
+        "The release notes could not be translated.": "De releasenotities konden niet worden vertaald."
     },
     "nplurals=2; plural=(n != 1);"
 )

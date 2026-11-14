@@ -273,7 +273,12 @@ OC.L10N.register(
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.",
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"],
         "Tell an app's users what changed after Versioniq updates it": "Tell an app's users what changed after Versioniq updates it",
-        "They get the same notice as after an update from the Apps page. A dry run never sends it.": "They get the same notice as after an update from the Apps page. A dry run never sends it."
+        "They get the same notice as after an update from the Apps page. A dry run never sends it.": "They get the same notice as after an update from the Apps page. A dry run never sends it.",
+        "Translate to {language}": "Translate to {language}",
+        "Machine translation": "Machine translation",
+        "Show original": "Show original",
+        "Translating…": "Translating…",
+        "The release notes could not be translated.": "The release notes could not be translated."
     },
     "nplurals=2; plural=(n != 1);"
 )
