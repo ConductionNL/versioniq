@@ -112,7 +112,7 @@ class ExternalReleaseInstallerService {
 	 * @param bool $acceptNewSha Single-request bypass of the recorded-SHA-256
 	 *                           check; on success the recorded digest is replaced (password-confirmed
 	 *                           at the API layer, warning-logged and audited here).
-	 * @return array{status: string, installedVersionBefore: ?string, installedApp?: string, integrityWarning?: ?string, dryRun: bool, debug: list<array{stage: string, data: mixed}>, binding: SourceBinding, recordedShaMatched: bool, servedFromCache: bool, orphanedMigrations?: list<string>|null}
+	 * @return array{status: string, installedVersionBefore: ?string, installedApp?: string, integrityWarning?: ?string, dryRun: bool, debug: list<array{stage: string, data: mixed}>, binding: SourceBinding, recordedShaMatched: bool, servedFromCache: bool, orphanedMigrations?: list<string>|null, migrationPreview?: array<string, mixed>|null}
 	 * @throws Exception
 	 * @throws ShaMismatchException
 	 */
@@ -174,14 +174,14 @@ class ExternalReleaseInstallerService {
 	 * Runs the install steps in order: guards, download and integrity checks,
 	 * staging, then either the dry-run report or the file swap and finalize.
 	 *
-	 * @return array{status: string, installedVersionBefore: ?string, installedApp?: string, integrityWarning: ?string, dryRun: bool, debug: list<array{stage: string, data: mixed}>, binding: SourceBinding, recordedShaMatched: bool, servedFromCache: bool, orphanedMigrations?: list<string>|null}
+	 * @return array{status: string, installedVersionBefore: ?string, installedApp?: string, integrityWarning: ?string, dryRun: bool, debug: list<array{stage: string, data: mixed}>, binding: SourceBinding, recordedShaMatched: bool, servedFromCache: bool, orphanedMigrations?: list<string>|null, migrationPreview?: array<string, mixed>|null}
 	 */
 	private function runInstall(ExternalInstallRun $run): array {
 		$this->assertInstallable($run);
 		$download = $this->prepareDownload($run);
 		$check = $this->fetchVerifiedArchive($run, $download);
 		$staged = $this->stageRelease($run, $download);
-		$install = new ExternalInstall($run, $check, $staged, $this->orphanedMigrations($run, $staged));
+		$install = new ExternalInstall($run, $check, $staged, $this->orphanedMigrations($run, $staged), $this->migrationPreview($run, $staged));
 
 		if ($run->request->options->dryRun) {
 			$this->addDebug('dry-run-skip-filesystem', ['destination' => $staged->destination]);
@@ -377,9 +377,32 @@ class ExternalReleaseInstallerService {
 	}
 
 	/**
+	 * Migration preview (upgrade dry run only): the database changes the
+	 * just-extracted target will make, read before any file swap and without
+	 * loading its classes. A real install never builds it.
+	 *
+	 * @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
+	 * @return array<string, mixed>|null
+	 */
+	private function migrationPreview(ExternalInstallRun $run, StagedRelease $staged): ?array {
+		if (!$this->previewsUpgrade($run)) {
+			return null;
+		}
+		$preview = $this->steps->migrationPreview?->build($run->request->appId, $staged->previousPath, $staged->root);
+		$this->addDebug('migration-preview', ['steps' => count($preview['steps'] ?? [])]);
+
+		return $preview;
+	}
+
+	/** Whether this run is an upgrade dry run that carries a migration preview. */
+	private function previewsUpgrade(ExternalInstallRun $run): bool {
+		return $this->steps->migrationPreview !== null && $run->request->options->dryRun && $run->isUpgrade();
+	}
+
+	/**
 	 * Swaps the app files, finalizes, drops the backup, persists the archive and records the success.
 	 *
-	 * @return array{status: string, installedVersionBefore: ?string, installedApp?: string, integrityWarning: ?string, dryRun: bool, debug: list<array{stage: string, data: mixed}>, binding: SourceBinding, recordedShaMatched: bool, servedFromCache: bool, orphanedMigrations?: list<string>|null}
+	 * @return array{status: string, installedVersionBefore: ?string, installedApp?: string, integrityWarning: ?string, dryRun: bool, debug: list<array{stage: string, data: mixed}>, binding: SourceBinding, recordedShaMatched: bool, servedFromCache: bool, orphanedMigrations?: list<string>|null, migrationPreview?: array<string, mixed>|null}
 	 */
 	private function swapAndFinalize(ExternalInstall $install): array {
 		$backupDestination = $this->backupExisting($install->staged->destination);
@@ -486,7 +509,7 @@ class ExternalReleaseInstallerService {
 	 * The envelope returned for a dry run (no `installedApp`) or a completed install.
 	 *
 	 * @param array{binding: SourceBinding, installedApp?: string} $outcome
-	 * @return array{status: string, installedVersionBefore: ?string, installedApp?: string, integrityWarning: ?string, dryRun: bool, debug: list<array{stage: string, data: mixed}>, binding: SourceBinding, recordedShaMatched: bool, servedFromCache: bool, orphanedMigrations?: list<string>|null}
+	 * @return array{status: string, installedVersionBefore: ?string, installedApp?: string, integrityWarning: ?string, dryRun: bool, debug: list<array{stage: string, data: mixed}>, binding: SourceBinding, recordedShaMatched: bool, servedFromCache: bool, orphanedMigrations?: list<string>|null, migrationPreview?: array<string, mixed>|null}
 	 */
 	private function resultEnvelope(ExternalInstall $install, array $outcome): array {
 		$dryRun = !isset($outcome['installedApp']);
@@ -505,7 +528,8 @@ class ExternalReleaseInstallerService {
 			'binding' => $outcome['binding'],
 			'recordedShaMatched' => $install->check->recordedShaMatched,
 			'servedFromCache' => $this->servedFromCache,
-		] + ($install->run->isDowngrade() ? ['orphanedMigrations' => $install->orphanedMigrations] : []);
+		] + ($install->run->isDowngrade() ? ['orphanedMigrations' => $install->orphanedMigrations] : [])
+			+ ($this->previewsUpgrade($install->run) ? ['migrationPreview' => $install->migrationPreview] : []);
 	}
 
 	/**

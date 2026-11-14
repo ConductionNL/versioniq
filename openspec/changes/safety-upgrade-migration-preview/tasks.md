@@ -11,7 +11,8 @@
 
 ## 2. The dry run
 
-- [ ] 2.1 Add `lib/Service/Installer/MigrationPreview.php` and call it for an upgrade dry run in both installers (design D4). Verify: `tests/unit/Service/InstallerDryRunSideEffectsTest.php` asserts `migrationPreview` on an upgrade dry run of each installer kind, its absence on a real install and on a downgrade, and no database write.
+- [x] 2.1 Add `lib/Service/Installer/MigrationPreview.php` and call it for an upgrade dry run in both installers (design D4). Verify: `tests/unit/Service/InstallerDryRunSideEffectsTest.php` asserts `migrationPreview` on an upgrade dry run of each installer kind, its absence on a real install and on a downgrade, and no database write.
+  - Done. `migrationPreview` is present on an upgrade dry run of either installer (null when the target cannot be read) and passed on by `InstallerService`. The no-write half is asserted on `MigrationDiffer::pending()` (read-only query) and `MigrationPreviewTest` (only the row count touches the database).
 
 ## 3. Page and CLI
 
