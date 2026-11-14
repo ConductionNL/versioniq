@@ -32,6 +32,9 @@ class AdvisorySettingsStore {
 	public const CONFIG_INTERVAL_HOURS = 'advisory.interval_hours';
 	public const CONFIG_DIGEST_ENABLED = 'advisory.digest_enabled';
 
+	/** Whether the sweep also reads NCSC-NL's advisories (advisories-ncsc-feed); off by default. */
+	public const CONFIG_NCSC_ENABLED = 'advisory.ncsc_enabled';
+
 	/** Four sweeps a day: well inside the window in which an advisory matters. */
 	public const DEFAULT_INTERVAL_HOURS = 6;
 
@@ -108,5 +111,23 @@ class AdvisorySettingsStore {
 	 */
 	public function setDigestEnabled(bool $enabled): void {
 		$this->config->setValueBool(Application::APP_ID, self::CONFIG_DIGEST_ENABLED, $enabled);
+	}
+
+	/**
+	 * Whether the sweep also reads NCSC-NL's advisories; off until an admin switches it on.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/specs/security-advisory-correlation/spec.md#requirement-ncsc-nl-advisories-are-matched-to-the-installed-server-and-apps
+	 */
+	public function isNcscEnabled(): bool {
+		return $this->config->getValueBool(Application::APP_ID, self::CONFIG_NCSC_ENABLED, false);
+	}
+
+	/**
+	 * Switch the NCSC-NL check on or off.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/specs/security-advisory-correlation/spec.md#requirement-ncsc-nl-advisories-are-matched-to-the-installed-server-and-apps
+	 */
+	public function setNcscEnabled(bool $enabled): void {
+		$this->config->setValueBool(Application::APP_ID, self::CONFIG_NCSC_ENABLED, $enabled);
 	}
 }
