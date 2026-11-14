@@ -34,6 +34,14 @@ class AvailabilityService {
 	/** Plain major.minor.patch, the rule CandidateSelector applies. */
 	private const SEMVER_PATTERN = '/^(\d+)\.(\d+)\.(\d+)$/';
 
+	/**
+	 * What the last sweep listed per app, kept for the proposal step so it
+	 * needs no source call of its own (autoupdate-proposed-updates, D1).
+	 *
+	 * @var array<string, array{installedVersion: string, versions: list<array<string, mixed>>|null}>
+	 */
+	private array $listings = [];
+
 	public function __construct(
 		private InstallerService $installerService,
 		private PinStore $pinStore,
@@ -53,6 +61,7 @@ class AvailabilityService {
 	public function sweep(float $budgetSeconds): array {
 		$deadline = microtime(true) + $budgetSeconds;
 		$results = [];
+		$this->listings = [];
 
 		foreach ($this->installerService->getInstalledApps() as $app) {
 			$installedVersion = $this->checkableVersion($app);
@@ -62,12 +71,26 @@ class AvailabilityService {
 			$appId = $app['id'];
 			$boundSourceId = is_string($app['boundSourceId'] ?? null) ? $app['boundSourceId'] : null;
 			$check = new AppVersionCheck($installedVersion, $this->pinStore->get($appId) !== null, $boundSourceId);
+			$this->listings[$appId] = ['installedVersion' => $installedVersion, 'versions' => null];
 			$results[$appId] = microtime(true) >= $deadline
 				? $this->entry($check, [], 'The update check ran out of time before it reached this app.')
 				: $this->listedEntry($appId, $check);
 		}
 
 		return $results;
+	}
+
+	/**
+	 * The version lists the last {@see sweep()} fetched, per app: the
+	 * installed version and the listed versions (each with its `changelog`
+	 * and `serverCompatible`), or null versions when the source failed or
+	 * the sweep ran out of time before the app.
+	 *
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
+	 * @return array<string, array{installedVersion: string, versions: list<array<string, mixed>>|null}>
+	 */
+	public function lastListings(): array {
+		return $this->listings;
 	}
 
 	/**
@@ -106,6 +129,10 @@ class AvailabilityService {
 			: null;
 		$versions = $error === null && is_array($listing['availableVersions'] ?? null) ? $listing['availableVersions'] : [];
 		$sourceId = is_string($listing['sourceId'] ?? null) ? $listing['sourceId'] : $check->sourceId;
+		if ($error === null) {
+			/** @var list<array<string, mixed>> $versions */
+			$this->listings[$appId] = ['installedVersion' => $check->installedVersion, 'versions' => array_values($versions)];
+		}
 
 		return $this->entry($check->withSource($sourceId), $versions, $error);
 	}

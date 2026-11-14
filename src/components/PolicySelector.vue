@@ -3,6 +3,7 @@
 import { t } from '@nextcloud/l10n'
 import { computed } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 
 export type PolicyLevel = 'none' | 'patch' | 'minor' | 'all'
@@ -16,14 +17,18 @@ const props = withDefaults(defineProps<{
 	autoUpdateEnabled: boolean
 	disabled?: boolean
 	blockedVersions?: BlockedVersion[]
+	/** Whether automatic updates of this app wait for an admin's approval. */
+	requireApproval?: boolean
 }>(), {
 	disabled: false,
 	blockedVersions: () => [],
+	requireApproval: false,
 })
 
 const emit = defineEmits<{
 	(event: 'change', appId: string, level: PolicyLevel): void
 	(event: 'retry', appId: string, version: string): void
+	(event: 'approval', appId: string, requireApproval: boolean): void
 }>()
 
 type SelectOption = { id: PolicyLevel, label: string }
@@ -61,6 +66,14 @@ const isActive = computed(() => props.level !== 'none')
 		<span v-if="isActive && !autoUpdateEnabled" :class="$style.disabledHint" data-testid="policy-disabled-hint">
 			{{ t('versioniq', 'Automation is disabled. Enable it in settings to take effect.') }}
 		</span>
+		<NcCheckboxRadioSwitch
+			v-if="isActive"
+			data-testid="policy-require-approval"
+			:modelValue="requireApproval"
+			:disabled="disabled"
+			@update:modelValue="emit('approval', appId, $event === true)">
+			{{ t('versioniq', 'Ask me before installing') }}
+		</NcCheckboxRadioSwitch>
 		<div v-if="blockedVersions.length > 0" :class="$style.blocked" data-testid="policy-blocked-versions">
 			<span :class="$style.blockedHint">
 				{{ t('versioniq', 'Automatic updates skip these versions because an earlier attempt failed:') }}

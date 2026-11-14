@@ -18,6 +18,7 @@ use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\AutoUpdate\ProposedUpdate;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallTarget;
@@ -105,7 +106,7 @@ class AutoUpdateJob extends TimedJob {
 			}
 
 			try {
-				$this->processApp($appId, $policy->level);
+				$this->processApp($appId, $policy, $now);
 			} catch (\Throwable $error) {
 				// Per-app isolation — see "the job MUST proceed to the next app
 				// after any failure".
@@ -117,7 +118,7 @@ class AutoUpdateJob extends TimedJob {
 		}
 	}
 
-	private function processApp(string $appId, string $level): void {
+	private function processApp(string $appId, Policy $policy, \DateTimeInterface $now): void {
 		if ($this->isSkipped($appId)) {
 			return;
 		}
@@ -128,13 +129,53 @@ class AutoUpdateJob extends TimedJob {
 			return;
 		}
 
-		$candidate = $this->install->candidateSelector->select($installedVersion, $available, $level);
+		$candidate = $this->install->candidateSelector->select($installedVersion, $available, $policy->level);
 		if ($candidate === null || $this->stores->attemptLedger->hasAttempted($appId, $candidate)) {
 			// Never-retry — see "Failed attempt is not retried".
 			return;
 		}
+		if ($this->isHeldBack($appId, $candidate, $policy, $now)) {
+			return;
+		}
 
 		$this->attemptInstall(new InstallTarget($appId, $candidate, null), $installedVersion);
+	}
+
+	/**
+	 * Whether an admin's decision or the notice period holds this version
+	 * back, checked in the order of design D6: a declined version is skipped;
+	 * with a notice period the version must be the stored proposal and its
+	 * planned time must have come; an app that requires approval installs
+	 * only the exact version an admin approved. Without notice, approval or
+	 * declines nothing is held back.
+	 *
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
+	 */
+	private function isHeldBack(string $appId, string $candidate, Policy $policy, \DateTimeInterface $now): bool {
+		$proposals = $this->stores->proposalStore;
+		if ($proposals === null) {
+			return false;
+		}
+		if ($proposals->declineOf($appId, $candidate) !== null) {
+			return true;
+		}
+		if ($this->stores->settingsStore->getNoticeDays() > 0 && !$this->noticeHasPassed($proposals->proposalFor($appId), $candidate, $now)) {
+			return true;
+		}
+
+		return $policy->requireApproval && !$proposals->isApproved($appId, $candidate);
+	}
+
+	/**
+	 * Whether this version was announced as the app's proposal and the
+	 * opening it was planned for has come.
+	 */
+	private function noticeHasPassed(?ProposedUpdate $proposal, string $candidate, \DateTimeInterface $now): bool {
+		if ($proposal === null || $proposal->toVersion !== $candidate || $proposal->plannedFor === null) {
+			return false;
+		}
+
+		return new \DateTimeImmutable($proposal->plannedFor) <= $now;
 	}
 
 	/**

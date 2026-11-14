@@ -84,4 +84,25 @@ final class AutoUpdateWindowTest extends TestCase {
 		$this->assertSame('23:00-03:00@2026-07-22', AutoUpdateWindow::openingKey($window, new \DateTimeImmutable('2026-07-22T23:30:00')));
 		$this->assertSame('23:00-03:00@2026-07-22', AutoUpdateWindow::openingKey($window, new \DateTimeImmutable('2026-07-23T01:00:00')));
 	}
+
+	public function testNextOpeningIsLaterTheSameDayOrTheNextDay(): void {
+		$utc = new \DateTimeZone('UTC');
+
+		$this->assertSame('2026-10-02T01:00:00+00:00', AutoUpdateWindow::nextOpening('01:00-05:00', new \DateTimeImmutable('2026-10-01T10:00:00', $utc))?->format(DATE_ATOM));
+		$this->assertSame('2026-10-01T23:00:00+00:00', AutoUpdateWindow::nextOpening('23:00-03:00', new \DateTimeImmutable('2026-10-01T10:00:00', $utc))?->format(DATE_ATOM));
+		$this->assertSame('2026-10-01T01:00:00+00:00', AutoUpdateWindow::nextOpening('01:00-05:00', new \DateTimeImmutable('2026-10-01T01:00:00', $utc))?->format(DATE_ATOM));
+	}
+
+	public function testNextOpeningKeepsTheTimeZoneItIsGiven(): void {
+		$from = new \DateTimeImmutable('2026-10-01T10:00:00', new \DateTimeZone('Europe/Amsterdam'));
+
+		$this->assertSame('2026-10-02T01:00:00+02:00', AutoUpdateWindow::nextOpening('01:00-05:00', $from)?->format(DATE_ATOM));
+	}
+
+	public function testAWindowThatNeverOpensHasNoNextOpening(): void {
+		$from = new \DateTimeImmutable('2026-10-01T10:00:00');
+
+		$this->assertNull(AutoUpdateWindow::nextOpening('garbage', $from));
+		$this->assertNull(AutoUpdateWindow::nextOpening('02:00-02:00', $from));
+	}
 }

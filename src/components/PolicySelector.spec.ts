@@ -12,6 +12,7 @@ vi.mock('@nextcloud/l10n', () => ({
 }))
 
 vi.mock('@nextcloud/vue/components/NcButton', () => ({ default: { name: 'NcButton', emits: ['click'], template: '<button type="button" @click="$emit(\'click\')"><slot /></button>' } }))
+vi.mock('@nextcloud/vue/components/NcCheckboxRadioSwitch', () => ({ default: { name: 'NcCheckboxRadioSwitch', props: ['modelValue', 'disabled'], emits: ['update:modelValue'], template: '<label><slot /></label>' } }))
 vi.mock('@nextcloud/vue/components/NcSelect', () => ({ default: { name: 'NcSelect', template: '<select><slot /></select>' } }))
 
 describe('PolicySelector', () => {
@@ -91,5 +92,32 @@ describe('PolicySelector', () => {
 		})
 
 		expect(wrapper.find('[data-testid="policy-disabled-hint"]').text()).not.toContain('\u2014')
+	})
+
+	// @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
+	it('offers the approval checkbox for an active policy and emits the choice', async () => {
+		const wrapper = shallowMount(PolicySelector, {
+			props: { appId: 'openregister', level: 'patch', autoUpdateEnabled: true, requireApproval: false },
+		})
+
+		const checkbox = wrapper.findComponent({ name: 'NcCheckboxRadioSwitch' })
+		expect(checkbox.exists()).toBe(true)
+		expect(checkbox.props('modelValue')).toBe(false)
+
+		await checkbox.vm.$emit('update:modelValue', true)
+
+		expect(wrapper.emitted('approval')).toEqual([['openregister', true]])
+	})
+
+	it('shows the stored approval choice and hides it without a policy', () => {
+		const active = shallowMount(PolicySelector, {
+			props: { appId: 'openregister', level: 'minor', autoUpdateEnabled: true, requireApproval: true },
+		})
+		expect(active.findComponent({ name: 'NcCheckboxRadioSwitch' }).props('modelValue')).toBe(true)
+
+		const off = shallowMount(PolicySelector, {
+			props: { appId: 'openregister', level: 'none', autoUpdateEnabled: true, requireApproval: true },
+		})
+		expect(off.findComponent({ name: 'NcCheckboxRadioSwitch' }).exists()).toBe(false)
 	})
 })

@@ -69,6 +69,7 @@ class Notifier implements INotifier {
 			'pat_expired' => $this->renderPatExpired(...),
 			'auto_update_success' => $this->renderAutoUpdateSuccess(...),
 			'auto_update_failure' => $this->renderAutoUpdateFailure(...),
+			'auto_update_planned' => $this->renderAutoUpdatePlanned(...),
 			// Sent weekly by AdvisoryDigestNotifier. Without this branch the
 			// digest was stored but skipped by the bell every time (#428).
 			'advisory_digest' => $this->renderAdvisoryDigest(...),
@@ -152,6 +153,30 @@ class Notifier implements INotifier {
 				$fromVersion !== ''
 					? $l->t('%1$s was automatically updated from %2$s to %3$s.', [$app, $fromVersion, $toVersion])
 					: $l->t('%1$s was automatically installed at %2$s.', [$app, $toVersion])
+			);
+	}
+
+	/**
+	 * A proposed update announced ahead of its window, with the planned date
+	 * and the release notes excerpt in the text itself: notice-group members
+	 * cannot open Versioniq.
+	 */
+	private function renderAutoUpdatePlanned(INotification $notification, IL10N $l): void {
+		$app = $this->stringParameter($notification, 'app');
+		$fromVersion = $this->stringParameter($notification, 'fromVersion');
+		$toVersion = $this->stringParameter($notification, 'toVersion');
+		$plannedFor = $this->stringParameter($notification, 'plannedFor');
+		$notes = trim($this->stringParameter($notification, 'releaseNotes'));
+		$planned = $plannedFor !== ''
+			? $l->t('%1$s will be updated from %2$s to %3$s on or after %4$s.', [$app, $fromVersion, $toVersion, $plannedFor])
+			: $l->t('%1$s will be updated from %2$s to %3$s at a coming update window.', [$app, $fromVersion, $toVersion]);
+
+		$notification
+			->setParsedSubject(
+				$l->t('Update planned for %1$s', [$app])
+			)
+			->setParsedMessage(
+				$notes !== '' ? $planned . "\n\n" . $l->t('Release notes:') . "\n" . $notes : $planned
 			);
 	}
 

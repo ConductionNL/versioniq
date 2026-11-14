@@ -29,6 +29,11 @@ class AutoUpdateSettingsStore {
 	public const CONFIG_WINDOW = 'auto_update_window';
 	/** Opening key ({@see AutoUpdateWindow::openingKey()}) of the last window the job swept. */
 	public const CONFIG_LAST_SWEPT_WINDOW = 'auto_update_last_swept_window';
+	/** Days a proposed update is announced before it may install; 0 is off. */
+	public const CONFIG_NOTICE_DAYS = 'auto_update.notice_days';
+	/** A Nextcloud group that hears of planned updates besides the admins. */
+	public const CONFIG_NOTICE_GROUP = 'auto_update.notice_group';
+	public const MAX_NOTICE_DAYS = 60;
 
 	public function __construct(
 		private IAppConfig $config,
@@ -107,5 +112,39 @@ class AutoUpdateSettingsStore {
 	 */
 	public function setWindow(string $window): void {
 		$this->config->setValueString(Application::APP_ID, self::CONFIG_WINDOW, $window);
+	}
+
+	/**
+	 * The notice period in days (0 when off), clamped to 0..{@see MAX_NOTICE_DAYS}.
+	 *
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
+	 */
+	public function getNoticeDays(): int {
+		$days = $this->config->getValueInt(Application::APP_ID, self::CONFIG_NOTICE_DAYS, 0);
+
+		return max(0, min(self::MAX_NOTICE_DAYS, $days));
+	}
+
+	/**
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
+	 */
+	public function setNoticeDays(int $days): void {
+		$this->config->setValueInt(Application::APP_ID, self::CONFIG_NOTICE_DAYS, $days);
+	}
+
+	/**
+	 * The group id that is told of planned updates besides the admins; '' when none.
+	 *
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
+	 */
+	public function getNoticeGroup(): string {
+		return $this->config->getValueString(Application::APP_ID, self::CONFIG_NOTICE_GROUP, '');
+	}
+
+	/**
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
+	 */
+	public function setNoticeGroup(string $groupId): void {
+		$this->config->setValueString(Application::APP_ID, self::CONFIG_NOTICE_GROUP, $groupId);
 	}
 }
