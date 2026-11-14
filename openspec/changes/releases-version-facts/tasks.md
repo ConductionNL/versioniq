@@ -14,7 +14,7 @@
 ## 3. Release notes
 
 - [x] 3.1 Add `lib/Service/Release/ReleaseNotesReader.php` with `isBreaking()` and `knownIssues()` (design D3, D4), and call it in `getAppVersions()` before `applyChangelogTruncation()`. Verify: `tests/unit/Service/Release/ReleaseNotesReaderTest.php` covers each heading form, the Conventional Commits footer, a marker past 8 KiB, a known-issues section ending at the next heading, and notes with neither.
-- [ ] 3.2 Add `lib/Service/Release/KnownIssueStore.php` and `PUT /api/app/{appId}/versions/{version}/known-issues` and `DELETE .../known-issues/{index}`, admin-only, password-confirmed, audited as `settings`, https-only links, 20 entries per app. Verify: `tests/unit/Service/Release/KnownIssueStoreTest.php` and `tests/unit/Controller/ApiTest.php` cover the cap, an http link refused, 403 and the audit row.
+- [x] 3.2 Add `lib/Service/Release/KnownIssueStore.php` and `PUT /api/app/{appId}/versions/{version}/known-issues` and `DELETE .../known-issues/{index}`, admin-only, password-confirmed, audited as `settings`, https-only links, 20 entries per app. Verify: `tests/unit/Service/Release/KnownIssueStoreTest.php` and `tests/unit/Controller/ApiTest.php` cover the cap, an http link refused, 403 and the audit row.
 
 ## 4. Page and CLI
 

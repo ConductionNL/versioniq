@@ -287,6 +287,8 @@ class InstallerService {
 		$versions = self::applyReleaseNotesFacts($result['versions']);
 		// releases-version-facts D2: how installs of each version went here.
 		$versions = $this->state->outcomes?->stamp($versions, $appId) ?? $versions;
+		// releases-version-facts D4: the admin's own notes on each version.
+		$versions = self::applyAdminKnownIssues($versions, $this->state->knownIssues?->forApp($appId) ?? []);
 		$versions = $this->applyChangelogTruncation($versions);
 		$versions = $this->applyRecordedSha($versions, $binding);
 		$versions = $this->applyCachedOffline($versions, $appId);
@@ -387,6 +389,25 @@ class InstallerService {
 				$notes = is_string($entry['changelog'] ?? null) ? $entry['changelog'] : '';
 				$entry['breaking'] = $reader->isBreaking($notes);
 				$entry['knownIssues'] = $reader->knownIssues($notes);
+				return $entry;
+			},
+			$versions
+		);
+	}
+
+	/**
+	 * Stamps `adminKnownIssues` on each version: the known issues an admin
+	 * recorded against it, none when there are none (releases-version-facts D4).
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+	 * @param list<array<string, mixed>> $versions
+	 * @param array<string, list<array<string, mixed>>> $notes Version => the admin's notes.
+	 * @return list<array<string, mixed>>
+	 */
+	private static function applyAdminKnownIssues(array $versions, array $notes): array {
+		return array_map(
+			static function (array $entry) use ($notes): array {
+				$entry['adminKnownIssues'] = $notes[(string)($entry['version'] ?? '')] ?? [];
 				return $entry;
 			},
 			$versions
