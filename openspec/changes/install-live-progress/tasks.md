@@ -2,7 +2,7 @@
 
 ## 1. Reporter
 
-- [ ] 1.1 Add `InstallProgress` on the distributed cache with a ten-minute lifetime and a swallowing `stage()`. Verify: `tests/unit/Service/Installer/InstallProgressTest.php`, including a cache that throws.
+- [x] 1.1 Add `InstallProgress` on the distributed cache with a ten-minute lifetime and a swallowing `stage()`. Verify: `tests/unit/Service/Installer/InstallProgressTest.php`, including a cache that throws.
 - [ ] 1.2 Call `stage()` next to each `addDebug()` in both installers, and in `InstallFinalizer` for migrations and repair steps, with download progress every 5 %. Verify: installer unit tests assert the stage order for a signed install, an external install and a failed checksum.
 
 ## 2. Endpoint and session
