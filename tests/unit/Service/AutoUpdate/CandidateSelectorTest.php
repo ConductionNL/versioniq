@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\Service\AutoUpdate;
 
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\AutoUpdate\UpdateType;
 use OCA\Versioniq\Service\Policy\Policy;
 use PHPUnit\Framework\TestCase;
 
@@ -85,5 +86,13 @@ final class CandidateSelectorTest extends TestCase {
 		$selector = new CandidateSelector();
 
 		$this->assertSame('2.4.0', $selector->select('2.3', ['2.4.0'], Policy::LEVEL_ALL));
+	}
+
+	public function testOnlyDueKindsQualify(): void {
+		$selector = new CandidateSelector();
+
+		$this->assertSame('2.3.4', $selector->select('2.3.0', ['2.3.4', '2.4.0'], Policy::LEVEL_MINOR, [UpdateType::PATCH]));
+		$this->assertNull($selector->select('2.3.0', ['3.0.0'], Policy::LEVEL_ALL, [UpdateType::PATCH, UpdateType::MINOR]));
+		$this->assertSame('3.0.0', $selector->select('2.3.0', ['2.4.0', '3.0.0'], Policy::LEVEL_ALL, [UpdateType::MAJOR]));
 	}
 }

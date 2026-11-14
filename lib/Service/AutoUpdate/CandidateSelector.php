@@ -41,9 +41,14 @@ class CandidateSelector {
 	 * installer" ("Patch-level update applied").
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
+	 * Only candidates whose kind ({@see UpdateType}) is in `$dueKinds` qualify, so an
+	 * app on `minor` takes the due patch on a patch-only night (autoupdate-schedules,
+	 * design D4); the default is every kind.
+	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
 	 * @param list<string> $availableVersions
+	 * @param list<string> $dueKinds
 	 */
-	public function select(string $installedVersion, array $availableVersions, string $level): ?string {
+	public function select(string $installedVersion, array $availableVersions, string $level, array $dueKinds = UpdateType::ALL): ?string {
 		if ($level === Policy::LEVEL_NONE) {
 			return null;
 		}
@@ -52,6 +57,7 @@ class CandidateSelector {
 			$availableVersions,
 			fn (string $candidate): bool => version_compare($candidate, $installedVersion, '>')
 				&& $this->withinLevel($installedVersion, $candidate, $level)
+				&& in_array(UpdateType::classify($installedVersion, $candidate), $dueKinds, true)
 		));
 
 		if ($candidates === []) {

@@ -99,13 +99,20 @@ class AutoUpdateJob extends TimedJob {
 		}
 		$this->stores->settingsStore->markWindowSwept($openingKey);
 
+		// The weekday is the one the window opened on (autoupdate-schedules, D3);
+		// with no kind due tonight, no source is asked at all (D4).
+		$dueKinds = $this->stores->settingsStore->getSchedule()->dueKinds(AutoUpdateWindow::openedOn($window, $now));
+		if ($dueKinds === []) {
+			return;
+		}
+
 		foreach ($this->stores->policyStore->all() as $appId => $policy) {
 			if ($policy->level === Policy::LEVEL_NONE) {
 				continue;
 			}
 
 			try {
-				$this->processApp($appId, $policy->level);
+				$this->processApp($appId, $policy->level, $dueKinds);
 			} catch (\Throwable $error) {
 				// Per-app isolation — see "the job MUST proceed to the next app
 				// after any failure".
@@ -117,7 +124,10 @@ class AutoUpdateJob extends TimedJob {
 		}
 	}
 
-	private function processApp(string $appId, string $level): void {
+	/**
+	 * @param list<string> $dueKinds The kinds of update that may install tonight.
+	 */
+	private function processApp(string $appId, string $level, array $dueKinds): void {
 		if ($this->isSkipped($appId)) {
 			return;
 		}
@@ -128,7 +138,7 @@ class AutoUpdateJob extends TimedJob {
 			return;
 		}
 
-		$candidate = $this->install->candidateSelector->select($installedVersion, $available, $level);
+		$candidate = $this->install->candidateSelector->select($installedVersion, $available, $level, $dueKinds);
 		if ($candidate === null || $this->stores->attemptLedger->hasAttempted($appId, $candidate)) {
 			// Never-retry — see "Failed attempt is not retried".
 			return;
