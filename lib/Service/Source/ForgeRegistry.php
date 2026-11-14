@@ -54,7 +54,7 @@ class ForgeRegistry {
 	 * Forges kept only so stored data keeps working; never offered for new
 	 * bindings, tokens or trusted patterns.
 	 */
-	private const RETIRED = [self::FORGE_CODEBERG];
+	private const RETIRED = SourceBinding::RETIRED_FORGES;
 
 	private const DEFAULTS = [
 		self::FORGE_GITHUB => [

@@ -403,4 +403,52 @@ final class ForgeReleaseSourceTest extends TestCase {
 		$this->assertNull($result['error']);
 		$this->assertSame(['unknown', 'unknown', 'critical'], array_column($result['advisories'], 'severity'));
 	}
+
+	/**
+	 * Scenario "A GitHub-bound app is checked against its repository's
+	 * advisories" (advisories-name-their-feeds): the source reads
+	 * `/repos/{owner}/{repo}/security-advisories` on the GitHub API and maps
+	 * each advisory's id, severity, summary, affected range and first patched
+	 * version.
+	 *
+	 * @spec openspec/changes/advisories-name-their-feeds/specs/security-advisory-correlation/spec.md
+	 */
+	public function testAGitHubBoundAppReadsItsRepositorysAdvisories(): void {
+		$body = json_encode([
+			[
+				'ghsa_id' => 'GHSA-hq14-0001',
+				'summary' => 'Tool calls bypass the grant check',
+				'severity' => 'high',
+				'vulnerabilities' => [
+					['vulnerable_version_range' => '>= 1.0.0, <= 1.4.0', 'first_patched_version' => ['identifier' => 'v1.4.1']],
+				],
+			],
+		], JSON_THROW_ON_ERROR);
+
+		$urls = [];
+		$client = $this->createMock(IClient::class);
+		$client->method('get')->willReturnCallback(
+			function (string $url) use (&$urls, $body): IResponse {
+				$urls[] = $url;
+				return $this->mockResponse(200, $body);
+			}
+		);
+
+		$result = $this->buildSource($client)->listAdvisories('hermiq', SourceBinding::github('ConductionNL', 'hermiq'));
+
+		$this->assertSame(['https://api.github.com/repos/ConductionNL/hermiq/security-advisories?per_page=100'], $urls);
+		$this->assertNull($result['error']);
+		$this->assertSame(
+			[
+				[
+					'id' => 'GHSA-hq14-0001',
+					'severity' => 'high',
+					'summary' => 'Tool calls bypass the grant check',
+					'affected' => ['>= 1.0.0', '<= 1.4.0'],
+					'firstPatchedVersion' => '1.4.1',
+				],
+			],
+			$result['advisories']
+		);
+	}
 }
