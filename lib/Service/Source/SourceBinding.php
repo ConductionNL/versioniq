@@ -196,7 +196,7 @@ final class SourceBinding {
 
 		// Forge-qualified id. For github this is byte-identical to the legacy
 		// `github:owner/repo` form (getForge() defaults to github).
-		return $this->getForge() . ':' . $this->getOwnerRepo();
+		return $this->getForge() . ':' . ($this->getOwnerRepo() ?? '');
 	}
 
 	/**
