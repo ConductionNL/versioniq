@@ -285,6 +285,8 @@ class InstallerService {
 
 		// releases-version-facts D3/D4: read the full notes, before truncation.
 		$versions = self::applyReleaseNotesFacts($result['versions']);
+		// releases-version-facts D2: how installs of each version went here.
+		$versions = $this->state->outcomes?->stamp($versions, $appId) ?? $versions;
 		$versions = $this->applyChangelogTruncation($versions);
 		$versions = $this->applyRecordedSha($versions, $binding);
 		$versions = $this->applyCachedOffline($versions, $appId);

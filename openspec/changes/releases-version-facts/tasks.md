@@ -7,7 +7,7 @@
 
 ## 2. Outcomes
 
-- [ ] 2.1 Add `AuditEntryMapper::countOutcomesByVersion()` and `lib/Service/Release/InstallOutcomes.php`; stamp `outcomes` in `getAppVersions()`. Verify: `tests/unit/Service/Release/InstallOutcomesTest.php` counts success and failure rows per version and ignores other operations.
+- [x] 2.1 Add `AuditEntryMapper::countOutcomesByVersion()` and `lib/Service/Release/InstallOutcomes.php`; stamp `outcomes` in `getAppVersions()`. Verify: `tests/unit/Service/Release/InstallOutcomesTest.php` counts success and failure rows per version and ignores other operations.
 - [ ] 2.2 Add `GET /api/app/{appId}/outcomes`, admin-only. Verify: `tests/unit/Controller/ApiTest.php` asserts 403 for a non-admin and the counts for an admin.
 - [ ] 2.3 When `install-multi-instance-promotion` has landed, read each connection's outcomes in the picker after the list renders, and name an instance that failed. Verify: a vitest spec for the totals text with two instances and one unreadable instance.
 
