@@ -120,7 +120,7 @@ class ApiController extends OCSController {
 		$snapshot = $this->reports->stores->advisoryResultStore->read();
 		// Kept beside, never merged into, the app advisories: a library
 		// finding has no app version known to fix it.
-		$libraries = $this->reports->stores->libraryAdvisoryStore?->read() ?? ['libraries' => [], 'checkedAt' => null];
+		$libraries = $this->reports->libraryAdvisoryStore?->read() ?? ['libraries' => [], 'checkedAt' => null];
 
 		return new DataResponse([
 			'advisories' => $snapshot['advisories'],
@@ -1003,22 +1003,36 @@ class ApiController extends OCSController {
 			}
 		}
 
-		// Same empty-string-is-an-explicit-false handling as the auto-update
-		// kill switch above: PHP casts a JSON `false` to "", not "0".
+		$this->storeAdvisoryFlags($digestEnabled, $librariesEnabled);
+
+		return $this->advisorySettingsResponse();
+	}
+
+	/**
+	 * Stores the two advisory switches that were sent: the weekly digest and
+	 * the bundled-library check (advisories-bundled-libraries). An omitted one
+	 * is left as it is. Same empty-string-is-an-explicit-false handling as the
+	 * auto-update kill switch: PHP casts a JSON `false` to "", not "0".
+	 */
+	private function storeAdvisoryFlags(?string $digestEnabled, ?string $librariesEnabled): void {
 		if ($digestEnabled !== null) {
 			$this->storeDigestEnabled($digestEnabled);
 		}
 
-		// The bundled-library check (advisories-bundled-libraries), same
-		// empty-string-is-false handling as the digest flag.
 		if ($librariesEnabled !== null) {
-			$librariesParam = ($librariesEnabled === '') ? '0' : $librariesEnabled;
-			$this->reports->stores->advisorySettingsStore->setLibraryCheckEnabled(
-				$this->readBinaryBool($librariesParam, $this->reports->stores->advisorySettingsStore->isLibraryCheckEnabled()),
-			);
+			$this->storeLibrariesEnabled($librariesEnabled);
 		}
+	}
 
-		return $this->advisorySettingsResponse();
+	/**
+	 * Stores the bundled-library check switch; an empty string is an explicit
+	 * false, and an unknown value keeps the current one.
+	 */
+	private function storeLibrariesEnabled(string $librariesEnabled): void {
+		$librariesParam = ($librariesEnabled === '') ? '0' : $librariesEnabled;
+		$this->reports->stores->advisorySettingsStore->setLibraryCheckEnabled(
+			$this->readBinaryBool($librariesParam, $this->reports->stores->advisorySettingsStore->isLibraryCheckEnabled()),
+		);
 	}
 
 	/**

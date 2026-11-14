@@ -45,6 +45,13 @@ class OsvClient {
 	/** Follow-up rounds for paged batch results; a cursor that keeps moving past this is cut off. */
 	private const MAX_PAGE_ROUNDS = 10;
 
+	/** The HTTP client of the check in progress, made fresh by every check(). */
+	private ?IClient $client = null;
+
+	/** The limits of the check in progress: its wall-clock deadline and its cap on detail calls. */
+	/** @var array{deadline: float, maxCalls: int} */
+	private array $limits = ['deadline' => 0.0, 'maxCalls' => 0];
+
 	public function __construct(
 		private IClientService $clientService,
 		private IConfig $config,
@@ -64,16 +71,16 @@ class OsvClient {
 	 * @return array{findings: array<string, list<array{package: string, version: string, id: string, cveIds: list<string>, severity: string, summary: string, fixedIn: ?string, url: string, malicious: bool}>>, unchecked: list<string>, asked: int, error: ?string}
 	 */
 	public function check(array $libraries, float $budgetSeconds = 120.0, int $maxDetailCalls = 500): array {
-		$deadline = microtime(true) + $budgetSeconds;
+		$this->limits = ['deadline' => microtime(true) + $budgetSeconds, 'maxCalls' => $maxDetailCalls];
 		$distinct = self::distinct($libraries);
-		$client = $this->clientService->newClient();
+		$this->client = $this->clientService->newClient();
 
-		$ids = $this->queryAll($client, array_values($distinct));
+		$ids = $this->queryAll(array_values($distinct));
 		if (is_string($ids)) {
 			return ['findings' => [], 'unchecked' => array_keys($distinct), 'asked' => count($distinct), 'error' => $ids];
 		}
 
-		return $this->resolve($client, $distinct, $ids, ['deadline' => $deadline, 'maxCalls' => $maxDetailCalls]);
+		return $this->resolve($distinct, $ids);
 	}
 
 	/**
@@ -88,15 +95,14 @@ class OsvClient {
 	}
 
 	/**
-	 * Fetches the details of every advisory id within the limits and turns
-	 * them into findings per library.
+	 * Fetches the details of every advisory id within the check's limits and
+	 * turns them into findings per library.
 	 *
 	 * @param array<string, array{name: string, version: string}> $distinct
 	 * @param array<string, list<string>> $ids advisory ids per library key
-	 * @param array{deadline: float, maxCalls: int} $limits
 	 * @return array{findings: array<string, list<array{package: string, version: string, id: string, cveIds: list<string>, severity: string, summary: string, fixedIn: ?string, url: string, malicious: bool}>>, unchecked: list<string>, asked: int, error: ?string}
 	 */
-	private function resolve(IClient $client, array $distinct, array $ids, array $limits): array {
+	private function resolve(array $distinct, array $ids): array {
 		$records = [];
 		$findings = [];
 		$unchecked = [];
@@ -105,12 +111,12 @@ class OsvClient {
 			$library = $distinct[$key];
 			foreach ($libraryIds as $id) {
 				if (!array_key_exists($id, $records)) {
-					if (count($records) >= $limits['maxCalls'] || microtime(true) >= $limits['deadline']) {
+					if (count($records) >= $this->limits['maxCalls'] || microtime(true) >= $this->limits['deadline']) {
 						$unchecked[] = $key;
 						$error ??= 'The check stopped at its limit; some libraries were not checked this run.';
 						continue 2;
 					}
-					$records[$id] = $this->fetchRecord($client, $id);
+					$records[$id] = $this->fetchRecord($id);
 				}
 				$record = $records[$id];
 				if (is_string($record)) {
@@ -118,7 +124,7 @@ class OsvClient {
 					$error ??= $record;
 					continue 2;
 				}
-				$findings[$key][] = self::finding($library, $id, $record);
+				$findings[$key][] = self::finding($library, ['id' => $id] + $record);
 			}
 		}
 
@@ -132,12 +138,12 @@ class OsvClient {
 	 * @param list<array{name: string, version: string}> $libraries
 	 * @return array<string, list<string>>|string
 	 */
-	private function queryAll(IClient $client, array $libraries): array|string {
+	private function queryAll(array $libraries): array|string {
 		$ids = [];
 		foreach (array_chunk($libraries, self::BATCH_SIZE) as $chunk) {
 			$pending = array_map(static fn (array $library): array => ['library' => $library, 'token' => null], $chunk);
 			for ($round = 0; $pending !== [] && $round < self::MAX_PAGE_ROUNDS; $round++) {
-				$results = $this->queryBatch($client, $pending);
+				$results = $this->queryBatch($pending);
 				if (is_string($results)) {
 					return $results;
 				}
@@ -164,7 +170,7 @@ class OsvClient {
 	 * @param list<array{library: array{name: string, version: string}, token: ?string}> $queries
 	 * @return array<array-key, mixed>|string
 	 */
-	private function queryBatch(IClient $client, array $queries): array|string {
+	private function queryBatch(array $queries): array|string {
 		$body = ['queries' => array_map(static function (array $query): array {
 			$entry = [
 				'package' => ['name' => $query['library']['name'], 'ecosystem' => self::ECOSYSTEM],
@@ -177,10 +183,7 @@ class OsvClient {
 			return $entry;
 		}, $queries)];
 
-		$decoded = $this->request($client, 'post', $this->apiBase() . '/v1/querybatch', [
-			'body' => json_encode($body, JSON_THROW_ON_ERROR),
-			'headers' => ['Content-Type' => 'application/json', 'Accept' => 'application/json'],
-		]);
+		$decoded = $this->request($this->apiBase() . '/v1/querybatch', json_encode($body, JSON_THROW_ON_ERROR));
 		if (is_string($decoded)) {
 			return $decoded;
 		}
@@ -195,27 +198,31 @@ class OsvClient {
 	 *
 	 * @return array<array-key, mixed>|string
 	 */
-	private function fetchRecord(IClient $client, string $id): array|string {
-		return $this->request($client, 'get', $this->apiBase() . '/v1/vulns/' . rawurlencode($id), [
-			'headers' => ['Accept' => 'application/json'],
-		]);
+	private function fetchRecord(string $id): array|string {
+		return $this->request($this->apiBase() . '/v1/vulns/' . rawurlencode($id));
 	}
 
 	/**
 	 * Sends one request and decodes its JSON object, or says why it failed.
 	 *
-	 * @param 'get'|'post' $method
-	 * @param array<string, mixed> $options
+	 * @param string $url The address.
+	 * @param string|null $jsonBody A JSON body to POST; null sends a GET.
 	 * @return array<array-key, mixed>|string
 	 */
-	private function request(IClient $client, string $method, string $url, array $options): array|string {
+	private function request(string $url, ?string $jsonBody = null): array|string {
+		// A body makes it a JSON POST, none a GET.
+		$options = ['headers' => ['Accept' => 'application/json']];
+		if ($jsonBody !== null) {
+			$options = ['body' => $jsonBody, 'headers' => ['Content-Type' => 'application/json', 'Accept' => 'application/json']];
+		}
 		$options['timeout'] = self::TIMEOUT_SECONDS;
 		// The same SSRF guard the forge clients use: a local address only
 		// when the instance allows local remote servers.
 		$options['nextcloud'] = ['allow_local_address' => $this->config->getSystemValueBool('allow_local_remote_servers', false)];
 
 		try {
-			$response = $method === 'post' ? $client->post($url, $options) : $client->get($url, $options);
+			$client = $this->client ?? $this->clientService->newClient();
+			$response = $jsonBody !== null ? $client->post($url, $options) : $client->get($url, $options);
 		} catch (Throwable $error) {
 			return 'Could not reach OSV: ' . $error->getMessage();
 		}
@@ -237,10 +244,11 @@ class OsvClient {
 	 * One finding for a library from its OSV record.
 	 *
 	 * @param array{name: string, version: string} $library
-	 * @param array<array-key, mixed> $record
+	 * @param array<array-key, mixed> $record The advisory record, with its `id`.
 	 * @return array{package: string, version: string, id: string, cveIds: list<string>, severity: string, summary: string, fixedIn: ?string, url: string, malicious: bool}
 	 */
-	private static function finding(array $library, string $id, array $record): array {
+	private static function finding(array $library, array $record): array {
+		$id = (string)$record['id'];
 		$cveIds = array_values(array_filter(
 			self::strings(self::arrayAt($record, 'aliases')),
 			static fn (string $alias): bool => str_starts_with($alias, 'CVE-'),

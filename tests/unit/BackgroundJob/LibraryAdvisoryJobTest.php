@@ -12,7 +12,9 @@ namespace OCA\Versioniq\Tests\Unit\BackgroundJob;
 use OCA\Versioniq\BackgroundJob\LibraryAdvisoryJob;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\Advisory\BundledLibraryScanner;
+use OCA\Versioniq\Service\Advisory\LibraryAdvisoryCheck;
 use OCA\Versioniq\Service\Advisory\LibraryAdvisoryStore;
+use OCA\Versioniq\Service\Advisory\LibraryAdvisorySweep;
 use OCA\Versioniq\Service\Advisory\OsvClient;
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
 use OCP\App\IAppManager;
@@ -23,6 +25,8 @@ use Psr\Log\LoggerInterface;
 
 /**
  * @covers \OCA\Versioniq\BackgroundJob\LibraryAdvisoryJob
+ * @covers \OCA\Versioniq\Service\Advisory\LibraryAdvisoryCheck
+ * @covers \OCA\Versioniq\Service\Advisory\LibraryAdvisorySweep
  * @uses \OCA\Versioniq\Service\Advisory\OsvClient
  */
 final class LibraryAdvisoryJobTest extends TestCase {
@@ -51,7 +55,10 @@ final class LibraryAdvisoryJobTest extends TestCase {
 			['files', ['manifest' => 'vendor/composer/installed.json', 'libraries' => [['name' => 'vendor/library', 'version' => '2.4.3']], 'skipped' => 0]],
 		]);
 
-		return new LibraryAdvisoryJob($time, $this->settings, $appManager, $this->scanner, $this->osv, $this->store, $this->createMock(LoggerInterface::class), $this->reports);
+		$logger = $this->createMock(LoggerInterface::class);
+		$check = new LibraryAdvisoryCheck(new LibraryAdvisorySweep($appManager, $this->scanner, $this->osv), $this->store, $logger, $this->reports);
+
+		return new LibraryAdvisoryJob($time, $this->settings, $check, $logger);
 	}
 
 	private function runJob(LibraryAdvisoryJob $job): void {
