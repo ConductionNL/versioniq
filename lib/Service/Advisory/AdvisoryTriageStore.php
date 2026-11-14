@@ -81,11 +81,21 @@ class AdvisoryTriageStore {
 			return [];
 		}
 
-		if (is_array($decoded) === false || ($decoded !== [] && array_is_list($decoded) === true)) {
+		if (self::isMap(value: $decoded) === false) {
 			return [];
 		}
 
 		return array_filter($decoded, static fn (mixed $entry): bool => is_array($entry));
+	}
+
+	/**
+	 * Whether a decoded value is a map (an object), not a list or a scalar.
+	 *
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+	 * @psalm-assert-if-true array<string, mixed> $value
+	 */
+	private static function isMap(mixed $value): bool {
+		return is_array($value) === true && ($value === [] || array_is_list($value) === false);
 	}
 
 	/**
@@ -126,8 +136,7 @@ class AdvisoryTriageStore {
 				continue;
 			}
 
-			$lastSeen = self::time($entry['lastSeenAt'] ?? $entry['assignedAt'] ?? ($entry['dismissal']['at'] ?? null));
-			if ($lastSeen === null || $lastSeen >= $cutoff) {
+			if (self::recent(entry: $entry, cutoff: $cutoff) === true) {
 				$kept[$key] = $entry;
 			}
 		}
@@ -135,6 +144,20 @@ class AdvisoryTriageStore {
 		$this->write($kept);
 
 		return count($triage) - count($kept);
+	}
+
+	/**
+	 * Whether an unseen entry was last seen, assigned or dismissed after the
+	 * cutoff. An entry with no readable time is kept.
+	 *
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+	 * @param array<string, mixed> $entry The triage entry.
+	 * @param DateTimeImmutable $cutoff The oldest time an entry is kept for.
+	 */
+	private static function recent(array $entry, DateTimeImmutable $cutoff): bool {
+		$lastSeen = self::time($entry['lastSeenAt'] ?? $entry['assignedAt'] ?? ($entry['dismissal']['at'] ?? null));
+
+		return $lastSeen === null || $lastSeen >= $cutoff;
 	}
 
 	/**
@@ -150,8 +173,10 @@ class AdvisoryTriageStore {
 
 	/**
 	 * A stored time, or null when it is missing or not a time.
+	 *
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
 	 */
-	private static function time(mixed $value): ?DateTimeImmutable {
+	public static function time(mixed $value): ?DateTimeImmutable {
 		if (is_string($value) === false || $value === '') {
 			return null;
 		}

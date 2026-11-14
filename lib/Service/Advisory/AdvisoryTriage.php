@@ -11,7 +11,6 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Advisory;
 
 use DateTimeImmutable;
-use Exception;
 
 /**
  * Applies the stored triage to one row of the advisory snapshot (advisories-triage, design D2).
@@ -41,34 +40,34 @@ use Exception;
  */
 final class AdvisoryTriage {
 	/**
+	 * The time end dates are judged by, or null when it is not one.
+	 */
+	private readonly ?DateTimeImmutable $now;
+
+	/**
+	 * A triage of the snapshot at one time.
+	 *
+	 * @param array<string, array<string, mixed>> $triage The triage map, keyed `{appId}|{advisoryId}`.
+	 * @param string $now ISO 8601 time to judge end dates by.
+	 *
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+	 */
+	public function __construct(
+		private readonly array $triage,
+		string $now,
+	) {
+		$this->now = AdvisoryTriageStore::time($now);
+	}
+
+	/**
 	 * Apply the triage map to one snapshot row.
 	 *
 	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
 	 * @param array<string, mixed> $row One row of the snapshot.
-	 * @param array<string, array<string, mixed>> $triage The triage map, keyed `{appId}|{advisoryId}`.
-	 * @param string $now ISO 8601 time to judge end dates by.
 	 * @return array<string, mixed> The row with `dismissedAdvisories` and the state worked out again.
 	 */
-	public static function apply(array $row, array $triage, string $now): array {
-		$appId = (string)($row['appId'] ?? '');
-		$installed = $row['installedVersion'] ?? null;
-		$at = self::time($now);
-		$kept = [];
-		$dismissed = [];
-		foreach ((array)($row['advisories'] ?? []) as $advisory) {
-			$entry = $triage[AdvisoryTriageStore::key($appId, (string)($advisory['id'] ?? ''))] ?? [];
-			if (isset($entry['assignee']) === true && is_array($entry['assignee']) === true) {
-				$advisory['assignee'] = $entry['assignee'];
-			}
-
-			$dismissal = $entry['dismissal'] ?? null;
-			if (is_array($dismissal) === true && self::isActive(dismissal: $dismissal, installed: $installed, now: $at) === true) {
-				$dismissed[] = array_replace($advisory, ['dismissal' => $dismissal]);
-				continue;
-			}
-
-			$kept[] = $advisory;
-		}
+	public function apply(array $row): array {
+		[$kept, $dismissed] = $this->split(row: $row);
 
 		$row['advisories'] = $kept;
 		$row['dismissedAdvisories'] = $dismissed;
@@ -76,6 +75,60 @@ final class AdvisoryTriage {
 			return $row;
 		}
 
+		return self::settle(row: $row);
+	}
+
+	/**
+	 * Split a row's advisories into the ones that count and the ones a dismissal
+	 * still holds for, each carrying its owner when one is set.
+	 *
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-assigns-an-advisory-to-an-owner
+	 * @param array<string, mixed> $row One row of the snapshot.
+	 * @return array{0: list<mixed>, 1: list<mixed>} The kept and the dismissed advisories.
+	 */
+	private function split(array $row): array {
+		$kept = [];
+		$dismissed = [];
+		foreach ((array)($row['advisories'] ?? []) as $advisory) {
+			$entry = $this->entryFor(row: $row, advisory: $advisory);
+			if (is_array($entry['assignee'] ?? null) === true) {
+				$advisory['assignee'] = $entry['assignee'];
+			}
+
+			if ($this->isActive(dismissal: $entry['dismissal'] ?? null, installed: $row['installedVersion'] ?? null) === true) {
+				$dismissed[] = array_replace($advisory, ['dismissal' => $entry['dismissal']]);
+				continue;
+			}
+
+			$kept[] = $advisory;
+		}
+
+		return [$kept, $dismissed];
+	}
+
+	/**
+	 * The triage entry of one advisory of a row, or an empty one.
+	 *
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+	 * @param array<string, mixed> $row The row.
+	 * @param mixed $advisory The advisory.
+	 * @return array<string, mixed>
+	 */
+	private function entryFor(array $row, mixed $advisory): array {
+		$key = AdvisoryTriageStore::key((string)($row['appId'] ?? ''), (string)($advisory['id'] ?? ''));
+
+		return $this->triage[$key] ?? [];
+	}
+
+	/**
+	 * The state of a row whose every advisory is dismissed: vulnerable becomes
+	 * available (and loses the recommendation), available becomes none.
+	 *
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+	 * @param array<string, mixed> $row The row.
+	 * @return array<string, mixed>
+	 */
+	private static function settle(array $row): array {
 		$state = $row['state'] ?? null;
 		if ($state === AdvisoryService::STATE_VULNERABLE) {
 			$row['state'] = AdvisoryService::STATE_AVAILABLE;
@@ -88,41 +141,34 @@ final class AdvisoryTriage {
 	}
 
 	/**
-	 * Whether a dismissal still holds for the installed version at this time.
+	 * Whether a dismissal still holds for the installed version.
 	 *
-	 * @param array<string, mixed> $dismissal The stored dismissal.
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+	 * @param mixed $dismissal The stored dismissal, if any.
+	 * @param mixed $installed The installed version.
 	 */
-	private static function isActive(array $dismissal, mixed $installed, ?DateTimeImmutable $now): bool {
-		if (($dismissal['installedVersion'] ?? null) !== $installed) {
+	private function isActive(mixed $dismissal, mixed $installed): bool {
+		if (is_array($dismissal) === false || ($dismissal['installedVersion'] ?? null) !== $installed) {
 			return false;
 		}
 
-		$until = $dismissal['until'] ?? null;
+		return $this->stillOpen(until: $dismissal['until'] ?? null);
+	}
+
+	/**
+	 * Whether a dismissal's end date is still ahead. No end date holds for good;
+	 * an end date that cannot be read counts as passed, so the advisory counts again.
+	 *
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+	 * @param mixed $until The end date.
+	 */
+	private function stillOpen(mixed $until): bool {
 		if ($until === null || $until === '') {
 			return true;
 		}
 
-		$end = self::time($until);
-		if ($end === null || $now === null) {
-			// An end date that cannot be read counts as passed: the advisory counts again.
-			return false;
-		}
+		$end = AdvisoryTriageStore::time($until);
 
-		return $end > $now;
-	}
-
-	/**
-	 * A time, or null when it is not one.
-	 */
-	private static function time(mixed $value): ?DateTimeImmutable {
-		if (is_string($value) === false || $value === '') {
-			return null;
-		}
-
-		try {
-			return new DateTimeImmutable($value);
-		} catch (Exception) {
-			return null;
-		}
+		return $end !== null && $this->now !== null && $end > $this->now;
 	}
 }

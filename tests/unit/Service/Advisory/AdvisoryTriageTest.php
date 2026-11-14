@@ -44,13 +44,13 @@ final class AdvisoryTriageTest extends TestCase {
 	}
 
 	public function testWithoutTriageTheRowStaysAsItIsWithAnEmptyDismissedList(): void {
-		$row = AdvisoryTriage::apply(self::vulnerable(), [], self::NOW);
+		$row = (new AdvisoryTriage([], self::NOW))->apply(self::vulnerable());
 
 		$this->assertSame(array_replace(self::vulnerable(), ['dismissedAdvisories' => []]), $row);
 	}
 
 	public function testOneOfTwoDismissedKeepsTheRowVulnerableAndItsRecommendation(): void {
-		$row = AdvisoryTriage::apply(self::vulnerable(), ['openregister|GHSA-1111' => ['dismissal' => self::dismissal()]], self::NOW);
+		$row = (new AdvisoryTriage(['openregister|GHSA-1111' => ['dismissal' => self::dismissal()]], self::NOW))->apply(self::vulnerable());
 
 		$this->assertSame([self::TWO], $row['advisories']);
 		$this->assertSame([array_replace(self::ONE, ['dismissal' => self::dismissal()])], $row['dismissedAdvisories']);
@@ -59,10 +59,10 @@ final class AdvisoryTriageTest extends TestCase {
 	}
 
 	public function testAllDismissedDropsAVulnerableRowToAvailableWithoutARecommendation(): void {
-		$row = AdvisoryTriage::apply(self::vulnerable(), [
+		$row = (new AdvisoryTriage([
 			'openregister|GHSA-1111' => ['dismissal' => self::dismissal()],
 			'openregister|GHSA-2222' => ['dismissal' => self::dismissal('2026-10-01')],
-		], self::NOW);
+		], self::NOW))->apply(self::vulnerable());
 
 		$this->assertSame([], $row['advisories']);
 		$this->assertCount(2, $row['dismissedAdvisories']);
@@ -73,13 +73,13 @@ final class AdvisoryTriageTest extends TestCase {
 	public function testAllDismissedDropsAnAvailableRowToNone(): void {
 		$available = array_replace(self::vulnerable(), ['state' => 'advisory-available', 'advisories' => [self::ONE], 'recommendedVersion' => null]);
 
-		$row = AdvisoryTriage::apply($available, ['openregister|GHSA-1111' => ['dismissal' => self::dismissal()]], self::NOW);
+		$row = (new AdvisoryTriage(['openregister|GHSA-1111' => ['dismissal' => self::dismissal()]], self::NOW))->apply($available);
 
 		$this->assertSame('none', $row['state']);
 	}
 
 	public function testADismissalLapsesWhenItsEndDateHasPassed(): void {
-		$row = AdvisoryTriage::apply(self::vulnerable(), ['openregister|GHSA-1111' => ['dismissal' => self::dismissal('2026-09-27T11:59:59+00:00')]], self::NOW);
+		$row = (new AdvisoryTriage(['openregister|GHSA-1111' => ['dismissal' => self::dismissal('2026-09-27T11:59:59+00:00')]], self::NOW))->apply(self::vulnerable());
 
 		$this->assertSame([self::ONE, self::TWO], $row['advisories']);
 		$this->assertSame([], $row['dismissedAdvisories']);
@@ -87,10 +87,10 @@ final class AdvisoryTriageTest extends TestCase {
 	}
 
 	public function testADismissalLapsesWhenAnotherVersionIsInstalled(): void {
-		$row = AdvisoryTriage::apply(self::vulnerable(), [
+		$row = (new AdvisoryTriage([
 			'openregister|GHSA-1111' => ['dismissal' => self::dismissal(null, '2.2.9')],
 			'openregister|GHSA-2222' => ['dismissal' => self::dismissal(null, '2.2.9')],
-		], self::NOW);
+		], self::NOW))->apply(self::vulnerable());
 
 		$this->assertSame([self::ONE, self::TWO], $row['advisories']);
 		$this->assertSame('pinned-to-vulnerable', $row['state']);
@@ -98,13 +98,13 @@ final class AdvisoryTriageTest extends TestCase {
 	}
 
 	public function testAnUnreadableEndDateCountsAsPassed(): void {
-		$row = AdvisoryTriage::apply(self::vulnerable(), ['openregister|GHSA-1111' => ['dismissal' => self::dismissal('someday')]], self::NOW);
+		$row = (new AdvisoryTriage(['openregister|GHSA-1111' => ['dismissal' => self::dismissal('someday')]], self::NOW))->apply(self::vulnerable());
 
 		$this->assertSame([], $row['dismissedAdvisories']);
 	}
 
 	public function testATriageEntryForAnotherAppDoesNotApply(): void {
-		$row = AdvisoryTriage::apply(self::vulnerable(), [':server|GHSA-1111' => ['dismissal' => self::dismissal()]], self::NOW);
+		$row = (new AdvisoryTriage([':server|GHSA-1111' => ['dismissal' => self::dismissal()]], self::NOW))->apply(self::vulnerable());
 
 		$this->assertSame([self::ONE, self::TWO], $row['advisories']);
 	}
@@ -112,10 +112,10 @@ final class AdvisoryTriageTest extends TestCase {
 	public function testAnOwnerTravelsWithItsAdvisoryWhetherDismissedOrNot(): void {
 		$owner = ['type' => 'group', 'id' => 'admin'];
 
-		$row = AdvisoryTriage::apply(self::vulnerable(), [
+		$row = (new AdvisoryTriage([
 			'openregister|GHSA-1111' => ['assignee' => $owner],
 			'openregister|GHSA-2222' => ['assignee' => ['type' => 'user', 'id' => 'bob'], 'dismissal' => self::dismissal()],
-		], self::NOW);
+		], self::NOW))->apply(self::vulnerable());
 
 		$this->assertSame($owner, $row['advisories'][0]['assignee']);
 		$this->assertSame(['type' => 'user', 'id' => 'bob'], $row['dismissedAdvisories'][0]['assignee']);
