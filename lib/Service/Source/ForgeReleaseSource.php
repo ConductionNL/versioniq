@@ -513,9 +513,9 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * @param array<string, string> $shaAssets checksum asset name => url
 	 */
 	private function checksumUrl(array $matchingAssets, array $shaAssets): ?string {
-		$sibling = isset($matchingAssets[0]) ? $matchingAssets[0]['name'] . '.sha256' : null;
-		if ($sibling !== null && isset($shaAssets[$sibling])) {
-			return $shaAssets[$sibling];
+		$named = isset($matchingAssets[0]) ? ($shaAssets[$matchingAssets[0]['name'] . '.sha256'] ?? null) : null;
+		if ($named !== null) {
+			return $named;
 		}
 
 		return count($shaAssets) === 1 ? reset($shaAssets) : null;

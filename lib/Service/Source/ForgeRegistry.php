@@ -259,25 +259,31 @@ class ForgeRegistry {
 	 */
 	private function storeHost(string $forgeId, string $host): void {
 		$host = rtrim(trim($host), '/');
-		if ($host !== '') {
-			$parts = parse_url($host);
-			if ($parts === false
-				|| ($parts['scheme'] ?? '') !== 'https'
-				|| ($parts['host'] ?? '') === ''
-				|| isset($parts['user'])
-				|| isset($parts['pass'])
-				|| isset($parts['query'])
-				|| isset($parts['fragment'])
-			) {
-				throw new InvalidArgumentException('The host must be an https address such as https://git.example.org, without a username, password or query.');
-			}
+		if ($host !== '' && self::isBareHttpsAddress(address: $host) === false) {
+			throw new InvalidArgumentException('The host must be an https address such as https://git.example.org, without a username, password or query.');
 		}
 
 		$this->appConfig->deleteKey(Application::APP_ID, 'forge.' . $forgeId . '.api_base');
 		if ($host === '') {
 			$this->appConfig->deleteKey(Application::APP_ID, 'forge.' . $forgeId . '.web_base');
-		} else {
-			$this->appConfig->setValueString(Application::APP_ID, 'forge.' . $forgeId . '.web_base', $host);
+			return;
 		}
+
+		$this->appConfig->setValueString(Application::APP_ID, 'forge.' . $forgeId . '.web_base', $host);
+	}
+
+	/**
+	 * Whether an address is https with a host and nothing a host must not carry:
+	 * no username, password, query or fragment.
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-1.1
+	 */
+	private static function isBareHttpsAddress(string $address): bool {
+		$parts = parse_url($address);
+		if ($parts === false || ($parts['scheme'] ?? '') !== 'https' || ($parts['host'] ?? '') === '') {
+			return false;
+		}
+
+		return array_intersect_key($parts, array_flip(['user', 'pass', 'query', 'fragment'])) === [];
 	}
 }
