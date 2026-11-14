@@ -11,15 +11,6 @@
       <code><![CDATA[$hint]]></code>
       <code><![CDATA[$toVersion]]></code>
     </MixedAssignment>
-    <RedundantCastGivenDocblockType>
-      <code><![CDATA[(string)$entry['version']]]></code>
-    </RedundantCastGivenDocblockType>
-    <UnnecessaryVarAnnotation>
-      <code><![CDATA[list<string>]]></code>
-    </UnnecessaryVarAnnotation>
-    <UnusedVariable>
-      <code><![CDATA[$installedVersion]]></code>
-    </UnusedVariable>
   </file>
   <file src="lib/Command/InstallVersion.php">
     <MixedArgument>

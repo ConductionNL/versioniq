@@ -71,6 +71,37 @@ class AttemptLedger {
 	}
 
 	/**
+	 * How many attempts, successful or not, were recorded at or after a time,
+	 * across every app: the weekly count the per-week cap reads
+	 * (autoupdate-run-batching D4). Reads every `auto_attempt.*` key at once.
+	 *
+	 * @param string $isoTime The earliest moment counted, ISO 8601.
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	public function countSince(string $isoTime): int {
+		$since = strtotime($isoTime);
+		if ($since === false) {
+			return 0;
+		}
+
+		$count = 0;
+		foreach (array_keys($this->config->getAllValues(Application::APP_ID, self::KEY_PREFIX)) as $key) {
+			if (!str_starts_with($key, self::KEY_PREFIX)) {
+				continue;
+			}
+			foreach ($this->all(substr($key, strlen(self::KEY_PREFIX))) as $entry) {
+				$at = strtotime($entry['at']);
+				if ($at !== false && $at >= $since) {
+					$count++;
+				}
+			}
+		}
+
+		return $count;
+	}
+
+	/**
 	 * Versions whose automatic update failed and are therefore skipped by the
 	 * job, oldest first, for the page to show with a retry action (#438).
 	 *
