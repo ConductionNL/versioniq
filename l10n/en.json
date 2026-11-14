@@ -279,6 +279,7 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Outside the update policy: %n release behind",
             "Outside the update policy: %n releases behind"
-        ]
+        ],
+        "Roll back to the last good version ({version})": "Roll back to the last good version ({version})"
     }
 }

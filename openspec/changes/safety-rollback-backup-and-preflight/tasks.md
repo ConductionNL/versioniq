@@ -4,7 +4,7 @@
 
 - [x] 1.1 Add `previous` to `lib/Service/Lkg/Lkg.php` and its array form, and read and write it in `LkgStore`. Verify: `tests/unit/Service/Lkg/LkgStoreTest.php` reads an old record without `previous`. Built 14 Nov: `Lkg::$previous` (one deep), omitted from the stored JSON when absent; `LkgStoreTest::testAnOldRecordReadsWithoutPreviousAndANewOneWithIt`, `LkgTest`.
 - [x] 1.2 In `InstallFinalizer`, move the current record into `previous` before writing the new one, unless the version is unchanged. Verify: `tests/unit/Service/Installer/InstallFinalizerTest.php`. Built 14 Nov: `Lkg::after()`; covered in `InstallFinalizerGoldenTest::testASuccessfulUpdateKeepsTheReplacedRecordAsPrevious` (there is no `InstallFinalizerTest.php`).
-- [ ] 1.3 Show "Roll back to <previous>" and, when different, "Roll back to the last good version" on the card in `src/App.vue`. Verify: `src/App.appCard.spec.ts` covers one and two targets.
+- [x] 1.3 Show "Roll back to <previous>" and, when different, "Roll back to the last good version" on the card in `src/App.vue`. Verify: `src/App.appCard.spec.ts` covers one and two targets. Built 14 Nov: `lkgRollbackTargets()` in `src/utils/migrationSafety.ts`; a record without `previous` keeps its single "Roll back to <version>" button; strings in `l10n/en|nl`.
 
 ## 2. Disk space
 

@@ -45,7 +45,7 @@ import { buildChangelogRange } from './utils/changelog.ts'
 import { tabForHash } from './utils/connectionRegistry.ts'
 import { currentLoginName, enableApp } from './utils/enableApp.ts'
 import { normalizeInstallResult, withSourceOverride } from './utils/installResult.ts'
-import { shouldOfferLkgRollback } from './utils/migrationSafety.ts'
+import { lkgRollbackTargets } from './utils/migrationSafety.ts'
 import { filterByUpdates, isOutsidePolicy, outsidePolicyLabel, updateBadge, updatesFreshnessLabel as updatesFreshnessLabelFor } from './utils/pendingUpdates.ts'
 import { repinApp } from './utils/repin.ts'
 import { isBlockedBySafeMode } from './utils/safeMode.ts'
@@ -2603,15 +2603,19 @@ watch(dryRunEnabled, () => {
 												@click="openEnableDialog(app.id)">
 												{{ t('versioniq', 'Enable') }}
 											</button>
-											<button
-												v-if="!app.isCore && app.lkg && shouldOfferLkgRollback(app)"
-												type="button"
-												:class="$style.appCardButton"
-												:disabled="isCheckingVersions || isInstallingVersion"
-												:title="t('versioniq', 'Roll back to the last version that finalized cleanly through Versioniq')"
-												@click="rollbackToLastKnownGood(app.id, app.lkg.version)">
-												{{ t('versioniq', 'Roll back to {version}', { version: app.lkg.version }) }}
-											</button>
+											<template v-if="!app.isCore">
+												<button
+													v-for="target in lkgRollbackTargets(app)"
+													:key="target.version"
+													type="button"
+													:class="$style.appCardButton"
+													data-testid="app-rollback-button"
+													:disabled="isCheckingVersions || isInstallingVersion"
+													:title="t('versioniq', 'Roll back to the last version that finalized cleanly through Versioniq')"
+													@click="rollbackToLastKnownGood(app.id, target.version)">
+													{{ target.label }}
+												</button>
+											</template>
 										</article>
 									</div>
 									<p v-if="!selectedApp && filteredApps.length === 0" :class="$style.noFilterResult">
