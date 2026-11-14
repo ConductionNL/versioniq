@@ -308,6 +308,32 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Buiten het updatebeleid: %n release achter",
             "Buiten het updatebeleid: %n releases achter"
+        ],
+        "Update": "Bijwerken",
+        "Close": "Sluiten",
+        "Update {appId}": "{appId} bijwerken",
+        "{appId} moves from {fromVersion} to {toVersion}.": "{appId} gaat van {fromVersion} naar {toVersion}.",
+        "This version resolves advisory {advisoryId}.": "Deze versie lost beveiligingsmelding {advisoryId} op.",
+        "Loading release notes…": "Release notes laden…",
+        "Pinned to {version}": "Vastgezet op {version}",
+        "Updating…": "Bijwerken…",
+        "Updated to {version}": "Bijgewerkt naar {version}",
+        "Already up to date": "Al up-to-date",
+        "Failed ({category}): {message}": "Mislukt ({category}): {message}",
+        "Failed: {message}": "Mislukt: {message}",
+        "Skipped": "Overgeslagen",
+        "Waiting": "Wachten",
+        "Stop after this install": "Stoppen na deze installatie",
+        "Update all apps": "Alle apps bijwerken",
+        "Apps are installed one after the other. Each install switches maintenance mode on and off, so users may see short maintenance pauses.": "Apps worden een voor een geïnstalleerd. Elke installatie zet de onderhoudsmodus aan en weer uit, dus gebruikers kunnen korte onderhoudspauzes zien.",
+        "{appId}: {fromVersion} to {toVersion}": "{appId}: {fromVersion} naar {toVersion}",
+        "The run stops after the current install.": "De reeks stopt na de huidige installatie.",
+        "Update all ({count})": "Alles bijwerken ({count})",
+        "Update to {version}": "Bijwerken naar {version}",
+        "Update to safe version {version}": "Bijwerken naar veilige versie {version}",
+        "_Update %n app_::_Update %n apps_": [
+            "%n app bijwerken",
+            "%n apps bijwerken"
         ]
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"

@@ -279,6 +279,33 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Outside the update policy: %n release behind",
             "Outside the update policy: %n releases behind"
+        ],
+        "Update": "Update",
+        "Cancel": "Cancel",
+        "Close": "Close",
+        "Update {appId}": "Update {appId}",
+        "{appId} moves from {fromVersion} to {toVersion}.": "{appId} moves from {fromVersion} to {toVersion}.",
+        "This version resolves advisory {advisoryId}.": "This version resolves advisory {advisoryId}.",
+        "Loading release notes…": "Loading release notes…",
+        "Pinned to {version}": "Pinned to {version}",
+        "Updating…": "Updating…",
+        "Updated to {version}": "Updated to {version}",
+        "Already up to date": "Already up to date",
+        "Failed ({category}): {message}": "Failed ({category}): {message}",
+        "Failed: {message}": "Failed: {message}",
+        "Skipped": "Skipped",
+        "Waiting": "Waiting",
+        "Stop after this install": "Stop after this install",
+        "Update all apps": "Update all apps",
+        "Apps are installed one after the other. Each install switches maintenance mode on and off, so users may see short maintenance pauses.": "Apps are installed one after the other. Each install switches maintenance mode on and off, so users may see short maintenance pauses.",
+        "{appId}: {fromVersion} to {toVersion}": "{appId}: {fromVersion} to {toVersion}",
+        "The run stops after the current install.": "The run stops after the current install.",
+        "Update all ({count})": "Update all ({count})",
+        "Update to {version}": "Update to {version}",
+        "Update to safe version {version}": "Update to safe version {version}",
+        "_Update %n app_::_Update %n apps_": [
+            "Update %n app",
+            "Update %n apps"
         ]
     }
 }
