@@ -77,7 +77,7 @@ final class InstanceConnectionStoreTest extends TestCase {
 
 	public function testASavedConnectionHoldsNoPlaintextPassword(): void {
 		$store = $this->store();
-		$connection = $store->save($this->acceptance(), 'app-password-123', 'alice');
+		$connection = $store->save(array_replace($this->acceptance(), ['password' => 'app-password-123']), 'alice');
 
 		self::assertSame('https://acc.example.org', $connection->baseUrl);
 		self::assertSame('alice', $connection->addedBy);
@@ -93,7 +93,7 @@ final class InstanceConnectionStoreTest extends TestCase {
 		$store = $this->store();
 		foreach (['http://acc.example.org', 'https://user:pw@acc.example.org', 'https://acc.example.org/?x=1', 'acc.example.org', ''] as $address) {
 			try {
-				$store->save($this->acceptance(['baseUrl' => $address]), 'pw', 'alice');
+				$store->save(array_replace($this->acceptance(['baseUrl' => $address]), ['password' => 'pw']), 'alice');
 				self::fail('expected a refusal for ' . $address);
 			} catch (InvalidArgumentException $error) {
 				self::assertStringStartsWith('Enter an https address', $error->getMessage());
@@ -105,7 +105,7 @@ final class InstanceConnectionStoreTest extends TestCase {
 
 	public function testAMalformedStoredValueReadsAsAbsent(): void {
 		$store = $this->store();
-		$store->save($this->acceptance(['id' => 'test', 'order' => 0]), 'pw', 'alice');
+		$store->save(array_replace($this->acceptance(['id' => 'test', 'order' => 0]), ['password' => 'pw']), 'alice');
 		$this->config['instance.broken'] = '{"id": "broken", "name": "Broken"}';
 		$this->config['instance.garbage'] = 'not json';
 		$this->config['instance.test.manifest'] = '{"apps": []}';
@@ -118,18 +118,18 @@ final class InstanceConnectionStoreTest extends TestCase {
 
 	public function testConnectionsAreListedInChainOrder(): void {
 		$store = $this->store();
-		$store->save($this->acceptance(['id' => 'production', 'name' => 'Production', 'stage' => 'production', 'order' => 2]), 'pw', 'alice');
-		$store->save($this->acceptance(), 'pw', 'alice');
-		$store->save($this->acceptance(['id' => 'test', 'name' => 'Test', 'stage' => 'test', 'order' => 0]), 'pw', 'alice');
+		$store->save(array_replace($this->acceptance(['id' => 'production', 'name' => 'Production', 'stage' => 'production', 'order' => 2]), ['password' => 'pw']), 'alice');
+		$store->save(array_replace($this->acceptance(), ['password' => 'pw']), 'alice');
+		$store->save(array_replace($this->acceptance(['id' => 'test', 'name' => 'Test', 'stage' => 'test', 'order' => 0]), ['password' => 'pw']), 'alice');
 
 		self::assertSame(['test', 'acceptance', 'production'], array_map(static fn (InstanceConnection $c): string => $c->id, $store->all()));
 	}
 
 	public function testAChangeWithoutAPasswordKeepsTheStoredOneAndTheAdder(): void {
 		$store = $this->store();
-		$store->save($this->acceptance(), 'first-password', 'alice');
+		$store->save(array_replace($this->acceptance(), ['password' => 'first-password']), 'alice');
 
-		$changed = $store->save($this->acceptance(['name' => 'Acceptatie']), '', 'bob');
+		$changed = $store->save(array_replace($this->acceptance(['name' => 'Acceptatie']), ['password' => '']), 'bob');
 
 		self::assertSame('Acceptatie', $changed->name);
 		self::assertSame('alice', $changed->addedBy);
@@ -149,7 +149,7 @@ final class InstanceConnectionStoreTest extends TestCase {
 		];
 		foreach ($cases as [$fields, $password, $message]) {
 			try {
-				$store->save($fields, $password, 'alice');
+				$store->save(array_replace($fields, ['password' => $password]), 'alice');
 				self::fail('expected: ' . $message);
 			} catch (InvalidArgumentException $error) {
 				self::assertStringStartsWith($message, $error->getMessage());
@@ -161,7 +161,7 @@ final class InstanceConnectionStoreTest extends TestCase {
 
 	public function testDeleteRemovesTheConnectionAndItsCachedManifest(): void {
 		$store = $this->store();
-		$store->save($this->acceptance(), 'pw', 'alice');
+		$store->save(array_replace($this->acceptance(), ['password' => 'pw']), 'alice');
 		$this->config['instance.acceptance.manifest'] = '{}';
 
 		self::assertTrue($store->delete('acceptance'));

@@ -96,40 +96,67 @@ class InstanceConnectionStore {
 	 * change without one keeps the stored password.
 	 *
 	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-connects-other-instances-that-run-versioniq
-	 * @param array<string, mixed> $fields id, name, stage, order, baseUrl and username
+	 * @param array<string, mixed> $fields id, name, stage, order, baseUrl, username and password
+	 *                                     (the app password, empty to keep the stored one)
 	 * @throws InvalidArgumentException naming the first field that is not acceptable
 	 */
-	public function save(
-		array $fields,
-		#[\SensitiveParameter]
-		string $password,
-		string $actorUid,
-	): InstanceConnection {
-		$id = self::text($fields['id'] ?? '');
-		if (preg_match(self::ID_PATTERN, $id) !== 1 || $id === 'self') {
-			throw new InvalidArgumentException('Use an id of lowercase letters, digits and hyphens, for example acceptance.');
-		}
-
+	public function save(array $fields, string $actorUid): InstanceConnection {
+		$id = self::checkedId(self::text($fields['id'] ?? ''));
 		$existing = $this->get($id);
-		if ($existing === null && $password === '') {
-			throw new InvalidArgumentException('Enter the app password of an admin account on that instance.');
-		}
+		$encrypted = $this->encryptedPassword(password: (string)($fields['password'] ?? ''), existing: $existing);
 
-		$connection = new InstanceConnection(
-			$id,
-			$this->label($fields['name'] ?? '', 'name'),
-			$this->label($fields['stage'] ?? '', 'stage'),
-			$this->order($fields['order'] ?? 0),
-			$this->address(self::text($fields['baseUrl'] ?? '')),
-			$this->label($fields['username'] ?? '', 'username'),
-			$existing === null || $password !== '' ? $this->crypto->encrypt($password) : $existing->encryptedPassword,
-			$existing?->addedBy ?? $actorUid,
-			$existing?->addedAt ?? $this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
-		);
+		$connection = new InstanceConnection([
+			'id' => $id,
+			'name' => $this->label($fields['name'] ?? '', 'name'),
+			'stage' => $this->label($fields['stage'] ?? '', 'stage'),
+			'order' => $this->order($fields['order'] ?? 0),
+			'baseUrl' => $this->address(self::text($fields['baseUrl'] ?? '')),
+			'username' => $this->label($fields['username'] ?? '', 'username'),
+			'encryptedPassword' => $encrypted,
+			'addedBy' => $existing?->addedBy ?? $actorUid,
+			'addedAt' => $existing?->addedAt ?? $this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
+		]);
 
 		$this->config->setValueString(Application::APP_ID, self::KEY_PREFIX . $id, $connection->toJson(), sensitive: true);
 
 		return $connection;
+	}
+
+	/**
+	 * A connection id: lowercase letters, digits and hyphens, and never `self`.
+	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-connects-other-instances-that-run-versioniq
+	 * @throws InvalidArgumentException when it is not one
+	 */
+	private static function checkedId(string $id): string {
+		if (preg_match(self::ID_PATTERN, $id) !== 1 || $id === 'self') {
+			throw new InvalidArgumentException('Use an id of lowercase letters, digits and hyphens, for example acceptance.');
+		}
+
+		return $id;
+	}
+
+	/**
+	 * The password to store: the new one encrypted, or the stored one when a
+	 * change leaves it empty. A new connection must name one.
+	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-connects-other-instances-that-run-versioniq
+	 * @throws InvalidArgumentException when a new connection has none
+	 */
+	private function encryptedPassword(
+		#[\SensitiveParameter]
+		string $password,
+		?InstanceConnection $existing,
+	): string {
+		if ($password !== '') {
+			return $this->crypto->encrypt($password);
+		}
+
+		if ($existing === null) {
+			throw new InvalidArgumentException('Enter the app password of an admin account on that instance.');
+		}
+
+		return $existing->encryptedPassword;
 	}
 
 	/**
@@ -257,12 +284,22 @@ class InstanceConnectionStore {
 	 * @throws InvalidArgumentException when it is not a whole number in range
 	 */
 	private function order(mixed $value): int {
-		if (is_string($value) && preg_match('/^\d+$/', trim($value)) === 1) {
-			$value = (int)trim($value);
-		}
-
+		$value = self::wholeNumber(value: $value);
 		if (!is_int($value) || $value < 0 || $value > self::MAX_ORDER) {
 			throw new InvalidArgumentException('Enter an order from 0 to ' . self::MAX_ORDER . '.');
+		}
+
+		return $value;
+	}
+
+	/**
+	 * A string of digits as the number it spells; anything else as it is.
+	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-connects-other-instances-that-run-versioniq
+	 */
+	private static function wholeNumber(mixed $value): mixed {
+		if (is_string($value) && preg_match('/^\d+$/', trim($value)) === 1) {
+			return (int)trim($value);
 		}
 
 		return $value;

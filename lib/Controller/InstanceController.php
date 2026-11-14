@@ -37,6 +37,8 @@ use OCP\IUserSession;
  * @psalm-suppress UnusedClass
  */
 class InstanceController extends OCSController {
+	use ChecksAdmin;
+
 	public function __construct(
 		string $appName,
 		IRequest $request,
@@ -93,30 +95,8 @@ class InstanceController extends OCSController {
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'POST', url: '/api/instances')]
 	#[ApiRoute(verb: 'POST', url: '/api/v1/instances', postfix: 'v1')]
-	public function create(
-		string $id = '',
-		string $name = '',
-		string $stage = '',
-		int $order = 0,
-		string $baseUrl = '',
-		string $username = '',
-		#[\SensitiveParameter]
-		string $password = '',
-	): DataResponse {
-		if (!$this->isAdmin()) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
-		}
-
-		if ($this->store->get($id) !== null) {
-			return new DataResponse(['message' => 'A connection with this id exists.'], Http::STATUS_CONFLICT);
-		}
-
-		$saved = $this->saved(['id' => $id, 'name' => $name, 'stage' => $stage, 'order' => $order, 'baseUrl' => $baseUrl, 'username' => $username], $password, 'added');
-		if (is_string($saved)) {
-			return new DataResponse(['message' => $saved], Http::STATUS_BAD_REQUEST);
-		}
-
-		return new DataResponse($saved->toPublicArray(), Http::STATUS_CREATED);
+	public function create(string $id = '', string $name = '', string $stage = '', int $order = 0, string $baseUrl = '', string $username = '', #[\SensitiveParameter] string $password = ''): DataResponse {
+		return $this->write(fields: compact('id', 'name', 'stage', 'order', 'baseUrl', 'username', 'password'), creating: true);
 	}
 
 	/**
@@ -141,30 +121,8 @@ class InstanceController extends OCSController {
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PUT', url: '/api/instances/{id}')]
 	#[ApiRoute(verb: 'PUT', url: '/api/v1/instances/{id}', postfix: 'v1')]
-	public function update(
-		string $id,
-		string $name = '',
-		string $stage = '',
-		int $order = 0,
-		string $baseUrl = '',
-		string $username = '',
-		#[\SensitiveParameter]
-		string $password = '',
-	): DataResponse {
-		if (!$this->isAdmin()) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
-		}
-
-		if ($this->store->get($id) === null) {
-			return new DataResponse(['message' => 'No such connection.'], Http::STATUS_NOT_FOUND);
-		}
-
-		$saved = $this->saved(['id' => $id, 'name' => $name, 'stage' => $stage, 'order' => $order, 'baseUrl' => $baseUrl, 'username' => $username], $password, 'changed');
-		if (is_string($saved)) {
-			return new DataResponse(['message' => $saved], Http::STATUS_BAD_REQUEST);
-		}
-
-		return new DataResponse($saved->toPublicArray(), Http::STATUS_OK);
+	public function update(string $id, string $name = '', string $stage = '', int $order = 0, string $baseUrl = '', string $username = '', #[\SensitiveParameter] string $password = ''): DataResponse {
+		return $this->write(fields: compact('id', 'name', 'stage', 'order', 'baseUrl', 'username', 'password'), creating: false);
 	}
 
 	/**
@@ -198,19 +156,56 @@ class InstanceController extends OCSController {
 	}
 
 	/**
+	 * Add or change a connection for an administrator: 403 for anyone else,
+	 * 409 when an added id exists, 404 when a changed one does not.
+	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-connects-other-instances-that-run-versioniq
+	 * @param array<string, mixed> $fields The connection's fields, its password included
+	 * @param bool $creating Whether this adds the connection
+	 */
+	private function write(array $fields, bool $creating): DataResponse {
+		$refused = $this->refusal(id: (string)$fields['id'], creating: $creating);
+		if ($refused !== null) {
+			return $refused;
+		}
+
+		[$verb, $status] = $creating ? ['added', Http::STATUS_CREATED] : ['changed', Http::STATUS_OK];
+
+		return $this->respond(saved: $this->saved(fields: $fields, verb: $verb), status: $status);
+	}
+
+	/**
+	 * Why a write may not go ahead, or null when it may.
+	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-connects-other-instances-that-run-versioniq
+	 * @param string $id The connection id
+	 * @param bool $creating Whether this adds the connection
+	 */
+	private function refusal(string $id, bool $creating): ?DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$exists = $this->store->get($id) !== null;
+		if ($creating !== $exists) {
+			return null;
+		}
+
+		return $creating
+			? new DataResponse(['message' => 'A connection with this id exists.'], Http::STATUS_CONFLICT)
+			: new DataResponse(['message' => 'No such connection.'], Http::STATUS_NOT_FOUND);
+	}
+
+	/**
 	 * Save through the store and audit; a refused field gives the reason instead.
 	 *
-	 * @param array<string, mixed> $fields
+	 * @param array<string, mixed> $fields The connection's fields, its password included
+	 * @param string $verb How the audit entry names the change
 	 * @return InstanceConnection|string the saved connection, or why it was refused
 	 */
-	private function saved(
-		array $fields,
-		#[\SensitiveParameter]
-		string $password,
-		string $verb,
-	): InstanceConnection|string {
+	private function saved(array $fields, string $verb): InstanceConnection|string {
 		try {
-			$connection = $this->store->save($fields, $password, $this->actorUid());
+			$connection = $this->store->save($fields, $this->actorUid());
 		} catch (InvalidArgumentException $error) {
 			return $error->getMessage();
 		}
@@ -223,6 +218,21 @@ class InstanceController extends OCSController {
 	/**
 	 * One audit row per change, naming the connection, its stage and address; never the password.
 	 */
+	/**
+	 * The answer to a save: the connection without its password, or 400 with the reason.
+	 *
+	 * @param InstanceConnection|string $saved The saved connection, or why it was not saved.
+	 * @param int $status The status of a saved connection.
+	 * @return DataResponse<Http::STATUS_OK|Http::STATUS_CREATED, array{id: string, name: string, stage: string, order: int, baseUrl: string, username: string, addedBy: string, addedAt: string}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>
+	 */
+	private function respond(InstanceConnection|string $saved, int $status): DataResponse {
+		if (is_string($saved)) {
+			return new DataResponse(['message' => $saved], Http::STATUS_BAD_REQUEST);
+		}
+
+		return new DataResponse($saved->toPublicArray(), $status);
+	}
+
 	private function audit(InstanceConnection $connection, string $verb): void {
 		$this->auditLogger->record(
 			new AuditSubject($this->actorUid(), 'versioniq', AuditLogger::OPERATION_INSTANCE_CONNECTION),
@@ -234,14 +244,5 @@ class InstanceController extends OCSController {
 
 	private function actorUid(): string {
 		return $this->userSession->getUser()?->getUID() ?? '';
-	}
-
-	private function isAdmin(): bool {
-		$user = $this->userSession->getUser();
-		if ($user === null) {
-			return false;
-		}
-
-		return $this->groupManager->isAdmin($user->getUID());
 	}
 }
