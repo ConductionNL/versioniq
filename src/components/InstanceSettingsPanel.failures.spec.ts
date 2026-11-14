@@ -127,6 +127,7 @@ describe('InstanceSettingsPanel saving', () => {
 			githubWebBase: '',
 			advisoryFeedUrl: 'https://mirror.example.org/feed',
 			maxLinesBehind: '',
+			advisoryFeedSource: 'remote',
 		})
 		expect(wrapper.find('[data-testid="instance-settings-notice"]').text()).toBe('Settings saved.')
 	})

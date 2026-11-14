@@ -308,7 +308,23 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Buiten het updatebeleid: %n release achter",
             "Buiten het updatebeleid: %n releases achter"
-        ]
+        ],
+        "A file downloaded from the feed address, for an instance without internet access.": "Een bestand dat van het feedadres is gedownload, voor een instantie zonder internettoegang.",
+        "Advisory feed copy imported.": "Kopie van de adviezenfeed geïmporteerd.",
+        "Import a local copy of the advisory feed": "Een lokale kopie van de adviezenfeed importeren",
+        "Local copy of {date}": "Lokale kopie van {date}",
+        "No local copy has been imported.": "Er is nog geen lokale kopie geïmporteerd.",
+        "Read advisories from": "Adviezen lezen uit",
+        "Search in public GitHub repositories is off. Private repositories are still searched with your tokens.": "Zoeken in openbare GitHub-repositories staat uit. Privérepositories worden nog steeds doorzocht met je tokens.",
+        "Search in public GitHub repositories is on.": "Zoeken in openbare GitHub-repositories staat aan.",
+        "Search public GitHub repositories": "Openbare GitHub-repositories doorzoeken",
+        "Source binding cleared": "Bronkoppeling verwijderd",
+        "The advisory feed address": "Het adres van de adviezenfeed",
+        "The advisory feed copy could not be imported.": "De kopie van de adviezenfeed kon niet worden geïmporteerd.",
+        "The local copy (no internet needed)": "De lokale kopie (geen internet nodig)",
+        "The local copy is older than {days} days. Import a newer one.": "De lokale kopie is ouder dan {days} dagen. Importeer een nieuwere.",
+        "Trusted source added: {pattern}": "Vertrouwde bron toegevoegd: {pattern}",
+        "Trusted source removed: {pattern}": "Vertrouwde bron verwijderd: {pattern}"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

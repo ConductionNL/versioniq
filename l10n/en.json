@@ -279,6 +279,22 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Outside the update policy: %n release behind",
             "Outside the update policy: %n releases behind"
-        ]
+        ],
+        "A file downloaded from the feed address, for an instance without internet access.": "A file downloaded from the feed address, for an instance without internet access.",
+        "Advisory feed copy imported.": "Advisory feed copy imported.",
+        "Import a local copy of the advisory feed": "Import a local copy of the advisory feed",
+        "Local copy of {date}": "Local copy of {date}",
+        "No local copy has been imported.": "No local copy has been imported.",
+        "Read advisories from": "Read advisories from",
+        "Search in public GitHub repositories is off. Private repositories are still searched with your tokens.": "Search in public GitHub repositories is off. Private repositories are still searched with your tokens.",
+        "Search in public GitHub repositories is on.": "Search in public GitHub repositories is on.",
+        "Search public GitHub repositories": "Search public GitHub repositories",
+        "Source binding cleared": "Source binding cleared",
+        "The advisory feed address": "The advisory feed address",
+        "The advisory feed copy could not be imported.": "The advisory feed copy could not be imported.",
+        "The local copy (no internet needed)": "The local copy (no internet needed)",
+        "The local copy is older than {days} days. Import a newer one.": "The local copy is older than {days} days. Import a newer one.",
+        "Trusted source added: {pattern}": "Trusted source added: {pattern}",
+        "Trusted source removed: {pattern}": "Trusted source removed: {pattern}"
     }
 }
