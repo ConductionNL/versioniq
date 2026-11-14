@@ -13,6 +13,7 @@
 - [x] 2.1 Add `PolicyFile` with the shape and validation of design D3. Verify: `tests/unit/Service/Policy/PolicyFileTest.php` with a valid file and one error per rule, each naming its JSON path.
   - Done: `lib/Service/Policy/PolicyFile.php` (read, parse, validate, encode) with `PolicyFileContents` and `PolicyFileException` (every problem as `<json path>: <reason>`); `PolicyFileTest` covers a valid file, a round trip and one error per rule. The import/export plan and apply live in `PolicyFileSync` (`PolicyFileSyncTest`).
 - [ ] 2.2 Add `occ versioniq:policies:export` and `occ versioniq:policies:import` with `--dry-run` and `--prune`, and register them. Verify: unit tests; `tests/e2e/cli.spec.ts` exports, edits one level, imports with `--dry-run` (no change) and without it (change and audit row).
+  - Unit part done: `lib/Command/ExportPolicies.php` (to a file or standard output) and `lib/Command/ImportPolicies.php` (`--dry-run`, `--prune`; refused while `config.php` names a policy file), registered in `appinfo/info.xml`; `tests/unit/Command/PolicyFileCommandsTest.php` exports, edits one level, imports with `--dry-run` (nothing written) and without it (the change and its audit row). Left open for the e2e run in `tests/e2e/cli.spec.ts` against a live instance.
 - [ ] 2.3 Add the file mode of design D4. Verify: unit tests that an invalid file makes the job do nothing, and that policy writes answer 409 in file mode; the page renders the read-only state (vitest).
 
 ## 3. Close
