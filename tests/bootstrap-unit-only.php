@@ -52,3 +52,9 @@ foreach (['ConnectionStatusReportedEvent', 'ConnectionRefreshRequestedEvent'] as
 }
 
 unset($integriqStubEvent);
+
+// OpenRegister's MCP provider contract (admin-mcp-assistant D1): the real
+// interface when OpenRegister is installed alongside, the stub otherwise.
+if (!interface_exists('\\OCA\\OpenRegister\\Mcp\\IMcpToolProvider')) {
+	require_once __DIR__ . '/stubs/OpenRegister/Mcp/IMcpToolProvider.php';
+}
