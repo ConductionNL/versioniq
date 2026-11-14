@@ -279,6 +279,9 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Outside the update policy: %n release behind",
             "Outside the update policy: %n releases behind"
-        ]
+        ],
+        "Installing from a file": "Installing from a file",
+        "Allow unsigned uploads": "Allow unsigned uploads",
+        "An archive the App Store does not sign runs whatever code it contains. Leave this off unless you install such archives and check them yourself.": "An archive the App Store does not sign runs whatever code it contains. Leave this off unless you install such archives and check them yourself."
     }
 }

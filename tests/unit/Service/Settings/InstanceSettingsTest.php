@@ -47,6 +47,15 @@ final class InstanceSettingsTest extends TestCase {
 				return true;
 			},
 		);
+		$appConfig->method('getValueBool')->willReturnCallback(
+			fn (string $app, string $key, bool $default = false): bool => (bool)($this->config[$key] ?? $default),
+		);
+		$appConfig->method('setValueBool')->willReturnCallback(
+			function (string $app, string $key, bool $value): bool {
+				$this->config[$key] = $value;
+				return true;
+			},
+		);
 		$appConfig->method('deleteKey')->willReturnCallback(
 			function (string $app, string $key): void {
 				unset($this->config[$key]);
@@ -139,6 +148,48 @@ final class InstanceSettingsTest extends TestCase {
 	 *
 	 * @spec openspec/specs/pending-updates/spec.md
 	 */
+	/**
+	 * install-manual-upload D4: unsigned uploads are off until an admin turns them on.
+	 *
+	 * @spec openspec/changes/install-manual-upload/tasks.md#task-2.3
+	 */
+	public function testUnsignedUploadsAreOffUntilTurnedOn(): void {
+		$store = $this->store();
+		self::assertFalse($store->read()['allowUnsignedUpload']);
+		self::assertFalse($store->allowsUnsignedUpload());
+
+		self::assertSame(['allowUnsignedUpload'], $store->update(['allowUnsignedUpload' => 'true']));
+		self::assertTrue($this->config[InstanceSettings::KEY_ALLOW_UNSIGNED_UPLOAD]);
+		self::assertSame('install.allow_unsigned_upload', InstanceSettings::KEY_ALLOW_UNSIGNED_UPLOAD);
+		self::assertTrue($store->read()['allowUnsignedUpload']);
+
+		$store->update(['allowUnsignedUpload' => ' 0 ']);
+		self::assertFalse($store->allowsUnsignedUpload());
+		$store->update(['allowUnsignedUpload' => 'TRUE']);
+		self::assertTrue($store->allowsUnsignedUpload());
+		$store->update(['allowUnsignedUpload' => 'false']);
+		self::assertFalse($store->allowsUnsignedUpload());
+	}
+
+	/**
+	 * Anything but true, false, 1 or 0 is refused, and nothing is written.
+	 *
+	 * @spec openspec/changes/install-manual-upload/tasks.md#task-2.3
+	 */
+	public function testTheUnsignedUploadSwitchRefusesOtherValues(): void {
+		foreach (['yes', '', 'on', '2'] as $value) {
+			try {
+				$this->store()->update(['allowUnsignedUpload' => $value, 'auditRetentionDays' => '90']);
+				self::fail('accepted ' . var_export($value, true));
+			} catch (InvalidArgumentException $error) {
+				self::assertSame('Allow unsigned uploads must be true or false.', $error->getMessage());
+			}
+		}
+
+		self::assertArrayNotHasKey(InstanceSettings::KEY_ALLOW_UNSIGNED_UPLOAD, $this->config);
+		self::assertArrayNotHasKey('audit_retention_days', $this->config);
+	}
+
 	public function testTheLagLimitIsOffUntilSetAndAcceptsZeroToTen(): void {
 		$store = $this->store();
 		self::assertNull($store->read()['maxLinesBehind']);

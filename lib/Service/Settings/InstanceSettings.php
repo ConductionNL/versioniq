@@ -44,6 +44,11 @@ class InstanceSettings {
 	public const KEY_ADVISORY_FEED = 'advisory.feed_base';
 	/** How many release lines an app may fall behind; absent means off (inventory-pending-updates D3). */
 	public const KEY_MAX_LINES_BEHIND = 'update.max_lines_behind';
+	/** Whether an archive the App Store does not sign may be installed from an upload; off unless an admin turns it on (install-manual-upload D4). */
+	public const KEY_ALLOW_UNSIGNED_UPLOAD = 'install.allow_unsigned_upload';
+
+	/** The values the unsigned-upload switch accepts, by what they mean. */
+	private const SWITCH_VALUES = ['true' => true, '1' => true, 'false' => false, '0' => false];
 
 	public const MAX_LINES_BEHIND = 10;
 
@@ -73,7 +78,7 @@ class InstanceSettings {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int}
+	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, allowUnsignedUpload: bool}
 	 */
 	public function read(): array {
 		$retention = $this->config->getValueInt(Application::APP_ID, PruneAuditJob::CONFIG_KEY_RETENTION_DAYS, PruneAuditJob::DEFAULT_RETENTION_DAYS);
@@ -95,6 +100,7 @@ class InstanceSettings {
 			'advisoryFeedDefault' => NextcloudAdvisoryFeed::DEFAULT_FEED_URL,
 			'maxLinesBehind' => $this->maxLinesBehind(),
 			'maxLinesBehindMax' => self::MAX_LINES_BEHIND,
+			'allowUnsignedUpload' => $this->allowsUnsignedUpload(),
 		];
 	}
 
@@ -114,8 +120,12 @@ class InstanceSettings {
 		$ints = $this->validatedInts($fields);
 		$lagLimit = $this->validatedLagLimit($fields);
 		$urls = $this->validatedUrls($fields);
+		$unsigned = $this->validatedSwitch($fields, 'allowUnsignedUpload', 'Allow unsigned uploads');
 
 		$this->storeInts($ints);
+		if ($unsigned !== null) {
+			$this->config->setValueBool(Application::APP_ID, self::KEY_ALLOW_UNSIGNED_UPLOAD, $unsigned);
+		}
 		if ($lagLimit !== null) {
 			$this->storeOrClear(self::KEY_MAX_LINES_BEHIND, $lagLimit);
 		}
@@ -134,7 +144,7 @@ class InstanceSettings {
 	 */
 	private static function appliedFields(array $fields): array {
 		return array_values(array_filter(
-			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS)],
+			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS), 'allowUnsignedUpload'],
 			static fn (string $field): bool => isset($fields[$field]),
 		));
 	}
@@ -170,6 +180,34 @@ class InstanceSettings {
 		}
 
 		return $ints;
+	}
+
+	/**
+	 * Whether an admin allowed installing an archive upload the App Store does not sign.
+	 *
+	 * @spec openspec/changes/install-manual-upload/tasks.md#task-2.3
+	 */
+	public function allowsUnsignedUpload(): bool {
+		return $this->config->getValueBool(Application::APP_ID, self::KEY_ALLOW_UNSIGNED_UPLOAD, false);
+	}
+
+	/**
+	 * An on/off field as a boolean, or null when it is not given.
+	 *
+	 * @param array<string, string> $fields
+	 * @throws InvalidArgumentException when the value is not true, false, 1 or 0
+	 */
+	private function validatedSwitch(array $fields, string $field, string $label): ?bool {
+		if (!isset($fields[$field])) {
+			return null;
+		}
+
+		$value = strtolower(trim($fields[$field]));
+		if (!array_key_exists($value, self::SWITCH_VALUES)) {
+			throw new InvalidArgumentException(sprintf('%s must be true or false.', $label));
+		}
+
+		return self::SWITCH_VALUES[$value];
 	}
 
 	/**

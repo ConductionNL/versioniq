@@ -2,14 +2,14 @@
 
 ## 1. Inspect
 
-- [ ] 1.1 Add `UploadedArchive` (temporary storage, `info.xml` read, SHA-256, one-hour expiry) and `POST /api/upload/inspect`. Verify: `tests/unit/Service/Installer/UploadedArchiveTest.php` with a valid archive, one without `info.xml`, and one over the cap; `tests/unit/Controller/ApiTest.php` asserts 403 for a non-admin.
+- [x] 1.1 Add `UploadedArchive` (temporary storage, `info.xml` read, SHA-256, one-hour expiry) and `POST /api/upload/inspect`. Verify: `tests/unit/Service/Installer/UploadedArchiveTest.php` with a valid archive, one without `info.xml`, and one over the cap; `tests/unit/Controller/ApiTest.php` asserts 403 for a non-admin.
 - [ ] 1.2 Check a store-listed upload against the store signature. Verify: a unit test with a fixture store release whose signature matches, and one where the bytes differ.
 
 ## 2. Install
 
 - [ ] 2.1 Add `installUploadedArchive()` with the guards of `installAppVersion()`, the signed and unsigned pipelines, and `POST /api/upload/{token}/install`. Verify: unit tests for a signed upload, an unsigned upload with the setting off (refused), a wrong expected SHA-256 (refused), a pinned app (409), a downgrade without acknowledgement (409).
 - [ ] 2.2 Write the audit row with source `upload` and the archive to the artifact cache. Verify: a unit test on both writes.
-- [ ] 2.3 Add `install.allow_unsigned_upload` to `InstanceSettings` and the Settings tab. Verify: `InstanceSettingsPanel.spec.ts`.
+- [x] 2.3 Add `install.allow_unsigned_upload` to `InstanceSettings` and the Settings tab. Verify: `InstanceSettingsPanel.spec.ts`.
 
 ## 3. Page
 

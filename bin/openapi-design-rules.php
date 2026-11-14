@@ -139,6 +139,7 @@ $descriptions = [
 	'forge' => 'The self-hosted Forgejo or Gitea host that app sources are read from',
 	'open_api' => 'The OpenAPI document that describes this API',
 	'settings' => 'Instance settings of Versioniq',
+	'upload' => 'Installing an app from an uploaded archive',
 ];
 ksort($tags);
 $document->tags = [];

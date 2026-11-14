@@ -308,7 +308,10 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Buiten het updatebeleid: %n release achter",
             "Buiten het updatebeleid: %n releases achter"
-        ]
+        ],
+        "Installing from a file": "Installeren vanuit een bestand",
+        "Allow unsigned uploads": "Niet-ondertekende uploads toestaan",
+        "An archive the App Store does not sign runs whatever code it contains. Leave this off unless you install such archives and check them yourself.": "Een archief dat de App Store niet ondertekent, voert alle code uit die erin zit. Laat dit uit, tenzij je zulke archieven installeert en ze zelf controleert."
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }
