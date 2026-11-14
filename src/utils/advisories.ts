@@ -9,6 +9,23 @@ export type AdvisoryRecord = {
 	id: string
 	severity: string
 	summary: string
+	/** `ncsc` for an NCSC-NL record (advisories-ncsc-feed); absent for the others. */
+	source?: string
+	cveIds?: string[]
+	ratings?: { likelihood: string | null, damage: string | null }
+	published?: string
+	url?: string
+	/** How an NCSC-NL record's versions relate to the installed one. */
+	match?: 'affected' | 'not_affected' | 'version_not_stated'
+	/** The ids of records folded into this one because they share a CVE. */
+	relatedIds?: string[]
+}
+
+/** How far the NCSC-NL read got, from the advisory settings (advisories-ncsc-feed). */
+export type NcscStatus = {
+	enabled: boolean
+	readUpTo: string | null
+	caughtUp: boolean
 }
 
 export type AdvisoryCorrelation = {

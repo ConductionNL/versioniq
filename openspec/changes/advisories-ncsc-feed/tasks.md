@@ -15,9 +15,9 @@
 ## 3. Setting, display and connection
 
 - [x] 3.1 Add `advisory.ncsc_enabled` to `AdvisorySettingsStore` and `GET` and `PUT /api/advisory/settings`, and `advisory.ncsc_feed_base` (https only) to `InstanceSettings`. Verify: `ApiTest` round-trips the switch; `InstanceSettingsTest` refuses an `http://` base.
-- [ ] 3.2 Show NCSC-NL records on the Advisories tab per D7, with the "not stated" line and the catching-up line. Verify: `src/components/AdvisoriesPanel.spec.ts` renders an NCSC-NL record with both ratings and a merged record with both ids.
+- [x] 3.2 Show NCSC-NL records on the Advisories tab per D7, with the "not stated" line and the catching-up line. Verify: `src/components/AdvisoriesPanel.spec.ts` renders an NCSC-NL record with both ratings and a merged record with both ids.
 - [x] 3.3 Add the `ncsc` row to `lib/Settings/connections.json` and report each read. Verify: `tests/unit/Service/Connection/ConnectionReportServiceTest.php` asserts the report with read and matched counts.
-- [ ] 3.4 Add the new strings to `l10n/en.json` and `l10n/nl.json`. Verify: `npm run check:l10n-js`.
+- [x] 3.4 Add the new strings to `l10n/en.json` and `l10n/nl.json`. Verify: `npm run check:l10n-js`.
 - [ ] 3.5 Serve a CSAF directory from the fixture forge (`tests/e2e/fixtures/forge/server.mjs`: a `changes.csv` and documents about Nextcloud Server, one with a version range covering the CI server and one with `vers:unknown/*`, switchable through `/control`) and extend `tests/e2e/advisories.spec.ts`: switch NCSC-NL on, `runJob("AdvisoryRefreshJob")`, and see the affected advisory and the "does not state which versions" advisory in the Nextcloud server block. Verify: the spec passes in the Playwright job.
 
 ## 4. Close

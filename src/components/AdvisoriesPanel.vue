@@ -1,11 +1,12 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
-import type {AdvisoryCorrelation} from '../utils/advisories.ts';
+import type {AdvisoryCorrelation, NcscStatus} from '../utils/advisories.ts';
 
 import { n, t } from '@nextcloud/l10n'
 import { computed } from 'vue'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
-import { normalizeSeverity, severityLabel, splitAdvisoryRows } from '../utils/advisories.ts'
+import AdvisoryItem from './AdvisoryItem.vue'
+import { splitAdvisoryRows } from '../utils/advisories.ts'
 
 /**
  * Every advisory the last sweep stored, in one place: the Nextcloud server's
@@ -17,9 +18,23 @@ import { normalizeSeverity, severityLabel, splitAdvisoryRows } from '../utils/ad
 const props = defineProps<{
 	advisories: Record<string, AdvisoryCorrelation>
 	freshnessLabel: string
+	/** How far the NCSC-NL read got; null or absent when NCSC-NL checks are off. */
+	ncscStatus?: NcscStatus | null
 }>()
 
 const rows = computed(() => splitAdvisoryRows(props.advisories))
+
+/** "NCSC-NL: catching up, read up to {date}" until a sweep reached the present (advisories-ncsc-feed). */
+const ncscCatchingUp = computed(() => {
+	const status = props.ncscStatus
+	if (!status || !status.enabled || status.caughtUp) {
+		return ''
+	}
+
+	return status.readUpTo
+		? t('versioniq', 'NCSC-NL: catching up, read up to {date}', { date: status.readUpTo.slice(0, 10) })
+		: t('versioniq', 'NCSC-NL: not read yet')
+})
 </script>
 
 <template>
@@ -27,6 +42,9 @@ const rows = computed(() => splitAdvisoryRows(props.advisories))
 		<h3>{{ t('versioniq', 'Security advisories') }}</h3>
 		<p v-if="freshnessLabel" :class="$style.hint">
 			{{ freshnessLabel }}
+		</p>
+		<p v-if="ncscCatchingUp" :class="$style.hint" data-testid="advisories-ncsc-catching-up">
+			{{ ncscCatchingUp }}
 		</p>
 
 		<div :class="$style.block" data-testid="advisories-server">
@@ -47,14 +65,7 @@ const rows = computed(() => splitAdvisoryRows(props.advisories))
 				<details v-if="rows.server.advisories.length > 0" :open="rows.server.state === 'pinned-to-vulnerable'">
 					<summary>{{ t('versioniq', 'Show server advisories') }}</summary>
 					<ul :class="$style.list">
-						<li v-for="advisory in rows.server.advisories" :key="advisory.id" :class="$style.item">
-							<span
-								:class="[$style.severity, $style[`severity-${normalizeSeverity(advisory.severity)}`]]"
-								data-testid="advisory-severity"
-								:data-severity="normalizeSeverity(advisory.severity)">{{ severityLabel(advisory.severity) }}</span>
-							<code>{{ advisory.id }}</code>
-							<span>{{ advisory.summary }}</span>
-						</li>
+						<AdvisoryItem v-for="advisory in rows.server.advisories" :key="advisory.id" :advisory="advisory" />
 					</ul>
 				</details>
 			</template>
@@ -87,14 +98,7 @@ const rows = computed(() => splitAdvisoryRows(props.advisories))
 					{{ row.error }}
 				</p>
 				<ul :class="$style.list">
-					<li v-for="advisory in row.advisories" :key="advisory.id" :class="$style.item">
-						<span
-							:class="[$style.severity, $style[`severity-${normalizeSeverity(advisory.severity)}`]]"
-							data-testid="advisory-severity"
-							:data-severity="normalizeSeverity(advisory.severity)">{{ severityLabel(advisory.severity) }}</span>
-						<code>{{ advisory.id }}</code>
-						<span>{{ advisory.summary }}</span>
-					</li>
+					<AdvisoryItem v-for="advisory in row.advisories" :key="advisory.id" :advisory="advisory" />
 				</ul>
 			</article>
 		</div>
@@ -144,36 +148,5 @@ const rows = computed(() => splitAdvisoryRows(props.advisories))
 	margin: 4px 0 0;
 	padding: 0;
 	list-style: none;
-}
-
-.item {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-	align-items: baseline;
-}
-
-.severity {
-	padding: 0 8px;
-	border: 1px solid var(--color-border-dark);
-	border-radius: var(--border-radius-pill);
-	font-size: 0.9em;
-	font-weight: bold;
-}
-
-.severity-critical,
-.severity-high {
-	border-color: var(--color-error);
-	color: var(--color-error-text);
-}
-
-.severity-medium {
-	border-color: var(--color-warning);
-	color: var(--color-warning-text);
-}
-
-.severity-low,
-.severity-unknown {
-	color: var(--color-text-maxcontrast);
 }
 </style>
