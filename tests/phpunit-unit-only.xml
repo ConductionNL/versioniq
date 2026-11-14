@@ -44,6 +44,7 @@
 		<directory suffix="Test.php">unit/Settings</directory>
 		<directory suffix="Test.php">unit/Command</directory>
 		<directory suffix="Test.php">unit/Middleware</directory>
+		<directory suffix="Test.php">unit/Migration</directory>
 	</testsuite>
 	<source>
 		<include>

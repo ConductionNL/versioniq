@@ -53,14 +53,21 @@ class AuditLogger {
 	 * "Source binding changes are recorded", and "Pin lifecycle operations
 	 * are audited" (pin / unpin / pin_drift).
 	 *
+	 * `$advisories` names the advisories an entry is about (`advisory_open`,
+	 * `advisory_resolved`), stored as a JSON list of `{id, severity}`.
+	 *
+	 * @param list<array{id: string, severity: string}>|null $advisories The advisories the entry is about.
+	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/version-pinning/spec.md
+	 * @spec openspec/changes/audit-security-reports/specs/audit-trail/spec.md
 	 */
 	public function record(
 		AuditSubject $subject,
 		AuditedVersions $versions,
 		string $status,
 		?string $message = null,
+		?array $advisories = null,
 	): void {
 		if ($this->rejectsOperation($subject)) {
 			return;
@@ -70,6 +77,9 @@ class AuditLogger {
 			$entry = $this->entryFor($subject, $versions);
 			$entry->setStatus($status);
 			$entry->setMessage($this->sanitizeMessage($message));
+			if ($advisories !== null) {
+				$entry->setAdvisories(json_encode(array_values($advisories), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+			}
 			$entry->setCreatedAt($this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'));
 
 			$this->mapper->insert($entry);

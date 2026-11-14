@@ -356,6 +356,8 @@ final class ApiTest extends TestCase {
 			'status' => 'success',
 			'message' => null,
 			'createdAt' => '2026-07-23 12:00:00',
+			// audit-security-reports D2: null for an entry about no advisory.
+			'advisories' => null,
 		], $entry->jsonSerialize());
 	}
 
