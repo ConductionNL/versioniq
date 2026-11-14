@@ -38,6 +38,14 @@ final class AuditArgs {
 	 * @return list<mixed>
 	 */
 	public static function flatten(array $args): array {
+		// A mocked record() receives the default of every omitted optional
+		// parameter. An entry about no advisory carries `advisories: null`;
+		// leave it out so the flattened entry keeps its pre-advisory shape.
+		$advisories = self::position('advisories');
+		if ($advisories !== null && array_key_exists($advisories, $args) && $args[$advisories] === null) {
+			unset($args[$advisories]);
+		}
+
 		$flat = [];
 		foreach ($args as $arg) {
 			$properties = is_object($arg) ? (self::GROUPS[$arg::class] ?? null) : null;
@@ -125,5 +133,27 @@ final class AuditArgs {
 
 			return true;
 		});
+	}
+
+	/**
+	 * The message a record() call was given, by the parameter's position.
+	 *
+	 * @param list<mixed> $args The arguments a mocked record() received.
+	 */
+	public static function message(array $args): mixed {
+		return $args[self::position('message')] ?? null;
+	}
+
+	/**
+	 * The position of a record() parameter, or null when it has none by that name.
+	 */
+	private static function position(string $name): ?int {
+		foreach ((new ReflectionMethod(AuditLogger::class, 'record'))->getParameters() as $parameter) {
+			if ($parameter->getName() === $name) {
+				return $parameter->getPosition();
+			}
+		}
+
+		return null;
 	}
 }

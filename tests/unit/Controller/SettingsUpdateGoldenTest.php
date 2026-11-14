@@ -12,11 +12,13 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\Controller;
 
 require_once __DIR__ . '/../Support/DispatchesLikeNextcloud.php';
+require_once __DIR__ . '/../Support/AuditArgs.php';
 
 use InvalidArgumentException;
 use OCA\Versioniq\Controller\SettingsController;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Settings\InstanceSettings;
+use OCA\Versioniq\Tests\Unit\Support\AuditArgs;
 use OCA\Versioniq\Tests\Unit\Support\DispatchesLikeNextcloud;
 use OCP\IGroupManager;
 use OCP\IRequest;
@@ -122,8 +124,9 @@ final class SettingsUpdateGoldenTest extends TestCase {
 
 		$audit = $this->createMock(AuditLogger::class);
 		$audit->method('record')->willReturnCallback(function (mixed ...$args): void {
-			// The message is the last argument of record(), whatever shape the leading ones take.
-			$this->audits[] = end($args);
+			// The message argument of record(), by its position, whatever shape
+			// the leading ones take and whatever optional ones follow it.
+			$this->audits[] = AuditArgs::message($args);
 		});
 
 		$user = $this->createMock(IUser::class);

@@ -13,6 +13,7 @@ require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 
 use OCA\Versioniq\BackgroundJob\AdvisoryRefreshJob;
 use OCA\Versioniq\Service\Advisory\AdvisoryDigestNotifier;
+use OCA\Versioniq\Service\Advisory\AdvisoryExposureTracker;
 use OCA\Versioniq\Service\Advisory\AdvisoryNotifier;
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisoryService;
@@ -43,6 +44,7 @@ final class AdvisoryRefreshJobTest extends TestCase {
 		?LoggerInterface $logger = null,
 		int $now = 1_700_000_000,
 		?AdvisoryDigestNotifier $digestNotifier = null,
+		?AdvisoryExposureTracker $exposureTracker = null,
 	): void {
 		$time = $this->createMock(ITimeFactory::class);
 		$time->method('getTime')->willReturn($now);
@@ -58,6 +60,7 @@ final class AdvisoryRefreshJobTest extends TestCase {
 			'resultStore' => $store,
 			'settings' => $settings,
 			'logger' => $logger ?? $this->createMock(LoggerInterface::class),
+			'exposureTracker' => $exposureTracker,
 		]);
 
 		// run() is protected — this job is invoked by the cron runner, and the
@@ -184,5 +187,42 @@ final class AdvisoryRefreshJobTest extends TestCase {
 		$logger->expects($this->once())->method('error');
 
 		$this->runJob($service, $store, null, $logger);
+	}
+
+	/**
+	 * The new snapshot is handed to the exposure tracker after it is saved,
+	 * and a tracker failure is logged without stopping the notifications
+	 * (audit-security-reports D1).
+	 *
+	 * @spec openspec/changes/audit-security-reports/specs/audit-trail/spec.md#requirement-advisory-exposure-and-server-updates-are-recorded-in-the-history
+	 */
+	public function testTracksExposureAfterSavingAndSurvivesItsFailure(): void {
+		$correlations = ['notes' => $this->correlation('notes')];
+		$service = $this->createMock(AdvisoryService::class);
+		$service->method('correlateAll')->willReturn($correlations);
+
+		$calls = [];
+		$store = $this->createMock(AdvisoryResultStore::class);
+		$store->method('save')->willReturnCallback(function () use (&$calls): void {
+			$calls[] = 'save';
+		});
+		$tracker = $this->createMock(AdvisoryExposureTracker::class);
+		$tracker->expects($this->once())->method('track')->with($correlations, 1_700_000_000)
+			->willReturnCallback(function () use (&$calls): void {
+				$calls[] = 'track';
+				throw new \RuntimeException('config unavailable');
+			});
+		$notifier = $this->createMock(AdvisoryNotifier::class);
+		$notifier->expects($this->once())->method('notifyNewAdvisories')->willReturnCallback(function () use (&$calls): int {
+			$calls[] = 'notify';
+			return 0;
+		});
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->expects($this->once())->method('error')
+			->with('AdvisoryRefreshJob: advisory exposure could not be recorded', ['message' => 'config unavailable']);
+
+		$this->runJob($service, $store, $notifier, $logger, exposureTracker: $tracker);
+
+		$this->assertSame(['save', 'track', 'notify'], $calls);
 	}
 }

@@ -190,4 +190,36 @@ final class AuditLoggerTest extends TestCase {
 			['error', 'AuditLogger: failed to record audit entry', ['appId' => 'openregister', 'operation' => 'pin', 'message' => 'table missing']],
 		], $logged);
 	}
+
+	/**
+	 * An entry names the advisories it is about as a JSON list, read back as
+	 * a list; an entry without them stores null (audit-security-reports D2).
+	 *
+	 * @spec openspec/changes/audit-security-reports/specs/audit-trail/spec.md#requirement-advisory-exposure-and-server-updates-are-recorded-in-the-history
+	 */
+	public function testAdvisoriesAreStoredAsAJsonListAndReadBack(): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$captured = [];
+		$mapper->expects($this->exactly(2))->method('insert')
+			->with($this->callback(function (AuditEntry $entry) use (&$captured): bool {
+				$captured[] = $entry;
+
+				return true;
+			}));
+
+		$logger = new AuditLogger($mapper, $this->timeFactory(), $this->createMock(LoggerInterface::class));
+		$logger->record(
+			new \OCA\Versioniq\Service\Audit\AuditSubject('system', 'fixtureapp', 'advisory_open'),
+			new \OCA\Versioniq\Service\Audit\AuditedVersions(null, '1.0.0', null),
+			AuditLogger::STATUS_SUCCESS,
+			null,
+			[['id' => 'GHSA-xxxx-0001', 'severity' => 'high']],
+		);
+		AuditArgs::call($logger, 'alice', 'openregister', AuditLogger::OPERATION_INSTALL, '2.5.0', '2.6.0', 'appstore', AuditLogger::STATUS_SUCCESS, null);
+
+		$this->assertSame('[{"id":"GHSA-xxxx-0001","severity":"high"}]', $captured[0]->getAdvisories());
+		$this->assertSame([['id' => 'GHSA-xxxx-0001', 'severity' => 'high']], $captured[0]->jsonSerialize()['advisories']);
+		$this->assertNull($captured[1]->getAdvisories());
+		$this->assertNull($captured[1]->jsonSerialize()['advisories']);
+	}
 }

@@ -2,8 +2,8 @@
 
 ## 1. Record exposure and server updates
 
-- [ ] 1.1 Add the migration step with the nullable `advisories` column (guarded by `hasColumn`), the field on `AuditEntry`, and the optional parameter on `AuditLogger::record()`. Verify: `tests/unit/Service/Audit/AuditLoggerTest.php` writes and reads the JSON list; a unit test on the migration step with a schema double asserts it adds the column when missing and changes nothing when present.
-- [ ] 1.2 Add `AdvisoryExposureTracker::track()` per design D1 and D3, and call it in `AdvisoryRefreshJob` after `save()`. Verify: `tests/unit/Service/Advisory/AdvisoryExposureTrackerTest.php` covers open, resolved by update, by dismissal, by withdrawal, an unreached app kept open, the `tracking started` first run, and `server_update` on a changed server version.
+- [x] 1.1 Add the migration step with the nullable `advisories` column (guarded by `hasColumn`), the field on `AuditEntry`, and the optional parameter on `AuditLogger::record()`. Verify: `tests/unit/Service/Audit/AuditLoggerTest.php` writes and reads the JSON list; a unit test on the migration step with a schema double asserts it adds the column when missing and changes nothing when present.
+- [x] 1.2 Add `AdvisoryExposureTracker::track()` per design D1 and D3, and call it in `AdvisoryRefreshJob` after `save()`. Verify: `tests/unit/Service/Advisory/AdvisoryExposureTrackerTest.php` covers open, resolved by update, by dismissal, by withdrawal, an unreached app kept open, the `tracking started` first run, and `server_update` on a changed server version.
 
 ## 2. History filters and export
 
