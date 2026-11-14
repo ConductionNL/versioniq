@@ -44,18 +44,21 @@ final class VersionRanges {
 	 * declares no server range ('') or a range cannot be read, true when it
 	 * declares no PHP range and the server range admits the target.
 	 *
+	 * @param array{platformSpec: string, phpSpec: string} $ranges  The version's server and PHP ranges.
+	 * @param array{server: string, php: string}           $targets The target server major and PHP version.
+	 *
 	 * @spec openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness/spec.md#requirement-an-admin-checks-every-installed-app-against-a-target-server-major-and-php-version
 	 */
-	public static function admits(string $platformSpec, string $phpSpec, string $server, string $php): ?bool {
-		if ($platformSpec === '') {
+	public static function admits(array $ranges, array $targets): ?bool {
+		if ($ranges['platformSpec'] === '') {
 			return null;
 		}
-		$runsOnServer = AppStoreSource::satisfiesPlatformSpec($server, $platformSpec);
-		if ($runsOnServer !== true || $phpSpec === '') {
+		$runsOnServer = AppStoreSource::satisfiesPlatformSpec($targets['server'], $ranges['platformSpec']);
+		if ($runsOnServer !== true || $ranges['phpSpec'] === '') {
 			return $runsOnServer;
 		}
 
-		return AppStoreSource::satisfiesPhpSpec($php, $phpSpec);
+		return AppStoreSource::satisfiesPhpSpec($targets['php'], $ranges['phpSpec']);
 	}
 
 	/**

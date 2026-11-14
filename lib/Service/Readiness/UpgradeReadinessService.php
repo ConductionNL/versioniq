@@ -44,10 +44,11 @@ class UpgradeReadinessService {
 	 */
 	public function check(string $serverMajor, string $phpVersion): array {
 		$apps = [];
+		$targets = ['server' => $serverMajor, 'php' => $phpVersion];
 		foreach ($this->installer->getInstalledApps() as $app) {
 			$installed = $app['installedVersion'] ?? null;
 			if (is_string($installed) && $installed !== '') {
-				$apps[] = $this->verdictFor($app, $installed, $serverMajor, $phpVersion);
+				$apps[] = $this->verdictFor($app, $targets);
 			}
 		}
 
@@ -57,10 +58,12 @@ class UpgradeReadinessService {
 	/**
 	 * One app's row.
 	 *
-	 * @param array<string, mixed> $app The app card from InstallerService::getInstalledApps().
+	 * @param array<string, mixed> $app The app card from InstallerService::getInstalledApps(), with its installedVersion.
+	 * @param array{server: string, php: string} $targets The target server major and PHP version.
 	 * @return ReadinessRow
 	 */
-	private function verdictFor(array $app, string $installed, string $server, string $php): array {
+	private function verdictFor(array $app, array $targets): array {
+		$installed = (string)$app['installedVersion'];
 		$row = [
 			'id' => (string)$app['id'],
 			'label' => (string)($app['label'] ?? $app['id']),
@@ -70,18 +73,20 @@ class UpgradeReadinessService {
 			return $row + ['verdict' => 'shipped', 'version' => null];
 		}
 
-		$runsNow = $this->installedAdmits($row['id'], $server, $php);
+		$runsNow = $this->installedAdmits($row['id'], $targets);
 		if ($runsNow === true) {
 			return $row + ['verdict' => 'ready', 'version' => null];
 		}
 
-		return $row + $this->fromNewerVersions($row['id'], $installed, $runsNow === null, ['server' => $server, 'php' => $php]);
+		return $row + $this->fromNewerVersions($row + ['unknownNow' => $runsNow === null], $targets);
 	}
 
 	/**
 	 * Whether the installed version's own info.xml admits both targets.
+	 *
+	 * @param array{server: string, php: string} $targets The target server major and PHP version.
 	 */
-	private function installedAdmits(string $appId, string $server, string $php): ?bool {
+	private function installedAdmits(string $appId, array $targets): ?bool {
 		try {
 			$info = $this->appManager->getAppInfo($appId);
 		} catch (Throwable) {
@@ -89,7 +94,7 @@ class UpgradeReadinessService {
 		}
 		$ranges = VersionRanges::fromAppInfo(is_array($info) ? $info : []);
 
-		return VersionRanges::admits($ranges['platformSpec'], $ranges['phpSpec'], $server, $php);
+		return VersionRanges::admits($ranges, $targets);
 	}
 
 	/**
@@ -97,12 +102,14 @@ class UpgradeReadinessService {
 	 * targets; else `blocked` when every range was readable, `unknown` when
 	 * one was not or the source did not answer.
 	 *
+	 * @param array{id: string, installedVersion: string, unknownNow: bool} $row The app's id, installed version, and whether its own ranges were unreadable.
 	 * @param array{server: string, php: string} $targets
 	 * @return array{verdict: string, version: ?string}
 	 */
-	private function fromNewerVersions(string $appId, string $installed, bool $unknownNow, array $targets): array {
-		$listing = $this->installer->getAppVersions($appId);
-		$found = self::firstAdmitted(self::newerAscending($listing['versions'] ?? [], $installed), $targets);
+	private function fromNewerVersions(array $row, array $targets): array {
+		$listing = $this->installer->getAppVersions($row['id']);
+		$found = self::firstAdmitted(self::newerAscending($listing['versions'] ?? [], $row['installedVersion']), $targets);
+		$unknownNow = $row['unknownNow'];
 		if ($found['version'] !== null) {
 			return ['verdict' => 'updateFirst', 'version' => $found['version']];
 		}
@@ -122,7 +129,8 @@ class UpgradeReadinessService {
 	private static function firstAdmitted(array $entries, array $targets): array {
 		$unknown = false;
 		foreach ($entries as $entry) {
-			$admits = VersionRanges::admits(self::text($entry['platformSpec'] ?? null), self::text($entry['phpSpec'] ?? null), $targets['server'], $targets['php']);
+			$ranges = ['platformSpec' => self::text($entry['platformSpec'] ?? null), 'phpSpec' => self::text($entry['phpSpec'] ?? null)];
+			$admits = VersionRanges::admits($ranges, $targets);
 			if ($admits === true) {
 				return ['version' => (string)$entry['version'], 'unknown' => $unknown];
 			}

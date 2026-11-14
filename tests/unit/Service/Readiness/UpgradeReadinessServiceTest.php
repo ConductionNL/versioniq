@@ -139,10 +139,10 @@ final class UpgradeReadinessServiceTest extends TestCase {
 	}
 
 	public function testTheRangeRules(): void {
-		self::assertTrue(VersionRanges::admits('>=30 <=33', '', '33', '8.4'));
-		self::assertFalse(VersionRanges::admits('>=30 <=32', '>=8.1', '33', '8.2'));
-		self::assertFalse(VersionRanges::admits('>=30 <=33', '>=8.1 <=8.3', '33', '8.4'));
-		self::assertNull(VersionRanges::admits('', '>=8.1', '33', '8.2'));
-		self::assertNull(VersionRanges::admits('>=30', 'php8', '33', '8.2'));
+		self::assertTrue(VersionRanges::admits(['platformSpec' => '>=30 <=33', 'phpSpec' => ''], ['server' => '33', 'php' => '8.4']));
+		self::assertFalse(VersionRanges::admits(['platformSpec' => '>=30 <=32', 'phpSpec' => '>=8.1'], ['server' => '33', 'php' => '8.2']));
+		self::assertFalse(VersionRanges::admits(['platformSpec' => '>=30 <=33', 'phpSpec' => '>=8.1 <=8.3'], ['server' => '33', 'php' => '8.4']));
+		self::assertNull(VersionRanges::admits(['platformSpec' => '', 'phpSpec' => '>=8.1'], ['server' => '33', 'php' => '8.2']));
+		self::assertNull(VersionRanges::admits(['platformSpec' => '>=30', 'phpSpec' => 'php8'], ['server' => '33', 'php' => '8.2']));
 	}
 }
