@@ -10,7 +10,8 @@
 
 - [x] 2.1 Add `GET /api/sbom?format=` and `occ versioniq:sbom`. Verify: `tests/unit/Controller/ApiTest.php` (403 for a non-admin, a download for an admin) and `tests/unit/Command/ExportSbomTest.php`.
   - `SbomExporter` builds the document (instance id, time, a version 4 UUID); `SbomController` serves `GET /api/sbom?format=` as a download for admins (403 otherwise, 400 for another format), and `occ versioniq:sbom --format= [--output=]` prints or writes it. The route is in `openapi.json`. `SbomControllerTest`, `ExportSbomTest`, `SbomExporterTest`.
-- [ ] 2.2 Add the Export SBOM menu to `HistoryPanel.vue`. Verify: a vitest spec that both menu items call the right URL.
+- [x] 2.2 Add the Export SBOM menu to `HistoryPanel.vue`. Verify: a vitest spec that both menu items call the right URL.
+  - `src/components/SbomExportMenu.vue` (CycloneDX 1.5 and SPDX 2.3 buttons) sits at the top of the History tab in `App.vue`, beside `HistoryPanel` rather than inside it, so it stays clear of the other open History work. It fetches with the OCS header and saves the file. `src/components/SbomExportMenu.spec.ts` asserts both buttons call `/api/sbom?format=`.
 
 ## 3. A copy per update
 
