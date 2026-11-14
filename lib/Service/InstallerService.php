@@ -50,7 +50,7 @@ use OCP\IUserSession;
  *
  * @psalm-api
  * @psalm-type AppLists = array{enabled: array<string>, versions: array<string, string>, core: array<string>, info: array<string, array<string, mixed>>}
- * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string}}
+ * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,author:string,licence:string,links:array{website:?string,repository:?string,bugs:?string},isCore:bool,isShipped:bool,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string}}
  */
 class InstallerService {
 	/** Server-side changelog size cap; see "Version listings carry release notes". */
@@ -154,6 +154,7 @@ class InstallerService {
 		return [
 			'id' => $appId,
 			...self::appTexts($lists['info'][$appId] ?? [], $appId),
+			...self::appAbout($lists['info'][$appId] ?? []),
 			...$this->appStatus($appId, $lists),
 		];
 	}
@@ -174,6 +175,121 @@ class InstallerService {
 			'summary' => self::trimmedText($app, 'summary'),
 			'preview' => self::trimmedText($app, 'preview'),
 		];
+	}
+
+	/**
+	 * Who publishes the app, under which licence, and its declared links,
+	 * from the installed `info.xml` (inventory-app-details-card D1).
+	 *
+	 * @param array<string, mixed> $app The app's parsed info.
+	 *
+	 * @return array{author: string, licence: string, links: array{website: ?string, repository: ?string, bugs: ?string}}
+	 *
+	 * @spec openspec/changes/inventory-app-details-card/tasks.md#1-payload
+	 */
+	private static function appAbout(array $app): array {
+		return [
+			'author' => self::authorName(author: $app['author'] ?? null),
+			'licence' => self::licenceName(licence: $app['licence'] ?? ($app['license'] ?? null)),
+			'links' => [
+				'website' => self::webLink(value: $app['website'] ?? null),
+				'repository' => self::webLink(value: $app['repository'] ?? null),
+				'bugs' => self::webLink(value: $app['bugs'] ?? null),
+			],
+		];
+	}
+
+	/**
+	 * The authors' names joined with ", ": `info.xml` allows several
+	 * `author` elements with `mail` and `homepage` attributes, which arrive as
+	 * a string, an array with `@value`, or a list of either. Mail addresses
+	 * never reach the page (D2).
+	 *
+	 * @param mixed $author The parsed `author` value.
+	 *
+	 * @return string The names, or ''.
+	 *
+	 * @spec openspec/changes/inventory-app-details-card/tasks.md#1-payload
+	 */
+	private static function authorName(mixed $author): string {
+		if (is_string($author)) {
+			return trim($author);
+		}
+
+		if (!is_array($author)) {
+			return '';
+		}
+
+		if (array_key_exists('@value', $author)) {
+			return is_string($author['@value']) ? trim($author['@value']) : '';
+		}
+
+		$names = [];
+		foreach ($author as $key => $entry) {
+			if ($key === '@attributes') {
+				continue;
+			}
+
+			$name = self::authorName(author: $entry);
+			if ($name !== '' && !in_array($name, $names, true)) {
+				$names[] = $name;
+			}
+		}
+
+		return implode(', ', $names);
+	}
+
+	/**
+	 * The licence, or several joined with ", ".
+	 *
+	 * @param mixed $licence The parsed `licence` value.
+	 *
+	 * @return string The licence, or ''.
+	 */
+	private static function licenceName(mixed $licence): string {
+		if (is_string($licence)) {
+			return trim($licence);
+		}
+
+		if (!is_array($licence)) {
+			return '';
+		}
+
+		$names = array_values(array_filter(array_map(
+			static fn (mixed $entry): string => is_string($entry) ? trim($entry) : '',
+			$licence
+		)));
+
+		return implode(', ', array_unique($names));
+	}
+
+	/**
+	 * An http or https address, or null: any other scheme is dropped so the
+	 * card never renders a `javascript:` link (D3). A `repository` element
+	 * with a `type` attribute arrives as an array with `@value`.
+	 *
+	 * @param mixed $value The parsed value.
+	 *
+	 * @return ?string The address, or null.
+	 *
+	 * @spec openspec/changes/inventory-app-details-card/tasks.md#1-payload
+	 */
+	private static function webLink(mixed $value): ?string {
+		if (is_array($value) && array_key_exists('@value', $value)) {
+			$value = $value['@value'];
+		}
+
+		if (!is_string($value)) {
+			return null;
+		}
+
+		$url = trim($value);
+		$scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+		if (!in_array($scheme, ['http', 'https'], true) || filter_var($url, FILTER_VALIDATE_URL) === false) {
+			return null;
+		}
+
+		return $url;
 	}
 
 	/**

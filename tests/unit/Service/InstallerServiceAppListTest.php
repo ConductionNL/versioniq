@@ -125,4 +125,61 @@ final class InstallerServiceAppListTest extends TestCase {
 	public function testVersioniqItselfIsNeverListed(): void {
 		self::assertArrayNotHasKey('versioniq', $this->appsById());
 	}
+	/**
+	 * The card carries the publisher, licence and declared links from the
+	 * installed info.xml: authors joined without mail addresses, a missing
+	 * link as null, and only http or https links (inventory-app-details-card).
+	 */
+	public function testTheCardCarriesPublisherLicenceAndSafeLinks(): void {
+		\OC_App::$allApps = [
+			[
+				'id' => 'deck',
+				'name' => 'Deck',
+				'author' => 'Nextcloud',
+				'licence' => 'agpl',
+				'website' => 'https://github.com/nextcloud/deck',
+				'repository' => ['@attributes' => ['type' => 'git'], '@value' => 'https://github.com/nextcloud/deck.git'],
+				'bugs' => 'https://github.com/nextcloud/deck/issues',
+			],
+			[
+				'id' => 'calendar',
+				'name' => 'Calendar',
+				'author' => [
+					['@attributes' => ['mail' => 'georg@example.org', 'homepage' => 'https://example.org'], '@value' => 'Georg Ehrke'],
+					['@attributes' => ['mail' => 'thomas@example.org'], '@value' => 'Thomas Citharel'],
+					'Team Popcorn',
+				],
+				'licence' => ['agpl', 'mit'],
+				'website' => 'javascript:alert(1)',
+				'repository' => 'ftp://example.org/calendar',
+			],
+		];
+
+		try {
+			$apps = $this->appsById();
+		} finally {
+			\OC_App::$allApps = [];
+		}
+
+		self::assertSame('Nextcloud', $apps['deck']['author']);
+		self::assertSame('agpl', $apps['deck']['licence']);
+		self::assertSame(
+			[
+				'website' => 'https://github.com/nextcloud/deck',
+				'repository' => 'https://github.com/nextcloud/deck.git',
+				'bugs' => 'https://github.com/nextcloud/deck/issues',
+			],
+			$apps['deck']['links']
+		);
+
+		self::assertSame('Georg Ehrke, Thomas Citharel, Team Popcorn', $apps['calendar']['author']);
+		self::assertStringNotContainsString('@', $apps['calendar']['author']);
+		self::assertSame('agpl, mit', $apps['calendar']['licence']);
+		self::assertSame(['website' => null, 'repository' => null, 'bugs' => null], $apps['calendar']['links']);
+
+		// An app the server does not know (bound, not installed) has an empty card.
+		self::assertSame('', $apps['hermiq']['author']);
+		self::assertSame('', $apps['hermiq']['licence']);
+		self::assertSame(['website' => null, 'repository' => null, 'bugs' => null], $apps['hermiq']['links']);
+	}
 }

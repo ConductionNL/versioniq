@@ -271,7 +271,15 @@ OC.L10N.register(
         "Outside the update policy": "Outside the update policy",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"]
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"],
+        "About {app}": "About {app}",
+        "Publisher": "Publisher",
+        "Licence": "Licence",
+        "Installed": "Installed",
+        "Website": "Website",
+        "Report a problem": "Report a problem",
+        "disabled": "disabled",
+        "enabled": "enabled"
     },
     "nplurals=2; plural=(n != 1);"
 )
