@@ -42,7 +42,7 @@ class WebhookTargets {
 		}
 
 		$result = $this->sender->send($target, self::TEST_ALERT);
-		$this->store->recordDelivery($id, $result['ok'], $result['error']);
+		$this->store->recordDelivery($id, $result);
 
 		foreach ($this->store->all() as $view) {
 			if ($view['id'] === $id) {

@@ -57,7 +57,7 @@ final class WebhookTargetInput {
 		return [
 			'name' => self::name($stored['name'] ?? null),
 			'url' => self::url($stored['url'] ?? null, ['https', 'http']),
-			'format' => self::oneOf($stored['format'] ?? 'json', self::FORMATS, 'The format must be json or chat.'),
+			'format' => self::format($stored['format'] ?? 'json'),
 			'kinds' => self::kinds($stored['kinds'] ?? null),
 			'enabled' => self::flag($stored['enabled'] ?? true),
 		];
@@ -115,12 +115,9 @@ final class WebhookTargetInput {
 		return $kinds;
 	}
 
-	/**
-	 * @param list<string> $allowed
-	 */
-	private static function oneOf(mixed $value, array $allowed, string $message): string {
-		if (!is_string($value) || !in_array($value, $allowed, true)) {
-			throw new InvalidArgumentException($message);
+	private static function format(mixed $value): string {
+		if (!is_string($value) || !in_array($value, self::FORMATS, true)) {
+			throw new InvalidArgumentException('The format must be json or chat.');
 		}
 
 		return $value;

@@ -31,14 +31,10 @@ use OCP\AppFramework\Utility\ITimeFactory;
  */
 final class FollowListTest extends ReleaseAlertTestCase {
 	private function follows(): FollowList {
-		$audit = $this->createMock(AuditLogger::class);
-		$audit->method('record')->willReturnCallback(function (AuditSubject $subject, $versions, string $status, ?string $message = null): void {
-			$this->audited[] = [$subject, $status, $message];
-		});
 		$time = $this->createMock(ITimeFactory::class);
 		$time->method('getDateTime')->willReturn(new \DateTime('2026-11-14T10:00:00+00:00'));
 
-		return new FollowList($this->appConfig(), $audit, $time);
+		return new FollowList($this->appConfig(), $time);
 	}
 
 	public function testAFollowedAppIsStoredWithItsSourceAndWhoAddedIt(): void {
@@ -55,8 +51,6 @@ final class FollowListTest extends ReleaseAlertTestCase {
 		);
 		self::assertTrue($follows->isFollowed('forms'));
 		self::assertFalse($follows->isFollowed('calendar'));
-		self::assertCount(2, $this->audited);
-		self::assertSame('Settings changed: Following releases of forms from appstore', $this->audited[0][2]);
 	}
 
 	public function testFollowingAgainReplacesTheSource(): void {
@@ -77,7 +71,6 @@ final class FollowListTest extends ReleaseAlertTestCase {
 		}
 
 		self::assertSame([], $this->stored);
-		self::assertSame([], $this->audited);
 	}
 
 	public function testTheListIsCapped(): void {
@@ -95,10 +88,9 @@ final class FollowListTest extends ReleaseAlertTestCase {
 		$follows->follow('forms', null, 'alice');
 		$follows->follow('deck', null, 'alice');
 
-		self::assertTrue($follows->unfollow('forms', 'alice'));
-		self::assertFalse($follows->unfollow('forms', 'alice'));
+		self::assertTrue($follows->unfollow('forms'));
+		self::assertFalse($follows->unfollow('forms'));
 		self::assertSame(['deck'], array_column($follows->all(), 'appId'));
-		self::assertCount(3, $this->audited);
 	}
 
 	public function testAMalformedStoredValueReadsAsEmptyOrSkipsTheBadEntry(): void {
@@ -118,5 +110,24 @@ final class FollowListTest extends ReleaseAlertTestCase {
 		self::assertTrue($settings->announces(self::event('forms', '4.0.0', 'appstore')));
 		self::assertFalse($settings->announces(self::event('calendar', '5.2.0', 'appstore')));
 		self::assertSame(['forms'], array_column($settings->follows(), 'appId'));
+	}
+
+	public function testTheSettingsAuditEachFollowChangeOnce(): void {
+		$config = $this->appConfig();
+		$audit = $this->createMock(AuditLogger::class);
+		$audit->method('record')->willReturnCallback(function (AuditSubject $subject, $versions, string $status, ?string $message = null): void {
+			$this->audited[] = [$subject, $status, $message];
+		});
+		$settings = new ReleaseAlertSettings($config, new ReleaseEventLog($config), $audit, $this->follows());
+
+		$settings->follow('forms', 'appstore', 'alice');
+		self::assertTrue($settings->unfollow('forms', 'alice'));
+		self::assertFalse($settings->unfollow('forms', 'alice'));
+
+		self::assertSame(
+			['Settings changed: Following releases of forms from appstore', 'Settings changed: Stopped following releases of forms'],
+			array_column($this->audited, 2)
+		);
+		self::assertSame(['forms', 'forms'], array_map(static fn (array $row): string => $row[0]->appId, $this->audited));
 	}
 }

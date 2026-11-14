@@ -65,7 +65,7 @@ final class WebhookSenderTest extends TestCase {
 			json_decode($options['body'], true)
 		);
 		self::assertSame('1790000000', $options['headers']['X-Versioniq-Timestamp']);
-		self::assertSame(WebhookSender::signature('1790000000', $options['body'], 'shared-secret'), $options['headers']['X-Versioniq-Signature']);
+		self::assertSame(WebhookSender::signature('1790000000.' . $options['body'], 'shared-secret'), $options['headers']['X-Versioniq-Signature']);
 		self::assertSame(WebhookSender::TIMEOUT_SECONDS, $options['timeout']);
 		self::assertSame(['allow_local_address' => false], $options['nextcloud']);
 	}
@@ -73,7 +73,7 @@ final class WebhookSenderTest extends TestCase {
 	public function testTheSignatureMatchesAVectorComputedOutsidePhp(): void {
 		self::assertSame(
 			'sha256=2266598dcdd12004302b9fb589b518263fc53add1389d9d9b06eb767afc57eb8',
-			WebhookSender::signature('1790000000', '{"text":"Test message"}', 'shared-secret')
+			WebhookSender::signature('1790000000.{"text":"Test message"}', 'shared-secret')
 		);
 	}
 

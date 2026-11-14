@@ -13,9 +13,6 @@ namespace OCA\Versioniq\Service\ReleaseAlert;
 
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
-use OCA\Versioniq\Service\Audit\AuditedVersions;
-use OCA\Versioniq\Service\Audit\AuditLogger;
-use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IAppConfig;
 
@@ -23,7 +20,7 @@ use OCP\IAppConfig;
  * The apps an admin follows the releases of without having them installed,
  * kept in app config under `release_alerts.follow` as a list of
  * `{appId, sourceId, addedBy, addedAt}` (releases-new-release-alerts, design
- * D3). Every change is audited as `settings`.
+ * D3). ReleaseAlertSettings audits every change as `settings`.
  *
  * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-an-admin-follows-the-releases-of-an-app-that-is-not-installed
  *
@@ -43,7 +40,6 @@ class FollowList {
 
 	public function __construct(
 		private IAppConfig $config,
-		private AuditLogger $auditLogger,
 		private ITimeFactory $time,
 	) {
 	}
@@ -93,7 +89,6 @@ class FollowList {
 		];
 		$entries[] = $entry;
 		$this->write($entries);
-		$this->audit($uid, $appId, 'Following releases of ' . $appId . ' from ' . ($sourceId ?? 'its default source'));
 
 		return $entry;
 	}
@@ -101,7 +96,7 @@ class FollowList {
 	/**
 	 * Stop following an app; false when it was not followed.
 	 */
-	public function unfollow(string $appId, string $uid): bool {
+	public function unfollow(string $appId): bool {
 		$entries = $this->all();
 		$kept = array_values(array_filter($entries, static fn (array $entry): bool => $entry['appId'] !== $appId));
 		if (count($kept) === count($entries)) {
@@ -109,7 +104,6 @@ class FollowList {
 		}
 
 		$this->write($kept);
-		$this->audit($uid, $appId, 'Stopped following releases of ' . $appId);
 
 		return true;
 	}
@@ -119,15 +113,6 @@ class FollowList {
 	 */
 	private function write(array $entries): void {
 		$this->config->setValueString(Application::APP_ID, self::KEY, json_encode($entries, JSON_THROW_ON_ERROR));
-	}
-
-	private function audit(string $uid, string $appId, string $message): void {
-		$this->auditLogger->record(
-			new AuditSubject($uid, $appId, AuditLogger::OPERATION_SETTINGS),
-			new AuditedVersions(null, null, null),
-			AuditLogger::STATUS_SUCCESS,
-			'Settings changed: ' . $message,
-		);
 	}
 
 	/**

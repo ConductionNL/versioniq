@@ -89,12 +89,7 @@ class ReleaseAlertSettings {
 		}
 
 		$this->config->setValueString(Application::APP_ID, self::KEY_SCOPE, $scope);
-		$this->auditLogger->record(
-			new AuditSubject($uid, Application::APP_ID, AuditLogger::OPERATION_SETTINGS),
-			new AuditedVersions(null, null, null),
-			AuditLogger::STATUS_SUCCESS,
-			'Settings changed: ' . self::KEY_SCOPE . '=' . $scope,
-		);
+		$this->audit(new AuditSubject($uid, Application::APP_ID, AuditLogger::OPERATION_SETTINGS), self::KEY_SCOPE . '=' . $scope);
 	}
 
 	/**
@@ -143,7 +138,13 @@ class ReleaseAlertSettings {
 			throw new InvalidArgumentException('Following apps is not available.');
 		}
 
-		return $this->follows->follow($appId, $sourceId, $uid);
+		$entry = $this->follows->follow($appId, $sourceId, $uid);
+		$this->audit(
+			new AuditSubject($uid, $entry['appId'], AuditLogger::OPERATION_SETTINGS),
+			'Following releases of ' . $entry['appId'] . ' from ' . ($entry['sourceId'] ?? 'its default source'),
+		);
+
+		return $entry;
 	}
 
 	/**
@@ -152,6 +153,16 @@ class ReleaseAlertSettings {
 	 * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-an-admin-follows-the-releases-of-an-app-that-is-not-installed
 	 */
 	public function unfollow(string $appId, string $uid): bool {
-		return $this->follows?->unfollow($appId, $uid) ?? false;
+		if ($this->follows?->unfollow($appId) !== true) {
+			return false;
+		}
+
+		$this->audit(new AuditSubject($uid, $appId, AuditLogger::OPERATION_SETTINGS), 'Stopped following releases of ' . $appId);
+
+		return true;
+	}
+
+	private function audit(AuditSubject $subject, string $change): void {
+		$this->auditLogger->record($subject, new AuditedVersions(null, null, null), AuditLogger::STATUS_SUCCESS, 'Settings changed: ' . $change);
 	}
 }

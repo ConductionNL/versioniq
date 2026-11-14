@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\Controller;
 
 use OCA\Versioniq\Controller\AlertController;
+use OCA\Versioniq\Service\Alert\AlertServices;
+use OCA\Versioniq\Service\Alert\WebhookTargets;
 use OCA\Versioniq\Service\Api\ApiCaller;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Audit\AuditSubject;
@@ -59,7 +61,7 @@ final class AlertControllerTest extends TestCase {
 		return new AlertController(
 			'versioniq',
 			$this->createMock(IRequest::class),
-			new ReleaseAlertSettings($config, new ReleaseEventLog($config), $audit, new FollowList($config, $audit, $time)),
+			new AlertServices(new ReleaseAlertSettings($config, new ReleaseEventLog($config), $audit, new FollowList($config, $time)), $this->createMock(WebhookTargets::class)),
 			new ApiCaller($session, $groups, $this->createMock(ITimeFactory::class)),
 		);
 	}

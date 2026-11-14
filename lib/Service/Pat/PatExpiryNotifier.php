@@ -14,6 +14,7 @@ namespace OCA\Versioniq\Service\Pat;
 
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Db\Pat;
+use OCA\Versioniq\Service\Alert\AlertDispatcher;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Notification\IManager;
 use OCP\Notification\INotification;
@@ -33,6 +34,7 @@ class PatExpiryNotifier {
 		private PatDeeplinkBuilder $deeplinkBuilder,
 		private ITimeFactory $timeFactory,
 		private LoggerInterface $logger,
+		private ?AlertDispatcher $alerts = null,
 	) {
 	}
 
@@ -55,6 +57,8 @@ class PatExpiryNotifier {
 			}
 
 			$this->notificationManager->notify($notification);
+			// releases-new-release-alerts D6: queue the same alert for the webhook targets.
+			$this->alerts?->dispatch($notification->getSubject(), $notification->getSubjectParameters());
 
 			return true;
 		} catch (\Throwable $error) {

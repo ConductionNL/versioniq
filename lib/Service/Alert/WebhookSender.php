@@ -45,12 +45,17 @@ class WebhookSender {
 	 */
 	public function send(array $target, array $alert): array {
 		$timestamp = (string)$this->time->getTime();
-		$body = json_encode(self::body($target['format'], $alert, $this->instance(), $timestamp), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+		$sent = $alert + ['instance' => $this->config->getSystemValueString('overwrite.cli.url', ''), 'sentAt' => gmdate(DATE_ATOM, (int)$timestamp)];
+		$body = json_encode(self::body($target['format'], $sent), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+		$headers = ['Content-Type' => 'application/json'];
+		if ($target['secret'] !== null && $target['secret'] !== '') {
+			$headers += ['X-Versioniq-Timestamp' => $timestamp, 'X-Versioniq-Signature' => self::signature($timestamp . '.' . $body, $target['secret'])];
+		}
 
 		try {
 			$response = $this->clientService->newClient()->post($target['url'], [
 				'body' => $body,
-				'headers' => self::headers($body, $timestamp, $target['secret']),
+				'headers' => $headers,
 				'timeout' => self::TIMEOUT_SECONDS,
 				'http_errors' => false,
 				'nextcloud' => ['allow_local_address' => $this->config->getSystemValueBool('allow_local_remote_servers', false)],
@@ -59,8 +64,15 @@ class WebhookSender {
 			return ['ok' => false, 'error' => $error->getMessage()];
 		}
 
-		$status = $response->getStatusCode();
+		return self::outcome($response->getStatusCode());
+	}
 
+	/**
+	 * A 2xx answer is success.
+	 *
+	 * @return array{ok: bool, error: ?string}
+	 */
+	private static function outcome(int $status): array {
 		return $status >= 200 && $status < 300
 			? ['ok' => true, 'error' => null]
 			: ['ok' => false, 'error' => 'The target answered HTTP ' . $status . '.'];
@@ -69,46 +81,21 @@ class WebhookSender {
 	/**
 	 * The request body for a format.
 	 *
-	 * @param Alert $alert
+	 * @param array{kind: string, subject: string, parameters: array<string, mixed>, text: string, instance: string, sentAt: string} $alert
 	 * @return array<string, mixed>
 	 */
-	public static function body(string $format, array $alert, string $instance, string $timestamp): array {
+	public static function body(string $format, array $alert): array {
 		if ($format === 'chat') {
 			return ['text' => $alert['text']];
 		}
 
-		return [
-			'app' => 'versioniq',
-			'kind' => $alert['kind'],
-			'subject' => $alert['subject'],
-			'parameters' => $alert['parameters'],
-			'text' => $alert['text'],
-			'instance' => $instance,
-			'sentAt' => gmdate(DATE_ATOM, (int)$timestamp),
-		];
+		return ['app' => 'versioniq'] + array_intersect_key($alert, array_flip(['kind', 'subject', 'parameters', 'text', 'instance', 'sentAt']));
 	}
 
 	/**
-	 * The `sha256=` signature of `timestamp.body` with the shared secret.
+	 * The `sha256=` signature of the signed string (`timestamp.body`) with the shared secret.
 	 */
-	public static function signature(string $timestamp, string $body, string $secret): string {
-		return 'sha256=' . hash_hmac('sha256', $timestamp . '.' . $body, $secret);
-	}
-
-	/**
-	 * @return array<string, string>
-	 */
-	private static function headers(string $body, string $timestamp, ?string $secret): array {
-		$headers = ['Content-Type' => 'application/json'];
-		if ($secret !== null && $secret !== '') {
-			$headers['X-Versioniq-Timestamp'] = $timestamp;
-			$headers['X-Versioniq-Signature'] = self::signature($timestamp, $body, $secret);
-		}
-
-		return $headers;
-	}
-
-	private function instance(): string {
-		return $this->config->getSystemValueString('overwrite.cli.url', '');
+	public static function signature(string $signed, string $secret): string {
+		return 'sha256=' . hash_hmac('sha256', $signed, $secret);
 	}
 }

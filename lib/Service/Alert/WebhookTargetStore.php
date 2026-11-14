@@ -116,7 +116,10 @@ class WebhookTargetStore {
 		$target = WebhookTargetInput::fields($input);
 		$id = bin2hex(random_bytes(6));
 
-		return $this->write($id, $target + ['encryptedSecret' => $this->encrypted(WebhookTargetInput::secret($input))], $uid);
+		$view = $this->write($id, $target + ['encryptedSecret' => $this->encrypted(WebhookTargetInput::secret($input))]);
+		$this->audit($uid, self::saved($id, $target));
+
+		return $view;
 	}
 
 	/**
@@ -138,7 +141,11 @@ class WebhookTargetStore {
 			$encrypted = null;
 		}
 
-		return $this->write($id, WebhookTargetInput::fields($input, $current) + ['encryptedSecret' => $encrypted], $uid);
+		$target = WebhookTargetInput::fields($input, $current);
+		$view = $this->write($id, $target + ['encryptedSecret' => $encrypted]);
+		$this->audit($uid, self::saved($id, $target));
+
+		return $view;
 	}
 
 	/**
@@ -158,16 +165,18 @@ class WebhookTargetStore {
 
 	/**
 	 * Record the outcome of a delivery on the target.
+	 *
+	 * @param array{ok: bool, error: ?string} $result What WebhookSender::send() answered.
 	 */
-	public function recordDelivery(string $id, bool $succeeded, ?string $error): void {
+	public function recordDelivery(string $id, array $result): void {
 		if ($this->stored($id) === null) {
 			return;
 		}
 
 		$last = [
 			'at' => $this->time->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
-			'status' => $succeeded ? 'succeeded' : 'failed',
-			'error' => $succeeded ? null : $error,
+			'status' => $result['ok'] ? 'succeeded' : 'failed',
+			'error' => $result['ok'] ? null : $result['error'],
 		];
 		$this->config->setValueString(Application::APP_ID, self::PREFIX . $id . self::LAST_SUFFIX, json_encode($last, JSON_THROW_ON_ERROR));
 	}
@@ -176,11 +185,19 @@ class WebhookTargetStore {
 	 * @param array<string, mixed> $target
 	 * @return TargetView
 	 */
-	private function write(string $id, array $target, string $uid): array {
+	private function write(string $id, array $target): array {
 		$this->config->setValueString(Application::APP_ID, self::PREFIX . $id, json_encode($target, JSON_THROW_ON_ERROR));
-		$this->audit($uid, 'Webhook target ' . $id . ' saved: ' . $target['name'] . ' (' . $target['format'] . '; ' . implode(', ', $target['kinds']) . ')');
 
 		return $this->view($id, $this->stored($id) ?? $target);
+	}
+
+	/**
+	 * The audit line of a saved target.
+	 *
+	 * @param array{name: string, format: string, kinds: list<string>} $target
+	 */
+	private static function saved(string $id, array $target): string {
+		return 'Webhook target ' . $id . ' saved: ' . $target['name'] . ' (' . $target['format'] . '; ' . implode(', ', $target['kinds']) . ')';
 	}
 
 	private function encrypted(?string $secret): ?string {
