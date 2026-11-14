@@ -2,12 +2,12 @@
 
 ## 1. Strings
 
-- [ ] 1.1 Wrap every bare string on the Apps tab in `t()` or `n()`, listed in design Context, and the result grid labels and status values of design D3. Verify: `grep` finds none of the listed English texts outside `t(`, and existing vitest specs still pass.
-- [ ] 1.2 Add every used key to `l10n/en.json` and a Dutch value to `l10n/nl.json`, then regenerate the `.js` files. Verify: `npm run check:l10n-js`.
+- [x] 1.1 Wrap every bare string on the Apps tab in `t()` or `n()`, listed in design Context, and the result grid labels and status values of design D3. Verify: `grep` finds none of the listed English texts outside `t(`, and existing vitest specs still pass.
+- [x] 1.2 Add every used key to `l10n/en.json` and a Dutch value to `l10n/nl.json`, then regenerate the `.js` files. Verify: `npm run check:l10n-js`.
 
 ## 2. Check
 
-- [ ] 2.1 Add `scripts/check-l10n-keys.cjs` (missing keys in `en.json` or `nl.json`, bare template text) and run it from `npm run lint`. Verify: the script fails on a scratch file with a bare string and passes on the tree.
+- [x] 2.1 Add `scripts/check-l10n-keys.cjs` (missing keys in `en.json` or `nl.json`, bare template text) and run it from `npm run lint`. Verify: the script fails on a scratch file with a bare string and passes on the tree.
 
 ## 3. See it
 
