@@ -119,7 +119,7 @@ class SettingsController extends OCSController {
 				new AuditedVersions(null, null, null),
 				AuditLogger::STATUS_SUCCESS,
 				'Settings changed: ' . implode(', ', array_map(
-					static fn (string $field): string => $field . '=' . (string)$after[$field],
+					static fn (string $field): string => $field . '=' . (is_bool($after[$field]) ? ($after[$field] ? 'on' : 'off') : (string)$after[$field]),
 					$applied,
 				)),
 			);
