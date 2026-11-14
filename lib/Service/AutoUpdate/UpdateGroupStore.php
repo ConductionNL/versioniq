@@ -45,29 +45,8 @@ final class UpdateGroupStore {
 	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
 	 */
 	public function all(): array {
-		$raw = $this->config->getValueString(Application::APP_ID, self::CONFIG_KEY, '');
-		if ($raw === '') {
-			return [];
-		}
-
-		try {
-			/** @var mixed $decoded */
-			$decoded = json_decode($raw, true, self::JSON_DEPTH, JSON_THROW_ON_ERROR);
-		} catch (\JsonException $error) {
-			$this->logger->warning('UpdateGroupStore: malformed groups JSON, treating as no groups', [
-				'message' => $error->getMessage(),
-			]);
-
-			return [];
-		}
-		if (!is_array($decoded) || !array_is_list($decoded)) {
-			$this->logger->warning('UpdateGroupStore: groups value is not a list, treating as no groups');
-
-			return [];
-		}
-
+		$decoded = $this->decoded();
 		$groups = [];
-		/** @var mixed $entry */
 		foreach ($decoded as $entry) {
 			try {
 				$groups[] = UpdateGroup::fromArray(is_array($entry) ? $entry : []);
@@ -79,6 +58,40 @@ final class UpdateGroupStore {
 		}
 
 		return $groups;
+	}
+
+	/**
+	 * The stored list, or an empty one when nothing is stored or it is not a JSON list.
+	 *
+	 * @return list<mixed>
+	 */
+	private function decoded(): array {
+		$raw = $this->config->getValueString(Application::APP_ID, self::CONFIG_KEY, '');
+		$decoded = $raw === '' ? [] : $this->parsed($raw);
+		if (!is_array($decoded) || !array_is_list($decoded)) {
+			$this->logger->warning('UpdateGroupStore: groups value is not a list, treating as no groups');
+
+			return [];
+		}
+
+		return $decoded;
+	}
+
+	/**
+	 * The stored JSON decoded, or an empty list when it does not parse.
+	 */
+	private function parsed(string $raw): mixed {
+		try {
+			$decoded = json_decode($raw, true, self::JSON_DEPTH, JSON_THROW_ON_ERROR);
+		} catch (\JsonException $error) {
+			$this->logger->warning('UpdateGroupStore: malformed groups JSON, treating as no groups', [
+				'message' => $error->getMessage(),
+			]);
+
+			return [];
+		}
+
+		return $decoded;
 	}
 
 	/**

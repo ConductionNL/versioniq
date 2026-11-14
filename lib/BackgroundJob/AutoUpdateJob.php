@@ -15,6 +15,7 @@ namespace OCA\Versioniq\BackgroundJob;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlan;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
@@ -101,7 +102,13 @@ class AutoUpdateJob extends TimedJob {
 		$this->stores->settingsStore->markWindowSwept($openingKey);
 
 		// Plan first, then install (autoupdate-run-batching D1).
-		$plan = (new AutoUpdatePlanner($this->stores, $this->install, $this->logger))->plan();
+		$this->installPlanned((new AutoUpdatePlanner($this->stores, $this->install, $this->logger))->plan());
+	}
+
+	/**
+	 * Install every member of the plan that will install, one app at a time.
+	 */
+	private function installPlanned(AutoUpdatePlan $plan): void {
 		foreach ($plan->installable() as $member) {
 			try {
 				$this->attemptInstall(

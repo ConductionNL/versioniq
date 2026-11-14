@@ -87,14 +87,23 @@ class AttemptLedger {
 
 		$count = 0;
 		foreach (array_keys($this->config->getAllValues(Application::APP_ID, self::KEY_PREFIX)) as $key) {
-			if (!str_starts_with($key, self::KEY_PREFIX)) {
-				continue;
+			if (str_starts_with($key, self::KEY_PREFIX)) {
+				$count += $this->countAppSince(substr($key, strlen(self::KEY_PREFIX)), $since);
 			}
-			foreach ($this->all(substr($key, strlen(self::KEY_PREFIX))) as $entry) {
-				$at = strtotime($entry['at']);
-				if ($at !== false && $at >= $since) {
-					$count++;
-				}
+		}
+
+		return $count;
+	}
+
+	/**
+	 * How many of one app's attempts were recorded at or after a Unix time.
+	 */
+	private function countAppSince(string $appId, int $since): int {
+		$count = 0;
+		foreach ($this->all($appId) as $entry) {
+			$at = strtotime($entry['at']);
+			if ($at !== false && $at >= $since) {
+				$count++;
 			}
 		}
 

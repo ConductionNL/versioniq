@@ -47,24 +47,31 @@ final class AutoUpdatePlanner {
 				continue;
 			}
 
-			try {
-				$member = $this->planApp($appId, $policy->level);
-			} catch (\Throwable $error) {
-				// Per-app isolation — see "the job MUST proceed to the next app
-				// after any failure".
-				$this->logger->warning('AutoUpdateJob: failed to process an app', [
-					'appId' => $appId,
-					'message' => $error->getMessage(),
-				]);
-				continue;
-			}
-
+			$member = $this->planIsolated($appId, $policy->level);
 			if ($member !== null) {
 				$members[] = $member;
 			}
 		}
 
 		return new AutoUpdatePlan($members);
+	}
+
+	/**
+	 * Plan one app; a failure is logged and leaves the app out of the plan.
+	 */
+	private function planIsolated(string $appId, string $level): ?AutoUpdateMember {
+		try {
+			return $this->planApp($appId, $level);
+		} catch (\Throwable $error) {
+			// Per-app isolation — see "the job MUST proceed to the next app
+			// after any failure".
+			$this->logger->warning('AutoUpdateJob: failed to process an app', [
+				'appId' => $appId,
+				'message' => $error->getMessage(),
+			]);
+
+			return null;
+		}
 	}
 
 	/**
@@ -85,6 +92,13 @@ final class AutoUpdatePlanner {
 			return null;
 		}
 
+		return $this->planCandidate($appId, $installedVersion, $level);
+	}
+
+	/**
+	 * The member for an installed, managed, unpinned app: its candidate, or why it has none.
+	 */
+	private function planCandidate(string $appId, string $installedVersion, string $level): AutoUpdateMember {
 		$available = $this->availableVersions($appId);
 		if ($available === null) {
 			return new AutoUpdateMember($appId, $installedVersion, null, AutoUpdateMember::REASON_SOURCE_ERROR);

@@ -24,7 +24,7 @@ use Psr\Log\LoggerInterface;
  */
 final class UpdateGroupStoreTest extends TestCase {
 	private static function group(): UpdateGroup {
-		return new UpdateGroup('g1', 'Core stack', ['openregister', 'opencatalogi', 'decidiq'], 'admin', '2026-11-14T02:00:00+00:00');
+		return new UpdateGroup('g1', 'Core stack', ['openregister', 'opencatalogi', 'decidiq'], ['by' => 'admin', 'at' => '2026-11-14T02:00:00+00:00']);
 	}
 
 	public function testAGroupRoundTripsInOrder(): void {
@@ -116,12 +116,12 @@ final class UpdateGroupStoreTest extends TestCase {
 	public function testAGroupRefusesAnInvalidAppList(array $apps): void {
 		$this->expectException(InvalidArgumentException::class);
 
-		new UpdateGroup('g1', 'Core stack', $apps, 'admin', '2026-11-14T02:00:00+00:00');
+		new UpdateGroup('g1', 'Core stack', $apps, ['by' => 'admin', 'at' => '2026-11-14T02:00:00+00:00']);
 	}
 
 	public function testAGroupOfTwentyAppsIsAccepted(): void {
 		$apps = array_map(static fn (int $i): string => 'app' . $i, range(1, 20));
 
-		$this->assertSame($apps, (new UpdateGroup('g1', 'Big', $apps, 'admin', '2026-11-14T02:00:00+00:00'))->apps);
+		$this->assertSame($apps, (new UpdateGroup('g1', 'Big', $apps, ['by' => 'admin', 'at' => '2026-11-14T02:00:00+00:00']))->apps);
 	}
 }

@@ -24,12 +24,17 @@ final class UpdateGroup {
 	public const MIN_APPS = 2;
 	public const MAX_APPS = 20;
 
+	/** The admin who last saved the group. */
+	public readonly string $setBy;
+
+	/** When it was last saved, ISO-8601. */
+	public readonly string $setAt;
+
 	/**
-	 * @param string       $id    Stable id of the group.
-	 * @param string       $name  The name an admin sees.
-	 * @param list<string> $apps  Member app ids, in install order.
-	 * @param string       $setBy The admin who last saved the group.
-	 * @param string       $setAt When it was last saved, ISO-8601.
+	 * @param string                       $id    Stable id of the group.
+	 * @param string                       $name  The name an admin sees.
+	 * @param list<string>                 $apps  Member app ids, in install order.
+	 * @param array{by: string, at: string} $saved The admin who last saved the group, and when (ISO-8601).
 	 *
 	 * @throws InvalidArgumentException when a field is empty or the app list is invalid
 	 */
@@ -37,12 +42,22 @@ final class UpdateGroup {
 		public readonly string $id,
 		public readonly string $name,
 		public readonly array $apps,
-		public readonly string $setBy,
-		public readonly string $setAt,
+		array $saved,
 	) {
-		if ($id === '' || $name === '' || $setBy === '' || $setAt === '') {
+		$this->setBy = (string)($saved['by'] ?? '');
+		$this->setAt = (string)($saved['at'] ?? '');
+		if (in_array('', [$id, $name, $this->setBy, $this->setAt], true)) {
 			throw new InvalidArgumentException('Update group requires a non-empty id, name, setBy and setAt');
 		}
+		self::assertValidApps($apps);
+	}
+
+	/**
+	 * @param list<string> $apps Member app ids.
+	 *
+	 * @throws InvalidArgumentException when the list is too short, too long, or holds an empty or repeated id
+	 */
+	private static function assertValidApps(array $apps): void {
 		$count = count($apps);
 		if ($count < self::MIN_APPS || $count > self::MAX_APPS) {
 			throw new InvalidArgumentException('Update group must hold 2 to 20 apps');
@@ -75,12 +90,30 @@ final class UpdateGroup {
 	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
 	 */
 	public static function fromArray(array $payload): self {
-		$apps = $payload['apps'] ?? null;
 		foreach (['id', 'name', 'setBy', 'setAt'] as $field) {
 			if (!is_string($payload[$field] ?? null)) {
 				throw new InvalidArgumentException('Update group payload missing required string fields');
 			}
 		}
+
+		return new self(
+			(string)$payload['id'],
+			(string)$payload['name'],
+			self::appNames($payload['apps'] ?? null),
+			['by' => (string)$payload['setBy'], 'at' => (string)$payload['setAt']],
+		);
+	}
+
+	/**
+	 * The payload's app list as strings.
+	 *
+	 * @param mixed $apps The payload's `apps`.
+	 *
+	 * @return list<string>
+	 *
+	 * @throws InvalidArgumentException when it is not a list of strings
+	 */
+	private static function appNames(mixed $apps): array {
 		if (!is_array($apps) || !array_is_list($apps)) {
 			throw new InvalidArgumentException('Update group apps must be a list');
 		}
@@ -92,12 +125,6 @@ final class UpdateGroup {
 			$names[] = $app;
 		}
 
-		return new self(
-			(string)$payload['id'],
-			(string)$payload['name'],
-			$names,
-			(string)$payload['setBy'],
-			(string)$payload['setAt'],
-		);
+		return $names;
 	}
 }
