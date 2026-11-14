@@ -32,6 +32,7 @@ use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Pat\NewPat;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Policy\Policy;
+use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\UntrustedSourceException;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -302,6 +303,8 @@ class ApiController extends OCSController {
 
 		try {
 			$this->install->installerService->bindSource($appId, $binding);
+		} catch (RetiredForgeException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
 		} catch (UntrustedSourceException $error) {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_FORBIDDEN);
 		}
@@ -392,6 +395,8 @@ class ApiController extends OCSController {
 
 		try {
 			$patterns = $this->install->installerService->addTrustedPattern($forge, $owner, $repo);
+		} catch (RetiredForgeException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
 		} catch (InvalidArgumentException $error) {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_UNPROCESSABLE_ENTITY);
 		}
