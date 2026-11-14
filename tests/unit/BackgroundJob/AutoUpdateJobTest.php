@@ -22,11 +22,13 @@ use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\Policy;
+use OCA\Versioniq\Service\Policy\PolicySource;
 use OCA\Versioniq\Service\Policy\PolicyStore;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\IConfig;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use ReflectionMethod;
@@ -490,5 +492,86 @@ final class AutoUpdateJobTest extends TestCase {
 
 		// calendar keeps its own none; the pinned app is skipped before any source query.
 		$this->assertSame(['openregister'], $asked);
+	}
+
+	/**
+	 * A PolicySource reading $json from a temporary file named as `config.php` would name it.
+	 */
+	private function fileSource(string $json, PolicyStore $policyStore, AutoUpdateSettingsStore $settingsStore): PolicySource {
+		$path = (string)tempnam(sys_get_temp_dir(), 'vq-job');
+		file_put_contents($path, $json);
+		register_shutdown_function(static fn () => @unlink($path));
+		$config = $this->createMock(IConfig::class);
+		$config->method('getSystemValueString')->with(PolicySource::SYSTEM_KEY, '')->willReturn($path);
+
+		return new PolicySource($config, $policyStore, $settingsStore);
+	}
+
+	/**
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
+	 */
+	public function testABrokenPolicyFileInstallsNothingAndLogsTheErrorWithItsPath(): void {
+		$mocks = $this->mocks();
+		// The stores would update everything: they must not be read.
+		$mocks['settingsStore']->method('isEnabled')->willReturn(true);
+		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$mocks['settingsStore']->expects($this->never())->method('markWindowSwept');
+		$mocks['policyStore']->expects($this->never())->method('all');
+		$mocks['installerService']->expects($this->never())->method('getAppVersions');
+		$mocks['installerService']->expects($this->never())->method('installAppVersion');
+		$mocks['logger']->expects($this->once())->method('error')->with(
+			$this->stringContains('policy file'),
+			$this->callback(static fn (array $context): bool => in_array('$.policies.openregister: must be one of none, patch, minor, all', $context['errors'], true)),
+		);
+		$source = $this->fileSource(
+			'{"schemaVersion":1,"autoUpdate":{"enabled":true},"policies":{"openregister":"weekly"}}',
+			$mocks['policyStore'],
+			$mocks['settingsStore'],
+		);
+
+		$this->runJob($this->buildByName(AutoUpdateJob::class, $this->named($mocks) + ['policySource' => $source]));
+	}
+
+	/**
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
+	 */
+	public function testInFileModeTheFilesPoliciesAndSwitchAreUsedInsteadOfTheStores(): void {
+		$mocks = $this->mocks();
+		// The stored switch is off; the file's is on and wins.
+		$mocks['settingsStore']->method('isEnabled')->willReturn(false);
+		$mocks['settingsStore']->method('getWindow')->willReturn('10:00-11:00');
+		$mocks['policyStore']->expects($this->never())->method('all');
+		$mocks['installerService']->method('isManageableApp')->willReturn(true);
+		$mocks['appManager']->method('getAppVersion')->willReturn('2.3.0');
+		$mocks['appManager']->method('getEnabledApps')->willReturn(['openregister', 'calendar']);
+		$asked = [];
+		$mocks['installerService']->method('getAppVersions')->willReturnCallback(
+			static function (string $appId) use (&$asked): array {
+				$asked[] = $appId;
+				return ['availableVersions' => [['version' => '2.4.0']], 'hasError' => false];
+			}
+		);
+		$mocks['candidateSelector']->expects($this->once())->method('select')
+			->with('2.3.0', ['2.4.0'], Policy::LEVEL_MINOR)->willReturn('2.4.0');
+		$mocks['installerService']->expects($this->once())->method('installAppVersion')
+			->willReturn(['statusCode' => 200, 'payload' => ['installedVersion' => '2.4.0']]);
+		$source = $this->fileSource(
+			'{"schemaVersion":1,"autoUpdate":{"enabled":true,"window":"01:00-05:00"},"policies":{"openregister":"minor"}}',
+			$mocks['policyStore'],
+			$mocks['settingsStore'],
+		);
+
+		$this->runJob($this->buildByName(AutoUpdateJob::class, $this->named($mocks) + ['policySource' => $source]));
+
+		// No defaultLevel in the file means none: calendar is not visited.
+		$this->assertSame(['openregister'], $asked);
+	}
+
+	/**
+	 * @param array<string, mixed> $mocks
+	 * @return array<string, mixed>
+	 */
+	private function named(array $mocks): array {
+		return ['time' => $this->timeFactory()] + $mocks;
 	}
 }

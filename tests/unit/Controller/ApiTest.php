@@ -30,6 +30,7 @@ use OCA\Versioniq\Service\Pat\PatExpiryEvaluator;
 use OCA\Versioniq\Service\Pat\PatManager;
 use OCA\Versioniq\Service\Pat\PatValidator;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Policy\PolicySource;
 use OCA\Versioniq\Service\Policy\PolicyStore;
 use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
@@ -38,6 +39,7 @@ use OCA\Versioniq\Tests\Unit\Support\DispatchesLikeNextcloud;
 use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\IConfig;
 use OCP\IGroupManager;
 use OCP\IRequest;
 use OCP\IUser;
@@ -117,6 +119,7 @@ final class ApiTest extends TestCase {
 		?AutoUpdateSettingsStore $autoUpdateSettingsStore = null,
 		?ArtifactCache $artifactCache = null,
 		?AttemptLedger $attemptLedger = null,
+		?PolicySource $policySource = null,
 	): ApiController {
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn($uid);
@@ -150,6 +153,7 @@ final class ApiTest extends TestCase {
 			'artifactCache' => $artifactCache ?? $this->createMock(ArtifactCache::class),
 			'connectionReports' => null,
 			'attemptLedger' => $attemptLedger ?? $this->createMock(AttemptLedger::class),
+			'policySource' => $policySource,
 		]);
 	}
 
@@ -681,6 +685,83 @@ final class ApiTest extends TestCase {
 
 		$this->assertSame(400, $response->getStatus());
 		$this->assertStringContainsString('defaultLevel must be one of', $response->getData()['message']);
+	}
+
+	/**
+	 * A PolicySource whose config.php names a temporary file holding $json.
+	 */
+	private function policyFileSource(string $json): PolicySource {
+		$path = (string)tempnam(sys_get_temp_dir(), 'vq-api');
+		file_put_contents($path, $json);
+		register_shutdown_function(static fn () => @unlink($path));
+		$config = $this->createMock(IConfig::class);
+		$config->method('getSystemValueString')->willReturn($path);
+
+		return new PolicySource($config, $this->createMock(PolicyStore::class), $this->createMock(AutoUpdateSettingsStore::class));
+	}
+
+	/**
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
+	 */
+	public function testInFileModeThePoliciesComeFromTheFileAndNameIt(): void {
+		$source = $this->policyFileSource('{"schemaVersion":1,"autoUpdate":{"enabled":true,"defaultLevel":"patch"},"policies":{"openregister":"minor"}}');
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->expects($this->never())->method('all');
+
+		$installer = $this->createMock(InstallerService::class);
+		$data = $this->buildAdminController($installer, $this->createMock(IRequest::class), null, null, null, 'admin', $policyStore, null, null, null, $source)->policies()->getData();
+
+		$this->assertSame([['appId' => 'openregister', 'level' => 'minor', 'setBy' => 'file', 'setAt' => '2026-07-24T00:00:00+00:00', 'blockedVersions' => []]], $data['policies']);
+		$this->assertTrue($data['autoUpdateEnabled']);
+		$this->assertSame('01:00-05:00', $data['autoUpdateWindow']);
+		$this->assertSame('patch', $data['autoUpdateDefaultLevel']);
+		$this->assertSame($source->filePath(), $data['managedBy']['file']);
+		$this->assertNull($data['managedBy']['error']);
+	}
+
+	/**
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
+	 */
+	public function testABrokenPolicyFileIsShownWithItsErrorAndNothingOn(): void {
+		$source = $this->policyFileSource('{"schemaVersion":1,"policies":{"openregister":"weekly"}}');
+
+		$installer = $this->createMock(InstallerService::class);
+		$data = $this->buildAdminController($installer, $this->createMock(IRequest::class), null, null, null, 'admin', null, null, null, null, $source)->policies()->getData();
+
+		$this->assertSame([], $data['policies']);
+		$this->assertFalse($data['autoUpdateEnabled']);
+		$this->assertSame('$.policies.openregister: must be one of none, patch, minor, all', $data['managedBy']['error']);
+	}
+
+	/**
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
+	 */
+	public function testPolicyAndSettingsWritesAnswer409NamingTheFileInFileMode(): void {
+		$source = $this->policyFileSource('{"schemaVersion":1,"policies":{}}');
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => $name === 'level' ? 'patch' : $default
+		);
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->expects($this->never())->method('set');
+		$policyStore->expects($this->never())->method('clear');
+		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore->expects($this->never())->method('setEnabled');
+
+		$installer = $this->createMock(InstallerService::class);
+		$controller = $this->buildAdminController($installer, $request, null, null, null, 'admin', $policyStore, $settingsStore, null, null, $source);
+
+		foreach ([$controller->setPolicy('openregister'), $controller->clearPolicy('openregister'), $controller->updateAutoUpdateSettings('1')] as $response) {
+			$this->assertSame(409, $response->getStatus());
+			$this->assertStringContainsString((string)$source->filePath(), $response->getData()['message']);
+		}
+	}
+
+	public function testOutsideFileModeThePoliciesSayNoFileManagesThem(): void {
+		$installer = $this->createMock(InstallerService::class);
+		$data = $this->buildAdminController($installer, $this->createMock(IRequest::class))->policies()->getData();
+
+		$this->assertNull($data['managedBy']);
 	}
 
 	public function testPoliciesCarryTheDefaultLevel(): void {

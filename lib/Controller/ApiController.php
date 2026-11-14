@@ -30,6 +30,8 @@ use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Pat\NewPat;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Policy\Policy;
+use OCA\Versioniq\Service\Policy\PolicyFileContents;
+use OCA\Versioniq\Service\Policy\PolicyFileException;
 use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\UntrustedSourceException;
@@ -800,6 +802,10 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
+		if ($this->autoUpdate->policySource?->filePath() !== null) {
+			return new DataResponse($this->filePolicies());
+		}
+
 		$policies = [];
 		foreach ($this->autoUpdate->policyStore->all() as $appId => $policy) {
 			$policies[] = $policy->toArray() + [
@@ -816,7 +822,60 @@ class ApiController extends OCSController {
 			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
 			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
 			'autoUpdateDefaultLevel' => $this->autoUpdate->settingsStore->getDefaultLevel(),
+			'managedBy' => null,
 		]);
+	}
+
+	/**
+	 * The answer of GET /api/policies in file mode (design D4): the file's
+	 * settings and levels, read-only, and `managedBy` naming the file, when it
+	 * was read and why it cannot be used, if it cannot.
+	 *
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
+	 * @return array<string, mixed>
+	 */
+	private function filePolicies(): array {
+		$source = $this->autoUpdate->policySource;
+		$readAt = $this->access->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM);
+		$error = null;
+		$file = new PolicyFileContents(false, null, null, []);
+		try {
+			$file = $source?->current() ?? $file;
+		} catch (PolicyFileException $failure) {
+			$error = $failure->getMessage();
+		}
+
+		$policies = [];
+		foreach ($file->policies as $appId => $level) {
+			$policies[] = ['appId' => $appId, 'level' => $level, 'setBy' => 'file', 'setAt' => $readAt, 'blockedVersions' => $this->autoUpdate->attemptLedger->blockedVersions($appId)];
+		}
+
+		return [
+			'policies' => $policies,
+			'autoUpdateEnabled' => $file->enabled ?? false,
+			'autoUpdateWindow' => $file->window ?? AutoUpdateWindow::DEFAULT_WINDOW,
+			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
+			'autoUpdateDefaultLevel' => $file->defaultLevel ?? Policy::LEVEL_NONE,
+			'managedBy' => ['file' => $source?->filePath(), 'readAt' => $readAt, 'error' => $error],
+		];
+	}
+
+	/**
+	 * 409 naming the policy file while `config.php` names one, else null: the
+	 * stores are not read then, so a write through the API would change nothing.
+	 *
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
+	 */
+	private function fileModeRefusal(): ?DataResponse {
+		$path = $this->autoUpdate->policySource?->filePath();
+		if ($path === null) {
+			return null;
+		}
+
+		return new DataResponse(
+			['message' => 'Automatic update policies are read from ' . $path . ' (versioniq.policy_file in config.php); change that file instead.'],
+			Http::STATUS_CONFLICT
+		);
 	}
 
 	/**
@@ -825,11 +884,12 @@ class ApiController extends OCSController {
 	 *
 	 * @param string $appId The app to set a policy for
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{appId: string, policy: array<string, mixed>}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, policy: array<string, mixed>}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_CONFLICT, array{message: string}, array{}>
 	 *
 	 * 200: The stored policy
 	 * 400: The requested policy level is not recognised
 	 * 403: Caller is not an administrator
+	 * 409: The policies are read from the policy file config.php names
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 */
@@ -840,6 +900,11 @@ class ApiController extends OCSController {
 		$user = $this->adminUser();
 		if (!$user instanceof IUser) {
 			return $user;
+		}
+
+		$refusal = $this->fileModeRefusal();
+		if ($refusal !== null) {
+			return $refusal;
 		}
 
 		$level = $this->stringParam('level', '');
@@ -866,10 +931,11 @@ class ApiController extends OCSController {
 	 *
 	 * @param string $appId The app to clear the policy for
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{appId: string, cleared: bool}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, cleared: bool}, array{}>|DataResponse<Http::STATUS_FORBIDDEN|Http::STATUS_CONFLICT, array{message: string}, array{}>
 	 *
 	 * 200: The policy was cleared, or there was none to clear
 	 * 403: Caller is not an administrator
+	 * 409: The policies are read from the policy file config.php names
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 */
@@ -879,6 +945,11 @@ class ApiController extends OCSController {
 	public function clearPolicy(string $appId): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$refusal = $this->fileModeRefusal();
+		if ($refusal !== null) {
+			return $refusal;
 		}
 
 		$this->autoUpdate->policyStore->clear($appId);
@@ -894,11 +965,12 @@ class ApiController extends OCSController {
 	 *
 	 * @param string|null $enabled `1`/`0` to set the global kill switch; OMIT to leave it untouched
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_CONFLICT, array{message: string}, array{}>
 	 *
 	 * 200: The stored global settings
 	 * 400: The maintenance window is malformed, or the default level is unknown
 	 * 403: Caller is not an administrator
+	 * 409: The settings are read from the policy file config.php names
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
@@ -909,6 +981,11 @@ class ApiController extends OCSController {
 	public function updateAutoUpdateSettings(?string $enabled = null): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$refusal = $this->fileModeRefusal();
+		if ($refusal !== null) {
+			return $refusal;
 		}
 
 		// The null default is load-bearing, as it was with getParam() and no

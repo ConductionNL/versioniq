@@ -24,6 +24,8 @@ use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Policy\Policy;
+use OCA\Versioniq\Service\Policy\PolicyFileContents;
+use OCA\Versioniq\Service\Policy\PolicyFileException;
 use OCP\AppFramework\Http;
 use OCP\BackgroundJob\TimedJob;
 use Psr\Log\LoggerInterface;
@@ -88,7 +90,12 @@ class AutoUpdateJob extends TimedJob {
 	 * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-every-audit-row-says-where-it-came-from
 	 */
 	private function runUpdates(): void {
-		if (!$this->stores->settingsStore->isEnabled()) {
+		$file = $this->fileContents();
+		if ($file === false) {
+			return;
+		}
+
+		if (!$this->isEnabled($file)) {
 			// Kill switch off — policies remain stored but inert; see "Global
 			// kill switch and window" ("Kill switch inert-but-stored").
 			return;
@@ -96,7 +103,7 @@ class AutoUpdateJob extends TimedJob {
 
 		$zoneName = $this->stores->settingsStore->getTimeZoneName();
 		$now = $this->time->getDateTime('now', new \DateTimeZone($zoneName !== '' ? $zoneName : 'UTC'));
-		$window = $this->stores->settingsStore->getWindow();
+		$window = $file?->window ?? $this->stores->settingsStore->getWindow();
 		if (!AutoUpdateWindow::isWithin($window, $now)) {
 			// Outside the configured window — see "Disabled or outside the
 			// window is a no-op".
@@ -110,7 +117,7 @@ class AutoUpdateJob extends TimedJob {
 		}
 		$this->stores->settingsStore->markWindowSwept($openingKey);
 
-		foreach ($this->levelsByApp() as $appId => $level) {
+		foreach ($this->levelsByApp($file) as $appId => $level) {
 			if ($level === Policy::LEVEL_NONE) {
 				continue;
 			}
@@ -129,25 +136,67 @@ class AutoUpdateJob extends TimedJob {
 	}
 
 	/**
-	 * The level to apply per app: every stored policy, then every enabled app
-	 * without one at the instance default. With the default at none this is
-	 * exactly the stored policies, as before; see "Instance default level".
+	 * In file mode (design D4) the policy file, read afresh; null when the
+	 * stores are the source; false when the file cannot be used, which makes
+	 * the run do nothing rather than fall back to the stores.
+	 *
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
+	 */
+	private function fileContents(): PolicyFileContents|null|false {
+		$source = $this->stores->policySource;
+		$path = $source?->filePath();
+		if ($source === null || $path === null) {
+			return null;
+		}
+
+		try {
+			return $source->current();
+		} catch (PolicyFileException $error) {
+			$this->logger->error('AutoUpdateJob: the policy file cannot be used, so nothing is updated', [
+				'file' => $path,
+				'errors' => $error->errors,
+			]);
+			return false;
+		}
+	}
+
+	/** The kill switch: the file's in file mode (off when it does not say), else the stored one. */
+	private function isEnabled(?PolicyFileContents $file): bool {
+		if ($file !== null) {
+			return $file->enabled ?? false;
+		}
+
+		return $this->stores->settingsStore->isEnabled();
+	}
+
+	/**
+	 * The level to apply per app: every policy (stored, or the file's), then
+	 * every enabled app without one at the instance default. With the default
+	 * at none this is exactly the policies, as before; see "Instance default level".
 	 *
 	 * @return array<string, string>
 	 */
-	private function levelsByApp(): array {
-		$levels = [];
-		foreach ($this->stores->policyStore->all() as $appId => $policy) {
-			$levels[$appId] = $policy->level;
-		}
-
-		$default = $this->stores->settingsStore->getDefaultLevel();
+	private function levelsByApp(?PolicyFileContents $file): array {
+		$levels = $file?->policies ?? $this->storedLevels();
+		$default = $file !== null ? ($file->defaultLevel ?? Policy::LEVEL_NONE) : $this->stores->settingsStore->getDefaultLevel();
 		if (!Policy::isValidLevel($default) || $default === Policy::LEVEL_NONE) {
 			return $levels;
 		}
 
 		foreach ($this->install->appManager->getEnabledApps() as $appId) {
 			$levels[$appId] ??= $default;
+		}
+
+		return $levels;
+	}
+
+	/**
+	 * @return array<string, string>
+	 */
+	private function storedLevels(): array {
+		$levels = [];
+		foreach ($this->stores->policyStore->all() as $appId => $policy) {
+			$levels[$appId] = $policy->level;
 		}
 
 		return $levels;
