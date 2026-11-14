@@ -138,6 +138,59 @@ class ChannelStore {
 		$this->config->setValueString(Application::APP_ID, $key, json_encode($clean, JSON_THROW_ON_ERROR));
 	}
 
+	/**
+	 * Every app's own channel, by app id; malformed values are left out.
+	 *
+	 * @return array<string, string>
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-an-admin-sets-a-release-channel-for-the-instance-and-per-app
+	 */
+	public function appChannels(): array {
+		$channels = [];
+		foreach ($this->appIdsUnder(self::KEY_APP_PREFIX) as $appId) {
+			$channel = $appId === 'default' ? null : $this->appChannel($appId);
+			if ($channel !== null) {
+				$channels[$appId] = $channel;
+			}
+		}
+
+		return $channels;
+	}
+
+	/**
+	 * Every app's marked lines, by app id; apps without valid lines are left out.
+	 *
+	 * @return array<string, list<string>>
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-the-long-term-support-channel-offers-only-marked-release-lines
+	 */
+	public function allLtsLines(): array {
+		$lines = [];
+		foreach ($this->appIdsUnder(self::KEY_LINES_PREFIX) as $appId) {
+			$marked = $this->ltsLines($appId);
+			if ($marked !== []) {
+				$lines[$appId] = $marked;
+			}
+		}
+
+		return $lines;
+	}
+
+	/**
+	 * The app ids of the stored keys that start with a prefix, sorted.
+	 *
+	 * @return list<string>
+	 */
+	private function appIdsUnder(string $prefix): array {
+		$ids = [];
+		foreach ($this->config->getKeys(Application::APP_ID) as $key) {
+			if (str_starts_with($key, $prefix) && strlen($key) > strlen($prefix)) {
+				$ids[] = substr($key, strlen($prefix));
+			}
+		}
+		sort($ids);
+
+		return $ids;
+	}
+
 	private function readChannel(string $key): ?string {
 		$value = trim($this->config->getValueString(Application::APP_ID, $key, ''));
 

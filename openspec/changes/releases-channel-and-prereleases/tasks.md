@@ -9,7 +9,7 @@
 
 - [x] 2.1 Add `lib/Service/Channel/ChannelStore.php` (`channel.default`, `channel.{appId}`, `lts_lines.{appId}`), with malformed values read as absent. Verify: `tests/unit/Service/Channel/ChannelStoreTest.php`.
 - [x] 2.2 Stamp `preRelease`, `lts` and `onChannel` in `InstallerService::getAppVersions()` and return `channel` in the envelope. Verify: `tests/unit/Service/InstallerServiceTest.php` gains an app with its own channel and an app on the default.
-- [ ] 2.3 Add `GET /api/channels`, `PUT /api/channel`, `PUT/DELETE /api/app/{appId}/channel` and `PUT /api/app/{appId}/lts-lines`, admin-only, password-confirmed, audited as `settings`. Verify: `tests/unit/Controller/ApiTest.php` asserts 403 for a non-admin, 400 for an unknown channel, and one audit row per change.
+- [x] 2.3 Add `GET /api/channels`, `PUT /api/channel`, `PUT/DELETE /api/app/{appId}/channel` and `PUT /api/app/{appId}/lts-lines`, admin-only, password-confirmed, audited as `settings`. Verify: `tests/unit/Controller/ApiTest.php` asserts 403 for a non-admin, 400 for an unknown channel, and one audit row per change.
 
 ## 3. Page
 
