@@ -1,6 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2024 Conduction B.V. <info@conduction.nl> -->
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
+import type { ManagedBy } from './components/AutoUpdateOverview.vue'
 import type {PrefillBindPayload} from './components/DiscoverPanel.vue';
 import type {BlockedVersion, PolicyLevel} from './components/PolicySelector.vue';
 import type { PinRecord } from './dialogs/PinDialog.vue'
@@ -14,6 +15,7 @@ import { t } from '@nextcloud/l10n'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
+import NcSelect from '@nextcloud/vue/components/NcSelect'
 import AdvisoriesPanel from './components/AdvisoriesPanel.vue'
 import AppSourceBadges from './components/AppSourceBadges.vue'
 import AutoUpdateOverview from './components/AutoUpdateOverview.vue'
@@ -217,6 +219,11 @@ const autoUpdateWindowInput = ref(AUTO_UPDATE_WINDOW_DEFAULT)
 const savedAutoUpdateWindow = ref(AUTO_UPDATE_WINDOW_DEFAULT)
 // The zone the server reads the window in (Nextcloud's default_timezone, else UTC).
 const autoUpdateTimeZone = ref('UTC')
+// The level every app without its own policy follows (none unless an admin set
+// another), and the policy file config.php names, when the policies come from one.
+const autoUpdateDefaultLevel = ref<PolicyLevel>('none')
+const savedAutoUpdateDefaultLevel = ref<PolicyLevel>('none')
+const policyFile = ref<ManagedBy | null>(null)
 const isSavingAutoUpdateSettings = ref(false)
 const autoUpdateSettingsError = ref('')
 const autoUpdateSettingsNotice = ref('')
@@ -817,7 +824,7 @@ function pinTooltip (pin: PinRecord | null): string {
 async function loadPolicies (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/policies')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string }>(response)
+		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string, autoUpdateDefaultLevel?: PolicyLevel, managedBy?: ManagedBy | null }>(response)
 		const map: Record<string, PolicyRecord> = {}
 		for (const policy of payload.policies || []) {
 			map[policy.appId] = policy
@@ -828,13 +835,32 @@ async function loadPolicies (): Promise<void> {
 		autoUpdateWindowInput.value = payload.autoUpdateWindow || AUTO_UPDATE_WINDOW_DEFAULT
 		autoUpdateTimeZone.value = payload.autoUpdateTimeZone || 'UTC'
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
+		autoUpdateDefaultLevel.value = payload.autoUpdateDefaultLevel || 'none'
+		savedAutoUpdateDefaultLevel.value = autoUpdateDefaultLevel.value
+		policyFile.value = payload.managedBy || null
 	} catch {
 		// Non-fatal: the app list stays usable without policy badges.
 		policies.value = {}
 	}
 }
 
-const policyLevelFor = (appId: string): PolicyLevel => policies.value[appId]?.level ?? 'none'
+// An app without its own policy follows the default (autoupdate-default-and-config-file).
+const policyLevelFor = (appId: string): PolicyLevel => policies.value[appId]?.level ?? savedAutoUpdateDefaultLevel.value
+const policySourceFor = (appId: string): 'policy' | 'default' => (policies.value[appId] ? 'policy' : 'default')
+type LevelOption = { id: PolicyLevel, label: string }
+const defaultLevelOptions = computed<LevelOption[]>(() => [
+	{ id: 'none', label: t('versioniq', 'Off') },
+	{ id: 'patch', label: t('versioniq', 'Patch') },
+	{ id: 'minor', label: t('versioniq', 'Minor') },
+	{ id: 'all', label: t('versioniq', 'All') },
+])
+const defaultLevelOption = computed<LevelOption>({
+	get: () => defaultLevelOptions.value.find((option) => option.id === autoUpdateDefaultLevel.value) ?? defaultLevelOptions.value[0],
+	set: (option: LevelOption | null) => {
+		autoUpdateDefaultLevel.value = option?.id ?? 'none'
+	},
+})
+const appsFollowingDefault = computed(() => apps.value.filter((app) => !app.isCore && !policies.value[app.id]).length)
 const blockedVersionsFor = (appId: string): BlockedVersion[] => policies.value[appId]?.blockedVersions ?? []
 
 /**
@@ -917,7 +943,9 @@ async function onPolicyChange (appId: string, level: PolicyLevel): Promise<void>
 	errorMessage.value = ''
 	try {
 		await ensurePasswordConfirmation()
-		if (level === 'none') {
+		// Off is the absence of a policy only while the default is off too;
+		// with another default it is a policy of its own.
+		if (level === 'none' && savedAutoUpdateDefaultLevel.value === 'none') {
 			await clearPolicy(appId)
 		} else {
 			await setPolicy(appId, level)
@@ -929,10 +957,33 @@ async function onPolicyChange (appId: string, level: PolicyLevel): Promise<void>
 	}
 }
 
+/**
+ * Drop an app's own policy so it follows the default level again.
+ *
+ * @param appId The app to reset.
+ * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
+ */
+async function onPolicyReset (appId: string): Promise<void> {
+	if (isSavingPolicy.value) {
+		return
+	}
+	isSavingPolicy.value = true
+	errorMessage.value = ''
+	try {
+		await ensurePasswordConfirmation()
+		await clearPolicy(appId)
+	} catch (e) {
+		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not update the auto-update policy.')
+	} finally {
+		isSavingPolicy.value = false
+	}
+}
+
 const isAutoUpdateWindowValid = computed(() => isValidAutoUpdateWindow(autoUpdateWindowInput.value))
 const isAutoUpdateSettingsDirty = computed(() => (
 	autoUpdateEnabled.value !== savedAutoUpdateEnabled.value
 	|| autoUpdateWindowInput.value.trim() !== savedAutoUpdateWindow.value
+	|| autoUpdateDefaultLevel.value !== savedAutoUpdateDefaultLevel.value
 ))
 
 /**
@@ -950,9 +1001,13 @@ async function saveAutoUpdateSettings (): Promise<void> {
 	try {
 		await ensurePasswordConfirmation()
 		const window = autoUpdateWindowInput.value.trim()
+		// The default level travels only when it changed, so a save of the
+		// switch or window alone sends exactly what it always did.
+		const defaultLevel = autoUpdateDefaultLevel.value !== savedAutoUpdateDefaultLevel.value ? { defaultLevel: autoUpdateDefaultLevel.value } : {}
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/auto-update/settings', {
 			enabled: autoUpdateEnabled.value ? '1' : '0',
 			window,
+			...defaultLevel,
 		})), {
 			method: 'PUT',
 			headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
@@ -968,13 +1023,15 @@ async function saveAutoUpdateSettings (): Promise<void> {
 			//
 			// The query string above already sends '1'/'0'; this makes the body
 			// agree with it so the value cannot depend on which one wins.
-			body: JSON.stringify({ enabled: autoUpdateEnabled.value ? '1' : '0', window }),
+			body: JSON.stringify({ enabled: autoUpdateEnabled.value ? '1' : '0', window, ...defaultLevel }),
 		})
-		const payload = await unwrapOcsResponse<{ autoUpdateEnabled?: boolean, autoUpdateWindow?: string }>(response)
+		const payload = await unwrapOcsResponse<{ autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateDefaultLevel?: PolicyLevel }>(response)
 		autoUpdateEnabled.value = Boolean(payload.autoUpdateEnabled)
 		autoUpdateWindowInput.value = payload.autoUpdateWindow || window
 		savedAutoUpdateEnabled.value = autoUpdateEnabled.value
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
+		autoUpdateDefaultLevel.value = payload.autoUpdateDefaultLevel || autoUpdateDefaultLevel.value
+		savedAutoUpdateDefaultLevel.value = autoUpdateDefaultLevel.value
 		autoUpdateSettingsNotice.value = t('versioniq', 'Automatic update settings saved.')
 	} catch (e) {
 		autoUpdateSettingsError.value = e instanceof Error ? e.message : t('versioniq', 'Could not save automatic update settings.')
@@ -2355,7 +2412,7 @@ watch(dryRunEnabled, () => {
 										type="checkbox"
 										:class="$style.safeModeCheckbox"
 										data-testid="auto-update-kill-switch"
-										:disabled="isSavingAutoUpdateSettings">
+										:disabled="isSavingAutoUpdateSettings || policyFile !== null">
 									<span>{{ t('versioniq', 'Enable automatic updates') }}</span>
 								</label>
 								<label :class="$style.filterField" for="auto-update-window">
@@ -2367,8 +2424,16 @@ watch(dryRunEnabled, () => {
 										data-testid="auto-update-window"
 										placeholder="01:00-05:00"
 										:class="$style.appFilterInput"
-										:disabled="isSavingAutoUpdateSettings">
+										:disabled="isSavingAutoUpdateSettings || policyFile !== null">
 								</label>
+								<NcSelect
+									v-model="defaultLevelOption"
+									data-testid="auto-update-default-level"
+									:inputLabel="t('versioniq', 'Default level for apps without their own policy')"
+									:options="defaultLevelOptions"
+									:clearable="false"
+									:disabled="isSavingAutoUpdateSettings || policyFile !== null"
+									label="label" />
 								<p v-if="autoUpdateWindowInput.trim() !== '' && !isAutoUpdateWindowValid" :class="$style.autoUpdateWindowError" data-testid="auto-update-window-error">
 									{{ t('versioniq', 'Use the HH:MM-HH:MM format, e.g. 01:00-05:00.') }}
 								</p>
@@ -2381,7 +2446,7 @@ watch(dryRunEnabled, () => {
 								<NcButton
 									variant="primary"
 									data-testid="auto-update-settings-save"
-									:disabled="isSavingAutoUpdateSettings || !isAutoUpdateSettingsDirty || !isAutoUpdateWindowValid"
+									:disabled="isSavingAutoUpdateSettings || !isAutoUpdateSettingsDirty || !isAutoUpdateWindowValid || policyFile !== null"
 									@click="saveAutoUpdateSettings">
 									{{ t('versioniq', 'Save') }}
 								</NcButton>
@@ -2392,6 +2457,9 @@ watch(dryRunEnabled, () => {
 									:window="savedAutoUpdateWindow"
 									:timeZone="autoUpdateTimeZone"
 									:disabled="isSavingPolicy"
+									:defaultLevel="savedAutoUpdateDefaultLevel"
+									:followingDefault="appsFollowingDefault"
+									:managedBy="policyFile"
 									@retry="onRetryAttempt" />
 
 								<h3 id="section-advisories" :class="$style.advisorySettingsHeading">{{ t('versioniq', 'Security advisory checks') }}</h3>
@@ -2583,7 +2651,10 @@ watch(dryRunEnabled, () => {
 													:autoUpdateEnabled="autoUpdateEnabled"
 													:disabled="isSavingPolicy"
 													:blockedVersions="blockedVersionsFor(app.id)"
+													:source="policySourceFor(app.id)"
+													:readOnly="policyFile !== null"
 													@change="onPolicyChange"
+													@reset="onPolicyReset"
 													@retry="onRetryAttempt" />
 											</div>
 											<button

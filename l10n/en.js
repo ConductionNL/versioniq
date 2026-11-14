@@ -271,7 +271,14 @@ OC.L10N.register(
         "Outside the update policy": "Outside the update policy",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"]
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"],
+        "Follows the default level": "Follows the default level",
+        "Own policy": "Own policy",
+        "Reset to default": "Reset to default",
+        "Default level for apps without their own policy": "Default level for apps without their own policy",
+        "These policies are read from {file} and can only be changed there.": "These policies are read from {file} and can only be changed there.",
+        "The policy file cannot be used, so nothing is updated automatically: {error}": "The policy file cannot be used, so nothing is updated automatically: {error}",
+        "_%n app without its own policy follows the default level: {level}._::_%n apps without their own policy follow the default level: {level}._": ["%n app without its own policy follows the default level: {level}.","%n apps without their own policy follow the default level: {level}."]
     },
     "nplurals=2; plural=(n != 1);"
 )

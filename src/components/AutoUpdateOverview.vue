@@ -2,11 +2,14 @@
 <script setup lang="ts">
 import type { BlockedVersion, PolicyLevel } from './PolicySelector.vue'
 
-import { t } from '@nextcloud/l10n'
+import { n, t } from '@nextcloud/l10n'
 import { computed } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 
 type PolicyRecord = { appId: string, level: PolicyLevel, blockedVersions?: BlockedVersion[] }
+
+/** The policy file the policies are read from, when they are; see design D4. */
+export type ManagedBy = { file: string, readAt?: string, error?: string | null }
 
 /**
  * Every scheduled and blocked automatic update on one view: each app with a
@@ -23,6 +26,12 @@ const props = defineProps<{
 	window: string
 	timeZone: string
 	disabled?: boolean
+	/** The level every app without its own policy follows. */
+	defaultLevel?: PolicyLevel
+	/** How many apps follow that default. */
+	followingDefault?: number
+	/** Set when config.php names a policy file: the policies are read from it. */
+	managedBy?: ManagedBy | null
 }>()
 
 const emit = defineEmits<{
@@ -68,6 +77,15 @@ function levelLabel (level: PolicyLevel): string {
 		</p>
 		<p v-else :class="$style.hint">
 			{{ t('versioniq', 'Runs in the window {window} ({timeZone}).', { window, timeZone }) }}
+		</p>
+		<p v-if="managedBy" :class="$style.hint" data-testid="overview-managed-by">
+			{{ t('versioniq', 'These policies are read from {file} and can only be changed there.', { file: managedBy.file }) }}
+		</p>
+		<p v-if="managedBy?.error" :class="$style.warning" data-testid="overview-file-error">
+			{{ t('versioniq', 'The policy file cannot be used, so nothing is updated automatically: {error}', { error: managedBy.error }) }}
+		</p>
+		<p :class="$style.hint" data-testid="overview-default">
+			{{ n('versioniq', '%n app without its own policy follows the default level: {level}.', '%n apps without their own policy follow the default level: {level}.', followingDefault ?? 0, { level: levelLabel(defaultLevel ?? 'none') }) }}
 		</p>
 		<p v-if="scheduled.length === 0" :class="$style.hint">
 			{{ t('versioniq', 'No app has an automatic update policy.') }}

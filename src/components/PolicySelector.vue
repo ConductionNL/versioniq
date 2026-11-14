@@ -16,14 +16,21 @@ const props = withDefaults(defineProps<{
 	autoUpdateEnabled: boolean
 	disabled?: boolean
 	blockedVersions?: BlockedVersion[]
+	/** Whether `level` is the app's own policy or the instance default it follows. */
+	source?: 'policy' | 'default'
+	/** The policies come from a policy file: nothing can be changed here. */
+	readOnly?: boolean
 }>(), {
 	disabled: false,
 	blockedVersions: () => [],
+	source: 'policy',
+	readOnly: false,
 })
 
 const emit = defineEmits<{
 	(event: 'change', appId: string, level: PolicyLevel): void
 	(event: 'retry', appId: string, version: string): void
+	(event: 'reset', appId: string): void
 }>()
 
 type SelectOption = { id: PolicyLevel, label: string }
@@ -43,6 +50,9 @@ const selected = computed<SelectOption>({
 })
 
 const isActive = computed(() => props.level !== 'none')
+
+/** An own policy can be dropped so the app follows the default again. */
+const canReset = computed(() => props.source === 'policy' && !props.readOnly)
 </script>
 
 <template>
@@ -53,8 +63,22 @@ const isActive = computed(() => props.level !== 'none')
 			:inputLabel="t('versioniq', 'Auto-update policy')"
 			:options="options"
 			:clearable="false"
-			:disabled="disabled"
+			:disabled="disabled || readOnly"
 			label="label" />
+		<span v-if="source === 'default'" :class="$style.badge" data-testid="policy-default-hint">
+			{{ t('versioniq', 'Follows the default level') }}
+		</span>
+		<span v-else :class="$style.badge" data-testid="policy-own-hint">
+			{{ t('versioniq', 'Own policy') }}
+			<NcButton
+				v-if="canReset"
+				variant="tertiary"
+				:disabled="disabled"
+				data-testid="policy-reset"
+				@click="emit('reset', appId)">
+				{{ t('versioniq', 'Reset to default') }}
+			</NcButton>
+		</span>
 		<span v-if="isActive" :class="$style.badge" data-testid="policy-active-badge">
 			{{ t('versioniq', 'Auto-update: {level}', { level: selected.label }) }}
 		</span>

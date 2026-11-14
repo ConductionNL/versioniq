@@ -300,7 +300,14 @@ OC.L10N.register(
         "Outside the update policy": "Buiten het updatebeleid",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Aantal releases dat een app achter mag lopen (0 tot {max}, laat leeg om de controle uit te zetten)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "Een app die verder achterloopt, wordt gemarkeerd op het tabblad Apps. 1 betekent de nieuwste release of de release daarvoor.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"]
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"],
+        "Follows the default level": "Volgt het standaardniveau",
+        "Own policy": "Eigen beleid",
+        "Reset to default": "Terugzetten naar de standaard",
+        "Default level for apps without their own policy": "Standaardniveau voor apps zonder eigen beleid",
+        "These policies are read from {file} and can only be changed there.": "Dit beleid wordt gelezen uit {file} en kan alleen daar worden gewijzigd.",
+        "The policy file cannot be used, so nothing is updated automatically: {error}": "Het beleidsbestand is niet bruikbaar, dus er wordt niets automatisch bijgewerkt: {error}",
+        "_%n app without its own policy follows the default level: {level}._::_%n apps without their own policy follow the default level: {level}._": ["%n app zonder eigen beleid volgt het standaardniveau: {level}.","%n apps zonder eigen beleid volgen het standaardniveau: {level}."]
     },
     "nplurals=2; plural=(n != 1);"
 )
