@@ -271,7 +271,10 @@ OC.L10N.register(
         "Outside the update policy": "Outside the update policy",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"]
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"],
+        "A security advisory was assigned to you": "A security advisory was assigned to you",
+        "%1$s assigned advisory %2$s for the Nextcloud server to you. Review it on the Versioniq Advisories tab.": "%1$s assigned advisory %2$s for the Nextcloud server to you. Review it on the Versioniq Advisories tab.",
+        "%1$s assigned advisory %2$s for %3$s to you. Review it on the Versioniq Advisories tab.": "%1$s assigned advisory %2$s for %3$s to you. Review it on the Versioniq Advisories tab."
     },
     "nplurals=2; plural=(n != 1);"
 )

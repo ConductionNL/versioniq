@@ -16,8 +16,10 @@
 
 ## 3. Routes
 
-- [ ] 3.1 Add `AdvisoryTriageController` with dismiss, reopen and assign per D3 and D4, and the three audit operations. Verify: `tests/unit/Controller/AdvisoryTriageControllerTest.php` asserts 403 for a non-admin, 404 for an advisory not in the snapshot, 400 for `fix_planned` without `until` and for a non-admin user as assignee, and one audit entry per success.
-- [ ] 3.2 Add the `advisory_assigned` notification to group admins or the user, and render it in `Notifier::prepare()`. Verify: `NotifierTest` renders it; the controller test asserts only admin members of a group are notified.
+- [x] 3.1 Add `AdvisoryTriageController` with dismiss, reopen and assign per D3 and D4, and the three audit operations. Verify: `tests/unit/Controller/AdvisoryTriageControllerTest.php` asserts 403 for a non-admin, 404 for an advisory not in the snapshot, 400 for `fix_planned` without `until` and for a non-admin user as assignee, and one audit entry per success.
+  - Done: `lib/Controller/AdvisoryTriageController.php` (three POST routes with `/api/v1/` twins, documented in `openapi.json`), `lib/Service/Advisory/AdvisoryTriageService.php`, `Dismissal`, `TriageTarget`, `TriageRefusal`, `AuditLogger::OPERATION_ADVISORY_DISMISS|REOPEN|ASSIGN`. `AdvisoryTriageControllerTest` (11), `DismissalTest` (7).
+- [x] 3.2 Add the `advisory_assigned` notification to group admins or the user, and render it in `Notifier::prepare()`. Verify: `NotifierTest` renders it; the controller test asserts only admin members of a group are notified.
+  - Done: `lib/Service/Advisory/AdvisoryOwners.php` (parse, owners, notify), `Notifier::renderAdvisoryAssigned()`, strings in `l10n/en.json` and `l10n/nl.json` (+ regenerated `.js`). `AdvisoryOwnersTest` (9), `NotifierTest` (+1).
 
 ## 4. Page
 

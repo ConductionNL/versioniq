@@ -40,6 +40,15 @@ class AuditLogger {
 	/** An instance setting changed from the Settings tab (#438). */
 	public const OPERATION_SETTINGS = 'settings';
 
+	/** An advisory dismissed with a reason (advisories-triage). */
+	public const OPERATION_ADVISORY_DISMISS = 'advisory_dismiss';
+
+	/** A dismissed advisory reopened (advisories-triage). */
+	public const OPERATION_ADVISORY_REOPEN = 'advisory_reopen';
+
+	/** An advisory assigned to an owner, or unassigned (advisories-triage). */
+	public const OPERATION_ADVISORY_ASSIGN = 'advisory_assign';
+
 	private const OPERATION_PATTERN = '/^[a-z_]{1,32}$/';
 	private const MESSAGE_MAX_LENGTH = 4000;
 

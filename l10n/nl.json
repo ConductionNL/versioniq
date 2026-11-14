@@ -308,7 +308,10 @@
         "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": [
             "Buiten het updatebeleid: %n release achter",
             "Buiten het updatebeleid: %n releases achter"
-        ]
+        ],
+        "A security advisory was assigned to you": "Er is een beveiligingsadvies aan je toegewezen",
+        "%1$s assigned advisory %2$s for the Nextcloud server to you. Review it on the Versioniq Advisories tab.": "%1$s heeft advies %2$s voor de Nextcloud-server aan je toegewezen. Bekijk het op het tabblad Adviezen van Versioniq.",
+        "%1$s assigned advisory %2$s for %3$s to you. Review it on the Versioniq Advisories tab.": "%1$s heeft advies %2$s voor %3$s aan je toegewezen. Bekijk het op het tabblad Adviezen van Versioniq."
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }
