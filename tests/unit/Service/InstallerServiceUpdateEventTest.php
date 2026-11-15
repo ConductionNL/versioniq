@@ -2,7 +2,16 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Service;
+
+require_once __DIR__ . '/../Support/InstallArgs.php';
+
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
@@ -18,6 +27,8 @@ use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\SourceRegistry;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
+use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\App\Events\AppUpdateEvent;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Http;
@@ -41,6 +52,8 @@ use PHPUnit\Framework\TestCase;
  * @spec openspec/changes/releases-notes-reach/tasks.md#task-1.1
  */
 final class InstallerServiceUpdateEventTest extends TestCase {
+	use BuildsByParameterName;
+
 	private IAppManager&MockObject $appManager;
 	private IConfig&MockObject $config;
 	private IAppConfig&MockObject $appConfig;
@@ -98,24 +111,24 @@ final class InstallerServiceUpdateEventTest extends TestCase {
 		$factory = $this->createMock(IFactory::class);
 		$factory->method('get')->willReturn($l);
 
-		return new InstallerService(
-			$this->appManager,
-			$this->config,
-			$this->appConfig,
-			$this->sourceRegistry,
-			$this->createMock(SourceBindingStore::class),
-			$this->createMock(TrustedSourceList::class),
-			$this->signedInstaller,
-			$this->createMock(ExternalReleaseInstallerService::class),
-			new FailureClassifier($factory),
-			$this->environmentCheck,
-			$this->pinStore,
-			$userSession,
-			$timeFactory,
-			$this->createMock(LkgStore::class),
-			$this->createMock(ArtifactCache::class),
-			$this->dispatcher,
-		);
+		return $this->buildByName(InstallerService::class, [
+			'appManager' => $this->appManager,
+			'config' => $this->config,
+			'appConfig' => $this->appConfig,
+			'sourceRegistry' => $this->sourceRegistry,
+			'bindingStore' => $this->createMock(SourceBindingStore::class),
+			'trustedSources' => $this->createMock(TrustedSourceList::class),
+			'signedInstaller' => $this->signedInstaller,
+			'externalInstaller' => $this->createMock(ExternalReleaseInstallerService::class),
+			'failureClassifier' => new FailureClassifier($factory),
+			'environmentCheck' => $this->environmentCheck,
+			'pinStore' => $this->pinStore,
+			'userSession' => $userSession,
+			'timeFactory' => $timeFactory,
+			'lkgStore' => $this->createMock(LkgStore::class),
+			'artifactCache' => $this->createMock(ArtifactCache::class),
+			'eventDispatcher' => $this->dispatcher,
+		]);
 	}
 
 	/**
@@ -132,7 +145,7 @@ final class InstallerServiceUpdateEventTest extends TestCase {
 	public function testAnUpgradeDispatchesOneAppUpdateEvent(): void {
 		$this->resultingVersion('2.0.0');
 
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', false, null, null, false, false, false, false);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false, null, null, false, false, false, false);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 		$events = $this->updateEvents();
@@ -143,7 +156,7 @@ final class InstallerServiceUpdateEventTest extends TestCase {
 	public function testADryRunDispatchesNothing(): void {
 		$this->resultingVersion('1.0.0');
 
-		$this->service()->installAppVersion('someapp', '2.0.0', false, null, null, false, false, false, true);
+		InstallArgs::call($this->service(), 'someapp', '2.0.0', false, null, null, false, false, false, true);
 
 		self::assertSame([], $this->updateEvents());
 	}
@@ -153,7 +166,7 @@ final class InstallerServiceUpdateEventTest extends TestCase {
 		$this->pinStore->method('get')->willReturn(new Pin('1.0.0', 'alice', '2026-01-01T00:00:00+00:00', null, '0.9.0', '2026-02-01T00:00:00+00:00'));
 		$this->resultingVersion('1.0.0');
 
-		$this->service()->installAppVersion('someapp', '1.0.0', false, null, null, false, false, false, false);
+		InstallArgs::call($this->service(), 'someapp', '1.0.0', false, null, null, false, false, false, false);
 
 		self::assertSame([], $this->updateEvents());
 	}
@@ -162,7 +175,7 @@ final class InstallerServiceUpdateEventTest extends TestCase {
 		$this->installedBefore = '';
 		$this->resultingVersion('2.0.0');
 
-		$this->service()->installAppVersion('someapp', '2.0.0', false, null, null, false, false, false, false);
+		InstallArgs::call($this->service(), 'someapp', '2.0.0', false, null, null, false, false, false, false);
 
 		self::assertSame([], $this->updateEvents());
 	}
@@ -171,7 +184,7 @@ final class InstallerServiceUpdateEventTest extends TestCase {
 		$this->notifySwitch = false;
 		$this->resultingVersion('2.0.0');
 
-		$this->service()->installAppVersion('someapp', '2.0.0', false, null, null, false, false, false, false);
+		InstallArgs::call($this->service(), 'someapp', '2.0.0', false, null, null, false, false, false, false);
 
 		self::assertSame([], $this->updateEvents());
 	}
@@ -188,7 +201,7 @@ final class InstallerServiceUpdateEventTest extends TestCase {
 		});
 		$this->resultingVersion('2.0.0');
 
-		$this->service()->installAppVersion('someapp', '2.0.0', false, null, InstallerService::OVERRIDE_PIN_REPIN, false, false, false, false);
+		InstallArgs::call($this->service(), 'someapp', '2.0.0', false, null, InstallerService::OVERRIDE_PIN_REPIN, false, false, false, false);
 
 		self::assertSame(['pin', 'event'], $order);
 	}

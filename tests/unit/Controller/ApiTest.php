@@ -2,14 +2,26 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2024 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Controller;
+
+require_once __DIR__ . '/../Support/InstallArgs.php';
+
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+require_once __DIR__ . '/../Support/DispatchesLikeNextcloud.php';
 
 use OCA\Versioniq\Controller\ApiController;
 use OCA\Versioniq\Db\AuditEntry;
 use OCA\Versioniq\Db\AuditEntryMapper;
+use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Db\PatMapper;
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Service\Advisory\AdvisoryTriageStore;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
@@ -21,7 +33,11 @@ use OCA\Versioniq\Service\Pat\PatManager;
 use OCA\Versioniq\Service\Pat\PatValidator;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\PolicyStore;
+use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
+use OCA\Versioniq\Tests\Unit\Support\DispatchesLikeNextcloud;
+use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IGroupManager;
@@ -34,6 +50,9 @@ use ReflectionClass;
 use ReflectionMethod;
 
 final class ApiTest extends TestCase {
+	use BuildsByParameterName;
+	use DispatchesLikeNextcloud;
+
 	private function fakeServerVersion(): ServerVersion {
 		// ServerVersion is `readonly` and cannot be mocked; bypass the
 		// constructor to get an inert instance for tests that don't touch it.
@@ -57,31 +76,32 @@ final class ApiTest extends TestCase {
 		?ArtifactCache $artifactCache = null,
 		?AttemptLedger $attemptLedger = null,
 	): ApiController {
-		return new ApiController(
-			'versioniq',
-			$request ?? $this->createMock(IRequest::class),
-			$this->createMock(InstallerService::class),
-			$this->createMock(IGroupManager::class),
-			$this->createMock(IUserSession::class),
-			$this->fakeServerVersion(),
-			$this->createMock(PatMapper::class),
-			$this->createMock(PatManager::class),
-			$this->createMock(PatValidator::class),
-			$this->createMock(PatDeeplinkBuilder::class),
-			$this->createMock(PatExpiryEvaluator::class),
-			$this->createMock(DiscoveryAggregator::class),
-			$this->createMock(AdvisoryResultStore::class),
-			$this->createMock(AdvisorySettingsStore::class),
-			$auditEntryMapper ?? $this->createMock(AuditEntryMapper::class),
-			$pinStore ?? $this->createMock(PinStore::class),
-			$appManager ?? $this->createMock(IAppManager::class),
-			$this->fakeTimeFactory(),
-			$policyStore ?? $this->createMock(PolicyStore::class),
-			$autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
-			$artifactCache ?? $this->createMock(ArtifactCache::class),
-			null,
-			$attemptLedger ?? $this->createMock(AttemptLedger::class),
-		);
+		return $this->buildByName(ApiController::class, [
+			'appName' => 'versioniq',
+			'request' => $request ?? $this->createMock(IRequest::class),
+			'installerService' => $this->createMock(InstallerService::class),
+			'groupManager' => $this->createMock(IGroupManager::class),
+			'userSession' => $this->createMock(IUserSession::class),
+			'serverVersion' => $this->fakeServerVersion(),
+			'patMapper' => $this->createMock(PatMapper::class),
+			'patManager' => $this->createMock(PatManager::class),
+			'patValidator' => $this->createMock(PatValidator::class),
+			'deeplinkBuilder' => $this->createMock(PatDeeplinkBuilder::class),
+			'patExpiryEvaluator' => $this->createMock(PatExpiryEvaluator::class),
+			'discoveryAggregator' => $this->createMock(DiscoveryAggregator::class),
+			'advisoryResultStore' => $this->createMock(AdvisoryResultStore::class),
+			'advisorySettingsStore' => $this->createMock(AdvisorySettingsStore::class),
+			'auditEntryMapper' => $auditEntryMapper ?? $this->createMock(AuditEntryMapper::class),
+			'pinStore' => $pinStore ?? $this->createMock(PinStore::class),
+			'appManager' => $appManager ?? $this->createMock(IAppManager::class),
+			'timeFactory' => $this->fakeTimeFactory(),
+			'policyStore' => $policyStore ?? $this->createMock(PolicyStore::class),
+			'autoUpdateSettingsStore' => $autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
+			'settingsStore' => $autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
+			'artifactCache' => $artifactCache ?? $this->createMock(ArtifactCache::class),
+			'connectionReports' => null,
+			'attemptLedger' => $attemptLedger ?? $this->createMock(AttemptLedger::class),
+		]);
 	}
 
 	/**
@@ -99,6 +119,7 @@ final class ApiTest extends TestCase {
 		?AutoUpdateSettingsStore $autoUpdateSettingsStore = null,
 		?ArtifactCache $artifactCache = null,
 		?AttemptLedger $attemptLedger = null,
+		?KnownIssueStore $knownIssues = null,
 	): ApiController {
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn($uid);
@@ -107,31 +128,33 @@ final class ApiTest extends TestCase {
 		$groupManager = $this->createMock(IGroupManager::class);
 		$groupManager->method('isAdmin')->with($uid)->willReturn(true);
 
-		return new ApiController(
-			'versioniq',
-			$request,
-			$installer,
-			$groupManager,
-			$session,
-			$this->fakeServerVersion(),
-			$this->createMock(PatMapper::class),
-			$this->createMock(PatManager::class),
-			$this->createMock(PatValidator::class),
-			$this->createMock(PatDeeplinkBuilder::class),
-			$this->createMock(PatExpiryEvaluator::class),
-			$this->createMock(DiscoveryAggregator::class),
-			$this->createMock(AdvisoryResultStore::class),
-			$this->createMock(AdvisorySettingsStore::class),
-			$auditEntryMapper ?? $this->createMock(AuditEntryMapper::class),
-			$pinStore ?? $this->createMock(PinStore::class),
-			$appManager ?? $this->createMock(IAppManager::class),
-			$this->fakeTimeFactory(),
-			$policyStore ?? $this->createMock(PolicyStore::class),
-			$autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
-			$artifactCache ?? $this->createMock(ArtifactCache::class),
-			null,
-			$attemptLedger ?? $this->createMock(AttemptLedger::class),
-		);
+		return $this->buildByName(ApiController::class, [
+			'appName' => 'versioniq',
+			'request' => $request,
+			'installerService' => $installer,
+			'groupManager' => $groupManager,
+			'userSession' => $session,
+			'serverVersion' => $this->fakeServerVersion(),
+			'patMapper' => $this->createMock(PatMapper::class),
+			'patManager' => $this->createMock(PatManager::class),
+			'patValidator' => $this->createMock(PatValidator::class),
+			'deeplinkBuilder' => $this->createMock(PatDeeplinkBuilder::class),
+			'patExpiryEvaluator' => $this->createMock(PatExpiryEvaluator::class),
+			'discoveryAggregator' => $this->createMock(DiscoveryAggregator::class),
+			'advisoryResultStore' => $this->createMock(AdvisoryResultStore::class),
+			'advisorySettingsStore' => $this->createMock(AdvisorySettingsStore::class),
+			'auditEntryMapper' => $auditEntryMapper ?? $this->createMock(AuditEntryMapper::class),
+			'pinStore' => $pinStore ?? $this->createMock(PinStore::class),
+			'appManager' => $appManager ?? $this->createMock(IAppManager::class),
+			'timeFactory' => $this->fakeTimeFactory(),
+			'policyStore' => $policyStore ?? $this->createMock(PolicyStore::class),
+			'autoUpdateSettingsStore' => $autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
+			'settingsStore' => $autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
+			'artifactCache' => $artifactCache ?? $this->createMock(ArtifactCache::class),
+			'connectionReports' => null,
+			'attemptLedger' => $attemptLedger ?? $this->createMock(AttemptLedger::class),
+			'knownIssues' => $knownIssues,
+		]);
 	}
 
 	public function testReadBinaryBoolAcceptsCommonTruthyAndFalsyValues(): void {
@@ -248,6 +271,65 @@ final class ApiTest extends TestCase {
 		$this->assertSame(['trustedPatterns' => []], $response->getData());
 	}
 
+	/**
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+	 */
+	public function testAppOutcomesForbiddenForNonAdmin(): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->never())->method('countOutcomesByVersion');
+
+		$response = $this->buildController(null, $mapper)->appOutcomes('hermiq');
+
+		$this->assertSame(403, $response->getStatus());
+		$this->assertSame(['message' => 'Forbidden'], $response->getData());
+	}
+
+	/**
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+	 */
+	public function testAppOutcomesAsAdminReturnsTheCountsPerVersion(): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->once())->method('countOutcomesByVersion')->with('hermiq')
+			->willReturn(['1.4.0' => ['succeeded' => 3, 'failed' => 1]]);
+
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->createMock(IRequest::class), $mapper)->appOutcomes(' hermiq ');
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame(['appId' => 'hermiq', 'outcomes' => ['1.4.0' => ['succeeded' => 3, 'failed' => 1]]], $response->getData());
+	}
+
+	/**
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+	 */
+	public function testKnownIssueEndpointsAreAdminOnly(): void {
+		$controller = $this->buildController();
+
+		$this->assertSame(403, $controller->addKnownIssue('openregister', '2.4.1', 'Broken')->getStatus());
+		$this->assertSame(403, $controller->removeKnownIssue('openregister', '2.4.1', 0)->getStatus());
+	}
+
+	/**
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+	 */
+	public function testKnownIssueEndpointsChangeTheStoreAsTheAdmin(): void {
+		$store = $this->createMock(KnownIssueStore::class);
+		$store->expects($this->once())->method('add')
+			->with(['appId' => 'openregister', 'version' => '2.4.1', 'actor' => 'admin'], ['text' => 'Export times out', 'workaround' => 'Per schema', 'link' => null])
+			->willReturn([['text' => 'Export times out']]);
+		$store->expects($this->exactly(2))->method('remove')
+			->willReturnOnConsecutiveCalls([], $this->throwException(new \InvalidArgumentException('This version has no known issue at that position.')));
+
+		$controller = $this->buildAdminController($this->createMock(InstallerService::class), $this->createMock(IRequest::class), knownIssues: $store);
+
+		$added = $controller->addKnownIssue(' openregister ', '2.4.1', 'Export times out', 'Per schema');
+		$this->assertSame(200, $added->getStatus());
+		$this->assertSame(['appId' => 'openregister', 'version' => '2.4.1', 'knownIssues' => [['text' => 'Export times out']]], $added->getData());
+		$this->assertSame(200, $controller->removeKnownIssue('openregister', '2.4.1', 0)->getStatus());
+		$refused = $controller->removeKnownIssue('openregister', '2.4.1', 9);
+		$this->assertSame(400, $refused->getStatus());
+		$this->assertSame(['message' => 'This version has no known issue at that position.'], $refused->getData());
+	}
+
 	public function testAuditLogForbiddenForNonAdmin(): void {
 		$response = $this->buildController()->auditLog();
 
@@ -338,6 +420,8 @@ final class ApiTest extends TestCase {
 			'status' => 'success',
 			'message' => null,
 			'createdAt' => '2026-07-23 12:00:00',
+			// A row from before origins were recorded: unknown.
+			'origin' => null,
 		], $entry->jsonSerialize());
 	}
 
@@ -620,47 +704,40 @@ final class ApiTest extends TestCase {
 
 	// --- dryRun decoupled from debug (see MODIFIED "Debug Mode") ---
 
-	// `debug` and `dryRun` are now DECLARED PARAMETERS of installVersion() rather
-	// than values read out of the request with getParam(), so these tests pass
-	// them as arguments. Nextcloud binds them from the same merged request
-	// parameters at runtime, so the production behaviour is unchanged — but a
-	// unit test calls the method directly, and a getParam() mock no longer
-	// reaches it. Leaving the mocks in place would have left these three tests
-	// silently exercising the DEFAULTS while still passing their status
-	// assertions.
+	// These go through dispatch(), which fills the request values the way the
+	// Nextcloud Dispatcher does, so they hold whether installVersion() declares
+	// `debug` and `dryRun` as parameters or reads them from the request.
 	public function testInstallVersionSendsExplicitDryRunFalseWithDebugTrueForARealInstallWithDebugTimeline(): void {
-		$request = $this->createMock(IRequest::class);
+		$request = $this->requestWith(['appId' => 'openregister', 'version' => '2.3.0'] + ['debug' => '1', 'dryRun' => '0']);
 
 		$installer = $this->createMock(InstallerService::class);
 		$installer->expects($this->once())
 			->method('installAppVersion')
-			->with('openregister', '2.3.0', true, null, null, false, false, false, false)
+			->with(...InstallArgs::expected('openregister', '2.3.0', true, null, null, false, false, false, false))
 			->willReturn([
 				'statusCode' => 200,
 				'payload' => ['appId' => 'openregister', 'toVersion' => '2.3.0', 'dryRun' => false],
 			]);
 
-		$response = $this->buildAdminController($installer, $request)
-			->installVersion('openregister', '2.3.0', null, '1', '0');
+		$response = $this->dispatch($this->buildAdminController($installer, $request), 'installVersion', $request);
 
 		$this->assertSame(200, $response->getStatus());
 		$this->assertArrayNotHasKey('deprecationNotice', $response->getData());
 	}
 
 	public function testInstallVersionSendsExplicitDryRunTrueWithNoDebugForASilentDryRun(): void {
-		$request = $this->createMock(IRequest::class);
+		$request = $this->requestWith(['appId' => 'openregister', 'version' => '2.3.0'] + ['debug' => '0', 'dryRun' => '1']);
 
 		$installer = $this->createMock(InstallerService::class);
 		$installer->expects($this->once())
 			->method('installAppVersion')
-			->with('openregister', '2.3.0', false, null, null, false, false, false, true)
+			->with(...InstallArgs::expected('openregister', '2.3.0', false, null, null, false, false, false, true))
 			->willReturn([
 				'statusCode' => 200,
 				'payload' => ['appId' => 'openregister', 'toVersion' => '2.3.0', 'dryRun' => true],
 			]);
 
-		$response = $this->buildAdminController($installer, $request)
-			->installVersion('openregister', '2.3.0', null, '0', '1');
+		$response = $this->dispatch($this->buildAdminController($installer, $request), 'installVersion', $request);
 
 		$this->assertSame(200, $response->getStatus());
 		$this->assertArrayNotHasKey('deprecationNotice', $response->getData());
@@ -671,22 +748,65 @@ final class ApiTest extends TestCase {
 	// debug=1 still imply a dry run. A '0' default on the parameter would make
 	// this test pass while the behaviour it pins was gone.
 	public function testInstallVersionLegacyDebugAloneStillImpliesDryRunAndAddsADeprecationNotice(): void {
-		$request = $this->createMock(IRequest::class);
+		$request = $this->requestWith(['appId' => 'openregister', 'version' => '2.3.0'] + ['debug' => '1']);
 
 		$installer = $this->createMock(InstallerService::class);
 		$installer->expects($this->once())
 			->method('installAppVersion')
-			->with('openregister', '2.3.0', true, null, null, false, false, false, null)
+			->with(...InstallArgs::expected('openregister', '2.3.0', true, null, null, false, false, false, null))
 			->willReturn([
 				'statusCode' => 200,
 				'payload' => ['appId' => 'openregister', 'toVersion' => '2.3.0', 'dryRun' => true],
 			]);
 
-		$response = $this->buildAdminController($installer, $request)
-			->installVersion('openregister', '2.3.0', null, '1');
+		$response = $this->dispatch($this->buildAdminController($installer, $request), 'installVersion', $request);
 
 		$this->assertSame(200, $response->getStatus());
 		$this->assertArrayHasKey('deprecationNotice', $response->getData());
+	}
+
+	/**
+	 * @return array<string, array{0: string}>
+	 */
+	public static function unrecognisedDryRuns(): array {
+		return ['yes' => ['yes'], 'on' => ['on'], 'x' => ['x'], 'empty' => [''], 'one point zero' => ['1.0'], 'leading zero' => ['01']];
+	}
+
+	/**
+	 * An explicit dryRun that is not 1, true, 0 or false is refused: read as
+	 * false it would turn `debug=1&dryRun=yes` into a real install.
+	 *
+	 * @dataProvider unrecognisedDryRuns
+	 */
+	public function testInstallVersionRefusesAnUnrecognisedDryRun(string $dryRun): void {
+		$request = $this->requestWith(['appId' => 'openregister', 'version' => '2.3.0', 'debug' => '1', 'dryRun' => $dryRun]);
+
+		$installer = $this->createMock(InstallerService::class);
+		$installer->expects($this->never())->method('installAppVersion');
+
+		$response = $this->dispatch($this->buildAdminController($installer, $request), 'installVersion', $request);
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertSame(['message' => 'dryRun must be 1, true, 0 or false.'], $response->getData());
+	}
+
+	/**
+	 * A debug that is not 1, true, 0 or false is refused: read as false,
+	 * `debug=yes` without dryRun would be a real install instead of the
+	 * dry run that debug implies.
+	 *
+	 * @dataProvider unrecognisedDryRuns
+	 */
+	public function testInstallVersionRefusesAnUnrecognisedDebug(string $debug): void {
+		$request = $this->requestWith(['appId' => 'openregister', 'version' => '2.3.0', 'debug' => $debug]);
+
+		$installer = $this->createMock(InstallerService::class);
+		$installer->expects($this->never())->method('installAppVersion');
+
+		$response = $this->dispatch($this->buildAdminController($installer, $request), 'installVersion', $request);
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertSame(['message' => 'debug must be 1, true, 0 or false.'], $response->getData());
 	}
 
 	/**
@@ -737,6 +857,58 @@ final class ApiTest extends TestCase {
 		$this->assertSame(400, $response->getStatus());
 	}
 
+	/**
+	 * codeberg-is-no-release-source: a new Codeberg binding is a 400 naming
+	 * the forge, and the binding is not stored.
+	 */
+	public function testBindSourceOnTheRetiredCodebergForgeIsRefused(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'kind' => 'github-release',
+				'forge' => 'codeberg',
+				'owner' => 'Conduction',
+				'repo' => 'openregister',
+				default => $default,
+			}
+		);
+
+		$installer = $this->createMock(InstallerService::class);
+		$installer->expects($this->once())->method('bindSource')->willThrowException(new RetiredForgeException('codeberg'));
+		$installer->expects($this->never())->method('getBinding');
+
+		$response = $this->buildAdminController($installer, $request)->bindSource('openregister');
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertStringContainsString('"codeberg" is no longer offered', $response->getData()['message']);
+	}
+
+	/**
+	 * codeberg-is-no-release-source: a new Codeberg trusted pattern is a 400
+	 * naming the forge, not the 422 of a malformed pattern.
+	 */
+	public function testAddTrustedSourceOnTheRetiredCodebergForgeIsRefused(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'forge' => 'codeberg',
+				'owner' => 'Conduction',
+				default => $default,
+			}
+		);
+
+		$installer = $this->createMock(InstallerService::class);
+		$installer->expects($this->once())
+			->method('addTrustedPattern')
+			->with('codeberg', 'Conduction', null)
+			->willThrowException(new RetiredForgeException('codeberg'));
+
+		$response = $this->buildAdminController($installer, $request)->addTrustedSource();
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertStringContainsString('"codeberg" is no longer offered', $response->getData()['message']);
+	}
+
 	public function testPoliciesListEachAppsBlockedVersions(): void {
 		$policyStore = $this->createMock(PolicyStore::class);
 		$policyStore->method('all')->willReturn([
@@ -785,5 +957,44 @@ final class ApiTest extends TestCase {
 
 	public function testClearBindingForbiddenForNonAdmin(): void {
 		$this->assertSame(403, $this->buildController()->clearBinding('openregister')->getStatus());
+	}
+
+	/**
+	 * GET /api/advisories returns the raw snapshot plus the stored triage
+	 * map, keyed `{appId}|{advisoryId}`, for the page (advisories-triage D1, D4).
+	 */
+	public function testAdvisoriesCarriesTheTriageMap(): void {
+		$triage = ['notes|GHSA-1' => ['dismissal' => ['reason' => 'not_used', 'by' => 'alice', 'installedVersion' => '4.1.0']]];
+		$results = $this->createMock(AdvisoryResultStore::class);
+		$results->method('read')->willReturn(['advisories' => ['notes' => ['state' => 'advisory-available']], 'checkedAt' => 1_700_000_000]);
+		$triageStore = $this->createMock(AdvisoryTriageStore::class);
+		$triageStore->expects($this->once())->method('read')->willReturn($triage);
+		$user = $this->createMock(IUser::class);
+		$user->method('getUID')->willReturn('admin');
+		$session = $this->createMock(IUserSession::class);
+		$session->method('getUser')->willReturn($user);
+		$groupManager = $this->createMock(IGroupManager::class);
+		$groupManager->method('isAdmin')->with('admin')->willReturn(true);
+
+		$controller = $this->buildByName(ApiController::class, [
+			'appName' => 'versioniq',
+			'request' => $this->createMock(IRequest::class),
+			'groupManager' => $groupManager,
+			'userSession' => $session,
+			'serverVersion' => $this->fakeServerVersion(),
+			'timeFactory' => $this->fakeTimeFactory(),
+			'advisoryResultStore' => $results,
+			'advisoryTriageStore' => $triageStore,
+			'connectionReports' => null,
+		]);
+
+		$response = $controller->advisories();
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame([
+			'advisories' => ['notes' => ['state' => 'advisory-available']],
+			'checkedAt' => 1_700_000_000,
+			'triage' => $triage,
+		], $response->getData());
 	}
 }

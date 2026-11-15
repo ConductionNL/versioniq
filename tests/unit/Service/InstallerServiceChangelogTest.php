@@ -2,19 +2,29 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Service;
 
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+
+use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Service\ExternalReleaseInstallerService;
 use OCA\Versioniq\Service\Installer\EnvironmentCheck;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Release\InstallOutcomes;
 use OCA\Versioniq\Service\SelectedReleaseInstallerService;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\SourceRegistry;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -32,6 +42,8 @@ use PHPUnit\Framework\TestCase;
  * @spec openspec/specs/changelog-visibility/spec.md
  */
 final class InstallerServiceChangelogTest extends TestCase {
+	use BuildsByParameterName;
+
 	private IAppManager&MockObject $appManager;
 	private IConfig&MockObject $config;
 	private IAppConfig&MockObject $appConfig;
@@ -70,25 +82,25 @@ final class InstallerServiceChangelogTest extends TestCase {
 		$this->bindingStore->method('get')->willReturn(SourceBinding::github('ConductionNL', 'openregister'));
 	}
 
-	private function service(): InstallerService {
-		return new InstallerService(
-			$this->appManager,
-			$this->config,
-			$this->appConfig,
-			$this->sourceRegistry,
-			$this->bindingStore,
-			$this->trustedSources,
-			$this->signedInstaller,
-			$this->externalInstaller,
-			$this->failureClassifier,
-			$this->environmentCheck,
-			$this->createMock(PinStore::class),
-			$this->createMock(IUserSession::class),
-			$this->createMock(ITimeFactory::class),
-			$this->createMock(\OCA\Versioniq\Service\Lkg\LkgStore::class),
-			$this->createMock(\OCA\Versioniq\Service\Cache\ArtifactCache::class),
-			$this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
-		);
+	private function service(array $extra = []): InstallerService {
+		return $this->buildByName(InstallerService::class, $extra + [
+			'appManager' => $this->appManager,
+			'config' => $this->config,
+			'appConfig' => $this->appConfig,
+			'sourceRegistry' => $this->sourceRegistry,
+			'bindingStore' => $this->bindingStore,
+			'trustedSources' => $this->trustedSources,
+			'signedInstaller' => $this->signedInstaller,
+			'externalInstaller' => $this->externalInstaller,
+			'failureClassifier' => $this->failureClassifier,
+			'environmentCheck' => $this->environmentCheck,
+			'pinStore' => $this->createMock(PinStore::class),
+			'userSession' => $this->createMock(IUserSession::class),
+			'timeFactory' => $this->createMock(ITimeFactory::class),
+			'lkgStore' => $this->createMock(\OCA\Versioniq\Service\Lkg\LkgStore::class),
+			'artifactCache' => $this->createMock(\OCA\Versioniq\Service\Cache\ArtifactCache::class),
+			'eventDispatcher' => $this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
+		]);
 	}
 
 	/**
@@ -146,6 +158,28 @@ final class InstallerServiceChangelogTest extends TestCase {
 		$this->assertIsString($truncated);
 		$this->assertLessThanOrEqual(8192 + strlen(' …[truncated]'), strlen($truncated));
 		$this->assertStringEndsWith(' …[truncated]', $truncated);
+	}
+
+	/**
+	 * Each listed version carries how installs of it went here
+	 * (releases-version-facts D2); one never installed carries zeros.
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+	 */
+	public function testEveryVersionCarriesItsInstallOutcomes(): void {
+		$this->stubSourceReturning([
+			['version' => '2.3.0', 'changelog' => null],
+			['version' => '2.2.0', 'changelog' => null],
+		]);
+		$audit = $this->createMock(AuditEntryMapper::class);
+		$audit->method('countOutcomesByVersion')->with('openregister')->willReturn(['2.3.0' => ['succeeded' => 4, 'failed' => 1]]);
+
+		$result = $this->service(['outcomes' => new InstallOutcomes($audit)])->getAppVersions('openregister');
+
+		$this->assertSame(
+			['2.3.0' => ['succeeded' => 4, 'failed' => 1], '2.2.0' => ['succeeded' => 0, 'failed' => 0]],
+			array_column($result['versions'], 'outcomes', 'version')
+		);
 	}
 
 	public function testChangelogExactlyAtLimitIsNotTruncated(): void {

@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Service\Cache;
 
 // The Fake* helpers below are not suffixed `*Test.php`, so PHPUnit's
@@ -74,6 +79,29 @@ final class ArtifactCacheTest extends TestCase {
 		$factory->method('get')->with(Application::APP_ID)->willReturn($appData);
 
 		return new ArtifactCache($factory, $this->appConfig($keep), $this->timeFactory($timestamps), $this->logger());
+	}
+
+	public function testAnArchiveThatDecompressesPastTheLimitIsNotRead(): void {
+		$plainTar = new \ReflectionMethod(ArtifactCache::class, 'plainTar');
+		$limit = (new \ReflectionClassConstant(ArtifactCache::class, 'MAX_ARCHIVE_BYTES'))->getValue();
+
+		$this->assertSame(str_repeat("\0", 1024), $plainTar->invoke(null, gzencode(str_repeat("\0", 1024))));
+		// zlib checks the limit per output round, so the stream goes well past it.
+		$this->assertNull($plainTar->invoke(null, self::gzippedZeros(bytes: $limit + 64 * 1024 * 1024)));
+	}
+
+	/**
+	 * A gzip stream of this many zero bytes, built without holding them in memory.
+	 */
+	private static function gzippedZeros(int $bytes): string {
+		$deflate = deflate_init(ZLIB_ENCODING_GZIP);
+		$chunk = str_repeat("\0", 1024 * 1024);
+		$out = '';
+		for ($left = $bytes; $left > 0; $left -= strlen($chunk)) {
+			$out .= deflate_add($deflate, $left >= strlen($chunk) ? $chunk : str_repeat("\0", $left), ZLIB_NO_FLUSH);
+		}
+
+		return $out . deflate_add($deflate, '', ZLIB_FINISH);
 	}
 
 	public function testStoreDoesNothingWhenKeepIsZero(): void {

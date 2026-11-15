@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Service\Advisory;
 
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
@@ -36,6 +41,16 @@ final class AdvisorySettingsStoreTest extends TestCase {
 		);
 
 		return new AdvisorySettingsStore($config);
+	}
+
+	public function testNcscChecksAreOffUntilSwitchedOn(): void {
+		$store = $this->store();
+		self::assertFalse($store->isNcscEnabled());
+
+		$store->setNcscEnabled(true);
+
+		self::assertTrue($store->isNcscEnabled());
+		self::assertTrue($this->stored[AdvisorySettingsStore::CONFIG_NCSC_ENABLED]);
 	}
 
 	public function testDefaultsToSixHours(): void {

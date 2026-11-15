@@ -13,10 +13,9 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Advisory;
 
 use OCA\Versioniq\AppInfo\Application;
-use OCP\AppFramework\Utility\ITimeFactory;
+use OCA\Versioniq\Service\AdminNotificationServices;
+use OCA\Versioniq\Service\ResolvesAdminUids;
 use OCP\IAppConfig;
-use OCP\IGroupManager;
-use OCP\Notification\IManager;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -33,13 +32,13 @@ use Psr\Log\LoggerInterface;
  * @psalm-api
  */
 class AdvisoryNotifier {
+	use ResolvesAdminUids;
+
 	private const CONFIG_KEY = 'advisory.notified';
 
 	public function __construct(
-		private IManager $notificationManager,
+		private AdminNotificationServices $admin,
 		private IAppConfig $appConfig,
-		private IGroupManager $groupManager,
-		private ITimeFactory $timeFactory,
 		private LoggerInterface $logger,
 	) {
 	}
@@ -53,24 +52,21 @@ class AdvisoryNotifier {
 	 */
 	public function notifyNewAdvisories(array $correlations): int {
 		$alreadyNotified = $this->loadNotified();
+		$triage = $this->triage();
 		$currentKeys = [];
 		$newKeys = [];
-		$admins = $this->adminUids();
 
 		foreach ($correlations as $appId => $correlation) {
 			if ($correlation['state'] !== AdvisoryService::STATE_VULNERABLE) {
 				continue;
 			}
-			$installedVersion = $correlation['installedVersion'] ?? '';
+			$dismissed = AdvisoryTriage::dismissedIds(row: $triage->apply(row: $correlation));
 			foreach ($correlation['advisories'] as $advisory) {
 				$key = $appId . ':' . $advisory['id'];
 				$currentKeys[$key] = true;
-				if (isset($alreadyNotified[$key])) {
-					continue;
-				}
-				$newKeys[$key] = true;
-				foreach ($admins as $uid) {
-					$this->fire($uid, $appId, (string)$installedVersion, $advisory['id']);
+				if (isset($alreadyNotified[$key]) === false && isset($dismissed[$advisory['id']]) === false) {
+					$newKeys[$key] = true;
+					$this->fireToAdmins(['app' => $appId, 'version' => $correlation['installedVersion'] ?? '', 'advisory' => $advisory['id']]);
 				}
 			}
 		}
@@ -78,46 +74,58 @@ class AdvisoryNotifier {
 		// Persist the set of currently-active vulnerable keys (union with the
 		// ones we just fired). Keys that dropped out — advisory resolved or app
 		// upgraded — are forgotten, so if the same advisory ever re-appears it
-		// is treated as newly-published and re-notifies.
+		// is treated as newly-published and re-notifies. An actively dismissed
+		// pair counts as notified, so a reopen does not fire a late notification.
 		$persist = $currentKeys + $newKeys;
 		$this->storeNotified(array_keys($persist));
 
 		return count($newKeys);
 	}
 
-	private function fire(string $uid, string $appId, string $version, string $advisoryId): void {
-		try {
-			$notification = $this->notificationManager->createNotification();
-			$notification
-				->setApp(Application::APP_ID)
-				->setUser($uid)
-				->setDateTime($this->timeFactory->getDateTime())
-				->setObject('advisory', $appId . ':' . $advisoryId)
-				->setSubject('pinned_to_vulnerable', [
-					'app' => $appId,
-					'version' => $version,
-					'advisory' => $advisoryId,
-				]);
-			$this->notificationManager->notify($notification);
-		} catch (\Throwable $error) {
-			$this->logger->warning('AdvisoryNotifier: failed to raise notification', [
-				'app' => $appId,
-				'advisory' => $advisoryId,
-				'message' => $error->getMessage(),
-			]);
+	/**
+	 * The stored triage, judged at the current time (advisories-triage, design D2).
+	 *
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+	 */
+	private function triage(): AdvisoryTriage {
+		$store = new AdvisoryTriageStore($this->appConfig, $this->logger);
+
+		return new AdvisoryTriage($store->read(), $this->admin->timeFactory->getDateTime()->format(DATE_ATOM));
+	}
+
+	/**
+	 * Tells every admin about one affected app and advisory.
+	 *
+	 * @param array{app: string, version: string, advisory: string} $subject
+	 */
+	private function fireToAdmins(array $subject): void {
+		foreach ($this->adminUids() as $uid) {
+			$this->fire($uid, $subject);
 		}
 	}
 
 	/**
-	 * @return list<string>
+	 * Tells one admin that an app's installed version is affected by an advisory.
+	 *
+	 * @param array{app: string, version: string, advisory: string} $subject
 	 */
-	private function adminUids(): array {
-		$uids = [];
-		foreach ($this->groupManager->get('admin')?->getUsers() ?? [] as $user) {
-			$uids[] = $user->getUID();
+	private function fire(string $uid, array $subject): void {
+		try {
+			$notification = $this->admin->notificationManager->createNotification();
+			$notification
+				->setApp(Application::APP_ID)
+				->setUser($uid)
+				->setDateTime($this->admin->timeFactory->getDateTime())
+				->setObject('advisory', $subject['app'] . ':' . $subject['advisory'])
+				->setSubject('pinned_to_vulnerable', $subject);
+			$this->admin->notificationManager->notify($notification);
+		} catch (\Throwable $error) {
+			$this->logger->warning('AdvisoryNotifier: failed to raise notification', [
+				'app' => $subject['app'],
+				'advisory' => $subject['advisory'],
+				'message' => $error->getMessage(),
+			]);
 		}
-
-		return array_values(array_unique($uids));
 	}
 
 	/**

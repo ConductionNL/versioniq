@@ -13,7 +13,9 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Installer;
 
 use OCA\Versioniq\AppInfo\Application;
+use Closure;
 use OCP\IL10N;
+use OCP\ITempManager;
 use OCP\L10N\IFactory;
 
 /**
@@ -29,19 +31,45 @@ use OCP\L10N\IFactory;
  * @psalm-api
  */
 class EnvironmentCheck {
-	private ?IL10N $l = null;
+	/**
+	 * The package size assumed when the release does not say (design D2).
+	 */
+	public const DEFAULT_PACKAGE_BYTES = 52428800;
 
+	/**
+	 * Free space needed in the apps folder per package byte: the old copy
+	 * moved aside, the new copy and the backup (design D2).
+	 */
+	public const APPS_FACTOR = 3;
+
+	/**
+	 * Free space needed in the temp folder per package byte: the download
+	 * and its extraction (design D2).
+	 */
+	public const TEMP_FACTOR = 2;
+
+	/** @var Closure(string): (float|false) */
+	private Closure $freeSpace;
+
+	/**
+	 * @param ITempManager|null $tempManager Where downloads land; the system temp folder when null.
+	 * @param Closure|null      $freeSpace   Free bytes of a folder, or false when unknown; disk_free_space() when null.
+	 */
 	public function __construct(
 		private IFactory $l10nFactory,
+		private ?ITempManager $tempManager = null,
+		?Closure $freeSpace = null,
 	) {
+		$this->freeSpace = $freeSpace ?? static fn (string $dir): float|false => @disk_free_space($dir);
 	}
 
+	/**
+	 * The app's translator. Each inspect() translates at most one string, and
+	 * the factory keeps one instance per app and language, so this class holds
+	 * no copy of its own.
+	 */
 	private function l10n(): IL10N {
-		if ($this->l === null) {
-			$this->l = $this->l10nFactory->get(Application::APP_ID);
-		}
-
-		return $this->l;
+		return $this->l10nFactory->get(Application::APP_ID);
 	}
 
 	/**
@@ -83,23 +111,72 @@ class EnvironmentCheck {
 	 * web-server process). Returns null when no heuristic matches.
 	 */
 	private function devCheckoutWarning(string $appPath): ?string {
-		$signals = [];
-
-		if (is_dir($appPath . '/.git')) {
-			$signals[] = 'git';
-		}
-
-		if (function_exists('posix_getuid')) {
-			$owner = @fileowner($appPath);
-			if ($owner !== false && $owner !== posix_getuid()) {
-				$signals[] = 'owner';
-			}
-		}
-
-		if ($signals === []) {
+		if (!$this->looksLikeDevCheckout($appPath)) {
 			return null;
 		}
 
 		return $this->l10n()->t('This app looks like a development checkout (e.g. a Git working copy or a bind mount owned by another user). Version changes here will overwrite your working copy.');
+	}
+
+	/**
+	 * Whether either dev-checkout signal matches: a `.git` directory, or an
+	 * owner other than the web-server process. Both signals are read.
+	 */
+	private function looksLikeDevCheckout(string $appPath): bool {
+		$hasGitDir = is_dir($appPath . '/.git');
+		$foreignOwner = $this->isOwnedByAnotherUser($appPath);
+
+		return $hasGitDir || $foreignOwner;
+	}
+
+	/**
+	 * Whether the folder's owner differs from the web-server process; false
+	 * when posix is unavailable or the owner cannot be read.
+	 */
+	private function isOwnedByAnotherUser(string $appPath): bool {
+		if (!function_exists('posix_getuid')) {
+			return false;
+		}
+		$owner = @fileowner($appPath);
+
+		return $owner !== false && $owner !== posix_getuid();
+	}
+
+	/**
+	 * Whether the apps folder and the temp folder have room for a package:
+	 * three times its size next to the app, two times in temp. A folder
+	 * whose free space cannot be read is not held against the install.
+	 *
+	 * @param string|null $appPath      The installed app's folder; null for a fresh install, which checks temp only.
+	 * @param int|null    $packageBytes The package size; DEFAULT_PACKAGE_BYTES when unknown.
+	 *
+	 * @return array{fits: bool, appsFree: ?int, appsNeeded: int, tempFree: ?int, tempNeeded: int}
+	 *
+	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+	 */
+	public function hasSpaceFor(?string $appPath, ?int $packageBytes = null): array {
+		$bytes = ($packageBytes !== null && $packageBytes > 0) ? $packageBytes : self::DEFAULT_PACKAGE_BYTES;
+		$appsFree = $appPath !== null ? $this->freeBytes(dirname($appPath)) : null;
+		$tempFree = $this->freeBytes($this->tempDir());
+		$appsNeeded = $bytes * self::APPS_FACTOR;
+		$tempNeeded = $bytes * self::TEMP_FACTOR;
+
+		return [
+			'fits' => ($appsFree === null || $appsFree >= $appsNeeded) && ($tempFree === null || $tempFree >= $tempNeeded),
+			'appsFree' => $appsFree,
+			'appsNeeded' => $appsNeeded,
+			'tempFree' => $tempFree,
+			'tempNeeded' => $tempNeeded,
+		];
+	}
+
+	private function freeBytes(string $dir): ?int {
+		$free = ($this->freeSpace)($dir);
+
+		return $free === false ? null : (int)$free;
+	}
+
+	private function tempDir(): string {
+		return $this->tempManager?->getTempBaseDir() ?? sys_get_temp_dir();
 	}
 }

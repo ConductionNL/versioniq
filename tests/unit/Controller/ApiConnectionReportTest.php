@@ -11,6 +11,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Controller;
 
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
+
 use OCA\Integriq\Event\ConnectionRefreshRequestedEvent;
 use OCA\Integriq\Event\ConnectionStatusReportedEvent;
 use OCA\Versioniq\Controller\ApiController;
@@ -31,6 +33,7 @@ use OCA\Versioniq\Service\Pat\PatValidator;
 use OCA\Versioniq\Service\Pat\ValidationResult;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\PolicyStore;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -55,6 +58,8 @@ use RuntimeException;
  * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
  */
 final class ApiConnectionReportTest extends TestCase {
+	use BuildsByParameterName;
+
 	/** @var list<Event> */
 	private array $sent = [];
 
@@ -91,30 +96,31 @@ final class ApiConnectionReportTest extends TestCase {
 		$expiry = $this->createMock(PatExpiryEvaluator::class);
 		$expiry->method('evaluate')->willReturn(['state' => 'ok', 'daysRemaining' => null]);
 
-		return new ApiController(
-			'versioniq',
-			$request,
-			$this->createMock(InstallerService::class),
-			$groupManager,
-			$session,
-			(new ReflectionClass(ServerVersion::class))->newInstanceWithoutConstructor(),
-			$patMapper,
-			$patManager,
-			$validator,
-			$this->createMock(PatDeeplinkBuilder::class),
-			$expiry,
-			$this->createMock(DiscoveryAggregator::class),
-			$this->createMock(AdvisoryResultStore::class),
-			$this->createMock(AdvisorySettingsStore::class),
-			$this->createMock(AuditEntryMapper::class),
-			$this->createMock(PinStore::class),
-			$this->createMock(IAppManager::class),
-			$this->createMock(ITimeFactory::class),
-			$this->createMock(PolicyStore::class),
-			$this->createMock(AutoUpdateSettingsStore::class),
-			$this->createMock(ArtifactCache::class),
-			$reports,
-		);
+		return $this->buildByName(ApiController::class, [
+			'appName' => 'versioniq',
+			'request' => $request,
+			'installerService' => $this->createMock(InstallerService::class),
+			'groupManager' => $groupManager,
+			'userSession' => $session,
+			'serverVersion' => (new ReflectionClass(ServerVersion::class))->newInstanceWithoutConstructor(),
+			'patMapper' => $patMapper,
+			'patManager' => $patManager,
+			'patValidator' => $validator,
+			'deeplinkBuilder' => $this->createMock(PatDeeplinkBuilder::class),
+			'patExpiryEvaluator' => $expiry,
+			'discoveryAggregator' => $this->createMock(DiscoveryAggregator::class),
+			'advisoryResultStore' => $this->createMock(AdvisoryResultStore::class),
+			'advisorySettingsStore' => $this->createMock(AdvisorySettingsStore::class),
+			'auditEntryMapper' => $this->createMock(AuditEntryMapper::class),
+			'pinStore' => $this->createMock(PinStore::class),
+			'appManager' => $this->createMock(IAppManager::class),
+			'timeFactory' => $this->createMock(ITimeFactory::class),
+			'policyStore' => $this->createMock(PolicyStore::class),
+			'autoUpdateSettingsStore' => $this->createMock(AutoUpdateSettingsStore::class),
+			'settingsStore' => $this->createMock(AutoUpdateSettingsStore::class),
+			'artifactCache' => $this->createMock(ArtifactCache::class),
+			'connectionReports' => $reports,
+		]);
 	}
 
 	private function pat(string $forge): Pat {

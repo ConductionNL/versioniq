@@ -13,7 +13,10 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Pin;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Audit\AuditLogger;
+use OCA\Versioniq\Service\Audit\AuditSubject;
+use OCA\Versioniq\Service\Settings\AppConfigJsonRecords;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
 
@@ -31,7 +34,13 @@ use Psr\Log\LoggerInterface;
  * @psalm-api
  */
 class PinStore {
+	/** @use AppConfigJsonRecords<Pin> */
+	use AppConfigJsonRecords;
+
 	private const KEY_PREFIX = 'pin.';
+	private const JSON_DEPTH = 16;
+	private const MALFORMED_LOG = 'PinStore: malformed pin JSON, treating as unpinned';
+	private const INVALID_LOG = 'PinStore: invalid pin payload, treating as unpinned';
 
 	public function __construct(
 		private IAppConfig $config,
@@ -46,12 +55,7 @@ class PinStore {
 	 * @spec openspec/specs/version-pinning/spec.md
 	 */
 	public function get(string $appId): ?Pin {
-		$raw = $this->config->getValueString(Application::APP_ID, $this->key($appId), '');
-		if ($raw === '') {
-			return null;
-		}
-
-		return $this->decode($appId, $raw);
+		return $this->readRecord($appId);
 	}
 
 	/**
@@ -61,26 +65,7 @@ class PinStore {
 	 * @return array<string, Pin>
 	 */
 	public function all(): array {
-		$values = $this->config->getAllValues(Application::APP_ID, self::KEY_PREFIX);
-		$pins = [];
-		foreach ($values as $key => $value) {
-			if (!str_starts_with($key, self::KEY_PREFIX)) {
-				continue;
-			}
-			if (!is_string($value) || $value === '') {
-				continue;
-			}
-			$appId = substr($key, strlen(self::KEY_PREFIX));
-			if ($appId === '') {
-				continue;
-			}
-			$pin = $this->decode($appId, $value);
-			if ($pin !== null) {
-				$pins[$appId] = $pin;
-			}
-		}
-
-		return $pins;
+		return $this->readAllRecords();
 	}
 
 	/**
@@ -92,15 +77,11 @@ class PinStore {
 	 * @spec openspec/specs/audit-trail/spec.md
 	 */
 	public function set(string $appId, Pin $pin): void {
-		$this->write($appId, $pin->withoutDrift());
+		$this->writeRecord($appId, $pin->withoutDrift()->toArray());
 
 		$this->auditLogger->record(
-			$pin->pinnedBy,
-			$appId,
-			AuditLogger::OPERATION_PIN,
-			null,
-			$pin->version,
-			null,
+			new AuditSubject($pin->pinnedBy, $appId, AuditLogger::OPERATION_PIN),
+			new AuditedVersions(null, $pin->version, null),
 			AuditLogger::STATUS_SUCCESS,
 			$pin->reason,
 		);
@@ -123,12 +104,8 @@ class PinStore {
 		$this->config->deleteKey(Application::APP_ID, $this->key($appId));
 
 		$this->auditLogger->record(
-			$actorUid,
-			$appId,
-			AuditLogger::OPERATION_UNPIN,
-			$previous->version,
-			null,
-			null,
+			new AuditSubject($actorUid, $appId, AuditLogger::OPERATION_UNPIN),
+			new AuditedVersions($previous->version, null, null),
 			AuditLogger::STATUS_SUCCESS,
 			null,
 		);
@@ -136,7 +113,7 @@ class PinStore {
 
 	/**
 	 * Records newly-detected drift on an existing pin (idempotent per
-	 * drifted version — a repeated call with the same `$driftedTo` is a
+	 * drifted version — a repeated call with the same drift version is a
 	 * no-op) and, on a genuine new drift, records a `pin_drift` audit entry
 	 * with `actor_uid=system`; see "Drift detection" and "Drift handled once
 	 * per version". Returns true when this call newly recorded drift.
@@ -144,69 +121,37 @@ class PinStore {
 	 * @spec openspec/specs/version-pinning/spec.md
 	 * @spec openspec/specs/audit-trail/spec.md
 	 */
-	public function markDrift(string $appId, string $driftedTo, string $driftedAt): bool {
+	public function markDrift(string $appId, PinDrift $drift): bool {
 		$pin = $this->get($appId);
-		if ($pin === null) {
-			return false;
-		}
-		if ($pin->driftedTo === $driftedTo) {
-			// Already recorded for this exact drifted version — idempotent no-op.
+		if ($pin === null || $pin->driftedTo === $drift->version) {
+			// No pin, or drift already recorded for this exact version: idempotent no-op.
 			return false;
 		}
 
-		$this->write($appId, $pin->withDrift($driftedTo, $driftedAt));
-
-		$this->auditLogger->record(
-			'system',
-			$appId,
-			AuditLogger::OPERATION_PIN_DRIFT,
-			$pin->version,
-			$driftedTo,
-			null,
-			AuditLogger::STATUS_SUCCESS,
-			null,
-		);
+		$this->recordDrift($appId, $pin->withDrift($drift->version, $drift->observedAt));
 
 		return true;
 	}
 
-	private function write(string $appId, Pin $pin): void {
-		$this->config->setValueString(
-			Application::APP_ID,
-			$this->key($appId),
-			json_encode($pin->toArray(), JSON_THROW_ON_ERROR)
+	/**
+	 * Persists a pin with its drift markers set and records the `pin_drift`
+	 * audit entry, as actor `system`.
+	 */
+	private function recordDrift(string $appId, Pin $drifted): void {
+		$this->writeRecord($appId, $drifted->toArray());
+
+		$this->auditLogger->record(
+			new AuditSubject('system', $appId, AuditLogger::OPERATION_PIN_DRIFT),
+			new AuditedVersions($drifted->version, $drifted->driftedTo, null),
+			AuditLogger::STATUS_SUCCESS,
+			null,
 		);
 	}
 
-	private function decode(string $appId, string $raw): ?Pin {
-		try {
-			$decoded = json_decode($raw, true, 16, JSON_THROW_ON_ERROR);
-		} catch (\JsonException $error) {
-			$this->logger->warning('PinStore: malformed pin JSON, treating as unpinned', [
-				'appId' => $appId,
-				'message' => $error->getMessage(),
-			]);
-
-			return null;
-		}
-
-		if (!is_array($decoded)) {
-			return null;
-		}
-
-		try {
-			return Pin::fromArray($decoded);
-		} catch (\InvalidArgumentException $error) {
-			$this->logger->warning('PinStore: invalid pin payload, treating as unpinned', [
-				'appId' => $appId,
-				'message' => $error->getMessage(),
-			]);
-
-			return null;
-		}
-	}
-
-	private function key(string $appId): string {
-		return self::KEY_PREFIX . $appId;
+	/**
+	 * @param array<array-key, mixed> $payload
+	 */
+	private function hydrate(array $payload): Pin {
+		return Pin::fromArray($payload);
 	}
 }

@@ -1,0 +1,91 @@
+Document the request fields a controller method reads through a fields class.
+
+A controller method with #[RequestFieldsFrom(Fields::class)] reads its
+optional request parameters from the public properties of that class (see
+OCA\Versioniq\Http\RequestFields) instead of declaring them as method
+parameters. The extractor only knows method parameters, so this patch adds
+each public property as if the method declared it: same name, native type
+and default, and its @var tag in place of the @param tag. The generated
+document is the same as with the parameters on the method.
+
+Not upstream: the attribute is versioniq's own.
+
+--- a/src/ControllerMethod.php
++++ b/src/ControllerMethod.php
+@@ -8,9 +8,12 @@
+ namespace OpenAPIExtractor;
+ 
+ use PhpParser\Node\AttributeGroup;
++use PhpParser\Node\Expr\ClassConstFetch;
+ use PhpParser\Node\Expr\MethodCall;
+ use PhpParser\Node\Expr\PropertyFetch;
+ use PhpParser\Node\Expr\Variable;
++use PhpParser\Node\Name;
++use PhpParser\Node\Param;
+ use PhpParser\Node\Stmt\ClassMethod;
+ use PhpParser\Node\Stmt\Return_;
+ use PHPStan\PhpDocParser\Ast\PhpDoc\DeprecatedTagValueNode;
+@@ -465,6 +468,11 @@
+ 			}
+ 		}
+ 
++		foreach (self::requestFields($context, $method) as [$fieldParameter, $fieldDoc]) {
++			$methodParameters[] = $fieldParameter;
++			$docParameters['@param'][] = $fieldDoc;
++		}
++
+ 		foreach ($methodParameters as $methodParameter) {
+ 			$methodParameterName = $methodParameter->var->name;
+ 
+@@ -729,4 +737,51 @@
+ 			Logger::warning($context, 'Request header "' . $header . '" should start with "x-" to denote a custom header.');
+ 		}
+ 	}
++
++	/**
++	 * The request fields a method reads through a class named by
++	 * #[RequestFieldsFrom(Fields::class)]: each public property becomes a
++	 * parameter with the property's type and default, documented by its @var.
++	 *
++	 * @return list<array{0: Param, 1: ParamTagValueNode}>
++	 */
++	private static function requestFields(string $context, ClassMethod $method): array {
++		global $classResolver, $phpDocParser, $lexer;
++
++		$fields = [];
++		foreach ($method->attrGroups as $attrGroup) {
++			foreach ($attrGroup->attrs as $attr) {
++				if ($attr->name->getLast() !== 'RequestFieldsFrom') {
++					continue;
++				}
++				$class = $attr->args[0]->value ?? null;
++				if (!$class instanceof ClassConstFetch || !$class->class instanceof Name) {
++					Logger::panic($context, 'RequestFieldsFrom needs a Fields::class argument');
++				}
++				$node = $classResolver->resolve($class->class->toString());
++				if ($node === null) {
++					Logger::panic($context, 'Unable to find the request fields class ' . $class->class->toString());
++				}
++				foreach ($node->getProperties() as $property) {
++					if (!$property->isPublic() || $property->isStatic()) {
++						continue;
++					}
++					$doc = $property->getDocComment()?->getText();
++					$varTags = $doc === null ? [] : $phpDocParser->parse(new TokenIterator($lexer->tokenize($doc)))->getVarTagValues();
++					foreach ($property->props as $prop) {
++						$name = $prop->name->toString();
++						if ($varTags === []) {
++							Logger::panic($context, 'Missing @var for request field ' . $name);
++						}
++						$fields[] = [
++							new Param(new Variable($name), $prop->default, $property->type),
++							new ParamTagValueNode($varTags[0]->type, false, '$' . $name, $varTags[0]->description, false),
++						];
++					}
++				}
++			}
++		}
++
++		return $fields;
++	}
+ }

@@ -14,10 +14,11 @@ namespace OCA\Versioniq\Service\Source;
 
 use Exception;
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Advisory\AdvisoryClauses;
 use OCA\Versioniq\Service\Advisory\AdvisorySeverity;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
-use OCA\Versioniq\Service\Connection\ConnectionReportService;
-use OCP\Http\Client\IClientService;
+use OCA\Versioniq\Service\Connection\ReportedHttp;
+use OCP\Http\Client\IClient;
 use OCP\IAppConfig;
 use OCP\IConfig;
 use OCP\L10N\IFactory;
@@ -33,6 +34,7 @@ use UnexpectedValueException;
  * to `SelectedReleaseInstallerService`, not the external installer.
  *
  * @psalm-api
+ * @psalm-type VersionEntry = array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string, downloads: null}
  */
 class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	public const DEFAULT_API_BASE = 'https://garm3.nextcloud.com/api/v1';
@@ -57,8 +59,22 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 * versions available" rather than a clear failure.
 	 */
 	private const FETCH_TIMEOUT_SECONDS = 180;
-	private const PAYLOAD_CACHE_PREFIX = 'appstore.payload.';
-	private const PAYLOAD_CACHE_TS_PREFIX = 'appstore.payload_ts.';
+
+	/**
+	 * Key prefixes of the payload cache. Public so the repair step that marks
+	 * existing rows lazy names the same keys this class writes.
+	 *
+	 * EVERY READ AND WRITE OF THESE KEYS PASSES `lazy: true`. One payload per
+	 * managed app, and a single one (mail) runs to ~4 MB, so the cache grows to
+	 * tens of megabytes. Nextcloud loads every NON-lazy app-config row on every
+	 * request, for every app, so an eager cache made the whole instance pay for
+	 * it: measured 2026-10-06, 1,660 eager rows / 36 MB took ~300 ms of a
+	 * ~450 ms `status.php`, and 55 ms once marked lazy.
+	 *
+	 * @see \OCA\Versioniq\Repair\MarkPayloadCacheLazy
+	 */
+	public const PAYLOAD_CACHE_PREFIX = 'appstore.payload.';
+	public const PAYLOAD_CACHE_TS_PREFIX = 'appstore.payload_ts.';
 
 	/**
 	 * What the current uncached fetch met, for the connection report
@@ -73,13 +89,11 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
 	 */
 	public function __construct(
-		private IClientService $clientService,
+		// Its connection report tells integriq whether the App Store answered.
+		private ReportedHttp $http,
 		private IConfig $config,
 		private IAppConfig $appConfig,
 		private IFactory $l10nFactory,
-		// Tells integriq whether the App Store answered. Optional and last, so
-		// every existing caller and test keeps working.
-		private ?ConnectionReportService $connectionReports = null,
 	) {
 	}
 
@@ -189,44 +203,39 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 		$advisories = [];
 		/** @var mixed $entry */
 		foreach ($raw as $entry) {
-			if (!is_array($entry)) {
-				continue;
+			$advisory = is_array($entry) ? self::advisoryFrom($entry) : null;
+			if ($advisory !== null) {
+				$advisories[] = $advisory;
 			}
-			/** @var mixed $id */
-			$id = $entry['id'] ?? $entry['ghsa_id'] ?? null;
-			if (!is_string($id) || $id === '') {
-				continue;
-			}
-			/** @var mixed $severity */
-			$severity = $entry['severity'] ?? null;
-			$summary = $entry['summary'] ?? ($entry['title'] ?? '');
-			$affected = [];
-			/** @var mixed $affectedRaw */
-			$affectedRaw = $entry['affected'] ?? $entry['affectedVersions'] ?? [];
-			if (is_string($affectedRaw)) {
-				$affectedRaw = array_map('trim', explode(',', $affectedRaw));
-			}
-			if (is_array($affectedRaw)) {
-				/** @var mixed $clause */
-				foreach ($affectedRaw as $clause) {
-					if (is_string($clause) && trim($clause) !== '') {
-						$affected[] = trim($clause);
-					}
-				}
-			}
-			/** @var mixed $patched */
-			$patched = $entry['firstPatchedVersion'] ?? $entry['first_patched_version'] ?? null;
-
-			$advisories[] = [
-				'id' => $id,
-				'severity' => AdvisorySeverity::normalize($severity),
-				'summary' => is_string($summary) ? $summary : '',
-				'affected' => $affected,
-				'firstPatchedVersion' => is_string($patched) && $patched !== '' ? $patched : null,
-			];
 		}
 
 		return $advisories;
+	}
+
+	/**
+	 * One App Store advisory entry as an advisory record, or null without an id.
+	 *
+	 * @param array<array-key, mixed> $entry
+	 * @return array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string}|null
+	 */
+	private static function advisoryFrom(array $entry): ?array {
+		/** @var mixed $id */
+		$id = $entry['id'] ?? $entry['ghsa_id'] ?? null;
+		if (!is_string($id) || $id === '') {
+			return null;
+		}
+		/** @var mixed $summary */
+		$summary = $entry['summary'] ?? ($entry['title'] ?? '');
+		/** @var mixed $patched */
+		$patched = $entry['firstPatchedVersion'] ?? $entry['first_patched_version'] ?? null;
+
+		return [
+			'id' => $id,
+			'severity' => AdvisorySeverity::normalize($entry['severity'] ?? null),
+			'summary' => is_string($summary) ? $summary : '',
+			'affected' => AdvisoryClauses::from($entry['affected'] ?? $entry['affectedVersions'] ?? []),
+			'firstPatchedVersion' => is_string($patched) && $patched !== '' ? $patched : null,
+		];
 	}
 
 	/**
@@ -242,7 +251,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 		$payload = $this->fetchAppPayloadUncached($appId);
 		// Only an uncached fetch reaches this line, so a cache hit reports
 		// nothing and a report follows a real catalogue request.
-		$this->connectionReports?->appStoreFetched($this->catalogueOutcome['answered'], $this->catalogueOutcome['failure']);
+		$this->http->connectionReports?->appStoreFetched($this->catalogueOutcome['answered'], $this->catalogueOutcome['failure']);
 		if ($payload !== null) {
 			$this->writeCachedPayload($appId, $payload);
 
@@ -271,13 +280,14 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 				Application::APP_ID,
 				self::PAYLOAD_CACHE_TS_PREFIX . $appId,
 				'0',
+				lazy: true,
 			);
 			if ($cachedAt <= 0 || (time() - $cachedAt) >= self::PAYLOAD_CACHE_TTL_SECONDS) {
 				return null;
 			}
 		}
 
-		$raw = $this->appConfig->getValueString(Application::APP_ID, self::PAYLOAD_CACHE_PREFIX . $appId, '');
+		$raw = $this->appConfig->getValueString(Application::APP_ID, self::PAYLOAD_CACHE_PREFIX . $appId, '', lazy: true);
 		if ($raw === '') {
 			return null;
 		}
@@ -304,11 +314,13 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 				Application::APP_ID,
 				self::PAYLOAD_CACHE_PREFIX . $appId,
 				json_encode($payload, JSON_THROW_ON_ERROR),
+				lazy: true,
 			);
 			$this->appConfig->setValueString(
 				Application::APP_ID,
 				self::PAYLOAD_CACHE_TS_PREFIX . $appId,
 				(string)time(),
+				lazy: true,
 			);
 		} catch (Throwable) {
 			// Cache write problems are non-fatal by design.
@@ -333,83 +345,93 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	}
 
 	private function fetchAppPayloadUncached(string $appId): ?array {
-		$client = $this->clientService->newClient();
+		$client = $this->http->clientService->newClient();
 
-		for ($page = 1; $page <= self::MAX_PAGES; $page++) {
-			$endpoint = $this->apiBase() . '/apps.json?filter=' . rawurlencode($appId) . '&page=' . $page;
-			try {
-				$response = $client->get($endpoint, ['timeout' => self::FETCH_TIMEOUT_SECONDS]);
-				if ($response->getStatusCode() !== 200) {
-					$this->noteCatalogueFailure('HTTP ' . $response->getStatusCode());
-					continue;
-				}
-				$body = trim((string)$response->getBody());
-				if ($body === '') {
-					$this->noteCatalogueFailure('an empty body');
-					return null;
-				}
-				/** @var mixed $decoded */
-				$decoded = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
-				if (!is_array($decoded)) {
-					$this->noteCatalogueFailure('an unexpected payload');
-					return null;
-				}
-				$this->catalogueOutcome['answered'] = true;
-				// The whole catalogue arrived regardless of the filter; keep it.
-				$this->cacheCatalogueEntries($decoded);
-				$appPayload = $this->extractAppPayload($decoded, $appId);
-				if (is_array($appPayload)) {
-					return $appPayload;
-				}
-				if (!$this->hasPossibleNextPage($decoded, $page)) {
-					break;
-				}
-			} catch (Exception) {
-				$this->noteCatalogueFailure('no readable answer');
-				continue;
-			}
+		$filteredQuery = new CatalogueQuery(
+			$appId,
+			fn (int $page): string => $this->apiBase() . '/apps.json?filter=' . rawurlencode($appId) . '&page=' . $page,
+		);
+		$filteredQuery->stopOnBadBody = true;
+		$filtered = $this->searchCatalogue($client, $filteredQuery);
+		if ($filtered !== null) {
+			return $filtered === false ? null : $filtered;
 		}
 
 		$platformVersion = $this->getPlatformVersion();
 		$platformEndpoint = $this->apiBase() . '/platform/' . rawurlencode($platformVersion) . '/apps.json';
 
+		// Same reasoning as the filtered endpoint: each response is the whole
+		// platform catalogue, so every page is indexed.
+		$platform = $this->searchCatalogue($client, new CatalogueQuery(
+			$appId,
+			static fn (int $page): string => $platformEndpoint . '?page=' . $page,
+		));
+
+		return $platform === false ? null : $platform;
+	}
+
+	/**
+	 * Walks the query's pages until the app turns up or no next page can
+	 * exist. Returns the app payload, null when it was not found, or false
+	 * when a bad body ends the lookup.
+	 *
+	 * @return array<array-key, mixed>|false|null
+	 */
+	private function searchCatalogue(IClient $client, CatalogueQuery $query): array|false|null {
 		for ($page = 1; $page <= self::MAX_PAGES; $page++) {
-			$endpoint = $platformEndpoint . '?page=' . $page;
-			try {
-				$response = $client->get($endpoint, ['timeout' => self::FETCH_TIMEOUT_SECONDS]);
-				if ($response->getStatusCode() !== 200) {
-					$this->noteCatalogueFailure('HTTP ' . $response->getStatusCode());
-					continue;
-				}
-				$body = trim((string)$response->getBody());
-				if ($body === '') {
-					$this->noteCatalogueFailure('an empty body');
-					continue;
-				}
-				/** @var mixed $decoded */
-				$decoded = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
-				if (!is_array($decoded)) {
-					$this->noteCatalogueFailure('an unexpected payload');
-					continue;
-				}
-				$this->catalogueOutcome['answered'] = true;
-				// Same reasoning as the filtered endpoint above: this response
-				// is the whole platform catalogue, so index all of it.
-				$this->cacheCatalogueEntries($decoded);
-				$appPayload = $this->extractAppPayload($decoded, $appId);
-				if (is_array($appPayload)) {
-					return $appPayload;
-				}
-				if (!$this->hasPossibleNextPage($decoded, $page)) {
-					break;
-				}
-			} catch (Exception) {
-				$this->noteCatalogueFailure('no readable answer');
+			$decoded = $this->readCataloguePage($client, ($query->endpoint)($page));
+			if ($decoded === null || ($decoded === false && !$query->stopOnBadBody)) {
 				continue;
+			}
+			if ($decoded === false) {
+				return false;
+			}
+			$this->catalogueOutcome['answered'] = true;
+			// The whole catalogue arrived regardless of the filter; keep it.
+			$this->cacheCatalogueEntries($decoded);
+			$appPayload = $this->extractAppPayload($decoded, $query->appId);
+			if (is_array($appPayload)) {
+				return $appPayload;
+			}
+			if (!$this->hasPossibleNextPage($decoded, $page)) {
+				break;
 			}
 		}
 
 		return null;
+	}
+
+	/**
+	 * Fetches and decodes one catalogue page, noting each failure for the
+	 * connection report. Null skips the page (an error status or no readable
+	 * answer); false is an empty or non-array body.
+	 *
+	 * @return array<array-key, mixed>|false|null
+	 */
+	private function readCataloguePage(IClient $client, string $endpoint): array|false|null {
+		try {
+			$response = $client->get($endpoint, ['timeout' => self::FETCH_TIMEOUT_SECONDS]);
+			if ($response->getStatusCode() !== 200) {
+				$this->noteCatalogueFailure('HTTP ' . $response->getStatusCode());
+				return null;
+			}
+			$body = trim((string)$response->getBody());
+			if ($body === '') {
+				$this->noteCatalogueFailure('an empty body');
+				return false;
+			}
+			/** @var mixed $decoded */
+			$decoded = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+			if (!is_array($decoded)) {
+				$this->noteCatalogueFailure('an unexpected payload');
+				return false;
+			}
+
+			return $decoded;
+		} catch (Exception) {
+			$this->noteCatalogueFailure('no readable answer');
+			return null;
+		}
 	}
 
 	/**
@@ -488,35 +510,35 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 * @param array<array-key, mixed> $decoded A decoded catalogue response.
 	 */
 	private function cacheCatalogueEntries(array $decoded): void {
-		$entries = null;
+		/** @var mixed $entry */
+		foreach ($this->catalogueEntries($decoded) ?? [] as $entry) {
+			/** @var mixed $id */
+			$id = is_array($entry) ? ($entry['id'] ?? null) : null;
+			if (is_string($id) && $id !== '') {
+				/** @var array<array-key, mixed> $entry */
+				$this->writeCachedPayload($id, $entry);
+			}
+		}
+	}
+
+	/**
+	 * The app list of a catalogue response: its `data` list, the response
+	 * itself when it is a list, or its `apps` list; null when it has none.
+	 *
+	 * @param array<array-key, mixed> $decoded
+	 * @return list<mixed>|null
+	 */
+	private function catalogueEntries(array $decoded): ?array {
 		$data = $this->arrayField($decoded, 'data');
 		if ($data !== null && array_is_list($data)) {
-			$entries = $data;
-		} elseif (array_is_list($decoded)) {
-			$entries = $decoded;
-		} else {
-			$apps = $this->arrayField($decoded, 'apps');
-			if ($apps !== null && array_is_list($apps)) {
-				$entries = $apps;
-			}
+			return $data;
 		}
+		if (array_is_list($decoded)) {
+			return $decoded;
+		}
+		$apps = $this->arrayField($decoded, 'apps');
 
-		if ($entries === null) {
-			return;
-		}
-
-		/** @var mixed $entry */
-		foreach ($entries as $entry) {
-			if (!is_array($entry)) {
-				continue;
-			}
-			/** @var mixed $id */
-			$id = $entry['id'] ?? null;
-			if (!is_string($id) || $id === '') {
-				continue;
-			}
-			$this->writeCachedPayload($id, $entry);
-		}
+		return $apps !== null && array_is_list($apps) ? $apps : null;
 	}
 
 	private function findById(array $entries, string $appId): ?array {
@@ -540,25 +562,46 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 				return false;
 			}
 		}
+
+		return self::statedNextPage($payload) ?? $this->hasEntries($payload);
+	}
+
+	/**
+	 * What the response itself says about a next page, in the shapes the App
+	 * Store and its mirrors use; null when it says nothing.
+	 *
+	 * @param array<array-key, mixed> $payload
+	 */
+	private static function statedNextPage(array $payload): ?bool {
 		if (isset($payload['pages']['next']) && is_bool($payload['pages']['next'])) {
 			return $payload['pages']['next'];
 		}
-		if (isset($payload['pagination']['next_page'])) {
-			return $payload['pagination']['next_page'] !== null;
+		// An explicit `next_page: null` is the App Store saying this is the last page.
+		/** @var mixed $pagination */
+		$pagination = $payload['pagination'] ?? null;
+		if (is_array($pagination) && array_key_exists('next_page', $pagination)) {
+			return $pagination['next_page'] !== null;
 		}
 		if (isset($payload['nextPage']) && is_string($payload['nextPage'])) {
 			return $payload['nextPage'] !== '';
 		}
+
+		return null;
+	}
+
+	/**
+	 * Whether the page carried any apps, which is the only hint left.
+	 *
+	 * @param array<array-key, mixed> $payload
+	 */
+	private function hasEntries(array $payload): bool {
 		$apps = $this->arrayField($payload, 'apps');
 		if ($apps !== null) {
 			return count($apps) > 0;
 		}
 		$data = $this->arrayField($payload, 'data');
-		if ($data !== null) {
-			return count($data) > 0;
-		}
 
-		return false;
+		return $data !== null && count($data) > 0;
 	}
 
 	private function getPlatformVersion(): string {
@@ -581,68 +624,87 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @param array<mixed> $releases
-	 * @return list<array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string}>
+	 * @return list<array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string, downloads: null}>
 	 */
 	private function normalizeVersions(array $releases): array {
-		/** @var array<string, ?string> $changelogsByVersion */
-		$changelogsByVersion = [];
-		/** @var array<string, ?bool> $compatibleByVersion */
-		$compatibleByVersion = [];
-		/** @var array<string, ?string> $releasedAtByVersion */
-		$releasedAtByVersion = [];
 		$serverVersion = $this->getServerVersion();
-		$order = [];
+		/** @var array<string, VersionEntry> $byVersion */
+		$byVersion = [];
 		/** @var mixed $release */
 		foreach ($releases as $release) {
-			$compatible = null;
-			$releasedAt = null;
-			if (is_string($release)) {
-				$version = $release;
-				$changelog = null;
-			} elseif (is_array($release)) {
-				/** @var mixed $version */
-				$version = $release['version'] ?? $release['ver'] ?? $release['name'] ?? $release['tag_name'] ?? null;
-				if (!is_string($version) || $version === '') {
-					continue;
-				}
-				$changelog = $this->extractChangelog($release);
-				/** @var mixed $spec */
-				$spec = $release['platformVersionSpec'] ?? null;
-				$compatible = is_string($spec) ? self::satisfiesPlatformSpec($serverVersion, $spec) : null;
-				$releasedAt = ReleaseDate::normalize($release['created'] ?? null);
-			} else {
-				continue;
-			}
-
-			if (!array_key_exists($version, $changelogsByVersion)) {
-				$order[] = $version;
-				$changelogsByVersion[$version] = $changelog;
-				$compatibleByVersion[$version] = $compatible;
-				$releasedAtByVersion[$version] = $releasedAt;
-			} else {
-				if ($changelogsByVersion[$version] === null && $changelog !== null) {
-					$changelogsByVersion[$version] = $changelog;
-				}
-				if ($compatibleByVersion[$version] === null && $compatible !== null) {
-					$compatibleByVersion[$version] = $compatible;
-				}
-				if ($releasedAtByVersion[$version] === null && $releasedAt !== null) {
-					$releasedAtByVersion[$version] = $releasedAt;
-				}
+			$entry = $this->releaseEntry($release, $serverVersion);
+			if ($entry !== null) {
+				$byVersion[$entry['version']] = self::mergeEntry($byVersion[$entry['version']] ?? null, $entry);
 			}
 		}
 
-		usort($order, static fn (string $a, string $b): int => version_compare($b, $a));
+		$entries = array_values($byVersion);
+		usort($entries, self::newestFirst(...));
 
-		return array_map(
-			static fn (string $version): array => [
-				'version' => $version,
-				'changelog' => $changelogsByVersion[$version],
-				'serverCompatible' => $compatibleByVersion[$version],
-				'releasedAt' => $releasedAtByVersion[$version],
-			],
-			$order
-		);
+		return $entries;
+	}
+
+	/**
+	 * One release entry as a version row, or null when it names no version.
+	 * A bare string is the version itself, with nothing else known.
+	 *
+	 * @return VersionEntry|null
+	 */
+	private function releaseEntry(mixed $release, string $serverVersion): ?array {
+		if (is_string($release)) {
+			return ['version' => $release, 'changelog' => null, 'serverCompatible' => null, 'releasedAt' => null, 'downloads' => null];
+		}
+
+		return is_array($release) ? $this->arrayReleaseEntry($release, $serverVersion) : null;
+	}
+
+	/**
+	 * @return VersionEntry|null
+	 */
+	private function arrayReleaseEntry(array $release, string $serverVersion): ?array {
+		/** @var mixed $version */
+		$version = $release['version'] ?? $release['ver'] ?? $release['name'] ?? $release['tag_name'] ?? null;
+		if (!is_string($version) || $version === '') {
+			return null;
+		}
+		/** @var mixed $spec */
+		$spec = $release['platformVersionSpec'] ?? null;
+
+		return [
+			'version' => $version,
+			'changelog' => $this->extractChangelog($release),
+			'serverCompatible' => is_string($spec) ? self::satisfiesPlatformSpec($serverVersion, $spec) : null,
+			'releasedAt' => ReleaseDate::normalize($release['created'] ?? null),
+			// The catalogue publishes no per-release download count (design D2).
+			'downloads' => null,
+		];
+	}
+
+	/**
+	 * @param VersionEntry $a
+	 * @param VersionEntry $b
+	 */
+	private static function newestFirst(array $a, array $b): int {
+		return version_compare($b['version'], $a['version']);
+	}
+
+	/**
+	 * The row for a version listed more than once: the first value of each
+	 * field wins, and a later entry only fills fields still unknown.
+	 *
+	 * @param VersionEntry|null $known
+	 * @param VersionEntry $entry
+	 * @return VersionEntry
+	 */
+	private static function mergeEntry(?array $known, array $entry): array {
+		if ($known === null) {
+			return $entry;
+		}
+		$known['changelog'] ??= $entry['changelog'];
+		$known['serverCompatible'] ??= $entry['serverCompatible'];
+		$known['releasedAt'] ??= $entry['releasedAt'];
+
+		return $known;
 	}
 
 	/**

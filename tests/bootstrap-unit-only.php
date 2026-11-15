@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 // Minimal bootstrap for tests that only exercise pure-PHP classes from
 // `lib/Service/Source/*` against mocked OCP interfaces. This avoids pulling
 // in the full Nextcloud server bootstrap so tests can run in CI / locally
@@ -47,3 +52,9 @@ foreach (['ConnectionStatusReportedEvent', 'ConnectionRefreshRequestedEvent'] as
 }
 
 unset($integriqStubEvent);
+
+// OpenRegister's MCP provider contract (admin-mcp-assistant D1): the real
+// interface when OpenRegister is installed alongside, the stub otherwise.
+if (!interface_exists('\\OCA\\OpenRegister\\Mcp\\IMcpToolProvider')) {
+	require_once __DIR__ . '/stubs/OpenRegister/Mcp/IMcpToolProvider.php';
+}
