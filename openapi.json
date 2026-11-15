@@ -4831,7 +4831,9 @@
                                                         "intervalHours",
                                                         "minIntervalHours",
                                                         "maxIntervalHours",
-                                                        "digestEnabled"
+                                                        "digestEnabled",
+                                                        "ncscEnabled",
+                                                        "ncscStatus"
                                                     ],
                                                     "properties": {
                                                         "intervalHours": {
@@ -4848,6 +4850,25 @@
                                                         },
                                                         "digestEnabled": {
                                                             "type": "boolean"
+                                                        },
+                                                        "ncscEnabled": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "ncscStatus": {
+                                                            "type": "object",
+                                                            "required": [
+                                                                "readUpTo",
+                                                                "caughtUp"
+                                                            ],
+                                                            "properties": {
+                                                                "readUpTo": {
+                                                                    "type": "string",
+                                                                    "nullable": true
+                                                                },
+                                                                "caughtUp": {
+                                                                    "type": "boolean"
+                                                                }
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -4989,6 +5010,12 @@
                                         "nullable": true,
                                         "default": null,
                                         "description": "Whether the weekly digest is sent ('1'/'0'). Omitted leaves it unchanged."
+                                    },
+                                    "ncscEnabled": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "Whether the sweep also reads NCSC-NL's advisories ('1'/'0'). Omitted leaves it unchanged."
                                     }
                                 }
                             }
@@ -5034,7 +5061,9 @@
                                                         "intervalHours",
                                                         "minIntervalHours",
                                                         "maxIntervalHours",
-                                                        "digestEnabled"
+                                                        "digestEnabled",
+                                                        "ncscEnabled",
+                                                        "ncscStatus"
                                                     ],
                                                     "properties": {
                                                         "intervalHours": {
@@ -5051,6 +5080,25 @@
                                                         },
                                                         "digestEnabled": {
                                                             "type": "boolean"
+                                                        },
+                                                        "ncscEnabled": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "ncscStatus": {
+                                                            "type": "object",
+                                                            "required": [
+                                                                "readUpTo",
+                                                                "caughtUp"
+                                                            ],
+                                                            "properties": {
+                                                                "readUpTo": {
+                                                                    "type": "string",
+                                                                    "nullable": true
+                                                                },
+                                                                "caughtUp": {
+                                                                    "type": "boolean"
+                                                                }
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -8335,6 +8383,12 @@
                                         "nullable": true,
                                         "default": null,
                                         "description": "Advisory feed URL; blank uses the published Nextcloud feed"
+                                    },
+                                    "ncscFeedUrl": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "NCSC-NL CSAF directory URL, https only; blank uses the one NCSC-NL publishes"
                                     },
                                     "maxLinesBehind": {
                                         "type": "string",

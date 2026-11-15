@@ -241,6 +241,17 @@ final class ConnectionReportServiceTest extends TestCase {
 		);
 	}
 
+	public function testTheNcscReadSaysHowManyDocumentsWereReadAndMatched(): void {
+		$service = $this->service();
+
+		self::assertSame(['configured', 'The last check read 40 documents, matched 2.'], $service->describeNcscRead(['read' => 40, 'matched' => 2, 'error' => null]));
+		self::assertSame(
+			['limited', 'The last check stopped early: read 12 documents, matched 0. The NCSC-NL advisories returned HTTP 503.'],
+			$service->describeNcscRead(['read' => 12, 'matched' => 0, 'error' => 'The NCSC-NL advisories returned HTTP 503.']),
+		);
+		self::assertSame(['error', 'The NCSC-NL advisories returned HTTP 500.'], $service->describeNcscRead(['read' => 0, 'matched' => 0, 'error' => 'The NCSC-NL advisories returned HTTP 500.']));
+	}
+
 	public function testAFailureReasonNamesAHostAndNeverAPath(): void {
 		$service = $this->service();
 		$reason = 'Could not read the Nextcloud advisory feed: cURL error 28 for https://token:s3cret@mirror.example/repos/nextcloud/security-advisories?per_page=100&after=abc';
