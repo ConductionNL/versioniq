@@ -1,22 +1,30 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
-import type { AdvisoryRecord } from '../utils/advisories.ts'
+import type { TriagedAdvisory } from '../utils/advisories.ts'
 
 import { t } from '@nextcloud/l10n'
 import { computed } from 'vue'
-import { normalizeSeverity, severityLabel } from '../utils/advisories.ts'
+import NcButton from '@nextcloud/vue/components/NcButton'
+import { assigneeLabel, normalizeSeverity, severityLabel } from '../utils/advisories.ts'
 
 /**
- * One advisory in a list: its severity, id and summary. An NCSC-NL record
- * also shows the NCSC-NL label, its CVE ids, NCSC-NL's own likelihood and
- * damage ratings as published, its release date and a link, and says so when
+ * One advisory that still counts: its severity, id and summary, its owner
+ * once assigned, and the Dismiss and Assign controls. An NCSC-NL record also
+ * shows the NCSC-NL label, its CVE ids, NCSC-NL's own likelihood and damage
+ * ratings as published, its release date and a link, and says so when
  * NCSC-NL does not state which versions are affected; a record that a
  * duplicate was folded into names the other ids (advisories-ncsc-feed D7).
  *
+ * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-assigns-an-advisory-to-an-owner
  * @spec openspec/changes/advisories-ncsc-feed/specs/security-advisory-correlation/spec.md#requirement-ncsc-nl-advisories-are-matched-to-the-installed-server-and-apps
  */
 const props = defineProps<{
-	advisory: AdvisoryRecord
+	advisory: TriagedAdvisory
+}>()
+
+const emit = defineEmits<{
+	dismiss: []
+	assign: []
 }>()
 
 const isNcsc = computed(() => props.advisory.source === 'ncsc')
@@ -25,7 +33,11 @@ const released = computed(() => (props.advisory.published ?? '').slice(0, 10))
 </script>
 
 <template>
-	<li :class="$style.item" :data-source="advisory.source ?? 'nextcloud'">
+	<li
+		:class="$style.item"
+		data-testid="advisory-item"
+		:data-advisory="advisory.id"
+		:data-source="advisory.source ?? 'nextcloud'">
 		<span
 			:class="[$style.severity, $style[`severity-${severity}`]]"
 			data-testid="advisory-severity"
@@ -47,6 +59,17 @@ const released = computed(() => (props.advisory.published ?? '').slice(0, 10))
 				{{ t('versioniq', 'NCSC-NL does not state which versions are affected.') }}
 			</span>
 		</template>
+		<span v-if="advisory.assignee" :class="$style.owner" data-testid="advisory-owner">
+			{{ t('versioniq', 'Owner: {owner}', { owner: assigneeLabel(advisory.assignee) }) }}
+		</span>
+		<span :class="$style.actions">
+			<NcButton variant="tertiary" size="small" data-testid="advisory-dismiss" @click="emit('dismiss')">
+				{{ t('versioniq', 'Dismiss advisory') }}
+			</NcButton>
+			<NcButton variant="tertiary" size="small" data-testid="advisory-assign" @click="emit('assign')">
+				{{ t('versioniq', 'Assign') }}
+			</NcButton>
+		</span>
 	</li>
 </template>
 
@@ -58,8 +81,14 @@ const released = computed(() => (props.advisory.published ?? '').slice(0, 10))
 	align-items: baseline;
 }
 
-.hint {
+.hint,
+.owner {
 	color: var(--color-text-maxcontrast);
+}
+
+.actions {
+	display: inline-flex;
+	gap: 4px;
 }
 
 .source {
