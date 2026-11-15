@@ -52,6 +52,14 @@ class OsvClient {
 	/** @var array{deadline: float, maxCalls: int} */
 	private array $limits = ['deadline' => 0.0, 'maxCalls' => 0];
 
+	/** What the resolve step of the check in progress has gathered so far. */
+	/** @var array{distinct: array<string, array{name: string, version: string}>, records: array<string, array<array-key, mixed>|string>, findings: array<string, list<array<string, mixed>>>, unchecked: list<string>, error: ?string} */
+	private array $run = ['distinct' => [], 'records' => [], 'findings' => [], 'unchecked' => [], 'error' => null];
+
+	/** The advisory ids per library key the batch query of the check in progress found so far. */
+	/** @var array<string, list<string>> */
+	private array $found = [];
+
 	public function __construct(
 		private IClientService $clientService,
 		private IConfig $config,
@@ -103,32 +111,48 @@ class OsvClient {
 	 * @return array{findings: array<string, list<array{package: string, version: string, id: string, cveIds: list<string>, severity: string, summary: string, fixedIn: ?string, url: string, malicious: bool}>>, unchecked: list<string>, asked: int, error: ?string}
 	 */
 	private function resolve(array $distinct, array $ids): array {
-		$records = [];
-		$findings = [];
-		$unchecked = [];
-		$error = null;
+		$this->run = ['distinct' => $distinct, 'records' => [], 'findings' => [], 'unchecked' => [], 'error' => null];
 		foreach ($ids as $key => $libraryIds) {
-			$library = $distinct[$key];
-			foreach ($libraryIds as $id) {
-				if (!array_key_exists($id, $records)) {
-					if (count($records) >= $this->limits['maxCalls'] || microtime(true) >= $this->limits['deadline']) {
-						$unchecked[] = $key;
-						$error ??= 'The check stopped at its limit; some libraries were not checked this run.';
-						continue 2;
-					}
-					$records[$id] = $this->fetchRecord($id);
-				}
-				$record = $records[$id];
-				if (is_string($record)) {
-					$unchecked[] = $key;
-					$error ??= $record;
-					continue 2;
-				}
-				$findings[$key][] = self::finding($library, ['id' => $id] + $record);
-			}
+			$this->resolveLibrary($key, $libraryIds);
 		}
 
-		return ['findings' => $findings, 'unchecked' => $unchecked, 'asked' => count($distinct), 'error' => $error];
+		return ['findings' => $this->run['findings'], 'unchecked' => $this->run['unchecked'], 'asked' => count($distinct), 'error' => $this->run['error']];
+	}
+
+	/**
+	 * The findings of one library; at its first record that cannot be read
+	 * (a limit, or the fetch failing) the library is left unchecked instead.
+	 *
+	 * @param list<string> $libraryIds its advisory ids
+	 */
+	private function resolveLibrary(string $key, array $libraryIds): void {
+		$library = $this->run['distinct'][$key];
+		foreach ($libraryIds as $id) {
+			$record = $this->recordFor($id);
+			if (is_string($record)) {
+				$this->run['unchecked'][] = $key;
+				$this->run['error'] ??= $record;
+				return;
+			}
+			$this->run['findings'][$key][] = self::finding($library, ['id' => $id] + $record);
+		}
+	}
+
+	/**
+	 * One advisory record, fetched once per check, or why it is not there:
+	 * the check's limit, or the fetch failing.
+	 *
+	 * @return array<array-key, mixed>|string
+	 */
+	private function recordFor(string $id): array|string {
+		if (!array_key_exists($id, $this->run['records'])) {
+			if (count($this->run['records']) >= $this->limits['maxCalls'] || microtime(true) >= $this->limits['deadline']) {
+				return 'The check stopped at its limit; some libraries were not checked this run.';
+			}
+			$this->run['records'][$id] = $this->fetchRecord($id);
+		}
+
+		return $this->run['records'][$id];
 	}
 
 	/**
@@ -139,29 +163,56 @@ class OsvClient {
 	 * @return array<string, list<string>>|string
 	 */
 	private function queryAll(array $libraries): array|string {
-		$ids = [];
+		$this->found = [];
 		foreach (array_chunk($libraries, self::BATCH_SIZE) as $chunk) {
-			$pending = array_map(static fn (array $library): array => ['library' => $library, 'token' => null], $chunk);
-			for ($round = 0; $pending !== [] && $round < self::MAX_PAGE_ROUNDS; $round++) {
-				$results = $this->queryBatch($pending);
-				if (is_string($results)) {
-					return $results;
-				}
-				$next = [];
-				foreach ($pending as $index => $query) {
-					$result = self::arrayAt($results, $index);
-					$key = self::key($query['library']);
-					$ids[$key] = array_values(array_unique([...($ids[$key] ?? []), ...self::vulnIds($result)]));
-					$token = self::text($result, 'next_page_token');
-					if ($token !== null && $token !== '') {
-						$next[] = ['library' => $query['library'], 'token' => $token];
-					}
-				}
-				$pending = $next;
+			$error = $this->queryChunk($chunk);
+			if ($error !== null) {
+				return $error;
 			}
 		}
 
-		return $ids;
+		return $this->found;
+	}
+
+	/**
+	 * Adds the ids of one chunk of libraries to those found, following
+	 * `next_page_token` for at most MAX_PAGE_ROUNDS rounds; why it failed, or null.
+	 *
+	 * @param list<array{name: string, version: string}> $chunk
+	 */
+	private function queryChunk(array $chunk): ?string {
+		$pending = array_map(static fn (array $library): array => ['library' => $library, 'token' => null], $chunk);
+		for ($round = 0; $pending !== [] && $round < self::MAX_PAGE_ROUNDS; $round++) {
+			$results = $this->queryBatch($pending);
+			if (is_string($results)) {
+				return $results;
+			}
+			$pending = $this->collectRound($pending, $results);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Adds one round's ids per library and returns the queries with a next page.
+	 *
+	 * @param list<array{library: array{name: string, version: string}, token: ?string}> $pending
+	 * @param array<array-key, mixed> $results
+	 * @return list<array{library: array{name: string, version: string}, token: ?string}>
+	 */
+	private function collectRound(array $pending, array $results): array {
+		$next = [];
+		foreach ($pending as $index => $query) {
+			$result = self::arrayAt($results, $index);
+			$key = self::key($query['library']);
+			$this->found[$key] = array_values(array_unique([...($this->found[$key] ?? []), ...self::vulnIds($result)]));
+			$token = self::text($result, 'next_page_token');
+			if ($token !== null && $token !== '') {
+				$next[] = ['library' => $query['library'], 'token' => $token];
+			}
+		}
+
+		return $next;
 	}
 
 	/**
@@ -210,16 +261,7 @@ class OsvClient {
 	 * @return array<array-key, mixed>|string
 	 */
 	private function request(string $url, ?string $jsonBody = null): array|string {
-		// A body makes it a JSON POST, none a GET.
-		$options = ['headers' => ['Accept' => 'application/json']];
-		if ($jsonBody !== null) {
-			$options = ['body' => $jsonBody, 'headers' => ['Content-Type' => 'application/json', 'Accept' => 'application/json']];
-		}
-		$options['timeout'] = self::TIMEOUT_SECONDS;
-		// The same SSRF guard the forge clients use: a local address only
-		// when the instance allows local remote servers.
-		$options['nextcloud'] = ['allow_local_address' => $this->config->getSystemValueBool('allow_local_remote_servers', false)];
-
+		$options = $this->options($jsonBody);
 		try {
 			$client = $this->client ?? $this->clientService->newClient();
 			$response = $jsonBody !== null ? $client->post($url, $options) : $client->get($url, $options);
@@ -230,9 +272,36 @@ class OsvClient {
 			return 'OSV returned HTTP ' . $response->getStatusCode() . '.';
 		}
 
+		return self::decode((string)$response->getBody());
+	}
+
+	/**
+	 * The request options: a JSON POST with a body, a GET without one.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function options(?string $jsonBody): array {
+		$options = ['headers' => ['Accept' => 'application/json']];
+		if ($jsonBody !== null) {
+			$options = ['body' => $jsonBody, 'headers' => ['Content-Type' => 'application/json', 'Accept' => 'application/json']];
+		}
+		$options['timeout'] = self::TIMEOUT_SECONDS;
+		// The same SSRF guard the forge clients use: a local address only
+		// when the instance allows local remote servers.
+		$options['nextcloud'] = ['allow_local_address' => $this->config->getSystemValueBool('allow_local_remote_servers', false)];
+
+		return $options;
+	}
+
+	/**
+	 * A response body as a decoded JSON object, or why it is not one.
+	 *
+	 * @return array<array-key, mixed>|string
+	 */
+	private static function decode(string $body): array|string {
 		try {
 			/** @var mixed $decoded */
-			$decoded = json_decode((string)$response->getBody(), true, 512, JSON_THROW_ON_ERROR);
+			$decoded = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
 		} catch (\JsonException) {
 			return 'OSV returned invalid JSON.';
 		}
@@ -276,20 +345,7 @@ class OsvClient {
 	 * @param array{name: string, version: string} $library
 	 */
 	private static function firstFixed(array $record, array $library): ?string {
-		$fixed = [];
-		foreach (self::arrays(self::arrayAt($record, 'affected')) as $affected) {
-			if (!self::isPackage(self::arrayAt($affected, 'package'), $library['name'])) {
-				continue;
-			}
-			foreach (self::arrays(self::arrayAt($affected, 'ranges')) as $range) {
-				foreach (self::arrays(self::arrayAt($range, 'events')) as $event) {
-					$version = self::text($event, 'fixed');
-					if ($version !== null) {
-						$fixed[] = $version;
-					}
-				}
-			}
-		}
+		$fixed = self::fixedVersions($record, $library['name']);
 		if ($fixed === []) {
 			return null;
 		}
@@ -301,6 +357,43 @@ class OsvClient {
 		}
 
 		return $fixed[0];
+	}
+
+	/**
+	 * Every `fixed` event of the record's ranges for this package, in record order.
+	 *
+	 * @param array<array-key, mixed> $record
+	 * @return list<string>
+	 */
+	private static function fixedVersions(array $record, string $name): array {
+		$fixed = [];
+		foreach (self::arrays(self::arrayAt($record, 'affected')) as $affected) {
+			if (self::isPackage(self::arrayAt($affected, 'package'), $name)) {
+				$fixed = [...$fixed, ...self::rangeFixes($affected)];
+			}
+		}
+
+		return $fixed;
+	}
+
+	/**
+	 * The `fixed` events of one affected entry's ranges.
+	 *
+	 * @param array<array-key, mixed> $affected
+	 * @return list<string>
+	 */
+	private static function rangeFixes(array $affected): array {
+		$fixed = [];
+		foreach (self::arrays(self::arrayAt($affected, 'ranges')) as $range) {
+			foreach (self::arrays(self::arrayAt($range, 'events')) as $event) {
+				$version = self::text($event, 'fixed');
+				if ($version !== null) {
+					$fixed[] = $version;
+				}
+			}
+		}
+
+		return $fixed;
 	}
 
 	/**

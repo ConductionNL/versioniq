@@ -79,6 +79,8 @@ defineProps<{
 	</article>
 </template>
 
+<style module src="../styles/advisorySeverity.module.css"></style>
+
 <style module>
 .app {
 	padding: 8px 12px;
@@ -111,28 +113,8 @@ defineProps<{
 	align-items: baseline;
 }
 
-.severity {
-	padding: 0 8px;
-	border: 1px solid var(--color-border-dark);
-	border-radius: var(--border-radius-pill);
-	font-size: 0.9em;
-	font-weight: bold;
-}
-
-.malicious,
-.severity-critical,
-.severity-high {
+.malicious {
 	border-color: var(--color-error);
 	color: var(--color-error-text);
-}
-
-.severity-medium {
-	border-color: var(--color-warning);
-	color: var(--color-warning-text);
-}
-
-.severity-low,
-.severity-unknown {
-	color: var(--color-text-maxcontrast);
 }
 </style>

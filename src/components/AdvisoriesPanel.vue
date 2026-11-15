@@ -129,6 +129,8 @@ const libraryChecks = computed(() => libraryRows(props.libraries))
 	</section>
 </template>
 
+<style module src="../styles/advisorySeverity.module.css"></style>
+
 <style module>
 .panel {
 	display: flex;
@@ -179,29 +181,5 @@ const libraryChecks = computed(() => libraryRows(props.libraries))
 	flex-wrap: wrap;
 	gap: 8px;
 	align-items: baseline;
-}
-
-.severity {
-	padding: 0 8px;
-	border: 1px solid var(--color-border-dark);
-	border-radius: var(--border-radius-pill);
-	font-size: 0.9em;
-	font-weight: bold;
-}
-
-.severity-critical,
-.severity-high {
-	border-color: var(--color-error);
-	color: var(--color-error-text);
-}
-
-.severity-medium {
-	border-color: var(--color-warning);
-	color: var(--color-warning-text);
-}
-
-.severity-low,
-.severity-unknown {
-	color: var(--color-text-maxcontrast);
 }
 </style>

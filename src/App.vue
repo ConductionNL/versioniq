@@ -700,15 +700,27 @@ async function loadAdvisorySettings (): Promise<void> {
 		const payload = await unwrapOcsResponse<{ intervalHours: number, minIntervalHours: number, maxIntervalHours: number, digestEnabled: boolean, librariesEnabled?: boolean }>(response)
 		advisoryMinInterval.value = payload.minIntervalHours
 		advisoryMaxInterval.value = payload.maxIntervalHours
-		advisoryIntervalInput.value = String(payload.intervalHours)
-		advisorySavedInterval.value = String(payload.intervalHours)
-		advisoryDigestEnabled.value = payload.digestEnabled
-		advisorySavedDigest.value = payload.digestEnabled
-		advisoryLibrariesEnabled.value = payload.librariesEnabled === true
-		advisorySavedLibraries.value = payload.librariesEnabled === true
+		applyAdvisorySettings(payload)
 	} catch {
 		// Non-fatal: the settings control simply keeps its defaults.
 	}
+}
+
+/**
+ * Shows the stored advisory settings in the controls and remembers them as saved.
+ *
+ * @param payload The settings the server answered with.
+ * @param payload.intervalHours The check interval in hours.
+ * @param payload.digestEnabled Whether the digest is sent.
+ * @param payload.librariesEnabled Whether bundled libraries are checked.
+ */
+function applyAdvisorySettings (payload: { intervalHours: number, digestEnabled: boolean, librariesEnabled?: boolean }): void {
+	advisoryIntervalInput.value = String(payload.intervalHours)
+	advisorySavedInterval.value = String(payload.intervalHours)
+	advisoryDigestEnabled.value = payload.digestEnabled
+	advisorySavedDigest.value = payload.digestEnabled
+	advisoryLibrariesEnabled.value = payload.librariesEnabled === true
+	advisorySavedLibraries.value = payload.librariesEnabled === true
 }
 
 /**
@@ -731,12 +743,7 @@ async function saveAdvisorySettings (): Promise<void> {
 			}),
 		})
 		const payload = await unwrapOcsResponse<{ intervalHours: number, digestEnabled: boolean, librariesEnabled?: boolean }>(response)
-		advisoryIntervalInput.value = String(payload.intervalHours)
-		advisorySavedInterval.value = String(payload.intervalHours)
-		advisoryDigestEnabled.value = payload.digestEnabled
-		advisorySavedDigest.value = payload.digestEnabled
-		advisoryLibrariesEnabled.value = payload.librariesEnabled === true
-		advisorySavedLibraries.value = payload.librariesEnabled === true
+		applyAdvisorySettings(payload)
 		advisorySettingsNotice.value = t('versioniq', 'Advisory settings saved.')
 	} catch (error) {
 		advisorySettingsError.value = error instanceof Error ? error.message : String(error)

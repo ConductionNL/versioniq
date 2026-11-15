@@ -41,9 +41,9 @@ class LibraryAdvisoryJob extends TimedJob {
 
 	public function __construct(
 		ITimeFactory $time,
-		private AdvisorySettingsStore $settings,
-		private LibraryAdvisoryCheck $check,
-		private LoggerInterface $logger,
+		private readonly AdvisorySettingsStore $settings,
+		private readonly LibraryAdvisoryCheck $check,
+		private readonly LoggerInterface $logger,
 	) {
 		parent::__construct($time);
 		$this->setInterval(self::INTERVAL_SECONDS);
