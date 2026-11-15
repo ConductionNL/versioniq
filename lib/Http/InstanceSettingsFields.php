@@ -41,6 +41,12 @@ final class InstanceSettingsFields extends RequestFields {
 	/** @var string|null Release lines an app may fall behind, 0 to 10; blank turns the check off */
 	public ?string $maxLinesBehind = null;
 
+	/** @var string|null Address a newer revocation list is fetched from; blank turns fetching off */
+	public ?string $crlUrl = null;
+
+	/** @var string|null 1 disables an app whose certificate was revoked, 0 only notifies */
+	public ?string $disableRevoked = null;
+
 	/**
 	 * The fields that were sent, by name, in declaration order.
 	 *

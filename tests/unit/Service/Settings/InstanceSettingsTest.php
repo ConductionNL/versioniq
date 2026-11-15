@@ -47,6 +47,15 @@ final class InstanceSettingsTest extends TestCase {
 				return true;
 			},
 		);
+		$appConfig->method('getValueBool')->willReturnCallback(
+			fn (string $app, string $key, bool $default = false): bool => (bool)($this->config[$key] ?? $default),
+		);
+		$appConfig->method('setValueBool')->willReturnCallback(
+			function (string $app, string $key, bool $value): bool {
+				$this->config[$key] = (int)$value;
+				return true;
+			},
+		);
 		$appConfig->method('deleteKey')->willReturnCallback(
 			function (string $app, string $key): void {
 				unset($this->config[$key]);
@@ -211,5 +220,66 @@ final class InstanceSettingsTest extends TestCase {
 			yield "$field port and path" => [$field, 'https://ghe.example.org:8443/api', 'https://ghe.example.org:8443/api'];
 			yield "$field unparseable" => [$field, 'https://', $refusal];
 		}
+	}
+
+	/**
+	 * safety-withdrawn-and-revoked D1/D2: the revocation list address, where
+	 * empty switches fetching off, and the auto-disable switch, off by default.
+	 *
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/tasks.md#2.2
+	 */
+	public function testTheRevocationListAddressDefaultsToNextcloudsList(): void {
+		$settings = $this->store()->read();
+
+		self::assertSame('https://raw.githubusercontent.com/nextcloud/server/master/resources/codesigning/root.crl', $settings['crlUrl']);
+		self::assertSame($settings['crlUrl'], $settings['crlUrlDefault']);
+		self::assertSame(0, $settings['disableRevoked']);
+	}
+
+	public function testAnEmptyRevocationListAddressIsStoredAndSwitchesFetchingOff(): void {
+		$store = $this->store();
+
+		self::assertSame(['crlUrl'], $store->update(['crlUrl' => '  ']));
+		self::assertSame('', $this->config['safety.crl_url']);
+		self::assertSame('', $store->read()['crlUrl']);
+	}
+
+	public function testARevocationListMirrorIsStoredWithoutItsTrailingSlash(): void {
+		$store = $this->store();
+
+		$store->update(['crlUrl' => 'http://mirror.internal/root.crl/']);
+
+		self::assertSame('http://mirror.internal/root.crl', $this->config['safety.crl_url']);
+		self::assertSame('http://mirror.internal/root.crl', $store->read()['crlUrl']);
+	}
+
+	public function testARevocationListAddressWithCredentialsIsRefused(): void {
+		$this->expectException(InvalidArgumentException::class);
+		$this->store()->update(['crlUrl' => 'https://user:pw@mirror.internal/root.crl']);
+	}
+
+	public function testTheAutoDisableSwitchIsStoredAsABoolean(): void {
+		$store = $this->store();
+		self::assertFalse($store->disableRevoked());
+
+		self::assertSame(['disableRevoked'], $store->update(['disableRevoked' => 'true']));
+		self::assertSame(1, $this->config['safety.disable_revoked']);
+		self::assertTrue($store->disableRevoked());
+		self::assertSame(1, $store->read()['disableRevoked']);
+
+		$store->update(['disableRevoked' => '0']);
+		self::assertFalse($store->disableRevoked());
+	}
+
+	public function testAnUnknownSwitchValueIsRefusedAndNothingIsWritten(): void {
+		$store = $this->store();
+		try {
+			$store->update(['crlUrl' => 'https://mirror.internal/root.crl', 'disableRevoked' => 'maybe']);
+			self::fail('An unknown switch value was accepted.');
+		} catch (InvalidArgumentException $error) {
+			self::assertSame('Disabling apps with a revoked certificate must be switched on or off.', $error->getMessage());
+		}
+
+		self::assertSame([], $this->config);
 	}
 }

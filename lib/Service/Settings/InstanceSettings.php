@@ -17,6 +17,7 @@ use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\BackgroundJob\PruneAuditJob;
 use OCA\Versioniq\Service\Advisory\NextcloudAdvisoryFeed;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
+use OCA\Versioniq\Service\Safety\RevocationList;
 use OCA\Versioniq\Service\Source\AppStoreSource;
 use OCA\Versioniq\Service\Source\ForgeRegistry;
 use OCP\IAppConfig;
@@ -44,6 +45,9 @@ class InstanceSettings {
 	public const KEY_ADVISORY_FEED = 'advisory.feed_base';
 	/** How many release lines an app may fall behind; absent means off (inventory-pending-updates D3). */
 	public const KEY_MAX_LINES_BEHIND = 'update.max_lines_behind';
+
+	/** Whether an app whose certificate was revoked is disabled automatically. */
+	public const KEY_DISABLE_REVOKED = 'safety.disable_revoked';
 
 	public const MAX_LINES_BEHIND = 10;
 
@@ -73,7 +77,8 @@ class InstanceSettings {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int}
+	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, crlUrl: string, crlUrlDefault: string, disableRevoked: int}
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/tasks.md#2.2
 	 */
 	public function read(): array {
 		$retention = $this->config->getValueInt(Application::APP_ID, PruneAuditJob::CONFIG_KEY_RETENTION_DAYS, PruneAuditJob::DEFAULT_RETENTION_DAYS);
@@ -95,6 +100,11 @@ class InstanceSettings {
 			'advisoryFeedDefault' => NextcloudAdvisoryFeed::DEFAULT_FEED_URL,
 			'maxLinesBehind' => $this->maxLinesBehind(),
 			'maxLinesBehindMax' => self::MAX_LINES_BEHIND,
+			// Unlike the overrides above, '' is a value here: it switches
+			// fetching a newer revocation list off.
+			'crlUrl' => trim($this->config->getValueString(Application::APP_ID, RevocationList::KEY_URL, RevocationList::DEFAULT_URL)),
+			'crlUrlDefault' => RevocationList::DEFAULT_URL,
+			'disableRevoked' => $this->disableRevoked() ? 1 : 0,
 		];
 	}
 
@@ -107,6 +117,7 @@ class InstanceSettings {
 	 * @param array<string, string> $fields
 	 * @return list<string> The names of the fields that were applied
 	 * @throws InvalidArgumentException when any field is out of range or not an acceptable URL
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/tasks.md#2.2
 	 */
 	public function update(array $fields): array {
 		// Every field is validated before anything is written, so a refusal
@@ -114,8 +125,17 @@ class InstanceSettings {
 		$ints = $this->validatedInts($fields);
 		$lagLimit = $this->validatedLagLimit($fields);
 		$urls = $this->validatedUrls($fields);
+		$crlUrl = isset($fields['crlUrl']) ? $this->url($fields['crlUrl'], false) : null;
+		$disableRevoked = isset($fields['disableRevoked']) ? self::switchValue($fields['disableRevoked']) : null;
 
 		$this->storeInts($ints);
+		if ($crlUrl !== null) {
+			// Stored even when '': an empty address switches fetching off.
+			$this->config->setValueString(Application::APP_ID, RevocationList::KEY_URL, $crlUrl);
+		}
+		if ($disableRevoked !== null) {
+			$this->config->setValueBool(Application::APP_ID, self::KEY_DISABLE_REVOKED, $disableRevoked);
+		}
 		if ($lagLimit !== null) {
 			$this->storeOrClear(self::KEY_MAX_LINES_BEHIND, $lagLimit);
 		}
@@ -134,7 +154,7 @@ class InstanceSettings {
 	 */
 	private static function appliedFields(array $fields): array {
 		return array_values(array_filter(
-			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS)],
+			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS), 'crlUrl', 'disableRevoked'],
 			static fn (string $field): bool => isset($fields[$field]),
 		));
 	}
@@ -229,6 +249,33 @@ class InstanceSettings {
 		}
 
 		return min((int)$raw, self::MAX_LINES_BEHIND);
+	}
+
+	/**
+	 * Whether an app whose certificate was revoked is disabled automatically;
+	 * off by default (design D2 of safety-withdrawn-and-revoked).
+	 *
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/tasks.md#2.2
+	 */
+	public function disableRevoked(): bool {
+		return $this->config->getValueBool(Application::APP_ID, self::KEY_DISABLE_REVOKED, false);
+	}
+
+	/**
+	 * A switch sent as text: 1/true/on or 0/false/off.
+	 *
+	 * @throws InvalidArgumentException for anything else
+	 */
+	private static function switchValue(string $raw): bool {
+		$value = strtolower(trim($raw));
+		if (in_array($value, ['1', 'true', 'on'], true)) {
+			return true;
+		}
+		if (in_array($value, ['0', 'false', 'off', ''], true)) {
+			return false;
+		}
+
+		throw new InvalidArgumentException('Disabling apps with a revoked certificate must be switched on or off.');
 	}
 
 	/** Address parts a configured base URL must not carry. */

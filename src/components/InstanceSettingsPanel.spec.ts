@@ -34,6 +34,9 @@ const settings = {
 	advisoryFeedDefault: 'https://api.github.com/repos/nextcloud/security-advisories/security-advisories',
 	maxLinesBehind: null,
 	maxLinesBehindMax: 10,
+	crlUrl: 'https://raw.githubusercontent.com/nextcloud/server/master/resources/codesigning/root.crl',
+	crlUrlDefault: 'https://raw.githubusercontent.com/nextcloud/server/master/resources/codesigning/root.crl',
+	disableRevoked: 0,
 }
 
 describe('InstanceSettingsPanel', () => {
@@ -99,5 +102,41 @@ describe('InstanceSettingsPanel', () => {
 
 		expect(mockedWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/instance-settings', expect.objectContaining({ maxLinesBehind: '1' }))
 		expect((wrapper.find('[data-testid="setting-max-lines-behind"]').element as HTMLInputElement).value).toBe('1')
+	})
+
+	// safety-withdrawn-and-revoked 2.2: the list address (empty is off) and the auto-disable switch.
+	// @spec openspec/changes/safety-withdrawn-and-revoked/tasks.md#2.2
+	it('saves the revocation list address and the auto-disable switch', async () => {
+		mockedGet.mockResolvedValue({ payload: settings })
+		mockedWrite.mockResolvedValue({ payload: { ...settings, crlUrl: '', disableRevoked: 1 } })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		expect((wrapper.find('[data-testid="setting-crl-url"]').element as HTMLInputElement).value).toBe(settings.crlUrl)
+		expect((wrapper.find('[data-testid="setting-disable-revoked"]').element as HTMLInputElement).checked).toBe(false)
+
+		await wrapper.find('[data-testid="setting-crl-url"]').setValue('')
+		await wrapper.find('[data-testid="setting-disable-revoked"]').setValue(true)
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		expect(mockedWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/instance-settings', expect.objectContaining({
+			crlUrl: '',
+			disableRevoked: '1',
+		}))
+		expect((wrapper.find('[data-testid="setting-disable-revoked"]').element as HTMLInputElement).checked).toBe(true)
+	})
+
+	it('sends the switch as 0 while it is off', async () => {
+		mockedGet.mockResolvedValue({ payload: { ...settings, disableRevoked: 1 } })
+		mockedWrite.mockResolvedValue({ payload: settings })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		await wrapper.find('[data-testid="setting-disable-revoked"]').setValue(false)
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		expect(mockedWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/instance-settings', expect.objectContaining({ disableRevoked: '0' }))
 	})
 })

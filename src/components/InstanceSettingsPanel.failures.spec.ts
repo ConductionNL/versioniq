@@ -35,6 +35,9 @@ const settings = {
 	advisoryFeedDefault: 'https://api.github.com/repos/nextcloud/security-advisories/security-advisories',
 	maxLinesBehind: 2,
 	maxLinesBehindMax: 10,
+	crlUrl: 'https://crl.example.org/root.crl',
+	crlUrlDefault: 'https://raw.githubusercontent.com/nextcloud/server/master/resources/codesigning/root.crl',
+	disableRevoked: 0,
 }
 
 /**
@@ -127,6 +130,8 @@ describe('InstanceSettingsPanel saving', () => {
 			githubWebBase: '',
 			advisoryFeedUrl: 'https://mirror.example.org/feed',
 			maxLinesBehind: '',
+			crlUrl: 'https://crl.example.org/root.crl',
+			disableRevoked: '0',
 		})
 		expect(wrapper.find('[data-testid="instance-settings-notice"]').text()).toBe('Settings saved.')
 	})

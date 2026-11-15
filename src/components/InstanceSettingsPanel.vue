@@ -9,10 +9,12 @@ import { ocsGet, ocsWrite } from '../ocs.ts'
 /**
  * The instance settings that were reachable only through `occ config:app:set`
  * (#438 item 7): audit retention, artifact cache size, a store mirror, GitHub
- * Enterprise and an internal advisory feed mirror.
+ * Enterprise and an internal advisory feed mirror; and the revocation list
+ * address and auto-disable switch of safety-withdrawn-and-revoked.
  *
  * @spec openspec/specs/audit-trail/spec.md
  * @spec openspec/specs/external-sources/spec.md
+ * @spec openspec/changes/safety-withdrawn-and-revoked/tasks.md#2.2
  */
 type Settings = {
 	auditRetentionDays: number
@@ -30,6 +32,9 @@ type Settings = {
 	advisoryFeedDefault: string
 	maxLinesBehind: number | null
 	maxLinesBehindMax: number
+	crlUrl: string
+	crlUrlDefault: string
+	disableRevoked: number
 }
 
 const ENDPOINT = '/ocs/v2.php/apps/versioniq/api/instance-settings'
@@ -43,6 +48,8 @@ const form = ref({
 	githubWebBase: '',
 	advisoryFeedUrl: '',
 	maxLinesBehind: '',
+	crlUrl: '',
+	disableRevoked: false,
 })
 const saving = ref(false)
 const error = ref('')
@@ -62,6 +69,8 @@ function fill (settings: Settings): void {
 		githubWebBase: settings.githubWebBase,
 		advisoryFeedUrl: settings.advisoryFeedUrl,
 		maxLinesBehind: settings.maxLinesBehind === null || settings.maxLinesBehind === undefined ? '' : String(settings.maxLinesBehind),
+		crlUrl: settings.crlUrl ?? '',
+		disableRevoked: settings.disableRevoked === 1,
 	}
 }
 
@@ -90,7 +99,7 @@ async function save (): Promise<void> {
 	error.value = ''
 	notice.value = ''
 	try {
-		const body = Object.fromEntries(Object.entries(form.value).map(([key, value]) => [key, String(value).trim()]))
+		const body = Object.fromEntries(Object.entries(form.value).map(([key, value]) => [key, typeof value === 'boolean' ? (value ? '1' : '0') : String(value).trim()]))
 		const { payload, error: apiError } = await ocsWrite<Settings>('PUT', ENDPOINT, body)
 		if (apiError) {
 			error.value = apiError
@@ -196,6 +205,26 @@ onMounted(load)
 				<span :class="$style.hint">{{ t('versioniq', 'Default: {url}', { url: loaded.advisoryFeedDefault }) }}</span>
 			</label>
 
+			<h4>{{ t('versioniq', 'Revoked certificates') }}</h4>
+			<label :class="$style.field" for="setting-crl-url">
+				<span>{{ t('versioniq', 'Revocation list address (leave empty to use only the list the server shipped with)') }}</span>
+				<input
+					id="setting-crl-url"
+					v-model="form.crlUrl"
+					type="url"
+					:placeholder="loaded.crlUrlDefault"
+					data-testid="setting-crl-url">
+				<span :class="$style.hint">{{ t('versioniq', 'A list is used only when Nextcloud signed it and it is newer than the shipped one. Default: {url}', { url: loaded.crlUrlDefault }) }}</span>
+			</label>
+			<label :class="$style.check" for="setting-disable-revoked">
+				<input
+					id="setting-disable-revoked"
+					v-model="form.disableRevoked"
+					type="checkbox"
+					data-testid="setting-disable-revoked">
+				<span>{{ t('versioniq', 'Disable an app automatically when its certificate is revoked') }}</span>
+			</label>
+
 			<p v-if="notice" :class="$style.notice" data-testid="instance-settings-notice">
 				{{ notice }}
 			</p>
@@ -223,6 +252,12 @@ onMounted(load)
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
+}
+
+.check {
+	display: flex;
+	align-items: center;
+	gap: 8px;
 }
 
 .hint {
