@@ -17,6 +17,7 @@ require_once __DIR__ . '/../Support/DispatchesLikeNextcloud.php';
 use OCA\Versioniq\Controller\ApiController;
 use OCA\Versioniq\Db\AuditEntry;
 use OCA\Versioniq\Db\AuditEntryMapper;
+use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Db\PatMapper;
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
@@ -120,6 +121,7 @@ final class ApiTest extends TestCase {
 		?AutoUpdateSettingsStore $autoUpdateSettingsStore = null,
 		?ArtifactCache $artifactCache = null,
 		?AttemptLedger $attemptLedger = null,
+		?KnownIssueStore $knownIssues = null,
 	): ApiController {
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn($uid);
@@ -153,6 +155,7 @@ final class ApiTest extends TestCase {
 			'artifactCache' => $artifactCache ?? $this->createMock(ArtifactCache::class),
 			'connectionReports' => null,
 			'attemptLedger' => $attemptLedger ?? $this->createMock(AttemptLedger::class),
+			'knownIssues' => $knownIssues,
 		]);
 	}
 
@@ -268,6 +271,65 @@ final class ApiTest extends TestCase {
 
 		$this->assertSame(200, $response->getStatus());
 		$this->assertSame(['trustedPatterns' => []], $response->getData());
+	}
+
+	/**
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+	 */
+	public function testAppOutcomesForbiddenForNonAdmin(): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->never())->method('countOutcomesByVersion');
+
+		$response = $this->buildController(null, $mapper)->appOutcomes('hermiq');
+
+		$this->assertSame(403, $response->getStatus());
+		$this->assertSame(['message' => 'Forbidden'], $response->getData());
+	}
+
+	/**
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+	 */
+	public function testAppOutcomesAsAdminReturnsTheCountsPerVersion(): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->once())->method('countOutcomesByVersion')->with('hermiq')
+			->willReturn(['1.4.0' => ['succeeded' => 3, 'failed' => 1]]);
+
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->createMock(IRequest::class), $mapper)->appOutcomes(' hermiq ');
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame(['appId' => 'hermiq', 'outcomes' => ['1.4.0' => ['succeeded' => 3, 'failed' => 1]]], $response->getData());
+	}
+
+	/**
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+	 */
+	public function testKnownIssueEndpointsAreAdminOnly(): void {
+		$controller = $this->buildController();
+
+		$this->assertSame(403, $controller->addKnownIssue('openregister', '2.4.1', 'Broken')->getStatus());
+		$this->assertSame(403, $controller->removeKnownIssue('openregister', '2.4.1', 0)->getStatus());
+	}
+
+	/**
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+	 */
+	public function testKnownIssueEndpointsChangeTheStoreAsTheAdmin(): void {
+		$store = $this->createMock(KnownIssueStore::class);
+		$store->expects($this->once())->method('add')
+			->with(['appId' => 'openregister', 'version' => '2.4.1', 'actor' => 'admin'], ['text' => 'Export times out', 'workaround' => 'Per schema', 'link' => null])
+			->willReturn([['text' => 'Export times out']]);
+		$store->expects($this->exactly(2))->method('remove')
+			->willReturnOnConsecutiveCalls([], $this->throwException(new \InvalidArgumentException('This version has no known issue at that position.')));
+
+		$controller = $this->buildAdminController($this->createMock(InstallerService::class), $this->createMock(IRequest::class), knownIssues: $store);
+
+		$added = $controller->addKnownIssue(' openregister ', '2.4.1', 'Export times out', 'Per schema');
+		$this->assertSame(200, $added->getStatus());
+		$this->assertSame(['appId' => 'openregister', 'version' => '2.4.1', 'knownIssues' => [['text' => 'Export times out']]], $added->getData());
+		$this->assertSame(200, $controller->removeKnownIssue('openregister', '2.4.1', 0)->getStatus());
+		$refused = $controller->removeKnownIssue('openregister', '2.4.1', 9);
+		$this->assertSame(400, $refused->getStatus());
+		$this->assertSame(['message' => 'This version has no known issue at that position.'], $refused->getData());
 	}
 
 	public function testAuditLogForbiddenForNonAdmin(): void {

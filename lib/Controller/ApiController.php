@@ -29,6 +29,7 @@ use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\NoBackupException;
 use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Pat\NewPat;
+use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Source\RetiredForgeException;
@@ -509,6 +510,115 @@ class ApiController extends OCSController {
 
 		/** @psalm-suppress InvalidReturnStatement Dynamic status passthrough — see the docblock. */
 		return new DataResponse($result, $this->toHttpStatus($statusCode, Http::STATUS_OK));
+	}
+
+	/**
+	 * How installs of each version of an app went on this instance
+	 * (admin-only), so another Versioniq can add them to its own totals; see
+	 * "Every version shows how widely it runs and how installs of it went"
+	 *
+	 * @param string $appId The app to count install outcomes for
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, outcomes: array<string, array{succeeded: int, failed: int}>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 *
+	 * 200: Successful and failed installs per version
+	 * 403: Caller is not an administrator
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+	 */
+	#[ApiRoute(verb: 'GET', url: '/api/app/{appId}/outcomes')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/app/{appId}/outcomes', postfix: 'v1')]
+	public function appOutcomes(string $appId): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$appId = trim($appId);
+
+		return new DataResponse(['appId' => $appId, 'outcomes' => $this->reports->auditEntryMapper->countOutcomesByVersion($appId)]);
+	}
+
+	/**
+	 * Records a known issue against a version (admin-only, password-confirmed,
+	 * audited as `settings`); see "Known issues of a version are shown before
+	 * and after installing it"
+	 *
+	 * @param string $appId The app
+	 * @param string $version The version the issue is in
+	 * @param string $text What goes wrong
+	 * @param string $workaround How to avoid it
+	 * @param string|null $link An https page about it
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, version: string, knownIssues: list<array<string, mixed>>}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_SERVICE_UNAVAILABLE, array{message: string}, array{}>
+	 *
+	 * 200: The version's known issues after the change
+	 * 400: Text missing or too long, or the link is not https
+	 * 403: Caller is not an administrator
+	 * 503: Known issues cannot be stored on this instance
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'PUT', url: '/api/app/{appId}/versions/{version}/known-issues')]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/app/{appId}/versions/{version}/known-issues', postfix: 'v1')]
+	public function addKnownIssue(string $appId, string $version, string $text = '', string $workaround = '', ?string $link = null): DataResponse {
+		return $this->changeKnownIssues(
+			['appId' => trim($appId), 'version' => trim($version)],
+			static fn (KnownIssueStore $store, array $target): array => $store->add($target, ['text' => $text, 'workaround' => $workaround, 'link' => $link])
+		);
+	}
+
+	/**
+	 * Removes a known issue of a version by its position (admin-only,
+	 * password-confirmed, audited as `settings`)
+	 *
+	 * @param string $appId The app
+	 * @param string $version The version
+	 * @param int $index The position of the issue in the version's list
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, version: string, knownIssues: list<array<string, mixed>>}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_SERVICE_UNAVAILABLE, array{message: string}, array{}>
+	 *
+	 * 200: The version's known issues after the change
+	 * 400: The version has no issue at that position
+	 * 403: Caller is not an administrator
+	 * 503: Known issues cannot be stored on this instance
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'DELETE', url: '/api/app/{appId}/versions/{version}/known-issues/{index}')]
+	#[ApiRoute(verb: 'DELETE', url: '/api/v1/app/{appId}/versions/{version}/known-issues/{index}', postfix: 'v1')]
+	public function removeKnownIssue(string $appId, string $version, int $index): DataResponse {
+		return $this->changeKnownIssues(
+			['appId' => trim($appId), 'version' => trim($version)],
+			static fn (KnownIssueStore $store, array $target): array => $store->remove($target, $index)
+		);
+	}
+
+	/**
+	 * Runs a known-issue change for an administrator and answers the version's list.
+	 *
+	 * @param array{appId: string, version: string} $target
+	 * @param callable(KnownIssueStore, array{appId: string, version: string, actor: string}): list<array<string, mixed>> $change
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, version: string, knownIssues: list<array<string, mixed>>}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_SERVICE_UNAVAILABLE, array{message: string}, array{}>
+	 */
+	private function changeKnownIssues(array $target, callable $change): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+		$store = $this->reports->knownIssues;
+		if ($store === null) {
+			return new DataResponse(['message' => 'Known issues are not available.'], Http::STATUS_SERVICE_UNAVAILABLE);
+		}
+
+		$actor = $this->access->caller->userSession->getUser()?->getUID() ?? '';
+		try {
+			$issues = $change($store, $target + ['actor' => $actor]);
+		} catch (InvalidArgumentException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
+
+		return new DataResponse($target + ['knownIssues' => $issues]);
 	}
 
 	/**
