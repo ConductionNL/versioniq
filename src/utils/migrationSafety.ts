@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+// SPDX-License-Identifier: EUPL-1.2
 // Pure helpers for the migration-safety UI (downgrade guard, migration diff,
 // last-known-good rollback). Kept free of Vue/component state so they can be
 // unit-tested directly.
@@ -9,6 +11,12 @@ export type LkgRecord = {
 	version: string
 	recordedAt: string
 	sourceId: string | null
+	previous?: { version: string, recordedAt: string, sourceId: string | null } | null
+}
+
+export type LkgRollbackTarget = {
+	version: string
+	label: string
 }
 
 export type AppLkgInfo = {
@@ -33,6 +41,39 @@ export function shouldOfferLkgRollback(app: AppLkgInfo): boolean {
 	}
 
 	return lkg.version !== installed
+}
+
+/**
+ * The rollback targets an app card offers: the version that ran before the
+ * last successful install ("Roll back to <previous>"), and the last good
+ * version when it differs from both the installed version and `previous`.
+ * A record written before `previous` existed offers its version as before.
+ *
+ * @param app The card's installed version and last-known-good record.
+ * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+ */
+export function lkgRollbackTargets(app: AppLkgInfo): LkgRollbackTarget[] {
+	const lkg = app.lkg
+	const installed = app.installedVersion
+	if (!lkg || !installed) {
+		return []
+	}
+
+	const previous = lkg.previous?.version || ''
+	const targets: LkgRollbackTarget[] = []
+	if (previous !== '' && previous !== installed) {
+		targets.push({ version: previous, label: t('versioniq', 'Roll back to {version}', { version: previous }) })
+	}
+	if (lkg.version && lkg.version !== installed && lkg.version !== previous) {
+		targets.push({
+			version: lkg.version,
+			label: previous === ''
+				? t('versioniq', 'Roll back to {version}', { version: lkg.version })
+				: t('versioniq', 'Roll back to the last good version ({version})', { version: lkg.version }),
+		})
+	}
+
+	return targets
 }
 
 /**

@@ -16,9 +16,9 @@ use Exception;
 use OCA\Versioniq\Db\Pat;
 use OCA\Versioniq\Db\PatMapper;
 use OCA\Versioniq\Service\Pat\PatManager;
-use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
 use OCP\Http\Client\IClientService;
+use OCP\Http\Client\IResponse;
 use OCP\IUserSession;
 use Psr\Log\LoggerInterface;
 
@@ -34,9 +34,10 @@ use Psr\Log\LoggerInterface;
  * trusted-source allowlist.
  */
 class GithubPrivateDiscovery implements DiscoveryProviderInterface {
+	use MapsGithubRepositories;
+
 	public const ID = 'github-private';
-	private const SEARCH_ENDPOINT = 'https://api.github.com/search/repositories';
-	private const USER_AGENT = 'Nextcloud-Versioniq';
+	private const UNTRUSTED_REASON = 'Add `%s/*` to the trusted-source allowlist to install from this repo.';
 
 	/**
 	 * @psalm-api
@@ -89,6 +90,20 @@ class GithubPrivateDiscovery implements DiscoveryProviderInterface {
 			return DiscoveryResult::empty();
 		}
 
+		[$hits, $lastError] = $this->searchEach($pats, $query);
+		$unique = self::uniqueByRepo($hits);
+
+		return new DiscoveryResult($unique, $unique === [] ? $lastError : null);
+	}
+
+	/**
+	 * Every PAT's hits, in PAT order, and the error of the last search that
+	 * failed (logged, not raised).
+	 *
+	 * @param list<Pat> $pats
+	 * @return array{0: list<DiscoveryHit>, 1: ?string}
+	 */
+	private function searchEach(array $pats, string $query): array {
 		$hits = [];
 		$lastError = null;
 		foreach ($pats as $pat) {
@@ -96,15 +111,32 @@ class GithubPrivateDiscovery implements DiscoveryProviderInterface {
 				$patHits = $this->searchOne($pat, $query);
 				$hits = array_merge($hits, $patHits);
 			} catch (Exception $error) {
-				$this->logger->warning('GithubPrivateDiscovery: search failed for PAT', [
-					'patId' => $pat->getId(),
-					'errorMessage' => $error->getMessage(),
-				]);
-				$lastError = 'One or more PAT-scoped searches failed (' . $error->getMessage() . ').';
+				$lastError = $this->searchFailed($pat, $error);
 			}
 		}
 
-		// De-duplicate by owner/repo within this provider's results.
+		return [$hits, $lastError];
+	}
+
+	/**
+	 * Logs one PAT's failed search and returns the error the result carries.
+	 */
+	private function searchFailed(Pat $pat, Exception $error): string {
+		$this->logger->warning('GithubPrivateDiscovery: search failed for PAT', [
+			'patId' => $pat->getId(),
+			'errorMessage' => $error->getMessage(),
+		]);
+
+		return 'One or more PAT-scoped searches failed (' . $error->getMessage() . ').';
+	}
+
+	/**
+	 * The hits with the first one per owner/repo kept.
+	 *
+	 * @param list<DiscoveryHit> $hits
+	 * @return list<DiscoveryHit>
+	 */
+	private static function uniqueByRepo(array $hits): array {
 		$seen = [];
 		$unique = [];
 		foreach ($hits as $hit) {
@@ -116,7 +148,7 @@ class GithubPrivateDiscovery implements DiscoveryProviderInterface {
 			$unique[] = $hit;
 		}
 
-		return new DiscoveryResult($unique, $unique === [] ? $lastError : null);
+		return $unique;
 	}
 
 	/**
@@ -128,64 +160,49 @@ class GithubPrivateDiscovery implements DiscoveryProviderInterface {
 			return [];
 		}
 
-		$q = trim($query) . ' ' . $scopeClause . ' fork:false';
-		$url = self::SEARCH_ENDPOINT . '?' . http_build_query(['q' => $q, 'per_page' => 30]);
+		$url = $this->searchUrl(trim($query) . ' ' . $scopeClause . ' fork:false');
+		$items = $this->patManager->useToken($pat, fn (string $token): ?array => $this->fetchItems($url, $token));
 
-		/** @var array<int, array<string, mixed>>|null $items */
-		$items = $this->patManager->useToken($pat, function (string $token) use ($url): ?array {
-			try {
-				$response = $this->clientService->newClient()->get($url, [
-					'headers' => [
-						'Authorization' => 'Bearer ' . $token,
-						'Accept' => 'application/vnd.github+json',
-						'User-Agent' => self::USER_AGENT,
-						'X-GitHub-Api-Version' => '2022-11-28',
-					],
-					'timeout' => 30,
-					'http_errors' => false,
-				]);
-			} catch (Exception) {
-				return null;
-			}
+		return $items === null ? [] : $this->repoHits($items);
+	}
 
-			if ($response->getStatusCode() !== 200) {
-				return null;
-			}
-
-			try {
-				$decoded = json_decode((string)$response->getBody(), true, 32, JSON_THROW_ON_ERROR);
-			} catch (\JsonException) {
-				return null;
-			}
-
-			if (!is_array($decoded) || !isset($decoded['items']) || !is_array($decoded['items'])) {
-				return null;
-			}
-
-			$out = [];
-			/** @var mixed $item */
-			foreach ($decoded['items'] as $item) {
-				if (is_array($item)) {
-					$out[] = $item;
-				}
-			}
-
-			return $out;
-		});
-
-		if ($items === null) {
-			return [];
+	/**
+	 * The result items of one authenticated search, or null when the request
+	 * fails, answers other than 200, or returns malformed JSON or no `items`
+	 * list. An error reading the status or the body propagates.
+	 *
+	 * @return list<array<array-key, mixed>>|null
+	 */
+	private function fetchItems(
+		string $url,
+		#[\SensitiveParameter]
+		string $token,
+	): ?array {
+		$response = $this->send($url, $token);
+		if ($response === null || $response->getStatusCode() !== 200) {
+			return null;
 		}
 
-		$hits = [];
-		foreach ($items as $repo) {
-			$hit = $this->buildHit($repo);
-			if ($hit !== null) {
-				$hits[] = $hit;
-			}
+		try {
+			return $this->decodeItems((string)$response->getBody());
+		} catch (\JsonException) {
+			return null;
 		}
+	}
 
-		return $hits;
+	/**
+	 * The response of one authenticated search request, or null when the request fails.
+	 */
+	private function send(
+		string $url,
+		#[\SensitiveParameter]
+		string $token,
+	): ?IResponse {
+		try {
+			return $this->clientService->newClient()->get($url, $this->searchOptions(['Authorization' => 'Bearer ' . $token]));
+		} catch (Exception) {
+			return null;
+		}
 	}
 
 	/**
@@ -214,58 +231,5 @@ class GithubPrivateDiscovery implements DiscoveryProviderInterface {
 		}
 
 		return null;
-	}
-
-	/**
-	 * @param array<string, mixed> $repo
-	 */
-	private function buildHit(array $repo): ?DiscoveryHit {
-		/** @var mixed $rawFullName */
-		$rawFullName = $repo['full_name'] ?? '';
-		if (!is_string($rawFullName)) {
-			return null;
-		}
-		$fullName = $rawFullName;
-		if (!str_contains($fullName, '/')) {
-			return null;
-		}
-		$parts = explode('/', $fullName, 2);
-		$owner = $parts[0];
-		$repoName = $parts[1] ?? '';
-
-		$sourceId = 'github:' . $fullName;
-		$installable = $this->trustedSources->isAllowed($sourceId);
-		$reason = $installable
-			? null
-			: sprintf('Add `%s/*` to the trusted-source allowlist to install from this repo.', $owner);
-
-		/** @var mixed $repoNameValue */
-		$repoNameValue = $repo['name'] ?? null;
-		/** @var mixed $descriptionValue */
-		$descriptionValue = $repo['description'] ?? null;
-		/** @var mixed $htmlUrlValue */
-		$htmlUrlValue = $repo['html_url'] ?? null;
-
-		return new DiscoveryHit(
-			appId: $this->guessAppId($repoName),
-			name: is_string($repoNameValue) ? $repoNameValue : $repoName,
-			summary: is_string($descriptionValue) ? $descriptionValue : '',
-			iconUrl: null,
-			sourceProviderId: self::ID,
-			sourceBinding: [
-				'kind' => SourceBinding::KIND_GITHUB_RELEASE,
-				'owner' => $owner,
-				'repo' => $repoName,
-			],
-			installable: $installable,
-			installableReason: $reason,
-			homepageUrl: is_string($htmlUrlValue) ? $htmlUrlValue : null,
-		);
-	}
-
-	private function guessAppId(string $repoName): string {
-		// GitHub repos use kebab-case; Nextcloud appIds are typically snake_case.
-		// Both lowercase + replace `-` with `_` lands on the right id for most ConductionNL apps.
-		return strtolower(str_replace('-', '_', $repoName));
 	}
 }

@@ -470,6 +470,63 @@ non-delegable admin setting and every endpoint already refuses a non-admin.
 - **WHEN** the Apps tab renders its card
 - **THEN** the card MUST show "Shipped with Nextcloud" and "Source: App Store"
 
+### Requirement: The app list and the version list can be filtered
+
+The Apps tab MUST offer a text filter over the installed app list that keeps an app when its
+label or its id contains the typed text, case-insensitive, after the core-apps and updates
+filters have run. A filter panel MUST let the admin hide core apps. The version list of the
+selected app MUST offer its own text filter that keeps a version whose number contains the
+typed text, and MUST say "No versions match your filter." when none does. Both filters run in
+the browser over lists already loaded; no request is sent. Code: `src/App.vue` (`filteredApps`,
+`filteredVersions`, the `app-filter` input and the "Filter versions" input).
+
+#### Scenario: Filtering the app list by name or id
+
+@e2e exclude the filters are pure computed properties over the loaded list; an e2e run would need a fixed set of installed apps the shared CI instance does not guarantee.
+
+- **GIVEN** the Apps tab lists `calendar`, `contacts` and `openregister`
+- **WHEN** the admin types `REG` in the app search field
+- **THEN** only `openregister` MUST stay in the list
+- **AND** choosing "Hide core apps" MUST also drop every app marked as core
+
+#### Scenario: Filtering the version list
+
+@e2e exclude covered by the computed filter in src/App.vue; the version list depends on live App Store data.
+
+- **GIVEN** the selected app lists versions 2.3.0, 2.4.1 and 3.0.0
+- **WHEN** the admin types `2.4` in "Filter versions"
+- **THEN** only 2.4.1 MUST stay in the list
+- **AND** typing `9.9` MUST show "No versions match your filter."
+
+### Requirement: The admin page works with a keyboard and a screen reader
+
+The admin page MUST start with a "Skip to main content" link that is visible on focus and
+moves focus to the page content (`#versioniq-main`). The section tabs MUST be a WAI-ARIA
+tablist named "Versioniq sections": each tab carries `role="tab"`, `aria-selected`,
+`aria-controls` and a roving `tabindex`, and Left, Right, Home and End move between tabs. The
+app detail sections MUST use the same tablist pattern. Every text input MUST carry an
+accessible name, and every data table MUST mark its column headers with `scope="col"`. Code:
+`src/App.vue` (skip link, `onTabKeydown`, the tablists), `src/components/HistoryPanel.vue` and
+`src/components/IntegrationsPanel.vue` (table headers).
+
+#### Scenario: Arrow keys move between tabs
+
+@e2e tests/e2e/shell.spec.ts
+
+- **GIVEN** the admin opens the Versioniq settings page and focuses the Apps tab
+- **WHEN** they press the Right arrow key
+- **THEN** the Advisories tab MUST read `aria-selected="true"`
+- **AND** its tab panel MUST be shown
+
+#### Scenario: The skip link reaches the content
+
+@e2e exclude the skip link is a plain anchor to #versioniq-main; asserted by reading the template, no browser behaviour of our own to test.
+
+- **GIVEN** a keyboard user lands on the settings page
+- **WHEN** they press Tab once and then Enter
+- **THEN** the "Skip to main content" link MUST have been visible
+- **AND** focus MUST move to the page content
+
 ## User Stories
 
 1. As a Nextcloud admin, I want to roll back an app to a previous version so that I can recover from a broken update.

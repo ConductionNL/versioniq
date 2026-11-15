@@ -21,20 +21,35 @@ namespace OCA\Versioniq\Service\Discovery;
  * own response.
  */
 final class DiscoveryHit {
-	/**
-	 * @param array<string, mixed> $sourceBinding
-	 */
+	public readonly string $name;
+	public readonly string $summary;
+	public readonly ?string $iconUrl;
+	public readonly string $sourceProviderId;
+	/** @var array<string, mixed> */
+	public readonly array $sourceBinding;
+	public readonly bool $installable;
+	public readonly ?string $installableReason;
+	public readonly ?string $homepageUrl;
+	public readonly ?string $publisher;
+	/** @var list<string> */
+	public readonly array $marks;
+
 	public function __construct(
 		public readonly string $appId,
-		public readonly string $name,
-		public readonly string $summary,
-		public readonly ?string $iconUrl,
-		public readonly string $sourceProviderId,
-		public readonly array $sourceBinding,
-		public readonly bool $installable,
-		public readonly ?string $installableReason,
-		public readonly ?string $homepageUrl,
+		DiscoveryListing $listing,
+		DiscoverySource $source,
+		?DiscoveryPublisher $publisher = null,
 	) {
+		$this->name = $listing->name;
+		$this->summary = $listing->summary;
+		$this->iconUrl = $listing->iconUrl;
+		$this->sourceProviderId = $source->providerId;
+		$this->sourceBinding = $source->binding;
+		$this->installable = $source->installable;
+		$this->installableReason = $source->installableReason;
+		$this->homepageUrl = $listing->homepageUrl;
+		$this->publisher = $publisher?->name;
+		$this->marks = $publisher?->featured === true ? [PublisherTrust::MARK_FEATURED] : [];
 	}
 
 	/**
@@ -55,6 +70,8 @@ final class DiscoveryHit {
 			'installable' => $this->installable,
 			'installableReason' => $this->installableReason,
 			'homepageUrl' => $this->homepageUrl,
+			'publisher' => $this->publisher,
+			'marks' => $this->marks,
 		];
 	}
 }

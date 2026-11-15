@@ -1,0 +1,60 @@
+{
+    "OCA\\Versioniq\\Service\\Pin\\PinDriftHandler": {
+        "no admin group": [],
+        "empty group": [],
+        "one admin": [
+            "alice"
+        ],
+        "duplicates and order": [
+            "carol",
+            "alice",
+            "bob",
+            "0",
+            ""
+        ]
+    },
+    "OCA\\Versioniq\\Service\\AutoUpdate\\AutoUpdateNotifier": {
+        "no admin group": [],
+        "empty group": [],
+        "one admin": [
+            "alice"
+        ],
+        "duplicates and order": [
+            "carol",
+            "alice",
+            "bob",
+            "0",
+            ""
+        ]
+    },
+    "OCA\\Versioniq\\Service\\Advisory\\AdvisoryNotifier": {
+        "no admin group": [],
+        "empty group": [],
+        "one admin": [
+            "alice"
+        ],
+        "duplicates and order": [
+            "carol",
+            "alice",
+            "bob",
+            "0",
+            ""
+        ]
+    },
+    "OCA\\Versioniq\\Service\\Advisory\\AdvisoryDigestNotifier": {
+        "no admin group": [],
+        "empty group": [],
+        "one admin": [
+            "alice"
+        ],
+        "duplicates and order": [
+            "carol",
+            "alice",
+            "carol",
+            "bob",
+            "alice",
+            "0",
+            ""
+        ]
+    }
+}

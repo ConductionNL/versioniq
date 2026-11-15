@@ -18,12 +18,11 @@ use OC\DB\Connection;
 use OC\DB\MigrationService;
 use OCA\Versioniq\Service\Lkg\Lkg;
 use OCA\Versioniq\Service\Lkg\LkgStore;
+use OCA\Versioniq\Service\Settings\ConfigStores;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\IJob;
 use OCP\BackgroundJob\IJobList;
-use OCP\IAppConfig;
-use OCP\IConfig;
 use OCP\Migration\IOutput;
 use OCP\Server;
 use Psr\Log\LoggerInterface;
@@ -42,19 +41,24 @@ use Psr\Log\LoggerInterface;
  */
 class InstallFinalizer {
 	public function __construct(
-		private IAppConfig $appConfig,
 		/**
-		 * Only for the handful of keys Nextcloud core owns and writes itself.
-		 * IConfig::setAppValue() is deprecated, but it is the sole public way
-		 * to store a value untyped (VALUE_MIXED), and matching core's own type
-		 * is the entire point. See the comment on the writes below.
+		 * `configs->config` only for the handful of keys Nextcloud core owns
+		 * and writes itself. IConfig::setAppValue() is deprecated, but it is
+		 * the sole public way to store a value untyped (VALUE_MIXED), and
+		 * matching core's own type is the entire point. See the comment on
+		 * the writes below.
 		 */
-		private IConfig $config,
+		private ConfigStores $configs,
 		private IAppManager $appManager,
 		private IJobList $jobList,
 		private LoggerInterface $logger,
 		private LkgStore $lkgStore,
 		private ITimeFactory $timeFactory,
+		/**
+		 * Runs an update's finalize in a fresh process (#611). Null in tests
+		 * that build this class by hand: finalize() then stays in-process.
+		 */
+		private ?ChildProcessFinalizer $childFinalizer = null,
 	) {
 	}
 
@@ -64,6 +68,11 @@ class InstallFinalizer {
 	 * "Last-known-good version record" (the last statement here — reached only on success — is the single
 	 * choke point that writes `lkg.{appId}` for both installers).
 	 *
+	 * An update runs all of that in a child process that boots with the new files in place, so the repair
+	 * steps see the new version's registrations and not the previous version's (#611); the child calls this
+	 * method again and stays in-process. A fresh install, or an update without a way to start a child, runs
+	 * in this process. `$output` is used only when this process finalizes; the child gets none.
+	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @spec openspec/specs/migration-safety/spec.md
 	 * @param array<string, mixed> $info Parsed `appinfo/info.xml` for the just-extracted version.
@@ -72,59 +81,27 @@ class InstallFinalizer {
 	 * @throws Exception
 	 */
 	public function finalize(string $appPath, array $info, string $enabled, ?IOutput $output = null, string $sourceId = 'appstore'): string {
-		$appId = (string)($info['id'] ?? '');
+		$childAppId = $this->finalizeInChild($appPath, $info, $enabled, $sourceId);
+		if ($childAppId !== null) {
+			return $childAppId;
+		}
+
+		$appId = self::appIdOf($info);
 
 		// Lazy registration must run before autoload + migrations so app-registered
 		// event listeners are wired up when migrations dispatch events.
-		$coordinator = Server::get(Coordinator::class);
-		$coordinator->runLazyRegistration($appId);
+		Server::get(Coordinator::class)->runLazyRegistration($appId);
 
-		\OC_App::registerAutoloading($appId, $appPath);
+		// \OC_App::registerAutoloading() is gone in Nextcloud 35; AppAutoloader
+		// picks whichever registrar this server has.
+		AppAutoloader::register($appId, $appPath, $this->appManager, $info);
 
-		$previousVersion = $this->appConfig->getValueString($appId, 'installed_version', '');
-		$migrationService = new MigrationService($appId, Server::get(Connection::class));
-		if ($output instanceof IOutput) {
-			$migrationService->setOutput($output);
-		}
+		$this->runMigrations($info, $output);
+		$this->addBackgroundJobs($info);
+		$this->runInstallScript($appPath, $appId);
+		self::executeRepairSteps($appId, self::repairStepsOf($info, 'install'));
 
-		$repairSteps = (array)($info['repair-steps'] ?? []);
-
-		$preMigration = (array)($repairSteps['pre-migration'] ?? []);
-		if ($previousVersion !== '' && $preMigration !== []) {
-			\OC_App::executeRepairSteps($appId, $preMigration);
-		}
-
-		$migrationService->migrate('latest', $previousVersion === '');
-
-		$postMigration = (array)($repairSteps['post-migration'] ?? []);
-		if ($previousVersion !== '' && $postMigration !== []) {
-			\OC_App::executeRepairSteps($appId, $postMigration);
-		}
-
-		/** @var list<string> $backgroundJobs */
-		$backgroundJobs = (array)($info['background-jobs'] ?? []);
-		foreach ($backgroundJobs as $job) {
-			/** @var class-string<IJob> $job */
-			$this->jobList->add($job);
-		}
-
-		$appInstallScriptPath = $appPath . '/appinfo/install.php';
-		if (file_exists($appInstallScriptPath)) {
-			$this->logger->warning('Using an appinfo/install.php file is deprecated. Application "{app}" still uses one.', [
-				'app' => $appId,
-			]);
-			self::includeAppScript($appInstallScriptPath);
-		}
-
-		$installStep = (array)($repairSteps['install'] ?? []);
-		if ($installStep !== []) {
-			\OC_App::executeRepairSteps($appId, $installStep);
-		}
-
-		$infoVersion = (string)($info['version'] ?? '');
-		$installedVersion = $infoVersion !== ''
-			? $infoVersion
-			: $this->appManager->getAppVersion($appId, false);
+		$installedVersion = $this->installedVersionOf($info);
 		/**
 		 * setAppValue, not setValueString, for the keys core owns.
 		 *
@@ -143,22 +120,10 @@ class InstallFinalizer {
 		 * on the typed API; only core's keys use core's semantics.
 		 */
 		/** @psalm-suppress DeprecatedMethod Deliberate — see the block comment above. */
-		$this->config->setAppValue($appId, 'installed_version', $installedVersion);
+		$this->configs->config->setAppValue($appId, 'installed_version', $installedVersion);
 		/** @psalm-suppress DeprecatedMethod Deliberate — see the block comment above. */
-		$this->config->setAppValue($appId, 'enabled', $enabled);
-
-		/** @var array<string, string> $remote */
-		$remote = (array)($info['remote'] ?? []);
-		foreach ($remote as $name => $path) {
-			/** @psalm-suppress DeprecatedMethod Deliberate — see the block comment above. */
-			$this->config->setAppValue('core', 'remote_' . $name, $appId . '/' . $path);
-		}
-		/** @var array<string, string> $public */
-		$public = (array)($info['public'] ?? []);
-		foreach ($public as $name => $path) {
-			/** @psalm-suppress DeprecatedMethod Deliberate — see the block comment above. */
-			$this->config->setAppValue('core', 'public_' . $name, $appId . '/' . $path);
-		}
+		$this->configs->config->setAppValue($appId, 'enabled', $enabled);
+		$this->registerRoutes($info);
 
 		$this->persistAppTypes($appId);
 		$this->appManager->clearAppsCache();
@@ -166,13 +131,147 @@ class InstallFinalizer {
 		// Reached only on success: every earlier step throws on failure and
 		// aborts before this line, so a failed or reverted install never
 		// touches the record — see "Last-known-good version record".
-		$this->lkgStore->set($appId, new Lkg(
+		// The record it replaces becomes `previous`, so an update can be rolled
+		// back one step (safety-rollback-backup-and-preflight D1).
+		$this->lkgStore->set($appId, Lkg::after(
+			$this->lkgStore->get($appId),
 			$installedVersion,
 			$this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
 			$sourceId,
 		));
 
 		return $appId;
+	}
+
+	/**
+	 * Hands an update to the child finalizer; the app id when the child
+	 * finalized, null when this process has to. Without a child finalizer
+	 * (built by hand, or Nextcloud's container could not build one and fell
+	 * back to the parameter's default) an update logs a warning first, so the
+	 * #611 fix is not switched off without a sound.
+	 *
+	 * @param array<string, mixed> $info
+	 * @throws Exception When the finalize failed in the child.
+	 * @spec openspec/specs/version-management/spec.md
+	 */
+	private function finalizeInChild(string $appPath, array $info, string $enabled, string $sourceId): ?string {
+		if ($this->childFinalizer === null) {
+			$appId = self::appIdOf($info);
+			if ($appId !== '' && $this->configs->appConfig->getValueString($appId, 'installed_version', '') !== '') {
+				$this->logger->warning('versioniq: no child finalizer available; finalizing the update of {app} in-process, where repair steps of the new version may fail against the previous version\'s registrations (#611).', ['app' => $appId]);
+			}
+
+			return null;
+		}
+
+		return $this->childFinalizer->applies($info) ? $this->childFinalizer->run($appPath, $info, $enabled, $sourceId) : null;
+	}
+
+	/**
+	 * @param array<string, mixed> $info
+	 */
+	private static function appIdOf(array $info): string {
+		return (string)($info['id'] ?? '');
+	}
+
+	/**
+	 * Runs the schema migrations, with the pre- and post-migration repair
+	 * steps around them on an upgrade (an app with an installed version).
+	 *
+	 * @param array<string, mixed> $info
+	 */
+	private function runMigrations(array $info, ?IOutput $output): void {
+		$appId = self::appIdOf($info);
+		$previousVersion = $this->configs->appConfig->getValueString($appId, 'installed_version', '');
+		$migrationService = new MigrationService($appId, Server::get(Connection::class));
+		if ($output instanceof IOutput) {
+			$migrationService->setOutput($output);
+		}
+
+		$upgrade = $previousVersion !== '';
+		if ($upgrade) {
+			self::executeRepairSteps($appId, self::repairStepsOf($info, 'pre-migration'));
+		}
+		$migrationService->migrate('latest', !$upgrade);
+		if ($upgrade) {
+			self::executeRepairSteps($appId, self::repairStepsOf($info, 'post-migration'));
+		}
+	}
+
+	/**
+	 * The repair steps info.xml declares for one phase.
+	 *
+	 * @param array<string, mixed> $info
+	 * @return array<array-key, mixed>
+	 */
+	private static function repairStepsOf(array $info, string $phase): array {
+		$repairSteps = (array)($info['repair-steps'] ?? []);
+
+		return (array)($repairSteps[$phase] ?? []);
+	}
+
+	/**
+	 * @param array<array-key, mixed> $steps
+	 */
+	private static function executeRepairSteps(string $appId, array $steps): void {
+		if ($steps !== []) {
+			\OC_App::executeRepairSteps($appId, $steps);
+		}
+	}
+
+	/**
+	 * @param array<string, mixed> $info
+	 */
+	private function addBackgroundJobs(array $info): void {
+		/** @var list<string> $backgroundJobs */
+		$backgroundJobs = (array)($info['background-jobs'] ?? []);
+		foreach ($backgroundJobs as $job) {
+			/** @var class-string<IJob> $job */
+			$this->jobList->add($job);
+		}
+	}
+
+	private function runInstallScript(string $appPath, string $appId): void {
+		$appInstallScriptPath = $appPath . '/appinfo/install.php';
+		if (!file_exists($appInstallScriptPath)) {
+			return;
+		}
+		$this->logger->warning('Using an appinfo/install.php file is deprecated. Application "{app}" still uses one.', [
+			'app' => $appId,
+		]);
+		self::includeAppScript($appInstallScriptPath);
+	}
+
+	/**
+	 * The version info.xml declares, or the one the app manager reads when
+	 * info.xml has none.
+	 *
+	 * @param array<string, mixed> $info
+	 */
+	private function installedVersionOf(array $info): string {
+		$infoVersion = (string)($info['version'] ?? '');
+
+		return $infoVersion !== ''
+			? $infoVersion
+			: $this->appManager->getAppVersion(self::appIdOf($info), false);
+	}
+
+	/**
+	 * Registers the app's remote and public routes as core's `remote_*` and
+	 * `public_*` keys, written untyped like core's own (see finalize()).
+	 *
+	 * @param array<string, mixed> $info
+	 */
+	private function registerRoutes(array $info): void {
+		$appId = self::appIdOf($info);
+		foreach (['remote', 'public'] as $kind) {
+			/** @var array<string, string> $routes */
+			$routes = (array)($info[$kind] ?? []);
+			foreach ($routes as $name => $path) {
+				/** @psalm-suppress DeprecatedMethod Deliberate — see the block comment in finalize(). */
+				$this->configs->config->setAppValue('core', $kind . '_' . $name, $appId . '/' . $path);
+			}
+		}
 	}
 
 	/**
@@ -193,7 +292,7 @@ class InstallFinalizer {
 		// Core-owned key as well: OC_App writes app types untyped, so a typed
 		// row here would collide the same way installed_version did.
 		/** @psalm-suppress DeprecatedMethod Deliberate — core owns this key and writes it untyped. */
-		$this->config->setAppValue($appId, 'types', $types);
+		$this->configs->config->setAppValue($appId, 'types', $types);
 	}
 
 	private static function includeAppScript(string $script): void {

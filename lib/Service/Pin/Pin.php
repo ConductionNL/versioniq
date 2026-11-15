@@ -25,7 +25,7 @@ use InvalidArgumentException;
  * reconcile run). Both are null on a pin with no known drift.
  */
 final class Pin {
-	private const VERSION_PATTERN = '/^[0-9A-Za-z.\-+]+$/';
+	private const VERSION_PATTERN = '/^[0-9A-Za-z.\-+]+$/D';
 
 	public function __construct(
 		public readonly string $version,
@@ -35,22 +35,33 @@ final class Pin {
 		public readonly ?string $driftedTo = null,
 		public readonly ?string $driftedAt = null,
 	) {
-		if ($version === '' || preg_match(self::VERSION_PATTERN, $version) !== 1) {
+		$this->assertValid();
+	}
+
+	/**
+	 * @throws InvalidArgumentException when a field is empty or malformed
+	 */
+	private function assertValid(): void {
+		if (!self::isVersion($this->version)) {
 			throw new InvalidArgumentException('Pin version is empty or contains invalid characters');
 		}
-		if ($pinnedBy === '') {
+		if ($this->pinnedBy === '') {
 			throw new InvalidArgumentException('Pin requires a non-empty pinnedBy');
 		}
-		if ($pinnedAt === '') {
+		if ($this->pinnedAt === '') {
 			throw new InvalidArgumentException('Pin requires a non-empty pinnedAt');
 		}
-		if ($driftedTo !== null && ($driftedTo === '' || preg_match(self::VERSION_PATTERN, $driftedTo) !== 1)) {
+		if ($this->driftedTo !== null && !self::isVersion($this->driftedTo)) {
 			throw new InvalidArgumentException('Pin driftedTo is empty or contains invalid characters');
 		}
 		// Drift markers are set together (see "Drift detection") — never one without the other.
-		if (($driftedTo === null) !== ($driftedAt === null)) {
+		if (($this->driftedTo === null) !== ($this->driftedAt === null)) {
 			throw new InvalidArgumentException('Pin driftedTo and driftedAt must both be set or both be null');
 		}
+	}
+
+	private static function isVersion(string $version): bool {
+		return $version !== '' && preg_match(self::VERSION_PATTERN, $version) === 1;
 	}
 
 	/**
@@ -123,16 +134,22 @@ final class Pin {
 			throw new InvalidArgumentException('Pin payload missing required string fields');
 		}
 
-		$reason = isset($payload['reason']) && is_string($payload['reason']) && $payload['reason'] !== ''
-			? $payload['reason']
-			: null;
-		$driftedTo = isset($payload['driftedTo']) && is_string($payload['driftedTo']) && $payload['driftedTo'] !== ''
-			? $payload['driftedTo']
-			: null;
-		$driftedAt = isset($payload['driftedAt']) && is_string($payload['driftedAt']) && $payload['driftedAt'] !== ''
-			? $payload['driftedAt']
-			: null;
+		return new self(
+			$version,
+			$pinnedBy,
+			$pinnedAt,
+			self::optionalString($payload, 'reason'),
+			self::optionalString($payload, 'driftedTo'),
+			self::optionalString($payload, 'driftedAt'),
+		);
+	}
 
-		return new self($version, $pinnedBy, $pinnedAt, $reason, $driftedTo, $driftedAt);
+	/**
+	 * The non-empty string under $key, or null.
+	 *
+	 * @param array<array-key, mixed> $payload
+	 */
+	private static function optionalString(array $payload, string $key): ?string {
+		return isset($payload[$key]) && is_string($payload[$key]) && $payload[$key] !== '' ? $payload[$key] : null;
 	}
 }

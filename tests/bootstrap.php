@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2024 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 require_once __DIR__ . '/../../../tests/bootstrap.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -18,3 +23,9 @@ foreach (['ConnectionStatusReportedEvent', 'ConnectionRefreshRequestedEvent'] as
 }
 
 unset($integriqStubEvent);
+
+// OpenRegister's MCP provider contract (admin-mcp-assistant D1), the same way:
+// a real OpenRegister on the server wins, the stub fills in when it is absent.
+if (!interface_exists('\\OCA\\OpenRegister\\Mcp\\IMcpToolProvider')) {
+	require_once __DIR__ . '/stubs/OpenRegister/Mcp/IMcpToolProvider.php';
+}

@@ -44,9 +44,21 @@ on:
     branches: [main, master, development, beta]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   quality:
     if: (github.event_name != 'pull_request' || github.head_ref != 'development')
+    # Ceiling for the shared quality pipeline: GitHub validates the called
+    # workflow's job permissions against this grant, so it must cover the most
+    # any nested job declares.
+    permissions:
+      contents: write
+      actions: write
+      issues: write
+      pull-requests: write
+      packages: read
     uses: ConductionNL/.github/.github/workflows/quality.yml@main
     with:
       # MUST equal <id>versioniq</id> in appinfo/info.xml, character for
@@ -66,14 +78,9 @@ jobs:
       app-name: versioniq
       php-version: "8.3"
       php-test-versions: '["8.3", "8.4"]'
-      # THE LIST IS THE WHOLE DECLARED RANGE. appinfo/info.xml declares
-      # <nextcloud min-version="32" max-version="34"/>, so 32, 33 and 34 each get
-      # a leg. The previous list ran stable31 — below the floor even before this
-      # change raised it — and had no stable34 leg at all, so the one major this
-      # app most needed to prove was the one nothing touched.
-      # stable34 leads because newman, playwright and journeydoc-capture all read
-      # `fromJSON(inputs.nextcloud-test-refs)[0]` as their single server.
-      nextcloud-test-refs: '["stable34", "stable32", "stable33"]'
+      # No nextcloud-test-refs override: the shared quality.yml derives the
+      # server matrix from <nextcloud min-version/max-version> in
+      # appinfo/info.xml (currently 32-35), so it cannot drift from the range.
       # This repo's PHP toolchain is the upstream Nextcloud app-template one:
       # php-cs-fixer + psalm (+ rector, phpunit). It has no phpcs.xml, no
       # phpmd.xml and no phpstan.neon, and correspondingly no `phpcs`, `phpmd`,
@@ -223,3 +230,12 @@ jobs:
       # `enable-axe` deliberately NOT set: a vanilla Nextcloud 34 already carries
       # serious/critical violations from core's own UI.
       enable-hydra-gates: true
+      # Gate 122 (SIG unit ratchet) blocks: a unit this change adds or makes
+      # worse must stay at NLOC 60, McCabe 10 and at most 4 parameters, and a
+      # new duplicated fragment of 6+ lines fails. Units the change does not
+      # touch, or touches without making worse, are inherited and do not count.
+      hydra-gates-sig-blocking: true
+      # Maintainability floor: no rating in .maintainability-floor.json may drop
+      # more than 0.01 against the merge base (pull request) or below the
+      # committed floor (push). The floor is raised after improving merges.
+      enable-maintainability-floor: true

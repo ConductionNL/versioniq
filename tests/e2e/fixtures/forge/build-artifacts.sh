@@ -23,7 +23,7 @@ infoxml() { # appid version
 	<category>tools</category>
 	<bugs>https://example.test/issues</bugs>
 	<dependencies>
-		<nextcloud min-version="31" max-version="34"/>
+		<nextcloud min-version="31" max-version="35"/>
 	</dependencies>
 </info>
 XML

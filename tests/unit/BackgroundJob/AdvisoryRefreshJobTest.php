@@ -2,7 +2,14 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\BackgroundJob;
+
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 
 use OCA\Versioniq\BackgroundJob\AdvisoryRefreshJob;
 use OCA\Versioniq\Service\Advisory\AdvisoryDigestNotifier;
@@ -10,11 +17,15 @@ use OCA\Versioniq\Service\Advisory\AdvisoryNotifier;
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisoryService;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Service\Advisory\AdvisoryTriageStore;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\AppFramework\Utility\ITimeFactory;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 final class AdvisoryRefreshJobTest extends TestCase {
+	use BuildsByParameterName;
+
 	private function correlation(string $appId, ?string $error = null): array {
 		return [
 			'appId' => $appId,
@@ -32,6 +43,8 @@ final class AdvisoryRefreshJobTest extends TestCase {
 		?AdvisoryNotifier $notifier = null,
 		?LoggerInterface $logger = null,
 		int $now = 1_700_000_000,
+		?AdvisoryDigestNotifier $digestNotifier = null,
+		?AdvisoryTriageStore $triageStore = null,
 	): void {
 		$time = $this->createMock(ITimeFactory::class);
 		$time->method('getTime')->willReturn($now);
@@ -39,15 +52,16 @@ final class AdvisoryRefreshJobTest extends TestCase {
 		$settings = $this->createMock(AdvisorySettingsStore::class);
 		$settings->method('getIntervalSeconds')->willReturn(6 * 3600);
 
-		$job = new AdvisoryRefreshJob(
-			$time,
-			$service,
-			$notifier ?? $this->createMock(AdvisoryNotifier::class),
-			$this->createMock(AdvisoryDigestNotifier::class),
-			$store,
-			$settings,
-			$logger ?? $this->createMock(LoggerInterface::class),
-		);
+		$job = $this->buildByName(AdvisoryRefreshJob::class, [
+			'time' => $time,
+			'advisoryService' => $service,
+			'advisoryNotifier' => $notifier ?? $this->createMock(AdvisoryNotifier::class),
+			'digestNotifier' => $digestNotifier ?? $this->createMock(AdvisoryDigestNotifier::class),
+			'resultStore' => $store,
+			'triageStore' => $triageStore,
+			'settings' => $settings,
+			'logger' => $logger ?? $this->createMock(LoggerInterface::class),
+		]);
 
 		// run() is protected — this job is invoked by the cron runner, and the
 		// test drives it the same way the runner does.
@@ -73,6 +87,25 @@ final class AdvisoryRefreshJobTest extends TestCase {
 			->with($correlations, 1_700_000_000);
 
 		$this->runJob($service, $store, now: 1_700_000_000);
+	}
+
+	/**
+	 * Every sweep offers the correlations to the weekly digest, with the
+	 * sweep time; the digest decides itself whether one is due.
+	 */
+	public function testOffersTheCorrelationsToTheDigestWithTheSweepTime(): void {
+		$correlations = ['notes' => $this->correlation('notes')];
+
+		$service = $this->createMock(AdvisoryService::class);
+		$service->method('correlateAll')->willReturn($correlations);
+
+		$digest = $this->createMock(AdvisoryDigestNotifier::class);
+		$digest->expects($this->once())
+			->method('sendIfDue')
+			->with($correlations, 1_700_000_000)
+			->willReturn(0);
+
+		$this->runJob($service, $this->createMock(AdvisoryResultStore::class), now: 1_700_000_000, digestNotifier: $digest);
 	}
 
 	/**
@@ -154,5 +187,53 @@ final class AdvisoryRefreshJobTest extends TestCase {
 		$logger->expects($this->once())->method('error');
 
 		$this->runJob($service, $store, null, $logger);
+	}
+
+	/**
+	 * After the snapshot is saved the job stamps the triage of every advisory
+	 * in it as seen and prunes the rest, keyed `{appId}|{advisoryId}`
+	 * (advisories-triage, design risks).
+	 */
+	public function testStampsAndPrunesTheTriageAfterSaving(): void {
+		$order = [];
+		$correlations = [
+			':server' => array_replace($this->correlation(':server'), ['advisories' => [['id' => 'GHSA-s', 'severity' => 'high', 'summary' => 'x']]]),
+			'notes' => array_replace($this->correlation('notes'), ['advisories' => [['id' => 'GHSA-a', 'severity' => 'low', 'summary' => 'y'], ['id' => 'GHSA-b', 'severity' => 'low', 'summary' => 'z']]]),
+		];
+		$service = $this->createMock(AdvisoryService::class);
+		$service->method('correlateAll')->willReturn($correlations);
+		$store = $this->createMock(AdvisoryResultStore::class);
+		$store->method('save')->willReturnCallback(function () use (&$order): void {
+			$order[] = 'save';
+		});
+		$triage = $this->createMock(AdvisoryTriageStore::class);
+		$triage->expects($this->once())->method('stampAndPrune')
+			->with([':server|GHSA-s', 'notes|GHSA-a', 'notes|GHSA-b'], '2023-11-14T22:13:20+00:00')
+			->willReturnCallback(function () use (&$order): int {
+				$order[] = 'prune';
+
+				return 0;
+			});
+
+		$this->runJob($service, $store, triageStore: $triage);
+
+		$this->assertSame(['save', 'prune'], $order);
+	}
+
+	/**
+	 * A failing prune is logged and the notifications still run.
+	 */
+	public function testAFailingPruneDoesNotStopTheNotifications(): void {
+		$service = $this->createMock(AdvisoryService::class);
+		$service->method('correlateAll')->willReturn(['notes' => $this->correlation('notes')]);
+		$triage = $this->createMock(AdvisoryTriageStore::class);
+		$triage->method('stampAndPrune')->willThrowException(new \JsonException('broken'));
+		$notifier = $this->createMock(AdvisoryNotifier::class);
+		$notifier->expects($this->once())->method('notifyNewAdvisories');
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->expects($this->once())->method('warning')
+			->with('AdvisoryRefreshJob: could not prune the advisory triage', ['message' => 'broken']);
+
+		$this->runJob($service, $this->createMock(AdvisoryResultStore::class), $notifier, $logger, triageStore: $triage);
 	}
 }
