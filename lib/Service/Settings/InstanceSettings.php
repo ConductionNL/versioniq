@@ -100,6 +100,8 @@ class InstanceSettings {
 			'advisoryFeedDefault' => NextcloudAdvisoryFeed::DEFAULT_FEED_URL,
 			'maxLinesBehind' => $this->maxLinesBehind(),
 			'maxLinesBehindMax' => self::MAX_LINES_BEHIND,
+			'promotionMinDays' => $this->promotionMinDays(),
+			'promotionMinDaysMax' => self::MAX_PROMOTION_MIN_DAYS,
 		];
 	}
 
@@ -109,6 +111,7 @@ class InstanceSettings {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
 	 * @param array<string, string> $fields
 	 * @return list<string> The names of the fields that were applied
 	 * @throws InvalidArgumentException when any field is out of range or not an acceptable URL
@@ -118,11 +121,17 @@ class InstanceSettings {
 		// leaves the stored settings as they were.
 		$ints = $this->validatedInts($fields);
 		$lagLimit = $this->validatedLagLimit($fields);
+		$waitDays = isset($fields['promotionMinDays'])
+			? $this->intInRange($fields['promotionMinDays'], 0, self::MAX_PROMOTION_MIN_DAYS, 'The waiting period')
+			: null;
 		$urls = $this->validatedUrls($fields);
 
 		$this->storeInts($ints);
 		if ($lagLimit !== null) {
 			$this->storeOrClear(self::KEY_MAX_LINES_BEHIND, $lagLimit);
+		}
+		if ($waitDays !== null) {
+			$this->setPromotionMinDays($waitDays);
 		}
 		foreach ($urls as $key => $value) {
 			$this->storeOrClear($key, $value);
@@ -139,7 +148,7 @@ class InstanceSettings {
 	 */
 	private static function appliedFields(array $fields): array {
 		return array_values(array_filter(
-			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS)],
+			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', 'promotionMinDays', ...array_keys(self::URL_FIELDS)],
 			static fn (string $field): bool => isset($fields[$field]),
 		));
 	}

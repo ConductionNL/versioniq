@@ -13,6 +13,7 @@ import { ocsGet, ocsWrite } from '../ocs.ts'
  *
  * @spec openspec/specs/audit-trail/spec.md
  * @spec openspec/specs/external-sources/spec.md
+ * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
  */
 type Settings = {
 	auditRetentionDays: number
@@ -30,6 +31,8 @@ type Settings = {
 	advisoryFeedDefault: string
 	maxLinesBehind: number | null
 	maxLinesBehindMax: number
+	promotionMinDays?: number
+	promotionMinDaysMax?: number
 }
 
 const ENDPOINT = '/ocs/v2.php/apps/versioniq/api/instance-settings'
@@ -43,6 +46,7 @@ const form = ref({
 	githubWebBase: '',
 	advisoryFeedUrl: '',
 	maxLinesBehind: '',
+	promotionMinDays: '',
 })
 const saving = ref(false)
 const error = ref('')
@@ -62,7 +66,22 @@ function fill (settings: Settings): void {
 		githubWebBase: settings.githubWebBase,
 		advisoryFeedUrl: settings.advisoryFeedUrl,
 		maxLinesBehind: settings.maxLinesBehind === null || settings.maxLinesBehind === undefined ? '' : String(settings.maxLinesBehind),
+		promotionMinDays: String(settings.promotionMinDays ?? 0),
 	}
+}
+
+/**
+ * The waiting period's refusal, or '' when it is a whole number from 0 to the maximum.
+ *
+ * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+ */
+function waitingPeriodError (): string {
+	const max = loaded.value?.promotionMinDaysMax ?? 90
+	const raw = String(form.value.promotionMinDays).trim()
+	if (/^\d+$/.test(raw) && Number(raw) <= max) {
+		return ''
+	}
+	return t('versioniq', 'The waiting period must be a whole number from 0 to {max} days.', { max })
 }
 
 /**
@@ -89,6 +108,12 @@ async function save (): Promise<void> {
 	saving.value = true
 	error.value = ''
 	notice.value = ''
+	const refusal = waitingPeriodError()
+	if (refusal !== '') {
+		error.value = refusal
+		saving.value = false
+		return
+	}
 	try {
 		const body = Object.fromEntries(Object.entries(form.value).map(([key, value]) => [key, String(value).trim()]))
 		const { payload, error: apiError } = await ocsWrite<Settings>('PUT', ENDPOINT, body)
@@ -149,6 +174,19 @@ onMounted(load)
 					:max="loaded.maxLinesBehindMax"
 					data-testid="setting-max-lines-behind">
 				<span :class="$style.hint">{{ t('versioniq', 'An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.') }}</span>
+			</label>
+
+			<h4>{{ t('versioniq', 'Promotion') }}</h4>
+			<label :class="$style.field" for="setting-promotion-min-days">
+				<span>{{ t('versioniq', 'Days a version must run on the earlier stage before it may be promoted (0 to {max}, 0 turns the check off)', { max: loaded.promotionMinDaysMax ?? 90 }) }}</span>
+				<input
+					id="setting-promotion-min-days"
+					v-model="form.promotionMinDays"
+					type="number"
+					min="0"
+					:max="loaded.promotionMinDaysMax ?? 90"
+					data-testid="setting-promotion-min-days">
+				<span :class="$style.hint">{{ t('versioniq', 'A version whose running time on the earlier stage is unknown also waits, unless the promotion is overridden.') }}</span>
 			</label>
 
 			<h4>{{ t('versioniq', 'Sources and mirrors') }}</h4>

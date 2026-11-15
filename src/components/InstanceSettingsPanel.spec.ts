@@ -100,4 +100,35 @@ describe('InstanceSettingsPanel', () => {
 		expect(mockedWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/instance-settings', expect.objectContaining({ maxLinesBehind: '1' }))
 		expect((wrapper.find('[data-testid="setting-max-lines-behind"]').element as HTMLInputElement).value).toBe('1')
 	})
+	// install-multi-instance-promotion D7: the waiting period, 0 to 90.
+	// @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+	it('saves a waiting period of 14 days', async () => {
+		mockedGet.mockResolvedValue({ payload: { ...settings, promotionMinDays: 0, promotionMinDaysMax: 90 } })
+		mockedWrite.mockResolvedValue({ payload: { ...settings, promotionMinDays: 14, promotionMinDaysMax: 90 } })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		expect((wrapper.find('[data-testid="setting-promotion-min-days"]').element as HTMLInputElement).value).toBe('0')
+		await wrapper.find('[data-testid="setting-promotion-min-days"]').setValue('14')
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		expect(mockedWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/instance-settings', expect.objectContaining({ promotionMinDays: '14' }))
+		expect((wrapper.find('[data-testid="setting-promotion-min-days"]').element as HTMLInputElement).value).toBe('14')
+		expect(wrapper.find('[data-testid="instance-settings-notice"]').exists()).toBe(true)
+	})
+
+	// @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+	it('rejects a waiting period of 91 days without saving', async () => {
+		mockedGet.mockResolvedValue({ payload: { ...settings, promotionMinDays: 14, promotionMinDaysMax: 90 } })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		await wrapper.find('[data-testid="setting-promotion-min-days"]').setValue('91')
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		expect(mockedWrite).not.toHaveBeenCalled()
+		expect(wrapper.find('[data-testid="instance-settings-error"]').text()).toContain('from 0 to 90 days')
+	})
 })

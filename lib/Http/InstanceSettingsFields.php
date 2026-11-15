@@ -41,6 +41,9 @@ final class InstanceSettingsFields extends RequestFields {
 	/** @var string|null Release lines an app may fall behind, 0 to 10; blank turns the check off */
 	public ?string $maxLinesBehind = null;
 
+	/** @var string|null Days a version runs on the earlier stage before it may be promoted, 0 to 90; 0 turns the check off */
+	public ?string $promotionMinDays = null;
+
 	/**
 	 * The fields that were sent, by name, in declaration order.
 	 *

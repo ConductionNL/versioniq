@@ -382,7 +382,11 @@ OC.L10N.register(
         "User ID of an admin": "User ID of an admin",
         "until {date}": "until {date}",
         "_%n dismissed advisory_::_%n dismissed advisories_": ["%n dismissed advisory","%n dismissed advisories"],
-        "Dismiss advisory": "Dismiss advisory"
+        "Dismiss advisory": "Dismiss advisory",
+        "The waiting period must be a whole number from 0 to {max} days.": "The waiting period must be a whole number from 0 to {max} days.",
+        "Promotion": "Promotion",
+        "Days a version must run on the earlier stage before it may be promoted (0 to {max}, 0 turns the check off)": "Days a version must run on the earlier stage before it may be promoted (0 to {max}, 0 turns the check off)",
+        "A version whose running time on the earlier stage is unknown also waits, unless the promotion is overridden.": "A version whose running time on the earlier stage is unknown also waits, unless the promotion is overridden."
     },
     "nplurals=2; plural=(n != 1);"
 )

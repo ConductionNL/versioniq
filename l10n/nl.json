@@ -401,7 +401,11 @@
             "%n afgewezen advies",
             "%n afgewezen adviezen"
         ],
-        "Dismiss advisory": "Advies afwijzen"
+        "Dismiss advisory": "Advies afwijzen",
+        "The waiting period must be a whole number from 0 to {max} days.": "De wachttijd moet een geheel getal van 0 tot en met {max} dagen zijn.",
+        "Promotion": "Promotie",
+        "Days a version must run on the earlier stage before it may be promoted (0 to {max}, 0 turns the check off)": "Dagen dat een versie op de vorige omgeving moet draaien voordat die gepromoveerd mag worden (0 tot en met {max}, 0 zet de controle uit)",
+        "A version whose running time on the earlier stage is unknown also waits, unless the promotion is overridden.": "Een versie waarvan niet bekend is hoe lang die al op de vorige omgeving draait, wacht ook, tenzij je de wachttijd bij het promoveren overslaat."
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }
