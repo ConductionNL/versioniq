@@ -13,7 +13,7 @@
 
 ## 3. Backup and restore
 
-- [ ] 3.1 Add `lib/Service/Installer/AppTableDumper.php` (tables from the app's migration schema, rows as JSON) and `lib/Service/Installer/AppBackupStore.php` (IAppData, zip plus `tables.json`, `backup.keep_days`). Verify: `tests/unit/Service/Installer/AppTableDumperTest.php` and `AppBackupStoreTest.php`.
+- [x] 3.1 Add `lib/Service/Installer/AppTableDumper.php` (tables from the app's migration schema, rows as JSON) and `lib/Service/Installer/AppBackupStore.php` (IAppData, zip plus `tables.json`, `backup.keep_days`). Verify: `tests/unit/Service/Installer/AppTableDumperTest.php` and `AppBackupStoreTest.php`. Built 15 Nov: the dumper runs the app's `lib/Migration/Version*` steps against a schema that starts empty and keeps the tables that exist now; one app-data folder per backup (`backup-<createdAt>-<appId>`, since only the app-data root lists folders) with `app.zip`, `tables.json`, `meta.json`.
 - [ ] 3.2 Write a backup in both installers before replacing the folder; report size and keep-until in the result. Verify: `tests/unit/Service/InstallerRecoveryTest.php`.
 - [ ] 3.3 Prune expired backups in `lib/BackgroundJob/PruneAuditJob.php`. Verify: `tests/unit/BackgroundJob/PruneAuditJobTest.php`.
 - [ ] 3.4 Add `POST /api/apps/{appId}/restore` in `ApiController` (admin, `PasswordConfirmationRequired`, audited) and "Restore installation" on the result card. Verify: `tests/unit/Controller/ApiTest.php` covers a restore and a refusal without backup.
