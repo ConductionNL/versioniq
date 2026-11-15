@@ -47,6 +47,8 @@ use OCP\IUserSession;
  * @psalm-suppress UnusedClass
  */
 class SettingsController extends OCSController {
+	use ChecksAdmin;
+
 	public function __construct(
 		string $appName,
 		IRequest $request,
@@ -174,14 +176,5 @@ class SettingsController extends OCSController {
 		}
 
 		return new DataResponse($after);
-	}
-
-	private function isAdmin(): bool {
-		$user = $this->userSession->getUser();
-		if ($user === null) {
-			return false;
-		}
-
-		return $this->groupManager->isAdmin($user->getUID());
 	}
 }
