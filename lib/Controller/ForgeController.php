@@ -36,6 +36,8 @@ use OCP\IUserSession;
  * @psalm-suppress UnusedClass
  */
 class ForgeController extends OCSController {
+	use ChecksAdmin;
+
 	public function __construct(
 		string $appName,
 		IRequest $request,
@@ -103,14 +105,5 @@ class ForgeController extends OCSController {
 		$host = $this->forgeRegistry->forgejoHost();
 
 		return ['host' => $host, 'configured' => $host !== ''];
-	}
-
-	private function isAdmin(): bool {
-		$user = $this->userSession->getUser();
-		if ($user === null) {
-			return false;
-		}
-
-		return $this->groupManager->isAdmin($user->getUID());
 	}
 }
