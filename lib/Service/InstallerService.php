@@ -53,7 +53,7 @@ use OCP\IUserSession;
  *
  * @psalm-api
  * @psalm-type AppLists = array{enabled: array<string>, versions: array<string, string>, core: array<string>, info: array<string, array<string, mixed>>}
- * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,publisher:?string,marks:list<string>,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string,previous?:array{version:string,recordedAt:string,sourceId:?string}}}
+ * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,publisher:?string,marks:list<string>,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string,previous?:array{version:string,recordedAt:string,sourceId:?string}},installedKnownIssues:list<array<string,mixed>>}
  */
 class InstallerService {
 	/** Server-side changelog size cap; see "Version listings carry release notes". */
@@ -214,7 +214,7 @@ class InstallerService {
 	 *
 	 * @param AppLists $lists
 	 * @param ?SourceBinding $binding The app's source binding, read once per card.
-	 * @return array{isCore: bool, isShipped: bool, boundSourceId: ?string, manageable: bool, warning: ?string, installedVersion: ?string, state: 'enabled'|'disabled'|'notInstalled', lkg: ?array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}}
+	 * @return array{isCore: bool, isShipped: bool, boundSourceId: ?string, manageable: bool, warning: ?string, installedVersion: ?string, state: 'enabled'|'disabled'|'notInstalled', lkg: ?array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}, installedKnownIssues: list<array<string, mixed>>}
 	 */
 	private function appStatus(string $appId, array $lists, ?SourceBinding $binding): array {
 		$install = $this->appInstallStatus($appId, $lists);
@@ -226,7 +226,24 @@ class InstallerService {
 			...$install,
 			'state' => self::appState($appId, $lists),
 			'lkg' => $this->state->lkgStore->get($appId)?->toArray(),
+			'installedKnownIssues' => $this->installedKnownIssues($appId, $install['installedVersion']),
 		];
+	}
+
+	/**
+	 * The known issues an admin recorded against the installed version, for
+	 * the card's "Known issue in the installed version" notice
+	 * (releases-version-facts D4). None when nothing is installed.
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+	 * @return list<array<string, mixed>>
+	 */
+	private function installedKnownIssues(string $appId, ?string $installedVersion): array {
+		if ($installedVersion === null || $this->state->knownIssues === null) {
+			return [];
+		}
+
+		return $this->state->knownIssues->forApp($appId)[$installedVersion] ?? [];
 	}
 
 	/**
