@@ -522,7 +522,7 @@ class ExternalReleaseInstallerService {
 	 * place, before the swap (safety-rollback-backup-and-preflight D3). A
 	 * fresh install has nothing to back up.
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
 	 */
 	private function keepBackup(ExternalInstall $install): void {
 		$this->lastBackup = null;

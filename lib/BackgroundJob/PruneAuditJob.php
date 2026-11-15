@@ -100,7 +100,7 @@ class PruneAuditJob extends TimedJob {
 	 * Removes the install backups whose keep time has passed. A failure is
 	 * logged and does not stop the audit prune.
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
 	 */
 	private function pruneBackups(): void {
 		if ($this->backupStore === null) {

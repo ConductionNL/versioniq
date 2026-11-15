@@ -29,7 +29,7 @@ describe('InstallResultNotices', () => {
 		expect(wrapper.find('[data-testid="install-served-from-cache"]').exists()).toBe(true)
 	})
 
-	// @spec openspec/changes/safety-rollback-backup-and-preflight/specs/version-management/spec.md
+	// @spec openspec/specs/version-management/spec.md
 	it('shows the free space the pre-flight found and that the app folder is writable', () => {
 		const wrapper = mount(InstallResultNotices, { props: { integrityWarning: null, servedFromCache: false, space: { appsFree: 9663676416, tempFree: 512 } } })
 
@@ -45,7 +45,7 @@ describe('InstallResultNotices', () => {
 		expect(none.find('[data-testid="install-environment-checked"]').exists()).toBe(false)
 	})
 
-	// @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+	// @spec openspec/specs/migration-safety/spec.md
 	it('names the backup with its size and until when it is kept', () => {
 		const wrapper = mount(InstallResultNotices, { props: { integrityWarning: null, servedFromCache: false, backup: { made: true, sizeBytes: 190840832, keptUntil: '2026-10-15' } } })
 

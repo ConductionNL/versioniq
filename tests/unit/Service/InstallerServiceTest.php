@@ -193,7 +193,7 @@ final class InstallerServiceTest extends TestCase {
 	 * safety-rollback-backup-and-preflight 3.2: the backup the installer kept
 	 * before replacing the folder is passed on to the result.
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
 	 */
 	public function testTheOutcomeCarriesTheBackupTheInstallerMade(): void {
 		$backup = ['made' => true, 'sizeBytes' => 190840832, 'keptUntil' => '2026-10-15'];

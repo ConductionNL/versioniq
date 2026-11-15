@@ -18,7 +18,7 @@ export type RestorePayload = {
  *
  * @param status The HTTP status of the answer.
  * @param payload The answer's data.
- * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+ * @spec openspec/specs/migration-safety/spec.md
  */
 export function restoreOutcomeText (status: number, payload: RestorePayload): string {
 	if (status === 200 && typeof payload.appId === 'string' && typeof payload.version === 'string') {

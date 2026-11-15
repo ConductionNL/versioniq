@@ -280,7 +280,7 @@ class ApiController extends OCSController {
 	 * 409: There is no backup to restore from; roll back instead
 	 * 500: The restore failed; what was put back is in the message
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'POST', url: '/api/apps/{appId}/restore')]

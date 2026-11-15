@@ -31,7 +31,7 @@ use Psr\Log\LoggerInterface;
  * Rows are kept as JSON: a value that is not valid UTF-8 (a blob) is stored
  * as `{"__base64": "..."}` and decoded again on restore.
  *
- * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+ * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
  * @psalm-api
  */
 class AppTableDumper {
@@ -64,7 +64,7 @@ class AppTableDumper {
 	/**
 	 * The tables the migrations of the app in `$appPath` create, that exist now.
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
 	 * @return list<string> Table names without the instance prefix.
 	 */
 	public function tablesOf(string $appPath, string $namespace): array {
@@ -91,7 +91,7 @@ class AppTableDumper {
 	 * Runs the steps' schema changes, in order, on `$schema` and returns the
 	 * tables it ends with. A step that fails is logged and skipped.
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
 	 * @param list<IMigrationStep> $steps
 	 * @return list<string>
 	 */
@@ -117,7 +117,7 @@ class AppTableDumper {
 	/**
 	 * Every row of every table, keyed by table.
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
 	 * @param list<string> $tables
 	 * @return array<string, list<array<string, mixed>>>
 	 */
@@ -140,7 +140,7 @@ class AppTableDumper {
 	 * Replaces the rows of every dumped table, all in one transaction: a
 	 * failure leaves every table as it was.
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
 	 * @param array<string, list<array<string, mixed>>> $dump
 	 * @return int The number of rows written.
 	 */

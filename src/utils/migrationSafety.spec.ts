@@ -72,7 +72,7 @@ describe('orphanedMigrationsSummary', () => {
 	})
 })
 
-// @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+// @spec openspec/specs/migration-safety/spec.md
 describe('lkgRollbackTargets', () => {
 	const record = (version: string, previous?: string) => ({
 		version,

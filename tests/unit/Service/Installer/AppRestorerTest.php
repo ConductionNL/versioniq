@@ -23,7 +23,7 @@ use OCP\IUserSession;
 use PHPUnit\Framework\TestCase;
 
 /**
- * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
+ * @spec openspec/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
  */
 final class AppRestorerTest extends TestCase {
 	private const BACKUP = ['appId' => 'dossiq', 'version' => '0.4.48', 'enabled' => 'yes', 'createdAt' => 1_759_276_800, 'keptUntil' => 1_760_486_400, 'sizeBytes' => 10, 'tables' => ['dossiq_cases']];

@@ -21,4 +21,4 @@
 
 ## 4. Close
 
-- [ ] 4.1 Set the matrix rows `ins-rollback`, `saf-preflight`, `saf-backup-before` and `saf-finalize-recovery` to `built` with evidence lines, then archive this change.
+- [x] 4.1 Set the matrix rows `ins-rollback`, `saf-preflight`, `saf-backup-before` and `saf-finalize-recovery` to `built` with evidence lines, then archive this change. Done 15 Nov: the four rows are `built` with evidence lines; the requirements are synced into `openspec/specs/migration-safety` and `openspec/specs/version-management`.

@@ -50,7 +50,7 @@ export function shouldOfferLkgRollback(app: AppLkgInfo): boolean {
  * A record written before `previous` existed offers its version as before.
  *
  * @param app The card's installed version and last-known-good record.
- * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+ * @spec openspec/specs/migration-safety/spec.md
  */
 export function lkgRollbackTargets(app: AppLkgInfo): LkgRollbackTarget[] {
 	const lkg = app.lkg

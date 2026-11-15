@@ -32,7 +32,7 @@ use ZipArchive;
  * app data because only the app-data root can list folders. A backup is kept
  * `backup.keep_days` days (default 14); 0 turns backups off.
  *
- * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+ * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
  * @psalm-api
  */
 class AppBackupStore {
@@ -64,7 +64,7 @@ class AppBackupStore {
 	/**
 	 * Writes a backup of the app folder and the dumped tables.
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
 	 * @param array<string, list<array<string, mixed>>> $tables
 	 * @return array{appId: string, version: string, enabled: string, createdAt: int, keptUntil: int, sizeBytes: int, tables: list<string>}|null The backup, or null when backups are off.
 	 * @throws RuntimeException When the backup cannot be written.
@@ -113,7 +113,7 @@ class AppBackupStore {
 	/**
 	 * The newest backup of the app that is still kept, or null.
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
 	 * @return array{appId: string, version: string, enabled: string, createdAt: int, keptUntil: int, sizeBytes: int, tables: list<string>}|null
 	 */
 	public function latest(string $appId): ?array {
@@ -136,7 +136,7 @@ class AppBackupStore {
 	 * Puts the backed-up app folder back in `$appPath`. The current folder is
 	 * moved aside first and moved back when the backup cannot be unpacked.
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
 	 * @param array{appId: string, createdAt: int} $backup
 	 * @throws RuntimeException When the folder cannot be put back.
 	 */
@@ -159,7 +159,7 @@ class AppBackupStore {
 	/**
 	 * The dumped tables of a backup.
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
 	 * @param array{appId: string, createdAt: int} $backup
 	 * @return array<string, list<array<string, mixed>>>
 	 */
@@ -176,7 +176,7 @@ class AppBackupStore {
 	/**
 	 * Removes every backup whose keep time has passed.
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
 	 * @return int The number of backups removed.
 	 */
 	public function prune(): int {

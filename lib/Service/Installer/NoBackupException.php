@@ -17,7 +17,7 @@ use RuntimeException;
  * A restore was asked for an app that has no kept backup; the admin rolls
  * back to an earlier version instead (safety-rollback-backup-and-preflight D4).
  *
- * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
+ * @spec openspec/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
  */
 final class NoBackupException extends RuntimeException {
 }

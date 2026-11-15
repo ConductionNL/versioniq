@@ -580,7 +580,7 @@ class SelectedReleaseInstallerService {
 	 * place (its migration classes load from there), before anything is
 	 * replaced; the old version and enabled value are still the installed ones.
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
 	 */
 	private function keepBackup(string $appId, string $oldFolder): void {
 		if ($this->installBackup === null) {

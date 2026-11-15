@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EUPL-1.2
-// @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+// @spec openspec/specs/migration-safety/spec.md
 import { describe, expect, it, vi } from 'vitest'
 import { restoreOutcomeText } from './restoreOutcome.ts'
 

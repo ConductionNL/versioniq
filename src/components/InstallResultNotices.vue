@@ -41,7 +41,7 @@ function formatBytes (bytes: number): string {
  * (safety-rollback-backup-and-preflight D2). A folder whose free space could
  * not be read says so.
  *
- * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/version-management/spec.md
+ * @spec openspec/specs/version-management/spec.md
  */
 function environmentText (): string {
 	const space = props.space
@@ -58,7 +58,7 @@ function environmentText (): string {
  * its size and until when it is kept, that backups are off, or that it failed
  * (safety-rollback-backup-and-preflight D3).
  *
- * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+ * @spec openspec/specs/migration-safety/spec.md
  */
 function backupText (): string {
 	const backup = props.backup

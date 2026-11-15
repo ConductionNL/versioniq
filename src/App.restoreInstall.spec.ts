@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 // "Restore installation" on the result card of an installed-but-broken install
 // (safety-rollback-backup-and-preflight 3.4).
-// @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+// @spec openspec/specs/migration-safety/spec.md
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'

@@ -108,7 +108,7 @@ final class PruneAuditJobTest extends TestCase {
 	}
 
 	/**
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
 	 */
 	public function testTheDailyRunRemovesExpiredBackups(): void {
 		$appConfig = $this->createMock(IAppConfig::class);

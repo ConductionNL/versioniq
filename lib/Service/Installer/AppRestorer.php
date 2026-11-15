@@ -24,7 +24,7 @@ use OCP\IUserSession;
  * it had (safety-rollback-backup-and-preflight D4). Every attempt with a
  * backup is audited.
  *
- * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
+ * @spec openspec/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
  * @psalm-api
  */
 class AppRestorer {
@@ -41,7 +41,7 @@ class AppRestorer {
 	/**
 	 * Restores the app from its newest kept backup.
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
 	 * @return array{appId: string, version: string, enabled: string, tables: int, rows: int, backupCreatedAt: string}
 	 * @throws NoBackupException When the app has no kept backup.
 	 * @throws \Throwable When the restore fails; it is audited as a failure.

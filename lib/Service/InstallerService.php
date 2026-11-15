@@ -849,7 +849,7 @@ class InstallerService {
 	 *
 	 * @return array{statusCode:int, payload:array<string, mixed>}|null
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+	 * @spec openspec/specs/migration-safety/spec.md
 	 */
 	private function spaceRefusal(InstallRun $run, ?string $existingPath): ?array {
 		$space = $this->installers->environmentCheck->hasSpaceFor($existingPath);

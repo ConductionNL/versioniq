@@ -942,7 +942,7 @@ final class ApiTest extends TestCase {
 	 * POST /api/apps/{appId}/restore puts the app back from its backup
 	 * (safety-rollback-backup-and-preflight D4).
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
 	 */
 	public function testRestoreAppReturnsWhatWasRestored(): void {
 		$restored = ['appId' => 'dossiq', 'version' => '0.4.48', 'enabled' => 'yes', 'tables' => 2, 'rows' => 5, 'backupCreatedAt' => '2026-10-01T00:00:00+00:00'];

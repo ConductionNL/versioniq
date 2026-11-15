@@ -1307,7 +1307,7 @@ const canRestoreInstall = computed(() => {
  * admin confirmed their password, and says what was restored or why not.
  *
  * @param appId The app to restore.
- * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+ * @spec openspec/specs/migration-safety/spec.md
  */
 async function restoreInstallation (appId: string): Promise<void> {
 	if (isRestoringInstall.value) {

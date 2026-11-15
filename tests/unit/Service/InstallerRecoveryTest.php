@@ -124,7 +124,7 @@ final class InstallerRecoveryTest extends TestCase {
 	 * place, with the installed version and enabled value, and the result
 	 * names the backup (safety-rollback-backup-and-preflight D3).
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
 	 */
 	public function testTheSignedInstallerKeepsABackupAndTheResultNamesIt(): void {
 		$appManager = $this->createMock(IAppManager::class);
@@ -168,7 +168,7 @@ final class InstallerRecoveryTest extends TestCase {
 	}
 
 	/**
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
 	 */
 	public function testTheExternalInstallerKeepsABackupOfAnUpdateButNotOfAFreshInstall(): void {
 		mkdir($this->root . '/notes');

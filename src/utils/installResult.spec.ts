@@ -32,8 +32,8 @@ describe('withSourceOverride', () => {
 		expect(withSourceOverride({ dryRun: '0' }, '   ')).toEqual({ dryRun: '0' })
 	})
 
-	// @spec openspec/changes/safety-rollback-backup-and-preflight/specs/version-management/spec.md
-	// @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+	// @spec openspec/specs/version-management/spec.md
+	// @spec openspec/specs/migration-safety/spec.md
 	it('keeps the backup the installer reported, and leaves out a malformed one', () => {
 		expect(normalizeInstallResult({ backup: { made: true, sizeBytes: 10, keptUntil: '2026-10-15' } }).backup).toEqual({ made: true, sizeBytes: 10, keptUntil: '2026-10-15' })
 		expect(normalizeInstallResult({ backup: { made: false, reason: 'failed', message: 'disk full' } }).backup).toEqual({ made: false, reason: 'failed', message: 'disk full' })

@@ -22,7 +22,7 @@ use Psr\Log\LoggerInterface;
  * A backup that cannot be written does not stop the install: the result says
  * it failed, so the admin knows no restore is available for it.
  *
- * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+ * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
  * @psalm-api
  */
 class InstallBackup {
@@ -37,7 +37,7 @@ class InstallBackup {
 	/**
 	 * Backs up the app in `$appPath` as it is now.
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
 	 * @return array{made: true, sizeBytes: int, keptUntil: string}|array{made: false, reason: 'disabled'}|array{made: false, reason: 'failed', message: string}
 	 */
 	public function make(string $appId, string $appPath, string $version, string $enabled): array {

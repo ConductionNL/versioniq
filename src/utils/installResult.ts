@@ -138,7 +138,7 @@ function evidenceFields (payload: InstallPayload): Pick<InstallResult, 'debug' |
  * The backup the installer reported, or null when it made no attempt.
  *
  * @param backup The payload's `backup`.
- * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+ * @spec openspec/specs/migration-safety/spec.md
  */
 function backupField (backup: InstallPayload['backup']): InstallBackupNote | null {
 	if (!backup || typeof backup !== 'object') {
