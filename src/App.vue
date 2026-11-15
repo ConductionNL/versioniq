@@ -4,7 +4,7 @@
 import type {PrefillBindPayload} from './components/DiscoverPanel.vue';
 import type {BlockedVersion, PolicyLevel} from './components/PolicySelector.vue';
 import type { PinRecord } from './dialogs/PinDialog.vue'
-import type {AdvisoryCorrelation} from './utils/advisories.ts';
+import type {AdvisoryCorrelation, AdvisoryTriageMap} from './utils/advisories.ts';
 import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
 import type {LkgRecord} from './utils/migrationSafety.ts';
 import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
@@ -38,7 +38,7 @@ import EnableAppDialog from './dialogs/EnableAppDialog.vue'
 import PinDialog from './dialogs/PinDialog.vue'
 import PinOverrideDialog from './dialogs/PinOverrideDialog.vue'
 import ShaMismatchDialog from './dialogs/ShaMismatchDialog.vue'
-import { advisoryBadgeText } from './utils/advisories.ts'
+import { advisoryBadgeText, applyTriage } from './utils/advisories.ts'
 import { advisoryFreshnessLabel as advisoryFreshnessLabelFor } from './utils/advisoryFreshness.ts'
 import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow.ts'
 import { buildChangelogRange } from './utils/changelog.ts'
@@ -79,6 +79,8 @@ type AppVersion = {
 const isLoading = ref(true)
 const apps = ref<AppOption[]>([])
 const advisories = ref<Record<string, AdvisoryCorrelation>>({})
+// Dismissals and owners per `{appId}|{advisoryId}`, applied when read (advisories-triage).
+const advisoryTriage = ref<AdvisoryTriageMap>({})
 const appFilter = ref('')
 const showFilters = ref(false)
 const coreAppsVisibility = ref<'show' | 'hide'>('show')
@@ -602,14 +604,16 @@ const advisoriesUnavailable = ref(false)
 async function loadAdvisories (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/advisories')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ advisories: Record<string, AdvisoryCorrelation>, checkedAt: number | null }>(response)
+		const payload = await unwrapOcsResponse<{ advisories: Record<string, AdvisoryCorrelation>, checkedAt: number | null, triage?: AdvisoryTriageMap }>(response)
 		advisories.value = payload.advisories || {}
+		advisoryTriage.value = payload.triage && !Array.isArray(payload.triage) ? payload.triage : {}
 		advisoriesCheckedAt.value = payload.checkedAt ?? null
 		advisoriesUnavailable.value = false
 	} catch {
 		// Non-fatal: the app list stays usable without advisory badges. The
 		// flag keeps "we could not ask" distinct from "nothing to report".
 		advisories.value = {}
+		advisoryTriage.value = {}
 		advisoriesCheckedAt.value = null
 		advisoriesUnavailable.value = true
 	}
@@ -736,7 +740,17 @@ const advisoryFreshnessLabel = computed((): string => advisoryFreshnessLabelFor(
 	nowSeconds: Date.now() / 1000,
 }))
 
-const advisoryFor = (appId: string): AdvisoryCorrelation | null => advisories.value[appId] ?? null
+/**
+ * An app's advisory row with the triage applied: the card badge and its
+ * severity count active advisories only (advisories-triage, design D2).
+ *
+ * @param appId The app the card is for.
+ * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+ */
+function advisoryFor (appId: string): AdvisoryCorrelation | null {
+	const row = advisories.value[appId]
+	return row ? applyTriage({ ...row, appId: row.appId || appId }, advisoryTriage.value) : null
+}
 
 // Badge shown next to a version with a recorded SHA-256 on the binding — see
 // "Recorded digests are binding-scoped and surfaced". After a reinstall that
@@ -2919,7 +2933,9 @@ watch(dryRunEnabled, () => {
 					role="tabpanel"
 					aria-labelledby="advisories-tab"
 					:advisories="advisories"
-					:freshnessLabel="advisoryFreshnessLabel" />
+					:triage="advisoryTriage"
+					:freshnessLabel="advisoryFreshnessLabel"
+					@update:triage="(triage: AdvisoryTriageMap) => (advisoryTriage = triage)" />
 				<HistoryPanel v-if="currentTab === 'history'"
 					id="history-panel"
 					role="tabpanel"
