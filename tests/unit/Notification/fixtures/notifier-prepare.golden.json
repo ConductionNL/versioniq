@@ -1676,6 +1676,198 @@
             ]
         ]
     },
+    "certificate_revoked": {
+        "returned": "the notification",
+        "calls": [
+            [
+                "l10n.get",
+                "versioniq",
+                "nl"
+            ],
+            [
+                "t",
+                "Certificate revoked: %s",
+                [
+                    "badapp"
+                ]
+            ],
+            [
+                "setParsedSubject",
+                "[t] Certificate revoked: badapp"
+            ],
+            [
+                "t",
+                "Nextcloud revoked the signing certificate of %s. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.",
+                [
+                    "badapp"
+                ]
+            ],
+            [
+                "setParsedMessage",
+                "[t] Nextcloud revoked the signing certificate of badapp. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious."
+            ]
+        ]
+    },
+    "certificate_revoked, no parameters": {
+        "returned": "the notification",
+        "calls": [
+            [
+                "l10n.get",
+                "versioniq",
+                "nl"
+            ],
+            [
+                "t",
+                "Certificate revoked: %s",
+                [
+                    ""
+                ]
+            ],
+            [
+                "setParsedSubject",
+                "[t] Certificate revoked: "
+            ],
+            [
+                "t",
+                "Nextcloud revoked the signing certificate of %s. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.",
+                [
+                    ""
+                ]
+            ],
+            [
+                "setParsedMessage",
+                "[t] Nextcloud revoked the signing certificate of . Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious."
+            ]
+        ]
+    },
+    "certificate_revoked, app wrong type": {
+        "returned": "the notification",
+        "calls": [
+            [
+                "l10n.get",
+                "versioniq",
+                "nl"
+            ],
+            [
+                "t",
+                "Certificate revoked: %s",
+                [
+                    ""
+                ]
+            ],
+            [
+                "setParsedSubject",
+                "[t] Certificate revoked: "
+            ],
+            [
+                "t",
+                "Nextcloud revoked the signing certificate of %s. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.",
+                [
+                    ""
+                ]
+            ],
+            [
+                "setParsedMessage",
+                "[t] Nextcloud revoked the signing certificate of . Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious."
+            ]
+        ]
+    },
+    "certificate_revoked, app null": {
+        "returned": "the notification",
+        "calls": [
+            [
+                "l10n.get",
+                "versioniq",
+                "nl"
+            ],
+            [
+                "t",
+                "Certificate revoked: %s",
+                [
+                    ""
+                ]
+            ],
+            [
+                "setParsedSubject",
+                "[t] Certificate revoked: "
+            ],
+            [
+                "t",
+                "Nextcloud revoked the signing certificate of %s. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.",
+                [
+                    ""
+                ]
+            ],
+            [
+                "setParsedMessage",
+                "[t] Nextcloud revoked the signing certificate of . Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious."
+            ]
+        ]
+    },
+    "certificate_revoked, serial wrong type": {
+        "returned": "the notification",
+        "calls": [
+            [
+                "l10n.get",
+                "versioniq",
+                "nl"
+            ],
+            [
+                "t",
+                "Certificate revoked: %s",
+                [
+                    "badapp"
+                ]
+            ],
+            [
+                "setParsedSubject",
+                "[t] Certificate revoked: badapp"
+            ],
+            [
+                "t",
+                "Nextcloud revoked the signing certificate of %s. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.",
+                [
+                    "badapp"
+                ]
+            ],
+            [
+                "setParsedMessage",
+                "[t] Nextcloud revoked the signing certificate of badapp. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious."
+            ]
+        ]
+    },
+    "certificate_revoked, serial null": {
+        "returned": "the notification",
+        "calls": [
+            [
+                "l10n.get",
+                "versioniq",
+                "nl"
+            ],
+            [
+                "t",
+                "Certificate revoked: %s",
+                [
+                    "badapp"
+                ]
+            ],
+            [
+                "setParsedSubject",
+                "[t] Certificate revoked: badapp"
+            ],
+            [
+                "t",
+                "Nextcloud revoked the signing certificate of %s. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.",
+                [
+                    "badapp"
+                ]
+            ],
+            [
+                "setParsedMessage",
+                "[t] Nextcloud revoked the signing certificate of badapp. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious."
+            ]
+        ]
+    },
     "pat_expiring, one day": {
         "returned": "the notification",
         "calls": [

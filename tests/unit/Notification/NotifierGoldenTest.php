@@ -38,6 +38,7 @@ final class NotifierGoldenTest extends TestCase {
 		'auto_update_success' => ['app' => 'someapp', 'fromVersion' => '1.2.0', 'toVersion' => '1.3.0'],
 		'auto_update_failure' => ['app' => 'someapp', 'targetVersion' => '1.3.0', 'hint' => 'Check the log.'],
 		'advisory_digest' => ['apps' => 2, 'advisories' => 5],
+		'certificate_revoked' => ['app' => 'badapp', 'serial' => '4711'],
 	];
 
 	/** @var list<array<int, mixed>> */

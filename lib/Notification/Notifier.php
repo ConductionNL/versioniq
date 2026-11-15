@@ -72,6 +72,8 @@ class Notifier implements INotifier {
 			// Sent weekly by AdvisoryDigestNotifier. Without this branch the
 			// digest was stored but skipped by the bell every time (#428).
 			'advisory_digest' => $this->renderAdvisoryDigest(...),
+			// Sent by InstalledCertificateCheck (safety-withdrawn-and-revoked D2).
+			'certificate_revoked' => $this->renderCertificateRevoked(...),
 			default => throw new UnknownNotificationException(),
 		};
 		$render($notification, $l);
@@ -123,6 +125,23 @@ class Notifier implements INotifier {
 			)
 			->setParsedMessage(
 				$l->t('%1$s is pinned to %2$s but is now running %3$s. Re-pin to restore the pinned version, or accept the change.', [$app, $pinnedVersion, $observedVersion])
+			);
+	}
+
+	/**
+	 * The wording of design D4: what a revoked certificate means.
+	 *
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
+	 */
+	private function renderCertificateRevoked(INotification $notification, IL10N $l): void {
+		$app = $this->stringParameter($notification, 'app');
+
+		$notification
+			->setParsedSubject(
+				$l->t('Certificate revoked: %s', [$app])
+			)
+			->setParsedMessage(
+				$l->t('Nextcloud revoked the signing certificate of %s. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.', [$app])
 			);
 	}
 

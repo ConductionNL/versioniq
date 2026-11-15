@@ -52,7 +52,7 @@ use OCP\IUserSession;
  *
  * @psalm-api
  * @psalm-type AppLists = array{enabled: array<string>, versions: array<string, string>, core: array<string>, info: array<string, array<string, mixed>>}
- * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string}}
+ * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string},certificateRevoked:bool}
  */
 class InstallerService {
 	/** Server-side changelog size cap; see "Version listings carry release notes". */
@@ -190,7 +190,8 @@ class InstallerService {
 	 * last-known-good record for its card.
 	 *
 	 * @param AppLists $lists
-	 * @return array{isCore: bool, isShipped: bool, boundSourceId: ?string, manageable: bool, warning: ?string, installedVersion: ?string, state: 'enabled'|'disabled'|'notInstalled', lkg: ?array{version: string, recordedAt: string, sourceId: ?string}}
+	 * @return array{isCore: bool, isShipped: bool, boundSourceId: ?string, manageable: bool, warning: ?string, installedVersion: ?string, state: 'enabled'|'disabled'|'notInstalled', lkg: ?array{version: string, recordedAt: string, sourceId: ?string}, certificateRevoked: bool}
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/tasks.md#2.1
 	 */
 	private function appStatus(string $appId, array $lists): array {
 		$binding = $this->sources->bindingStore->get($appId);
@@ -206,6 +207,8 @@ class InstallerService {
 			'installedVersion' => $installedVersion === '' ? null : $installedVersion,
 			'state' => self::appState($appId, $lists),
 			'lkg' => $this->state->lkgStore->get($appId)?->toArray(),
+			// Set by the daily certificate recheck (safety-withdrawn-and-revoked D2).
+			'certificateRevoked' => $this->state->revokedCertificates?->get($appId) !== null,
 		];
 	}
 

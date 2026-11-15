@@ -191,7 +191,7 @@ final class NotifierTest extends TestCase {
 
 	public function testTheSubjectScanFindsTheKnownSenders(): void {
 		$found = array_keys(self::sentSubjects());
-		foreach (['advisory_digest', 'auto_update_failure', 'auto_update_success', 'pat_expired', 'pat_expiring', 'pin_drift', 'pinned_to_vulnerable'] as $expected) {
+		foreach (['advisory_digest', 'auto_update_failure', 'auto_update_success', 'certificate_revoked', 'pat_expired', 'pat_expiring', 'pin_drift', 'pinned_to_vulnerable'] as $expected) {
 			$this->assertContains($expected, $found);
 		}
 	}
