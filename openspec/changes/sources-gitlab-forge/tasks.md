@@ -9,7 +9,8 @@
 
 ## 2. Releases
 
-- [ ] 2.1 Normalise GitLab releases and asset links in `ForgeReleaseSource`. Verify: a unit test with a recorded GitLab releases payload: versions, changelogs, the selected asset and the sibling checksum.
+- [x] 2.1 Normalise GitLab releases and asset links in `ForgeReleaseSource`. Verify: a unit test with a recorded GitLab releases payload: versions, changelogs, the selected asset and the sibling checksum.
+  - `ForgeReleaseSource::fromGitlabRelease()` maps each GitLab release on read (`description` to the changelog, `released_at` to the date, none for an upcoming release, `assets.links[]` to assets with `direct_asset_url` else `url`), so asset selection, the sibling `.sha256`, digests and the cache are unchanged. `ForgeReleaseSourceGitlabTest` (4, recorded payload).
 - [x] 2.2 Treat a forge without an advisories endpoint as "no advisory source" in `AdvisoryService`. Verify: `tests/unit/Service/Advisory/AdvisoryServiceTest.php`.
   - `ForgeReleaseSource::publishesAdvisories()` is false for a GitLab binding; `AdvisoryService::correlate()` then checks only the central feed and stores "No advisory source: gitlab publishes no repository security advisories." as the entry's reason, so the app never reads as clean. `AdvisoryServiceTest`.
 

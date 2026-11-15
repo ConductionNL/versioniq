@@ -477,7 +477,47 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 
 		$this->connectionReports?->forgeAnswered($forge->id, $forge->apiBaseUrl, $status);
 
+		if ($forge->dialect === Forge::DIALECT_GITLAB) {
+			$decoded = array_map(static fn (mixed $release): mixed => self::fromGitlabRelease($release), $decoded);
+		}
+
 		return ['ok' => true, 'releases' => $decoded];
+	}
+
+	/**
+	 * A GitLab release in the shape the rest of this source reads (sources-gitlab-forge D4):
+	 * `description` as the changelog body, `released_at` as the publish date (none for
+	 * an upcoming release), and `assets.links[]` as the asset list, each link's
+	 * `direct_asset_url` (else `url`) as its download URL. Asset selection, the sibling
+	 * checksum, recorded digests and the cache then work unchanged. Anything that is
+	 * not a release object passes through and is skipped as before.
+	 *
+	 * @param mixed $release One entry of GitLab's releases list.
+	 * @return mixed
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-2.1
+	 */
+	public static function fromGitlabRelease(mixed $release): mixed {
+		if (!is_array($release)) {
+			return $release;
+		}
+
+		$assets = [];
+		$links = is_array($release['assets'] ?? null) ? ($release['assets']['links'] ?? null) : null;
+		foreach (is_array($links) ? $links : [] as $link) {
+			if (!is_array($link)) {
+				continue;
+			}
+			$url = self::nonEmptyString($link['direct_asset_url'] ?? null) ?? self::nonEmptyString($link['url'] ?? null);
+			$assets[] = ['name' => $link['name'] ?? null, 'browser_download_url' => $url];
+		}
+
+		return [
+			'tag_name' => $release['tag_name'] ?? null,
+			'body' => $release['description'] ?? null,
+			'published_at' => ($release['upcoming_release'] ?? false) === true ? null : ($release['released_at'] ?? null),
+			'assets' => $assets,
+		];
 	}
 
 	/**
