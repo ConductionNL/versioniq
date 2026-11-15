@@ -21,10 +21,13 @@ namespace OCA\Versioniq\Service\AutoUpdate;
  */
 final class AutoUpdatePlan {
 	/**
-	 * @param list<AutoUpdateMember> $members The members, in run order.
+	 * @param list<AutoUpdateMember> $members       The members, in run order.
+	 * @param array<string, string>  $securityHolds Why a security fix was held back, by app id
+	 *                                              (autoupdate-security-first).
 	 */
 	public function __construct(
 		public readonly array $members,
+		public readonly array $securityHolds = [],
 	) {
 	}
 

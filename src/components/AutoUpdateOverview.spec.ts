@@ -44,3 +44,51 @@ describe('AutoUpdateOverview', () => {
 		expect(wrapper.find('[data-testid="overview-disabled"]').exists()).toBe(true)
 	})
 })
+
+// @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md
+describe('AutoUpdateOverview security holds', () => {
+	const securityPolicies = {
+		deck: { appId: 'deck', level: 'security', setBy: 'admin', setAt: '', blockedVersions: [] },
+		calendar: { appId: 'calendar', level: 'security', setBy: 'admin', setAt: '', blockedVersions: [] },
+	}
+
+	it('says why a security fix was not installed', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies: securityPolicies, labels: { deck: 'Deck' }, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'UTC', securityHolds: { deck: 'needs_major', calendar: 'stale' }, advisoriesFresh: true },
+		})
+
+		const held = wrapper.findAll('[data-testid="overview-held-row"]').map((row) => row.text())
+		expect(held).toEqual([
+			'The security fix for calendar waits until advisories are checked again.',
+			'The security fix for Deck needs a major update, so it was not installed.',
+		])
+		expect(wrapper.find('[data-testid="overview-stale"]').exists()).toBe(false)
+	})
+
+	it('says advisories were not checked recently while an app is on security', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies: securityPolicies, labels: {}, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'UTC', advisoriesFresh: false },
+		})
+
+		expect(wrapper.find('[data-testid="overview-stale"]').text()).toBe('Advisories were not checked recently, so security fixes wait.')
+	})
+
+	it('says nothing about stale advisories when no app is on security', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies, labels: {}, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'UTC', advisoriesFresh: false },
+		})
+
+		expect(wrapper.find('[data-testid="overview-stale"]').exists()).toBe(false)
+		expect(wrapper.findAll('[data-testid="overview-held-row"]')).toHaveLength(0)
+	})
+
+	it('names every kind the patch policy sets to by hand', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies, labels: {}, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'UTC', manualKinds: ['patch'] },
+		})
+
+		expect(wrapper.findAll('[data-testid="overview-by-hand"]').map((row) => row.text())).toEqual([
+			'Patch updates are set to by hand in the patch policy, so no app gets them automatically.',
+		])
+	})
+})

@@ -22,6 +22,7 @@ use OCA\Versioniq\Service\Api\InstallCollaborators;
 use OCA\Versioniq\Service\Api\ReportCollaborators;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
+use OCA\Versioniq\Service\AutoUpdate\SecurityCandidate;
 use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
@@ -30,6 +31,7 @@ use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Pat\NewPat;
 use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Service\Pin\Pin;
+use OCA\Versioniq\Service\Policy\PatchPolicy;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
@@ -930,7 +932,29 @@ class ApiController extends OCSController {
 			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
 			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
 			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
+			// Why the last run held a security fix back, whether the advisory
+			// snapshot is fresh enough for security installs, and the kinds
+			// the patch policy sets to by hand (autoupdate-security-first).
+			'securityHolds' => (object)$this->autoUpdate->securityHolds->read(),
+			'advisoriesFresh' => $this->advisoriesFresh(),
+			'manualKinds' => ($this->autoUpdate->patchPolicyStore->read() ?? PatchPolicy::none())->manualKinds(),
 		]);
+	}
+
+	/**
+	 * Whether the last advisory check is recent enough for the `security`
+	 * level to act on it (autoupdate-security-first D2).
+	 *
+	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-the-security-level-installs-only-advisory-fixes-in-the-window
+	 */
+	private function advisoriesFresh(): bool {
+		$checkedAt = $this->autoUpdate->advisoryResults->read()['checkedAt'] ?? null;
+
+		return SecurityCandidate::isFresh(
+			is_int($checkedAt) ? $checkedAt : null,
+			$this->access->caller->timeFactory->getTime(),
+			$this->autoUpdate->advisorySettings->getIntervalSeconds(),
+		);
 	}
 
 	/**
