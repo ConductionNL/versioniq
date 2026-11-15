@@ -384,7 +384,20 @@ OC.L10N.register(
         "User ID of an admin": "Gebruikers-ID van een beheerder",
         "until {date}": "tot {date}",
         "_%n dismissed advisory_::_%n dismissed advisories_": ["%n afgewezen advies","%n afgewezen adviezen"],
-        "Dismiss advisory": "Advies afwijzen"
+        "Dismiss advisory": "Advies afwijzen",
+        "Ships with Nextcloud": "Wordt meegeleverd met Nextcloud",
+        "The Nextcloud server ships this app.": "De Nextcloud-server levert deze app mee.",
+        "Featured in the App Store": "Uitgelicht in de App Store",
+        "The App Store marks this app as featured.": "De App Store markeert deze app als uitgelicht.",
+        "Verified organisation": "Geverifieerde organisatie",
+        "GitHub has verified the domain of this organisation.": "GitHub heeft het domein van deze organisatie geverifieerd.",
+        "On your trusted list": "Op je lijst met vertrouwde bronnen",
+        "An administrator put this source on the trusted list.": "Een beheerder heeft deze bron op de lijst met vertrouwde bronnen gezet.",
+        "Publisher unknown": "Uitgever onbekend",
+        "By {publisher}": "Door {publisher}",
+        "Similar name: {name} by an unknown publisher": "Vergelijkbare naam: {name} van een onbekende uitgever",
+        "Similar name: {name} by {publisher}": "Vergelijkbare naam: {name} van {publisher}",
+        "Trust marks": "Vertrouwenskenmerken"
     },
     "nplurals=2; plural=(n != 1);"
 )

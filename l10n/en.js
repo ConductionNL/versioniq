@@ -382,7 +382,20 @@ OC.L10N.register(
         "User ID of an admin": "User ID of an admin",
         "until {date}": "until {date}",
         "_%n dismissed advisory_::_%n dismissed advisories_": ["%n dismissed advisory","%n dismissed advisories"],
-        "Dismiss advisory": "Dismiss advisory"
+        "Dismiss advisory": "Dismiss advisory",
+        "Ships with Nextcloud": "Ships with Nextcloud",
+        "The Nextcloud server ships this app.": "The Nextcloud server ships this app.",
+        "Featured in the App Store": "Featured in the App Store",
+        "The App Store marks this app as featured.": "The App Store marks this app as featured.",
+        "Verified organisation": "Verified organisation",
+        "GitHub has verified the domain of this organisation.": "GitHub has verified the domain of this organisation.",
+        "On your trusted list": "On your trusted list",
+        "An administrator put this source on the trusted list.": "An administrator put this source on the trusted list.",
+        "Publisher unknown": "Publisher unknown",
+        "By {publisher}": "By {publisher}",
+        "Similar name: {name} by an unknown publisher": "Similar name: {name} by an unknown publisher",
+        "Similar name: {name} by {publisher}": "Similar name: {name} by {publisher}",
+        "Trust marks": "Trust marks"
     },
     "nplurals=2; plural=(n != 1);"
 )
