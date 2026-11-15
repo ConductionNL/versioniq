@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service;
 
+use OCA\Versioniq\Service\Alert\AlertDispatcher;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IGroupManager;
 use OCP\IURLGenerator;
@@ -29,6 +30,8 @@ final class AdminNotificationServices {
 		public readonly IGroupManager $groupManager,
 		public readonly ITimeFactory $timeFactory,
 		public readonly IURLGenerator $urlGenerator,
+		/** Queues the same alert for the webhook targets (releases-new-release-alerts D6); null in tests that do not need it. */
+		public readonly ?AlertDispatcher $alerts = null,
 	) {
 	}
 }

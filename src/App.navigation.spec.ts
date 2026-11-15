@@ -90,8 +90,8 @@ describe('App tabs', () => {
 		const { wrapper, vm } = await mountPage()
 		const tabs = wrapper.findAll('[role="tablist"] [role="tab"]')
 
-		expect(tabs.map((tab) => tab.text())).toEqual(['Apps', 'Advisories', 'History', 'Sources', 'Tokens', 'Trusted sources', 'Discover', 'Artifact cache', 'Instances', 'Settings'])
-		await tabs[3].trigger('click')
+		expect(tabs.map((tab) => tab.text())).toEqual(['Apps', 'Advisories', 'Alerts', 'History', 'Sources', 'Tokens', 'Trusted sources', 'Discover', 'Artifact cache', 'Instances', 'Settings'])
+		await tabs[4].trigger('click')
 
 		expect(vm.currentTab).toBe('sources')
 		expect(wrapper.find('#sources-tab').attributes('aria-selected')).toBe('true')
