@@ -15,7 +15,7 @@
 
 - [x] 3.1 Add `src/components/ChannelSelector.vue` on the app card, with the lines field for `lts`, and the default on the Settings tab. Verify: `src/components/ChannelSelector.spec.ts` covers each channel and the lines field.
 - [x] 3.2 Filter the picker on `onChannel` with the "Show all versions" switch and the tags; make `isBlockedBySafeMode()` read `onChannel`. Verify: `src/utils/safeMode.spec.ts` covers an off-channel version blocked and a beta-channel pre-release allowed; a vitest spec on the picker filter covers the switch and the "no lines marked" message.
-- [ ] 3.3 Add the new strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
+- [x] 3.3 Add the new strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
 - [ ] 3.4 Extend `tests/e2e/versions.spec.ts`: the forge fixture serves a release marked pre-release; assert it is hidden, then shown with the switch, then listed after the app's channel is set to `beta`.
 
 ## 4. Nightly job and sweep

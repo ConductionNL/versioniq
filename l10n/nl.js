@@ -300,7 +300,23 @@ OC.L10N.register(
         "Outside the update policy": "Buiten het updatebeleid",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Aantal releases dat een app achter mag lopen (0 tot {max}, laat leeg om de controle uit te zetten)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "Een app die verder achterloopt, wordt gemarkeerd op het tabblad Apps. 1 betekent de nieuwste release of de release daarvoor.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"]
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"],
+        "Pre-release": "Pre-release",
+        "Not long-term support": "Geen langetermijnondersteuning",
+        "Same as the server": "Zelfde als de server",
+        "Stable": "Stabiel",
+        "Beta (includes pre-releases)": "Bèta (inclusief pre-releases)",
+        "Long-term support": "Langetermijnondersteuning",
+        "Use the default ({channel})": "Standaard gebruiken ({channel})",
+        "Default release channel": "Standaard releasekanaal",
+        "Release channel": "Releasekanaal",
+        "Long-term support lines": "Lijnen met langetermijnondersteuning",
+        "Release lines such as 2.3 or 3, separated by commas": "Releaselijnen zoals 2.3 of 3, gescheiden door komma's",
+        "Save lines": "Lijnen opslaan",
+        "Could not change the release channel.": "Kon het releasekanaal niet wijzigen.",
+        "Release channel: {channel}": "Releasekanaal: {channel}",
+        "Show all versions": "Alle versies tonen",
+        "No long-term support lines are marked for this app": "Voor deze app zijn geen lijnen met langetermijnondersteuning gemarkeerd"
     },
     "nplurals=2; plural=(n != 1);"
 )
