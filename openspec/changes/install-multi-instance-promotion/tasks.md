@@ -14,7 +14,7 @@
 ## 3. Promotion
 
 - [x] 3.1 Add the optional `expectedSha` argument to `InstallerService::installAppVersion()` (design D6 step 3). Verify: `tests/unit/Service/InstallerServiceShaPinningTest.php` gains cases for a matching digest, a different recorded digest (refused before download), and no recorded digest (added, then enforced).
-- [ ] 3.2 Add `lib/Service/Instance/PromotionService.php` with `plan()` and `promote()`, the `promotion.min_days` setting in `InstanceSettings`, and the audit operation `promote` in `AuditLogger`. Verify: `tests/unit/Service/Instance/PromotionServiceTest.php` covers an upgrade, a downgrade without and with acknowledgement, a pinned app, the waiting period not met, unknown `runningSince`, the override written into the audit message, and a remote that no longer runs the planned version.
+- [x] 3.2 Add `lib/Service/Instance/PromotionService.php` with `plan()` and `promote()`, the `promotion.min_days` setting in `InstanceSettings`, and the audit operation `promote` in `AuditLogger`. Verify: `tests/unit/Service/Instance/PromotionServiceTest.php` covers an upgrade, a downgrade without and with acknowledgement, a pinned app, the waiting period not met, unknown `runningSince`, the override written into the audit message, and a remote that no longer runs the planned version.
 - [ ] 3.3 Add `POST /api/app/{appId}/promote`, password-confirmed. Verify: `tests/unit/Controller/InstanceControllerTest.php` asserts 403 for a non-admin and 409 with the days left.
 
 ## 4. Page
