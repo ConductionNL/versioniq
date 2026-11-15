@@ -35,6 +35,9 @@ class AvailabilityService {
 	/** Plain major.minor.patch, the rule CandidateSelector applies. */
 	private const SEMVER_PATTERN = '/^(\d+)\.(\d+)\.(\d+)$/';
 
+	/** When the running sweep must stop listing sources. */
+	private float $deadline = 0.0;
+
 	public function __construct(
 		private InstallerService $installerService,
 		private PinStore $pinStore,
@@ -52,9 +55,11 @@ class AvailabilityService {
 	 *
 	 * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
 	 * @return array<string, array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, installedWithdrawn: ?bool, lifecycle?: array<string, mixed>}>
+	 * @param list<array{appId: string, sourceId: ?string}> $followed Followed apps that join the sweep when not installed (releases-new-release-alerts D3).
 	 */
-	public function sweep(float $budgetSeconds): array {
+	public function sweep(float $budgetSeconds, array $followed = []): array {
 		$deadline = microtime(true) + $budgetSeconds;
+		$this->deadline = $deadline;
 		$results = [];
 
 		foreach ($this->installerService->getInstalledApps() as $app) {
@@ -70,7 +75,75 @@ class AvailabilityService {
 				: $this->listedEntry($appId, $check);
 		}
 
+		return $this->withFollowedApps($results, $followed);
+	}
+
+	/**
+	 * The sweep results plus every followed app that is not installed
+	 * (releases-new-release-alerts, design D3): its newest versions from the
+	 * followed source, with no installed version and so no "behind" count.
+	 *
+	 * @param array<string, array<string, mixed>> $results
+	 * @param list<array{appId: string, sourceId: ?string}> $followed
+	 * @return array<string, array<string, mixed>>
+	 * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-an-admin-follows-the-releases-of-an-app-that-is-not-installed
+	 */
+	private function withFollowedApps(array $results, array $followed): array {
+		foreach ($followed as $follow) {
+			$results[$follow['appId']] ??= $this->followedEntry($follow);
+		}
+
 		return $results;
+	}
+
+	/**
+	 * One followed, not installed app.
+	 *
+	 * @param array{appId: string, sourceId: ?string} $follow
+	 * @return array<string, mixed>
+	 */
+	private function followedEntry(array $follow): array {
+		[$versions, $error, $sourceId] = [[], 'The update check ran out of time before it reached this app.', $follow['sourceId']];
+		if (microtime(true) < $this->deadline) {
+			[$versions, $error, $sourceId] = $this->followedListing($follow['appId'], $follow['sourceId']);
+		}
+		[$newest, $newestCompatible] = $this->scanVersions($versions, null);
+
+		return [
+			'installedVersion' => null,
+			'newestVersion' => $newest,
+			'newestCompatibleVersion' => $newestCompatible,
+			'linesBehind' => 0,
+			'updateAvailable' => false,
+			'pinned' => false,
+			'sourceId' => $sourceId,
+			'error' => $error,
+			'installedWithdrawn' => null,
+			'followed' => true,
+		];
+	}
+
+	/**
+	 * The versions a followed app's source lists, the error, and the source that answered.
+	 *
+	 * @return array{0: list<array<string, mixed>>, 1: ?string, 2: ?string}
+	 */
+	private function followedListing(string $appId, ?string $sourceId): array {
+		try {
+			$listing = $this->installerService->getAppVersions($appId, $sourceId);
+		} catch (\Throwable $error) {
+			$this->logger->warning('AvailabilityService: listing versions of a followed app failed', ['app' => $appId, 'message' => $error->getMessage()]);
+
+			return [[], $error->getMessage(), $sourceId];
+		}
+
+		if (($listing['hasError'] ?? false) === true) {
+			return [[], (string)($listing['error'] ?? 'The source did not answer.'), $sourceId];
+		}
+
+		$versions = is_array($listing['availableVersions'] ?? null) ? array_values($listing['availableVersions']) : [];
+
+		return [$versions, null, is_string($listing['sourceId'] ?? null) ? $listing['sourceId'] : $sourceId];
 	}
 
 	/**

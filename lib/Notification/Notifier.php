@@ -56,6 +56,7 @@ class Notifier implements INotifier {
 	 * @spec openspec/specs/version-pinning/spec.md
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
+	 * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-admins-are-notified-of-new-releases-in-the-scope-they-choose
 	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-assigns-an-advisory-to-an-owner
 	 */
 	public function prepare(INotification $notification, string $languageCode): INotification {
@@ -76,12 +77,28 @@ class Notifier implements INotifier {
 			// digest was stored but skipped by the bell every time (#428).
 			'advisory_digest' => $this->renderAdvisoryDigest(...),
 			'server_eol' => $this->renderServerEol(...),
+			'new_release' => $this->renderNewRelease(...),
 			'advisory_assigned' => $this->renderAdvisoryAssigned(...),
 			default => throw new UnknownNotificationException(),
 		};
 		$render($notification, $l);
 
 		return $notification;
+	}
+
+	/**
+	 * "New version of {app}: {version}", and a note when it does not run here.
+	 *
+	 * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-admins-are-notified-of-new-releases-in-the-scope-they-choose
+	 */
+	private function renderNewRelease(INotification $notification, IL10N $l): void {
+		$app = $this->stringParameter($notification, 'app');
+		$version = $this->stringParameter($notification, 'version');
+
+		$notification->setParsedSubject($l->t('New version of %1$s: %2$s', [$app, $version]));
+		if ($this->stringParameter($notification, 'compatible') !== '1') {
+			$notification->setParsedMessage($l->t('It does not run on this server version.'));
+		}
 	}
 
 	private function renderPinnedToVulnerable(INotification $notification, IL10N $l): void {
