@@ -48,13 +48,15 @@ class Notifier implements INotifier {
 	 * "PAT expiry warnings" for the `pat_expiring` / `pat_expired` subjects,
 	 * "Drift response — notify and offer re-pin" for `pin_drift`, and
 	 * "Every auto-update outcome is reported" for `auto_update_success` /
-	 * `auto_update_failure`, the weekly `advisory_digest`, and `server_eol`
-	 * before the running server major leaves support.
+	 * `auto_update_failure`, the weekly `advisory_digest`, `advisory_assigned`
+	 * when an admin hands an advisory to an owner, and `server_eol` before the
+	 * running server major leaves support.
 	 *
 	 * @spec openspec/specs/pat-management/spec.md
 	 * @spec openspec/specs/version-pinning/spec.md
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-assigns-an-advisory-to-an-owner
 	 */
 	public function prepare(INotification $notification, string $languageCode): INotification {
 		if ($notification->getApp() !== Application::APP_ID) {
@@ -74,6 +76,7 @@ class Notifier implements INotifier {
 			// digest was stored but skipped by the bell every time (#428).
 			'advisory_digest' => $this->renderAdvisoryDigest(...),
 			'server_eol' => $this->renderServerEol(...),
+			'advisory_assigned' => $this->renderAdvisoryAssigned(...),
 			default => throw new UnknownNotificationException(),
 		};
 		$render($notification, $l);
@@ -210,6 +213,28 @@ class Notifier implements INotifier {
 					$days,
 					[$major, $date, $days]
 				)
+			);
+	}
+
+	/**
+	 * An advisory assigned to the recipient: names the app (or the server),
+	 * the advisory and the admin who assigned it.
+	 *
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-assigns-an-advisory-to-an-owner
+	 */
+	private function renderAdvisoryAssigned(INotification $notification, IL10N $l): void {
+		$app = $this->stringParameter($notification, 'app');
+		$advisory = $this->stringParameter($notification, 'advisory');
+		$by = $this->stringParameter($notification, 'by');
+
+		$notification
+			->setParsedSubject(
+				$l->t('A security advisory was assigned to you')
+			)
+			->setParsedMessage(
+				$app === ':server'
+					? $l->t('%1$s assigned advisory %2$s for the Nextcloud server to you. Review it on the Versioniq Advisories tab.', [$by, $advisory])
+					: $l->t('%1$s assigned advisory %2$s for %3$s to you. Review it on the Versioniq Advisories tab.', [$by, $advisory, $app])
 			);
 	}
 
