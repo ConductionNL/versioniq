@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Lkg;
 
-use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Settings\AppConfigJsonRecords;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
 
@@ -32,7 +32,13 @@ use Psr\Log\LoggerInterface;
  * @psalm-api
  */
 class LkgStore {
+	/** @use AppConfigJsonRecords<Lkg> */
+	use AppConfigJsonRecords;
+
 	private const KEY_PREFIX = 'lkg.';
+	private const JSON_DEPTH = 16;
+	private const MALFORMED_LOG = 'LkgStore: malformed last-known-good JSON, treating as absent';
+	private const INVALID_LOG = 'LkgStore: invalid last-known-good payload, treating as absent';
 
 	public function __construct(
 		private IAppConfig $config,
@@ -47,12 +53,7 @@ class LkgStore {
 	 * @spec openspec/specs/migration-safety/spec.md
 	 */
 	public function get(string $appId): ?Lkg {
-		$raw = $this->config->getValueString(Application::APP_ID, $this->key($appId), '');
-		if ($raw === '') {
-			return null;
-		}
-
-		return $this->decode($appId, $raw);
+		return $this->readRecord($appId);
 	}
 
 	/**
@@ -62,42 +63,13 @@ class LkgStore {
 	 * @spec openspec/specs/migration-safety/spec.md
 	 */
 	public function set(string $appId, Lkg $lkg): void {
-		$this->config->setValueString(
-			Application::APP_ID,
-			$this->key($appId),
-			json_encode($lkg->toArray(), JSON_THROW_ON_ERROR)
-		);
+		$this->writeRecord($appId, $lkg->toArray());
 	}
 
-	private function decode(string $appId, string $raw): ?Lkg {
-		try {
-			$decoded = json_decode($raw, true, 16, JSON_THROW_ON_ERROR);
-		} catch (\JsonException $error) {
-			$this->logger->warning('LkgStore: malformed last-known-good JSON, treating as absent', [
-				'appId' => $appId,
-				'message' => $error->getMessage(),
-			]);
-
-			return null;
-		}
-
-		if (!is_array($decoded)) {
-			return null;
-		}
-
-		try {
-			return Lkg::fromArray($decoded);
-		} catch (\InvalidArgumentException $error) {
-			$this->logger->warning('LkgStore: invalid last-known-good payload, treating as absent', [
-				'appId' => $appId,
-				'message' => $error->getMessage(),
-			]);
-
-			return null;
-		}
-	}
-
-	private function key(string $appId): string {
-		return self::KEY_PREFIX . $appId;
+	/**
+	 * @param array<array-key, mixed> $payload
+	 */
+	private function hydrate(array $payload): Lkg {
+		return Lkg::fromArray($payload);
 	}
 }

@@ -26,12 +26,12 @@ class TrustedSourceList {
 	private const CONFIG_KEY = 'trusted_sources';
 
 	/**
-	 * Forge-qualified default allowlist. Note the owner differs per forge:
-	 * `ConductionNL` on GitHub, `Conduction` on Codeberg.
+	 * Forge-qualified default allowlist. Codeberg is retired, so a pattern
+	 * for it is only trusted when an admin stored it.
 	 *
 	 * @var list<string>
 	 */
-	private const DEFAULT_PATTERNS = ['github:ConductionNL/*', 'codeberg:Conduction/*'];
+	private const DEFAULT_PATTERNS = ['github:ConductionNL/*'];
 
 	public function __construct(
 		private IAppConfig $config,

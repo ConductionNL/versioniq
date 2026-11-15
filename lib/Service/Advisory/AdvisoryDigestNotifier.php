@@ -13,9 +13,8 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Advisory;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\AdminNotificationServices;
 use OCP\IAppConfig;
-use OCP\IGroupManager;
-use OCP\Notification\IManager;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
@@ -42,8 +41,7 @@ class AdvisoryDigestNotifier {
 	private const DIGEST_INTERVAL_SECONDS = 7 * 24 * 60 * 60;
 
 	public function __construct(
-		private IManager $notificationManager,
-		private IGroupManager $groupManager,
+		private AdminNotificationServices $admin,
 		private IAppConfig $config,
 		private AdvisorySettingsStore $settings,
 		private LoggerInterface $logger,
@@ -62,20 +60,11 @@ class AdvisoryDigestNotifier {
 	 * @param array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}> $correlations
 	 */
 	public function sendIfDue(array $correlations, int $now): int {
-		if (!$this->settings->isDigestEnabled()) {
+		if (!$this->isDue($now)) {
 			return 0;
 		}
 
-		$lastSent = $this->config->getValueInt(Application::APP_ID, self::CONFIG_LAST_SENT, 0);
-		if ($lastSent > 0 && ($now - $lastSent) < self::DIGEST_INTERVAL_SECONDS) {
-			return 0;
-		}
-
-		$informational = array_values(array_filter(
-			$correlations,
-			static fn (array $entry): bool => $entry['state'] === AdvisoryService::STATE_AVAILABLE
-				&& $entry['advisories'] !== [],
-		));
+		$informational = self::informational($this->applyTriage($correlations, $now));
 		if ($informational === []) {
 			// Nothing to say. The clock is NOT advanced, so the first week
 			// with something to report sends immediately rather than waiting
@@ -83,18 +72,7 @@ class AdvisoryDigestNotifier {
 			return 0;
 		}
 
-		$appCount = count($informational);
-		$advisoryCount = array_sum(array_map(
-			static fn (array $entry): int => count($entry['advisories']),
-			$informational,
-		));
-
-		$fired = 0;
-		foreach ($this->adminUids() as $uid) {
-			if ($this->fire($uid, $appCount, $advisoryCount)) {
-				$fired++;
-			}
-		}
+		$fired = $this->fireToAdmins($informational);
 
 		// Only record a send that actually reached someone. Advancing the
 		// clock on a failed dispatch would suppress the next seven days of
@@ -106,18 +84,91 @@ class AdvisoryDigestNotifier {
 		return $fired;
 	}
 
-	private function fire(string $uid, int $appCount, int $advisoryCount): bool {
+	/**
+	 * The correlations with the stored triage applied, so an actively
+	 * dismissed advisory is not counted (advisories-triage, design D2). The
+	 * state is left as stored: a row whose advisories are all dismissed has
+	 * none left to count, whatever its state.
+	 *
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+	 * @param array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}> $correlations
+	 * @return array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}>
+	 */
+	private function applyTriage(array $correlations, int $now): array {
+		$store = new AdvisoryTriageStore($this->config, $this->logger);
+		$triage = new AdvisoryTriage($store->read(), gmdate(DATE_ATOM, $now));
+		foreach ($correlations as $appId => $correlation) {
+			$dismissed = AdvisoryTriage::dismissedIds(row: $triage->apply(row: $correlation));
+			$correlation['advisories'] = array_values(array_filter(
+				$correlation['advisories'],
+				static fn (array $advisory): bool => isset($dismissed[$advisory['id']]) === false,
+			));
+			$correlations[$appId] = $correlation;
+		}
+
+		return $correlations;
+	}
+
+	/** Whether the digest is enabled and none was sent inside the last seven days. */
+	private function isDue(int $now): bool {
+		if (!$this->settings->isDigestEnabled()) {
+			return false;
+		}
+
+		$lastSent = $this->config->getValueInt(Application::APP_ID, self::CONFIG_LAST_SENT, 0);
+
+		return !($lastSent > 0 && ($now - $lastSent) < self::DIGEST_INTERVAL_SECONDS);
+	}
+
+	/**
+	 * The apps with advisories that do not affect the installed version; the
+	 * urgent path already notifies about the others.
+	 *
+	 * @param array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}> $correlations
+	 * @return list<array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}>
+	 */
+	private static function informational(array $correlations): array {
+		return array_values(array_filter(
+			$correlations,
+			static fn (array $entry): bool => $entry['state'] === AdvisoryService::STATE_AVAILABLE
+				&& $entry['advisories'] !== [],
+		));
+	}
+
+	/**
+	 * Notifies every admin of the informational apps; returns how many were reached.
+	 *
+	 * @param list<array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}> $informational
+	 */
+	private function fireToAdmins(array $informational): int {
+		$appCount = count($informational);
+		$advisoryCount = array_sum(array_map(
+			static fn (array $entry): int => count($entry['advisories']),
+			$informational,
+		));
+
+		$fired = 0;
+		foreach ($this->adminUids() as $uid) {
+			if ($this->fire($uid, ['apps' => $appCount, 'advisories' => $advisoryCount])) {
+				$fired++;
+			}
+		}
+
+		return $fired;
+	}
+
+	/**
+	 * @param array{apps: int, advisories: int} $counts
+	 */
+	private function fire(string $uid, array $counts): bool {
 		try {
-			$notification = $this->notificationManager->createNotification();
+			$notification = $this->admin->notificationManager->createNotification();
 			$notification->setApp(Application::APP_ID)
 				->setDateTime(new \DateTime())
 				->setUser($uid)
-				->setObject('advisory_digest', (string)$appCount)
-				->setSubject('advisory_digest', [
-					'apps' => $appCount,
-					'advisories' => $advisoryCount,
-				]);
-			$this->notificationManager->notify($notification);
+				->setObject('advisory_digest', (string)$counts['apps'])
+				->setSubject('advisory_digest', $counts);
+			$this->admin->notificationManager->notify($notification);
 
 			return true;
 		} catch (Throwable $error) {
@@ -135,7 +186,7 @@ class AdvisoryDigestNotifier {
 	 */
 	private function adminUids(): array {
 		$uids = [];
-		foreach ($this->groupManager->get('admin')?->getUsers() ?? [] as $user) {
+		foreach ($this->admin->groupManager->get('admin')?->getUsers() ?? [] as $user) {
 			$uids[] = $user->getUID();
 		}
 

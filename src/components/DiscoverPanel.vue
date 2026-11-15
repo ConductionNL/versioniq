@@ -1,3 +1,5 @@
+<!-- SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl> -->
+<!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
 import { t } from '@nextcloud/l10n'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
@@ -7,7 +9,8 @@ import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
-import { ocsGet } from '../ocs.ts'
+import { ocsGet, ocsWrite } from '../ocs.ts'
+import { errorMessage } from '../utils/errorMessage.ts'
 
 type DiscoverySourceBinding = {
 	kind?: string
@@ -144,9 +147,66 @@ function resetToIdle (): void {
 }
 
 /**
+ * The query parameters of one search: the text, the installed-only switch and
+ * the selected sources.
+ *
+ * @param trimmedQuery the search text
+ */
+function searchParams (trimmedQuery: string): Record<string, string | number | boolean> {
+	const params: Record<string, string | number | boolean> = {
+		q: trimmedQuery,
+		installedOnly: installedOnly.value ? '1' : '0',
+	}
+	if (sourceFilter.value.length > 0) {
+		params.sources = sourceFilter.value.join(',')
+	}
+	return params
+}
+
+/**
+ * Shows a search answer; a list missing from the payload shows as empty (the
+ * providers keep their last known list).
+ *
+ * @param payload the search answer
+ */
+function showSearchPayload (payload: DiscoverResponsePayload): void {
+	results.value = Array.isArray(payload.results) ? payload.results : []
+	providers.value = Array.isArray(payload.providers) ? payload.providers : providers.value
+	providerErrors.value = Array.isArray(payload.errors) ? payload.errors : []
+	dismissedProviderIds.value = new Set()
+	requestError.value = ''
+}
+
+/**
+ * Shows a refused search: the message and no results.
+ *
+ * @param message the refusal message
+ */
+function showSearchError (message: string): void {
+	requestError.value = message
+	results.value = []
+	providerErrors.value = []
+}
+
+/**
+ * Shows a search that threw; an aborted request shows nothing.
+ *
+ * @param caught what the request threw
+ */
+function showSearchFailure (caught: unknown): void {
+	if (caught instanceof DOMException && caught.name === 'AbortError') {
+		return
+	}
+	requestError.value = errorMessage(caught, t('versioniq', 'Could not search for apps.'))
+	results.value = []
+	hasSearched.value = true
+}
+
+/**
  * Runs the debounced, abortable search against `GET /api/discover`; see
  * "Discover tab surfaces multi-source search" ("Search renders multi-source
- * hits") and "Partial provider failure stays usable".
+ * hits") and "Partial provider failure stays usable". A search superseded by a
+ * newer one leaves no trace.
  *
  * @param trimmedQuery
  * @spec openspec/specs/app-discovery/spec.md
@@ -156,39 +216,19 @@ async function runSearch (trimmedQuery: string): Promise<void> {
 	const controller = new AbortController()
 	abortController = controller
 
-	const params: Record<string, string | number | boolean> = {
-		q: trimmedQuery,
-		installedOnly: installedOnly.value ? '1' : '0',
-	}
-	if (sourceFilter.value.length > 0) {
-		params.sources = sourceFilter.value.join(',')
-	}
-
 	try {
-		const { payload, error } = await ocsGet<DiscoverResponsePayload>(DISCOVER, params, controller.signal)
+		const { payload, error } = await ocsGet<DiscoverResponsePayload>(DISCOVER, searchParams(trimmedQuery), controller.signal)
 		if (controller.signal.aborted) {
 			return
 		}
-
 		if (error) {
-			requestError.value = error
-			results.value = []
-			providerErrors.value = []
+			showSearchError(error)
 		} else {
-			results.value = Array.isArray(payload.results) ? payload.results : []
-			providers.value = Array.isArray(payload.providers) ? payload.providers : providers.value
-			providerErrors.value = Array.isArray(payload.errors) ? payload.errors : []
-			dismissedProviderIds.value = new Set()
-			requestError.value = ''
+			showSearchPayload(payload)
 		}
 		hasSearched.value = true
 	} catch (caught) {
-		if (caught instanceof DOMException && caught.name === 'AbortError') {
-			return
-		}
-		requestError.value = caught instanceof Error ? caught.message : t('versioniq', 'Could not search for apps.')
-		results.value = []
-		hasSearched.value = true
+		showSearchFailure(caught)
 	} finally {
 		if (!controller.signal.aborted) {
 			isLoading.value = false
@@ -280,6 +320,42 @@ function handleInstall (hit: DiscoveryHit): void {
  */
 function handleOpenTrusted (): void {
 	emit('openTrusted')
+}
+
+// releases-new-release-alerts D3: follow the releases of an app that is not installed.
+const followed = ref<Set<string>>(new Set())
+const followError = ref('')
+
+/**
+ * The source id a follow entry records for a hit: its forge release, or empty for the app's default source.
+ *
+ * @param hit The hit
+ */
+function followSourceId (hit: DiscoveryHit): string {
+	const binding = hit.sourceCandidates[0]?.sourceBinding
+	if (binding?.owner && binding?.repo && (binding.forge ?? 'github') === 'github') {
+		return `github:${binding.owner}/${binding.repo}`
+	}
+	return ''
+}
+
+/**
+ * Follows the releases of a hit (admin, password-confirmed); see "An admin follows the releases of an app that is not installed".
+ *
+ * @param hit The hit
+ */
+async function handleFollow (hit: DiscoveryHit): Promise<void> {
+	followError.value = ''
+	try {
+		const { error: apiError } = await ocsWrite('POST', '/ocs/v2.php/apps/versioniq/api/follow', { appId: hit.appId, sourceId: followSourceId(hit) })
+		if (apiError) {
+			followError.value = apiError
+			return
+		}
+		followed.value = new Set([...followed.value, hit.appId])
+	} catch (e) {
+		followError.value = errorMessage(e, t('versioniq', 'Could not follow this app.'))
+	}
 }
 </script>
 
@@ -397,10 +473,20 @@ function handleOpenTrusted (): void {
 								{{ t('versioniq', 'Go to Trusted sources') }}
 							</NcButton>
 						</div>
+						<NcButton v-if="!hit.installedVersion"
+							variant="tertiary"
+							:disabled="followed.has(hit.appId)"
+							data-testid="discover-follow"
+							@click="handleFollow(hit)">
+							{{ followed.has(hit.appId) ? t('versioniq', 'Following releases') : t('versioniq', 'Follow releases') }}
+						</NcButton>
 					</div>
 				</article>
 			</li>
 		</ul>
+		<NcNoteCard v-if="followError" type="error" data-testid="discover-follow-error">
+			{{ followError }}
+		</NcNoteCard>
 		<p v-else :class="$style.status" data-testid="discover-idle">
 			{{ t('versioniq', 'Type an app name to search across your configured sources.') }}
 		</p>

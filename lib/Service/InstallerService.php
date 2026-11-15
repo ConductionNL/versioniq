@@ -15,28 +15,32 @@ namespace OCA\Versioniq\Service;
 use Exception;
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
-use OCA\Versioniq\Service\Cache\ArtifactCache;
-use OCA\Versioniq\Service\Installer\EnvironmentCheck;
+use OCA\Versioniq\Service\Discovery\PublisherTrust;
+use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFailure;
+use OCA\Versioniq\Service\Installer\InstallRequest;
+use OCA\Versioniq\Service\Installer\InstallRun;
+use OCA\Versioniq\Service\Installer\InstallState;
+use OCA\Versioniq\Service\Installer\InstallTarget;
+use OCA\Versioniq\Service\Installer\ReleaseInstall;
+use OCA\Versioniq\Service\Installer\ReleaseInstallers;
+use OCA\Versioniq\Service\Installer\ServerAccess;
 use OCA\Versioniq\Service\Installer\ShaMismatchException;
-use OCA\Versioniq\Service\Lkg\LkgStore;
 use OCA\Versioniq\Service\Pin\Pin;
-use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Release\ReleaseNotesReader;
 use OCA\Versioniq\Service\Source\AppStoreSource;
+use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
+use OCA\Versioniq\Service\Source\SourceLookup;
 use OCA\Versioniq\Service\Source\SourceRegistry;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
 use OCA\Versioniq\Service\Source\UntrustedSourceException;
 use OCP\App\Events\AppUpdateEvent;
-use OCP\App\IAppManager;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Utility\ITimeFactory;
-use OCP\EventDispatcher\IEventDispatcher;
-use OCP\IAppConfig;
-use OCP\IConfig;
 use OCP\IUserSession;
 
 /**
@@ -48,6 +52,8 @@ use OCP\IUserSession;
  *     external installer (GitHub releases), then writes the binding on success.
  *
  * @psalm-api
+ * @psalm-type AppLists = array{enabled: array<string>, versions: array<string, string>, core: array<string>, info: array<string, array<string, mixed>>}
+ * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,publisher:?string,marks:list<string>,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string,previous?:array{version:string,recordedAt:string,sourceId:?string}}}
  */
 class InstallerService {
 	/** Server-side changelog size cap; see "Version listings carry release notes". */
@@ -66,22 +72,12 @@ class InstallerService {
 	public const KEY_NOTIFY_USERS_ON_UPDATE = 'notify_users_on_update';
 
 	public function __construct(
-		private IAppManager $appManager,
-		private IConfig $config,
-		private IAppConfig $appConfig,
-		private SourceRegistry $sourceRegistry,
-		private SourceBindingStore $bindingStore,
-		private TrustedSourceList $trustedSources,
-		private SelectedReleaseInstallerService $signedInstaller,
-		private ExternalReleaseInstallerService $externalInstaller,
-		private FailureClassifier $failureClassifier,
-		private EnvironmentCheck $environmentCheck,
-		private PinStore $pinStore,
+		private ServerAccess $server,
+		private SourceLookup $sources,
+		private ReleaseInstallers $installers,
+		private InstallState $state,
 		private IUserSession $userSession,
 		private ITimeFactory $timeFactory,
-		private LkgStore $lkgStore,
-		private ArtifactCache $artifactCache,
-		private IEventDispatcher $eventDispatcher,
 	) {
 	}
 
@@ -95,92 +91,205 @@ class InstallerService {
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @spec openspec/specs/migration-safety/spec.md
-	 * @return list<array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string}}>
+	 * @return list<InstalledAppCard>
 	 */
 	public function getInstalledApps(): array {
-		// Enabled apps, installed-but-disabled apps (Nextcloud keeps their
-		// installed version) and apps bound to a source but not installed yet,
-		// so every one of them can be picked and installed from the page; see
-		// "List Installed Apps".
-		$enabledApps = $this->appManager->getEnabledApps();
-		$installedVersions = $this->appManager->getAppInstalledVersions(false);
-		$installedApps = array_values(array_unique(array_filter(
-			array_merge($enabledApps, array_keys($installedVersions), $this->bindingStore->listBoundAppIds()),
+		$enabled = $this->server->appManager->getEnabledApps();
+		$versions = $this->server->appManager->getAppInstalledVersions(false);
+		$appIds = $this->listedAppIds($enabled, $versions);
+		$lists = [
+			'enabled' => $enabled,
+			'versions' => $versions,
+			'core' => $this->server->appManager->getAlwaysEnabledApps(),
+			'info' => self::appInfoById(),
+		];
+
+		return array_map(
+			fn (string $appId): array => $this->appCard($appId, $lists),
+			$appIds
+		);
+	}
+
+	/**
+	 * Enabled apps, installed-but-disabled apps (Nextcloud keeps their
+	 * installed version) and apps bound to a source but not installed yet,
+	 * so every one of them can be picked and installed from the page; see
+	 * "List Installed Apps". Versioniq itself is left out.
+	 *
+	 * @param array<string> $enabled
+	 * @param array<string, string> $versions
+	 * @return list<string>
+	 */
+	private function listedAppIds(array $enabled, array $versions): array {
+		$appIds = array_values(array_unique(array_filter(
+			array_merge($enabled, array_keys($versions), $this->sources->bindingStore->listBoundAppIds()),
 			fn (string $appId): bool => !$this->isSelfManagedApp($appId)
 		)));
-		sort($installedApps);
-		$alwaysEnabledApps = $this->appManager->getAlwaysEnabledApps();
-		$appList = [];
+		sort($appIds);
+
+		return $appIds;
+	}
+
+	/**
+	 * The server's app info, keyed by app id.
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	private static function appInfoById(): array {
+		$appInfo = [];
 		foreach ((new \OC_App())->listAllApps() as $app) {
 			if (!isset($app['id']) || !is_string($app['id'])) {
 				continue;
 			}
-			$appList[$app['id']] = $app;
+			$appInfo[$app['id']] = $app;
 		}
 
-		$bindingStore = $this->bindingStore;
-		$appManager = $this->appManager;
-		$environmentCheck = $this->environmentCheck;
-		$lkgStore = $this->lkgStore;
+		return $appInfo;
+	}
 
-		return array_map(
-			static function (string $appId) use ($appList, $alwaysEnabledApps, $bindingStore, $appManager, $environmentCheck, $lkgStore, $enabledApps, $installedVersions): array {
-				$app = $appList[$appId] ?? [];
-				$name = isset($app['name']) && is_string($app['name']) && trim($app['name']) !== ''
-					? trim($app['name'])
-					: $appId;
-				$description = isset($app['description']) && is_string($app['description']) ? trim($app['description']) : '';
-				$summary = isset($app['summary']) && is_string($app['summary']) ? trim($app['summary']) : '';
-				$preview = isset($app['preview']) && is_string($app['preview']) ? trim($app['preview']) : '';
-				$binding = $bindingStore->get($appId);
+	/**
+	 * One app's card for the Apps tab.
+	 *
+	 * @param AppLists $lists
+	 * @return InstalledAppCard
+	 */
+	private function appCard(string $appId, array $lists): array {
+		$binding = $this->sources->bindingStore->get($appId);
 
-				// Proactively flag apps whose folder cannot be managed here
-				// (e.g. a bind-mounted dev checkout that is not writable).
-				$env = ['manageable' => true, 'warning' => null];
-				try {
-					$env = $environmentCheck->inspect($appManager->getAppPath($appId));
-				} catch (\Throwable) {
-					// Path unknown — leave defaults; install-time guard still applies.
-				}
+		// The publisher is the app's info.xml authors, the marks those a named
+		// source backs; the featured flag is not read here, because the card
+		// list does not load the catalogue. See "Hits and cards name the
+		// publisher and the trust marks the data backs".
+		return [
+			'id' => $appId,
+			...self::appTexts($lists['info'][$appId] ?? [], $appId),
+			...$this->appStatus($appId, $lists, $binding),
+			'publisher' => PublisherTrust::publisherFromAuthors($lists['info'][$appId]['author'] ?? null),
+			'marks' => $this->cardMarks($appId, $binding),
+		];
+	}
 
-				if (in_array($appId, $enabledApps, true)) {
-					$state = 'enabled';
-				} elseif (isset($installedVersions[$appId])) {
-					$state = 'disabled';
-				} else {
-					$state = 'notInstalled';
-				}
+	/**
+	 * The trust marks a card's source backs; none without the publisher trust.
+	 *
+	 * @spec openspec/changes/inventory-verified-publisher/specs/app-discovery/spec.md#requirement-hits-and-cards-name-the-publisher-and-the-trust-marks-the-data-backs
+	 * @return list<string>
+	 */
+	private function cardMarks(string $appId, ?SourceBinding $binding): array {
+		return $this->sources->publisherTrust?->marksFor(
+			$appId,
+			$binding?->toArray() ?? ['kind' => SourceBinding::KIND_APPSTORE],
+			false
+		) ?? [];
+	}
 
-				$installedVersion = '';
-				if ($state !== 'notInstalled') {
-					try {
-						$installedVersion = $appManager->getAppVersion($appId, false);
-					} catch (Exception) {
-						$installedVersion = '';
-					}
-					if ($installedVersion === '') {
-						$installedVersion = $installedVersions[$appId] ?? '';
-					}
-				}
+	/**
+	 * The app's name, description, summary and preview from its app info,
+	 * trimmed; the name falls back to the app id.
+	 *
+	 * @param array<string, mixed> $app
+	 * @return array{label: string, description: string, summary: string, preview: string}
+	 */
+	private static function appTexts(array $app, string $appId): array {
+		$name = self::trimmedText($app, 'name');
 
-				return [
-					'id' => $appId,
-					'label' => $name,
-					'description' => $description,
-					'summary' => $summary,
-					'preview' => $preview,
-					'isCore' => in_array($appId, $alwaysEnabledApps, true),
-					'isShipped' => $appManager->isShipped($appId),
-					'boundSourceId' => $binding?->getId(),
-					'manageable' => $env['manageable'],
-					'warning' => $env['warning'],
-					'installedVersion' => $installedVersion === '' ? null : $installedVersion,
-					'state' => $state,
-					'lkg' => $lkgStore->get($appId)?->toArray(),
-				];
-			},
-			$installedApps
-		);
+		return [
+			'label' => $name !== '' ? $name : $appId,
+			'description' => self::trimmedText($app, 'description'),
+			'summary' => self::trimmedText($app, 'summary'),
+			'preview' => self::trimmedText($app, 'preview'),
+		];
+	}
+
+	/**
+	 * @param array<string, mixed> $app
+	 */
+	private static function trimmedText(array $app, string $key): string {
+		return isset($app[$key]) && is_string($app[$key]) ? trim($app[$key]) : '';
+	}
+
+	/**
+	 * The app's binding, environment, state, installed version and
+	 * last-known-good record for its card.
+	 *
+	 * @param AppLists $lists
+	 * @param ?SourceBinding $binding The app's source binding, read once per card.
+	 * @return array{isCore: bool, isShipped: bool, boundSourceId: ?string, manageable: bool, warning: ?string, installedVersion: ?string, state: 'enabled'|'disabled'|'notInstalled', lkg: ?array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}}
+	 */
+	private function appStatus(string $appId, array $lists, ?SourceBinding $binding): array {
+		$install = $this->appInstallStatus($appId, $lists);
+
+		return [
+			'isCore' => in_array($appId, $lists['core'], true),
+			'isShipped' => $this->server->appManager->isShipped($appId),
+			'boundSourceId' => $binding?->getId(),
+			...$install,
+			'state' => self::appState($appId, $lists),
+			'lkg' => $this->state->lkgStore->get($appId)?->toArray(),
+		];
+	}
+
+	/**
+	 * Whether the app's folder can be managed here, and its installed version.
+	 *
+	 * @param AppLists $lists
+	 * @return array{manageable: bool, warning: ?string, installedVersion: ?string}
+	 */
+	private function appInstallStatus(string $appId, array $lists): array {
+		$env = $this->appEnvironment($appId);
+		$installedVersion = $this->installedVersion($appId, $lists);
+
+		return [
+			'manageable' => $env['manageable'],
+			'warning' => $env['warning'],
+			'installedVersion' => $installedVersion === '' ? null : $installedVersion,
+		];
+	}
+
+	/**
+	 * Whether the app's folder can be managed here (a bind-mounted dev
+	 * checkout that is not writable cannot). When the path is unknown the
+	 * defaults stand; the install-time guard still applies.
+	 *
+	 * @return array{manageable: bool, warning: ?string}
+	 */
+	private function appEnvironment(string $appId): array {
+		try {
+			return $this->installers->environmentCheck->inspect($this->server->appManager->getAppPath($appId));
+		} catch (\Throwable) {
+			return ['manageable' => true, 'warning' => null];
+		}
+	}
+
+	/**
+	 * @param AppLists $lists
+	 * @return 'enabled'|'disabled'|'notInstalled'
+	 */
+	private static function appState(string $appId, array $lists): string {
+		if (in_array($appId, $lists['enabled'], true)) {
+			return 'enabled';
+		}
+
+		return isset($lists['versions'][$appId]) ? 'disabled' : 'notInstalled';
+	}
+
+	/**
+	 * The installed version of an installed app, from the app manager or else
+	 * from Nextcloud's record of installed versions; '' when there is none.
+	 *
+	 * @param AppLists $lists
+	 */
+	private function installedVersion(string $appId, array $lists): string {
+		if (self::appState($appId, $lists) === 'notInstalled') {
+			return '';
+		}
+		try {
+			$version = $this->server->appManager->getAppVersion($appId, false);
+		} catch (Exception) {
+			$version = '';
+		}
+
+		return $version !== '' ? $version : ($lists['versions'][$appId] ?? '');
 	}
 
 	/**
@@ -195,16 +304,9 @@ class InstallerService {
 	 */
 	public function getAppVersions(string $appId, ?string $sourceOverride = null): array {
 		$appId = trim($appId);
-		if ($appId === '') {
-			return $this->errorEnvelope('Missing app id.', Http::STATUS_BAD_REQUEST);
-		}
-		if (!$this->isManageableApp($appId)) {
-			return $this->errorEnvelope(
-				$this->isCoreProtectedApp($appId)
-					? 'This core app cannot be managed from Versioniq.'
-					: 'This app cannot be managed from Versioniq.',
-				Http::STATUS_FORBIDDEN
-			);
+		$refusal = $this->versionsRefusal($appId);
+		if ($refusal !== null) {
+			return $refusal;
 		}
 
 		try {
@@ -215,47 +317,138 @@ class InstallerService {
 			return $this->errorEnvelope($error->getMessage(), Http::STATUS_FORBIDDEN);
 		}
 
-		$source = $this->sourceRegistry->get($binding);
-		$result = $source->listVersions($appId, $binding);
+		$result = $this->listSourceVersions($appId, $binding);
+		$installedVersion = $this->installedVersionOrNull($appId);
 
-		// Shipped apps (bundled with the server release) are never published to
-		// the App Store, so a store miss is expected — explain it instead of
-		// surfacing a generic "not available" error.
-		if ($result['error'] === 'App is not available in the Nextcloud App Store.'
-			&& $this->appManager->isShipped($appId)
-		) {
-			$result['error'] = 'This app ships with Nextcloud itself: its version follows the server release and it is not distributed via the App Store. Bind a forge source to manage it from a repository instead.';
-		}
-
-		$installedVersion = null;
-		try {
-			$installed = $this->appManager->getAppVersion($appId);
-			if ($installed !== '') {
-				$installedVersion = $installed;
-			}
-		} catch (Exception) {
-			$installedVersion = null;
-		}
-
-		$versions = $this->applyChangelogTruncation($result['versions']);
+		// releases-version-facts D3/D4: read the full notes, before truncation.
+		$versions = self::applyReleaseNotesFacts($result['versions']);
+		// releases-version-facts D2: how installs of each version went here.
+		$versions = $this->state->outcomes?->stamp($versions, $appId) ?? $versions;
+		// releases-version-facts D4: the admin's own notes on each version.
+		$versions = self::applyAdminKnownIssues($versions, $this->state->knownIssues?->forApp($appId) ?? []);
+		$versions = $this->applyChangelogTruncation($versions);
 		$versions = $this->applyRecordedSha($versions, $binding);
 		$versions = $this->applyCachedOffline($versions, $appId);
+		/** @var list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool}> $versions */
 		$versions = $this->applyCachedServerCompatibility($versions, $appId);
 
-		$envelope = [
+		return [
 			'installedVersion' => $installedVersion,
 			'availableVersions' => $versions,
 			'versions' => $versions,
 			'source' => $binding->kind,
 			'sourceId' => $binding->getId(),
 			'statusCode' => Http::STATUS_OK,
-			'hasError' => $result['error'] !== null && $result['versions'] === [],
-		];
-		if ($result['error'] !== null) {
-			$envelope['error'] = $result['error'];
+		] + self::listingErrorFields($result);
+	}
+
+	/**
+	 * The error envelope for an app id that cannot be listed: blank (400), or
+	 * Versioniq itself or a core app (403).
+	 *
+	 * @return array{installedVersion: null, availableVersions: list<never>, versions: list<never>, source: string, sourceId: string, statusCode: int, hasError: true, error: string}|null
+	 */
+	private function versionsRefusal(string $appId): ?array {
+		if ($appId === '') {
+			return $this->errorEnvelope('Missing app id.', Http::STATUS_BAD_REQUEST);
+		}
+		if ($this->isManageableApp($appId)) {
+			return null;
 		}
 
-		return $envelope;
+		return $this->errorEnvelope(
+			$this->isCoreProtectedApp($appId)
+				? 'This core app cannot be managed from Versioniq.'
+				: 'This app cannot be managed from Versioniq.',
+			Http::STATUS_FORBIDDEN
+		);
+	}
+
+	/**
+	 * Lists the versions of the bound source. Shipped apps (bundled with the
+	 * server release) are never published to the App Store, so a store miss
+	 * for one is explained instead of surfacing a generic "not available".
+	 *
+	 * @return array{versions: list<array{version: string, changelog?: ?string, serverCompatible?: ?bool, releasedAt?: ?string}>, error: ?string}
+	 */
+	private function listSourceVersions(string $appId, SourceBinding $binding): array {
+		$result = $this->sources->sourceRegistry->get($binding)->listVersions($appId, $binding);
+		if ($result['error'] === 'App is not available in the Nextcloud App Store.'
+			&& $this->server->appManager->isShipped($appId)
+		) {
+			$result['error'] = 'This app ships with Nextcloud itself: its version follows the server release and it is not distributed via the App Store. Bind a forge source to manage it from a repository instead.';
+		}
+
+		return $result;
+	}
+
+	/**
+	 * The installed version of an app, or null when it is blank or unreadable.
+	 */
+	private function installedVersionOrNull(string $appId): ?string {
+		try {
+			$installed = $this->server->appManager->getAppVersion($appId);
+		} catch (Exception) {
+			return null;
+		}
+
+		return $installed !== '' ? $installed : null;
+	}
+
+	/**
+	 * `hasError` (an error and no versions) and, when the listing has one,
+	 * its `error`.
+	 *
+	 * @param array{versions: list<mixed>, error: ?string} $result
+	 * @return array{hasError: bool, error?: string}
+	 */
+	private static function listingErrorFields(array $result): array {
+		if ($result['error'] === null) {
+			return ['hasError' => false];
+		}
+
+		return ['hasError' => $result['versions'] === [], 'error' => $result['error']];
+	}
+
+	/**
+	 * Stamps `breaking` and `knownIssues` on each version from its full
+	 * release notes (releases-version-facts D3, D4).
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-a-version-its-publisher-marks-as-breaking-is-flagged
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+	 * @param list<array<string, mixed>> $versions
+	 * @return list<array<string, mixed>>
+	 */
+	private static function applyReleaseNotesFacts(array $versions): array {
+		$reader = new ReleaseNotesReader();
+		return array_map(
+			static function (array $entry) use ($reader): array {
+				$notes = is_string($entry['changelog'] ?? null) ? $entry['changelog'] : '';
+				$entry['breaking'] = $reader->isBreaking($notes);
+				$entry['knownIssues'] = $reader->knownIssues($notes);
+				return $entry;
+			},
+			$versions
+		);
+	}
+
+	/**
+	 * Stamps `adminKnownIssues` on each version: the known issues an admin
+	 * recorded against it, none when there are none (releases-version-facts D4).
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+	 * @param list<array<string, mixed>> $versions
+	 * @param array<string, list<array<string, mixed>>> $notes Version => the admin's notes.
+	 * @return list<array<string, mixed>>
+	 */
+	private static function applyAdminKnownIssues(array $versions, array $notes): array {
+		return array_map(
+			static function (array $entry) use ($notes): array {
+				$entry['adminKnownIssues'] = $notes[(string)($entry['version'] ?? '')] ?? [];
+				return $entry;
+			},
+			$versions
+		);
 	}
 
 	/**
@@ -319,7 +512,7 @@ class InstallerService {
 	 * @return list<array<string, mixed>>
 	 */
 	private function applyCachedOffline(array $versions, string $appId): array {
-		$cachedVersions = array_flip($this->artifactCache->cachedVersionsFor($appId));
+		$cachedVersions = array_flip($this->state->artifactCache->cachedVersionsFor($appId));
 
 		return array_map(
 			static function (array $entry) use ($cachedVersions): array {
@@ -354,7 +547,7 @@ class InstallerService {
 				if (($entry['cachedOffline'] ?? false) !== true || isset($entry['serverCompatible']) || !is_string($version)) {
 					return $entry;
 				}
-				$spec = $this->artifactCache->platformSpecFor($appId, $version);
+				$spec = $this->state->artifactCache->platformSpecFor($appId, $version);
 				if ($spec !== null) {
 					$entry['serverCompatible'] = AppStoreSource::satisfiesPlatformSpec($serverVersion, $spec);
 				}
@@ -369,7 +562,7 @@ class InstallerService {
 	 * The running server's version as `major.minor.patch`, or '' when unknown.
 	 */
 	private function serverCoreVersion(): string {
-		$core = array_slice(explode('.', $this->config->getSystemValueString('version', '')), 0, 3);
+		$core = array_slice(explode('.', $this->server->configs->config->getSystemValueString('version', '')), 0, 3);
 		foreach ($core as $part) {
 			if (!ctype_digit($part)) {
 				return '';
@@ -401,11 +594,9 @@ class InstallerService {
 	 * guard". Dry-run requests evaluate the same condition but are never
 	 * blocked by it.
 	 *
-	 * `$dryRun` is the explicit dry-run trigger, independent of
-	 * `$includeDebug` (which now controls diagnostic verbosity only); see
-	 * MODIFIED "Debug Mode". `null` (the default) preserves the legacy
-	 * behavior of every caller that predates this parameter: falls back to
-	 * `$includeDebug`, so `debug=1` alone still implies a dry-run.
+	 * The request's dry-run flag is independent of its debug flag (which
+	 * controls diagnostic verbosity only); see MODIFIED "Debug Mode". The
+	 * app id and version are trimmed here.
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @spec openspec/specs/version-pinning/spec.md
@@ -415,399 +606,638 @@ class InstallerService {
 	 * @spec openspec/specs/artifact-cache/spec.md
 	 * @return array{statusCode:int, payload:array<string, mixed>}
 	 */
-	public function installAppVersion(
-		string $appId,
-		string $targetVersion,
-		bool $includeDebug,
-		?string $sourceOverride = null,
-		?string $overridePin = null,
-		bool $pinRequested = false,
-		bool $acceptNewSha = false,
-		bool $allowDowngrade = false,
-		?bool $dryRun = null,
-	): array {
-		// Independent of $includeDebug (deprecation-preserving fallback only
-		// when the caller does not pass $dryRun at all); see MODIFIED "Debug
-		// Mode" — "Legacy behavior preserved".
-		$dryRun = $dryRun ?? $includeDebug;
-		$appId = trim($appId);
-		$targetVersion = trim($targetVersion);
-		if ($appId === '' || $targetVersion === '') {
-			return [
-				'statusCode' => Http::STATUS_BAD_REQUEST,
-				'payload' => ['message' => 'Missing app id or version.'],
-			];
+	public function installAppVersion(InstallRequest $request): array {
+		$target = $request->target;
+
+		return $this->runInstall(new InstallRequest(
+			new InstallTarget(trim($target->appId), trim($target->version), $target->sourceOverride),
+			$request->options,
+			$request->pinChoice,
+		));
+	}
+
+	/**
+	 * Runs one install request through its guards, in order, and then installs.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}
+	 */
+	private function runInstall(InstallRequest $request): array {
+		$refusal = $this->requestRefusal($request);
+		if ($refusal !== null) {
+			return $refusal;
 		}
-		if (!$this->isManageableApp($appId)) {
-			return [
-				'statusCode' => Http::STATUS_FORBIDDEN,
-				'payload' => [
-					'appId' => $appId,
-					'toVersion' => $targetVersion,
-					'message' => $this->isCoreProtectedApp($appId)
-						? 'This core app cannot be installed or updated from Versioniq.'
-						: 'This app cannot be installed or updated from Versioniq.',
-				],
-			];
-		}
-		if ($overridePin !== null && $overridePin !== self::OVERRIDE_PIN_REPIN && $overridePin !== self::OVERRIDE_PIN_UNPIN) {
-			return [
-				'statusCode' => Http::STATUS_BAD_REQUEST,
-				'payload' => [
-					'appId' => $appId,
-					'toVersion' => $targetVersion,
-					'message' => 'overridePin must be "repin" or "unpin".',
-				],
-			];
+		$run = $this->openInstallRun($request);
+		if (is_array($run)) {
+			return $run;
 		}
 
+		return $this->installRunRefusal($run) ?? $this->installRelease($run);
+	}
+
+	/**
+	 * @param array<string, mixed> $payload
+	 * @return array{statusCode:int, payload:array<string, mixed>}
+	 */
+	private function installEnvelope(int $statusCode, array $payload): array {
+		return ['statusCode' => $statusCode, 'payload' => $payload];
+	}
+
+	/**
+	 * The app id, both versions, `$details` and the source id, in that order.
+	 *
+	 * @param array<string, mixed> $details
+	 * @return array<string, mixed>
+	 */
+	private function outcomePayload(InstallRun $run, array $details): array {
+		$base = [
+			'appId' => $run->request->target->appId,
+			'fromVersion' => $run->fromVersion(),
+			'toVersion' => $run->request->target->version,
+		];
+
+		return $base + $details + ['sourceId' => $run->binding->getId()];
+	}
+
+	/**
+	 * The app id, the target version, `$message`, the source id and an empty debug log.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function briefPayload(InstallRun $run, string $message): array {
+		return [
+			'appId' => $run->request->target->appId,
+			'toVersion' => $run->request->target->version,
+			'message' => $message,
+			'sourceId' => $run->binding->getId(),
+		] + $run->debugSuffix([]);
+	}
+
+	/**
+	 * Refuses a request without app id or version, for an app Versioniq does
+	 * not manage, or with an unknown pin override.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 */
+	private function requestRefusal(InstallRequest $request): ?array {
+		$target = $request->target;
+		if ($target->appId === '' || $target->version === '') {
+			return $this->installEnvelope(Http::STATUS_BAD_REQUEST, ['message' => 'Missing app id or version.']);
+		}
+		if (!AppIdFormat::isValid($target->appId)) {
+			return $this->installEnvelope(Http::STATUS_BAD_REQUEST, ['appId' => $target->appId, 'message' => 'Not a valid app id.']);
+		}
+		if (!$this->isManageableApp($target->appId)) {
+			return $this->installEnvelope(Http::STATUS_FORBIDDEN, [
+				'appId' => $target->appId,
+				'toVersion' => $target->version,
+				'message' => $this->isCoreProtectedApp($target->appId)
+					? 'This core app cannot be installed or updated from Versioniq.'
+					: 'This app cannot be installed or updated from Versioniq.',
+			]);
+		}
+
+		return $this->overridePinRefusal($request);
+	}
+
+	/**
+	 * Refuses a pin override other than `repin` or `unpin`; the caller
+	 * rejects it before this point in the normal flow.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 */
+	private function overridePinRefusal(InstallRequest $request): ?array {
+		$overridePin = $request->pinChoice->overridePin;
+		if ($overridePin === null || $overridePin === self::OVERRIDE_PIN_REPIN || $overridePin === self::OVERRIDE_PIN_UNPIN) {
+			return null;
+		}
+
+		return $this->installEnvelope(Http::STATUS_BAD_REQUEST, [
+			'appId' => $request->target->appId,
+			'toVersion' => $request->target->version,
+			'message' => 'overridePin must be "repin" or "unpin".',
+		]);
+	}
+
+	/**
+	 * Resolves the source binding against the allowlist and reads the
+	 * installed version; a bad or untrusted source is refused.
+	 *
+	 * @return InstallRun|array{statusCode:int, payload:array<string, mixed>}
+	 */
+	private function openInstallRun(InstallRequest $request): InstallRun|array {
 		try {
-			$binding = $this->resolveBinding($appId, $sourceOverride);
-			$this->trustedSources->assertBindingAllowed($binding);
+			$binding = $this->resolveBinding($request->target->appId, $request->target->sourceOverride);
+			$this->state->trustedSources->assertBindingAllowed($binding);
 		} catch (InvalidArgumentException $error) {
-			return ['statusCode' => Http::STATUS_BAD_REQUEST, 'payload' => ['message' => $error->getMessage()]];
+			return $this->installEnvelope(Http::STATUS_BAD_REQUEST, ['message' => $error->getMessage()]);
 		} catch (UntrustedSourceException $error) {
-			return ['statusCode' => Http::STATUS_FORBIDDEN, 'payload' => ['message' => $error->getMessage()]];
+			return $this->installEnvelope(Http::STATUS_FORBIDDEN, ['message' => $error->getMessage()]);
 		}
 
+		return new InstallRun($request, $binding, $this->freshInstalledVersion($request->target->appId));
+	}
+
+	/** The installed version read past the apps cache, or '' when there is none. */
+	private function freshInstalledVersion(string $appId): string {
 		try {
-			$this->appManager->clearAppsCache();
-			$installedVersion = $this->appManager->getAppVersion($appId, false);
+			$this->server->appManager->clearAppsCache();
+
+			return $this->server->appManager->getAppVersion($appId, false);
 		} catch (Exception) {
-			$installedVersion = '';
+			return '';
+		}
+	}
+
+	/**
+	 * The guards that run before any download: downgrade, pin, same version
+	 * and destination pre-flight. The pin is read after the downgrade guard.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 */
+	private function installRunRefusal(InstallRun $run): ?array {
+		$refusal = $this->downgradeRefusal($run);
+		if ($refusal !== null) {
+			return $refusal;
+		}
+		$run->pin = $this->state->pinStore->get($run->request->target->appId);
+
+		return $this->pinRefusal($run) ?? $this->sameVersionOutcome($run) ?? $this->withdrawnRefusal($run) ?? $this->environmentRefusal($run);
+	}
+
+	/**
+	 * Withdrawn guard: a version its publisher withdrew is never installed by
+	 * accident, even while a stale catalogue still resolves it
+	 * (safety-withdrawn-and-revoked, design D3). Reinstalling the version that
+	 * already runs is answered before this, as a no-op.
+	 *
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-a-withdrawn-installed-version-is-marked-and-never-reinstalled-by-accident
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 */
+	private function withdrawnRefusal(InstallRun $run): ?array {
+		$withdrawn = $this->state->withdrawnVersions;
+		$target = $run->request->target;
+		if ($withdrawn === null || !$withdrawn->isWithdrawn($target->appId, $target->version)) {
+			return null;
 		}
 
-		// Server-side downgrade guard: refuse a real (non-dry-run) downgrade
-		// before any download unless explicitly acknowledged — see "Server-side
-		// downgrade guard". Dry-run requests evaluate this same condition but
-		// are never blocked by it (they report via updateType/orphanedMigrations
-		// instead) — see "Dry-run requests MUST evaluate and report the guard
-		// without requiring the flag".
-		$isDowngradeRequest = $installedVersion !== '' && version_compare($targetVersion, $installedVersion, '<');
-		if ($isDowngradeRequest && !$dryRun && !$allowDowngrade) {
-			$category = FailureClassifier::CATEGORY_DOWNGRADE_GUARD;
+		return $this->installEnvelope(Http::STATUS_CONFLICT, $this->outcomePayload($run, [
+			'message' => sprintf('Version %s of %s was withdrawn by its publisher.', $target->version, $target->appId),
+			'category' => 'withdrawn',
+			'hint' => 'Choose another version from the list.',
+			'installStatus' => 'failed',
+		]));
+	}
 
-			// $dryRun is false here (the guard above only fires when
-			// !$dryRun), so this is a real install refusal; $includeDebug is
-			// independent and may still be true, but there is no debug
-			// branch to attach — nothing was attempted.
-			return [
-				'statusCode' => $this->failureClassifier->httpStatusFor($category),
-				'payload' => [
-					'appId' => $appId,
-					'fromVersion' => $installedVersion,
-					'toVersion' => $targetVersion,
-					'message' => $this->failureClassifier->messageFor($category),
-					'category' => $category,
-					'hint' => $this->failureClassifier->downgradeGuardHint($installedVersion, $targetVersion),
-					'installStatus' => 'failed',
-					'sourceId' => $binding->getId(),
-				],
-			];
+	/**
+	 * Server-side downgrade guard: refuses a real (non-dry-run) downgrade
+	 * before any download unless explicitly acknowledged — see "Server-side
+	 * downgrade guard". Dry-run requests evaluate this same condition but are
+	 * never blocked by it (they report via updateType/orphanedMigrations
+	 * instead) — see "Dry-run requests MUST evaluate and report the guard
+	 * without requiring the flag". Nothing was attempted, so no debug log.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 */
+	private function downgradeRefusal(InstallRun $run): ?array {
+		$options = $run->request->options;
+		if (!$this->isDowngradeRun($run) || $options->dryRun || $options->allowDowngrade) {
+			return null;
+		}
+		$category = FailureClassifier::CATEGORY_DOWNGRADE_GUARD;
+
+		return $this->installEnvelope($this->installers->failureClassifier->httpStatusFor($category), $this->outcomePayload($run, [
+			'message' => $this->installers->failureClassifier->messageFor($category),
+			'category' => $category,
+			'hint' => $this->installers->failureClassifier->downgradeGuardHint($run->installedVersion, $run->request->target->version),
+			'installStatus' => 'failed',
+		]));
+	}
+
+	private function isDowngradeRun(InstallRun $run): bool {
+		return $run->installedVersion !== '' && version_compare($run->request->target->version, $run->installedVersion, '<');
+	}
+
+	/**
+	 * Pin guard: Versioniq's own install path refuses to overwrite a pinned
+	 * app without an explicit override — see "Pins are enforced on
+	 * Versioniq's own install path". Reinstalling the pinned version itself
+	 * is never blocked (no drift, nothing to override).
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 */
+	private function pinRefusal(InstallRun $run): ?array {
+		$pin = $run->pinBeingOverridden();
+		if ($pin === null || $run->request->pinChoice->overridePin !== null) {
+			return null;
 		}
 
-		// Pin guard: Versioniq's own install path refuses to overwrite a
-		// pinned app without an explicit override — see "Pins are enforced on
-		// Versioniq's own install path". Reinstalling the pinned version
-		// itself is never blocked (no drift, nothing to override).
-		$pin = $this->pinStore->get($appId);
-		$isOverridingPin = $pin !== null && $targetVersion !== $pin->version;
-		if ($isOverridingPin && $overridePin === null) {
-			return [
-				'statusCode' => Http::STATUS_CONFLICT,
-				'payload' => [
-					'appId' => $appId,
-					'fromVersion' => $installedVersion === '' ? null : $installedVersion,
-					'toVersion' => $targetVersion,
-					'message' => sprintf('This app is pinned to version %s. Pass overridePin=repin or overridePin=unpin to proceed.', $pin->version),
-					'category' => 'pinned',
-					'pinnedVersion' => $pin->version,
-					'sourceId' => $binding->getId(),
-				] + ($includeDebug ? ['debug' => []] : []),
-			];
+		return $this->installEnvelope(Http::STATUS_CONFLICT, $this->outcomePayload($run, [
+			'message' => sprintf('This app is pinned to version %s. Pass overridePin=repin or overridePin=unpin to proceed.', $pin->version),
+			'category' => 'pinned',
+			'pinnedVersion' => $pin->version,
+		]) + $run->debugSuffix([]));
+	}
+
+	/**
+	 * Answers a request for the version that is already installed, clearing a
+	 * stale drift marker of a pin on that version.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 */
+	private function sameVersionOutcome(InstallRun $run): ?array {
+		if ($run->installedVersion === '' || !version_compare($run->request->target->version, $run->installedVersion, '=')) {
+			return null;
 		}
+		$this->clearPinDrift($run);
 
-		if ($installedVersion !== '' && version_compare($targetVersion, $installedVersion, '=')) {
-			// Reinstalling the currently-installed pinned version with a stale
-			// drift marker (e.g. the app was separately restored to the pinned
-			// version) clears that marker — see "Re-pin reinstalls the pinned
-			// version".
-			if ($pin !== null && $targetVersion === $pin->version && $pin->hasDrifted()) {
-				$this->pinStore->set($appId, new Pin($pin->version, $pin->pinnedBy, $pin->pinnedAt, $pin->reason));
-			}
+		return $this->installEnvelope(Http::STATUS_OK, $this->outcomePayload($run, [
+			'message' => 'App already has this version installed.',
+		]) + $run->debugSuffix([]));
+	}
 
-			return [
-				'statusCode' => Http::STATUS_OK,
-				'payload' => [
-					'appId' => $appId,
-					'fromVersion' => $installedVersion,
-					'toVersion' => $targetVersion,
-					'message' => 'App already has this version installed.',
-					'sourceId' => $binding->getId(),
-				] + ($includeDebug ? ['debug' => []] : []),
-			];
+	/**
+	 * Re-pin after drift (the app was restored to, or reinstalled at, the
+	 * pinned version) clears the drift markers — see "Re-pin reinstalls the
+	 * pinned version".
+	 */
+	private function clearPinDrift(InstallRun $run): void {
+		$pin = $run->pin;
+		if ($pin !== null && $run->request->target->version === $pin->version && $pin->hasDrifted()) {
+			$this->state->pinStore->set($run->request->target->appId, new Pin($pin->version, $pin->pinnedBy, $pin->pinnedAt, $pin->reason));
 		}
+	}
 
-		// Pre-flight: replacing an existing app renames its folder, which needs a
-		// writable parent directory. A bind-mounted dev checkout (owned by another
-		// uid) is not writable by the web-server user, so the install can never
-		// succeed — fail fast before downloading anything.
+	/**
+	 * The two pre-flight checks on the environment, sharing one lookup of the
+	 * installed app's folder.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 */
+	private function environmentRefusal(InstallRun $run): ?array {
+		$existingPath = $this->existingAppPath($run->request->target->appId);
+
+		return $this->preflightRefusal($run, $existingPath) ?? $this->spaceRefusal($run, $existingPath);
+	}
+
+	/**
+	 * Pre-flight: replacing an existing app renames its folder, which needs a
+	 * writable parent directory. A bind-mounted dev checkout (owned by another
+	 * uid) is not writable by the web-server user, so the install can never
+	 * succeed — fail fast before downloading anything.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 */
+	private function preflightRefusal(InstallRun $run, ?string $existingPath): ?array {
+		if ($existingPath === null || $this->installers->environmentCheck->isDestinationWritable($existingPath)) {
+			return null;
+		}
+		$category = FailureClassifier::CATEGORY_PREFLIGHT_PERMISSION;
+
+		return $this->installEnvelope($this->installers->failureClassifier->httpStatusFor($category), $this->outcomePayload($run, [
+			'message' => $this->installers->failureClassifier->messageFor($category),
+			'category' => $category,
+			'stage' => FailureClassifier::STAGE_REQUESTED,
+			'hint' => $this->installers->failureClassifier->hintFor($category),
+			'installStatus' => 'failed',
+		]) + $run->debugSuffix([]));
+	}
+
+	/**
+	 * Pre-flight: the apps folder and the temp folder must have room for the
+	 * package before anything is downloaded (safety-rollback-backup-and-preflight
+	 * D2). The release is not resolved yet, so the size is the default.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 *
+	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+	 */
+	private function spaceRefusal(InstallRun $run, ?string $existingPath): ?array {
+		$space = $this->installers->environmentCheck->hasSpaceFor($existingPath);
+		if (isset($space['fits'])) {
+			$run->space = $space;
+		}
+		// No verdict counts as room, like a folder whose free space is unknown.
+		if (($space['fits'] ?? true) !== false) {
+			return null;
+		}
+		$category = FailureClassifier::CATEGORY_PREFLIGHT_SPACE;
+
+		return $this->installEnvelope($this->installers->failureClassifier->httpStatusFor($category), $this->outcomePayload($run, [
+			'message' => $this->installers->failureClassifier->messageFor($category),
+			'category' => $category,
+			'stage' => FailureClassifier::STAGE_REQUESTED,
+			'hint' => $this->installers->failureClassifier->hintFor($category),
+			'space' => $space,
+			'installStatus' => 'failed',
+		]) + $run->debugSuffix([]));
+	}
+
+	private function existingAppPath(string $appId): ?string {
 		try {
-			$existingPath = $this->appManager->getAppPath($appId);
+			return $this->server->appManager->getAppPath($appId);
 		} catch (Exception) {
-			$existingPath = null;
+			return null;
 		}
-		if ($existingPath !== null && !$this->environmentCheck->isDestinationWritable($existingPath)) {
-			$category = FailureClassifier::CATEGORY_PREFLIGHT_PERMISSION;
+	}
 
-			return [
-				'statusCode' => $this->failureClassifier->httpStatusFor($category),
-				'payload' => [
-					'appId' => $appId,
-					'fromVersion' => $installedVersion === '' ? null : $installedVersion,
-					'toVersion' => $targetVersion,
-					'message' => $this->failureClassifier->messageFor($category),
-					'category' => $category,
-					'stage' => FailureClassifier::STAGE_REQUESTED,
-					'hint' => $this->failureClassifier->hintFor($category),
-					'installStatus' => 'failed',
-					'sourceId' => $binding->getId(),
-				] + ($includeDebug ? ['debug' => []] : []),
-			];
-		}
-
-		$source = $this->sourceRegistry->get($binding);
-		$release = $source->resolveRelease($appId, $targetVersion, $binding);
+	/**
+	 * Resolves the release in the bound source and installs it.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}
+	 */
+	private function installRelease(InstallRun $run): array {
+		$source = $this->sources->sourceRegistry->get($run->binding);
+		$release = $source->resolveRelease($run->request->target->appId, $run->request->target->version, $run->binding);
 		if ($release === null) {
-			return [
-				'statusCode' => Http::STATUS_NOT_FOUND,
-				'payload' => [
-					'appId' => $appId,
-					'toVersion' => $targetVersion,
-					'message' => 'Requested version not found in source metadata.',
-					'sourceId' => $binding->getId(),
-				] + ($includeDebug ? ['debug' => []] : []),
-			];
+			return $this->installEnvelope(Http::STATUS_NOT_FOUND, $this->briefPayload($run, 'Requested version not found in source metadata.'));
 		}
 		if (isset($release['error']) && is_string($release['error'])) {
-			return [
-				'statusCode' => Http::STATUS_BAD_REQUEST,
-				'payload' => [
-					'appId' => $appId,
-					'toVersion' => $targetVersion,
-					'message' => $release['error'],
-					'sourceId' => $binding->getId(),
-				] + ($includeDebug ? ['debug' => []] : []),
-			];
+			return $this->installEnvelope(Http::STATUS_BAD_REQUEST, $this->briefPayload($run, $release['error']));
 		}
 
+		return $this->installFromSource(new ReleaseInstall($run, $source, $release));
+	}
+
+	/**
+	 * Installs under maintenance mode (never for a dry run, which changes
+	 * nothing and so never locks users out, #427) and reports each failure
+	 * with its classification.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}
+	 */
+	private function installFromSource(ReleaseInstall $install): array {
 		$maintenanceWasSet = false;
-		// $dryRun was already resolved (independent of $includeDebug) at the
-		// top of this method — see MODIFIED "Debug Mode".
 		try {
-			// A dry run changes nothing, so it never locks users out (#427).
-			if (!$dryRun && !$this->config->getSystemValueBool('maintenance', false)) {
+			if ($this->shouldEnterMaintenance($install->run)) {
 				$maintenanceWasSet = true;
-				$this->config->setSystemValue('maintenance', true);
+				$this->server->configs->config->setSystemValue('maintenance', true);
 			}
 
-			$recordedShaMatched = null;
-			if ($source->getInstallerKind() === \OCA\Versioniq\Service\Source\SourceInterface::INSTALLER_SIGNED) {
-				$result = $this->signedInstaller->installFromSelectedRelease($appId, $release, $dryRun);
-				$integrityWarning = null;
-			} else {
-				$result = $this->externalInstaller->installFromExternalRelease($appId, $targetVersion, $release, $binding, $dryRun, $acceptNewSha);
-				$integrityWarning = $result['integrityWarning'] ?? null;
-				$recordedShaMatched = $result['recordedShaMatched'] ?? null;
-				// The external installer may have recorded/replaced a SHA-256 on
-				// the binding — persist that updated binding, not the pre-install
-				// one, so the digest is not lost; see "SHA-256 recorded on first
-				// successful external install".
-				$binding = $result['binding'];
-			}
-
-			if (!$dryRun) {
-				$this->appManager->clearAppsCache();
-				$this->bindingStore->set($appId, $binding);
-			}
-
-			$this->appManager->clearAppsCache();
-			$appVersion = null;
-			try {
-				$appPath = $this->appManager->getAppPath($appId, true);
-				$appInfo = $this->appManager->getAppInfoByPath($appPath . '/appinfo/info.xml');
-				if (is_array($appInfo) && isset($appInfo['version']) && is_string($appInfo['version'])) {
-					$appVersion = $appInfo['version'];
-				}
-			} catch (Exception) {
-				$appVersion = null;
-			}
-			if ($appVersion === null) {
-				$appVersion = $this->appManager->getAppVersion($appId, false);
-			}
-			$configuredVersion = $this->appConfig->getValueString($appId, 'installed_version', $appVersion);
-			if ($configuredVersion !== '') {
-				$appVersion = $configuredVersion;
-			}
-
-			$payload = [
-				'appId' => $appId,
-				'fromVersion' => $installedVersion === '' ? null : $installedVersion,
-				'toVersion' => $dryRun ? $targetVersion : $appVersion,
-				'installedVersion' => $appVersion,
-				'updateType' => $this->classifyUpdateType($installedVersion, $appVersion, $dryRun),
-				'message' => $this->classifyMessage($installedVersion, $appVersion, $dryRun),
-				'dryRun' => $dryRun,
-				'installStatus' => $result['status'] ?? 'unknown',
-				'sourceId' => $binding->getId(),
-				// See "Cached fallback with full re-verification" — the outcome
-				// states when the download step fell back to a locally cached
-				// artifact instead of the source.
-				'servedFromCache' => (bool)($result['servedFromCache'] ?? false),
-			];
-			if ($integrityWarning !== null) {
-				$payload['integrityWarning'] = $integrityWarning;
-			}
-			if ($recordedShaMatched !== null) {
-				// See "Recorded SHA-256 enforced on reinstall" — Scenario
-				// "Matching digest proceeds": the response indicates the
-				// artifact matched the first-install checksum.
-				$payload['recordedShaMatched'] = $recordedShaMatched;
-			}
-			if (array_key_exists('orphanedMigrations', $result)) {
-				// Present only for a downgrade (acknowledged or dry-run); see
-				// "Migration diff on downgrade". `null` means the diff could not
-				// be computed (degrades to a generic warning), `[]` means no
-				// schema steps differ. The signed installer's return type is
-				// loosely typed (array<string, mixed>), so the value is
-				// explicitly annotated here rather than inferred.
-				/** @var list<string>|null $orphanedMigrations */
-				$orphanedMigrations = $result['orphanedMigrations'];
-				$payload['orphanedMigrations'] = $orphanedMigrations;
-			}
-			if ($includeDebug) {
-				$payload['debug'] = (array)($result['debug'] ?? []);
-			}
-
-			// Pin state changes only after a real (non-dry-run) install success;
-			// see "Pins are enforced on Versioniq's own install path". Adjusting
-			// the pin here — inside this same request, immediately after the
-			// filesystem swap and before returning — is what keeps a subsequent
-			// drift check from misreading our own override as drift.
-			if (!$dryRun) {
-				// $isOverridingPin implies $pin !== null and, having reached this
-				// point, $overridePin !== null (the guard above already returned
-				// 409 otherwise) — so $overridePin is exactly 'repin' or 'unpin'.
-				if ($isOverridingPin) {
-					if ($overridePin === self::OVERRIDE_PIN_REPIN) {
-						$this->pinStore->set($appId, new Pin($appVersion, $this->currentActorUid(), $this->nowIso(), $pin->reason));
-					} else {
-						$this->pinStore->clear($appId, $this->currentActorUid());
-					}
-				} elseif ($pin === null && $pinRequested) {
-					$this->pinStore->set($appId, new Pin($appVersion, $this->currentActorUid(), $this->nowIso()));
-				} elseif ($pin !== null && $targetVersion === $pin->version && $pin->hasDrifted()) {
-					// Re-pin after drift (Re-pin button reinstalls the pinned
-					// version) — clear the drift markers; see "Re-pin reinstalls
-					// the pinned version".
-					$this->pinStore->set($appId, new Pin($pin->version, $pin->pinnedBy, $pin->pinnedAt, $pin->reason));
-				}
-
-				// After the pin is settled, so our own listener does not read a
-				// re-pinned install as drift.
-				$this->dispatchUpdateEvent($appId, $installedVersion, $appVersion);
-			}
-
-			return ['statusCode' => Http::STATUS_OK, 'payload' => $payload];
+			return $this->installAndReport($install);
 		} catch (UntrustedSourceException $error) {
-			return [
-				'statusCode' => Http::STATUS_FORBIDDEN,
-				'payload' => [
-					'appId' => $appId,
-					'toVersion' => $targetVersion,
-					'message' => $error->getMessage(),
-					'sourceId' => $binding->getId(),
-				] + ($includeDebug ? ['debug' => []] : []),
-			];
+			return $this->installEnvelope(Http::STATUS_FORBIDDEN, $this->briefPayload($install->run, $error->getMessage()));
 		} catch (ShaMismatchException $error) {
-			// Recorded-digest mismatch: no filesystem change happened (thrown
-			// before extraction/backup). Machine-readable `code` lets the
-			// frontend render the explicit "accept new checksum" escape hatch;
-			// see "Recorded SHA-256 enforced on reinstall".
-			$classification = $this->failureClassifier->classify($error, FailureClassifier::STAGE_CHECKSUM, FailureClassifier::CATEGORY_SHA_MISMATCH);
-			$payload = [
-				'appId' => $appId,
-				'fromVersion' => $installedVersion === '' ? null : $installedVersion,
-				'toVersion' => $targetVersion,
-				'message' => $error->getMessage(),
-				'category' => $classification['category'],
-				'code' => 'sha_mismatch',
-				'stage' => FailureClassifier::STAGE_CHECKSUM,
-				'hint' => $classification['hint'],
-				'installStatus' => 'failed',
-				'sourceId' => $binding->getId(),
-				'expectedSha' => $error->expectedSha,
-				'actualSha' => $error->actualSha,
-			];
-			if ($includeDebug) {
-				$payload['debug'] = $this->installerDebugLog($source);
-			}
-
-			return ['statusCode' => $classification['statusCode'], 'payload' => $payload];
+			return $this->shaMismatchOutcome($install, $error);
 		} catch (InstallFailure $failure) {
-			// The installer already handled filesystem recovery; report the
-			// honest outcome (reverted / installed-but-broken) instead of a 500.
-			$debugLog = $this->installerDebugLog($source);
-			$isBroken = $failure->getOutcome() === InstallFailure::OUTCOME_INSTALLED_BUT_BROKEN;
-			$category = $isBroken
-				? FailureClassifier::CATEGORY_FINALIZE
-				: $this->failureClassifier->categoryFor($failure, $failure->getStage());
-			$hint = $isBroken
-				? $this->failureClassifier->finalizeHint($failure->getRestoreState())
-				: $this->failureClassifier->revertedHint();
-			$payload = [
-				'appId' => $appId,
-				'fromVersion' => $installedVersion === '' ? null : $installedVersion,
-				'toVersion' => $targetVersion,
-				'message' => $failure->getMessage(),
-				'category' => $category,
-				'stage' => $failure->getStage(),
-				'hint' => $hint,
-				'installStatus' => $failure->getOutcome(),
-				'sourceId' => $binding->getId(),
-			];
-			if ($includeDebug) {
-				$payload['debug'] = $debugLog;
-			}
-
-			return ['statusCode' => $this->failureClassifier->httpStatusFor($category), 'payload' => $payload];
+			return $this->installFailureOutcome($install, $failure);
 		} catch (Exception $error) {
-			// Classified failure: attach stage/category/hint regardless of debug,
-			// and derive the HTTP status from the category (no blanket 500).
-			$debugLog = $this->installerDebugLog($source);
-			$lastStage = $this->lastStageOf($debugLog);
-			$classification = $this->failureClassifier->classify($error, $lastStage);
-			$payload = [
-				'appId' => $appId,
-				'fromVersion' => $installedVersion === '' ? null : $installedVersion,
-				'toVersion' => $targetVersion,
-				'message' => $error->getMessage(),
-				'category' => $classification['category'],
-				'stage' => $lastStage,
-				'hint' => $classification['hint'],
-				'installStatus' => 'failed',
-				'sourceId' => $binding->getId(),
-			];
-			if ($includeDebug) {
-				$payload['debug'] = $debugLog;
-			}
-
-			return ['statusCode' => $classification['statusCode'], 'payload' => $payload];
+			return $this->classifiedFailureOutcome($install, $error);
 		} finally {
 			if ($maintenanceWasSet) {
-				$this->config->setSystemValue('maintenance', false);
+				$this->server->configs->config->setSystemValue('maintenance', false);
 			}
 		}
+	}
+
+	private function shouldEnterMaintenance(InstallRun $run): bool {
+		return !$run->request->options->dryRun && !$this->server->configs->config->getSystemValueBool('maintenance', false);
+	}
+
+	/**
+	 * Runs the installer, persists the binding, reads the installed version
+	 * back and, after a real install, settles the pin and raises the update
+	 * event.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}
+	 */
+	private function installAndReport(ReleaseInstall $install): array {
+		$run = $install->run;
+		$appId = $run->request->target->appId;
+		$result = $this->runInstaller($install);
+		if (!$run->request->options->dryRun) {
+			$this->server->appManager->clearAppsCache();
+			$this->sources->bindingStore->set($appId, $run->binding);
+		}
+		$this->server->appManager->clearAppsCache();
+		$install->appVersion = $this->versionAfterInstall($appId);
+		$payload = $this->successPayload($install, $result);
+		if (!$run->request->options->dryRun) {
+			$this->settlePin($install);
+			// After the pin is settled, so our own listener does not read a
+			// re-pinned install as drift.
+			$this->dispatchUpdateEvent($install);
+		}
+
+		return $this->installEnvelope(Http::STATUS_OK, $payload);
+	}
+
+	/**
+	 * Installs through the signed installer for an App Store source, which
+	 * reports no integrity warning and no recorded-digest match, or through
+	 * the external installer otherwise.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function runInstaller(ReleaseInstall $install): array {
+		if ($install->source->getInstallerKind() === SourceInterface::INSTALLER_SIGNED) {
+			$result = $this->installers->signedInstaller->installFromSelectedRelease($install->run->request->target->appId, $install->release, $install->run->request->options->dryRun);
+			unset($result['integrityWarning'], $result['recordedShaMatched']);
+
+			return $result;
+		}
+
+		return $this->runExternalInstaller($install);
+	}
+
+	/**
+	 * The external installer may have recorded or replaced a SHA-256 on the
+	 * binding; the run keeps that updated binding, not the pre-install one, so
+	 * the digest is not lost — see "SHA-256 recorded on first successful
+	 * external install".
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function runExternalInstaller(ReleaseInstall $install): array {
+		$run = $install->run;
+		$target = $run->request->target;
+		$result = $this->installers->externalInstaller->installFromExternalRelease($target->appId, $target->version, $install->release, $run->binding, $run->request->options->dryRun, $run->request->options->acceptNewSha);
+		$run->binding = $result['binding'];
+
+		return $result;
+	}
+
+	/** The version the app reports after the install: info.xml, then the app manager, then `installed_version`. */
+	private function versionAfterInstall(string $appId): string {
+		$appVersion = $this->appInfoVersion($appId);
+		if ($appVersion === null) {
+			$appVersion = $this->server->appManager->getAppVersion($appId, false);
+		}
+		$configuredVersion = $this->server->configs->appConfig->getValueString($appId, 'installed_version', $appVersion);
+
+		return $configuredVersion !== '' ? $configuredVersion : $appVersion;
+	}
+
+	private function appInfoVersion(string $appId): ?string {
+		try {
+			$appPath = $this->server->appManager->getAppPath($appId, true);
+			$appInfo = $this->server->appManager->getAppInfoByPath($appPath . '/appinfo/info.xml');
+			if (is_array($appInfo) && isset($appInfo['version']) && is_string($appInfo['version'])) {
+				return $appInfo['version'];
+			}
+		} catch (Exception) {
+			return null;
+		}
+
+		return null;
+	}
+
+	/**
+	 * @param array<string, mixed> $result
+	 * @return array<string, mixed>
+	 */
+	private function successPayload(ReleaseInstall $install, array $result): array {
+		$run = $install->run;
+		$dryRun = $run->request->options->dryRun;
+		$payload = [
+			'appId' => $run->request->target->appId,
+			'fromVersion' => $run->fromVersion(),
+			'toVersion' => $dryRun ? $run->request->target->version : $install->appVersion,
+			'installedVersion' => $install->appVersion,
+			'updateType' => $this->classifyUpdateType($install),
+			'message' => $this->classifyMessage($install),
+			'dryRun' => $dryRun,
+			'installStatus' => $result['status'] ?? 'unknown',
+			'sourceId' => $run->binding->getId(),
+			// See "Cached fallback with full re-verification": the outcome
+			// states when the download fell back to a locally cached artifact.
+			'servedFromCache' => (bool)($result['servedFromCache'] ?? false),
+		];
+		if ($run->space !== null) {
+			// The progress shows the free space the pre-flight found (D2).
+			$payload['space'] = $run->space;
+		}
+
+		return $payload + $this->optionalResultFields($result) + $run->debugSuffix((array)($result['debug'] ?? []));
+	}
+
+	/**
+	 * The integrity warning and the recorded-digest match when the installer
+	 * reported them (see "Recorded SHA-256 enforced on reinstall"), and the
+	 * migration diff, present only for a downgrade (see "Migration diff on
+	 * downgrade"): `null` means it could not be computed, `[]` that no schema
+	 * steps differ.
+	 *
+	 * @param array<string, mixed> $result
+	 * @return array<string, mixed>
+	 */
+	private function optionalResultFields(array $result): array {
+		$fields = array_filter([
+			'integrityWarning' => $result['integrityWarning'] ?? null,
+			'recordedShaMatched' => $result['recordedShaMatched'] ?? null,
+		], static fn (mixed $value): bool => $value !== null);
+		if (array_key_exists('orphanedMigrations', $result)) {
+			// The signed installer's result is loosely typed (array<string, mixed>),
+			// so the value is annotated rather than inferred.
+			/** @var list<string>|null $orphanedMigrations */
+			$orphanedMigrations = $result['orphanedMigrations'];
+			$fields['orphanedMigrations'] = $orphanedMigrations;
+		}
+
+		return $fields;
+	}
+
+	/**
+	 * Pin state changes only after a real (non-dry-run) install success; see
+	 * "Pins are enforced on Versioniq's own install path". Adjusting the pin
+	 * here, inside the same request and before returning, is what keeps a
+	 * later drift check from misreading our own override as drift.
+	 */
+	private function settlePin(ReleaseInstall $install): void {
+		$run = $install->run;
+		$overridden = $run->pinBeingOverridden();
+		if ($overridden !== null) {
+			$this->applyPinOverride($install, $overridden);
+			return;
+		}
+		if ($run->pin === null && $run->request->pinChoice->pinRequested) {
+			$this->state->pinStore->set($run->request->target->appId, new Pin($install->appVersion, $this->currentActorUid(), $this->nowIso()));
+			return;
+		}
+		$this->clearPinDrift($run);
+	}
+
+	/**
+	 * An overridden pin moves to the installed version (`repin`) or is
+	 * cleared (`unpin`); the pin guard already refused a missing override.
+	 */
+	private function applyPinOverride(ReleaseInstall $install, Pin $pin): void {
+		$appId = $install->run->request->target->appId;
+		if ($install->run->request->pinChoice->overridePin === self::OVERRIDE_PIN_REPIN) {
+			$this->state->pinStore->set($appId, new Pin($install->appVersion, $this->currentActorUid(), $this->nowIso(), $pin->reason));
+			return;
+		}
+		$this->state->pinStore->clear($appId, $this->currentActorUid());
+	}
+
+	/**
+	 * Recorded-digest mismatch: no filesystem change happened (thrown before
+	 * extraction/backup). The machine-readable `code` lets the frontend
+	 * render the explicit "accept new checksum" escape hatch; see "Recorded
+	 * SHA-256 enforced on reinstall".
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}
+	 */
+	private function shaMismatchOutcome(ReleaseInstall $install, ShaMismatchException $error): array {
+		$run = $install->run;
+		$classification = $this->installers->failureClassifier->classify($error, FailureClassifier::STAGE_CHECKSUM, FailureClassifier::CATEGORY_SHA_MISMATCH);
+		$payload = $this->outcomePayload($run, [
+			'message' => $error->getMessage(),
+			'category' => $classification['category'],
+			'code' => 'sha_mismatch',
+			'stage' => FailureClassifier::STAGE_CHECKSUM,
+			'hint' => $classification['hint'],
+			'installStatus' => 'failed',
+		]) + ['expectedSha' => $error->expectedSha, 'actualSha' => $error->actualSha];
+		if ($run->request->options->includeDebug) {
+			$payload['debug'] = $this->installerDebugLog($install->source);
+		}
+
+		return $this->installEnvelope($classification['statusCode'], $payload);
+	}
+
+	/**
+	 * The installer already handled filesystem recovery; this reports the
+	 * honest outcome (reverted / installed-but-broken) instead of a 500.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}
+	 */
+	private function installFailureOutcome(ReleaseInstall $install, InstallFailure $failure): array {
+		$debugLog = $this->installerDebugLog($install->source);
+		$isBroken = $failure->getOutcome() === InstallFailure::OUTCOME_INSTALLED_BUT_BROKEN;
+		$category = $isBroken
+			? FailureClassifier::CATEGORY_FINALIZE
+			: $this->installers->failureClassifier->categoryFor($failure, $failure->getStage());
+		$hint = $isBroken
+			? $this->installers->failureClassifier->finalizeHint($failure->getRestoreState())
+			: $this->installers->failureClassifier->revertedHint();
+
+		return $this->installEnvelope($this->installers->failureClassifier->httpStatusFor($category), $this->outcomePayload($install->run, [
+			'message' => $failure->getMessage(),
+			'category' => $category,
+			'stage' => $failure->getStage(),
+			'hint' => $hint,
+			'installStatus' => $failure->getOutcome(),
+		]) + $install->run->debugSuffix($debugLog));
+	}
+
+	/**
+	 * Classified failure: stage, category and hint are attached regardless of
+	 * debug, and the HTTP status follows the category (no blanket 500).
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}
+	 */
+	private function classifiedFailureOutcome(ReleaseInstall $install, Exception $error): array {
+		$debugLog = $this->installerDebugLog($install->source);
+		$lastStage = $this->lastStageOf($debugLog);
+		$classification = $this->installers->failureClassifier->classify($error, $lastStage);
+
+		return $this->installEnvelope($classification['statusCode'], $this->outcomePayload($install->run, [
+			'message' => $error->getMessage(),
+			'category' => $classification['category'],
+			'stage' => $lastStage,
+			'hint' => $classification['hint'],
+			'installStatus' => 'failed',
+		]) + $install->run->debugSuffix($debugLog));
 	}
 
 	/**
@@ -816,8 +1246,11 @@ class InstallerService {
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
 	public function bindSource(string $appId, SourceBinding $binding): void {
-		$this->trustedSources->assertBindingAllowed($binding);
-		$this->bindingStore->set($appId, $binding);
+		if (SourceBinding::isRetiredForge($binding->getForge())) {
+			throw new RetiredForgeException($binding->getForge());
+		}
+		$this->state->trustedSources->assertBindingAllowed($binding);
+		$this->sources->bindingStore->set($appId, $binding);
 	}
 
 	/**
@@ -826,7 +1259,7 @@ class InstallerService {
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
 	public function getBinding(string $appId): ?SourceBinding {
-		return $this->bindingStore->get($appId);
+		return $this->sources->bindingStore->get($appId);
 	}
 
 	/**
@@ -837,11 +1270,11 @@ class InstallerService {
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
 	public function clearBinding(string $appId): void {
-		$this->bindingStore->clear($appId);
+		$this->sources->bindingStore->clear($appId);
 	}
 
 	public function getTrustedSources(): TrustedSourceList {
-		return $this->trustedSources;
+		return $this->state->trustedSources;
 	}
 
 	/**
@@ -855,15 +1288,19 @@ class InstallerService {
 	 * @throws InvalidArgumentException on an unknown forge, empty/`*` owner, bad charset, or an over-broad result
 	 */
 	public function addTrustedPattern(string $forge, string $owner, ?string $repo): array {
-		$pattern = $this->buildAndValidatePattern($forge, $owner, $repo);
+		self::assertKnownForge($forge);
+		if (SourceBinding::isRetiredForge($forge)) {
+			throw new RetiredForgeException($forge);
+		}
+		$pattern = self::forgePattern($forge, self::ownerRepoPath($owner, $repo));
 
-		$patterns = $this->trustedSources->getPatterns();
+		$patterns = $this->state->trustedSources->getPatterns();
 		if (!in_array($pattern, $patterns, true)) {
 			$patterns[] = $pattern;
-			$this->trustedSources->setPatterns($patterns);
+			$this->state->trustedSources->setPatterns($patterns);
 		}
 
-		return $this->trustedSources->getPatterns();
+		return $this->state->trustedSources->getPatterns();
 	}
 
 	/**
@@ -874,24 +1311,45 @@ class InstallerService {
 	 */
 	public function removeTrustedPattern(string $pattern): array {
 		$patterns = array_values(array_filter(
-			$this->trustedSources->getPatterns(),
+			$this->state->trustedSources->getPatterns(),
 			static fn (string $p): bool => $p !== $pattern,
 		));
-		$this->trustedSources->setPatterns($patterns);
+		$this->state->trustedSources->setPatterns($patterns);
 
-		return $this->trustedSources->getPatterns();
+		return $this->state->trustedSources->getPatterns();
 	}
 
 	/**
-	 * Validates a curated allowlist entry and returns the forge-qualified glob.
-	 * Guarantees a concrete owner — never a whole-forge or match-everything glob.
+	 * Refuses a forge outside {@see SourceBinding::FORGES}. Checked first, so
+	 * an unknown forge is reported before anything about owner or repo.
 	 *
 	 * @throws InvalidArgumentException
 	 */
-	private function buildAndValidatePattern(string $forge, string $owner, ?string $repo): string {
+	private static function assertKnownForge(string $forge): void {
 		if (!in_array($forge, SourceBinding::FORGES, true)) {
 			throw new InvalidArgumentException('Unknown forge: ' . $forge);
 		}
+	}
+
+	/**
+	 * The `owner/repo` part of a curated allowlist entry, with `*` for every
+	 * repo of the owner. The owner is validated before the repo.
+	 *
+	 * @throws InvalidArgumentException
+	 */
+	private static function ownerRepoPath(string $owner, ?string $repo): string {
+		$owner = self::concreteOwner($owner);
+
+		return $owner . '/' . self::repoPart($repo);
+	}
+
+	/**
+	 * The trimmed owner; never empty, never a bare wildcard, only GitHub's
+	 * owner charset.
+	 *
+	 * @throws InvalidArgumentException
+	 */
+	private static function concreteOwner(string $owner): string {
 		$owner = trim($owner);
 		if ($owner === '' || $owner === '*') {
 			throw new InvalidArgumentException('A concrete owner is required (wildcard-only owners are not allowed).');
@@ -900,16 +1358,34 @@ class InstallerService {
 			throw new InvalidArgumentException('Owner contains invalid characters.');
 		}
 
-		$repoPart = '*';
-		if ($repo !== null && trim($repo) !== '') {
-			$repo = trim($repo);
-			if (!preg_match('/^[A-Za-z0-9_.\-]+$/', $repo)) {
-				throw new InvalidArgumentException('Repository contains invalid characters.');
-			}
-			$repoPart = $repo;
+		return $owner;
+	}
+
+	/**
+	 * The trimmed repo, or `*` when none is given.
+	 *
+	 * @throws InvalidArgumentException
+	 */
+	private static function repoPart(?string $repo): string {
+		if ($repo === null || trim($repo) === '') {
+			return '*';
+		}
+		$repo = trim($repo);
+		if (!preg_match('/^[A-Za-z0-9_.\-]+$/', $repo)) {
+			throw new InvalidArgumentException('Repository contains invalid characters.');
 		}
 
-		$pattern = $forge . ':' . $owner . '/' . $repoPart;
+		return $repo;
+	}
+
+	/**
+	 * Joins forge and path into the forge-qualified glob. Guarantees a
+	 * concrete owner — never a whole-forge or match-everything glob.
+	 *
+	 * @throws InvalidArgumentException
+	 */
+	private static function forgePattern(string $forge, string $ownerRepoPath): string {
+		$pattern = $forge . ':' . $ownerRepoPath;
 		// Defence in depth: reject anything that would trust an entire forge.
 		if (in_array($pattern, ['*', '*/*', $forge . ':*', $forge . ':*/*'], true)) {
 			throw new InvalidArgumentException('That pattern is too broad — it would trust an entire forge.');
@@ -919,7 +1395,7 @@ class InstallerService {
 	}
 
 	public function getSourceRegistry(): SourceRegistry {
-		return $this->sourceRegistry;
+		return $this->sources->sourceRegistry;
 	}
 
 	/**
@@ -931,8 +1407,8 @@ class InstallerService {
 	 */
 	private function installerDebugLog(SourceInterface $source): array {
 		return $source->getInstallerKind() === SourceInterface::INSTALLER_SIGNED
-			? $this->signedInstaller->getDebugLog()
-			: $this->externalInstaller->getDebugLog();
+			? $this->installers->signedInstaller->getDebugLog()
+			: $this->installers->externalInstaller->getDebugLog();
 	}
 
 	/**
@@ -959,22 +1435,24 @@ class InstallerService {
 	 *
 	 * @spec openspec/changes/releases-notes-reach/tasks.md#task-1.1
 	 */
-	private function dispatchUpdateEvent(string $appId, string $fromVersion, string $toVersion): void {
+	private function dispatchUpdateEvent(ReleaseInstall $install): void {
+		$fromVersion = $install->run->installedVersion;
+		$toVersion = $install->appVersion;
 		if ($fromVersion === '' || $toVersion === '' || $fromVersion === $toVersion) {
 			return;
 		}
-		if (!$this->appConfig->getValueBool(Application::APP_ID, self::KEY_NOTIFY_USERS_ON_UPDATE, true)) {
+		if (!$this->server->configs->appConfig->getValueBool(Application::APP_ID, self::KEY_NOTIFY_USERS_ON_UPDATE, true)) {
 			return;
 		}
 
-		$this->eventDispatcher->dispatchTyped(new AppUpdateEvent($appId));
+		$this->server->eventDispatcher->dispatchTyped(new AppUpdateEvent($install->run->request->target->appId));
 	}
 
 	private function resolveBinding(string $appId, ?string $sourceOverride): SourceBinding {
 		if ($sourceOverride !== null && trim($sourceOverride) !== '') {
 			$binding = SourceRegistry::parseSourceId($sourceOverride);
 			if ($binding->kind === SourceBinding::KIND_GITHUB_RELEASE) {
-				$this->trustedSources->assertBindingAllowed($binding);
+				$this->state->trustedSources->assertBindingAllowed($binding);
 			}
 
 			// A one-off override that names the *same* source as the stored
@@ -982,7 +1460,7 @@ class InstallerService {
 			// otherwise trust-on-first-use is silently bypassed by passing the
 			// current source id explicitly. Only a genuine rebind to a different
 			// source discards the digests (handled by SourceBindingStore).
-			$stored = $this->bindingStore->get($appId);
+			$stored = $this->sources->bindingStore->get($appId);
 			if ($stored !== null && $stored->getId() === $binding->getId()) {
 				$binding = $binding->withRecordedShaMap($stored->getRecordedShaMap());
 			}
@@ -990,10 +1468,10 @@ class InstallerService {
 			return $binding;
 		}
 
-		$stored = $this->bindingStore->get($appId);
+		$stored = $this->sources->bindingStore->get($appId);
 		if ($stored !== null) {
 			if ($stored->kind === SourceBinding::KIND_GITHUB_RELEASE) {
-				$this->trustedSources->assertBindingAllowed($stored);
+				$this->state->trustedSources->assertBindingAllowed($stored);
 			}
 
 			return $stored;
@@ -1002,8 +1480,14 @@ class InstallerService {
 		return SourceBinding::appStore();
 	}
 
-	private function classifyUpdateType(string $previousVersion, string $newVersion, bool $dryRun): string {
-		if ($dryRun) {
+	/**
+	 * The kind of version change an install made: `dry-run`, `install`,
+	 * `none`, `upgrade` or `downgrade`.
+	 */
+	private function classifyUpdateType(ReleaseInstall $install): string {
+		$previousVersion = $install->run->installedVersion;
+		$newVersion = $install->appVersion;
+		if ($install->run->request->options->dryRun) {
 			return 'dry-run';
 		}
 		if ($previousVersion === '') {
@@ -1016,8 +1500,13 @@ class InstallerService {
 		return version_compare($newVersion, $previousVersion, '>') ? 'upgrade' : 'downgrade';
 	}
 
-	private function classifyMessage(string $previousVersion, string $newVersion, bool $dryRun): string {
-		if ($dryRun) {
+	/**
+	 * The human summary of an install's version change.
+	 */
+	private function classifyMessage(ReleaseInstall $install): string {
+		$previousVersion = $install->run->installedVersion;
+		$newVersion = $install->appVersion;
+		if ($install->run->request->options->dryRun) {
 			return 'Dry run mode: no changes were applied.';
 		}
 		if ($previousVersion === '') {
@@ -1031,7 +1520,7 @@ class InstallerService {
 	}
 
 	/**
-	 * @return array{installedVersion: ?string, availableVersions: list<array{version:string, changelog:?string, recordedSha:?string}>, versions: list<array{version:string, changelog:?string, recordedSha:?string}>, source: string, sourceId: string, statusCode: int, hasError: bool, error: string}
+	 * @return array{installedVersion: null, availableVersions: list<never>, versions: list<never>, source: string, sourceId: string, statusCode: int, hasError: true, error: string}
 	 */
 	private function errorEnvelope(string $message, int $statusCode): array {
 		return [
@@ -1065,7 +1554,7 @@ class InstallerService {
 	}
 
 	private function isCoreProtectedApp(string $appId): bool {
-		return in_array(trim($appId), $this->appManager->getAlwaysEnabledApps(), true);
+		return in_array(trim($appId), $this->server->appManager->getAlwaysEnabledApps(), true);
 	}
 
 	private function currentActorUid(): string {
