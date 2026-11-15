@@ -227,6 +227,9 @@ class InstallerService {
 			'state' => self::appState($appId, $lists),
 			'lkg' => $this->state->lkgStore->get($appId)?->toArray(),
 		];
+		$card['provenance'] = self::provenance($card['installedVersion'], $card['lkg']);
+
+		return $card;
 	}
 
 	/**
@@ -244,9 +247,6 @@ class InstallerService {
 			'warning' => $env['warning'],
 			'installedVersion' => $installedVersion === '' ? null : $installedVersion,
 		];
-		$card['provenance'] = self::provenance($card['installedVersion'], $card['lkg']);
-
-		return $card;
 	}
 
 	/**
