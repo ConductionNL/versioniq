@@ -2,7 +2,7 @@
 // Covers "Advisories view" (#438 items 2 and 3):
 // @spec openspec/specs/security-advisory-correlation/spec.md
 import { describe, expect, it, vi } from 'vitest'
-import { advisoryAnchor, advisoryBadgeText, advisoryHistory, complianceSentence, cveLabel, fixSentence, highestSeverity, publishedLabel, severityLabel, splitAdvisoryRows } from './advisories.ts'
+import { advisoryAnchor, advisoryBadgeText, advisoryHistory, applyTriage, assigneeLabel, complianceSentence, cveLabel, DISMISS_REASONS, dismissReasonLabel, fixSentence, highestSeverity, isAssignedTo, publishedLabel, severityLabel, splitAdvisoryRows, triageKey } from './advisories.ts'
 
 vi.mock('@nextcloud/l10n', () => ({
 	t: (_app: string, text: string, vars: Record<string, unknown> = {}) =>
@@ -121,5 +121,75 @@ describe('advisoryHistory', () => {
 		expect(cveLabel({ cveIds: ['CVE-2026-1111', 'CVE-2026-2222'] })).toBe('CVE-2026-1111, CVE-2026-2222')
 		expect(publishedLabel({ publishedAt: '2026-08-01T10:00:00Z' })).toBe('2026-08-01')
 		expect(advisoryAnchor('fixtureapp')).toBe('section-advisories-fixtureapp')
+	})
+})
+
+describe('applyTriage', () => {
+	// Judged at a fixed time, so no test depends on the clock.
+	const NOW = Date.parse('2026-10-01T00:00:00Z')
+	const dismissal = (extra: Record<string, unknown> = {}) => ({ reason: 'not_used', by: 'alice', at: '2026-09-27T10:05:00+00:00', until: null, installedVersion: '1.0.0', ...extra })
+
+	it('leaves a dismissed advisory out of the badge and its severity', () => {
+		const triaged = applyTriage(row('mail', 'pinned-to-vulnerable', ['critical', 'low']) as never, {
+			'mail|GHSA-mail-0': { dismissal: dismissal() },
+		}, NOW)
+
+		expect(triaged.advisories.map((a) => a.id)).toEqual(['GHSA-mail-1'])
+		expect(triaged.dismissedAdvisories.map((a) => a.id)).toEqual(['GHSA-mail-0'])
+		expect(triaged.state).toBe('pinned-to-vulnerable')
+		expect(advisoryBadgeText(triaged as never)).toBe('Vulnerable version, Low')
+	})
+
+	it('drops a fully dismissed row a state and its recommendation', () => {
+		const vulnerable = { ...row('mail', 'pinned-to-vulnerable', ['high']), recommendedVersion: '1.0.2' }
+		const fell = applyTriage(vulnerable as never, { 'mail|GHSA-mail-0': { dismissal: dismissal() } }, NOW)
+		expect([fell.state, fell.recommendedVersion]).toEqual(['advisory-available', null])
+		expect(advisoryBadgeText(fell as never)).toBe('Advisory')
+
+		const available = applyTriage(row('deck', 'advisory-available', ['low']) as never, { 'deck|GHSA-deck-0': { dismissal: dismissal() } }, NOW)
+		expect(available.state).toBe('none')
+	})
+
+	it('ignores a dismissal past its end date, made on another version, or with an unreadable end date', () => {
+		for (const lapsed of [{ until: '2026-09-30T00:00:00+00:00' }, { installedVersion: '0.9.0' }, { until: 'whenever' }]) {
+			const triaged = applyTriage(row('mail', 'advisory-available', ['high']) as never, { 'mail|GHSA-mail-0': { dismissal: dismissal(lapsed) } }, NOW)
+			expect(triaged.advisories).toHaveLength(1)
+			expect(triaged.dismissedAdvisories).toHaveLength(0)
+		}
+		const ahead = applyTriage(row('mail', 'advisory-available', ['high']) as never, { 'mail|GHSA-mail-0': { dismissal: dismissal({ until: '2026-12-01' }) } }, NOW)
+		expect(ahead.dismissedAdvisories).toHaveLength(1)
+	})
+
+	it('carries each advisory\'s owner', () => {
+		const triaged = applyTriage(row('mail', 'advisory-available', ['high']) as never, { 'mail|GHSA-mail-0': { assignee: { type: 'group', id: 'ops' } } }, NOW)
+
+		expect(triaged.advisories[0].assignee).toEqual({ type: 'group', id: 'ops' })
+	})
+})
+
+describe('isAssignedTo', () => {
+	it('matches the user directly or through one of their groups', () => {
+		const mine = { id: 'a', severity: 'low', summary: '', assignee: { type: 'user' as const, id: 'bob' } }
+		const ops = { id: 'b', severity: 'low', summary: '', assignee: { type: 'group' as const, id: 'ops' } }
+		const nobody = { id: 'c', severity: 'low', summary: '' }
+
+		expect([mine, ops, nobody].map((a) => isAssignedTo(a, 'bob', ['ops']))).toEqual([true, true, false])
+		expect([mine, ops].map((a) => isAssignedTo(a, 'alice', ['admin']))).toEqual([false, false])
+	})
+})
+
+describe('triage labels', () => {
+	it('names every reason and owner', () => {
+		expect(DISMISS_REASONS.map(dismissReasonLabel)).toEqual([
+			'The affected feature is not used here',
+			'The advisory is inaccurate for this setup',
+			'The risk is tolerable',
+			'The risk is mitigated another way',
+			'A fix is planned',
+		])
+		expect(dismissReasonLabel('other')).toBe('other')
+		expect(assigneeLabel({ type: 'group', id: 'ops' })).toBe('Group ops')
+		expect(assigneeLabel({ type: 'user', id: 'bob' })).toBe('bob')
+		expect(triageKey(':server', 'GHSA-1')).toBe(':server|GHSA-1')
 	})
 })

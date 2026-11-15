@@ -64,7 +64,7 @@ class AdvisoryDigestNotifier {
 			return 0;
 		}
 
-		$informational = self::informational($correlations);
+		$informational = self::informational($this->applyTriage($correlations, $now));
 		if ($informational === []) {
 			// Nothing to say. The clock is NOT advanced, so the first week
 			// with something to report sends immediately rather than waiting
@@ -82,6 +82,31 @@ class AdvisoryDigestNotifier {
 		}
 
 		return $fired;
+	}
+
+	/**
+	 * The correlations with the stored triage applied, so an actively
+	 * dismissed advisory is not counted (advisories-triage, design D2). The
+	 * state is left as stored: a row whose advisories are all dismissed has
+	 * none left to count, whatever its state.
+	 *
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+	 * @param array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}> $correlations
+	 * @return array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}>
+	 */
+	private function applyTriage(array $correlations, int $now): array {
+		$store = new AdvisoryTriageStore($this->config, $this->logger);
+		$triage = new AdvisoryTriage($store->read(), gmdate(DATE_ATOM, $now));
+		foreach ($correlations as $appId => $correlation) {
+			$dismissed = AdvisoryTriage::dismissedIds(row: $triage->apply(row: $correlation));
+			$correlation['advisories'] = array_values(array_filter(
+				$correlation['advisories'],
+				static fn (array $advisory): bool => isset($dismissed[$advisory['id']]) === false,
+			));
+			$correlations[$appId] = $correlation;
+		}
+
+		return $correlations;
 	}
 
 	/** Whether the digest is enabled and none was sent inside the last seven days. */

@@ -11,11 +11,13 @@ namespace OCA\Versioniq\Tests\Unit\Service;
 
 require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 
+use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Service\ExternalReleaseInstallerService;
 use OCA\Versioniq\Service\Installer\EnvironmentCheck;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Release\InstallOutcomes;
 use OCA\Versioniq\Service\SelectedReleaseInstallerService;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
@@ -80,8 +82,8 @@ final class InstallerServiceChangelogTest extends TestCase {
 		$this->bindingStore->method('get')->willReturn(SourceBinding::github('ConductionNL', 'openregister'));
 	}
 
-	private function service(): InstallerService {
-		return $this->buildByName(InstallerService::class, [
+	private function service(array $extra = []): InstallerService {
+		return $this->buildByName(InstallerService::class, $extra + [
 			'appManager' => $this->appManager,
 			'config' => $this->config,
 			'appConfig' => $this->appConfig,
@@ -156,6 +158,28 @@ final class InstallerServiceChangelogTest extends TestCase {
 		$this->assertIsString($truncated);
 		$this->assertLessThanOrEqual(8192 + strlen(' …[truncated]'), strlen($truncated));
 		$this->assertStringEndsWith(' …[truncated]', $truncated);
+	}
+
+	/**
+	 * Each listed version carries how installs of it went here
+	 * (releases-version-facts D2); one never installed carries zeros.
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+	 */
+	public function testEveryVersionCarriesItsInstallOutcomes(): void {
+		$this->stubSourceReturning([
+			['version' => '2.3.0', 'changelog' => null],
+			['version' => '2.2.0', 'changelog' => null],
+		]);
+		$audit = $this->createMock(AuditEntryMapper::class);
+		$audit->method('countOutcomesByVersion')->with('openregister')->willReturn(['2.3.0' => ['succeeded' => 4, 'failed' => 1]]);
+
+		$result = $this->service(['outcomes' => new InstallOutcomes($audit)])->getAppVersions('openregister');
+
+		$this->assertSame(
+			['2.3.0' => ['succeeded' => 4, 'failed' => 1], '2.2.0' => ['succeeded' => 0, 'failed' => 0]],
+			array_column($result['versions'], 'outcomes', 'version')
+		);
 	}
 
 	public function testChangelogExactlyAtLimitIsNotTruncated(): void {
