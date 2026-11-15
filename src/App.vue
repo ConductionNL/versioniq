@@ -15,6 +15,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import AdvisoriesPanel from './components/AdvisoriesPanel.vue'
+import AlertsPanel from './components/AlertsPanel.vue'
 import AppSourceBadges from './components/AppSourceBadges.vue'
 import AutoUpdateOverview from './components/AutoUpdateOverview.vue'
 import CachePanel from './components/CachePanel.vue'
@@ -235,6 +236,7 @@ const integriqInstalled = loadState<boolean>('versioniq', 'integriq-installed', 
 const tabs = [
 	{ id: 'apps' },
 	{ id: 'advisories' },
+	{ id: 'alerts' },
 	{ id: 'history' },
 	{ id: 'sources' },
 	{ id: 'tokens' },
@@ -256,6 +258,7 @@ function tabLabel (id: string): string {
   return {
 	apps: t('versioniq', 'Apps'),
 	advisories: t('versioniq', 'Advisories'),
+	alerts: t('versioniq', 'Alerts'),
 	history: t('versioniq', 'History'),
 	sources: t('versioniq', 'Sources'),
 	tokens: t('versioniq', 'Tokens'),
@@ -2981,6 +2984,10 @@ watch(dryRunEnabled, () => {
 					:freshnessLabel="advisoryFreshnessLabel"
 					:ncscStatus="ncscPanelStatus"
 					@update:triage="(triage: AdvisoryTriageMap) => (advisoryTriage = triage)" />
+				<AlertsPanel v-if="currentTab === 'alerts'"
+					id="alerts-panel"
+					role="tabpanel"
+					aria-labelledby="alerts-tab" />
 				<HistoryPanel v-if="currentTab === 'history'"
 					id="history-panel"
 					role="tabpanel"
