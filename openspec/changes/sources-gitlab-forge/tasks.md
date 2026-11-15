@@ -16,7 +16,8 @@
 
 ## 3. Tokens
 
-- [ ] 3.1 Validate GitLab tokens through `personal_access_tokens/self`, and add the deeplink. Verify: `tests/unit/Service/Pat/PatValidatorTest.php` accepts `read_api`, rejects `api`, and captures `expires_at`.
+- [x] 3.1 Validate GitLab tokens through `personal_access_tokens/self`, and add the deeplink. Verify: `tests/unit/Service/Pat/PatValidatorTest.php` accepts `read_api`, rejects `api`, and captures `expires_at`.
+  - `PatValidator` reads `personal_access_tokens/self` (scopes limited to `read_api` and `read_repository`, `expires_at` kept; `PatValidatorTest`). `PatDeeplinkBuilder` opens GitLab's token page on gitlab.com or the self-managed host with `name` and `scopes=read_api` filled in (`PatDeeplinkBuilderTest`, 2 new).
 
 ## 4. Pages
 
