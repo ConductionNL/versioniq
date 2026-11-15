@@ -23,6 +23,8 @@ final class AdvisoryMatching {
 		public readonly NextcloudAdvisoryFeed $advisoryFeed,
 		public readonly BranchAwareRange $branchRange,
 		public readonly ServerVersionProvider $serverVersion,
+		// NCSC-NL's advisories (advisories-ncsc-feed), read only when switched on.
+		public readonly ?NcscAdvisoryFeed $ncscFeed = null,
 	) {
 	}
 }

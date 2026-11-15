@@ -78,6 +78,13 @@ class AdvisoryService {
 	 */
 	public const SERVER_KEY = AdvisoryPackageMap::SERVER;
 
+	/**
+	 * What a summary carries beyond id, severity and summary when the record
+	 * has it: an NCSC-NL record's source, CVE ids, ratings, release date, link
+	 * and version match, and the ids folded into a record (advisories-ncsc-feed).
+	 */
+	private const SUMMARY_EXTRAS = ['source' => true, 'cveIds' => true, 'ratings' => true, 'published' => true, 'url' => true, 'match' => true, 'relatedIds' => true];
+
 	public function __construct(
 		private SourceLookup $sources,
 		private IAppManager $appManager,
@@ -190,7 +197,7 @@ class AdvisoryService {
 	 */
 	public function correlateAll(?float $budgetSeconds = null): array {
 		$deadline = microtime(true) + ($budgetSeconds ?? self::CORRELATE_ALL_BUDGET_SECONDS);
-		$feedAdvisories = $this->feedAdvisories();
+		$feedAdvisories = $this->withNcsc(feed: $this->feedAdvisories());
 		$results = $this->correlateEnabledApps($feedAdvisories, $deadline);
 
 		$serverResult = $this->serverResult($feedAdvisories);
@@ -220,6 +227,33 @@ class AdvisoryService {
 		}
 
 		return $feed['advisories'];
+	}
+
+	/**
+	 * The Nextcloud feed's records with NCSC-NL's added per target, when an
+	 * admin switched NCSC-NL checks on; otherwise the feed as it is, and no
+	 * request goes to NCSC-NL.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/specs/security-advisory-correlation/spec.md#requirement-ncsc-nl-advisories-are-matched-to-the-installed-server-and-apps
+	 * @param array<string, list<array<string, mixed>>> $feed The Nextcloud feed's records per target.
+	 * @return array<string, list<array<string, mixed>>>
+	 */
+	private function withNcsc(array $feed): array {
+		$ncscFeed = $this->matching->ncscFeed;
+		if ($ncscFeed === null || !$ncscFeed->isEnabled()) {
+			return $feed;
+		}
+
+		$ncsc = $ncscFeed->fetchAll();
+		if ($ncsc['error'] !== null) {
+			$this->logger->warning('AdvisoryService: the NCSC-NL advisories could not be read in full', ['message' => $ncsc['error']]);
+		}
+
+		foreach ($ncsc['advisories'] as $target => $records) {
+			$feed[$target] = [...($feed[$target] ?? []), ...$records];
+		}
+
+		return $feed;
 	}
 
 	/**
@@ -336,6 +370,8 @@ class AdvisoryService {
 			return self::evaluation($installedVersion, self::STATE_NONE);
 		}
 
+		// NCSC-NL records sharing a CVE fold into their twin; the rest are matched (advisories-ncsc-feed).
+		$advisories = NcscCorrelation::prepare($advisories, $installedVersion);
 		[$active, $branchPatches, $affects] = $this->activeAdvisories($installedVersion, $advisories);
 		$history = $this->history($advisories, $affects);
 		if ($active === []) {
@@ -354,7 +390,7 @@ class AdvisoryService {
 		return array_replace(self::evaluation($installedVersion, self::STATE_VULNERABLE), [
 			'advisories' => $this->summarise($active),
 			'history' => $history,
-			'recommendedVersion' => $branchPatches !== [] ? $this->lowestVersion($branchPatches) : $this->nearestResolving($installedVersion, $active, $availableVersions),
+			'recommendedVersion' => $branchPatches !== [] ? $this->lowestVersion($branchPatches) : $this->nearestResolving($installedVersion, NcscCorrelation::withoutNcsc($active), $availableVersions),
 		]);
 	}
 
@@ -422,6 +458,10 @@ class AdvisoryService {
 	 * @return array{0: bool, 1: ?string}
 	 */
 	private function assess(string $installedVersion, array $advisory): array {
+		if (NcscCorrelation::isNcsc($advisory)) {
+			return [($advisory['match'] ?? null) === 'affected', null];
+		}
+
 		$patchedVersions = $advisory['patchedVersions'] ?? [];
 		if ($patchedVersions === []) {
 			return [$this->isAffected($installedVersion, $advisory['affected']), null];
@@ -467,7 +507,7 @@ class AdvisoryService {
 				'cveIds' => $a['cveIds'] ?? [],
 				'publishedAt' => $a['publishedAt'] ?? null,
 				'url' => $a['url'] ?? null,
-			],
+			] + array_intersect_key($a, NcscCorrelation::isNcsc($a) ? self::SUMMARY_EXTRAS : ['relatedIds' => true]),
 			$advisories,
 		);
 	}
@@ -583,6 +623,10 @@ class AdvisoryService {
 	private function nearestResolving(string $installedVersion, array $active, array $availableVersions): ?string {
 		// Fold in any published first-patched versions the source named, even
 		// if they were not in the available-versions list.
+		if ($active === []) {
+			return null;
+		}
+
 		$offered = [...$availableVersions, ...self::firstPatchedVersions($active)];
 		foreach (self::upgradeCandidates($installedVersion, $offered) as $candidate) {
 			if (!$this->affectedByAny($candidate, $active)) {

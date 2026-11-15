@@ -43,6 +43,7 @@ const ALLOWED = new Set([
 	'GitLab',
 	'Packagist',
 	'npm',
+	'JSON',
 	'OK',
 ])
 
