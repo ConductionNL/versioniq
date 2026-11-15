@@ -45,6 +45,8 @@ class AuditLogger {
 	public const OPERATION_UNSKIP_VERSION = 'unskip_version';
 	/** An install outside a policy that holds manual installs went ahead on an explicit override. */
 	public const OPERATION_RANGE_OVERRIDE = 'range_override';
+	/** A connection to another Versioniq instance was added, changed or removed (install-multi-instance-promotion D1). */
+	public const OPERATION_INSTANCE_CONNECTION = 'instance_connection';
 
 	private const OPERATION_PATTERN = '/^[a-z_]{1,32}$/';
 	private const MESSAGE_MAX_LENGTH = 4000;
