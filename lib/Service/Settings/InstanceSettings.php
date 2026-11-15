@@ -16,6 +16,7 @@ use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\BackgroundJob\PruneAuditJob;
 use OCA\Versioniq\Service\Advisory\LocalFeedCopy;
+use OCA\Versioniq\Service\Advisory\NcscAdvisoryFeed;
 use OCA\Versioniq\Service\Advisory\NextcloudAdvisoryFeed;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Source\AppStoreSource;
@@ -63,6 +64,8 @@ class InstanceSettings {
 		'githubApiBase' => [self::KEY_GITHUB_API_BASE, true],
 		'githubWebBase' => [self::KEY_GITHUB_WEB_BASE, true],
 		'advisoryFeedUrl' => [self::KEY_ADVISORY_FEED, false],
+		// The NCSC-NL CSAF directory (advisories-ncsc-feed), https only.
+		'ncscFeedUrl' => [NcscAdvisoryFeed::CONFIG_BASE, true],
 	];
 
 	public function __construct(
@@ -76,7 +79,7 @@ class InstanceSettings {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int}
+	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, ncscFeedUrl: string, ncscFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int}
 	 */
 	public function read(): array {
 		$retention = $this->config->getValueInt(Application::APP_ID, PruneAuditJob::CONFIG_KEY_RETENTION_DAYS, PruneAuditJob::DEFAULT_RETENTION_DAYS);
@@ -96,6 +99,8 @@ class InstanceSettings {
 			'githubWebDefault' => ForgeRegistry::GITHUB_WEB_DEFAULT,
 			'advisoryFeedUrl' => $this->stored(self::KEY_ADVISORY_FEED),
 			'advisoryFeedDefault' => NextcloudAdvisoryFeed::DEFAULT_FEED_URL,
+			'ncscFeedUrl' => $this->stored(NcscAdvisoryFeed::CONFIG_BASE),
+			'ncscFeedDefault' => NcscAdvisoryFeed::DEFAULT_BASE,
 			'maxLinesBehind' => $this->maxLinesBehind(),
 			'maxLinesBehindMax' => self::MAX_LINES_BEHIND,
 			'githubSearchEnabled' => $this->config->getValueString(Application::APP_ID, self::KEY_GITHUB_SEARCH, 'false') === 'true',

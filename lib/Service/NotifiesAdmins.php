@@ -30,6 +30,9 @@ trait NotifiesAdmins {
 		foreach ($this->adminUids() as $uid) {
 			$this->notifyAdmin($uid, $linked);
 		}
+
+		// releases-new-release-alerts D6: after the bell, queue the same alert for the webhook targets.
+		$this->admin->alerts?->dispatch($notice->subject(), $notice->subjectParameters());
 	}
 
 	private function notifyAdmin(string $uid, AdminNotice $notice): void {

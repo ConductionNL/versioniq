@@ -43,6 +43,16 @@ final class AdvisorySettingsStoreTest extends TestCase {
 		return new AdvisorySettingsStore($config);
 	}
 
+	public function testNcscChecksAreOffUntilSwitchedOn(): void {
+		$store = $this->store();
+		self::assertFalse($store->isNcscEnabled());
+
+		$store->setNcscEnabled(true);
+
+		self::assertTrue($store->isNcscEnabled());
+		self::assertTrue($this->stored[AdvisorySettingsStore::CONFIG_NCSC_ENABLED]);
+	}
+
 	public function testDefaultsToSixHours(): void {
 		$this->assertSame(6, $this->store()->getIntervalHours());
 		$this->assertSame(6 * 3600, $this->store()->getIntervalSeconds());

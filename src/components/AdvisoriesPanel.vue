@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
-import type { AdvisoryAssignee, AdvisoryCorrelation, AdvisoryTriageMap, TriagedAdvisory, TriagedCorrelation } from '../utils/advisories.ts'
+import type { AdvisoryAssignee, AdvisoryCorrelation, AdvisoryTriageMap, NcscStatus, TriagedAdvisory, TriagedCorrelation } from '../utils/advisories.ts'
 
 import { n, t } from '@nextcloud/l10n'
 import { computed, defineAsyncComponent, ref } from 'vue'
@@ -16,8 +16,11 @@ const props = withDefaults(defineProps<{
 	advisories: Record<string, AdvisoryCorrelation>
 	freshnessLabel: string
 	triage?: AdvisoryTriageMap
+	/** How far the NCSC-NL read got; null or absent when NCSC-NL checks are off. */
+	ncscStatus?: NcscStatus | null
 }>(), {
 	triage: () => ({}),
+	ncscStatus: null,
 })
 const emit = defineEmits<{
 	'update:triage': [triage: AdvisoryTriageMap]
@@ -41,6 +44,18 @@ const DismissAdvisoryDialog = defineAsyncComponent(() => import('../dialogs/Dism
 const AssignAdvisoryDialog = defineAsyncComponent(() => import('../dialogs/AssignAdvisoryDialog.vue'))
 
 const rows = computed(() => splitAdvisoryRows(props.advisories))
+
+/** "NCSC-NL: catching up, read up to {date}" until a sweep reached the present (advisories-ncsc-feed). */
+const ncscCatchingUp = computed(() => {
+	const status = props.ncscStatus
+	if (!status || !status.enabled || status.caughtUp) {
+		return ''
+	}
+
+	return status.readUpTo
+		? t('versioniq', 'NCSC-NL: catching up, read up to {date}', { date: status.readUpTo.slice(0, 10) })
+		: t('versioniq', 'NCSC-NL: not read yet')
+})
 const server = computed((): TriagedCorrelation | null => rows.value.server
 	? applyTriage({ ...rows.value.server, appId: SERVER_ADVISORY_KEY }, props.triage)
 	: null)
@@ -119,6 +134,9 @@ async function reopen (appId: string, advisoryId: string): Promise<void> {
 		<h3>{{ t('versioniq', 'Security advisories') }}</h3>
 		<p v-if="freshnessLabel" :class="$style.hint">
 			{{ freshnessLabel }}
+		</p>
+		<p v-if="ncscCatchingUp" :class="$style.hint" data-testid="advisories-ncsc-catching-up">
+			{{ ncscCatchingUp }}
 		</p>
 		<NcCheckboxRadioSwitch
 			type="switch"

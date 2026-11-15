@@ -260,11 +260,15 @@ class NextcloudAdvisoryFeed {
 	 * @return array{id: string, severity: string, summary: string}
 	 */
 	private static function advisoryHeader(array $record, string $ghsa): array {
-		return [
+		$header = [
 			'id' => $ghsa,
 			'severity' => AdvisorySeverity::normalize($record['severity'] ?? null),
 			'summary' => is_string($record['summary'] ?? null) ? (string)$record['summary'] : '',
 		];
+		// The CVE an NCSC-NL record about the same issue is folded into (advisories-ncsc-feed D5).
+		$cve = $record['cve_id'] ?? null;
+
+		return (is_string($cve) && $cve !== '') ? $header + ['cveIds' => [$cve]] : $header;
 	}
 
 	/**
