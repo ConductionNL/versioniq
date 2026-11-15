@@ -14,8 +14,10 @@ require_once __DIR__ . '/../Support/DispatchesLikeNextcloud.php';
 require_once __DIR__ . '/../Service/Policy/PatchPolicyTest.php';
 
 use OCA\Versioniq\Controller\PatchPolicyController;
+use OCA\Versioniq\Service\Api\ApiCaller;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Policy\PatchPolicyStatement;
+use OCA\Versioniq\Service\Policy\PatchPolicyServices;
 use OCA\Versioniq\Service\Policy\PatchPolicyStore;
 use OCA\Versioniq\Tests\Unit\Service\Policy\PatchPolicyTest;
 use OCA\Versioniq\Tests\Unit\Support\AuditArgs;
@@ -38,6 +40,8 @@ use ReflectionMethod;
  * @covers \OCA\Versioniq\Controller\PatchPolicyController
  * @uses \OCA\Versioniq\Service\Policy\PatchPolicy
  * @uses \OCA\Versioniq\Service\Policy\PatchPolicyStore
+ * @uses \OCA\Versioniq\Service\Policy\PatchPolicyServices
+ * @uses \OCA\Versioniq\Service\Api\ApiCaller
  * @uses \OCA\Versioniq\Service\Policy\PatchPolicyStatement
  * @uses \OCA\Versioniq\Service\Advisory\AdvisorySeverity
  * @uses \OCA\Versioniq\Service\Audit\AuditSubject
@@ -78,12 +82,12 @@ final class PatchPolicyControllerTest extends TestCase {
 		return new PatchPolicyController(
 			'versioniq',
 			$request,
-			new PatchPolicyStore($appConfig, $this->createMock(LoggerInterface::class)),
-			new PatchPolicyStatement($l),
-			$audit ?? $this->createMock(AuditLogger::class),
-			$groups,
-			$session,
-			$time,
+			new PatchPolicyServices(
+				new PatchPolicyStore($appConfig, $this->createMock(LoggerInterface::class)),
+				new PatchPolicyStatement($l),
+				$audit ?? $this->createMock(AuditLogger::class),
+			),
+			new ApiCaller($session, $groups, $time),
 		);
 	}
 

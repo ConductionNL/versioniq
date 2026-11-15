@@ -49,16 +49,15 @@ final class AutoUpdatePlanner {
 	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-an-admin-records-a-patch-policy-and-security-fixes-go-first
 	 */
 	public function plan(array $advisories = ['rows' => [], 'fresh' => false], ?PatchPolicy $patchPolicy = null): AutoUpdatePlan {
-		$patchPolicy ??= PatchPolicy::none();
+		$run = new PlanRun($advisories['rows'], $advisories['fresh'], $patchPolicy ?? PatchPolicy::none());
 		$first = [];
 		$later = [];
-		$holds = [];
 		foreach ($this->stores->policyStore->all() as $appId => $policy) {
 			if ($policy->level === Policy::LEVEL_NONE) {
 				continue;
 			}
 
-			$planned = $this->planIsolated($appId, $policy->level, $advisories, $patchPolicy, $holds);
+			$planned = $this->planIsolated($appId, $policy->level, $run);
 			if ($planned === null) {
 				continue;
 			}
@@ -70,19 +69,17 @@ final class AutoUpdatePlanner {
 			}
 		}
 
-		return new AutoUpdatePlan(array_merge($first, $later), $holds);
+		return new AutoUpdatePlan(array_merge($first, $later), $run->holds());
 	}
 
 	/**
 	 * Plan one app; a failure is logged and leaves the app out of the plan.
 	 *
-	 * @param array{rows: array<string, mixed>, fresh: bool} $advisories
-	 * @param array<string, string> $holds Why a fix was held back, by app id.
 	 * @return array{member: AutoUpdateMember, first: bool}|null
 	 */
-	private function planIsolated(string $appId, string $level, array $advisories, PatchPolicy $patchPolicy, array &$holds): ?array {
+	private function planIsolated(string $appId, string $level, PlanRun $run): ?array {
 		try {
-			return $this->planApp($appId, $level, $advisories, $patchPolicy, $holds);
+			return $this->planApp($appId, $level, $run);
 		} catch (\Throwable $error) {
 			// Per-app isolation — see "the job MUST proceed to the next app
 			// after any failure".
@@ -99,11 +96,9 @@ final class AutoUpdatePlanner {
 	 * One app's place in the plan, or null when it has no place: it is not
 	 * manageable here, or not installed.
 	 *
-	 * @param array{rows: array<string, mixed>, fresh: bool} $advisories
-	 * @param array<string, string> $holds
 	 * @return array{member: AutoUpdateMember, first: bool}|null
 	 */
-	private function planApp(string $appId, string $level, array $advisories, PatchPolicy $patchPolicy, array &$holds): ?array {
+	private function planApp(string $appId, string $level, PlanRun $run): ?array {
 		if ($this->stores->pinStore->get($appId) !== null) {
 			return ['member' => new AutoUpdateMember($appId, null, null, AutoUpdateMember::REASON_PINNED), 'first' => false];
 		}
@@ -122,7 +117,7 @@ final class AutoUpdatePlanner {
 			return ['member' => new AutoUpdateMember($appId, $installedVersion, null, AutoUpdateMember::REASON_SOURCE_ERROR), 'first' => false];
 		}
 
-		return $this->planSecurityFirst($appId, $level, $installedVersion, $available, $advisories, $patchPolicy, $holds);
+		return $this->planSecurityFirst(new PlanSubject($appId, $level, $installedVersion, $available), $run);
 	}
 
 	/**
@@ -132,80 +127,80 @@ final class AutoUpdatePlanner {
 	 * every other app takes the highest version within its level among the
 	 * kinds the patch policy does not set to by hand.
 	 *
-	 * @param list<string> $available
-	 * @param array{rows: array<string, mixed>, fresh: bool} $advisories
-	 * @param array<string, string> $holds
 	 * @return array{member: AutoUpdateMember, first: bool}
 	 *
 	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-an-admin-records-a-patch-policy-and-security-fixes-go-first
 	 */
-	private function planSecurityFirst(string $appId, string $level, string $installedVersion, array $available, array $advisories, PatchPolicy $patchPolicy, array &$holds): array {
-		/** @var mixed $stored */
-		$stored = $advisories['rows'][$appId] ?? null;
-		/** @var array<string, mixed>|null $row */
-		$row = is_array($stored) ? $stored : null;
-		$fix = $this->securityFix($appId, $level, $installedVersion, $available, $row, $advisories['fresh'], $holds);
+	private function planSecurityFirst(PlanSubject $app, PlanRun $run): array {
+		$row = $run->rowOf($app->appId);
+		$fix = $this->securityFix($app, $row, $run);
 		if ($fix === null) {
 			// Nothing a security fix can do: a `security` app is done, any
 			// other level updates as usual.
-			if ($level === Policy::LEVEL_SECURITY) {
-				return ['member' => new AutoUpdateMember($appId, $installedVersion, null, AutoUpdateMember::REASON_NO_CANDIDATE), 'first' => false];
-			}
-
-			return ['member' => $this->regularMember($appId, $level, $installedVersion, $available, $patchPolicy), 'first' => false];
+			return ['member' => $this->withoutFix($app, $run->patchPolicy), 'first' => false];
 		}
 
 		/** @var mixed $listed */
 		$listed = $row['advisories'] ?? null;
-		$advisoryRows = is_array($listed) ? array_values($listed) : [];
-		$handling = $patchPolicy->securityHandling(PatchPolicy::highestSeverity($advisoryRows));
+		$handling = $run->patchPolicy->securityHandling(PatchPolicy::highestSeverity(is_array($listed) ? array_values($listed) : []));
 		if ($handling === PatchPolicy::HANDLING_MANUAL) {
-			$holds[$appId] = SecurityHoldStore::REASON_MANUAL;
+			$run->hold($app->appId, SecurityHoldStore::REASON_MANUAL);
 
-			return ['member' => new AutoUpdateMember($appId, $installedVersion, $fix, AutoUpdateMember::REASON_HELD), 'first' => false];
+			return ['member' => new AutoUpdateMember($app->appId, $app->installedVersion, $fix, AutoUpdateMember::REASON_HELD), 'first' => false];
 		}
 
 		if ($handling === PatchPolicy::HANDLING_NEXT_WINDOW) {
-			return ['member' => $this->memberFor($appId, $installedVersion, $fix), 'first' => true];
+			return ['member' => $this->memberFor($app, $fix), 'first' => true];
 		}
 
 		// `scheduled`: the fix installs with the other updates.
-		if ($level === Policy::LEVEL_SECURITY) {
-			return ['member' => $this->memberFor($appId, $installedVersion, $fix), 'first' => false];
+		if ($app->level === Policy::LEVEL_SECURITY) {
+			return ['member' => $this->memberFor($app, $fix), 'first' => false];
 		}
 
-		return ['member' => $this->regularMember($appId, $level, $installedVersion, $available, $patchPolicy), 'first' => false];
+		return ['member' => $this->regularMember($app, $run->patchPolicy), 'first' => false];
+	}
+
+	/**
+	 * The member when no security fix applies: a `security` app has no
+	 * candidate, any other level updates as usual.
+	 */
+	private function withoutFix(PlanSubject $app, PatchPolicy $patchPolicy): AutoUpdateMember {
+		if ($app->level === Policy::LEVEL_SECURITY) {
+			return new AutoUpdateMember($app->appId, $app->installedVersion, null, AutoUpdateMember::REASON_NO_CANDIDATE);
+		}
+
+		return $this->regularMember($app, $patchPolicy);
 	}
 
 	/**
 	 * The highest version within the app's level among the kinds the patch
 	 * policy does not set to by hand, or why there is none.
-	 *
-	 * @param list<string> $available
 	 */
-	private function regularMember(string $appId, string $level, string $installedVersion, array $available, PatchPolicy $patchPolicy): AutoUpdateMember {
+	private function regularMember(PlanSubject $app, PatchPolicy $patchPolicy): AutoUpdateMember {
+		$installedVersion = $app->installedVersion;
 		$allowed = array_values(array_filter(
-			$available,
+			$app->available,
 			static fn (string $version): bool => $patchPolicy->regularHandling(PatchPolicy::kindOf($installedVersion, $version)) !== PatchPolicy::HANDLING_MANUAL,
 		));
-		$candidate = $this->install->candidateSelector->select($installedVersion, $allowed, $level);
+		$candidate = $this->install->candidateSelector->select($installedVersion, $allowed, $app->level);
 		if ($candidate === null) {
-			return new AutoUpdateMember($appId, $installedVersion, null, AutoUpdateMember::REASON_NO_CANDIDATE);
+			return new AutoUpdateMember($app->appId, $installedVersion, null, AutoUpdateMember::REASON_NO_CANDIDATE);
 		}
 
-		return $this->memberFor($appId, $installedVersion, $candidate);
+		return $this->memberFor($app, $candidate);
 	}
 
 	/**
 	 * A member that installs the version, unless that exact version was
 	 * attempted before (never-retry — see "Failed attempt is not retried").
 	 */
-	private function memberFor(string $appId, string $installedVersion, string $version): AutoUpdateMember {
-		if ($this->stores->attemptLedger->hasAttempted($appId, $version)) {
-			return new AutoUpdateMember($appId, $installedVersion, $version, AutoUpdateMember::REASON_BLOCKED);
+	private function memberFor(PlanSubject $app, string $version): AutoUpdateMember {
+		if ($this->stores->attemptLedger->hasAttempted($app->appId, $version)) {
+			return new AutoUpdateMember($app->appId, $app->installedVersion, $version, AutoUpdateMember::REASON_BLOCKED);
 		}
 
-		return new AutoUpdateMember($appId, $installedVersion, $version, null);
+		return new AutoUpdateMember($app->appId, $app->installedVersion, $version, null);
 	}
 
 	/**
@@ -215,30 +210,39 @@ final class AutoUpdatePlanner {
 	 * includes it. Null when the app is not affected or the fix is out of
 	 * reach; a `security` app records why.
 	 *
-	 * @param list<string> $available
 	 * @param array<string, mixed>|null $row The app's advisory row.
-	 * @param array<string, string> $holds Why a fix was held back, by app id.
 	 *
 	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md
 	 */
-	private function securityFix(string $appId, string $level, string $installedVersion, array $available, ?array $row, bool $fresh, array &$holds): ?string {
-		if ($level === Policy::LEVEL_SECURITY) {
-			$decision = SecurityCandidate::decide($installedVersion, $row, $available, $fresh);
-			if ($decision['version'] === null && $decision['reason'] !== SecurityCandidate::REASON_NOT_AFFECTED) {
-				$this->logger->info('AutoUpdateJob: no security fix installed', ['appId' => $appId, 'reason' => $decision['reason']]);
-				$holds[$appId] = (string)$decision['reason'];
-			}
-
-			return $decision['version'];
+	private function securityFix(PlanSubject $app, ?array $row, PlanRun $run): ?string {
+		if ($app->level !== Policy::LEVEL_SECURITY) {
+			return $this->fixWithinLevel($app, $row, $run->fresh);
 		}
 
+		$decision = SecurityCandidate::decide($app->installedVersion, $row, $app->available, $run->fresh);
+		if ($decision['version'] === null && $decision['reason'] !== SecurityCandidate::REASON_NOT_AFFECTED) {
+			$this->logger->info('AutoUpdateJob: no security fix installed', ['appId' => $app->appId, 'reason' => $decision['reason']]);
+			$run->hold($app->appId, (string)$decision['reason']);
+		}
+
+		return $decision['version'];
+	}
+
+	/**
+	 * For a level other than `security`: the recommended fix when the
+	 * snapshot is fresh, the app is affected, its source lists the fix and
+	 * the level's own selection includes it; else null.
+	 *
+	 * @param array<string, mixed>|null $row The app's advisory row.
+	 */
+	private function fixWithinLevel(PlanSubject $app, ?array $row, bool $fresh): ?string {
 		$recommended = $row['recommendedVersion'] ?? null;
 		if (!$fresh || ($row['state'] ?? null) !== AdvisoryService::STATE_VULNERABLE
-			|| !is_string($recommended) || !in_array($recommended, $available, true)) {
+			|| !is_string($recommended) || !in_array($recommended, $app->available, true)) {
 			return null;
 		}
 
-		return $this->install->candidateSelector->select($installedVersion, [$recommended], $level) === $recommended ? $recommended : null;
+		return $this->install->candidateSelector->select($app->installedVersion, [$recommended], $app->level) === $recommended ? $recommended : null;
 	}
 
 	/**

@@ -12,21 +12,18 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
+use OCA\Versioniq\Service\Api\ApiCaller;
 use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCA\Versioniq\Service\Policy\PatchPolicy;
-use OCA\Versioniq\Service\Policy\PatchPolicyStatement;
-use OCA\Versioniq\Service\Policy\PatchPolicyStore;
+use OCA\Versioniq\Service\Policy\PatchPolicyServices;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\OCSController;
-use OCP\AppFramework\Utility\ITimeFactory;
-use OCP\IGroupManager;
 use OCP\IRequest;
-use OCP\IUserSession;
 
 /**
  * The patch policy on the Settings tab (autoupdate-security-first D3, D5):
@@ -39,12 +36,8 @@ class PatchPolicyController extends OCSController {
 	public function __construct(
 		string $appName,
 		IRequest $request,
-		private PatchPolicyStore $store,
-		private PatchPolicyStatement $statement,
-		private AuditLogger $auditLogger,
-		private IGroupManager $groupManager,
-		private IUserSession $userSession,
-		private ITimeFactory $timeFactory,
+		private PatchPolicyServices $policy,
+		private ApiCaller $caller,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -66,7 +59,7 @@ class PatchPolicyController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		return new DataResponse($this->view($this->store->effective()));
+		return new DataResponse($this->view($this->policy->store->effective()));
 	}
 
 	/**
@@ -94,16 +87,24 @@ class PatchPolicyController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$previous = $this->store->effective();
+		return $this->record(['security' => $security, 'regular' => $regular, 'statement' => $statement], $uid);
+	}
+
+	/**
+	 * Validates and records the patch policy an administrator sent, with an
+	 * audit entry when it changed; writes nothing on 400.
+	 *
+	 * @param array<string, mixed> $input The security, regular and statement fields.
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>
+	 */
+	private function record(array $input, string $uid): DataResponse {
+		$previous = $this->policy->store->effective();
 		try {
 			$next = PatchPolicy::fromArray(
-				[
-					'security' => $security,
-					'regular' => $regular,
-					'statement' => $statement,
-				],
+				$input,
 				$uid,
-				$this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
+				$this->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
 			);
 		} catch (InvalidArgumentException $error) {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
@@ -115,8 +116,8 @@ class PatchPolicyController extends OCSController {
 			return new DataResponse($this->view($previous));
 		}
 
-		$this->store->write($next);
-		$this->auditLogger->record(
+		$this->policy->store->write($next);
+		$this->policy->auditLogger->record(
 			new AuditSubject($uid, 'versioniq', AuditLogger::OPERATION_PATCH_POLICY),
 			new AuditedVersions(null, null, null),
 			AuditLogger::STATUS_SUCCESS,
@@ -133,7 +134,7 @@ class PatchPolicyController extends OCSController {
 		return [
 			'policy' => $policy->toArray(),
 			'recorded' => $policy->isRecorded(),
-			'statement' => $this->statement->lines($policy),
+			'statement' => $this->policy->statement->lines($policy),
 			'allowed' => [
 				'severities' => PatchPolicy::SEVERITIES,
 				'securityHandlings' => PatchPolicy::SECURITY_HANDLINGS,
@@ -148,8 +149,8 @@ class PatchPolicyController extends OCSController {
 
 	/** The signed-in administrator's uid, or null for anyone else. */
 	private function adminUid(): ?string {
-		$user = $this->userSession->getUser();
-		if ($user === null || !$this->groupManager->isAdmin($user->getUID())) {
+		$user = $this->caller->userSession->getUser();
+		if ($user === null || !$this->caller->groupManager->isAdmin($user->getUID())) {
 			return null;
 		}
 

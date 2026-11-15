@@ -46,6 +46,7 @@ use ReflectionMethod;
  * @uses \OCA\Versioniq\Service\AutoUpdate\SecurityCandidate
  * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow
  * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores
+ * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateSecurityStores
  * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall
  * @uses \OCA\Versioniq\Service\Policy\Policy
  * @uses \OCA\Versioniq\Service\Pin\Pin

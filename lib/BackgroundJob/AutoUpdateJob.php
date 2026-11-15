@@ -120,10 +120,10 @@ class AutoUpdateJob extends TimedJob {
 		// today's behaviour, and security fixes are planned first (D4).
 		$plan = (new AutoUpdatePlanner($this->stores, $this->install, $this->logger))->plan(
 			$this->advisorySnapshot(),
-			$this->stores->patchPolicyStore->read() ?? PatchPolicy::none()
+			$this->stores->security->patchPolicyStore->read() ?? PatchPolicy::none()
 		);
 		$this->installPlanned($plan);
-		$this->stores->securityHolds->replace($plan->securityHolds);
+		$this->stores->security->securityHolds->replace($plan->securityHolds);
 	}
 
 	/**
@@ -135,7 +135,7 @@ class AutoUpdateJob extends TimedJob {
 	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md
 	 */
 	private function advisorySnapshot(): array {
-		$snapshot = $this->stores->advisoryResults->read();
+		$snapshot = $this->stores->security->advisoryResults->read();
 		$checkedAt = $snapshot['checkedAt'] ?? null;
 
 		return [
@@ -143,7 +143,7 @@ class AutoUpdateJob extends TimedJob {
 			'fresh' => SecurityCandidate::isFresh(
 				is_int($checkedAt) ? $checkedAt : null,
 				$this->time->getTime(),
-				$this->stores->advisorySettings->getIntervalSeconds()
+				$this->stores->security->advisorySettings->getIntervalSeconds()
 			),
 		];
 	}

@@ -935,9 +935,9 @@ class ApiController extends OCSController {
 			// Why the last run held a security fix back, whether the advisory
 			// snapshot is fresh enough for security installs, and the kinds
 			// the patch policy sets to by hand (autoupdate-security-first).
-			'securityHolds' => (object)$this->autoUpdate->securityHolds->read(),
+			'securityHolds' => (object)$this->autoUpdate->security->securityHolds->read(),
 			'advisoriesFresh' => $this->advisoriesFresh(),
-			'manualKinds' => ($this->autoUpdate->patchPolicyStore->read() ?? PatchPolicy::none())->manualKinds(),
+			'manualKinds' => ($this->autoUpdate->security->patchPolicyStore->read() ?? PatchPolicy::none())->manualKinds(),
 		]);
 	}
 
@@ -948,12 +948,12 @@ class ApiController extends OCSController {
 	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-the-security-level-installs-only-advisory-fixes-in-the-window
 	 */
 	private function advisoriesFresh(): bool {
-		$checkedAt = $this->autoUpdate->advisoryResults->read()['checkedAt'] ?? null;
+		$checkedAt = $this->autoUpdate->security->advisoryResults->read()['checkedAt'] ?? null;
 
 		return SecurityCandidate::isFresh(
 			is_int($checkedAt) ? $checkedAt : null,
 			$this->access->caller->timeFactory->getTime(),
-			$this->autoUpdate->advisorySettings->getIntervalSeconds(),
+			$this->autoUpdate->security->advisorySettings->getIntervalSeconds(),
 		);
 	}
 

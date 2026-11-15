@@ -75,7 +75,11 @@ final class SecurityCandidate {
 	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md
 	 */
 	public static function decide(string $installed, ?array $row, array $available, bool $fresh): array {
-		$reason = self::refusal(installed: $installed, row: $row, available: $available, fresh: $fresh);
+		$reason = $fresh ? self::refusal(installed: $installed, row: $row) : self::REASON_STALE;
+		if ($reason === null && in_array($row['recommendedVersion'] ?? null, $available, true) === false) {
+			$reason = self::REASON_NOT_IN_SOURCE;
+		}
+
 		if ($reason !== null) {
 			return ['version' => null, 'reason' => $reason];
 		}
@@ -84,18 +88,13 @@ final class SecurityCandidate {
 	}
 
 	/**
-	 * Why the app gets no security install, or null when it does.
+	 * Why a fresh snapshot gives the app no security install, before the
+	 * source is asked; null when the recommended fix may install.
 	 *
 	 * @param string                    $installed The installed version.
 	 * @param array<string, mixed>|null $row       The app's snapshot row.
-	 * @param list<string>              $available The versions the source lists.
-	 * @param bool                      $fresh     Whether the snapshot is fresh.
 	 */
-	private static function refusal(string $installed, ?array $row, array $available, bool $fresh): ?string {
-		if ($fresh === false) {
-			return self::REASON_STALE;
-		}
-
+	private static function refusal(string $installed, ?array $row): ?string {
 		if (($row['state'] ?? null) !== AdvisoryService::STATE_VULNERABLE) {
 			return self::REASON_NOT_AFFECTED;
 		}
@@ -107,10 +106,6 @@ final class SecurityCandidate {
 
 		if (self::major($recommended) !== self::major($installed)) {
 			return self::REASON_NEEDS_MAJOR;
-		}
-
-		if (in_array($recommended, $available, true) === false) {
-			return self::REASON_NOT_IN_SOURCE;
 		}
 
 		return null;

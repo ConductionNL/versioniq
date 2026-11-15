@@ -15,6 +15,7 @@ use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateMember;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSecurityStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
@@ -58,10 +59,12 @@ final class AutoUpdatePlannerTest extends TestCase {
 				$this->pins,
 				$this->createMock(AutoUpdateSettingsStore::class),
 				$this->ledger,
-				$this->createMock(AdvisoryResultStore::class),
-				$this->createMock(AdvisorySettingsStore::class),
-				$this->createMock(PatchPolicyStore::class),
-				$this->createMock(SecurityHoldStore::class),
+				new AutoUpdateSecurityStores(
+					$this->createMock(AdvisoryResultStore::class),
+					$this->createMock(AdvisorySettingsStore::class),
+					$this->createMock(PatchPolicyStore::class),
+					$this->createMock(SecurityHoldStore::class),
+				),
 			),
 			new AutoUpdateInstall($this->installer, $this->apps, new CandidateSelector()),
 			$this->logger,
