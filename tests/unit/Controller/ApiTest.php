@@ -22,6 +22,7 @@ use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Db\PatMapper;
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Service\Advisory\AdvisoryTriageStore;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
@@ -962,5 +963,44 @@ final class ApiTest extends TestCase {
 
 		$this->assertSame(400, $response->getStatus());
 		$this->assertSame(['message' => 'Dates are YYYY-MM-DD.'], $response->getData());
+	}
+
+	/**
+	 * GET /api/advisories returns the raw snapshot plus the stored triage
+	 * map, keyed `{appId}|{advisoryId}`, for the page (advisories-triage D1, D4).
+	 */
+	public function testAdvisoriesCarriesTheTriageMap(): void {
+		$triage = ['notes|GHSA-1' => ['dismissal' => ['reason' => 'not_used', 'by' => 'alice', 'installedVersion' => '4.1.0']]];
+		$results = $this->createMock(AdvisoryResultStore::class);
+		$results->method('read')->willReturn(['advisories' => ['notes' => ['state' => 'advisory-available']], 'checkedAt' => 1_700_000_000]);
+		$triageStore = $this->createMock(AdvisoryTriageStore::class);
+		$triageStore->expects($this->once())->method('read')->willReturn($triage);
+		$user = $this->createMock(IUser::class);
+		$user->method('getUID')->willReturn('admin');
+		$session = $this->createMock(IUserSession::class);
+		$session->method('getUser')->willReturn($user);
+		$groupManager = $this->createMock(IGroupManager::class);
+		$groupManager->method('isAdmin')->with('admin')->willReturn(true);
+
+		$controller = $this->buildByName(ApiController::class, [
+			'appName' => 'versioniq',
+			'request' => $this->createMock(IRequest::class),
+			'groupManager' => $groupManager,
+			'userSession' => $session,
+			'serverVersion' => $this->fakeServerVersion(),
+			'timeFactory' => $this->fakeTimeFactory(),
+			'advisoryResultStore' => $results,
+			'advisoryTriageStore' => $triageStore,
+			'connectionReports' => null,
+		]);
+
+		$response = $controller->advisories();
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame([
+			'advisories' => ['notes' => ['state' => 'advisory-available']],
+			'checkedAt' => 1_700_000_000,
+			'triage' => $triage,
+		], $response->getData());
 	}
 }
