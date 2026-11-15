@@ -19,6 +19,7 @@ use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCA\Versioniq\Service\Instance\InstanceConnection;
 use OCA\Versioniq\Service\Instance\InstanceConnectionStore;
 use OCA\Versioniq\Service\Instance\ManifestBuilder;
+use OCA\Versioniq\Service\Instance\RemoteInstanceReader;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
@@ -48,6 +49,7 @@ class InstanceController extends OCSController {
 		private IGroupManager $groupManager,
 		private IUserSession $userSession,
 		private ?ManifestBuilder $manifest = null,
+		private ?RemoteInstanceReader $reader = null,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -55,7 +57,7 @@ class InstanceController extends OCSController {
 	/**
 	 * Lists this instance's stage and the connections, without their passwords
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{self: array{name: string, stage: string, order: int}, instances: list<array{id: string, name: string, stage: string, order: int, baseUrl: string, username: string, addedBy: string, addedAt: string}>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{self: array{name: string, stage: string, order: int}, instances: list<array{id: string, name: string, stage: string, order: int, baseUrl: string, username: string, addedBy: string, addedAt: string, remote?: array{manifest: ?array<string, mixed>, fetchedAt: ?string, error: ?string, checkedAt: ?string}}>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: This instance and the connections in chain order
 	 * 403: Caller is not an administrator
@@ -71,7 +73,35 @@ class InstanceController extends OCSController {
 
 		return new DataResponse([
 			'self' => $this->store->self(),
-			'instances' => array_map(static fn (InstanceConnection $connection): array => $connection->toPublicArray(), $this->store->all()),
+			'instances' => array_map(fn (InstanceConnection $connection): array => $this->withRemote($connection, $this->reader?->cached($connection)), $this->store->all()),
+		]);
+	}
+
+	/**
+	 * Reads every connection's manifest once; one that fails keeps its last manifest and does not stop the others
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{self: array{name: string, stage: string, order: int}, instances: list<array{id: string, name: string, stage: string, order: int, baseUrl: string, username: string, addedBy: string, addedAt: string, remote?: array{manifest: ?array<string, mixed>, fetchedAt: ?string, error: ?string, checkedAt: ?string}}>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN|Http::STATUS_SERVICE_UNAVAILABLE, array{message: string}, array{}>
+	 *
+	 * 200: This instance and the connections, each with its manifest as read now
+	 * 403: Caller is not an administrator
+	 * 503: Remote reads are not available on this instance
+	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-the-instances-tab-shows-every-instances-versions-side-by-side
+	 */
+	#[ApiRoute(verb: 'POST', url: '/api/instances/refresh')]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/instances/refresh', postfix: 'v1')]
+	public function refresh(): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		if ($this->reader === null) {
+			return new DataResponse(['message' => 'Unavailable'], Http::STATUS_SERVICE_UNAVAILABLE);
+		}
+
+		return new DataResponse([
+			'self' => $this->store->self(),
+			'instances' => array_map(fn (InstanceConnection $connection): array => $this->withRemote($connection, $this->readNow($connection)), $this->store->all()),
 		]);
 	}
 
@@ -110,7 +140,7 @@ class InstanceController extends OCSController {
 	 * @param string $baseUrl The https address of that instance
 	 * @param string $username An admin account on that instance
 	 * @param string $password That account's app password; stored encrypted, never returned
-	 * @return DataResponse<Http::STATUS_CREATED, array{id: string, name: string, stage: string, order: int, baseUrl: string, username: string, addedBy: string, addedAt: string}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_CONFLICT, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_CREATED, array{id: string, name: string, stage: string, order: int, baseUrl: string, username: string, addedBy: string, addedAt: string, remote?: array{manifest: ?array<string, mixed>, fetchedAt: ?string, error: ?string, checkedAt: ?string}}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_CONFLICT, array{message: string}, array{}>
 	 *
 	 * 201: The connection, without its password
 	 * 400: A field is not acceptable; nothing was saved
@@ -136,7 +166,7 @@ class InstanceController extends OCSController {
 	 * @param string $baseUrl The https address of that instance
 	 * @param string $username An admin account on that instance
 	 * @param string $password A new app password, or empty to keep the stored one
-	 * @return DataResponse<Http::STATUS_OK, array{id: string, name: string, stage: string, order: int, baseUrl: string, username: string, addedBy: string, addedAt: string}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_NOT_FOUND, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{id: string, name: string, stage: string, order: int, baseUrl: string, username: string, addedBy: string, addedAt: string, remote?: array{manifest: ?array<string, mixed>, fetchedAt: ?string, error: ?string, checkedAt: ?string}}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_NOT_FOUND, array{message: string}, array{}>
 	 *
 	 * 200: The connection, without its password
 	 * 400: A field is not acceptable; nothing was saved
@@ -249,15 +279,48 @@ class InstanceController extends OCSController {
 	 * The answer to a save: the connection without its password, or 400 with the reason.
 	 *
 	 * @param InstanceConnection|string $saved The saved connection, or why it was not saved.
-	 * @param int $status The status of a saved connection.
-	 * @return DataResponse<Http::STATUS_OK|Http::STATUS_CREATED, array{id: string, name: string, stage: string, order: int, baseUrl: string, username: string, addedBy: string, addedAt: string}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>
+	 * @param Http::STATUS_OK|Http::STATUS_CREATED $status The status of a saved connection.
+	 * @return DataResponse<Http::STATUS_OK|Http::STATUS_CREATED, array{id: string, name: string, stage: string, order: int, baseUrl: string, username: string, addedBy: string, addedAt: string, remote?: array{manifest: ?array<string, mixed>, fetchedAt: ?string, error: ?string, checkedAt: ?string}}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>
 	 */
 	private function respond(InstanceConnection|string $saved, int $status): DataResponse {
 		if (is_string($saved)) {
 			return new DataResponse(['message' => $saved], Http::STATUS_BAD_REQUEST);
 		}
 
-		return new DataResponse($saved->toPublicArray(), $status);
+		return new DataResponse($this->withRemote($saved, $this->readNow($saved)), $status);
+	}
+
+	/**
+	 * Read one connection's manifest now; a read that throws keeps its last manifest.
+	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-the-instances-tab-shows-every-instances-versions-side-by-side
+	 * @return array{manifest: ?array<string, mixed>, fetchedAt: ?string, error: ?string, checkedAt: ?string}|null
+	 */
+	private function readNow(InstanceConnection $connection): ?array {
+		if ($this->reader === null) {
+			return null;
+		}
+
+		try {
+			return $this->reader->fetch($connection);
+		} catch (\Throwable) {
+			$kept = $this->reader->cached($connection);
+			$kept['error'] = RemoteInstanceReader::ERROR_UNREACHABLE;
+
+			return $kept;
+		}
+	}
+
+	/**
+	 * A connection without its password, with the last read of its manifest when there is a reader.
+	 *
+	 * @param array{manifest: ?array<string, mixed>, fetchedAt: ?string, error: ?string, checkedAt: ?string}|null $remote The cached or fresh read
+	 * @return array{id: string, name: string, stage: string, order: int, baseUrl: string, username: string, addedBy: string, addedAt: string, remote?: array{manifest: ?array<string, mixed>, fetchedAt: ?string, error: ?string, checkedAt: ?string}}
+	 */
+	private function withRemote(InstanceConnection $connection, ?array $remote): array {
+		$public = $connection->toPublicArray();
+
+		return $remote === null ? $public : $public + ['remote' => $remote];
 	}
 
 	private function audit(InstanceConnection $connection, string $verb): void {

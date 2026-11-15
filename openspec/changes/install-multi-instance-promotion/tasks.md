@@ -8,8 +8,8 @@
 ## 2. Manifest and remote reads
 
 - [x] 2.1 Add `lib/Service/Instance/ManifestBuilder.php` and `GET /api/instance/manifest` (design D3), admin-only. Verify: `tests/unit/Service/Instance/ManifestBuilderTest.php` covers an App Store app (null digest), a forge app (recorded digest), `runningSince` from the last-known-good record, from an audit row, and null.
-- [ ] 2.2 Add `lib/Service/Instance/RemoteInstanceReader.php` (design D4): Basic auth, `OCS-APIREQUEST`, 15 s timeout, `allow_local_address` from `allow_local_remote_servers`, the result cached under `instance.{id}.manifest`. Verify: `tests/unit/Service/Instance/RemoteInstanceReaderTest.php` covers 200, 401 (not an admin there), 404 (older Versioniq), a timeout that keeps the previous manifest, and that the password never reaches a log call.
-- [ ] 2.3 Add `POST /api/instances/refresh`. Verify: a controller test that one failing connection does not stop the others.
+- [x] 2.2 Add `lib/Service/Instance/RemoteInstanceReader.php` (design D4): Basic auth, `OCS-APIREQUEST`, 15 s timeout, `allow_local_address` from `allow_local_remote_servers`, the result cached under `instance.{id}.manifest`. Verify: `tests/unit/Service/Instance/RemoteInstanceReaderTest.php` covers 200, 401 (not an admin there), 404 (older Versioniq), a timeout that keeps the previous manifest, and that the password never reaches a log call.
+- [x] 2.3 Add `POST /api/instances/refresh`. Verify: a controller test that one failing connection does not stop the others.
 
 ## 3. Promotion
 
