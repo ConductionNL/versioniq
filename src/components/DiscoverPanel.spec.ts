@@ -5,7 +5,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 // @spec openspec/specs/app-discovery/spec.md
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import DiscoverPanel from './DiscoverPanel.vue'
-import { ocsGet } from '../ocs.ts'
+import { ocsGet, ocsWrite } from '../ocs.ts'
 
 vi.mock('@nextcloud/l10n', () => ({
 	t: (_app: string, text: string, vars: Record<string, unknown> = {}) =>
@@ -47,9 +47,11 @@ vi.mock('@nextcloud/vue/components/NcTextField', () => ({
 
 vi.mock('../ocs', () => ({
 	ocsGet: vi.fn(),
+	ocsWrite: vi.fn(),
 }))
 
 const mockedOcsGet = vi.mocked(ocsGet)
+const mockedOcsWrite = vi.mocked(ocsWrite)
 
 async function typeQuery (wrapper: ReturnType<typeof mount>, value: string) {
 	await wrapper.get('[data-testid="discover-search-input"]').setValue(value)
@@ -305,5 +307,40 @@ describe('DiscoverPanel', () => {
 
 		await wrapper.get('[data-testid="discover-open-trusted"]').trigger('click')
 		expect(wrapper.emitted('openTrusted')).toEqual([[]])
+	})
+	// releases-new-release-alerts D3: "Follow releases" on a hit that is not installed.
+	// @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-an-admin-follows-the-releases-of-an-app-that-is-not-installed
+	it('follows a not-installed hit with its forge source, and offers no follow on an installed one', async () => {
+		mockedOcsWrite.mockReset()
+		mockedOcsWrite.mockResolvedValueOnce({ payload: {} }).mockResolvedValueOnce({ payload: {} })
+		mockedOcsGet.mockResolvedValue({
+			payload: {
+				results: [
+					{ appId: 'hermiq', name: 'Hermiq', summary: '', iconUrl: null, homepageUrl: null, installedVersion: null, sourceCandidates: [{ providerId: 'github', sourceBinding: { kind: 'github-release', owner: 'ConductionNL', repo: 'hermiq', forge: 'github' }, installable: true, installableReason: null }] },
+					{ appId: 'forms', name: 'Forms', summary: '', iconUrl: null, homepageUrl: null, installedVersion: null, sourceCandidates: [{ providerId: 'appstore', sourceBinding: { kind: 'appstore' }, installable: true, installableReason: null }] },
+					{ appId: 'deck', name: 'Deck', summary: '', iconUrl: null, homepageUrl: null, installedVersion: '1.0.0', sourceCandidates: [] },
+				],
+				providers: [],
+				errors: [],
+			},
+		})
+
+		const wrapper = mount(DiscoverPanel)
+		await typeQuery(wrapper, 'apps')
+		await vi.advanceTimersByTimeAsync(400)
+		await flushPromises()
+
+		const buttons = wrapper.findAll('[data-testid="discover-follow"]')
+		expect(buttons).toHaveLength(2)
+		await buttons[0].trigger('click')
+		await flushPromises()
+		await buttons[1].trigger('click')
+		await flushPromises()
+
+		expect(mockedOcsWrite.mock.calls).toEqual([
+			['POST', '/ocs/v2.php/apps/versioniq/api/follow', { appId: 'hermiq', sourceId: 'github:ConductionNL/hermiq' }],
+			['POST', '/ocs/v2.php/apps/versioniq/api/follow', { appId: 'forms', sourceId: '' }],
+		])
+		expect(wrapper.findAll('[data-testid="discover-follow"]').map((button) => button.text())).toEqual(['Following releases', 'Following releases'])
 	})
 })

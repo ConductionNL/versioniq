@@ -11,6 +11,7 @@ namespace OCA\Versioniq\Tests\Unit\Service\Installer;
 
 use OCA\Versioniq\Service\Installer\EnvironmentCheck;
 use OCP\IL10N;
+use OCP\ITempManager;
 use OCP\L10N\IFactory;
 use PHPUnit\Framework\TestCase;
 
@@ -176,5 +177,57 @@ final class EnvironmentCheckTest extends TestCase {
 		}
 
 		self::assertSame(['manageable' => true, 'warning' => null], $this->build()->inspect($appPath));
+	}
+
+	/**
+	 * A check whose folders have the given free bytes (null: unknown), with
+	 * the temp folder at /tmp-vq. Records which folders it asked about.
+	 *
+	 * @param array<string, int|null> $free Free bytes per folder.
+	 * @param list<string>            $asked Collects the folders asked.
+	 */
+	private function withFreeSpace(array $free, array &$asked = []): EnvironmentCheck {
+		$factory = $this->createMock(IFactory::class);
+		$temp = $this->createMock(ITempManager::class);
+		$temp->method('getTempBaseDir')->willReturn('/tmp-vq');
+
+		return new EnvironmentCheck($factory, $temp, static function (string $dir) use ($free, &$asked): float|false {
+			$asked[] = $dir;
+			$bytes = $free[$dir] ?? null;
+
+			return $bytes === null ? false : (float)$bytes;
+		});
+	}
+
+	/**
+	 * safety-rollback-backup-and-preflight D2: three times the package in the
+	 * apps folder, two times in temp, the boundary included.
+	 */
+	public function testSpaceIsThreeTimesThePackageNextToTheAppAndTwiceInTemp(): void {
+		$asked = [];
+		$fits = $this->withFreeSpace(['/apps-extra' => 300, '/tmp-vq' => 200], $asked)->hasSpaceFor('/apps-extra/procest', 100);
+		self::assertSame(['fits' => true, 'appsFree' => 300, 'appsNeeded' => 300, 'tempFree' => 200, 'tempNeeded' => 200], $fits);
+		self::assertSame(['/apps-extra', '/tmp-vq'], $asked);
+
+		self::assertFalse($this->withFreeSpace(['/apps-extra' => 299, '/tmp-vq' => 200])->hasSpaceFor('/apps-extra/procest', 100)['fits']);
+		self::assertFalse($this->withFreeSpace(['/apps-extra' => 300, '/tmp-vq' => 199])->hasSpaceFor('/apps-extra/procest', 100)['fits']);
+	}
+
+	public function testAnUnknownPackageSizeAssumesFiftyMegabytes(): void {
+		$space = $this->withFreeSpace(['/apps-extra' => 1, '/tmp-vq' => 1])->hasSpaceFor('/apps-extra/procest', null);
+		self::assertSame(3 * EnvironmentCheck::DEFAULT_PACKAGE_BYTES, $space['appsNeeded']);
+		self::assertSame(2 * EnvironmentCheck::DEFAULT_PACKAGE_BYTES, $space['tempNeeded']);
+		self::assertSame(52428800, EnvironmentCheck::DEFAULT_PACKAGE_BYTES);
+		self::assertSame(3 * EnvironmentCheck::DEFAULT_PACKAGE_BYTES, $this->withFreeSpace([])->hasSpaceFor('/a/b', 0)['appsNeeded']);
+	}
+
+	public function testUnknownFreeSpaceDoesNotBlockAndAFreshInstallChecksTempOnly(): void {
+		self::assertTrue($this->withFreeSpace([])->hasSpaceFor('/apps-extra/procest', 100)['fits']);
+
+		$asked = [];
+		$fresh = $this->withFreeSpace(['/tmp-vq' => 150], $asked)->hasSpaceFor(null, 100);
+		self::assertFalse($fresh['fits']);
+		self::assertNull($fresh['appsFree']);
+		self::assertSame(['/tmp-vq'], $asked);
 	}
 }
