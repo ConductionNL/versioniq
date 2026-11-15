@@ -11,10 +11,13 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Advisory;
 
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
+
 use Exception;
 use OCA\Versioniq\Service\Advisory\AdvisoryPackageMap;
 use OCA\Versioniq\Service\Advisory\NextcloudAdvisoryFeed;
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
 use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
@@ -31,6 +34,8 @@ use Psr\Log\LoggerInterface;
  * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
  */
 final class NextcloudAdvisoryFeedConnectionReportTest extends TestCase {
+	use BuildsByParameterName;
+
 	private const NEXT = '<https://api.github.com/repositories/1/security-advisories?per_page=100&after=CURSOR>; rel="next"';
 
 	/**
@@ -58,7 +63,13 @@ final class NextcloudAdvisoryFeedConnectionReportTest extends TestCase {
 
 		$logger = $this->createMock(LoggerInterface::class);
 
-		return new NextcloudAdvisoryFeed($clientService, $config, new AdvisoryPackageMap($appManager, $logger), $logger, $reports);
+		return $this->buildByName(NextcloudAdvisoryFeed::class, [
+			'clientService' => $clientService,
+			'config' => $config,
+			'packageMap' => new AdvisoryPackageMap($appManager, $logger),
+			'logger' => $logger,
+			'connectionReports' => $reports,
+		]);
 	}
 
 	private function page(int $status, array $records, string $link = ''): IResponse {

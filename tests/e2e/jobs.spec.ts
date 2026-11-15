@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+// SPDX-License-Identifier: EUPL-1.2
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "@playwright/test";
@@ -49,6 +51,11 @@ test.describe("background jobs", () => {
 	test.afterEach(async ({ page }) => {
 		await occ("config:app:delete", "versioniq", "auto_update_enabled");
 		await occ("config:app:delete", "versioniq", "auto_update_window");
+		await occ(
+			"config:app:delete",
+			"versioniq",
+			"auto_update_last_swept_window",
+		);
 		await occ(
 			"config:app:delete",
 			"versioniq",

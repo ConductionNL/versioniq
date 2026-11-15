@@ -20,6 +20,15 @@ When an admin switched on the library check (off by default, with the setting st
 - **AND** the fixture app card MUST show a library advisory badge
 - **AND** the app's own advisory state MUST NOT change
 
+#### Scenario: A library known to be malicious is flagged as malicious
+
+@e2e exclude covered by OsvClientTest and BundledLibrariesSection.spec.ts.
+
+- **GIVEN** the library check is on, and OSV returns a record with a `MAL-` id for `vendor/evil` 1.0.0 bundled in the fixture app
+- **WHEN** the library job runs and the admin opens the Advisories tab
+- **THEN** the finding MUST be labelled "Known malicious package" with its `MAL-` id, not as a vulnerability with a fixed version
+- **AND** the next step MUST tell the admin to remove or replace the app
+
 #### Scenario: An app without a manifest is named, not skipped silently
 
 @e2e exclude covered by BundledLibraryScannerTest and BundledLibrariesSection.spec.ts.

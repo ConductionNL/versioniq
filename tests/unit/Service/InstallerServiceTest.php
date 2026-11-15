@@ -2,7 +2,16 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Service;
+
+require_once __DIR__ . '/../Support/InstallArgs.php';
+
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 
 use Exception;
 use OCA\Versioniq\AppInfo\Application;
@@ -20,6 +29,8 @@ use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\SourceRegistry;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
+use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -33,6 +44,8 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 final class InstallerServiceTest extends TestCase {
+	use BuildsByParameterName;
+
 	private IAppManager&MockObject $appManager;
 	private IConfig&MockObject $config;
 	private IAppConfig&MockObject $appConfig;
@@ -92,24 +105,24 @@ final class InstallerServiceTest extends TestCase {
 	}
 
 	private function service(): InstallerService {
-		return new InstallerService(
-			$this->appManager,
-			$this->config,
-			$this->appConfig,
-			$this->sourceRegistry,
-			$this->bindingStore,
-			$this->trustedSources,
-			$this->signedInstaller,
-			$this->externalInstaller,
-			$this->failureClassifier,
-			$this->environmentCheck,
-			$this->pinStore,
-			$this->userSession,
-			$this->timeFactory,
-			$this->lkgStore,
-			$this->artifactCache,
-			$this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
-		);
+		return $this->buildByName(InstallerService::class, [
+			'appManager' => $this->appManager,
+			'config' => $this->config,
+			'appConfig' => $this->appConfig,
+			'sourceRegistry' => $this->sourceRegistry,
+			'bindingStore' => $this->bindingStore,
+			'trustedSources' => $this->trustedSources,
+			'signedInstaller' => $this->signedInstaller,
+			'externalInstaller' => $this->externalInstaller,
+			'failureClassifier' => $this->failureClassifier,
+			'environmentCheck' => $this->environmentCheck,
+			'pinStore' => $this->pinStore,
+			'userSession' => $this->userSession,
+			'timeFactory' => $this->timeFactory,
+			'lkgStore' => $this->lkgStore,
+			'artifactCache' => $this->artifactCache,
+			'eventDispatcher' => $this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
+		]);
 	}
 
 	private function stubSignedSourceReturning(): SourceInterface&MockObject {
@@ -129,13 +142,74 @@ final class InstallerServiceTest extends TestCase {
 		// The guard must fire before any release resolution / download.
 		$this->sourceRegistry->expects(self::never())->method('get');
 
-		$result = $this->service()->installAppVersion('pipelinq', '2.0.0', false);
+		$result = InstallArgs::call($this->service(), 'pipelinq', '2.0.0', false);
 
 		self::assertSame(Http::STATUS_CONFLICT, $result['statusCode']);
 		self::assertNotSame(Http::STATUS_INTERNAL_SERVER_ERROR, $result['statusCode']);
 		self::assertSame(FailureClassifier::CATEGORY_PREFLIGHT_PERMISSION, $result['payload']['category']);
 		self::assertSame(FailureClassifier::STAGE_REQUESTED, $result['payload']['stage']);
 		self::assertNotSame('', $result['payload']['hint']);
+	}
+
+	/**
+	 * safety-rollback-backup-and-preflight 2.1: an install that does not fit
+	 * on disk is refused with 409 before any release is resolved or downloaded,
+	 * and the result names the free and needed space.
+	 */
+	public function testSpacePreflightAbortsBeforeDownloadWhenTheInstallDoesNotFit(): void {
+		$this->appManager->method('getAppPath')->willReturn('/var/www/html/apps-extra/procest');
+		$this->environmentCheck->method('isDestinationWritable')->willReturn(true);
+		$space = ['fits' => false, 'appsFree' => 1000, 'appsNeeded' => 157286400, 'tempFree' => null, 'tempNeeded' => 104857600];
+		$this->environmentCheck->expects(self::once())->method('hasSpaceFor')
+			->with('/var/www/html/apps-extra/procest')
+			->willReturn($space);
+		$this->sourceRegistry->expects(self::never())->method('get');
+
+		$result = InstallArgs::call($this->service(), 'procest', '2.0.0', false);
+
+		self::assertSame(Http::STATUS_CONFLICT, $result['statusCode']);
+		self::assertSame(FailureClassifier::CATEGORY_PREFLIGHT_SPACE, $result['payload']['category']);
+		self::assertSame(FailureClassifier::STAGE_REQUESTED, $result['payload']['stage']);
+		self::assertSame($space, $result['payload']['space']);
+		self::assertSame('failed', $result['payload']['installStatus']);
+	}
+
+	/**
+	 * safety-rollback-backup-and-preflight 2.2: an install that fits reports
+	 * the free space the pre-flight found, for the progress step.
+	 */
+	public function testTheOutcomeCarriesTheFreeSpaceThePreflightFound(): void {
+		$space = ['fits' => true, 'appsFree' => 9000000000, 'appsNeeded' => 157286400, 'tempFree' => 5000000000, 'tempNeeded' => 104857600];
+		$this->environmentCheck->method('hasSpaceFor')->willReturn($space);
+		$this->stubSuccessfulSignedInstall('2.0.0');
+
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
+
+		self::assertSame(Http::STATUS_OK, $result['statusCode']);
+		self::assertSame($space, $result['payload']['space']);
+	}
+
+	public function testAnOutcomeWithoutAMeasurementCarriesNoSpace(): void {
+		$this->environmentCheck->method('hasSpaceFor')->willReturn([]);
+		$this->stubSuccessfulSignedInstall('2.0.0');
+
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
+
+		self::assertSame(Http::STATUS_OK, $result['statusCode']);
+		self::assertArrayNotHasKey('space', $result['payload']);
+	}
+
+	/**
+	 * A non-writable folder is reported as such; the space check does not run on top of it.
+	 */
+	public function testThePermissionRefusalComesBeforeTheSpaceCheck(): void {
+		$this->appManager->method('getAppPath')->willReturn('/var/www/html/apps-extra/procest');
+		$this->environmentCheck->method('isDestinationWritable')->willReturn(false);
+		$this->environmentCheck->expects(self::never())->method('hasSpaceFor');
+
+		$result = InstallArgs::call($this->service(), 'procest', '2.0.0', false);
+
+		self::assertSame(FailureClassifier::CATEGORY_PREFLIGHT_PERMISSION, $result['payload']['category']);
 	}
 
 	public function testStructuredFailureFieldsPresentWithDebugOff(): void {
@@ -145,7 +219,7 @@ final class InstallerServiceTest extends TestCase {
 		$this->signedInstaller->method('installFromSelectedRelease')
 			->willThrowException(new Exception('Could not download selected release: timeout.'));
 
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', false);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
 
 		self::assertSame(Http::STATUS_BAD_GATEWAY, $result['statusCode']);
 		self::assertSame(FailureClassifier::CATEGORY_DOWNLOAD, $result['payload']['category']);
@@ -165,7 +239,7 @@ final class InstallerServiceTest extends TestCase {
 		$this->signedInstaller->method('installFromSelectedRelease')
 			->willThrowException(InstallFailure::finalizeFailed('migration step failed', FailureClassifier::RESTORE_CLEAN));
 
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', false);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
 
 		self::assertSame(InstallFailure::OUTCOME_INSTALLED_BUT_BROKEN, $result['payload']['installStatus']);
 		self::assertSame(FailureClassifier::CATEGORY_FINALIZE, $result['payload']['category']);
@@ -180,7 +254,7 @@ final class InstallerServiceTest extends TestCase {
 		$this->signedInstaller->method('installFromSelectedRelease')
 			->willThrowException(InstallFailure::finalizeFailed('migration step failed', FailureClassifier::RESTORE_FAILED));
 
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', false);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
 
 		self::assertSame(InstallFailure::OUTCOME_INSTALLED_BUT_BROKEN, $result['payload']['installStatus']);
 		self::assertStringContainsString('indeterminate', strtolower((string)$result['payload']['hint']));
@@ -195,7 +269,7 @@ final class InstallerServiceTest extends TestCase {
 		$this->signedInstaller->method('installFromSelectedRelease')
 			->willThrowException(InstallFailure::finalizeFailed('migration step failed', FailureClassifier::RESTORE_NONE));
 
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', false);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
 
 		self::assertSame(InstallFailure::OUTCOME_INSTALLED_BUT_BROKEN, $result['payload']['installStatus']);
 		$hint = strtolower((string)$result['payload']['hint']);
@@ -211,7 +285,7 @@ final class InstallerServiceTest extends TestCase {
 		$this->signedInstaller->method('installFromSelectedRelease')
 			->willThrowException(InstallFailure::reverted('Could not copy app file "x".', 'copy'));
 
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', false);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
 
 		self::assertSame(InstallFailure::OUTCOME_REVERTED, $result['payload']['installStatus']);
 		self::assertNotSame('', $result['payload']['hint']);
@@ -232,7 +306,7 @@ final class InstallerServiceTest extends TestCase {
 		// No download or filesystem change must happen — the guard fires first.
 		$this->sourceRegistry->expects(self::never())->method('get');
 
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', false);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
 
 		self::assertSame(Http::STATUS_CONFLICT, $result['statusCode']);
 		self::assertStringContainsString('1.0.0', $result['payload']['message']);
@@ -242,7 +316,7 @@ final class InstallerServiceTest extends TestCase {
 	public function testInvalidOverridePinValueReturns400(): void {
 		$this->sourceRegistry->expects(self::never())->method('get');
 
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', false, null, 'bogus');
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false, null, 'bogus');
 
 		self::assertSame(Http::STATUS_BAD_REQUEST, $result['statusCode']);
 	}
@@ -259,7 +333,7 @@ final class InstallerServiceTest extends TestCase {
 		$this->pinStore->expects(self::never())->method('clear');
 		$this->stubSuccessfulSignedInstall('2.0.0');
 
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', false, null, InstallerService::OVERRIDE_PIN_REPIN);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false, null, InstallerService::OVERRIDE_PIN_REPIN);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 	}
@@ -270,7 +344,7 @@ final class InstallerServiceTest extends TestCase {
 		$this->pinStore->expects(self::never())->method('set');
 		$this->stubSuccessfulSignedInstall('2.0.0');
 
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', false, null, InstallerService::OVERRIDE_PIN_UNPIN);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false, null, InstallerService::OVERRIDE_PIN_UNPIN);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 	}
@@ -285,7 +359,7 @@ final class InstallerServiceTest extends TestCase {
 		$this->signedInstaller->method('installFromSelectedRelease')
 			->willThrowException(new Exception('Could not download selected release: timeout.'));
 
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', false, null, InstallerService::OVERRIDE_PIN_REPIN);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false, null, InstallerService::OVERRIDE_PIN_REPIN);
 
 		self::assertNotSame(Http::STATUS_OK, $result['statusCode']);
 	}
@@ -298,7 +372,7 @@ final class InstallerServiceTest extends TestCase {
 		$this->pinStore->expects(self::never())->method('set');
 		$this->pinStore->expects(self::never())->method('clear');
 
-		$result = $this->service()->installAppVersion('someapp', '1.0.0', false);
+		$result = InstallArgs::call($this->service(), 'someapp', '1.0.0', false);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 		self::assertSame('App already has this version installed.', $result['payload']['message']);
@@ -313,7 +387,7 @@ final class InstallerServiceTest extends TestCase {
 			);
 		$this->stubSuccessfulSignedInstall('2.0.0');
 
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', false, null, null, true);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false, null, null, true);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 	}
@@ -329,7 +403,7 @@ final class InstallerServiceTest extends TestCase {
 			);
 		$this->stubSuccessfulSignedInstall('2.0.0');
 
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', false);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 	}
@@ -340,7 +414,7 @@ final class InstallerServiceTest extends TestCase {
 		$this->pinStore->expects(self::never())->method('clear');
 		$this->stubSuccessfulSignedInstall('2.0.0');
 
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', false);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 	}
@@ -353,7 +427,7 @@ final class InstallerServiceTest extends TestCase {
 		$this->signedInstaller->method('installFromSelectedRelease')
 			->willThrowException(new Exception('Could not download selected release: timeout.'));
 
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', false, null, null, true);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false, null, null, true);
 
 		self::assertNotSame(Http::STATUS_OK, $result['statusCode']);
 	}
@@ -365,7 +439,7 @@ final class InstallerServiceTest extends TestCase {
 		// No download or filesystem change must happen — the guard fires first.
 		$this->sourceRegistry->expects(self::never())->method('get');
 
-		$result = $this->service()->installAppVersion('someapp', '0.9.0', false);
+		$result = InstallArgs::call($this->service(), 'someapp', '0.9.0', false);
 
 		self::assertSame(Http::STATUS_CONFLICT, $result['statusCode']);
 		self::assertSame(FailureClassifier::CATEGORY_DOWNGRADE_GUARD, $result['payload']['category']);
@@ -378,7 +452,7 @@ final class InstallerServiceTest extends TestCase {
 	public function testAcknowledgedDowngradeProceedsThroughTheNormalFlow(): void {
 		$this->stubSuccessfulSignedInstall('0.9.0');
 
-		$result = $this->service()->installAppVersion('someapp', '0.9.0', false, null, null, false, false, true);
+		$result = InstallArgs::call($this->service(), 'someapp', '0.9.0', false, null, null, false, false, true);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 	}
@@ -386,7 +460,7 @@ final class InstallerServiceTest extends TestCase {
 	public function testUpgradesAreUnaffectedByTheDowngradeGuard(): void {
 		$this->stubSuccessfulSignedInstall('2.0.0');
 
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', false);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 	}
@@ -396,7 +470,7 @@ final class InstallerServiceTest extends TestCase {
 		// installed" short-circuit handles this, not the downgrade guard.
 		$this->sourceRegistry->expects(self::never())->method('get');
 
-		$result = $this->service()->installAppVersion('someapp', '1.0.0', false);
+		$result = InstallArgs::call($this->service(), 'someapp', '1.0.0', false);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 		self::assertSame('App already has this version installed.', $result['payload']['message']);
@@ -407,7 +481,7 @@ final class InstallerServiceTest extends TestCase {
 
 		// includeDebug=true is this app's dry-run signal; allowDowngrade is
 		// intentionally omitted — the guard must not block a dry run.
-		$result = $this->service()->installAppVersion('someapp', '0.9.0', true);
+		$result = InstallArgs::call($this->service(), 'someapp', '0.9.0', true);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 		self::assertTrue($result['payload']['dryRun']);
@@ -425,7 +499,7 @@ final class InstallerServiceTest extends TestCase {
 		]);
 		$this->appManager->method('getAppInfoByPath')->willReturn(['version' => '0.9.0']);
 
-		$result = $this->service()->installAppVersion('someapp', '0.9.0', false, null, null, false, false, true);
+		$result = InstallArgs::call($this->service(), 'someapp', '0.9.0', false, null, null, false, false, true);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 		self::assertSame(['Version2040Date20260101000000'], $result['payload']['orphanedMigrations']);
@@ -434,7 +508,7 @@ final class InstallerServiceTest extends TestCase {
 	public function testOrphanedMigrationsIsAbsentOnAnUpgrade(): void {
 		$this->stubSuccessfulSignedInstall('2.0.0');
 
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', false);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 		self::assertArrayNotHasKey('orphanedMigrations', $result['payload']);
@@ -482,7 +556,7 @@ final class InstallerServiceTest extends TestCase {
 	public function testInstallAppVersionRefusesSelfManagementWithoutTouchingTheSource(): void {
 		$this->sourceRegistry->expects(self::never())->method('get');
 
-		$result = $this->service()->installAppVersion(Application::APP_ID, '1.0.0', false);
+		$result = InstallArgs::call($this->service(), Application::APP_ID, '1.0.0', false);
 
 		self::assertSame(Http::STATUS_FORBIDDEN, $result['statusCode']);
 		self::assertStringContainsString('cannot be installed or updated', $result['payload']['message']);
@@ -493,7 +567,7 @@ final class InstallerServiceTest extends TestCase {
 		$this->appManager->method('getAlwaysEnabledApps')->willReturn(['dav']);
 		$this->sourceRegistry->expects(self::never())->method('get');
 
-		$result = $this->service()->installAppVersion('dav', '1.0.0', false);
+		$result = InstallArgs::call($this->service(), 'dav', '1.0.0', false);
 
 		self::assertSame(Http::STATUS_FORBIDDEN, $result['statusCode']);
 		self::assertStringContainsString('core app', $result['payload']['message']);
@@ -507,7 +581,7 @@ final class InstallerServiceTest extends TestCase {
 
 		// debug=1 (includeDebug=true) but dryRun explicitly false: a real
 		// install must happen, and the debug timeline is still attached.
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', true, null, null, false, false, false, false);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', true, null, null, false, false, false, false);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 		self::assertFalse($result['payload']['dryRun']);
@@ -518,7 +592,7 @@ final class InstallerServiceTest extends TestCase {
 		$this->stubSuccessfulSignedInstall('2.0.0');
 
 		// dryRun=1 explicitly, no debug: dry-run path, no debug timeline attached.
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', false, null, null, false, false, false, true);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false, null, null, false, false, false, true);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 		self::assertTrue($result['payload']['dryRun']);
@@ -530,7 +604,7 @@ final class InstallerServiceTest extends TestCase {
 
 		// $dryRun omitted (defaults to null) — legacy behavior: debug=1 alone
 		// still implies a dry run.
-		$result = $this->service()->installAppVersion('someapp', '2.0.0', true);
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', true);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 		self::assertTrue($result['payload']['dryRun']);
@@ -542,7 +616,7 @@ final class InstallerServiceTest extends TestCase {
 		// a REAL downgrade. It must now check !$dryRun instead.
 		$this->sourceRegistry->expects(self::never())->method('get');
 
-		$result = $this->service()->installAppVersion('someapp', '0.9.0', true, null, null, false, false, false, false);
+		$result = InstallArgs::call($this->service(), 'someapp', '0.9.0', true, null, null, false, false, false, false);
 
 		self::assertSame(Http::STATUS_CONFLICT, $result['statusCode']);
 		self::assertSame(FailureClassifier::CATEGORY_DOWNGRADE_GUARD, $result['payload']['category']);

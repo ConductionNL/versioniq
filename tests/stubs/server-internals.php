@@ -4,6 +4,9 @@ declare(strict_types=1);
 /**
  * @license EUPL-1.2
  * @copyright Copyright (c) 2025, Conduction B.V. <info@conduction.nl>
+ *
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
  */
 
 /**
@@ -26,16 +29,46 @@ namespace {
 		/** @var string */
 		public static $SERVERROOT;
 
+		/** @var ?string Ends with '/'; null until a server boots, as in unit tests. */
+		public static $configDir;
+
+		/** @var mixed */
+		public static $server;
+
 		/** @var array<int, array{path: string, url: string, writable: bool}> */
 		public static $APPSROOTS;
 	}
 
 	class OC_App {
 		/**
+		 * What listAllApps() returns; unit tests set it.
+		 *
+		 * @var array<int, array<string, mixed>>
+		 */
+		public static array $allApps = [];
+
+		/**
+		 * Receives the calls of these stubs that a unit test records: the
+		 * stub's name and its arguments.
+		 *
+		 * @var ?\Closure(string, array<int, mixed>): void
+		 */
+		public static ?\Closure $recorder = null;
+
+		/**
+		 * @param array<int, mixed> $args
+		 */
+		public static function record(string $call, array $args): void {
+			if (self::$recorder !== null) {
+				(self::$recorder)($call, $args);
+			}
+		}
+
+		/**
 		 * @return array<int, array<string, mixed>>
 		 */
 		public static function listAllApps(): array {
-			return [];
+			return self::$allApps;
 		}
 
 		/**
@@ -45,12 +78,14 @@ namespace {
 		}
 
 		public static function registerAutoloading(string $app, string $path): void {
+			self::record('OC_App::registerAutoloading', [$app, $path]);
 		}
 
 		/**
 		 * @param array<array-key, mixed> $steps
 		 */
 		public static function executeRepairSteps(string $appId, array $steps): void {
+			self::record('OC_App::executeRepairSteps', [$appId, $steps]);
 		}
 
 		public static function setAppTypes(string $appId): void {
@@ -64,21 +99,49 @@ namespace {
 }
 
 namespace OC\Archive {
+	/**
+	 * Under the unit-only bootstrap, TAR extracts gzip tarballs and ZIP extracts
+	 * zip files with PHP's own Phar and Zip extensions.
+	 */
 	class Archive {
-		public function __construct(string $source) {
+		public function __construct(
+			protected string $source,
+		) {
 		}
 
 		public function extract(string $dest): bool {
+			return false;
 		}
 
 		public function getError(): \PEAR_Error|false {
+			return false;
 		}
 	}
 
 	class TAR extends Archive {
+		public function extract(string $dest): bool {
+			if (@file_get_contents($this->source, false, null, 0, 2) !== "\x1f\x8b") {
+				return false;
+			}
+			try {
+				return (new \PharData($this->source))->extractTo($dest, null, true);
+			} catch (\Throwable) {
+				return false;
+			}
+		}
 	}
 
 	class ZIP extends Archive {
+		public function extract(string $dest): bool {
+			$zip = new \ZipArchive();
+			if ($zip->open($this->source) !== true) {
+				return false;
+			}
+			$result = $zip->extractTo($dest);
+			$zip->close();
+
+			return $result;
+		}
 	}
 }
 
@@ -92,6 +155,7 @@ namespace OC\Files {
 namespace OC\AppFramework\Bootstrap {
 	class Coordinator {
 		public function runLazyRegistration(string $appId): void {
+			\OC_App::record('Coordinator::runLazyRegistration', [$appId]);
 		}
 	}
 }
@@ -102,12 +166,15 @@ namespace OC\DB {
 
 	class MigrationService {
 		public function __construct(string $appName, Connection $connection) {
+			\OC_App::record('MigrationService::__construct', [$appName]);
 		}
 
 		public function setOutput(\OCP\Migration\IOutput $output): void {
+			\OC_App::record('MigrationService::setOutput', []);
 		}
 
 		public function migrate(string $to = 'latest', bool $schemaOnly = false): void {
+			\OC_App::record('MigrationService::migrate', [$to, $schemaOnly]);
 		}
 	}
 }
@@ -130,6 +197,49 @@ namespace phpseclib\File {
 		}
 
 		public function getRevoked(string $serial): mixed {
+		}
+	}
+}
+
+// Nextcloud 35 bundles phpseclib 3 instead of 2; same calls, new namespace.
+namespace phpseclib3\File {
+	/**
+	 * Under the unit-only bootstrap every call goes to `$handler`, which a test
+	 * sets: it receives the instance, the method name and the arguments.
+	 */
+	class X509 {
+		/** @var ?\Closure(self, string, array<int, mixed>): mixed */
+		public static ?\Closure $handler = null;
+
+		public function loadCA(string $cert): mixed {
+			return $this->handle(__FUNCTION__, [$cert]);
+		}
+
+		/**
+		 * @return array<string, mixed>|false
+		 */
+		public function loadX509(string $cert): array|false {
+			/** @var array<string, mixed>|false */
+			return $this->handle(__FUNCTION__, [$cert]);
+		}
+
+		public function loadCRL(string $crl): mixed {
+			return $this->handle(__FUNCTION__, [$crl]);
+		}
+
+		public function validateSignature(): bool {
+			return (bool)$this->handle(__FUNCTION__, []);
+		}
+
+		public function getRevoked(string $serial): mixed {
+			return $this->handle(__FUNCTION__, [$serial]);
+		}
+
+		/**
+		 * @param array<int, mixed> $args
+		 */
+		private function handle(string $method, array $args): mixed {
+			return self::$handler === null ? null : (self::$handler)($this, $method, $args);
 		}
 	}
 }
@@ -223,5 +333,45 @@ namespace Doctrine\DBAL {
 		public const STRING = 102;
 		public const ASCII = 117;
 		public const BINARY = 116;
+	}
+}
+
+namespace Doctrine\DBAL\Types {
+	/**
+	 * The type-name constants IQueryBuilder derives PARAM_BOOL and its date and
+	 * time PARAM_* constants from.
+	 *
+	 * Same reason as ParameterType above: without this class, creating a test
+	 * double of IQueryBuilder resolves its constants and dies with
+	 * `Class "Doctrine\DBAL\Types\Types" not found`, which is why the mapper
+	 * tests could not run in this suite. The values mirror doctrine/dbal 3.x,
+	 * where these are plain string constants.
+	 */
+	final class Types {
+		public const BOOLEAN = 'boolean';
+		public const DATE_MUTABLE = 'date';
+		public const DATE_IMMUTABLE = 'date_immutable';
+		public const DATETIME_MUTABLE = 'datetime';
+		public const DATETIME_IMMUTABLE = 'datetime_immutable';
+		public const DATETIMETZ_MUTABLE = 'datetimetz';
+		public const DATETIMETZ_IMMUTABLE = 'datetimetz_immutable';
+		public const TIME_MUTABLE = 'time';
+		public const TIME_IMMUTABLE = 'time_immutable';
+	}
+}
+
+namespace Doctrine\DBAL\Query\Expression {
+	/**
+	 * The comparison-operator constants IExpressionBuilder derives EQ, NEQ,
+	 * LT, LTE, GT and GTE from; without it a test double of
+	 * IExpressionBuilder cannot be created. Values mirror doctrine/dbal 3.x.
+	 */
+	class ExpressionBuilder {
+		public const EQ = '=';
+		public const NEQ = '<>';
+		public const LT = '<';
+		public const LTE = '<=';
+		public const GT = '>';
+		public const GTE = '>=';
 	}
 }
