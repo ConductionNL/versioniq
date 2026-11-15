@@ -33,6 +33,8 @@ class AuditLogger {
 	public const STATUS_FAILURE = 'failure';
 
 	public const OPERATION_INSTALL = 'install';
+	/** An install put back from its backup (safety-rollback-backup-and-preflight D4). */
+	public const OPERATION_RESTORE = 'restore';
 	public const OPERATION_BIND_SOURCE = 'bind_source';
 	public const OPERATION_PIN = 'pin';
 	public const OPERATION_UNPIN = 'unpin';

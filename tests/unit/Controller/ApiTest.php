@@ -25,6 +25,8 @@ use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
+use OCA\Versioniq\Service\Installer\AppRestorer;
+use OCA\Versioniq\Service\Installer\NoBackupException;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pat\PatDeeplinkBuilder;
 use OCA\Versioniq\Service\Pat\PatExpiryEvaluator;
@@ -934,5 +936,78 @@ final class ApiTest extends TestCase {
 			'checkedAt' => 1_700_000_000,
 			'triage' => $triage,
 		], $response->getData());
+	}
+
+	/**
+	 * POST /api/apps/{appId}/restore puts the app back from its backup
+	 * (safety-rollback-backup-and-preflight D4).
+	 *
+	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
+	 */
+	public function testRestoreAppReturnsWhatWasRestored(): void {
+		$restored = ['appId' => 'dossiq', 'version' => '0.4.48', 'enabled' => 'yes', 'tables' => 2, 'rows' => 5, 'backupCreatedAt' => '2026-10-01T00:00:00+00:00'];
+		$restorer = $this->createMock(AppRestorer::class);
+		$restorer->expects($this->once())->method('restore')->with('dossiq')->willReturn($restored);
+
+		$response = $this->restoreController($restorer, true)->restoreApp('dossiq');
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame($restored, $response->getData());
+	}
+
+	public function testRestoreAppWithoutABackupIsRefusedAndPointsToARollback(): void {
+		$restorer = $this->createMock(AppRestorer::class);
+		$restorer->method('restore')->willThrowException(new NoBackupException('There is no backup to restore dossiq from. Roll back to an earlier version instead.'));
+
+		$response = $this->restoreController($restorer, true)->restoreApp('dossiq');
+
+		$this->assertSame(409, $response->getStatus());
+		$this->assertSame(['message' => 'There is no backup to restore dossiq from. Roll back to an earlier version instead.', 'code' => 'no_backup'], $response->getData());
+	}
+
+	public function testRestoreAppRefusesANonAdminBeforeRestoring(): void {
+		$restorer = $this->createMock(AppRestorer::class);
+		$restorer->expects($this->never())->method('restore');
+
+		$response = $this->restoreController($restorer, false)->restoreApp('dossiq');
+
+		$this->assertSame(403, $response->getStatus());
+	}
+
+	public function testRestoreAppReportsAFailedRestore(): void {
+		$restorer = $this->createMock(AppRestorer::class);
+		$restorer->method('restore')->willThrowException(new \RuntimeException('Could not unpack the app folder backup.'));
+
+		$response = $this->restoreController($restorer, true)->restoreApp('dossiq');
+
+		$this->assertSame(500, $response->getStatus());
+		$this->assertSame(['message' => 'The restore failed: Could not unpack the app folder backup.'], $response->getData());
+	}
+
+	public function testTheRestoreRouteRequiresPasswordConfirmation(): void {
+		$method = new ReflectionMethod(ApiController::class, 'restoreApp');
+		$attributes = array_map(static fn ($attribute): string => $attribute->getName(), $method->getAttributes());
+
+		$this->assertContains(\OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired::class, $attributes);
+	}
+
+	private function restoreController(AppRestorer $restorer, bool $isAdmin): ApiController {
+		$user = $this->createMock(IUser::class);
+		$user->method('getUID')->willReturn('admin');
+		$session = $this->createMock(IUserSession::class);
+		$session->method('getUser')->willReturn($user);
+		$groupManager = $this->createMock(IGroupManager::class);
+		$groupManager->method('isAdmin')->with('admin')->willReturn($isAdmin);
+
+		return $this->buildByName(ApiController::class, [
+			'appName' => 'versioniq',
+			'request' => $this->createMock(IRequest::class),
+			'groupManager' => $groupManager,
+			'userSession' => $session,
+			'serverVersion' => $this->fakeServerVersion(),
+			'timeFactory' => $this->fakeTimeFactory(),
+			'restorer' => $restorer,
+			'connectionReports' => null,
+		]);
 	}
 }

@@ -8,6 +8,7 @@ import type {AdvisoryCorrelation, AdvisoryTriageMap} from './utils/advisories.ts
 import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
 import type {LkgRecord} from './utils/migrationSafety.ts';
 import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
+import type {RestorePayload} from './utils/restoreOutcome.ts';
 
 import { loadState } from '@nextcloud/initial-state'
 import { t } from '@nextcloud/l10n'
@@ -48,6 +49,7 @@ import { normalizeInstallResult, withSourceOverride } from './utils/installResul
 import { lkgRollbackTargets } from './utils/migrationSafety.ts'
 import { filterByUpdates, isOutsidePolicy, outsidePolicyLabel, updateBadge, updatesFreshnessLabel as updatesFreshnessLabelFor } from './utils/pendingUpdates.ts'
 import { repinApp } from './utils/repin.ts'
+import { restoreOutcomeText } from './utils/restoreOutcome.ts'
 import { isBlockedBySafeMode } from './utils/safeMode.ts'
 import { compareVersions, parseVersionCore } from './utils/versionCompare.ts'
 
@@ -1290,6 +1292,47 @@ function appStateLabel (state: AppOption['state']): string {
 
 // After a live install of an app that Nextcloud has not enabled, the result
 // panel offers the way to enable it; see "List Installed Apps".
+const isRestoringInstall = ref(false)
+const restoreOutcome = ref('')
+
+// "Restore installation" is offered after an install that ended
+// installed-but-broken (safety-rollback-backup-and-preflight D4).
+const canRestoreInstall = computed(() => {
+	const result = lastInstallResult.value
+	return result !== null && !result.dryRun && result.installStatus === 'installed-but-broken'
+})
+
+/**
+ * Puts the app back from the backup kept before the install, after the
+ * admin confirmed their password, and says what was restored or why not.
+ *
+ * @param appId The app to restore.
+ * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+ */
+async function restoreInstallation (appId: string): Promise<void> {
+	if (isRestoringInstall.value) {
+		return
+	}
+	isRestoringInstall.value = true
+	restoreOutcome.value = ''
+	try {
+		await ensurePasswordConfirmation()
+		const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/apps/${encodeURIComponent(appId)}/restore`)), {
+			method: 'POST',
+			headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
+		})
+		const raw = await response.json() as { ocs?: { data?: RestorePayload } }
+		restoreOutcome.value = restoreOutcomeText(response.status, raw?.ocs?.data ?? {})
+		if (response.ok) {
+			await refreshAfterInstall()
+		}
+	} catch {
+		restoreOutcome.value = t('versioniq', 'Could not restore the installation.')
+	} finally {
+		isRestoringInstall.value = false
+	}
+}
+
 const installedAppNeedsEnabling = computed(() => {
 	const result = lastInstallResult.value
 	if (!result || result.dryRun || installStatusTone.value !== 'success') {
@@ -1884,6 +1927,7 @@ function startInstall (target: InstallTarget): void {
 	errorMessage.value = ''
 	hasInstallResult.value = false
 	lastInstallResult.value = null
+	restoreOutcome.value = ''
 	lastInstallDebug.value = []
 	installRequestFromVersion.value = target.fromVersion
 	installRequestToVersion.value = target.toVersion
@@ -2856,6 +2900,18 @@ watch(dryRunEnabled, () => {
 										:servedFromCache="lastInstallResult.servedFromCache === true"
 										:space="lastInstallResult.space ?? null"
 										:backup="lastInstallResult.backup ?? null" />
+									<p v-if="canRestoreInstall" :class="$style.resultHint" data-testid="install-restore">
+										<NcButton
+											variant="primary"
+											:disabled="isRestoringInstall"
+											data-testid="install-restore-button"
+											@click="restoreInstallation(lastInstallResult.appId)">
+											{{ t('versioniq', 'Restore installation') }}
+										</NcButton>
+									</p>
+									<p v-if="restoreOutcome" :class="$style.resultHint" role="status" data-testid="install-restore-outcome">
+										{{ restoreOutcome }}
+									</p>
 									<p v-if="installedAppNeedsEnabling" :class="$style.resultHint" data-testid="install-enable-hint">
 										{{ t('versioniq', 'This app is installed but not enabled.') }}
 										<NcButton

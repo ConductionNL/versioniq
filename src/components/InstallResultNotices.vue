@@ -1,7 +1,8 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
-import { getCanonicalLocale, t } from '@nextcloud/l10n'
 import type { InstallBackupNote } from '../utils/installResult.ts'
+
+import { getCanonicalLocale, t } from '@nextcloud/l10n'
 
 /**
  * What the installer said about how it got the artifact: an install that went

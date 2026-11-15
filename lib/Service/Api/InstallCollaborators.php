@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Api;
 
 use OCA\Versioniq\Service\Cache\ArtifactCache;
+use OCA\Versioniq\Service\Installer\AppRestorer;
 use OCA\Versioniq\Service\InstallerService;
 use OCP\App\IAppManager;
 use OCP\ServerVersion;
@@ -28,6 +29,8 @@ final class InstallCollaborators {
 		public readonly ServerVersion $serverVersion,
 		public readonly IAppManager $appManager,
 		public readonly ArtifactCache $artifactCache,
+		// Optional: restores an app from its install backup (safety-rollback-backup-and-preflight D4).
+		public readonly ?AppRestorer $restorer = null,
 	) {
 	}
 }
