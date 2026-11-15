@@ -11,9 +11,12 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Source;
 
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
 use OCA\Versioniq\Service\Source\AppStoreSource;
 use OCA\Versioniq\Service\Source\SourceBinding;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
 use OCP\Http\Client\IResponse;
@@ -30,6 +33,8 @@ use PHPUnit\Framework\TestCase;
  * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
  */
 final class AppStoreSourceConnectionReportTest extends TestCase {
+	use BuildsByParameterName;
+
 	private function source(IClient $client, ConnectionReportService $reports, ?IAppConfig $appConfig = null): AppStoreSource {
 		$clientService = $this->createMock(IClientService::class);
 		$clientService->method('newClient')->willReturn($client);
@@ -40,7 +45,13 @@ final class AppStoreSourceConnectionReportTest extends TestCase {
 		$l10nFactory = $this->createMock(IFactory::class);
 		$l10nFactory->method('findLanguage')->willReturn('en');
 
-		return new AppStoreSource($clientService, $config, $appConfig ?? $this->createMock(IAppConfig::class), $l10nFactory, $reports);
+		return $this->buildByName(AppStoreSource::class, [
+			'clientService' => $clientService,
+			'config' => $config,
+			'appConfig' => $appConfig ?? $this->createMock(IAppConfig::class),
+			'l10nFactory' => $l10nFactory,
+			'connectionReports' => $reports,
+		]);
 	}
 
 	private function answering(int $status, string $body): IClient {

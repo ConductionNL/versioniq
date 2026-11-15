@@ -2,7 +2,14 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Service\Source;
+
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
 
 use Exception;
 use OCA\Versioniq\Service\Pat\PatManager;
@@ -10,6 +17,7 @@ use OCA\Versioniq\Service\Pat\PatResolver;
 use OCA\Versioniq\Service\Source\ForgeRegistry;
 use OCA\Versioniq\Service\Source\ForgeReleaseSource;
 use OCA\Versioniq\Service\Source\SourceBinding;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
 use OCP\Http\Client\IResponse;
@@ -18,6 +26,8 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 final class ForgeReleaseSourceTest extends TestCase {
+	use BuildsByParameterName;
+
 	private function buildSource(IClient $client): ForgeReleaseSource {
 		$clientService = $this->createMock(IClientService::class);
 		$clientService->method('newClient')->willReturn($client);
@@ -34,7 +44,15 @@ final class ForgeReleaseSourceTest extends TestCase {
 		$userSession = $this->createMock(IUserSession::class);
 		$userSession->method('getUser')->willReturn(null);
 
-		return new ForgeReleaseSource($clientService, $logger, $patResolver, $patManager, $userSession, new ForgeRegistry($this->createMock(\OCP\IAppConfig::class)), $this->createMock(\OCP\IConfig::class));
+		return $this->buildByName(ForgeReleaseSource::class, [
+			'clientService' => $clientService,
+			'logger' => $logger,
+			'patResolver' => $patResolver,
+			'patManager' => $patManager,
+			'userSession' => $userSession,
+			'forgeRegistry' => new ForgeRegistry($this->createMock(\OCP\IAppConfig::class)),
+			'config' => $this->createMock(\OCP\IConfig::class),
+		]);
 	}
 
 	private function mockResponse(int $status, string $body): IResponse {
@@ -66,6 +84,55 @@ final class ForgeReleaseSourceTest extends TestCase {
 		$this->assertSame('2.6.0', $result['versions'][0]['version']);
 		$this->assertSame('2.5.0', $result['versions'][1]['version']);
 		$this->assertSame('2.4.0', $result['versions'][2]['version']);
+	}
+
+	/**
+	 * The download count of the one asset matching the binding's pattern;
+	 * none when no asset matches, when two do, or when the count is not a
+	 * non-negative integer (releases-version-facts design D2).
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md
+	 */
+	public function testListVersionsReadsTheMatchingAssetsDownloadCount(): void {
+		$asset = static fn (string $name, mixed $count): array => ['name' => $name, 'browser_download_url' => 'https://example.org/' . $name, 'download_count' => $count];
+		$body = json_encode([
+			['tag_name' => 'v1.4.0', 'assets' => [$asset('hermiq-1.4.0.tar.gz', 312), $asset('hermiq-1.4.0.tar.gz.sha256', 40)]],
+			['tag_name' => 'v1.3.0', 'assets' => [$asset('hermiq-1.3.0.zip', 9)]],
+			['tag_name' => 'v1.2.0', 'assets' => [$asset('a.tar.gz', 5), $asset('b.tar.gz', 6)]],
+			['tag_name' => 'v1.1.0', 'assets' => [$asset('hermiq-1.1.0.tar.gz', -1)]],
+			['tag_name' => 'v1.0.0'],
+		], JSON_THROW_ON_ERROR);
+
+		$client = $this->createMock(IClient::class);
+		$client->method('get')->willReturn($this->mockResponse(200, $body));
+
+		$result = $this->buildSource($client)->listVersions('hermiq', SourceBinding::github('ConductionNL', 'hermiq'));
+
+		$this->assertSame(
+			['1.4.0' => 312, '1.3.0' => null, '1.2.0' => null, '1.1.0' => null, '1.0.0' => null],
+			array_column($result['versions'], 'downloads', 'version')
+		);
+	}
+
+	/**
+	 * The binding's own asset pattern decides which asset counts.
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md
+	 */
+	public function testListVersionsCountsDownloadsWithTheBindingsPattern(): void {
+		$body = json_encode([
+			['tag_name' => 'v2.0.0', 'assets' => [
+				['name' => 'tool-2.0.0.tar.gz', 'browser_download_url' => 'https://example.org/t', 'download_count' => 7],
+				['name' => 'tool-2.0.0.zip', 'browser_download_url' => 'https://example.org/z', 'download_count' => 70],
+			]],
+		], JSON_THROW_ON_ERROR);
+
+		$client = $this->createMock(IClient::class);
+		$client->method('get')->willReturn($this->mockResponse(200, $body));
+
+		$result = $this->buildSource($client)->listVersions('tool', SourceBinding::github('acme', 'tool', '*.zip'));
+
+		$this->assertSame(70, $result['versions'][0]['downloads']);
 	}
 
 	public function testListVersionsHandles404Gracefully(): void {
@@ -150,6 +217,28 @@ final class ForgeReleaseSourceTest extends TestCase {
 		$this->assertSame('2.5.0', $release['version']);
 		$this->assertSame('https://example.invalid/openregister-2.5.0.tar.gz', $release['download']);
 		$this->assertSame('https://example.invalid/openregister-2.5.0.tar.gz.sha256', $release['sha256Url']);
+	}
+
+	public function testResolveReleasePrefersTheChecksumNamedAfterTheArchive(): void {
+		foreach ([
+			'sibling first' => [['openregister-2.5.0.tar.gz.sha256', 'other.sha256'], 'https://example.invalid/openregister-2.5.0.tar.gz.sha256'],
+			'sibling last' => [['other.sha256', 'openregister-2.5.0.tar.gz.sha256'], 'https://example.invalid/openregister-2.5.0.tar.gz.sha256'],
+			'only checksum' => [['SHA256SUMS.sha256'], 'https://example.invalid/SHA256SUMS.sha256'],
+			'several, none named after it' => [['a.sha256', 'b.sha256'], null],
+		] as $case => [$checksums, $expected]) {
+			$assets = [['name' => 'openregister-2.5.0.tar.gz', 'browser_download_url' => 'https://example.invalid/openregister-2.5.0.tar.gz']];
+			foreach ($checksums as $name) {
+				$assets[] = ['name' => $name, 'browser_download_url' => 'https://example.invalid/' . $name];
+			}
+
+			$client = $this->createMock(IClient::class);
+			$client->method('get')->willReturn($this->mockResponse(200, json_encode([['tag_name' => 'v2.5.0', 'assets' => $assets]], JSON_THROW_ON_ERROR)));
+
+			$release = $this->buildSource($client)->resolveRelease('openregister', '2.5.0', SourceBinding::github('ConductionNL', 'openregister'));
+
+			$this->assertNotNull($release, $case);
+			$this->assertSame($expected, $release['sha256Url'], $case);
+		}
 	}
 
 	public function testResolveReleaseFailsWhenMultipleMatchingAssets(): void {
@@ -362,5 +451,53 @@ final class ForgeReleaseSourceTest extends TestCase {
 
 		$this->assertNull($result['error']);
 		$this->assertSame(['unknown', 'unknown', 'critical'], array_column($result['advisories'], 'severity'));
+	}
+
+	/**
+	 * Scenario "A GitHub-bound app is checked against its repository's
+	 * advisories" (advisories-name-their-feeds): the source reads
+	 * `/repos/{owner}/{repo}/security-advisories` on the GitHub API and maps
+	 * each advisory's id, severity, summary, affected range and first patched
+	 * version.
+	 *
+	 * @spec openspec/changes/advisories-name-their-feeds/specs/security-advisory-correlation/spec.md
+	 */
+	public function testAGitHubBoundAppReadsItsRepositorysAdvisories(): void {
+		$body = json_encode([
+			[
+				'ghsa_id' => 'GHSA-hq14-0001',
+				'summary' => 'Tool calls bypass the grant check',
+				'severity' => 'high',
+				'vulnerabilities' => [
+					['vulnerable_version_range' => '>= 1.0.0, <= 1.4.0', 'first_patched_version' => ['identifier' => 'v1.4.1']],
+				],
+			],
+		], JSON_THROW_ON_ERROR);
+
+		$urls = [];
+		$client = $this->createMock(IClient::class);
+		$client->method('get')->willReturnCallback(
+			function (string $url) use (&$urls, $body): IResponse {
+				$urls[] = $url;
+				return $this->mockResponse(200, $body);
+			}
+		);
+
+		$result = $this->buildSource($client)->listAdvisories('hermiq', SourceBinding::github('ConductionNL', 'hermiq'));
+
+		$this->assertSame(['https://api.github.com/repos/ConductionNL/hermiq/security-advisories?per_page=100'], $urls);
+		$this->assertNull($result['error']);
+		$this->assertSame(
+			[
+				[
+					'id' => 'GHSA-hq14-0001',
+					'severity' => 'high',
+					'summary' => 'Tool calls bypass the grant check',
+					'affected' => ['>= 1.0.0', '<= 1.4.0'],
+					'firstPatchedVersion' => '1.4.1',
+				],
+			],
+			$result['advisories']
+		);
 	}
 }

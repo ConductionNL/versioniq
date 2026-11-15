@@ -12,18 +12,21 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\BackgroundJob;
 
+use OCA\Versioniq\Service\Audit\AuditOrigin;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
-use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlan;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
-use OCA\Versioniq\Service\InstallerService;
-use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Installer\InstallOptions;
+use OCA\Versioniq\Service\Installer\InstallRequest;
+use OCA\Versioniq\Service\Installer\InstallTarget;
+use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Policy\Policy;
-use OCA\Versioniq\Service\Policy\PolicyStore;
-use OCP\App\IAppManager;
 use OCP\AppFramework\Http;
-use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
 use Psr\Log\LoggerInterface;
 
@@ -36,7 +39,7 @@ use Psr\Log\LoggerInterface;
  * entirely (no source query), lists versions from the app's bound source,
  * selects the highest qualifying version via {@see CandidateSelector}, and —
  * unless that exact (appId, version) was already attempted — installs it
- * through {@see InstallerService::installAppVersion()}, the same verified
+ * through {@see \OCA\Versioniq\Service\InstallerService::installAppVersion()}, the same verified
  * path (signature/integrity checks, backup/restore, structured outcomes,
  * audit trail) as every other install in this app. Every attempt is recorded
  * in the {@see AttemptLedger} (never-retry) and reported via
@@ -59,19 +62,16 @@ class AutoUpdateJob extends TimedJob {
 	 */
 	private const INTERVAL_SECONDS = 15 * 60;
 
+	private LoggerInterface $logger;
+
 	public function __construct(
-		ITimeFactory $time,
-		private PolicyStore $policyStore,
-		private PinStore $pinStore,
-		private InstallerService $installerService,
-		private IAppManager $appManager,
-		private CandidateSelector $candidateSelector,
-		private AttemptLedger $attemptLedger,
-		private AutoUpdateSettingsStore $settingsStore,
+		JobRuntime $runtime,
+		private AutoUpdateStores $stores,
+		private AutoUpdateInstall $install,
 		private AutoUpdateNotifier $notifier,
-		private LoggerInterface $logger,
 	) {
-		parent::__construct($time);
+		parent::__construct($runtime->time);
+		$this->logger = $runtime->logger;
 		$this->setInterval(self::INTERVAL_SECONDS);
 	}
 
@@ -80,15 +80,25 @@ class AutoUpdateJob extends TimedJob {
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 */
 	protected function run($argument): void {
-		if (!$this->settingsStore->isEnabled()) {
+		// Every audit row the run writes, by whichever installer, reads `job`.
+		AuditOrigin::during(AuditOrigin::JOB, fn () => $this->runUpdates());
+	}
+
+	/**
+	 * The run itself, under the job's audit origin.
+	 *
+	 * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-every-audit-row-says-where-it-came-from
+	 */
+	private function runUpdates(): void {
+		if (!$this->stores->settingsStore->isEnabled()) {
 			// Kill switch off — policies remain stored but inert; see "Global
 			// kill switch and window" ("Kill switch inert-but-stored").
 			return;
 		}
 
-		$zoneName = $this->settingsStore->getTimeZoneName();
+		$zoneName = $this->stores->settingsStore->getTimeZoneName();
 		$now = $this->time->getDateTime('now', new \DateTimeZone($zoneName !== '' ? $zoneName : 'UTC'));
-		$window = $this->settingsStore->getWindow();
+		$window = $this->stores->settingsStore->getWindow();
 		if (!AutoUpdateWindow::isWithin($window, $now)) {
 			// Outside the configured window — see "Disabled or outside the
 			// window is a no-op".
@@ -96,106 +106,61 @@ class AutoUpdateJob extends TimedJob {
 		}
 
 		$openingKey = AutoUpdateWindow::openingKey($window, $now);
-		if ($this->settingsStore->hasSweptWindow($openingKey)) {
+		if ($this->stores->settingsStore->hasSweptWindow($openingKey)) {
 			// Already swept this window; the job wakes every quarter hour.
 			return;
 		}
-		$this->settingsStore->markWindowSwept($openingKey);
+		$this->stores->settingsStore->markWindowSwept($openingKey);
 
-		foreach ($this->policyStore->all() as $appId => $policy) {
-			if ($policy->level === Policy::LEVEL_NONE) {
-				continue;
-			}
+		// Plan first, then install (autoupdate-run-batching D1).
+		$this->installPlanned((new AutoUpdatePlanner($this->stores, $this->install, $this->logger))->plan());
+	}
 
+	/**
+	 * Install every member of the plan that will install, one app at a time.
+	 */
+	private function installPlanned(AutoUpdatePlan $plan): void {
+		foreach ($plan->installable() as $member) {
 			try {
-				$this->processApp($appId, $policy->level);
+				$this->attemptInstall(
+					new InstallTarget($member->appId, (string)$member->candidate, null),
+					(string)$member->installedVersion
+				);
 			} catch (\Throwable $error) {
 				// Per-app isolation — see "the job MUST proceed to the next app
 				// after any failure".
 				$this->logger->warning('AutoUpdateJob: failed to process an app', [
-					'appId' => $appId,
+					'appId' => $member->appId,
 					'message' => $error->getMessage(),
 				]);
 			}
 		}
 	}
 
-	private function processApp(string $appId, string $level): void {
-		if ($this->pinStore->get($appId) !== null) {
-			// Pinned apps are skipped entirely, before any source query; see
-			// "Pinned app skipped".
-			return;
-		}
-
-		if (!$this->installerService->isManageableApp($appId)) {
-			return;
-		}
-
-		$installedVersion = null;
-		try {
-			$installed = $this->appManager->getAppVersion($appId, false);
-			$installedVersion = $installed !== '' ? $installed : null;
-		} catch (\Throwable) {
-			$installedVersion = null;
-		}
-		if ($installedVersion === null) {
-			return;
-		}
-
-		$result = $this->installerService->getAppVersions($appId);
-		if (($result['hasError'] ?? false) === true) {
-			return;
-		}
-
-		/** @var list<string> $available */
-		$available = array_map(
-			static fn (array $entry): string => (string)$entry['version'],
-			$result['availableVersions'] ?? []
-		);
-
-		$candidate = $this->candidateSelector->select($installedVersion, $available, $level);
-		if ($candidate === null) {
-			return;
-		}
-
-		if ($this->attemptLedger->hasAttempted($appId, $candidate)) {
-			// Never-retry — see "Failed attempt is not retried".
-			return;
-		}
-
-		$this->attemptInstall($appId, $installedVersion, $candidate);
-	}
-
-	private function attemptInstall(string $appId, string $installedVersion, string $candidate): void {
-		$installResult = $this->installerService->installAppVersion(
-			$appId,
-			$candidate,
-			false,
-			null,
-			null,
-			false,
-			false,
-			false,
-			false,
-		);
+	private function attemptInstall(InstallTarget $target, string $installedVersion): void {
+		$installResult = $this->install->installerService->installAppVersion(new InstallRequest(
+			$target,
+			new InstallOptions(false, false, false, false),
+			new PinChoice(null, false),
+		));
 
 		$at = $this->time->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM);
 		$statusCode = $installResult['statusCode'] ?? Http::STATUS_INTERNAL_SERVER_ERROR;
 		$payload = $installResult['payload'] ?? [];
 
 		if ($statusCode >= Http::STATUS_OK && $statusCode < Http::STATUS_MULTIPLE_CHOICES) {
-			$this->attemptLedger->record($appId, $candidate, AttemptLedger::OUTCOME_SUCCESS, $at);
+			$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedger::OUTCOME_SUCCESS, $at);
 			$toVersion = is_string($payload['installedVersion'] ?? null) && $payload['installedVersion'] !== ''
 				? $payload['installedVersion']
-				: $candidate;
-			$this->notifier->notifySuccess($appId, $installedVersion, $toVersion);
+				: $target->version;
+			$this->notifier->notifySuccess($target->appId, $installedVersion, $toVersion);
 
 			return;
 		}
 
-		$this->attemptLedger->record($appId, $candidate, AttemptLedger::OUTCOME_FAILURE, $at);
+		$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedger::OUTCOME_FAILURE, $at);
 		$category = is_string($payload['category'] ?? null) ? $payload['category'] : 'unknown';
 		$hint = is_string($payload['hint'] ?? null) ? $payload['hint'] : '';
-		$this->notifier->notifyFailure($appId, $candidate, $category, $hint);
+		$this->notifier->notifyFailure($target->appId, $target->version, $category, $hint);
 	}
 }

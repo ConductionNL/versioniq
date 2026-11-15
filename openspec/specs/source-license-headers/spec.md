@@ -1,7 +1,7 @@
 # source-license-headers Specification
 
 ## Purpose
-TBD - created by archiving change add-spdx-license-headers. Update Purpose after archive.
+Every PHP source file under `lib/` states its licence and copyright, so a reader and a REUSE check see the same EUPL-1.2 licence as `LICENSE` and `composer.json`.
 ## Requirements
 ### Requirement: Every lib PHP file carries an EUPL-1.2 licence and copyright header
 

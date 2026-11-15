@@ -2,12 +2,20 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Service\Source;
+
+require_once __DIR__ . '/../../Support/AuditArgs.php';
 
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
+use OCA\Versioniq\Tests\Unit\Support\AuditArgs;
 use OCP\IAppConfig;
 use OCP\IUser;
 use OCP\IUserSession;
@@ -124,7 +132,7 @@ final class SourceBindingStoreTest extends TestCase {
 		$auditLogger = $this->createMock(AuditLogger::class);
 		$auditLogger->expects($this->once())
 			->method('record')
-			->with(
+			->with(...AuditArgs::expected(
 				'alice',
 				'openregister',
 				AuditLogger::OPERATION_BIND_SOURCE,
@@ -133,7 +141,7 @@ final class SourceBindingStoreTest extends TestCase {
 				'github:ConductionNL/openregister',
 				AuditLogger::STATUS_SUCCESS,
 				null,
-			);
+			));
 
 		$store = $this->makeStore($config, $auditLogger);
 		$store->set('openregister', SourceBinding::github('ConductionNL', 'openregister'));
@@ -150,7 +158,7 @@ final class SourceBindingStoreTest extends TestCase {
 		$auditLogger = $this->createMock(AuditLogger::class);
 		$auditLogger->expects($this->once())
 			->method('record')
-			->with(
+			->with(...AuditArgs::expected(
 				'alice',
 				'openregister',
 				AuditLogger::OPERATION_BIND_SOURCE,
@@ -159,7 +167,7 @@ final class SourceBindingStoreTest extends TestCase {
 				'appstore',
 				AuditLogger::STATUS_SUCCESS,
 				$this->callback(fn (?string $message): bool => $message !== null && str_contains($message, 'github:ConductionNL/openregister')),
-			);
+			));
 
 		$store = $this->makeStore($config, $auditLogger);
 		$store->set('openregister', SourceBinding::appStore());
@@ -335,7 +343,7 @@ final class SourceBindingStoreTest extends TestCase {
 		$auditLogger = $this->createMock(AuditLogger::class);
 		$auditLogger->expects($this->once())
 			->method('record')
-			->with(
+			->with(...AuditArgs::expected(
 				'alice',
 				'openregister',
 				AuditLogger::OPERATION_BIND_SOURCE,
@@ -344,7 +352,7 @@ final class SourceBindingStoreTest extends TestCase {
 				'appstore',
 				AuditLogger::STATUS_SUCCESS,
 				$this->callback(fn (?string $message): bool => $message !== null && str_contains($message, 'github:ConductionNL/openregister')),
-			);
+			));
 
 		$this->makeStore($config, $auditLogger)->clear('openregister');
 	}

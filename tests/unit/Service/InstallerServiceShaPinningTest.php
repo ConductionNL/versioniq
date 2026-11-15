@@ -2,7 +2,16 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Service;
+
+require_once __DIR__ . '/../Support/InstallArgs.php';
+
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 
 use OCA\Versioniq\Service\ExternalReleaseInstallerService;
 use OCA\Versioniq\Service\Installer\EnvironmentCheck;
@@ -16,6 +25,8 @@ use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\SourceRegistry;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
+use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -36,6 +47,8 @@ use PHPUnit\Framework\TestCase;
  * @spec openspec/specs/external-sources/spec.md
  */
 final class InstallerServiceShaPinningTest extends TestCase {
+	use BuildsByParameterName;
+
 	private const SHA_A = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 	private const SHA_B = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 
@@ -98,24 +111,24 @@ final class InstallerServiceShaPinningTest extends TestCase {
 	}
 
 	private function service(): InstallerService {
-		return new InstallerService(
-			$this->appManager,
-			$this->config,
-			$this->appConfig,
-			$this->sourceRegistry,
-			$this->bindingStore,
-			$this->trustedSources,
-			$this->signedInstaller,
-			$this->externalInstaller,
-			$this->failureClassifier,
-			$this->environmentCheck,
-			$this->createMock(PinStore::class),
-			$this->userSession,
-			$this->createMock(ITimeFactory::class),
-			$this->createMock(\OCA\Versioniq\Service\Lkg\LkgStore::class),
-			$this->createMock(\OCA\Versioniq\Service\Cache\ArtifactCache::class),
-			$this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
-		);
+		return $this->buildByName(InstallerService::class, [
+			'appManager' => $this->appManager,
+			'config' => $this->config,
+			'appConfig' => $this->appConfig,
+			'sourceRegistry' => $this->sourceRegistry,
+			'bindingStore' => $this->bindingStore,
+			'trustedSources' => $this->trustedSources,
+			'signedInstaller' => $this->signedInstaller,
+			'externalInstaller' => $this->externalInstaller,
+			'failureClassifier' => $this->failureClassifier,
+			'environmentCheck' => $this->environmentCheck,
+			'pinStore' => $this->createMock(PinStore::class),
+			'userSession' => $this->userSession,
+			'timeFactory' => $this->createMock(ITimeFactory::class),
+			'lkgStore' => $this->createMock(\OCA\Versioniq\Service\Lkg\LkgStore::class),
+			'artifactCache' => $this->createMock(\OCA\Versioniq\Service\Cache\ArtifactCache::class),
+			'eventDispatcher' => $this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
+		]);
 	}
 
 	public function testSuccessfulExternalInstallPersistsTheUpdatedBindingReturnedByTheInstaller(): void {
@@ -137,7 +150,7 @@ final class InstallerServiceShaPinningTest extends TestCase {
 				static fn (SourceBinding $binding): bool => $binding->getRecordedSha('2.5.0') === self::SHA_A
 			));
 
-		$result = $this->service()->installAppVersion('openregister', '2.5.0', false);
+		$result = InstallArgs::call($this->service(), 'openregister', '2.5.0', false);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 	}
@@ -154,7 +167,7 @@ final class InstallerServiceShaPinningTest extends TestCase {
 			'recordedShaMatched' => true,
 		]);
 
-		$result = $this->service()->installAppVersion('openregister', '2.5.0', false);
+		$result = InstallArgs::call($this->service(), 'openregister', '2.5.0', false);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 		self::assertTrue($result['payload']['recordedShaMatched']);
@@ -164,7 +177,7 @@ final class InstallerServiceShaPinningTest extends TestCase {
 		$this->externalInstaller->method('installFromExternalRelease')
 			->willThrowException(new ShaMismatchException('openregister', '2.3.0', self::SHA_A, self::SHA_B));
 
-		$result = $this->service()->installAppVersion('openregister', '2.3.0', false);
+		$result = InstallArgs::call($this->service(), 'openregister', '2.3.0', false);
 
 		self::assertSame(Http::STATUS_UNPROCESSABLE_ENTITY, $result['statusCode']);
 		self::assertSame('sha_mismatch', $result['payload']['code']);
@@ -182,7 +195,7 @@ final class InstallerServiceShaPinningTest extends TestCase {
 
 		$this->bindingStore->expects(self::never())->method('set');
 
-		$this->service()->installAppVersion('openregister', '2.3.0', false);
+		InstallArgs::call($this->service(), 'openregister', '2.3.0', false);
 	}
 
 	public function testAcceptNewShaIsForwardedToTheExternalInstaller(): void {
@@ -200,7 +213,7 @@ final class InstallerServiceShaPinningTest extends TestCase {
 				'recordedShaMatched' => false,
 			]);
 
-		$result = $this->service()->installAppVersion('openregister', '2.3.0', false, null, null, false, true);
+		$result = InstallArgs::call($this->service(), 'openregister', '2.3.0', false, null, null, false, true);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 	}
@@ -215,7 +228,7 @@ final class InstallerServiceShaPinningTest extends TestCase {
 		$this->signedInstaller->method('installFromSelectedRelease')->willReturn(['status' => 'installed']);
 		$this->externalInstaller->expects(self::never())->method('installFromExternalRelease');
 
-		$result = $this->service()->installAppVersion('openregister', '2.5.0', false, null, null, false, true);
+		$result = InstallArgs::call($this->service(), 'openregister', '2.5.0', false, null, null, false, true);
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 		self::assertArrayNotHasKey('recordedShaMatched', $result['payload']);

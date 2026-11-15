@@ -12,8 +12,11 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Advisory;
 
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\Service\Advisory\AdvisoryNotifier;
 use OCA\Versioniq\Service\Advisory\AdvisoryService;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IAppConfig;
 use OCP\IGroup;
@@ -25,6 +28,8 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 final class AdvisoryNotifierTest extends TestCase {
+	use BuildsByParameterName;
+
 	/** @var array<string, string> in-memory app-config backing the dedup store */
 	private array $store = [];
 
@@ -103,13 +108,13 @@ final class AdvisoryNotifierTest extends TestCase {
 		// Exactly one notification for the single pinned-to-vulnerable app.
 		$manager->expects($this->once())->method('notify');
 
-		$notifier = new AdvisoryNotifier(
-			$manager,
-			$this->appConfig(),
-			$this->groupManagerWithAdmin(),
-			$this->timeFactory(),
-			$this->createMock(LoggerInterface::class),
-		);
+		$notifier = $this->buildByName(AdvisoryNotifier::class, [
+			'notificationManager' => $manager,
+			'appConfig' => $this->appConfig(),
+			'groupManager' => $this->groupManagerWithAdmin(),
+			'timeFactory' => $this->timeFactory(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 
 		$fired = $notifier->notifyNewAdvisories($this->vulnerableCorrelation());
 
@@ -122,13 +127,13 @@ final class AdvisoryNotifierTest extends TestCase {
 		// First run notifies once; the second run must NOT notify again.
 		$manager->expects($this->once())->method('notify');
 
-		$notifier = new AdvisoryNotifier(
-			$manager,
-			$this->appConfig(),
-			$this->groupManagerWithAdmin(),
-			$this->timeFactory(),
-			$this->createMock(LoggerInterface::class),
-		);
+		$notifier = $this->buildByName(AdvisoryNotifier::class, [
+			'notificationManager' => $manager,
+			'appConfig' => $this->appConfig(),
+			'groupManager' => $this->groupManagerWithAdmin(),
+			'timeFactory' => $this->timeFactory(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 
 		$firstRun = $notifier->notifyNewAdvisories($this->vulnerableCorrelation());
 		$secondRun = $notifier->notifyNewAdvisories($this->vulnerableCorrelation());
@@ -141,13 +146,13 @@ final class AdvisoryNotifierTest extends TestCase {
 		$manager = $this->createMock(IManager::class);
 		$manager->expects($this->never())->method('notify');
 
-		$notifier = new AdvisoryNotifier(
-			$manager,
-			$this->appConfig(),
-			$this->groupManagerWithAdmin(),
-			$this->timeFactory(),
-			$this->createMock(LoggerInterface::class),
-		);
+		$notifier = $this->buildByName(AdvisoryNotifier::class, [
+			'notificationManager' => $manager,
+			'appConfig' => $this->appConfig(),
+			'groupManager' => $this->groupManagerWithAdmin(),
+			'timeFactory' => $this->timeFactory(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 
 		$clean = [
 			'contacts' => [
@@ -176,5 +181,120 @@ final class AdvisoryNotifierTest extends TestCase {
 			$this->assertStringNotContainsStringIgnoringCase('installer', $typeName);
 			$this->assertStringNotContainsStringIgnoringCase('install', $typeName);
 		}
+	}
+
+	/**
+	 * The notification names the app, its installed version and the advisory,
+	 * and a failing dispatch is logged with the app and advisory.
+	 */
+	public function testTheNotificationSubjectAndTheFailureLog(): void {
+		$calls = [];
+		$notification = $this->createMock(INotification::class);
+		foreach (['setApp', 'setUser', 'setDateTime', 'setObject', 'setSubject'] as $setter) {
+			$notification->method($setter)->willReturnCallback(function (mixed ...$args) use ($setter, $notification, &$calls): INotification {
+				if ($setter !== 'setDateTime') {
+					$calls[] = array_merge([$setter], $args);
+				}
+
+				return $notification;
+			});
+		}
+		$manager = $this->createMock(IManager::class);
+		$manager->method('createNotification')->willReturn($notification);
+		$manager->method('notify')->willThrowException(new \RuntimeException('notifications app is gone'));
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->method('warning')->willReturnCallback(static function (string $message, array $context) use (&$calls): void {
+			$calls[] = ['warning', $message, $context];
+		});
+
+		$notifier = $this->buildByName(AdvisoryNotifier::class, [
+			'notificationManager' => $manager,
+			'appConfig' => $this->appConfig(),
+			'groupManager' => $this->groupManagerWithAdmin(),
+			'timeFactory' => $this->timeFactory(),
+			'logger' => $logger,
+		]);
+		$correlations = $this->vulnerableCorrelation();
+		$correlations['openregister']['installedVersion'] = null;
+
+		$this->assertSame(1, $notifier->notifyNewAdvisories($correlations));
+		$this->assertSame([
+			['setApp', 'versioniq'],
+			['setUser', 'alice'],
+			['setObject', 'advisory', 'openregister:GHSA-xxxx'],
+			['setSubject', 'pinned_to_vulnerable', ['app' => 'openregister', 'version' => '', 'advisory' => 'GHSA-xxxx']],
+			['warning', 'AdvisoryNotifier: failed to raise notification', ['app' => 'openregister', 'advisory' => 'GHSA-xxxx', 'message' => 'notifications app is gone']],
+		], $calls);
+	}
+
+	/**
+	 * The stored triage dismissing the openregister advisory on 1.0.5.
+	 */
+	private function dismissOpenregister(?string $until = null, string $version = '1.0.5'): void {
+		$this->store['advisory.triage'] = json_encode([
+			'openregister|GHSA-xxxx' => ['dismissal' => [
+				'reason' => 'not_used', 'comment' => '', 'by' => 'alice', 'at' => '2026-07-01T00:00:00+00:00',
+				'until' => $until, 'installedVersion' => $version,
+			]],
+		], JSON_THROW_ON_ERROR);
+	}
+
+	private function countingNotifier(int &$notified): AdvisoryNotifier {
+		$manager = $this->createMock(IManager::class);
+		$manager->method('createNotification')->willReturn($this->fluentNotification());
+		$manager->method('notify')->willReturnCallback(function () use (&$notified): void {
+			$notified++;
+		});
+
+		return $this->buildByName(AdvisoryNotifier::class, [
+			'notificationManager' => $manager,
+			'appConfig' => $this->appConfig(),
+			'groupManager' => $this->groupManagerWithAdmin(),
+			'timeFactory' => $this->timeFactory(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
+	}
+
+	/**
+	 * An actively dismissed pair never notifies, and reopening it afterwards
+	 * does not fire a late notification: it counted as notified (D2).
+	 */
+	public function testADismissedPairDoesNotNotifyNorAfterAReopen(): void {
+		$notified = 0;
+		$notifier = $this->countingNotifier($notified);
+		$this->dismissOpenregister();
+
+		$this->assertSame(0, $notifier->notifyNewAdvisories($this->vulnerableCorrelation()));
+		$this->assertSame(['openregister:GHSA-xxxx'], json_decode($this->store['advisory.notified'], true));
+
+		unset($this->store['advisory.triage']);
+		$this->assertSame(0, $notifier->notifyNewAdvisories($this->vulnerableCorrelation()));
+		$this->assertSame(0, $notified);
+	}
+
+	/**
+	 * A dismissal past its end date, or made on another installed version,
+	 * no longer holds, so a never-notified pair notifies.
+	 */
+	public function testALapsedDismissalNotifies(): void {
+		$notified = 0;
+		$this->dismissOpenregister(until: '2026-07-06T00:00:00+00:00');
+		$this->assertSame(1, $this->countingNotifier($notified)->notifyNewAdvisories($this->vulnerableCorrelation()));
+
+		$this->store = [];
+		$this->dismissOpenregister(version: '1.0.4');
+		$this->assertSame(1, $this->countingNotifier($notified)->notifyNewAdvisories($this->vulnerableCorrelation()));
+		$this->assertSame(2, $notified);
+	}
+
+	/**
+	 * A dismissal whose end date is still ahead holds.
+	 */
+	public function testAFutureEndDateHolds(): void {
+		$notified = 0;
+		$this->dismissOpenregister(until: '2026-08-01T00:00:00+00:00');
+
+		$this->assertSame(0, $this->countingNotifier($notified)->notifyNewAdvisories($this->vulnerableCorrelation()));
+		$this->assertSame(0, $notified);
 	}
 }

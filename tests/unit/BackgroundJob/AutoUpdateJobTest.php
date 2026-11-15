@@ -2,7 +2,16 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\BackgroundJob;
+
+require_once __DIR__ . '/../Support/InstallArgs.php';
+
+require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 
 use OCA\Versioniq\BackgroundJob\AutoUpdateJob;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
@@ -14,6 +23,8 @@ use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyStore;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
+use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
 use PHPUnit\Framework\TestCase;
@@ -21,6 +32,8 @@ use Psr\Log\LoggerInterface;
 use ReflectionMethod;
 
 final class AutoUpdateJobTest extends TestCase {
+	use BuildsByParameterName;
+
 	private function timeFactory(string $now = '2026-07-23T02:00:00'): ITimeFactory {
 		$time = $this->createMock(ITimeFactory::class);
 		$time->method('getDateTime')->willReturn(new \DateTime($now));
@@ -54,23 +67,26 @@ final class AutoUpdateJobTest extends TestCase {
 	 * @param array<string, mixed> $mocks
 	 */
 	private function buildJob(array $mocks, ITimeFactory $time): AutoUpdateJob {
-		return new AutoUpdateJob(
-			$time,
-			$mocks['policyStore'],
-			$mocks['pinStore'],
-			$mocks['installerService'],
-			$mocks['appManager'],
-			$mocks['candidateSelector'],
-			$mocks['attemptLedger'],
-			$mocks['settingsStore'],
-			$mocks['notifier'],
-			$mocks['logger'],
-		);
+		return $this->buildByName(AutoUpdateJob::class, [
+			'time' => $time,
+			'policyStore' => $mocks['policyStore'],
+			'pinStore' => $mocks['pinStore'],
+			'installerService' => $mocks['installerService'],
+			'appManager' => $mocks['appManager'],
+			'candidateSelector' => $mocks['candidateSelector'],
+			'attemptLedger' => $mocks['attemptLedger'],
+			'settingsStore' => $mocks['settingsStore'],
+			'notifier' => $mocks['notifier'],
+			'logger' => $mocks['logger'],
+		]);
 	}
 
 	public function testDisabledIsANoOpWithNoSourceQueries(): void {
 		$mocks = $this->mocks();
 		$mocks['settingsStore']->method('isEnabled')->willReturn(false);
+		// Inside the window, so only the switch keeps the sweep from running.
+		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$mocks['settingsStore']->expects($this->never())->method('markWindowSwept');
 		$mocks['policyStore']->expects($this->never())->method('all');
 		$mocks['installerService']->expects($this->never())->method('getAppVersions');
 
@@ -196,7 +212,7 @@ final class AutoUpdateJobTest extends TestCase {
 		$mocks['attemptLedger']->method('hasAttempted')->willReturn(false);
 		$mocks['installerService']->expects($this->once())
 			->method('installAppVersion')
-			->with('openregister', '2.3.4', false, null, null, false, false, false, false)
+			->with(...InstallArgs::expected('openregister', '2.3.4', false, null, null, false, false, false, false))
 			->willReturn([
 				'statusCode' => 200,
 				'payload' => ['installedVersion' => '2.3.4'],
@@ -346,5 +362,89 @@ final class AutoUpdateJobTest extends TestCase {
 		);
 
 		$this->runJob($this->buildJob($mocks, $time));
+	}
+
+	/**
+	 * The early stops past the pin and manageability checks, and the
+	 * fallbacks when the installer's payload leaves fields out: each case
+	 * records the installer and notifier calls it makes.
+	 *
+	 * @dataProvider stopsAndFallbacks
+	 * @param string|\Throwable $installed What getAppVersion answers (a Throwable is thrown).
+	 * @param array<string, mixed> $versions What getAppVersions answers.
+	 * @param array<string, mixed> $install What installAppVersion answers.
+	 * @param list<list<mixed>> $expected The calls made.
+	 */
+	public function testStopsAndPayloadFallbacks(string|\Throwable $installed, array $versions, array $install, array $expected): void {
+		$calls = [];
+		$mocks = $this->mocks();
+		$mocks['settingsStore']->method('isEnabled')->willReturn(true);
+		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$mocks['policyStore']->method('all')->willReturn([
+			'openregister' => new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00'),
+		]);
+		$mocks['pinStore']->method('get')->willReturn(null);
+		$mocks['installerService']->method('isManageableApp')->willReturn(true);
+		$mocks['appManager']->method('getAppVersion')->willReturnCallback(static function () use ($installed): string {
+			if ($installed instanceof \Throwable) {
+				throw $installed;
+			}
+
+			return $installed;
+		});
+		$mocks['installerService']->method('getAppVersions')->willReturnCallback(static function (string $appId) use ($versions, &$calls): array {
+			$calls[] = ['getAppVersions', $appId];
+
+			return $versions;
+		});
+		$mocks['candidateSelector']->method('select')->willReturnCallback(static function (string $from, array $available, string $level) use (&$calls): ?string {
+			$calls[] = ['select', $from, $available, $level];
+
+			return $available === [] ? null : end($available);
+		});
+		$mocks['attemptLedger']->method('hasAttempted')->willReturn(false);
+		$mocks['installerService']->method('installAppVersion')->willReturn($install);
+		$mocks['attemptLedger']->method('record')->willReturnCallback(static function (string $appId, string $version, string $outcome) use (&$calls): void {
+			$calls[] = ['record', $appId, $version, $outcome];
+		});
+		$mocks['notifier']->method('notifySuccess')->willReturnCallback(static function (string ...$args) use (&$calls): void {
+			$calls[] = array_merge(['notifySuccess'], $args);
+		});
+		$mocks['notifier']->method('notifyFailure')->willReturnCallback(static function (string ...$args) use (&$calls): void {
+			$calls[] = array_merge(['notifyFailure'], $args);
+		});
+
+		$this->runJob($this->buildJob($mocks, $this->timeFactory()));
+
+		$this->assertSame($expected, $calls);
+	}
+
+	/**
+	 * @return iterable<string, array{0: string|\Throwable, 1: array<string, mixed>, 2: array<string, mixed>, 3: list<list<mixed>>}>
+	 */
+	public static function stopsAndFallbacks(): iterable {
+		$versions = ['availableVersions' => [['version' => '2.3.4']], 'hasError' => false];
+		yield 'not installed' => ['', $versions, [], []];
+		yield 'version lookup throws' => [new \RuntimeException('gone'), $versions, [], []];
+		yield 'versions report an error' => ['2.3.0', ['hasError' => true, 'availableVersions' => [['version' => '2.3.4']]], [], [['getAppVersions', 'openregister']]];
+		yield 'no versions listed' => ['2.3.0', ['hasError' => false], [], [['getAppVersions', 'openregister'], ['select', '2.3.0', [], 'patch']]];
+		yield 'success without an installed version' => ['2.3.0', $versions, ['statusCode' => 201, 'payload' => ['installedVersion' => '']], [
+			['getAppVersions', 'openregister'],
+			['select', '2.3.0', ['2.3.4'], 'patch'],
+			['record', 'openregister', '2.3.4', 'success'],
+			['notifySuccess', 'openregister', '2.3.0', '2.3.4'],
+		]];
+		yield 'redirect without payload' => ['2.3.0', $versions, ['statusCode' => 302], [
+			['getAppVersions', 'openregister'],
+			['select', '2.3.0', ['2.3.4'], 'patch'],
+			['record', 'openregister', '2.3.4', 'failure'],
+			['notifyFailure', 'openregister', '2.3.4', 'unknown', ''],
+		]];
+		yield 'no status code' => ['2.3.0', $versions, ['payload' => ['category' => 'network', 'hint' => 'retry later']], [
+			['getAppVersions', 'openregister'],
+			['select', '2.3.0', ['2.3.4'], 'patch'],
+			['record', 'openregister', '2.3.4', 'failure'],
+			['notifyFailure', 'openregister', '2.3.4', 'network', 'retry later'],
+		]];
 	}
 }
