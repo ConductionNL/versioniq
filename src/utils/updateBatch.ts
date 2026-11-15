@@ -78,14 +78,22 @@ export function updateAllCandidates (updates: Record<string, PendingUpdate>): Ba
  * @spec openspec/changes/install-one-click-updates/specs/version-management/spec.md#requirement-an-admin-updates-one-app-or-all-apps-in-one-action
  */
 export function quickUpdateTarget (entry: PendingUpdate | undefined): string | null {
-	if (!entry || entry.error || !entry.updateAvailable || !entry.newestCompatibleVersion) {
+	if (!entry || !offersUpdate(entry)) {
 		return null
 	}
-	if (entry.newestCompatibleVersion === entry.installedVersion) {
-		return null
-	}
+	const target = entry.newestCompatibleVersion as string
 
-	return entry.newestCompatibleVersion
+	return target === entry.installedVersion ? null : target
+}
+
+/**
+ * Whether a snapshot entry offers an update at all: no error, an update
+ * available and a newest compatible version to go to.
+ *
+ * @param entry The app's snapshot entry.
+ */
+function offersUpdate (entry: PendingUpdate): boolean {
+	return !entry.error && Boolean(entry.updateAvailable) && Boolean(entry.newestCompatibleVersion)
 }
 
 /**
@@ -157,11 +165,30 @@ export function batchOutcome (response: BatchInstallResponse): BatchInstallOutco
 	}
 	const { payload, metaMessage } = response
 	if (metaMessage) {
-		return { state: 'failed', category: payload?.category, message: payload?.hint || payload?.message || metaMessage }
+		return refusedOutcome(payload, metaMessage)
 	}
-	if (payload?.fromVersion && payload.fromVersion === payload.toVersion) {
+	if (stayedOnItsVersion(payload)) {
 		return { state: 'upToDate' }
 	}
 
 	return { state: 'updated' }
+}
+
+/**
+ * A refused install: failed, with its category and the most specific message.
+ *
+ * @param payload The install answer's payload.
+ * @param metaMessage The refusal message.
+ */
+function refusedOutcome (payload: NonNullable<BatchInstallResponse>['payload'], metaMessage: string): BatchInstallOutcome {
+	return { state: 'failed', category: payload?.category, message: payload?.hint || payload?.message || metaMessage }
+}
+
+/**
+ * Whether the install left the app on the version it already had.
+ *
+ * @param payload The install answer's payload.
+ */
+function stayedOnItsVersion (payload: NonNullable<BatchInstallResponse>['payload']): boolean {
+	return Boolean(payload?.fromVersion) && payload.fromVersion === payload.toVersion
 }
