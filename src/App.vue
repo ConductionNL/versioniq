@@ -4,7 +4,7 @@
 import type {PrefillBindPayload} from './components/DiscoverPanel.vue';
 import type {BlockedVersion, PolicyLevel} from './components/PolicySelector.vue';
 import type { PinRecord } from './dialogs/PinDialog.vue'
-import type {AdvisoryCorrelation, AdvisoryTriageMap} from './utils/advisories.ts';
+import type {AdvisoryCorrelation, AdvisoryTriageMap, NcscStatus} from './utils/advisories.ts';
 import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
 import type {LkgRecord} from './utils/migrationSafety.ts';
 import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
@@ -681,6 +681,11 @@ const advisoryMinInterval = ref(1)
 const advisoryMaxInterval = ref(24)
 const advisorySavedInterval = ref('6')
 const advisorySavedDigest = ref(true)
+// advisories-ncsc-feed: whether the sweep also reads NCSC-NL, and how far it got.
+const advisoryNcscEnabled = ref(false)
+const advisorySavedNcsc = ref(false)
+const advisoryNcscStatus = ref<{ readUpTo: string | null, caughtUp: boolean }>({ readUpTo: null, caughtUp: false })
+const ncscPanelStatus = computed((): NcscStatus => ({ enabled: advisorySavedNcsc.value, ...advisoryNcscStatus.value }))
 const isSavingAdvisorySettings = ref(false)
 const advisorySettingsError = ref('')
 const advisorySettingsNotice = ref('')
@@ -696,7 +701,26 @@ const isAdvisoryIntervalValid = computed((): boolean => {
 
 const isAdvisorySettingsDirty = computed((): boolean =>
 	advisoryIntervalInput.value.trim() !== advisorySavedInterval.value
-	|| advisoryDigestEnabled.value !== advisorySavedDigest.value)
+	|| advisoryDigestEnabled.value !== advisorySavedDigest.value
+	|| advisoryNcscEnabled.value !== advisorySavedNcsc.value)
+
+/**
+ * Take the NCSC-NL switch and read status from an advisory settings answer.
+ *
+ * @param payload The answer.
+ * @param payload.ncscEnabled Whether NCSC-NL checks are on.
+ * @param payload.ncscStatus How far the NCSC-NL read got.
+ * @param payload.ncscStatus.readUpTo The newest change read, or null.
+ * @param payload.ncscStatus.caughtUp Whether the last sweep reached the present.
+ * @spec openspec/changes/advisories-ncsc-feed/specs/security-advisory-correlation/spec.md#requirement-ncsc-nl-advisories-are-matched-to-the-installed-server-and-apps
+ */
+function applyNcscSettings (payload: { ncscEnabled?: boolean, ncscStatus?: { readUpTo: string | null, caughtUp: boolean } }): void {
+	advisoryNcscEnabled.value = payload.ncscEnabled === true
+	advisorySavedNcsc.value = payload.ncscEnabled === true
+	if (payload.ncscStatus) {
+		advisoryNcscStatus.value = payload.ncscStatus
+	}
+}
 
 /**
  *
@@ -704,7 +728,8 @@ const isAdvisorySettingsDirty = computed((): boolean =>
 async function loadAdvisorySettings (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/advisory/settings')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ intervalHours: number, minIntervalHours: number, maxIntervalHours: number, digestEnabled: boolean }>(response)
+		const payload = await unwrapOcsResponse<{ intervalHours: number, minIntervalHours: number, maxIntervalHours: number, digestEnabled: boolean, ncscEnabled?: boolean, ncscStatus?: { readUpTo: string | null, caughtUp: boolean } }>(response)
+		applyNcscSettings(payload)
 		advisoryMinInterval.value = payload.minIntervalHours
 		advisoryMaxInterval.value = payload.maxIntervalHours
 		advisoryIntervalInput.value = String(payload.intervalHours)
@@ -732,9 +757,11 @@ async function saveAdvisorySettings (): Promise<void> {
 				// '1'/'0' rather than a JSON boolean: PHP casts a JSON `false`
 				// to '' and the server would read that as "unspecified".
 				digestEnabled: advisoryDigestEnabled.value ? '1' : '0',
+				ncscEnabled: advisoryNcscEnabled.value ? '1' : '0',
 			}),
 		})
-		const payload = await unwrapOcsResponse<{ intervalHours: number, digestEnabled: boolean }>(response)
+		const payload = await unwrapOcsResponse<{ intervalHours: number, digestEnabled: boolean, ncscEnabled?: boolean, ncscStatus?: { readUpTo: string | null, caughtUp: boolean } }>(response)
+		applyNcscSettings(payload)
 		advisoryIntervalInput.value = String(payload.intervalHours)
 		advisorySavedInterval.value = String(payload.intervalHours)
 		advisoryDigestEnabled.value = payload.digestEnabled
@@ -2460,6 +2487,14 @@ watch(dryRunEnabled, () => {
 										:disabled="isSavingAdvisorySettings">
 									<span>{{ t('versioniq', 'Send a weekly digest of non-urgent advisories') }}</span>
 								</label>
+								<label :class="$style.safeMode">
+									<input
+										v-model="advisoryNcscEnabled"
+										type="checkbox"
+										data-testid="advisory-ncsc-enabled"
+										:disabled="isSavingAdvisorySettings">
+									<span>{{ t('versioniq', 'Also check the advisories of the Dutch NCSC (NCSC-NL) about Nextcloud products') }}</span>
+								</label>
 								<p v-if="advisorySettingsError" :class="$style.autoUpdateWindowError" data-testid="advisory-settings-error">
 									{{ advisorySettingsError }}
 								</p>
@@ -2957,6 +2992,7 @@ watch(dryRunEnabled, () => {
 					:advisories="advisories"
 					:triage="advisoryTriage"
 					:freshnessLabel="advisoryFreshnessLabel"
+					:ncscStatus="ncscPanelStatus"
 					@update:triage="(triage: AdvisoryTriageMap) => (advisoryTriage = triage)" />
 				<HistoryPanel v-if="currentTab === 'history'"
 					id="history-panel"
