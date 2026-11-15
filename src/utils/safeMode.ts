@@ -47,11 +47,26 @@ export function isStableOnlyChannel (channel: string): boolean {
  * @param version the version the admin wants to install
  * @param context safe mode state, installed version and update channel
  */
-export function isBlockedBySafeMode (version: string, context: SafeModeContext): boolean {
+// `onChannel` is what the server stamped on the version for the app's release
+// channel (releases-channel-and-prereleases). When it is known it replaces the
+// update-channel pre-release rule: an off-channel version is blocked, and a
+// pre-release on an app that follows beta is allowed. Downgrades stay blocked.
+// @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md
+/**
+ * Whether safe mode blocks a version.
+ *
+ * @param version the version
+ * @param context safe mode, the installed version and the server update channel
+ * @param onChannel whether the version is on the app's release channel, when the server said
+ */
+export function isBlockedBySafeMode (version: string, context: SafeModeContext, onChannel?: boolean): boolean {
 	if (!context.enabled || !version) {
 		return false
 	}
-	if (isStableOnlyChannel(context.updateChannel) && isPreRelease(version)) {
+	if (onChannel === false) {
+		return true
+	}
+	if (onChannel === undefined && isStableOnlyChannel(context.updateChannel) && isPreRelease(version)) {
 		return true
 	}
 	if (!context.installedVersion) {
