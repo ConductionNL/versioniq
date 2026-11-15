@@ -85,6 +85,29 @@ class AuditEntryMapper extends QBMapper {
 	}
 
 	/**
+	 * The newest successful entry for an app that brought it to the given
+	 * version, or null; the manifest's `runningSince` fallback
+	 * (install-multi-instance-promotion design D3).
+	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/design.md
+	 */
+	public function findNewestSuccessTo(string $appId, string $toVersion): ?AuditEntry {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')
+			->from($this->tableName)
+			->where($qb->expr()->eq('app_id', $qb->createNamedParameter($appId, IQueryBuilder::PARAM_STR)))
+			->andWhere($qb->expr()->eq('to_version', $qb->createNamedParameter($toVersion, IQueryBuilder::PARAM_STR)))
+			->andWhere($qb->expr()->eq('status', $qb->createNamedParameter('success', IQueryBuilder::PARAM_STR)))
+			->orderBy('created_at', 'DESC')
+			->addOrderBy('id', 'DESC')
+			->setMaxResults(1);
+
+		$entries = $this->findEntities($qb);
+
+		return $entries[0] ?? null;
+	}
+
+	/**
 	 * Deletes entries older than the cutoff in batches, oldest first; see "Retention".
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md

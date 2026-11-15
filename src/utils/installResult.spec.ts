@@ -31,4 +31,11 @@ describe('withSourceOverride', () => {
 		expect(withSourceOverride({ dryRun: '0' }, ' github:acme/app ')).toEqual({ dryRun: '0', source: 'github:acme/app' })
 		expect(withSourceOverride({ dryRun: '0' }, '   ')).toEqual({ dryRun: '0' })
 	})
+
+	// @spec openspec/changes/safety-rollback-backup-and-preflight/specs/version-management/spec.md
+	it('keeps the free space the pre-flight found, and leaves it out without one', () => {
+		expect(normalizeInstallResult({ space: { appsFree: 9000, tempFree: null } }).space).toEqual({ appsFree: 9000, tempFree: null })
+		expect(normalizeInstallResult({ space: { appsFree: 'x' } } as never).space).toEqual({ appsFree: null, tempFree: null })
+		expect(normalizeInstallResult({})).not.toHaveProperty('space')
+	})
 })
