@@ -32,8 +32,8 @@ final class AvailabilityServiceTest extends TestCase {
 		$installer = $this->createMock(InstallerService::class);
 		$installer->method('getInstalledApps')->willReturn($apps);
 		$installer->method('isManageableApp')->willReturnCallback(static fn (string $id): bool => !in_array($id, $unmanageable, true));
-		$installer->method('getAppVersions')->willReturnCallback(static function (string $id) use ($versionsByApp): array {
-			$answer = $versionsByApp[$id] ?? null;
+		$installer->method('getAppVersions')->willReturnCallback(static function (string $id, ?string $source = null) use ($versionsByApp): array {
+			$answer = $versionsByApp[$id . '@' . $source] ?? $versionsByApp[$id] ?? null;
 			if ($answer instanceof \Throwable) {
 				throw $answer;
 			}
@@ -225,5 +225,50 @@ final class AvailabilityServiceTest extends TestCase {
 
 		self::assertNotNull($entry['error']);
 		self::assertNull($entry['newestVersion']);
+	}
+
+	/**
+	 * releases-new-release-alerts D3: a followed app that is not installed joins the sweep with its
+	 * newest versions from the followed source and no installed version; an installed followed app
+	 * keeps its normal entry, and a followed app whose source fails carries the error.
+	 *
+	 * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-an-admin-follows-the-releases-of-an-app-that-is-not-installed
+	 */
+	public function testAFollowedAppThatIsNotInstalledJoinsTheSweep(): void {
+		$followed = [
+			['appId' => 'forms', 'sourceId' => 'appstore'],
+			['appId' => 'calendar', 'sourceId' => 'appstore'],
+			['appId' => 'broken', 'sourceId' => 'github:Owner/broken'],
+		];
+		$service = $this->service(
+			[self::app('calendar', '5.1.0')],
+			[
+				'forms@appstore' => self::envelope([['4.1.0', true], ['5.0.0', false]]),
+				'calendar' => self::envelope([['5.2.0', true]]),
+				'broken@github:Owner/broken' => new \RuntimeException('The forge did not answer.'),
+			],
+		);
+
+		$results = $service->sweep(60.0, $followed);
+
+		self::assertSame(
+			[
+				'installedVersion' => null,
+				'newestVersion' => '5.0.0',
+				'newestCompatibleVersion' => '4.1.0',
+				'linesBehind' => 0,
+				'updateAvailable' => false,
+				'pinned' => false,
+				'sourceId' => 'appstore',
+				'error' => null,
+				'installedWithdrawn' => null,
+				'followed' => true,
+			],
+			$results['forms']
+		);
+		self::assertSame('5.1.0', $results['calendar']['installedVersion']);
+		self::assertArrayNotHasKey('followed', $results['calendar']);
+		self::assertSame('The forge did not answer.', $results['broken']['error']);
+		self::assertNull($results['broken']['newestVersion']);
 	}
 }

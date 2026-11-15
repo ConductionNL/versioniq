@@ -113,7 +113,7 @@ describe('the rows and the links', () => {
 			.map((c: { settingsUrl?: string }) => c.settingsUrl)
 			.filter((url: string | undefined): url is string => typeof url === 'string')
 			.map((url: string) => url.slice(url.indexOf('#')))
-		expect(anchors).toEqual(['#section-sources', '#section-advisories'])
+		expect(anchors).toEqual(['#section-sources', '#section-advisories', '#section-advisories'])
 
 		for (const anchor of anchors) {
 			expect(tabForHash(anchor), anchor).not.toBeNull()

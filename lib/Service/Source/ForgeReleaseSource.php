@@ -105,16 +105,17 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			return ['versions' => [], 'error' => $result['error'] ?? $this->forgeName($forge) . ' API request failed.'];
 		}
 
-		return ['versions' => $this->dedupeAndSort($this->versionEntries($result['releases'] ?? [])), 'error' => null];
+		return ['versions' => $this->dedupeAndSort($this->versionEntries($result['releases'] ?? [], $binding->getAssetPattern())), 'error' => null];
 	}
 
 	/**
 	 * One version entry per release with a non-empty tag.
 	 *
 	 * @param array<array-key, mixed> $releases
-	 * @return list<array{version: string, changelog: ?string, releasedAt: ?string, sourcePreRelease?: true, sourceLts?: true}>
+	 * @param string $assetPattern The binding's asset pattern, for the download count.
+	 * @return list<array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true}>
 	 */
-	private function versionEntries(array $releases): array {
+	private function versionEntries(array $releases, string $assetPattern): array {
 		$versions = [];
 		/** @var mixed $release */
 		foreach ($releases as $release) {
@@ -128,6 +129,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 				'changelog' => $this->extractChangelog($release),
 				// A draft carries no published_at and stays null.
 				'releasedAt' => ReleaseDate::normalize($release['published_at'] ?? null),
+				'downloads' => self::assetDownloads($release['assets'] ?? null, $assetPattern),
 			] + self::publisherMarks($release, $tag);
 		}
 
@@ -153,6 +155,31 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		}
 
 		return $marks;
+	}
+
+	/**
+	 * The `download_count` of the one asset matching the pattern, with the
+	 * `fnmatch` rule `buildReleasePayload()` uses (design D2); null when no
+	 * asset matches, when more than one does, or when the count is unreadable.
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md
+	 */
+	private static function assetDownloads(mixed $assets, string $assetPattern): ?int {
+		if (!is_array($assets)) {
+			return null;
+		}
+		$matches = array_values(array_filter(
+			$assets,
+			static fn (mixed $asset): bool => is_array($asset)
+				&& is_string($asset['name'] ?? null)
+				&& fnmatch($assetPattern, $asset['name'], FNM_NOESCAPE)
+		));
+		if (count($matches) !== 1) {
+			return null;
+		}
+		$count = $matches[0]['download_count'] ?? null;
+
+		return is_int($count) && $count >= 0 ? $count : null;
 	}
 
 	/**
@@ -607,12 +634,12 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	}
 
 	/**
-	 * @param list<array{version: string, changelog: ?string, releasedAt: ?string, sourcePreRelease?: true, sourceLts?: true}> $versions
-	 * @return list<array{version: string, changelog: ?string, releasedAt: ?string, sourcePreRelease?: true, sourceLts?: true}>
+	 * @param list<array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true}> $versions
+	 * @return list<array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true}>
 	 */
 	private function dedupeAndSort(array $versions): array {
 		$seenAt = [];
-		/** @var list<array{version: string, changelog: ?string, releasedAt: ?string, sourcePreRelease?: true, sourceLts?: true}> $unique */
+		/** @var list<array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true}> $unique */
 		$unique = [];
 		foreach ($versions as $entry) {
 			$index = $seenAt[$entry['version']] ?? null;
@@ -629,8 +656,8 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		usort(
 			$unique,
 			/**
-			 * @param array{version: string, changelog: ?string, releasedAt: ?string, sourcePreRelease?: true, sourceLts?: true} $a
-			 * @param array{version: string, changelog: ?string, releasedAt: ?string, sourcePreRelease?: true, sourceLts?: true} $b
+			 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true} $a
+			 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true} $b
 			 */
 			static fn (array $a, array $b): int => version_compare($b['version'], $a['version'])
 		);
@@ -642,13 +669,14 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * The kept entry with its empty changelog and release date taken from a
 	 * duplicate.
 	 *
-	 * @param array{version: string, changelog: ?string, releasedAt: ?string, sourcePreRelease?: true, sourceLts?: true} $kept
-	 * @param array{version: string, changelog: ?string, releasedAt: ?string, sourcePreRelease?: true, sourceLts?: true} $entry
-	 * @return array{version: string, changelog: ?string, releasedAt: ?string, sourcePreRelease?: true, sourceLts?: true}
+	 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true} $kept
+	 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true} $entry
+	 * @return array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true}
 	 */
 	private static function backfill(array $kept, array $entry): array {
 		$kept['changelog'] ??= $entry['changelog'];
 		$kept['releasedAt'] ??= $entry['releasedAt'];
+		$kept['downloads'] ??= $entry['downloads'];
 
 		return $kept;
 	}

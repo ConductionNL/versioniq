@@ -89,7 +89,7 @@ class ListVersions extends Command {
 	}
 
 	/**
-	 * @param array{installedVersion:?string, availableVersions:list<array{version:string,changelog?:?string,recordedSha?:?string,serverCompatible?:?bool,preRelease?:bool,onChannel?:bool}>, versions:list<array{version:string,changelog?:?string,recordedSha?:?string}>, source:string, sourceId:string, channel?:string, error?:string} $result
+	 * @param array{installedVersion:?string, availableVersions:list<array{version:string,changelog?:?string,recordedSha?:?string,serverCompatible?:?bool,preRelease?:bool,onChannel?:bool,releasedAt?:?string}>, versions:list<array{version:string,changelog?:?string,recordedSha?:?string}>, source:string, sourceId:string, channel?:string, error?:string} $result
 	 */
 	private function renderTable(OutputInterface $output, string $appId, array $result): void {
 		$installedVersion = $result['installedVersion'] ?? null;
@@ -117,13 +117,28 @@ class ListVersions extends Command {
 				$this->serverCompatibilityMarker($entry['serverCompatible'] ?? null),
 				self::channelMarker($entry),
 				$entry['recordedSha'] ?? '',
+				self::releasedOn($entry['releasedAt'] ?? null),
 			];
 		}
 
 		$table = new Table($output);
-		$table->setHeaders(['Version', 'Relative to installed', 'Runs on this server', 'On the channel', 'Recorded SHA-256']);
+		$table->setHeaders(['Version', 'Relative to installed', 'Runs on this server', 'On the channel', 'Recorded SHA-256', 'Released']);
 		$table->setRows($rows);
 		$table->render();
+	}
+
+	/**
+	 * The release day of a version (releases-version-facts D1), from its
+	 * ISO-8601 `releasedAt`; blank when the source gave none.
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-carries-its-release-date
+	 */
+	private static function releasedOn(mixed $releasedAt): string {
+		if (!is_string($releasedAt) || preg_match('/^\d{4}-\d{2}-\d{2}/', $releasedAt, $day) !== 1) {
+			return '';
+		}
+
+		return $day[0];
 	}
 
 	/**

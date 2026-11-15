@@ -34,7 +34,7 @@ use UnexpectedValueException;
  * to `SelectedReleaseInstallerService`, not the external installer.
  *
  * @psalm-api
- * @psalm-type VersionEntry = array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string, sourcePreRelease?: true}
+ * @psalm-type VersionEntry = array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string, downloads: null, sourcePreRelease?: true}
  */
 class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	public const DEFAULT_API_BASE = 'https://garm3.nextcloud.com/api/v1';
@@ -652,7 +652,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 */
 	private function releaseEntry(mixed $release, string $serverVersion): ?array {
 		if (is_string($release)) {
-			return ['version' => $release, 'changelog' => null, 'serverCompatible' => null, 'releasedAt' => null];
+			return ['version' => $release, 'changelog' => null, 'serverCompatible' => null, 'releasedAt' => null, 'downloads' => null];
 		}
 
 		return is_array($release) ? $this->arrayReleaseEntry($release, $serverVersion) : null;
@@ -675,6 +675,8 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 			'changelog' => $this->extractChangelog($release),
 			'serverCompatible' => is_string($spec) ? self::satisfiesPlatformSpec($serverVersion, $spec) : null,
 			'releasedAt' => ReleaseDate::normalize($release['created'] ?? null),
+			// The catalogue publishes no per-release download count (design D2).
+			'downloads' => null,
 		];
 		// The store marks a nightly build itself; an absent flag is not a nightly,
 		// and the version-suffix rule still applies (releases-channel-and-prereleases D1).
