@@ -28,6 +28,8 @@ type Settings = {
 	githubWebDefault: string
 	advisoryFeedUrl: string
 	advisoryFeedDefault: string
+	ncscFeedUrl: string
+	ncscFeedDefault: string
 	maxLinesBehind: number | null
 	maxLinesBehindMax: number
 }
@@ -42,6 +44,7 @@ const form = ref({
 	githubApiBase: '',
 	githubWebBase: '',
 	advisoryFeedUrl: '',
+	ncscFeedUrl: '',
 	maxLinesBehind: '',
 })
 const saving = ref(false)
@@ -61,6 +64,7 @@ function fill (settings: Settings): void {
 		githubApiBase: settings.githubApiBase,
 		githubWebBase: settings.githubWebBase,
 		advisoryFeedUrl: settings.advisoryFeedUrl,
+		ncscFeedUrl: settings.ncscFeedUrl ?? '',
 		maxLinesBehind: settings.maxLinesBehind === null || settings.maxLinesBehind === undefined ? '' : String(settings.maxLinesBehind),
 	}
 }
@@ -194,6 +198,16 @@ onMounted(load)
 					:placeholder="loaded.advisoryFeedDefault"
 					data-testid="setting-advisory-feed">
 				<span :class="$style.hint">{{ t('versioniq', 'Default: {url}', { url: loaded.advisoryFeedDefault }) }}</span>
+			</label>
+			<label :class="$style.field" for="setting-ncsc-feed">
+				<span>{{ t('versioniq', 'NCSC-NL advisory directory (https, an internal mirror)') }}</span>
+				<input
+					id="setting-ncsc-feed"
+					v-model="form.ncscFeedUrl"
+					type="url"
+					:placeholder="loaded.ncscFeedDefault"
+					data-testid="setting-ncsc-feed">
+				<span :class="$style.hint">{{ t('versioniq', 'Default: {url}', { url: loaded.ncscFeedDefault }) }}</span>
 			</label>
 
 			<p v-if="notice" :class="$style.notice" data-testid="instance-settings-notice">

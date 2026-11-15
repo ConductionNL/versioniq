@@ -1108,7 +1108,7 @@ class ApiController extends OCSController {
 	 * hardcode the range in order to build a control will drift from the
 	 * server the first time the range changes.
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, ncscEnabled: bool, ncscStatus: array{readUpTo: ?string, caughtUp: bool}}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Advisory settings returned
 	 * 403: Caller is not an administrator
@@ -1135,7 +1135,8 @@ class ApiController extends OCSController {
 	 *
 	 * @param ?string $intervalHours How often the sweep runs, in hours. Omitted leaves it unchanged.
 	 * @param ?string $digestEnabled Whether the weekly digest is sent ('1'/'0'). Omitted leaves it unchanged.
-	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @param ?string $ncscEnabled Whether the sweep also reads NCSC-NL's advisories ('1'/'0'). Omitted leaves it unchanged.
+	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, ncscEnabled: bool, ncscStatus: array{readUpTo: ?string, caughtUp: bool}}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Advisory settings updated
 	 * 400: intervalHours outside the supported range
@@ -1146,7 +1147,7 @@ class ApiController extends OCSController {
 	#[ApiRoute(verb: 'PUT', url: '/api/advisory/settings')]
 	#[ApiRoute(verb: 'PUT', url: '/api/v1/advisory/settings', postfix: 'v1')]
 	#[PasswordConfirmationRequired]
-	public function updateAdvisorySettings(?string $intervalHours = null, ?string $digestEnabled = null): DataResponse {
+	public function updateAdvisorySettings(?string $intervalHours = null, ?string $digestEnabled = null, ?string $ncscEnabled = null): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
@@ -1162,6 +1163,11 @@ class ApiController extends OCSController {
 		// kill switch above: PHP casts a JSON `false` to "", not "0".
 		if ($digestEnabled !== null) {
 			$this->storeDigestEnabled($digestEnabled);
+		}
+
+		if ($ncscEnabled !== null) {
+			$store = $this->reports->stores->advisorySettingsStore;
+			$store->setNcscEnabled($this->readBinaryBool($ncscEnabled === '' ? '0' : $ncscEnabled, $store->isNcscEnabled()));
 		}
 
 		return $this->advisorySettingsResponse();
@@ -1219,7 +1225,7 @@ class ApiController extends OCSController {
 	/**
 	 * The advisory check settings as stored, with the supported interval range.
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, ncscEnabled: bool, ncscStatus: array{readUpTo: ?string, caughtUp: bool}}, array{}>
 	 */
 	private function advisorySettingsResponse(): DataResponse {
 		return new DataResponse([
@@ -1227,6 +1233,9 @@ class ApiController extends OCSController {
 			'minIntervalHours' => AdvisorySettingsStore::MIN_INTERVAL_HOURS,
 			'maxIntervalHours' => AdvisorySettingsStore::MAX_INTERVAL_HOURS,
 			'digestEnabled' => $this->reports->stores->advisorySettingsStore->isDigestEnabled(),
+			// advisories-ncsc-feed: the NCSC-NL switch, and how far its read got.
+			'ncscEnabled' => $this->reports->stores->advisorySettingsStore->isNcscEnabled(),
+			'ncscStatus' => $this->reports->stores->advisorySettingsStore->ncscStatus(),
 		]);
 	}
 
