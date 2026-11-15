@@ -14,8 +14,8 @@
 ## 3. Backup and restore
 
 - [x] 3.1 Add `lib/Service/Installer/AppTableDumper.php` (tables from the app's migration schema, rows as JSON) and `lib/Service/Installer/AppBackupStore.php` (IAppData, zip plus `tables.json`, `backup.keep_days`). Verify: `tests/unit/Service/Installer/AppTableDumperTest.php` and `AppBackupStoreTest.php`. Built 15 Nov: the dumper runs the app's `lib/Migration/Version*` steps against a schema that starts empty and keeps the tables that exist now; one app-data folder per backup (`backup-<createdAt>-<appId>`, since only the app-data root lists folders) with `app.zip`, `tables.json`, `meta.json`.
-- [ ] 3.2 Write a backup in both installers before replacing the folder; report size and keep-until in the result. Verify: `tests/unit/Service/InstallerRecoveryTest.php`.
-- [ ] 3.3 Prune expired backups in `lib/BackgroundJob/PruneAuditJob.php`. Verify: `tests/unit/BackgroundJob/PruneAuditJobTest.php`.
+- [x] 3.2 Write a backup in both installers before replacing the folder; report size and keep-until in the result. Verify: `tests/unit/Service/InstallerRecoveryTest.php`. Built 15 Nov: `InstallBackup::make()` runs while the old folder is still in place (its migration classes load from there); a failed backup is reported on the result and does not stop the install; the result card says "Backup made: database and app folder, <size>, kept until <date>." or that backups are off.
+- [x] 3.3 Prune expired backups in `lib/BackgroundJob/PruneAuditJob.php`. Verify: `tests/unit/BackgroundJob/PruneAuditJobTest.php`. Built 15 Nov: pruned first, a failure is logged and the audit prune still runs.
 - [ ] 3.4 Add `POST /api/apps/{appId}/restore` in `ApiController` (admin, `PasswordConfirmationRequired`, audited) and "Restore installation" on the result card. Verify: `tests/unit/Controller/ApiTest.php` covers a restore and a refusal without backup.
 - [ ] 3.5 Add the strings to `l10n/en.json`, `l10n/en.js`, `l10n/nl.json`, `l10n/nl.js`. Verify: `npm run check:l10n-js`.
 

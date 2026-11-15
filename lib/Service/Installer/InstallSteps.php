@@ -26,6 +26,8 @@ final class InstallSteps {
 		public readonly MigrationDiffer $migrationDiffer,
 		public readonly InstallFinalizer $finalizer,
 		public readonly AuditLogger $auditLogger,
+		// Optional: the backup kept before the folder is replaced (safety-rollback-backup-and-preflight D3).
+		public readonly ?InstallBackup $backup = null,
 	) {
 	}
 }

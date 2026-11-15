@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 import InstallResultNotices from './InstallResultNotices.vue'
 
 vi.mock('@nextcloud/l10n', () => ({
+	getCanonicalLocale: () => 'en-GB',
 	t: (_app: string, text: string, vars: Record<string, unknown> = {}) =>
 		text.replace(/\{(\w+)\}/g, (_match: string, key: string) => String(vars[key] ?? '')),
 }))
@@ -42,5 +43,21 @@ describe('InstallResultNotices', () => {
 
 		const none = mount(InstallResultNotices, { props: { integrityWarning: null, servedFromCache: false } })
 		expect(none.find('[data-testid="install-environment-checked"]').exists()).toBe(false)
+	})
+
+	// @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+	it('names the backup with its size and until when it is kept', () => {
+		const wrapper = mount(InstallResultNotices, { props: { integrityWarning: null, servedFromCache: false, backup: { made: true, sizeBytes: 190840832, keptUntil: '2026-10-15' } } })
+
+		expect(wrapper.find('[data-testid="install-backup"]').text())
+			.toBe('Backup made: database and app folder, 182.0 MB, kept until 15 Oct.')
+	})
+
+	it('says when backups are off and when the backup failed', () => {
+		const off = mount(InstallResultNotices, { props: { integrityWarning: null, servedFromCache: false, backup: { made: false, reason: 'disabled' } } })
+		expect(off.find('[data-testid="install-backup"]').text()).toBe('No backup was made: backups are turned off.')
+
+		const failed = mount(InstallResultNotices, { props: { integrityWarning: null, servedFromCache: false, backup: { made: false, reason: 'failed', message: 'disk full' } } })
+		expect(failed.find('[data-testid="install-backup"]').text()).toBe('The backup could not be made: disk full')
 	})
 })

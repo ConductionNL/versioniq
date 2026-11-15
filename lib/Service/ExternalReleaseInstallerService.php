@@ -83,6 +83,13 @@ class ExternalReleaseInstallerService {
 	/** Whether the current install's archive was served from {@see ArtifactCache} after a download failure; see "Cached fallback with full re-verification". */
 	private bool $servedFromCache = false;
 
+	/**
+	 * The backup the last install made before replacing the folder, for the result; null when none was attempted.
+	 *
+	 * @var array<string, mixed>|null
+	 */
+	private ?array $lastBackup = null;
+
 	public function __construct(
 		private IAppManager $appManager,
 		private ConfigStores $configs,
@@ -382,6 +389,7 @@ class ExternalReleaseInstallerService {
 	 * @return array{status: string, installedVersionBefore: ?string, installedApp?: string, integrityWarning: ?string, dryRun: bool, debug: list<array{stage: string, data: mixed}>, binding: SourceBinding, recordedShaMatched: bool, servedFromCache: bool, orphanedMigrations?: list<string>|null}
 	 */
 	private function swapAndFinalize(ExternalInstall $install): array {
+		$this->keepBackup($install);
 		$backupDestination = $this->backupExisting($install->staged->destination);
 		$this->copyIntoPlace($install->staged, $backupDestination);
 		$installedApp = $this->finalizeInstall($install, $backupDestination);
@@ -505,7 +513,26 @@ class ExternalReleaseInstallerService {
 			'binding' => $outcome['binding'],
 			'recordedShaMatched' => $install->check->recordedShaMatched,
 			'servedFromCache' => $this->servedFromCache,
-		] + ($install->run->isDowngrade() ? ['orphanedMigrations' => $install->orphanedMigrations] : []);
+		] + ($install->run->isDowngrade() ? ['orphanedMigrations' => $install->orphanedMigrations] : [])
+			+ ($this->lastBackup !== null ? ['backup' => $this->lastBackup] : []);
+	}
+
+	/**
+	 * Keeps a restorable backup of the old app while its folder is still in
+	 * place, before the swap (safety-rollback-backup-and-preflight D3). A
+	 * fresh install has nothing to back up.
+	 *
+	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 */
+	private function keepBackup(ExternalInstall $install): void {
+		$this->lastBackup = null;
+		$previousPath = $install->staged->previousPath;
+		if ($this->steps->backup === null || $previousPath === null || !is_dir($previousPath)) {
+			return;
+		}
+		$run = $install->run;
+		$this->lastBackup = $this->steps->backup->make($run->request->appId, $previousPath, $run->installedVersion, $run->previousEnabled);
+		$this->addDebug('backup', $this->lastBackup);
 	}
 
 	/**

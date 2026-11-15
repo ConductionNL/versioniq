@@ -189,6 +189,27 @@ final class InstallerServiceTest extends TestCase {
 		self::assertSame($space, $result['payload']['space']);
 	}
 
+	/**
+	 * safety-rollback-backup-and-preflight 3.2: the backup the installer kept
+	 * before replacing the folder is passed on to the result.
+	 *
+	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 */
+	public function testTheOutcomeCarriesTheBackupTheInstallerMade(): void {
+		$backup = ['made' => true, 'sizeBytes' => 190840832, 'keptUntil' => '2026-10-15'];
+		$this->environmentCheck->method('hasSpaceFor')->willReturn([]);
+		$this->appManager->method('getAppPath')->willReturn('/writable/app');
+		$this->environmentCheck->method('isDestinationWritable')->willReturn(true);
+		$this->stubSignedSourceReturning();
+		$this->signedInstaller->method('installFromSelectedRelease')->willReturn(['status' => 'installed', 'backup' => $backup]);
+		$this->appManager->method('getAppInfoByPath')->willReturn(['version' => '2.0.0']);
+
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
+
+		self::assertSame(Http::STATUS_OK, $result['statusCode']);
+		self::assertSame($backup, $result['payload']['backup']);
+	}
+
 	public function testAnOutcomeWithoutAMeasurementCarriesNoSpace(): void {
 		$this->environmentCheck->method('hasSpaceFor')->willReturn([]);
 		$this->stubSuccessfulSignedInstall('2.0.0');
@@ -197,6 +218,7 @@ final class InstallerServiceTest extends TestCase {
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 		self::assertArrayNotHasKey('space', $result['payload']);
+		self::assertArrayNotHasKey('backup', $result['payload']);
 	}
 
 	/**

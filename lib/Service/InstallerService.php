@@ -1065,6 +1065,10 @@ class InstallerService {
 			'integrityWarning' => $result['integrityWarning'] ?? null,
 			'recordedShaMatched' => $result['recordedShaMatched'] ?? null,
 		], static fn (mixed $value): bool => $value !== null);
+		if (is_array($result['backup'] ?? null)) {
+			// The backup kept before the folder was replaced (safety-rollback-backup-and-preflight D3).
+			$fields['backup'] = $result['backup'];
+		}
 		if (array_key_exists('orphanedMigrations', $result)) {
 			// The signed installer's result is loosely typed (array<string, mixed>),
 			// so the value is annotated rather than inferred.
