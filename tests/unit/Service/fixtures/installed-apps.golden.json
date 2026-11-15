@@ -19,6 +19,8 @@
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
                 },
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -39,6 +41,8 @@
                 "installedVersion": "2.0.0",
                 "state": "disabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -59,6 +63,8 @@
                 "installedVersion": null,
                 "state": "enabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -75,6 +81,8 @@
                 "installedVersion": null,
                 "state": "notInstalled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -91,6 +99,8 @@
                 "installedVersion": null,
                 "state": "notInstalled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -111,6 +121,8 @@
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
                 },
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -131,6 +143,8 @@
                 "installedVersion": "0.1.0",
                 "state": "enabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -363,6 +377,8 @@
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
                 },
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "versioniq",
                     "sourceId": "appstore",
@@ -383,6 +399,8 @@
                 "installedVersion": "2.0.0",
                 "state": "disabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -403,6 +421,8 @@
                 "installedVersion": null,
                 "state": "enabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -419,6 +439,8 @@
                 "installedVersion": null,
                 "state": "notInstalled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -435,6 +457,8 @@
                 "installedVersion": null,
                 "state": "notInstalled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -455,6 +479,8 @@
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
                 },
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -475,6 +501,8 @@
                 "installedVersion": "0.1.0",
                 "state": "enabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -655,6 +683,8 @@
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
                 },
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -675,6 +705,8 @@
                 "installedVersion": "2.0.0",
                 "state": "disabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -695,6 +727,8 @@
                 "installedVersion": null,
                 "state": "enabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -711,6 +745,8 @@
                 "installedVersion": null,
                 "state": "notInstalled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -727,6 +763,8 @@
                 "installedVersion": null,
                 "state": "notInstalled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -747,6 +785,8 @@
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
                 },
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -767,6 +807,8 @@
                 "installedVersion": "0.1.0",
                 "state": "enabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -1011,6 +1053,8 @@
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
                 },
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -1031,6 +1075,8 @@
                 "installedVersion": "2.0.0",
                 "state": "disabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -1051,6 +1097,8 @@
                 "installedVersion": null,
                 "state": "enabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -1067,6 +1115,8 @@
                 "installedVersion": null,
                 "state": "notInstalled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -1083,6 +1133,8 @@
                 "installedVersion": null,
                 "state": "notInstalled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -1103,6 +1155,8 @@
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
                 },
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -1123,6 +1177,8 @@
                 "installedVersion": "0.1.0",
                 "state": "enabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -1299,6 +1355,8 @@
                 "installedVersion": "1.0.0",
                 "state": "enabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -1359,6 +1417,8 @@
                 "installedVersion": "2.0.0",
                 "state": "enabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -1379,6 +1439,8 @@
                 "installedVersion": "1.0.0",
                 "state": "disabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -1464,6 +1526,8 @@
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
                 },
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -1484,6 +1548,8 @@
                 "installedVersion": "2.0.0",
                 "state": "disabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -1504,6 +1570,8 @@
                 "installedVersion": null,
                 "state": "enabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -1520,6 +1588,8 @@
                 "installedVersion": null,
                 "state": "notInstalled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -1536,6 +1606,8 @@
                 "installedVersion": null,
                 "state": "notInstalled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -1556,6 +1628,8 @@
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
                 },
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -1576,6 +1650,8 @@
                 "installedVersion": "0.1.0",
                 "state": "enabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -1772,6 +1848,8 @@
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
                 },
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -1792,6 +1870,8 @@
                 "installedVersion": "2.0.0",
                 "state": "disabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -1812,6 +1892,8 @@
                 "installedVersion": null,
                 "state": "notInstalled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -1828,6 +1910,8 @@
                 "installedVersion": null,
                 "state": "notInstalled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -1848,6 +1932,8 @@
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
                 },
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -1868,6 +1954,8 @@
                 "installedVersion": "0.1.0",
                 "state": "disabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -2039,6 +2127,8 @@
                 "installedVersion": null,
                 "state": "enabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -2059,6 +2149,8 @@
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
                 },
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -2079,6 +2171,8 @@
                 "installedVersion": "2.0.0",
                 "state": "disabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -2099,6 +2193,8 @@
                 "installedVersion": null,
                 "state": "notInstalled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -2115,6 +2211,8 @@
                 "installedVersion": null,
                 "state": "notInstalled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -2135,6 +2233,8 @@
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
                 },
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -2155,6 +2255,8 @@
                 "installedVersion": "0.1.0",
                 "state": "disabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -2351,6 +2453,8 @@
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
                 },
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -2371,6 +2475,8 @@
                 "installedVersion": "2.0.0",
                 "state": "disabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -2391,6 +2497,8 @@
                 "installedVersion": null,
                 "state": "enabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -2407,6 +2515,8 @@
                 "installedVersion": null,
                 "state": "notInstalled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -2423,6 +2533,8 @@
                 "installedVersion": null,
                 "state": "notInstalled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": null
             },
             {
@@ -2443,6 +2555,8 @@
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
                 },
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,
@@ -2463,6 +2577,8 @@
                 "installedVersion": "0.1.0",
                 "state": "enabled",
                 "lkg": null,
+                "publisher": null,
+                "marks": [],
                 "provenance": {
                     "kind": "outside",
                     "sourceId": null,

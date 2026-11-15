@@ -15,6 +15,7 @@ namespace OCA\Versioniq\BackgroundJob;
 use OCA\Versioniq\Service\Advisory\AdvisoryNotifier;
 use OCA\Versioniq\Service\Advisory\AdvisoryService;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Service\Advisory\AdvisoryTriageStore;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
 use Psr\Log\LoggerInterface;
@@ -84,6 +85,7 @@ class AdvisoryRefreshJob extends TimedJob {
 			// half then throws.
 			$this->steps->resultStore->save($correlations, $this->time->getTime());
 			$saved = true;
+			$this->stampTriage($correlations);
 
 			$unreached = count(array_filter(
 				$correlations,
@@ -131,6 +133,29 @@ class AdvisoryRefreshJob extends TimedJob {
 			$this->steps->resultStore->saveFailure($this->time->getTime());
 		} catch (\Throwable $error) {
 			$this->logger->error('AdvisoryRefreshJob: could not record the failed sweep', ['message' => $error->getMessage()]);
+		}
+	}
+
+	/**
+	 * Marks the triage of every advisory in the saved snapshot as seen and
+	 * drops entries unseen for 30 days (advisories-triage, design risks). A
+	 * failure here is logged and does not keep the notifications from running.
+	 *
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+	 * @param array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}> $correlations
+	 */
+	private function stampTriage(array $correlations): void {
+		$keys = [];
+		foreach ($correlations as $appId => $correlation) {
+			foreach ($correlation['advisories'] as $advisory) {
+				$keys[] = AdvisoryTriageStore::key($appId, $advisory['id']);
+			}
+		}
+
+		try {
+			$this->steps->triageStore?->stampAndPrune($keys, gmdate(DATE_ATOM, $this->time->getTime()));
+		} catch (\Throwable $error) {
+			$this->logger->warning('AdvisoryRefreshJob: could not prune the advisory triage', ['message' => $error->getMessage()]);
 		}
 	}
 }
