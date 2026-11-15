@@ -2,12 +2,21 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Service\Pin;
+
+require_once __DIR__ . '/../../Support/AuditArgs.php';
 
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Pin\Pin;
+use OCA\Versioniq\Service\Pin\PinDrift;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Tests\Unit\Support\AuditArgs;
 use OCP\IAppConfig;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -109,7 +118,7 @@ final class PinStoreTest extends TestCase {
 		$auditLogger = $this->createMock(AuditLogger::class);
 		$auditLogger->expects($this->once())
 			->method('record')
-			->with(
+			->with(...AuditArgs::expected(
 				'alice',
 				'openregister',
 				AuditLogger::OPERATION_PIN,
@@ -118,7 +127,7 @@ final class PinStoreTest extends TestCase {
 				null,
 				AuditLogger::STATUS_SUCCESS,
 				'because',
-			);
+			));
 
 		$store = new PinStore($config, $auditLogger, $this->logger());
 		$store->set('openregister', new Pin('2.3.0', 'alice', '2026-06-11T12:00:00+00:00', 'because'));
@@ -150,7 +159,7 @@ final class PinStoreTest extends TestCase {
 		$auditLogger = $this->createMock(AuditLogger::class);
 		$auditLogger->expects($this->once())
 			->method('record')
-			->with('alice', 'openregister', AuditLogger::OPERATION_UNPIN, '2.3.0', null, null, AuditLogger::STATUS_SUCCESS, null);
+			->with(...AuditArgs::expected('alice', 'openregister', AuditLogger::OPERATION_UNPIN, '2.3.0', null, null, AuditLogger::STATUS_SUCCESS, null));
 
 		$store = new PinStore($config, $auditLogger, $this->logger());
 		$store->clear('openregister', 'alice');
@@ -165,7 +174,7 @@ final class PinStoreTest extends TestCase {
 
 		$store = new PinStore($config, $auditLogger, $this->logger());
 
-		$this->assertFalse($store->markDrift('openregister', '2.5.0', '2026-06-12T00:00:00+00:00'));
+		$this->assertFalse($store->markDrift('openregister', new PinDrift('2.5.0', '2026-06-12T00:00:00+00:00')));
 	}
 
 	public function testMarkDriftRecordsANewDriftAndAuditsAsSystem(): void {
@@ -180,11 +189,11 @@ final class PinStoreTest extends TestCase {
 		$auditLogger = $this->createMock(AuditLogger::class);
 		$auditLogger->expects($this->once())
 			->method('record')
-			->with('system', 'openregister', AuditLogger::OPERATION_PIN_DRIFT, '2.3.0', '2.5.0', null, AuditLogger::STATUS_SUCCESS, null);
+			->with(...AuditArgs::expected('system', 'openregister', AuditLogger::OPERATION_PIN_DRIFT, '2.3.0', '2.5.0', null, AuditLogger::STATUS_SUCCESS, null));
 
 		$store = new PinStore($config, $auditLogger, $this->logger());
 
-		$this->assertTrue($store->markDrift('openregister', '2.5.0', '2026-06-12T00:00:00+00:00'));
+		$this->assertTrue($store->markDrift('openregister', new PinDrift('2.5.0', '2026-06-12T00:00:00+00:00')));
 	}
 
 	public function testMarkDriftIsIdempotentForTheSameDriftedVersion(): void {
@@ -203,6 +212,6 @@ final class PinStoreTest extends TestCase {
 
 		$store = new PinStore($config, $auditLogger, $this->logger());
 
-		$this->assertFalse($store->markDrift('openregister', '2.5.0', '2026-06-13T00:00:00+00:00'));
+		$this->assertFalse($store->markDrift('openregister', new PinDrift('2.5.0', '2026-06-13T00:00:00+00:00')));
 	}
 }

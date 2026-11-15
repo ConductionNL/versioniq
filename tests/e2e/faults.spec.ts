@@ -1,3 +1,5 @@
+// SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+// SPDX-License-Identifier: EUPL-1.2
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "@playwright/test";

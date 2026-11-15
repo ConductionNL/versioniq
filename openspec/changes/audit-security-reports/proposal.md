@@ -8,11 +8,12 @@ kind: code
 
 A managed service provider owes its client a monthly security report: which security updates went in, per risk level how many advisories were fixed within the agreed time, what is still open, and how updates went. Versioniq holds most of the facts. The History tab lists every install with who, when and from which to which version. But the admin still has to build the report by hand. The history cannot be cut to a month, does not say which installs fixed an advisory, cannot be exported, and does not include server updates. And the advisory snapshot is overwritten by every check, so nobody can say when an advisory first affected the instance or how long it took to fix.
 
-This change comes from the competitor parity matrix `openspec/parity/capabilities.json` (versioniq) and covers two rows.
+This change comes from the competitor parity matrix `openspec/parity/capabilities.json` (versioniq) and covers three rows.
 
 | Row | Rating now | What is missing |
 |---|---|---|
 | `aud-security-update-report` | partial, built | The built half: the History tab lists every install, manual or automatic, with time and versions, newest first, filterable by app (`lib/Controller/ApiController.php:1258`, `src/components/HistoryPanel.vue:65-98`). The missing half: a period filter, a mark on installs that fixed an advisory, an export, and server updates. |
+| `aud-export` | partial, built | History is readable as paginated JSON through the admin API only (`lib/Controller/ApiController.php:1294`). The missing half: the export of the whole or filtered history to CSV and JSON that VqHistorie draws; task 2.2 builds it. |
 | `aud-remediation-kpi` | no | Advisory results are one snapshot that each check overwrites (`lib/Service/Advisory/AdvisoryResultStore.php:60`), so there is no history to measure time to fix or trends, and there are no deadlines per severity. |
 
 ### Demand

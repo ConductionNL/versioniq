@@ -1,0 +1,51 @@
+<?php
+
+declare(strict_types=1);
+/**
+ * @license EUPL-1.2
+ * @copyright Copyright (c) 2026, Conduction B.V. <info@conduction.nl>
+ *
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
+
+namespace OCA\Versioniq\Service;
+
+use OCA\Versioniq\AppInfo\Application;
+
+/**
+ * Raises one linked notification per admin, each linking into the Versioniq
+ * admin settings page; a failure for one admin is logged and does not stop
+ * the others. The using class also uses ResolvesAdminUids and holds
+ * `$admin` (AdminNotificationServices) and `$logger` (LoggerInterface).
+ */
+trait NotifiesAdmins {
+	private function notifyAdmins(AdminNotice $notice): void {
+		$linked = $notice->withLink($this->admin->urlGenerator->linkToRouteAbsolute(
+			'settings.AdminSettings.index',
+			['section' => Application::APP_ID],
+		));
+
+		foreach ($this->adminUids() as $uid) {
+			$this->notifyAdmin($uid, $linked);
+		}
+
+		// releases-new-release-alerts D6: after the bell, queue the same alert for the webhook targets.
+		$this->admin->alerts?->dispatch($notice->subject(), $notice->subjectParameters());
+	}
+
+	private function notifyAdmin(string $uid, AdminNotice $notice): void {
+		try {
+			$notification = $this->admin->notificationManager->createNotification();
+			$notification
+				->setApp(Application::APP_ID)
+				->setUser($uid)
+				->setDateTime($this->admin->timeFactory->getDateTime());
+			$notice->applyTo($notification);
+			$this->admin->notificationManager->notify($notification);
+		} catch (\Throwable $error) {
+			$this->logger->warning($notice->logMessage(), $notice->logContext($uid, $error));
+		}
+	}
+}

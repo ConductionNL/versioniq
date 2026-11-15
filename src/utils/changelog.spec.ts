@@ -15,28 +15,28 @@ const versions = [
 
 describe('buildChangelogRange', () => {
 	it('returns an empty list when either endpoint is missing', () => {
-		expect(buildChangelogRange('', '2.5.0', versions)).toEqual([])
-		expect(buildChangelogRange('2.3.0', '', versions)).toEqual([])
+		expect(buildChangelogRange({ installed: '', target: '2.5.0' }, versions)).toEqual([])
+		expect(buildChangelogRange({ installed: '2.3.0', target: '' }, versions)).toEqual([])
 	})
 
 	it('returns an empty list when installed and target are equal', () => {
-		expect(buildChangelogRange('2.3.0', '2.3.0', versions)).toEqual([])
+		expect(buildChangelogRange({ installed: '2.3.0', target: '2.3.0' }, versions)).toEqual([])
 	})
 
 	it('orders an upgrade ascending, excluding installed and including target', () => {
-		const result = buildChangelogRange('2.3.0', '2.5.0', versions)
+		const result = buildChangelogRange({ installed: '2.3.0', target: '2.5.0' }, versions)
 
 		expect(result.map((entry) => entry.version)).toEqual(['2.4.0', '2.5.0'])
 	})
 
 	it('orders a downgrade newest-first, excluding the target', () => {
-		const result = buildChangelogRange('2.5.0', '2.3.0', versions)
+		const result = buildChangelogRange({ installed: '2.5.0', target: '2.3.0' }, versions)
 
 		expect(result.map((entry) => entry.version)).toEqual(['2.5.0', '2.4.0'])
 	})
 
 	it('carries the changelog text through for each entry', () => {
-		const result = buildChangelogRange('2.3.0', '2.5.0', versions)
+		const result = buildChangelogRange({ installed: '2.3.0', target: '2.5.0' }, versions)
 
 		expect(result).toEqual([
 			{ version: '2.4.0', changelog: null },
@@ -45,7 +45,7 @@ describe('buildChangelogRange', () => {
 	})
 
 	it('normalizes an absent changelog field to null (placeholder entries)', () => {
-		const result = buildChangelogRange('2.2.0', '2.3.0', [
+		const result = buildChangelogRange({ installed: '2.2.0', target: '2.3.0' }, [
 			{ version: '2.3.0' },
 			{ version: '2.2.0' },
 		])
@@ -54,7 +54,7 @@ describe('buildChangelogRange', () => {
 	})
 
 	it('excludes versions outside the range', () => {
-		const result = buildChangelogRange('2.4.0', '2.6.0', versions)
+		const result = buildChangelogRange({ installed: '2.4.0', target: '2.6.0' }, versions)
 
 		expect(result.map((entry) => entry.version)).toEqual(['2.5.0', '2.6.0'])
 	})

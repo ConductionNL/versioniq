@@ -2,7 +2,14 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Service\Installer;
+
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
 
 use Exception;
 use OCA\Versioniq\Db\Pat;
@@ -17,6 +24,7 @@ use OCA\Versioniq\Service\Pat\PatResolver;
 use OCA\Versioniq\Service\Source\ForgeRegistry;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
 use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
@@ -37,6 +45,8 @@ use Throwable;
  * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-1.3
  */
 final class ExternalReleaseInstallerTokenHostTest extends TestCase {
+	use BuildsByParameterName;
+
 	/** @var list<array{url: string, authorization: ?string}> */
 	private array $requests = [];
 	private string $tempDir;
@@ -63,7 +73,7 @@ final class ExternalReleaseInstallerTokenHostTest extends TestCase {
 	 *
 	 * @param array<string, string> $release The resolved release payload.
 	 */
-	private function install(array $release): void {
+	private function install(array $release, string $forge = 'github', string $forgejoWeb = ''): void {
 		$client = $this->createMock(IClient::class);
 		$client->method('get')->willReturnCallback(function (string $url, array $options): never {
 			$this->requests[] = ['url' => $url, 'authorization' => $options['headers']['Authorization'] ?? null];
@@ -83,7 +93,7 @@ final class ExternalReleaseInstallerTokenHostTest extends TestCase {
 		$pat->setId(7);
 		$pat->setOwnerUid('admin');
 		$pat->setTargetPattern('ConductionNL/*');
-		$pat->setForge('github');
+		$pat->setForge($forge);
 		$mapper = $this->createMock(PatMapper::class);
 		$mapper->method('findVisibleTo')->willReturn([$pat]);
 
@@ -100,26 +110,31 @@ final class ExternalReleaseInstallerTokenHostTest extends TestCase {
 		$artifactCache = $this->createMock(ArtifactCache::class);
 		$artifactCache->method('fetch')->willReturn(['content' => 'not an archive']);
 
-		$installer = new ExternalReleaseInstallerService(
-			$clientService,
-			$tempManager,
-			$this->createMock(IAppManager::class),
-			$this->createMock(IConfig::class),
-			$this->createMock(IAppConfig::class),
-			$this->createMock(InstallFinalizer::class),
-			$this->createMock(TrustedSourceList::class),
-			$this->createMock(LoggerInterface::class),
-			new PatResolver($mapper),
-			$patManager,
-			$userSession,
-			$this->createMock(AuditLogger::class),
-			$this->createMock(MigrationDiffer::class),
-			$artifactCache,
-			new ForgeRegistry($this->createMock(IAppConfig::class)),
+		$forgeConfig = $this->createMock(IAppConfig::class);
+		$forgeConfig->method('getValueString')->willReturnCallback(
+			static fn (string $app, string $key, string $default = ''): string => $key === 'forge.forgejo.web_base' ? $forgejoWeb : $default
 		);
 
+		$installer = $this->buildByName(ExternalReleaseInstallerService::class, [
+			'clientService' => $clientService,
+			'tempManager' => $tempManager,
+			'appManager' => $this->createMock(IAppManager::class),
+			'config' => $this->createMock(IConfig::class),
+			'appConfig' => $this->createMock(IAppConfig::class),
+			'finalizer' => $this->createMock(InstallFinalizer::class),
+			'trustedSources' => $this->createMock(TrustedSourceList::class),
+			'logger' => $this->createMock(LoggerInterface::class),
+			'patResolver' => new PatResolver($mapper),
+			'patManager' => $patManager,
+			'userSession' => $userSession,
+			'auditLogger' => $this->createMock(AuditLogger::class),
+			'migrationDiffer' => $this->createMock(MigrationDiffer::class),
+			'artifactCache' => $artifactCache,
+			'forgeRegistry' => new ForgeRegistry($forgeConfig),
+		]);
+
 		try {
-			$installer->installFromExternalRelease('privateapp', '1.2.0', $release, SourceBinding::github('ConductionNL', 'privateapp'));
+			$installer->installFromExternalRelease('privateapp', '1.2.0', $release, SourceBinding::release($forge, 'ConductionNL', 'privateapp'));
 		} catch (Throwable) {
 			// Expected: the install stops after the requests under test.
 		}
@@ -181,5 +196,81 @@ final class ExternalReleaseInstallerTokenHostTest extends TestCase {
 		$auth = $this->authByUrl();
 		$this->assertSame('Bearer forge-secret', $auth['https://github.com/ConductionNL/privateapp/releases/download/v1.2.0/privateapp.tar.gz'] ?? 'not requested');
 		$this->assertSame('Bearer forge-secret', $auth['https://github.com/ConductionNL/privateapp/releases/download/v1.2.0/privateapp.tar.gz.sha256'] ?? 'not requested');
+	}
+
+	/**
+	 * The token only travels over https to the forge's own port.
+	 *
+	 * @dataProvider urlsOnTheForgeHostThatMustNotGetTheToken
+	 */
+	public function testTheForgeHostAloneDoesNotGetTheToken(string $url): void {
+		$this->install(['download' => $url]);
+
+		$auth = $this->authByUrl();
+		$this->assertArrayHasKey($url, $auth, 'the asset was never requested');
+		$this->assertNull($auth[$url]);
+	}
+
+	/**
+	 * @return array<string, array{0: string}>
+	 */
+	public static function urlsOnTheForgeHostThatMustNotGetTheToken(): array {
+		return [
+			'plain http' => ['http://github.com/ConductionNL/privateapp/privateapp.tar.gz'],
+			'plain http on the https port' => ['http://github.com:443/ConductionNL/privateapp/privateapp.tar.gz'],
+			'another port' => ['https://github.com:8443/ConductionNL/privateapp/privateapp.tar.gz'],
+			'no scheme' => ['//github.com/ConductionNL/privateapp/privateapp.tar.gz'],
+		];
+	}
+
+	/**
+	 * @dataProvider urlsOnTheForgeThatKeepTheToken
+	 */
+	public function testTheForgeKeepsTheTokenOverHttpsOnItsOwnPort(string $url): void {
+		$this->install(['download' => $url]);
+
+		$this->assertSame('Bearer forge-secret', $this->authByUrl()[$url] ?? 'not requested');
+	}
+
+	/**
+	 * @return array<string, array{0: string}>
+	 */
+	public static function urlsOnTheForgeThatKeepTheToken(): array {
+		return [
+			'web host' => ['https://github.com/ConductionNL/privateapp/privateapp.tar.gz'],
+			'api host' => ['https://api.github.com/ConductionNL/privateapp/privateapp.tar.gz'],
+			'explicit https port' => ['https://github.com:443/ConductionNL/privateapp/privateapp.tar.gz'],
+			'upper case' => ['HTTPS://GitHub.com/ConductionNL/privateapp/privateapp.tar.gz'],
+		];
+	}
+
+	/**
+	 * A self-hosted forge on its own port: that port gets the token and the
+	 * default https port of the same host does not.
+	 */
+	public function testASelfHostedForgeKeepsTheTokenOnItsOwnPortOnly(): void {
+		$own = 'https://git.example.org:8443/ConductionNL/privateapp/privateapp.tar.gz';
+		$other = 'https://git.example.org/ConductionNL/privateapp/privateapp.tar.gz';
+
+		$this->install(['download' => $own, 'sha256Url' => $other], 'forgejo', 'https://git.example.org:8443');
+
+		$auth = $this->authByUrl();
+		$this->assertSame('Bearer forge-secret', $auth[$own] ?? 'not requested');
+		$this->assertArrayHasKey($other, $auth, 'the checksum was never requested');
+		$this->assertNull($auth[$other]);
+	}
+
+	/**
+	 * A binding on a forge that is not configured has no host to compare the
+	 * URL with, so its token is never sent and the asset is fetched without it.
+	 */
+	public function testAnUnconfiguredForgeFetchesWithoutTheToken(): void {
+		$this->install([
+			'download' => 'https://git.example.org/ConductionNL/privateapp/releases/download/v1.2.0/privateapp.tar.gz',
+		], 'forgejo');
+
+		$auth = $this->authByUrl();
+		$this->assertArrayHasKey('https://git.example.org/ConductionNL/privateapp/releases/download/v1.2.0/privateapp.tar.gz', $auth, 'the asset was never requested');
+		$this->assertNull($auth['https://git.example.org/ConductionNL/privateapp/releases/download/v1.2.0/privateapp.tar.gz']);
 	}
 }

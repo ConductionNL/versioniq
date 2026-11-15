@@ -16,7 +16,6 @@ use OCA\Versioniq\Db\Pat;
 use OCA\Versioniq\Db\PatMapper;
 use OCA\Versioniq\Service\Pat\PatExpiryEvaluator;
 use OCA\Versioniq\Service\Pat\PatExpiryNotifier;
-use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
 use Psr\Log\LoggerInterface;
 
@@ -34,14 +33,16 @@ class PatExpiryWarningJob extends TimedJob {
 	/** Sweep once every 24 hours. */
 	private const INTERVAL_SECONDS = 24 * 60 * 60;
 
+	private LoggerInterface $logger;
+
 	public function __construct(
-		ITimeFactory $time,
+		JobRuntime $runtime,
 		private PatMapper $patMapper,
 		private PatExpiryEvaluator $evaluator,
 		private PatExpiryNotifier $notifier,
-		private LoggerInterface $logger,
 	) {
-		parent::__construct($time);
+		parent::__construct($runtime->time);
+		$this->logger = $runtime->logger;
 		$this->setInterval(self::INTERVAL_SECONDS);
 	}
 
