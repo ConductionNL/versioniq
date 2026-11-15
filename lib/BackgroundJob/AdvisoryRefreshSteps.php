@@ -15,6 +15,7 @@ use OCA\Versioniq\Service\Advisory\AdvisoryDigestNotifier;
 use OCA\Versioniq\Service\Advisory\AdvisoryNotifier;
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisoryService;
+use OCA\Versioniq\Service\Advisory\AdvisoryTriageStore;
 
 /**
  * The four steps of one advisory refresh, in the order the job runs them:
@@ -29,6 +30,8 @@ final class AdvisoryRefreshSteps {
 		public readonly AdvisoryResultStore $resultStore,
 		public readonly AdvisoryNotifier $advisoryNotifier,
 		public readonly AdvisoryDigestNotifier $digestNotifier,
+		// Optional: the advisory triage, stamped and pruned after each save (advisories-triage).
+		public readonly ?AdvisoryTriageStore $triageStore = null,
 	) {
 	}
 }

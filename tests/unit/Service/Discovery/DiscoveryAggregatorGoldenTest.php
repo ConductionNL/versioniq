@@ -12,6 +12,7 @@ namespace OCA\Versioniq\Tests\Unit\Service\Discovery;
 use Exception;
 use OCA\Versioniq\Service\Discovery\AppStoreDiscovery;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
+use OCA\Versioniq\Service\Discovery\DiscoveryProviders;
 use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
 use OCA\Versioniq\Service\Discovery\DiscoveryHit;
 use OCA\Versioniq\Service\Discovery\DiscoveryListing;
@@ -159,7 +160,7 @@ final class DiscoveryAggregatorGoldenTest extends TestCase {
 			return $installed[$appId];
 		});
 
-		return new DiscoveryAggregator($appManager, ...$providers);
+		return new DiscoveryAggregator($appManager, new DiscoveryProviders(...$providers));
 	}
 
 	/**
