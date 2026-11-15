@@ -6760,6 +6760,18 @@
                                         "nullable": true,
                                         "default": null,
                                         "description": "Release lines an app may fall behind, 0 to 10; blank turns the check off"
+                                    },
+                                    "crlUrl": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "Address a newer revocation list is fetched from; blank turns fetching off"
+                                    },
+                                    "disableRevoked": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "1 disables an app whose certificate was revoked, 0 only notifies"
                                     }
                                 }
                             }
