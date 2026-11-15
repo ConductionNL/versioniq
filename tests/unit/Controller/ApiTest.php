@@ -20,6 +20,7 @@ use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Db\PatMapper;
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Service\Advisory\AdvisoryTriageStore;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
@@ -31,6 +32,7 @@ use OCA\Versioniq\Service\Pat\PatManager;
 use OCA\Versioniq\Service\Pat\PatValidator;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\PolicyStore;
+use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCA\Versioniq\Tests\Unit\Support\DispatchesLikeNextcloud;
@@ -356,6 +358,8 @@ final class ApiTest extends TestCase {
 			'status' => 'success',
 			'message' => null,
 			'createdAt' => '2026-07-23 12:00:00',
+			// A row from before origins were recorded: unknown.
+			'origin' => null,
 		], $entry->jsonSerialize());
 	}
 
@@ -791,6 +795,58 @@ final class ApiTest extends TestCase {
 		$this->assertSame(400, $response->getStatus());
 	}
 
+	/**
+	 * codeberg-is-no-release-source: a new Codeberg binding is a 400 naming
+	 * the forge, and the binding is not stored.
+	 */
+	public function testBindSourceOnTheRetiredCodebergForgeIsRefused(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'kind' => 'github-release',
+				'forge' => 'codeberg',
+				'owner' => 'Conduction',
+				'repo' => 'openregister',
+				default => $default,
+			}
+		);
+
+		$installer = $this->createMock(InstallerService::class);
+		$installer->expects($this->once())->method('bindSource')->willThrowException(new RetiredForgeException('codeberg'));
+		$installer->expects($this->never())->method('getBinding');
+
+		$response = $this->buildAdminController($installer, $request)->bindSource('openregister');
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertStringContainsString('"codeberg" is no longer offered', $response->getData()['message']);
+	}
+
+	/**
+	 * codeberg-is-no-release-source: a new Codeberg trusted pattern is a 400
+	 * naming the forge, not the 422 of a malformed pattern.
+	 */
+	public function testAddTrustedSourceOnTheRetiredCodebergForgeIsRefused(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'forge' => 'codeberg',
+				'owner' => 'Conduction',
+				default => $default,
+			}
+		);
+
+		$installer = $this->createMock(InstallerService::class);
+		$installer->expects($this->once())
+			->method('addTrustedPattern')
+			->with('codeberg', 'Conduction', null)
+			->willThrowException(new RetiredForgeException('codeberg'));
+
+		$response = $this->buildAdminController($installer, $request)->addTrustedSource();
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertStringContainsString('"codeberg" is no longer offered', $response->getData()['message']);
+	}
+
 	public function testPoliciesListEachAppsBlockedVersions(): void {
 		$policyStore = $this->createMock(PolicyStore::class);
 		$policyStore->method('all')->willReturn([
@@ -839,5 +895,44 @@ final class ApiTest extends TestCase {
 
 	public function testClearBindingForbiddenForNonAdmin(): void {
 		$this->assertSame(403, $this->buildController()->clearBinding('openregister')->getStatus());
+	}
+
+	/**
+	 * GET /api/advisories returns the raw snapshot plus the stored triage
+	 * map, keyed `{appId}|{advisoryId}`, for the page (advisories-triage D1, D4).
+	 */
+	public function testAdvisoriesCarriesTheTriageMap(): void {
+		$triage = ['notes|GHSA-1' => ['dismissal' => ['reason' => 'not_used', 'by' => 'alice', 'installedVersion' => '4.1.0']]];
+		$results = $this->createMock(AdvisoryResultStore::class);
+		$results->method('read')->willReturn(['advisories' => ['notes' => ['state' => 'advisory-available']], 'checkedAt' => 1_700_000_000]);
+		$triageStore = $this->createMock(AdvisoryTriageStore::class);
+		$triageStore->expects($this->once())->method('read')->willReturn($triage);
+		$user = $this->createMock(IUser::class);
+		$user->method('getUID')->willReturn('admin');
+		$session = $this->createMock(IUserSession::class);
+		$session->method('getUser')->willReturn($user);
+		$groupManager = $this->createMock(IGroupManager::class);
+		$groupManager->method('isAdmin')->with('admin')->willReturn(true);
+
+		$controller = $this->buildByName(ApiController::class, [
+			'appName' => 'versioniq',
+			'request' => $this->createMock(IRequest::class),
+			'groupManager' => $groupManager,
+			'userSession' => $session,
+			'serverVersion' => $this->fakeServerVersion(),
+			'timeFactory' => $this->fakeTimeFactory(),
+			'advisoryResultStore' => $results,
+			'advisoryTriageStore' => $triageStore,
+			'connectionReports' => null,
+		]);
+
+		$response = $controller->advisories();
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame([
+			'advisories' => ['notes' => ['state' => 'advisory-available']],
+			'checkedAt' => 1_700_000_000,
+			'triage' => $triage,
+		], $response->getData());
 	}
 }

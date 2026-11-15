@@ -4,7 +4,7 @@
 import type {PrefillBindPayload} from './components/DiscoverPanel.vue';
 import type {BlockedVersion, PolicyLevel} from './components/PolicySelector.vue';
 import type { PinRecord } from './dialogs/PinDialog.vue'
-import type {AdvisoryCorrelation} from './utils/advisories.ts';
+import type {AdvisoryCorrelation, AdvisoryTriageMap} from './utils/advisories.ts';
 import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
 import type {LkgRecord} from './utils/migrationSafety.ts';
 import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
@@ -38,14 +38,14 @@ import EnableAppDialog from './dialogs/EnableAppDialog.vue'
 import PinDialog from './dialogs/PinDialog.vue'
 import PinOverrideDialog from './dialogs/PinOverrideDialog.vue'
 import ShaMismatchDialog from './dialogs/ShaMismatchDialog.vue'
-import { advisoryBadgeText } from './utils/advisories.ts'
+import { advisoryBadgeText, applyTriage } from './utils/advisories.ts'
 import { advisoryFreshnessLabel as advisoryFreshnessLabelFor } from './utils/advisoryFreshness.ts'
 import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow.ts'
 import { buildChangelogRange } from './utils/changelog.ts'
 import { tabForHash } from './utils/connectionRegistry.ts'
 import { currentLoginName, enableApp } from './utils/enableApp.ts'
 import { normalizeInstallResult, withSourceOverride } from './utils/installResult.ts'
-import { shouldOfferLkgRollback } from './utils/migrationSafety.ts'
+import { lkgRollbackTargets } from './utils/migrationSafety.ts'
 import { filterByUpdates, isOutsidePolicy, outsidePolicyLabel, updateBadge, updatesFreshnessLabel as updatesFreshnessLabelFor } from './utils/pendingUpdates.ts'
 import { repinApp } from './utils/repin.ts'
 import { isBlockedBySafeMode } from './utils/safeMode.ts'
@@ -79,6 +79,8 @@ type AppVersion = {
 const isLoading = ref(true)
 const apps = ref<AppOption[]>([])
 const advisories = ref<Record<string, AdvisoryCorrelation>>({})
+// Dismissals and owners per `{appId}|{advisoryId}`, applied when read (advisories-triage).
+const advisoryTriage = ref<AdvisoryTriageMap>({})
 const appFilter = ref('')
 const showFilters = ref(false)
 const coreAppsVisibility = ref<'show' | 'hide'>('show')
@@ -602,14 +604,16 @@ const advisoriesUnavailable = ref(false)
 async function loadAdvisories (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/advisories')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ advisories: Record<string, AdvisoryCorrelation>, checkedAt: number | null }>(response)
+		const payload = await unwrapOcsResponse<{ advisories: Record<string, AdvisoryCorrelation>, checkedAt: number | null, triage?: AdvisoryTriageMap }>(response)
 		advisories.value = payload.advisories || {}
+		advisoryTriage.value = payload.triage && !Array.isArray(payload.triage) ? payload.triage : {}
 		advisoriesCheckedAt.value = payload.checkedAt ?? null
 		advisoriesUnavailable.value = false
 	} catch {
 		// Non-fatal: the app list stays usable without advisory badges. The
 		// flag keeps "we could not ask" distinct from "nothing to report".
 		advisories.value = {}
+		advisoryTriage.value = {}
 		advisoriesCheckedAt.value = null
 		advisoriesUnavailable.value = true
 	}
@@ -736,7 +740,17 @@ const advisoryFreshnessLabel = computed((): string => advisoryFreshnessLabelFor(
 	nowSeconds: Date.now() / 1000,
 }))
 
-const advisoryFor = (appId: string): AdvisoryCorrelation | null => advisories.value[appId] ?? null
+/**
+ * An app's advisory row with the triage applied: the card badge and its
+ * severity count active advisories only (advisories-triage, design D2).
+ *
+ * @param appId The app the card is for.
+ * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+ */
+function advisoryFor (appId: string): AdvisoryCorrelation | null {
+	const row = advisories.value[appId]
+	return row ? applyTriage({ ...row, appId: row.appId || appId }, advisoryTriage.value) : null
+}
 
 // Badge shown next to a version with a recorded SHA-256 on the binding — see
 // "Recorded digests are binding-scoped and surfaced". After a reinstall that
@@ -1641,6 +1655,7 @@ type InstallApiPayload = {
 	recordedShaMatched?: boolean
 	orphanedMigrations?: string[] | null
 	integrityWarning?: string | null
+	space?: { appsFree: number | null, tempFree: number | null } | null
 	servedFromCache?: boolean
 }
 
@@ -2603,15 +2618,19 @@ watch(dryRunEnabled, () => {
 												@click="openEnableDialog(app.id)">
 												{{ t('versioniq', 'Enable') }}
 											</button>
-											<button
-												v-if="!app.isCore && app.lkg && shouldOfferLkgRollback(app)"
-												type="button"
-												:class="$style.appCardButton"
-												:disabled="isCheckingVersions || isInstallingVersion"
-												:title="t('versioniq', 'Roll back to the last version that finalized cleanly through Versioniq')"
-												@click="rollbackToLastKnownGood(app.id, app.lkg.version)">
-												{{ t('versioniq', 'Roll back to {version}', { version: app.lkg.version }) }}
-											</button>
+											<template v-if="!app.isCore">
+												<button
+													v-for="target in lkgRollbackTargets(app)"
+													:key="target.version"
+													type="button"
+													:class="$style.appCardButton"
+													data-testid="app-rollback-button"
+													:disabled="isCheckingVersions || isInstallingVersion"
+													:title="t('versioniq', 'Roll back to the last version that finalized cleanly through Versioniq')"
+													@click="rollbackToLastKnownGood(app.id, target.version)">
+													{{ target.label }}
+												</button>
+											</template>
 										</article>
 									</div>
 									<p v-if="!selectedApp && filteredApps.length === 0" :class="$style.noFilterResult">
@@ -2833,7 +2852,8 @@ watch(dryRunEnabled, () => {
 									</p>
 									<InstallResultNotices
 										:integrityWarning="lastInstallResult.integrityWarning ?? null"
-										:servedFromCache="lastInstallResult.servedFromCache === true" />
+										:servedFromCache="lastInstallResult.servedFromCache === true"
+										:space="lastInstallResult.space ?? null" />
 									<p v-if="installedAppNeedsEnabling" :class="$style.resultHint" data-testid="install-enable-hint">
 										{{ t('versioniq', 'This app is installed but not enabled.') }}
 										<NcButton
@@ -2913,7 +2933,9 @@ watch(dryRunEnabled, () => {
 					role="tabpanel"
 					aria-labelledby="advisories-tab"
 					:advisories="advisories"
-					:freshnessLabel="advisoryFreshnessLabel" />
+					:triage="advisoryTriage"
+					:freshnessLabel="advisoryFreshnessLabel"
+					@update:triage="(triage: AdvisoryTriageMap) => (advisoryTriage = triage)" />
 				<HistoryPanel v-if="currentTab === 'history'"
 					id="history-panel"
 					role="tabpanel"

@@ -30,6 +30,7 @@ use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Pat\NewPat;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Policy\Policy;
+use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\UntrustedSourceException;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -103,12 +104,16 @@ class ApiController extends OCSController {
 	 * six-hour-old one, or from an instance whose cron has never run — three
 	 * states that otherwise render as an identical empty map.
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{advisories: array<string, mixed>, checkedAt: ?int}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * `triage` is the stored dismissals and owners, keyed `{appId}|{advisoryId}`,
+	 * applied by the page; the snapshot itself stays raw (advisories-triage D1).
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{advisories: array<string, mixed>, checkedAt: ?int, triage: array<string, mixed>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Stored advisory correlation returned
 	 * 403: Caller is not an administrator
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/advisories')]
 	#[ApiRoute(verb: 'GET', url: '/api/v1/advisories', postfix: 'v1')]
@@ -122,6 +127,7 @@ class ApiController extends OCSController {
 		return new DataResponse([
 			'advisories' => $snapshot['advisories'],
 			'checkedAt' => $snapshot['checkedAt'],
+			'triage' => $this->reports->stores->advisoryTriageStore?->read() ?? [],
 		]);
 	}
 
@@ -287,6 +293,8 @@ class ApiController extends OCSController {
 
 		try {
 			$this->install->installerService->bindSource($appId, $binding);
+		} catch (RetiredForgeException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
 		} catch (UntrustedSourceException $error) {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_FORBIDDEN);
 		}
@@ -377,6 +385,8 @@ class ApiController extends OCSController {
 
 		try {
 			$patterns = $this->install->installerService->addTrustedPattern($forge, $owner, $repo);
+		} catch (RetiredForgeException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
 		} catch (InvalidArgumentException $error) {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_UNPROCESSABLE_ENTITY);
 		}
