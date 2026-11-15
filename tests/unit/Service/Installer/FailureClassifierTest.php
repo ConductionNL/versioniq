@@ -47,6 +47,7 @@ final class FailureClassifierTest extends TestCase {
 	public static function statusProvider(): array {
 		return [
 			'preflight' => [FailureClassifier::CATEGORY_PREFLIGHT_PERMISSION, Http::STATUS_CONFLICT],
+			'preflight_space' => [FailureClassifier::CATEGORY_PREFLIGHT_SPACE, Http::STATUS_CONFLICT],
 			'downgrade_guard' => [FailureClassifier::CATEGORY_DOWNGRADE_GUARD, Http::STATUS_CONFLICT],
 			'incompatible' => [FailureClassifier::CATEGORY_INCOMPATIBLE, Http::STATUS_UNPROCESSABLE_ENTITY],
 			'version' => [FailureClassifier::CATEGORY_VERSION_MISMATCH, Http::STATUS_UNPROCESSABLE_ENTITY],
@@ -126,6 +127,16 @@ final class FailureClassifierTest extends TestCase {
 		] as $category) {
 			self::assertNotSame('', $classifier->hintFor($category), $category . ' should have a hint');
 		}
+	}
+
+	/**
+	 * safety-rollback-backup-and-preflight 2.1: the space refusal has its own message and hint.
+	 */
+	public function testTheSpaceCategoryHasItsOwnMessageAndHint(): void {
+		$classifier = $this->build();
+		self::assertNotSame($classifier->hintFor(FailureClassifier::CATEGORY_UNKNOWN), $classifier->hintFor(FailureClassifier::CATEGORY_PREFLIGHT_SPACE));
+		self::assertNotSame($classifier->messageFor(FailureClassifier::CATEGORY_UNKNOWN), $classifier->messageFor(FailureClassifier::CATEGORY_PREFLIGHT_SPACE));
+		self::assertStringContainsString('disk space', $classifier->messageFor(FailureClassifier::CATEGORY_PREFLIGHT_SPACE));
 	}
 
 	public function testFinalizeHintReflectsRestoreCleanliness(): void {

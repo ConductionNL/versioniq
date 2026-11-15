@@ -17,6 +17,7 @@ use OCA\Versioniq\Service\Advisory\AdvisoryNotifier;
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisoryService;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Service\Advisory\AdvisoryTriageStore;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\AppFramework\Utility\ITimeFactory;
 use PHPUnit\Framework\TestCase;
@@ -43,6 +44,7 @@ final class AdvisoryRefreshJobTest extends TestCase {
 		?LoggerInterface $logger = null,
 		int $now = 1_700_000_000,
 		?AdvisoryDigestNotifier $digestNotifier = null,
+		?AdvisoryTriageStore $triageStore = null,
 	): void {
 		$time = $this->createMock(ITimeFactory::class);
 		$time->method('getTime')->willReturn($now);
@@ -56,6 +58,7 @@ final class AdvisoryRefreshJobTest extends TestCase {
 			'advisoryNotifier' => $notifier ?? $this->createMock(AdvisoryNotifier::class),
 			'digestNotifier' => $digestNotifier ?? $this->createMock(AdvisoryDigestNotifier::class),
 			'resultStore' => $store,
+			'triageStore' => $triageStore,
 			'settings' => $settings,
 			'logger' => $logger ?? $this->createMock(LoggerInterface::class),
 		]);
@@ -216,5 +219,53 @@ final class AdvisoryRefreshJobTest extends TestCase {
 				$this->assertNotContains(ltrim($type, '?'), $forbidden, $class . ' must not depend on ' . $type);
 			}
 		}
+	}
+
+	/**
+	 * After the snapshot is saved the job stamps the triage of every advisory
+	 * in it as seen and prunes the rest, keyed `{appId}|{advisoryId}`
+	 * (advisories-triage, design risks).
+	 */
+	public function testStampsAndPrunesTheTriageAfterSaving(): void {
+		$order = [];
+		$correlations = [
+			':server' => array_replace($this->correlation(':server'), ['advisories' => [['id' => 'GHSA-s', 'severity' => 'high', 'summary' => 'x']]]),
+			'notes' => array_replace($this->correlation('notes'), ['advisories' => [['id' => 'GHSA-a', 'severity' => 'low', 'summary' => 'y'], ['id' => 'GHSA-b', 'severity' => 'low', 'summary' => 'z']]]),
+		];
+		$service = $this->createMock(AdvisoryService::class);
+		$service->method('correlateAll')->willReturn($correlations);
+		$store = $this->createMock(AdvisoryResultStore::class);
+		$store->method('save')->willReturnCallback(function () use (&$order): void {
+			$order[] = 'save';
+		});
+		$triage = $this->createMock(AdvisoryTriageStore::class);
+		$triage->expects($this->once())->method('stampAndPrune')
+			->with([':server|GHSA-s', 'notes|GHSA-a', 'notes|GHSA-b'], '2023-11-14T22:13:20+00:00')
+			->willReturnCallback(function () use (&$order): int {
+				$order[] = 'prune';
+
+				return 0;
+			});
+
+		$this->runJob($service, $store, triageStore: $triage);
+
+		$this->assertSame(['save', 'prune'], $order);
+	}
+
+	/**
+	 * A failing prune is logged and the notifications still run.
+	 */
+	public function testAFailingPruneDoesNotStopTheNotifications(): void {
+		$service = $this->createMock(AdvisoryService::class);
+		$service->method('correlateAll')->willReturn(['notes' => $this->correlation('notes')]);
+		$triage = $this->createMock(AdvisoryTriageStore::class);
+		$triage->method('stampAndPrune')->willThrowException(new \JsonException('broken'));
+		$notifier = $this->createMock(AdvisoryNotifier::class);
+		$notifier->expects($this->once())->method('notifyNewAdvisories');
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->expects($this->once())->method('warning')
+			->with('AdvisoryRefreshJob: could not prune the advisory triage', ['message' => 'broken']);
+
+		$this->runJob($service, $this->createMock(AdvisoryResultStore::class), $notifier, $logger, triageStore: $triage);
 	}
 }

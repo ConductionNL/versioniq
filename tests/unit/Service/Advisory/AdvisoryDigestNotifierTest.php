@@ -34,6 +34,9 @@ final class AdvisoryDigestNotifierTest extends TestCase {
 
 	private int $notifyCalls = 0;
 
+	/** The stored `advisory.triage` value. */
+	private string $triage = '';
+
 	/** @var list<list<mixed>> Setter calls on the notification, without setDateTime. */
 	private array $setterCalls = [];
 
@@ -79,6 +82,9 @@ final class AdvisoryDigestNotifierTest extends TestCase {
 		$config = $this->createMock(IAppConfig::class);
 		$config->method('getValueInt')->willReturnCallback(
 			fn (string $app, string $key, int $default = 0): int => (int)($this->stored[$key] ?? $default),
+		);
+		$config->method('getValueString')->willReturnCallback(
+			fn (string $app, string $key, string $default = ''): string => $key === 'advisory.triage' ? $this->triage : $default,
 		);
 		$config->method('setValueInt')->willReturnCallback(
 			function (string $app, string $key, int $value): bool {
@@ -222,5 +228,48 @@ final class AdvisoryDigestNotifierTest extends TestCase {
 			['setObject', 'advisory_digest', '2'],
 			['setSubject', 'advisory_digest', ['apps' => 2, 'advisories' => 3]],
 		], $this->setterCalls);
+	}
+
+	/**
+	 * An actively dismissed advisory is not counted: an app whose only
+	 * informational advisory is dismissed leaves the digest, and the other
+	 * app's advisory is still counted (advisories-triage, D2).
+	 */
+	public function testTheDigestCountsOnlyActiveAdvisories(): void {
+		$this->triage = json_encode([
+			'mail|GHSA-mail' => ['dismissal' => [
+				'reason' => 'not_used', 'by' => 'alice', 'at' => '2023-11-01T00:00:00+00:00',
+				'until' => null, 'installedVersion' => '1.0.0',
+			]],
+		], JSON_THROW_ON_ERROR);
+		$notifier = $this->notifier(admins: ['alice']);
+
+		$sent = $notifier->sendIfDue([
+			'mail' => $this->informational('mail'),
+			'deck' => $this->informational('deck'),
+		], 1_700_000_000);
+
+		$this->assertSame(1, $sent);
+		$subject = array_values(array_filter($this->setterCalls, static fn (array $call): bool => $call[0] === 'setSubject'));
+		$this->assertSame(['setSubject', 'advisory_digest', ['apps' => 1, 'advisories' => 1]], $subject[0]);
+	}
+
+	/**
+	 * With every informational advisory dismissed there is nothing to report,
+	 * and a dismissal made on another version no longer holds.
+	 */
+	public function testAFullyDismissedSnapshotSendsNothingUntilTheVersionChanges(): void {
+		$this->triage = json_encode([
+			'mail|GHSA-mail' => ['dismissal' => [
+				'reason' => 'mitigated', 'by' => 'alice', 'at' => '2023-11-01T00:00:00+00:00',
+				'until' => null, 'installedVersion' => '1.0.0',
+			]],
+		], JSON_THROW_ON_ERROR);
+
+		$this->assertSame(0, $this->notifier()->sendIfDue(['mail' => $this->informational('mail')], 1_700_000_000));
+
+		$upgraded = $this->informational('mail');
+		$upgraded['installedVersion'] = '1.0.1';
+		$this->assertSame(2, $this->notifier()->sendIfDue(['mail' => $upgraded], 1_700_000_000));
 	}
 }
