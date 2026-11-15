@@ -36,11 +36,14 @@ final class AutoUpdatePlanner {
 	/**
 	 * The plan for a run: one member per app with a policy other than `none`,
 	 * in policy order. An app that fails to plan is logged and left out, so
-	 * one broken app never blocks the rest.
+	 * one broken app never blocks the rest. The per-run and weekly caps and
+	 * the waiting list then decide the run order and what waits (D4, D5).
+	 *
+	 * @param \DateTimeImmutable|null $now The run's time; now when null.
 	 *
 	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
 	 */
-	public function plan(): AutoUpdatePlan {
+	public function plan(?\DateTimeImmutable $now = null): AutoUpdatePlan {
 		$members = [];
 		foreach ($this->stores->policyStore->all() as $appId => $policy) {
 			if ($policy->level === Policy::LEVEL_NONE) {
@@ -53,7 +56,9 @@ final class AutoUpdatePlanner {
 			}
 		}
 
-		return new AutoUpdatePlan($members);
+		$limiter = new AutoUpdateLimiter($this->stores->settingsStore, $this->stores->attemptLedger);
+
+		return new AutoUpdatePlan($limiter->apply($members, $now ?? new \DateTimeImmutable()));
 	}
 
 	/**

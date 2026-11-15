@@ -114,4 +114,52 @@ final class AutoUpdateSettingsStoreTest extends TestCase {
 		$this->assertTrue($store->hasSweptWindow('01:00-05:00@2026-07-23'));
 		$this->assertFalse($store->hasSweptWindow('01:00-05:00@2026-07-24'));
 	}
+
+	public function testCapsReadAsNullWhenAbsentOrOutOfRange(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getValueInt')->willReturnCallback(static fn (string $app, string $key): int => match ($key) {
+			AutoUpdateSettingsStore::CONFIG_MAX_PER_RUN => 51,
+			AutoUpdateSettingsStore::CONFIG_MAX_PER_WEEK => 200,
+			default => 0,
+		});
+
+		$store = new AutoUpdateSettingsStore($config);
+
+		$this->assertNull($store->getMaxPerRun());
+		$this->assertSame(200, $store->getMaxPerWeek());
+	}
+
+	public function testSettingACapStoresItAndNullRemovesIt(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$config->expects($this->once())->method('setValueInt')->with(Application::APP_ID, AutoUpdateSettingsStore::CONFIG_MAX_PER_RUN, 5);
+		$config->expects($this->once())->method('deleteKey')->with(Application::APP_ID, AutoUpdateSettingsStore::CONFIG_MAX_PER_WEEK);
+
+		$store = new AutoUpdateSettingsStore($config);
+		$store->setMaxPerRun(5);
+		$store->setMaxPerWeek(null);
+	}
+
+	public function testTheWaitingListRoundTripsAndSkipsMalformedEntries(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getValueString')->willReturn('{"app:a":"2026-11-14T02:00:00+00:00","app:b":5,"app:c":""}');
+		$config->expects($this->once())->method('setValueString')
+			->with(Application::APP_ID, AutoUpdateSettingsStore::CONFIG_DEFERRED, '{"app:a":"2026-11-14T02:00:00+00:00"}');
+
+		$store = new AutoUpdateSettingsStore($config);
+		$deferred = $store->getDeferred();
+
+		$this->assertSame(['app:a' => '2026-11-14T02:00:00+00:00'], $deferred);
+		$store->setDeferred($deferred);
+	}
+
+	public function testAnEmptyOrBrokenWaitingListReadsEmptyAndClearingRemovesTheKey(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getValueString')->willReturn('not json');
+		$config->expects($this->once())->method('deleteKey')->with(Application::APP_ID, AutoUpdateSettingsStore::CONFIG_DEFERRED);
+
+		$store = new AutoUpdateSettingsStore($config);
+
+		$this->assertSame([], $store->getDeferred());
+		$store->setDeferred([]);
+	}
 }

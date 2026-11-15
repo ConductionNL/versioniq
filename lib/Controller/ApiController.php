@@ -20,6 +20,7 @@ use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\Api\AccessCollaborators;
 use OCA\Versioniq\Service\Api\InstallCollaborators;
 use OCA\Versioniq\Service\Api\ReportCollaborators;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
@@ -28,9 +29,9 @@ use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Pat\NewPat;
-use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Policy\Policy;
+use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\UntrustedSourceException;
@@ -930,7 +931,7 @@ class ApiController extends OCSController {
 			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
 			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
 			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
-		]);
+		] + $this->autoUpdateCaps());
 	}
 
 	/**
@@ -1045,18 +1046,40 @@ class ApiController extends OCSController {
 			);
 		}
 
+		// autoupdate-run-batching D4: both caps are checked before anything is
+		// stored, so a bad one changes nothing.
+		$caps = [];
+		foreach (['maxPerRun' => AutoUpdateSettingsStore::MAX_PER_RUN_LIMIT, 'maxPerWeek' => AutoUpdateSettingsStore::MAX_PER_WEEK_LIMIT] as $name => $limit) {
+			$cap = $this->capParam($name, $limit);
+			if ($cap === false) {
+				return new DataResponse(
+					['message' => sprintf('%s must be a whole number from 1 to %d, or empty for no limit.', $name, $limit)],
+					Http::STATUS_BAD_REQUEST
+				);
+			}
+			if ($cap !== true) {
+				$caps[$name] = $cap;
+			}
+		}
+
 		if ($enabledParam !== null) {
 			$this->autoUpdate->settingsStore->setEnabled($this->readBinaryBool($enabledParam, $this->autoUpdate->settingsStore->isEnabled()));
 		}
 		if ($windowParam !== '') {
 			$this->autoUpdate->settingsStore->setWindow($windowParam);
 		}
+		if (array_key_exists('maxPerRun', $caps)) {
+			$this->autoUpdate->settingsStore->setMaxPerRun($caps['maxPerRun']);
+		}
+		if (array_key_exists('maxPerWeek', $caps)) {
+			$this->autoUpdate->settingsStore->setMaxPerWeek($caps['maxPerWeek']);
+		}
 
 		return new DataResponse([
 			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
 			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
 			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
-		]);
+		] + $this->autoUpdateCaps());
 	}
 
 	/**
@@ -1572,6 +1595,46 @@ class ApiController extends OCSController {
 		}
 
 		return $default;
+	}
+
+	/**
+	 * The auto-update caps as the API returns them; null is no limit
+	 * (autoupdate-run-batching D4).
+	 *
+	 * @return array{maxPerRun: int|null, maxPerWeek: int|null}
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	private function autoUpdateCaps(): array {
+		return [
+			'maxPerRun' => $this->autoUpdate->settingsStore->getMaxPerRun(),
+			'maxPerWeek' => $this->autoUpdate->settingsStore->getMaxPerWeek(),
+		];
+	}
+
+	/**
+	 * One cap from the request: true when it was not sent, null for an empty
+	 * value (no limit), the number for 1 to $limit, false for anything else.
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	private function capParam(string $name, int $limit): bool|int|null {
+		/** @var mixed $value */
+		$value = $this->request->getParam($name);
+		if ($value === null) {
+			return true;
+		}
+
+		$text = is_scalar($value) ? trim((string)$value) : 'invalid';
+		if ($text === '') {
+			return null;
+		}
+
+		if (preg_match('/^\d+$/', $text) !== 1 || (int)$text < 1 || (int)$text > $limit) {
+			return false;
+		}
+
+		return (int)$text;
 	}
 
 	private function stringParam(string $name, string $default): string {

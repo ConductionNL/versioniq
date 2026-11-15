@@ -14,8 +14,10 @@
 ## 3. Caps
 
 - [x] 3.1 Add `AttemptLedger::countSince()`. Verify: `AttemptLedgerTest` counts attempts across two apps inside and outside seven days.
-- [ ] 3.2 Add `max_per_run` and `max_per_week` to the settings store and `PUT /api/auto-update/settings`, 1 to 50 and 1 to 200, empty is off. Verify: `ApiTest` refuses 0 and 51 with 400 and stores 5.
-- [ ] 3.3 Apply the caps and the waiting list of D4 and D5 in the planner. Verify: `AutoUpdatePlannerTest` covers a cap of 2 with three apps, a group of three that does not fit a remaining budget of 2, and a held app going first in the next run.
+- [x] 3.2 Add `max_per_run` and `max_per_week` to the settings store and `PUT /api/auto-update/settings`, 1 to 50 and 1 to 200, empty is off. Verify: `ApiTest` refuses 0 and 51 with 400 and stores 5.
+- [x] 3.3 Apply the caps and the waiting list of D4 and D5 in the planner. Verify: `AutoUpdatePlannerTest` covers a cap of 2 with three apps, a group of three that does not fit a remaining budget of 2, and a held app going first in the next run.
+
+  > Built: `AutoUpdateSettingsStore` keeps `auto_update.max_per_run`, `auto_update.max_per_week` (absent or out of range reads as no cap) and the waiting list `auto_update.deferred`. `PUT /api/auto-update/settings` takes `maxPerRun` and `maxPerWeek` (1 to 50, 1 to 200, empty clears, omitted leaves alone), checks both before storing anything and refuses anything else with 400; it and `GET /api/policies` return both. `AutoUpdateLimiter`, called by `AutoUpdatePlanner::plan()`, applies `min(max_per_run, max_per_week - attempts in seven days)`, runs held units first (oldest first) and the rest by app id, marks what does not fit `limit` and keeps the waiting list; with no cap and an empty list the plan is unchanged. Tests: `AutoUpdateLimiterTest` (7), new `AutoUpdatePlannerTest`, `AutoUpdateSettingsStoreTest` and `ApiTest` cases. The group case of 3.3 (a group of three not fitting a budget of 2) waits for 2.2, which plans groups as units; the limiter already costs a unit by its members.
 
 ## 4. Page
 

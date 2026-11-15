@@ -167,4 +167,30 @@ final class AutoUpdatePlannerTest extends TestCase {
 
 		$this->assertSame(['ready' => ['1.0.0', '1.0.1', null]], $this->planned());
 	}
+
+	public function testACapOfTwoWithThreeReadyAppsHoldsTheThird(): void {
+		$this->policies->method('all')->willReturn([
+			'gamma' => self::policy(Policy::LEVEL_PATCH),
+			'alpha' => self::policy(Policy::LEVEL_PATCH),
+			'beta' => self::policy(Policy::LEVEL_PATCH),
+		]);
+		$this->pins->method('get')->willReturn(null);
+		$this->withSources(array_fill_keys(['alpha', 'beta', 'gamma'], ['availableVersions' => [['version' => '1.0.1']], 'hasError' => false]));
+		$this->ledger->method('hasAttempted')->willReturn(false);
+		$settings = $this->createMock(AutoUpdateSettingsStore::class);
+		$settings->method('getMaxPerRun')->willReturn(2);
+		$settings->method('getDeferred')->willReturn([]);
+		$settings->expects($this->once())->method('setDeferred')->with(['app:gamma' => '2026-11-15T02:00:00+00:00']);
+		$planner = new AutoUpdatePlanner(
+			new AutoUpdateStores($this->policies, $this->pins, $settings, $this->ledger),
+			new AutoUpdateInstall($this->installer, $this->apps, new CandidateSelector()),
+			$this->logger,
+		);
+
+		$plan = $planner->plan(new \DateTimeImmutable('2026-11-15T02:00:00+00:00'));
+
+		$this->assertSame(['alpha', 'beta'], array_map(static fn (AutoUpdateMember $member): string => $member->appId, $plan->installable()));
+		$this->assertSame(AutoUpdateMember::REASON_LIMIT, $plan->members[2]->reason);
+		$this->assertSame('gamma', $plan->members[2]->appId);
+	}
 }

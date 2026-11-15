@@ -17,7 +17,6 @@ require_once __DIR__ . '/../Support/DispatchesLikeNextcloud.php';
 use OCA\Versioniq\Controller\ApiController;
 use OCA\Versioniq\Db\AuditEntry;
 use OCA\Versioniq\Db\AuditEntryMapper;
-use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Db\PatMapper;
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
@@ -33,6 +32,7 @@ use OCA\Versioniq\Service\Pat\PatManager;
 use OCA\Versioniq\Service\Pat\PatValidator;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\PolicyStore;
+use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
@@ -700,6 +700,83 @@ final class ApiTest extends TestCase {
 		$this->assertSame(200, $response->getStatus());
 		$this->assertTrue($response->getData()['autoUpdateEnabled']);
 		$this->assertSame('22:00-04:00', $response->getData()['autoUpdateWindow']);
+	}
+
+	/**
+	 * A request whose getParam answers these values and the default for anything else.
+	 *
+	 * @param array<string, mixed> $params
+	 */
+	private function paramsRequest(array $params): IRequest {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => array_key_exists($name, $params) ? $params[$name] : $default
+		);
+
+		return $request;
+	}
+
+	/**
+	 * autoupdate-run-batching D4: a cap outside 1 to 50 (per run) or 1 to 200
+	 * (per week) is refused with 400 and nothing is stored.
+	 *
+	 * @dataProvider badCapProvider
+	 */
+	public function testUpdateAutoUpdateSettingsRefusesACapOutOfRange(string $name, mixed $value): void {
+		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore->expects($this->never())->method('setMaxPerRun');
+		$settingsStore->expects($this->never())->method('setMaxPerWeek');
+		$settingsStore->expects($this->never())->method('setWindow');
+
+		$request = $this->paramsRequest([$name => $value, 'window' => '22:00-04:00']);
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $request, null, null, null, 'admin', null, $settingsStore)
+			->updateAutoUpdateSettings();
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertStringContainsString($name, $response->getData()['message']);
+	}
+
+	/**
+	 * @return array<string, array{0: string, 1: mixed}>
+	 */
+	public static function badCapProvider(): array {
+		return [
+			'per run zero' => ['maxPerRun', '0'],
+			'per run 51' => ['maxPerRun', '51'],
+			'per week 201' => ['maxPerWeek', 201],
+			'per run text' => ['maxPerRun', 'five'],
+			'per week fraction' => ['maxPerWeek', '2.5'],
+		];
+	}
+
+	public function testUpdateAutoUpdateSettingsStoresACapAndClearsAnEmptyOne(): void {
+		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore->expects($this->once())->method('setMaxPerRun')->with(5);
+		$settingsStore->expects($this->once())->method('setMaxPerWeek')->with(null);
+		$settingsStore->method('getMaxPerRun')->willReturn(5);
+		$settingsStore->method('getMaxPerWeek')->willReturn(null);
+		$settingsStore->expects($this->never())->method('setEnabled');
+
+		$request = $this->paramsRequest(['maxPerRun' => '5', 'maxPerWeek' => '']);
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $request, null, null, null, 'admin', null, $settingsStore)
+			->updateAutoUpdateSettings();
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame(5, $response->getData()['maxPerRun']);
+		$this->assertNull($response->getData()['maxPerWeek']);
+	}
+
+	public function testUpdateAutoUpdateSettingsLeavesTheCapsAloneWhenNotSent(): void {
+		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore->expects($this->never())->method('setMaxPerRun');
+		$settingsStore->expects($this->never())->method('setMaxPerWeek');
+		$settingsStore->method('getMaxPerWeek')->willReturn(40);
+
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->paramsRequest([]), null, null, null, 'admin', null, $settingsStore)
+			->updateAutoUpdateSettings();
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame(40, $response->getData()['maxPerWeek']);
 	}
 
 	// --- dryRun decoupled from debug (see MODIFIED "Debug Mode") ---
