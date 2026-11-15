@@ -33,7 +33,7 @@ type Route = Answer | ((call: Call) => Answer | Promise<Answer>)
 // whose events the page's handlers are driven through.
 const stubs = Object.fromEntries([
 	'AdvisoriesPanel', 'AppSourceBadges', 'AutoUpdateOverview', 'CachePanel', 'ChangelogRangePanel', 'DiscoverPanel',
-	'HistoryPanel', 'InstallResultNotices', 'InstanceSettingsPanel', 'IntegrationsPanel', 'PinDriftBanner', 'PolicySelector',
+	'HistoryPanel', 'InstallResultNotices', 'InstanceSettingsPanel', 'InstancesPanel', 'IntegrationsPanel', 'PinDriftBanner', 'PolicySelector',
 	'ReleaseDate', 'ServerCompatBadge', 'SourceOverrideField', 'SourcesPanel', 'TokensPanel', 'TrustedSourcesPanel',
 	'VersionChangelog', 'DowngradeConfirmDialog', 'EnableAppDialog', 'PinDialog', 'PinOverrideDialog', 'ShaMismatchDialog',
 ].map((name) => [name, true]))
@@ -70,7 +70,7 @@ async function mountPage (routes: Record<string, Route> = {}, options: { attach?
 }
 
 
-const TAB_IDS = ['apps', 'advisories', 'history', 'sources', 'tokens', 'trusted', 'discover', 'cache', 'settings']
+const TAB_IDS = ['apps', 'advisories', 'history', 'sources', 'tokens', 'trusted', 'discover', 'cache', 'instances', 'settings']
 
 enableAutoUnmount(afterEach)
 
@@ -90,7 +90,7 @@ describe('App tabs', () => {
 		const { wrapper, vm } = await mountPage()
 		const tabs = wrapper.findAll('[role="tablist"] [role="tab"]')
 
-		expect(tabs.map((tab) => tab.text())).toEqual(['Apps', 'Advisories', 'History', 'Sources', 'Tokens', 'Trusted sources', 'Discover', 'Artifact cache', 'Settings'])
+		expect(tabs.map((tab) => tab.text())).toEqual(['Apps', 'Advisories', 'History', 'Sources', 'Tokens', 'Trusted sources', 'Discover', 'Artifact cache', 'Instances', 'Settings'])
 		await tabs[3].trigger('click')
 
 		expect(vm.currentTab).toBe('sources')
@@ -255,5 +255,23 @@ describe('App panel hand-overs', () => {
 		await flushPromises()
 
 		expect(calls).toEqual([])
+	})
+})
+
+describe('App promotion rollback', () => {
+	// install-multi-instance-promotion D6: the rollback a promotion result
+	// offers runs on the Apps tab through the standard last-known-good flow.
+	// @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-promotes-the-exact-package-an-earlier-stage-runs
+	it('opens the Apps tab and starts the install of the earlier version', async () => {
+		const { wrapper, vm, calls } = await mountPage()
+		vm.currentTab = 'instances'
+		await flushPromises()
+		calls.length = 0
+
+		wrapper.findComponent({ name: 'InstancesPanel' }).vm.$emit('rollback', { appId: 'openregister', version: '2.3.0' })
+		await flushPromises()
+
+		expect(vm.currentTab).toBe('apps')
+		expect(calls.map((call) => call.path).slice(0, 2)).toEqual(['/api/app/openregister/versions', '/api/app/openregister/versions/2.3.0/install'])
 	})
 })

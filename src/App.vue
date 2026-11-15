@@ -23,6 +23,7 @@ import DiscoverPanel from './components/DiscoverPanel.vue'
 import HistoryPanel from './components/HistoryPanel.vue'
 import InstallResultNotices from './components/InstallResultNotices.vue'
 import InstanceSettingsPanel from './components/InstanceSettingsPanel.vue'
+import InstancesPanel from './components/InstancesPanel.vue'
 import IntegrationsPanel from './components/IntegrationsPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
@@ -241,6 +242,7 @@ const tabs = [
 	{ id: 'trusted' },
 	{ id: 'discover' },
 	{ id: 'cache' },
+	{ id: 'instances' },
 	{ id: 'settings' },
 	...(integriqInstalled ? [{ id: 'integrations' }] : []),
 ]
@@ -262,6 +264,7 @@ function tabLabel (id: string): string {
 	trusted: t('versioniq', 'Trusted sources'),
 	discover: t('versioniq', 'Discover'),
 	cache: t('versioniq', 'Artifact cache'),
+	instances: t('versioniq', 'Instances'),
 	settings: t('versioniq', 'Settings'),
 	integrations: t('versioniq', 'Integrations'),
 }[id] ?? id
@@ -2130,6 +2133,21 @@ async function rollbackToLastKnownGood (appId: string, version: string): Promise
 	}
 }
 
+/**
+ * The rollback a promotion result offers: back on the Apps tab, through the
+ * same last-known-good flow, so the downgrade dialog and its migration diff
+ * apply (install-multi-instance-promotion D6).
+ *
+ * @param target The app and the version it ran before the promotion.
+ * @param target.appId The app.
+ * @param target.version The version it ran before.
+ * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-promotes-the-exact-package-an-earlier-stage-runs
+ */
+async function rollbackFromPromotion (target: { appId: string, version: string }): Promise<void> {
+	currentTab.value = 'apps'
+	await rollbackToLastKnownGood(target.appId, target.version)
+}
+
 onBeforeUnmount(() => {
 	window.removeEventListener('hashchange', openSectionFromHash)
 })
@@ -2975,6 +2993,11 @@ watch(dryRunEnabled, () => {
 					id="cache-panel"
 					role="tabpanel"
 					aria-labelledby="cache-tab" />
+				<InstancesPanel v-if="currentTab === 'instances'"
+					id="instances-panel"
+					role="tabpanel"
+					aria-labelledby="instances-tab"
+					@rollback="rollbackFromPromotion" />
 				<InstanceSettingsPanel v-if="currentTab === 'settings'"
 					id="settings-panel"
 					role="tabpanel"
