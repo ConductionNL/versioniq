@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Service\AutoUpdate;
 
 use OCA\Versioniq\AppInfo\Application;
@@ -137,5 +142,56 @@ final class AttemptLedgerTest extends TestCase {
 		$ledger = new AttemptLedger($config, $this->logger());
 
 		$this->assertSame([['version' => '2.3.4', 'at' => '2026-07-22T02:00:00+00:00']], $ledger->blockedVersions('openregister'));
+	}
+
+	/**
+	 * Entries without a version, or without a string time and outcome, are
+	 * not counted as attempts.
+	 */
+	public function testMalformedEntriesAreIgnored(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getValueString')->willReturn(json_encode([
+			'' => ['at' => '2026-07-22T02:00:00+00:00', 'outcome' => 'failure'],
+			'1.0.0' => 'failure',
+			'2.0.0' => ['at' => '2026-07-22T02:00:00+00:00'],
+			'3.0.0' => ['at' => '2026-07-22T02:00:00+00:00', 'outcome' => 7],
+			'4.0.0' => ['at' => '2026-07-23T02:00:00+00:00', 'outcome' => 'failure'],
+		], JSON_THROW_ON_ERROR));
+
+		$ledger = new AttemptLedger($config, $this->logger());
+
+		$this->assertSame([['version' => '4.0.0', 'at' => '2026-07-23T02:00:00+00:00']], $ledger->blockedVersions('openregister'));
+		$this->assertFalse($ledger->hasAttempted('openregister', ''));
+		$this->assertFalse($ledger->hasAttempted('openregister', '3.0.0'));
+		$this->assertTrue($ledger->hasAttempted('openregister', '4.0.0'));
+	}
+
+	/**
+	 * countSince() counts every attempt, success or failure, across apps, at or
+	 * after the given time (autoupdate-run-batching D4).
+	 */
+	public function testCountSinceCountsAttemptsAcrossAppsInsideTheWindow(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$stored = [
+			'auto_attempt.openregister' => json_encode([
+				'2.3.4' => ['at' => '2026-11-10T02:00:00+00:00', 'outcome' => 'success'],
+				'2.3.3' => ['at' => '2026-11-01T02:00:00+00:00', 'outcome' => 'success'],
+			], JSON_THROW_ON_ERROR),
+			'auto_attempt.decidiq' => json_encode([
+				'1.0.1' => ['at' => '2026-11-13T03:00:00+01:00', 'outcome' => 'failure'],
+				'1.0.0' => ['at' => '2026-11-07T02:00:00+00:00', 'outcome' => 'success'],
+			], JSON_THROW_ON_ERROR),
+			'auto_attempt.broken' => '{not json',
+			'auto_attempt.empty' => '',
+		];
+		$config->method('getAllValues')->with(Application::APP_ID, 'auto_attempt.')->willReturn($stored);
+		$config->method('getValueString')->willReturnCallback(
+			static fn (string $app, string $key, string $default): string => $stored[$key] ?? $default
+		);
+
+		$ledger = new AttemptLedger($config, $this->logger());
+
+		$this->assertSame(3, $ledger->countSince('2026-11-07T02:00:00+00:00'));
+		$this->assertSame(0, $ledger->countSince('not a time'));
 	}
 }

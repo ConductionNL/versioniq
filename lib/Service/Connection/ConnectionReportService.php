@@ -56,6 +56,9 @@ class ConnectionReportService {
 	/** The advisory feed connection key in lib/Settings/connections.json. */
 	public const KEY_ADVISORIES = 'advisories';
 
+	/** The NCSC-NL advisories connection key in lib/Settings/connections.json (advisories-ncsc-feed). */
+	public const KEY_NCSC = 'ncsc';
+
 	/**
 	 * The forge whose requests are reported. Codeberg is retired, and gets no
 	 * row, so its requests are never reported. The self-hosted Forgejo or
@@ -124,23 +127,30 @@ class ConnectionReportService {
 		if ($httpStatus === null) {
 			return ['error', 'Versioniq could not reach ' . $host . '.'];
 		}
-		if ($httpStatus === 200 && $readable) {
-			return ['configured', $host . ' answered the last request.'];
-		}
 		if ($httpStatus === 200) {
-			return ['error', $host . ' answered with a body Versioniq could not read.'];
+			return $readable
+				? ['configured', $host . ' answered the last request.']
+				: ['error', $host . ' answered with a body Versioniq could not read.'];
 		}
+
+		return self::describeRefusal($host, $httpStatus);
+	}
+
+	/**
+	 * The status and message for a forge answer other than 200; null for a
+	 * 404, which says nothing about the connection.
+	 *
+	 * @return array{0: string, 1: string}|null
+	 */
+	private static function describeRefusal(string $host, int $httpStatus): ?array {
 		if ($httpStatus === 401) {
 			return ['limited', $host . ' refused a saved token. Public repositories still answer without one.'];
 		}
 		if ($httpStatus === 403 || $httpStatus === 429) {
 			return ['limited', $host . ' refused the last request with HTTP ' . $httpStatus . ', usually a rate limit. A token raises the limit.'];
 		}
-		if ($httpStatus === 404) {
-			return null;
-		}
 
-		return ['error', $host . ' answered HTTP ' . $httpStatus . '.'];
+		return $httpStatus === 404 ? null : ['error', $host . ' answered HTTP ' . $httpStatus . '.'];
 	}
 
 	/**
@@ -214,6 +224,40 @@ class ConnectionReportService {
 		}
 
 		return ['error', $this->shorten($error)];
+	}
+
+	/**
+	 * After an advisory check read the NCSC-NL directory: how many documents it
+	 * read and how many named a Nextcloud product, so a product name the map
+	 * does not resolve shows as a gap rather than silence.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/specs/security-advisory-correlation/spec.md#requirement-ncsc-nl-advisories-are-matched-to-the-installed-server-and-apps
+	 * @param array{read: int, matched: int, error: ?string} $outcome The read.
+	 */
+	public function ncscFeedRead(array $outcome): bool {
+		[$status, $message] = $this->describeNcscRead($outcome);
+
+		return $this->reportThrottled(self::KEY_NCSC, $status, $message);
+	}
+
+	/**
+	 * What an advisory check says about the NCSC-NL connection.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/specs/security-advisory-correlation/spec.md#requirement-ncsc-nl-advisories-are-matched-to-the-installed-server-and-apps
+	 * @param array{read: int, matched: int, error: ?string} $outcome The read.
+	 * @return array{0: string, 1: string} The status and the message.
+	 */
+	public function describeNcscRead(array $outcome): array {
+		$counts = 'read ' . $outcome['read'] . ' documents, matched ' . $outcome['matched'] . '.';
+		if ($outcome['error'] === null) {
+			return ['configured', 'The last check ' . $counts];
+		}
+
+		if ($outcome['read'] > 0) {
+			return ['limited', 'The last check stopped early: ' . $counts . ' ' . $this->shorten($outcome['error'])];
+		}
+
+		return ['error', $this->shorten($outcome['error'])];
 	}
 
 	/**

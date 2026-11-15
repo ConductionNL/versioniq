@@ -93,6 +93,8 @@ const buttons = computed(() => [
 	</NcDialog>
 </template>
 
+<style module src="../styles/versionChip.module.css"></style>
+
 <style module>
 .downgradeConfirmText {
 	font-size: 14px;
@@ -107,40 +109,13 @@ const buttons = computed(() => [
 	font-size: 14px;
 }
 
-.versionChip {
-	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-	font-weight: 600;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	padding: 2px 8px;
-	border: 1px solid var(--color-border-dark);
-	border-radius: 9999px;
-	background: var(--color-main-background);
-}
-
-.versionArrow {
-	font-weight: 700;
-	color: var(--color-text-light);
-}
-
 .versionRangeSummary {
 	margin: 0;
 	font-size: 12px;
 	color: var(--color-text-light);
 }
 
-.versionItemDegradeMessage {
-	margin: 8px 0 0;
-	padding: 8px 10px;
-	border: 1px solid #fdba74;
-	background: #ffedd5;
-	color: #7c2d12;
-	border-radius: 6px;
-	font-size: 12px;
-	line-height: 1.3;
-}
-
+.versionItemDegradeMessage,
 .migrationDiff {
 	margin: 8px 0 0;
 	padding: 8px 10px;
