@@ -12,10 +12,12 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\BackgroundJob;
 
+use OCA\Versioniq\Service\Audit\AuditNote;
 use OCA\Versioniq\Service\Audit\AuditOrigin;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
@@ -116,7 +118,7 @@ class AutoUpdateJob extends TimedJob {
 			}
 
 			try {
-				$this->processApp($appId, $policy->level);
+				$this->processApp($appId, $policy);
 			} catch (\Throwable $error) {
 				// Per-app isolation — see "the job MUST proceed to the next app
 				// after any failure".
@@ -128,24 +130,55 @@ class AutoUpdateJob extends TimedJob {
 		}
 	}
 
-	private function processApp(string $appId, string $level): void {
+	/**
+	 * Plans the app afresh and installs the plan's next version: the newest
+	 * in-policy version old enough, an admin's exception, or a security fix
+	 * let through before the minimum age (which the audit row and the
+	 * notification then say).
+	 *
+	 * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+	 */
+	private function processApp(string $appId, Policy $policy): void {
 		if ($this->isSkipped($appId)) {
 			return;
 		}
 
 		$installedVersion = $this->installedVersionOf($appId);
-		$available = $installedVersion === null ? null : $this->availableVersions($appId);
-		if ($installedVersion === null || $available === null) {
+		$entries = $installedVersion === null ? null : $this->availableEntries($appId);
+		if ($installedVersion === null || $entries === null) {
 			return;
 		}
 
-		$candidate = $this->install->candidateSelector->select($installedVersion, $available, $level);
+		$plan = $this->install->planner->plan(
+			$appId,
+			$installedVersion,
+			$entries,
+			$policy->level,
+			$policy->minAgeDays ?? $this->stores->settingsStore->getMinAgeDays(),
+			\DateTimeImmutable::createFromInterface($this->time->getDateTime('now', new \DateTimeZone('UTC')))
+		);
+		$candidate = $plan['next'];
 		if ($candidate === null || $this->stores->attemptLedger->hasAttempted($appId, $candidate)) {
 			// Never-retry — see "Failed attempt is not retried".
 			return;
 		}
 
-		$this->attemptInstall(new InstallTarget($appId, $candidate, null), $installedVersion);
+		$this->attemptInstall(new InstallTarget($appId, $candidate, null), $installedVersion, self::bypassAdvisories($plan['securityBypass'], $candidate));
+	}
+
+	/**
+	 * The advisories of a security fix the plan lets through before the
+	 * minimum age, when that fix is the version to install; [] otherwise.
+	 *
+	 * @param array{version: string, advisories: list<string>, reason: string}|null $bypass
+	 * @return list<string>
+	 */
+	private static function bypassAdvisories(?array $bypass, string $candidate): array {
+		if ($bypass === null || $bypass['version'] !== $candidate || $bypass['reason'] !== AutoUpdatePlanner::REASON_SECURITY_FIX) {
+			return [];
+		}
+
+		return $bypass['advisories'];
 	}
 
 	/**
@@ -171,31 +204,41 @@ class AutoUpdateJob extends TimedJob {
 	}
 
 	/**
-	 * The versions the app's source lists, or null when it reported an error.
+	 * The versions the app's source lists, with their release time when the
+	 * source gives one, or null when it reported an error.
 	 *
-	 * @return list<string>|null
+	 * @return list<array{version: string, releasedAt?: ?string}>|null
 	 */
-	private function availableVersions(string $appId): ?array {
+	private function availableEntries(string $appId): ?array {
 		$result = $this->install->installerService->getAppVersions($appId);
 		if (($result['hasError'] ?? false) === true) {
 			return null;
 		}
 
-		/** @var list<string> $available */
-		$available = array_map(
-			static fn (array $entry): string => (string)$entry['version'],
-			$result['availableVersions'] ?? []
-		);
+		$entries = [];
+		foreach ($result['availableVersions'] ?? [] as $entry) {
+			$released = $entry['releasedAt'] ?? null;
+			$entries[] = ['version' => (string)$entry['version'], 'releasedAt' => is_string($released) ? $released : null];
+		}
 
-		return $available;
+		return $entries;
 	}
 
-	private function attemptInstall(InstallTarget $target, string $installedVersion): void {
-		$installResult = $this->install->installerService->installAppVersion(new InstallRequest(
+	/**
+	 * @param list<string> $securityAdvisories The advisories of a security fix installed before the minimum age
+	 */
+	private function attemptInstall(InstallTarget $target, string $installedVersion, array $securityAdvisories = []): void {
+		$request = new InstallRequest(
 			$target,
 			new InstallOptions(false, false, false, false),
 			new PinChoice(null, false),
-		));
+		);
+		$installResult = $securityAdvisories === []
+			? $this->install->installerService->installAppVersion($request)
+			: AuditNote::during(
+				'security fix, installed before the minimum age: ' . implode(', ', $securityAdvisories),
+				fn () => $this->install->installerService->installAppVersion($request)
+			);
 
 		$at = $this->time->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM);
 		$statusCode = $installResult['statusCode'] ?? Http::STATUS_INTERNAL_SERVER_ERROR;
@@ -206,7 +249,7 @@ class AutoUpdateJob extends TimedJob {
 			$toVersion = is_string($payload['installedVersion'] ?? null) && $payload['installedVersion'] !== ''
 				? $payload['installedVersion']
 				: $target->version;
-			$this->notifier->notifySuccess($target->appId, $installedVersion, $toVersion);
+			$this->notifier->notifySuccess($target->appId, $installedVersion, $toVersion, $securityAdvisories);
 
 			return;
 		}

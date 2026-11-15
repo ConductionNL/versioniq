@@ -102,6 +102,37 @@ final class NotifierTest extends TestCase {
 		$this->assertSame($notification, $result);
 	}
 
+	/**
+	 * A security fix installed before the minimum age names its advisories
+	 * after the ordinary message (releases-minimum-age task 2.2).
+	 */
+	public function testAutoUpdateSuccessNamesASecurityFixInstalledEarly(): void {
+		$messages = [];
+		$notification = $this->createMock(INotification::class);
+		$notification->method('getApp')->willReturn(Application::APP_ID);
+		$notification->method('getSubject')->willReturn('auto_update_success');
+		$notification->method('getSubjectParameters')->willReturn([
+			'app' => 'openregister',
+			'fromVersion' => '2.3.0',
+			'toVersion' => '2.3.4',
+			'securityAdvisories' => 'GHSA-1, GHSA-2',
+		]);
+		$notification->method('setParsedSubject')->willReturnSelf();
+		$notification->method('setParsedMessage')->willReturnCallback(
+			static function (string $message) use (&$messages, $notification): INotification {
+				$messages[] = $message;
+				return $notification;
+			}
+		);
+
+		(new Notifier($this->l10nFactory()))->prepare($notification, 'en');
+
+		$this->assertSame(
+			['openregister was automatically updated from 2.3.0 to 2.3.4. Security fix, installed before the minimum age: GHSA-1, GHSA-2'],
+			$messages
+		);
+	}
+
 	public function testAutoUpdateFailureIsParsed(): void {
 		$notifier = new Notifier($this->l10nFactory());
 

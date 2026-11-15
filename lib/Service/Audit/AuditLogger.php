@@ -74,7 +74,7 @@ class AuditLogger {
 		try {
 			$entry = $this->entryFor($subject, $versions);
 			$entry->setStatus($status);
-			$entry->setMessage($this->sanitizeMessage($message));
+			$entry->setMessage($this->sanitizeMessage(AuditNote::append($message)));
 			$entry->setCreatedAt($this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'));
 			$entry->setOrigin($subject->origin ?? AuditOrigin::current());
 

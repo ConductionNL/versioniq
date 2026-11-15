@@ -18,7 +18,8 @@ use OCP\App\IAppManager;
  * What an automatic update finds and installs a version with: the installer
  * service lists the available versions, says whether versioniq may manage the
  * app and installs the chosen one; the app manager reports the installed
- * version; the selector chooses the candidate for the app's policy level.
+ * version; the selector chooses the candidate for the app's policy level, and
+ * the planner holds back what is younger than the minimum age.
  *
  * @psalm-api
  */
@@ -27,6 +28,7 @@ final class AutoUpdateInstall {
 		public readonly InstallerService $installerService,
 		public readonly IAppManager $appManager,
 		public readonly CandidateSelector $candidateSelector,
+		public readonly AutoUpdatePlanner $planner,
 	) {
 	}
 }

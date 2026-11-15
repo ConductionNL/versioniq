@@ -143,16 +143,18 @@ class Notifier implements INotifier {
 		$app = $this->stringParameter($notification, 'app');
 		$fromVersion = $this->stringParameter($notification, 'fromVersion');
 		$toVersion = $this->stringParameter($notification, 'toVersion');
+		$advisories = $this->stringParameter($notification, 'securityAdvisories');
 
-		$notification
-			->setParsedSubject(
-				$l->t('App automatically updated')
-			)
-			->setParsedMessage(
-				$fromVersion !== ''
-					? $l->t('%1$s was automatically updated from %2$s to %3$s.', [$app, $fromVersion, $toVersion])
-					: $l->t('%1$s was automatically installed at %2$s.', [$app, $toVersion])
-			);
+		$notification->setParsedSubject($l->t('App automatically updated'));
+		$message = $fromVersion !== ''
+			? $l->t('%1$s was automatically updated from %2$s to %3$s.', [$app, $fromVersion, $toVersion])
+			: $l->t('%1$s was automatically installed at %2$s.', [$app, $toVersion]);
+		if ($advisories !== '') {
+			// releases-minimum-age D6: a security fix let through before the minimum age says so.
+			$message .= ' ' . $l->t('Security fix, installed before the minimum age: %s', [$advisories]);
+		}
+
+		$notification->setParsedMessage($message);
 	}
 
 	private function renderAutoUpdateFailure(INotification $notification, IL10N $l): void {

@@ -15,7 +15,9 @@ require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 
 use OCA\Versioniq\BackgroundJob\AutoUpdateJob;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
+use OCA\Versioniq\Service\Audit\AuditNote;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
 use OCA\Versioniq\Service\InstallerService;
@@ -60,13 +62,35 @@ final class AutoUpdateJobTest extends TestCase {
 			'settingsStore' => $this->createMock(AutoUpdateSettingsStore::class),
 			'notifier' => $this->createMock(AutoUpdateNotifier::class),
 			'logger' => $this->createMock(LoggerInterface::class),
+			'planner' => $this->createMock(AutoUpdatePlanner::class),
 		];
+	}
+
+	/**
+	 * A planner that holds nothing back: its next version is what the
+	 * selector stub chooses, so the tests written against the selector keep
+	 * driving the job.
+	 *
+	 * @param array<string, mixed> $mocks
+	 */
+	private function planThroughTheSelector(array $mocks): void {
+		$selector = $mocks['candidateSelector'];
+		$mocks['planner']->method('plan')->willReturnCallback(
+			static fn (string $appId, string $installed, array $entries, string $level): array => [
+				'next' => $selector->select($installed, array_column($entries, 'version'), $level),
+				'heldBack' => [],
+				'securityBypass' => null,
+				'exception' => null,
+			]
+		);
 	}
 
 	/**
 	 * @param array<string, mixed> $mocks
 	 */
 	private function buildJob(array $mocks, ITimeFactory $time): AutoUpdateJob {
+		$this->planThroughTheSelector($mocks);
+
 		return $this->buildByName(AutoUpdateJob::class, [
 			'time' => $time,
 			'policyStore' => $mocks['policyStore'],
@@ -78,6 +102,7 @@ final class AutoUpdateJobTest extends TestCase {
 			'settingsStore' => $mocks['settingsStore'],
 			'notifier' => $mocks['notifier'],
 			'logger' => $mocks['logger'],
+			'planner' => $mocks['planner'],
 		]);
 	}
 
@@ -407,8 +432,9 @@ final class AutoUpdateJobTest extends TestCase {
 		$mocks['attemptLedger']->method('record')->willReturnCallback(static function (string $appId, string $version, string $outcome) use (&$calls): void {
 			$calls[] = ['record', $appId, $version, $outcome];
 		});
-		$mocks['notifier']->method('notifySuccess')->willReturnCallback(static function (string ...$args) use (&$calls): void {
-			$calls[] = array_merge(['notifySuccess'], $args);
+		$mocks['notifier']->method('notifySuccess')->willReturnCallback(static function (string $appId, ?string $from, string $to, array $advisories = []) use (&$calls): void {
+			// An ordinary install carries no security advisories.
+			$calls[] = array_merge(['notifySuccess', $appId, $from, $to], $advisories);
 		});
 		$mocks['notifier']->method('notifyFailure')->willReturnCallback(static function (string ...$args) use (&$calls): void {
 			$calls[] = array_merge(['notifyFailure'], $args);
@@ -446,5 +472,126 @@ final class AutoUpdateJobTest extends TestCase {
 			['record', 'openregister', '2.3.4', 'failure'],
 			['notifyFailure', 'openregister', '2.3.4', 'network', 'retry later'],
 		]];
+	}
+	/**
+	 * The job installs the planner's next version, not the newest one: a
+	 * version still younger than the minimum age is not installed
+	 * (releases-minimum-age task 2.2).
+	 */
+	public function testAVersionHeldBackByTheMinimumAgeIsNotInstalled(): void {
+		$mocks = $this->openWindowWithOneApp(new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00', 5));
+		$mocks['planner'] = $this->createMock(AutoUpdatePlanner::class);
+		$mocks['planner']->expects($this->once())->method('plan')
+			->with('openregister', '2.3.0', [['version' => '2.3.4', 'releasedAt' => '2026-07-22T09:00:00+00:00']], Policy::LEVEL_PATCH, 5)
+			->willReturn([
+				'next' => null,
+				'heldBack' => [['version' => '2.3.4', 'releasedAt' => '2026-07-22T09:00:00+00:00', 'eligibleAt' => '2026-07-27T09:00:00+00:00', 'reason' => 'minimum_age']],
+				'securityBypass' => null,
+				'exception' => null,
+			]);
+		$mocks['installerService']->expects($this->never())->method('installAppVersion');
+		$mocks['notifier']->expects($this->never())->method('notifySuccess');
+
+		$this->runJob($this->buildPlannedJob($mocks));
+	}
+
+	/**
+	 * A security fix let through before the minimum age is installed, and
+	 * both the install's audit row and the notification say so.
+	 */
+	public function testABypassedSecurityFixIsInstalledWithTheNote(): void {
+		$mocks = $this->openWindowWithOneApp(new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00'));
+		$mocks['settingsStore']->method('getMinAgeDays')->willReturn(7);
+		$mocks['planner'] = $this->createMock(AutoUpdatePlanner::class);
+		$mocks['planner']->expects($this->once())->method('plan')
+			->with('openregister', '2.3.0', $this->anything(), Policy::LEVEL_PATCH, 7)
+			->willReturn([
+				'next' => '2.3.4',
+				'heldBack' => [],
+				'securityBypass' => ['version' => '2.3.4', 'advisories' => ['GHSA-1', 'GHSA-2'], 'reason' => AutoUpdatePlanner::REASON_SECURITY_FIX],
+				'exception' => null,
+			]);
+		$auditMessage = null;
+		$mocks['installerService']->expects($this->once())->method('installAppVersion')
+			->willReturnCallback(static function () use (&$auditMessage): array {
+				$auditMessage = AuditNote::append('Installed 2.3.4');
+				return ['statusCode' => 200, 'payload' => ['installedVersion' => '2.3.4']];
+			});
+		$mocks['notifier']->expects($this->once())->method('notifySuccess')
+			->with('openregister', '2.3.0', '2.3.4', ['GHSA-1', 'GHSA-2']);
+
+		$this->runJob($this->buildPlannedJob($mocks));
+
+		$this->assertSame('Installed 2.3.4 (security fix, installed before the minimum age: GHSA-1, GHSA-2)', $auditMessage);
+		$this->assertSame('after', AuditNote::append('after'), 'the note ends with the install');
+	}
+
+	/**
+	 * A fix the planner reports outside the level is not the version installed, so no note.
+	 */
+	public function testAnOrdinaryInstallCarriesNoNote(): void {
+		$mocks = $this->openWindowWithOneApp(new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00'));
+		$mocks['planner'] = $this->createMock(AutoUpdatePlanner::class);
+		$mocks['planner']->method('plan')->willReturn([
+			'next' => '2.3.4',
+			'heldBack' => [],
+			'securityBypass' => ['version' => '3.0.1', 'advisories' => ['GHSA-9'], 'reason' => AutoUpdatePlanner::REASON_OUTSIDE_LEVEL],
+			'exception' => null,
+		]);
+		$auditMessage = 'unset';
+		$mocks['installerService']->method('installAppVersion')
+			->willReturnCallback(static function () use (&$auditMessage): array {
+				$auditMessage = AuditNote::append(null);
+				return ['statusCode' => 200, 'payload' => ['installedVersion' => '2.3.4']];
+			});
+		$mocks['notifier']->expects($this->once())->method('notifySuccess')->with('openregister', '2.3.0', '2.3.4', []);
+
+		$this->runJob($this->buildPlannedJob($mocks));
+
+		$this->assertNull($auditMessage);
+	}
+
+	/**
+	 * The mocks for one patch-policy app inside an open window, its source
+	 * listing 2.3.4 with a release time.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function openWindowWithOneApp(Policy $policy): array {
+		$mocks = $this->mocks();
+		$mocks['settingsStore']->method('isEnabled')->willReturn(true);
+		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$mocks['policyStore']->method('all')->willReturn(['openregister' => $policy]);
+		$mocks['pinStore']->method('get')->willReturn(null);
+		$mocks['installerService']->method('isManageableApp')->willReturn(true);
+		$mocks['appManager']->method('getAppVersion')->willReturn('2.3.0');
+		$mocks['installerService']->method('getAppVersions')->willReturn([
+			'availableVersions' => [['version' => '2.3.4', 'releasedAt' => '2026-07-22T09:00:00+00:00']],
+			'hasError' => false,
+		]);
+		$mocks['attemptLedger']->method('hasAttempted')->willReturn(false);
+
+		return $mocks;
+	}
+
+	/**
+	 * The job with the test's own planner, not one driven by the selector.
+	 *
+	 * @param array<string, mixed> $mocks
+	 */
+	private function buildPlannedJob(array $mocks): AutoUpdateJob {
+		return $this->buildByName(AutoUpdateJob::class, [
+			'time' => $this->timeFactory(),
+			'policyStore' => $mocks['policyStore'],
+			'pinStore' => $mocks['pinStore'],
+			'installerService' => $mocks['installerService'],
+			'appManager' => $mocks['appManager'],
+			'candidateSelector' => $mocks['candidateSelector'],
+			'attemptLedger' => $mocks['attemptLedger'],
+			'settingsStore' => $mocks['settingsStore'],
+			'notifier' => $mocks['notifier'],
+			'logger' => $mocks['logger'],
+			'planner' => $mocks['planner'],
+		]);
 	}
 }
