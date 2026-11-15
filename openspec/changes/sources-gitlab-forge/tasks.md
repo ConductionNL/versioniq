@@ -21,8 +21,10 @@
 
 ## 4. Pages
 
-- [ ] 4.1 Add GitLab to `forges.ts`, the host field and picker on `SourcesPanel.vue`, and the token forge on `TokensPanel.vue`. Verify: `ForgePickers.spec.ts` and `SourcesPanel.spec.ts`.
-- [ ] 4.2 Add strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
+- [x] 4.1 Add GitLab to `forges.ts`, the host field and picker on `SourcesPanel.vue`, and the token forge on `TokensPanel.vue`. Verify: `ForgePickers.spec.ts` and `SourcesPanel.spec.ts`.
+  - `forges.ts` offers GitLab on the Sources, Tokens and Trusted sources pickers. `SourcesPanel.vue` asks for a group or namespace and a project when GitLab is the forge, and has a GitLab host section (empty is gitlab.com) on the new admin-only `GET`/`PUT /api/forges/gitlab` (`ForgeController::gitlabHost()`/`setGitlabHost()`, `ForgeControllerTest` 2 new). `ForgePickers.spec.ts` (3 new).
+- [x] 4.2 Add strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
+  - 10 new strings in en and nl, the Sources hint reworded to name GitLab; `check:l10n-js` up to date.
 - [ ] 4.3 Add a GitLab-shaped fixture to `tests/e2e/fixtures/forge` and `tests/e2e/gitlab.spec.ts`: bind `gitlab:group/sub/app`, list versions, install one.
 
 ## 5. Close

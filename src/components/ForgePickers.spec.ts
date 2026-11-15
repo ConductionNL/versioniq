@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SourcesPanel from './SourcesPanel.vue'
 import TokensPanel from './TokensPanel.vue'
 import TrustedSourcesPanel from './TrustedSourcesPanel.vue'
-import { ocsGet } from '../ocs.ts'
+import { ocsGet, ocsWrite } from '../ocs.ts'
 
 vi.mock('@nextcloud/l10n', () => ({
 	t: (_app: string, text: string, vars: Record<string, unknown> = {}) =>
@@ -29,6 +29,7 @@ vi.mock('../ocs', () => ({
 }))
 
 const mockedOcsGet = vi.mocked(ocsGet)
+const mockedOcsWrite = vi.mocked(ocsWrite)
 
 type Wrapper = ReturnType<typeof shallowMount>
 
@@ -67,7 +68,7 @@ describe('forge pickers after Codeberg was retired', () => {
 		const wrapper = shallowMount(SourcesPanel, { props: { apps: [] } })
 		await flushPromises()
 
-		expect(forgeIds(wrapper)).toEqual(['github', 'forgejo'])
+		expect(forgeIds(wrapper)).toEqual(['github', 'gitlab', 'forgejo'])
 		expect(wrapper.text()).not.toContain('Codeberg')
 	})
 
@@ -76,7 +77,7 @@ describe('forge pickers after Codeberg was retired', () => {
 		const wrapper = shallowMount(TokensPanel)
 		await flushPromises()
 
-		expect(forgeIds(wrapper)).toEqual(['github', 'forgejo'])
+		expect(forgeIds(wrapper)).toEqual(['github', 'gitlab', 'forgejo'])
 	})
 
 	it('the Trusted sources tab offers GitHub and a self-hosted Forgejo or Gitea host, not Codeberg', async () => {
@@ -84,7 +85,7 @@ describe('forge pickers after Codeberg was retired', () => {
 		const wrapper = shallowMount(TrustedSourcesPanel)
 		await flushPromises()
 
-		expect(forgeIds(wrapper)).toEqual(['github', 'forgejo'])
+		expect(forgeIds(wrapper)).toEqual(['github', 'gitlab', 'forgejo'])
 	})
 
 	it('an app still bound to Codeberg is shown as a retired source to rebind', async () => {
@@ -128,5 +129,58 @@ describe('forge pickers after Codeberg was retired', () => {
 			.find((field) => field.vm.$attrs.label === 'Self-hosted Forgejo or Gitea host')
 		expect(host, 'a host field is shown').toBeDefined()
 		expect(host!.vm.$attrs.modelValue).toBe('https://git.example.org')
+	})
+})
+
+describe('GitLab on the Sources tab (sources-gitlab-forge 4.1)', () => {
+	beforeEach(() => {
+		mockedOcsGet.mockReset()
+		mockedOcsWrite.mockClear()
+	})
+
+	/**
+	 * The text field with a label.
+	 *
+	 * @param wrapper the mounted panel
+	 * @param label the field's label
+	 */
+	function field (wrapper: Wrapper, label: string) {
+		return wrapper.findAllComponents({ name: 'NcTextField' }).find((candidate) => candidate.vm.$attrs.label === label)
+	}
+
+	it('shows a self-managed GitLab host, and leaves the field empty for gitlab.com', async () => {
+		answerGets({ '/api/forges/gitlab': { host: 'https://gitlab.example.org', selfManaged: true } })
+		const selfManaged = shallowMount(SourcesPanel, { props: { apps: [] } })
+		await flushPromises()
+		expect(field(selfManaged, 'Self-managed GitLab host')!.vm.$attrs.modelValue).toBe('https://gitlab.example.org')
+
+		answerGets({ '/api/forges/gitlab': { host: 'https://gitlab.com', selfManaged: false } })
+		const hosted = shallowMount(SourcesPanel, { props: { apps: [] } })
+		await flushPromises()
+		expect(field(hosted, 'Self-managed GitLab host')!.vm.$attrs.modelValue).toBe('')
+	})
+
+	it('saves the GitLab host to its own endpoint', async () => {
+		answerGets({ '/api/forges/gitlab': { host: 'https://gitlab.com', selfManaged: false } })
+		mockedOcsWrite.mockResolvedValueOnce({ payload: { host: 'https://gitlab.example.org', selfManaged: true } } as never)
+		const wrapper = shallowMount(SourcesPanel, { props: { apps: [] }, global: { renderStubDefaultSlot: true } })
+		await flushPromises()
+
+		field(wrapper, 'Self-managed GitLab host')!.vm.$emit('update:modelValue', ' https://gitlab.example.org ')
+		await wrapper.find('[data-testid="gitlab-host-form"]').trigger('submit')
+		await flushPromises()
+
+		expect(mockedOcsWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/forges/gitlab', { host: 'https://gitlab.example.org' })
+		expect(wrapper.text()).toContain('GitLab host saved.')
+	})
+
+	it('asks for a group and a project when GitLab is the forge', async () => {
+		answerGets({})
+		const wrapper = shallowMount(SourcesPanel, { props: { apps: [], prefill: { appId: 'app', forge: 'gitlab' } } })
+		await flushPromises()
+
+		expect(field(wrapper, 'Group or namespace')).toBeDefined()
+		expect(field(wrapper, 'Project')).toBeDefined()
+		expect(field(wrapper, 'Owner')).toBeUndefined()
 	})
 })

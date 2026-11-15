@@ -257,7 +257,6 @@ OC.L10N.register(
         "Not installed": "Niet geïnstalleerd",
         "This app is installed but not enabled.": "Deze app is geïnstalleerd maar niet ingeschakeld.",
         "Update window (HH:MM-HH:MM, time zone {timeZone})": "Updatevenster (UU:MM-UU:MM, tijdzone {timeZone})",
-        "Bind an installed app to a GitHub repository, or to one on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.": "Koppel een geïnstalleerde app aan een GitHub-repository, of aan een repository op een zelf gehoste Forgejo- of Gitea-server, zodat versies daaruit worden gehaald in plaats van uit de App Store. De repository moet op de lijst met vertrouwde bronnen staan.",
         "Self-hosted Forgejo or Gitea": "Zelf gehoste Forgejo of Gitea",
         "Self-hosted Forgejo or Gitea host": "Adres van de zelf gehoste Forgejo- of Gitea-server",
         "Set the address of your Forgejo or Gitea host to bind apps, store tokens and trust owners on it. Leave it empty to turn the forge off.": "Vul het adres van je Forgejo- of Gitea-server in om er apps aan te koppelen, tokens voor op te slaan en eigenaren op te vertrouwen. Laat het leeg om deze forge uit te zetten.",
@@ -384,7 +383,18 @@ OC.L10N.register(
         "User ID of an admin": "Gebruikers-ID van een beheerder",
         "until {date}": "tot {date}",
         "_%n dismissed advisory_::_%n dismissed advisories_": ["%n afgewezen advies","%n afgewezen adviezen"],
-        "Dismiss advisory": "Advies afwijzen"
+        "Dismiss advisory": "Advies afwijzen",
+        "Could not load the GitLab host.": "Kon de GitLab-host niet laden.",
+        "Could not save the GitLab host.": "Kon de GitLab-host niet opslaan.",
+        "GitLab host saved.": "GitLab-host opgeslagen.",
+        "GitLab reads from gitlab.com again.": "GitLab leest weer van gitlab.com.",
+        "Group or namespace": "Groep of namespace",
+        "Project": "Project",
+        "GitLab": "GitLab",
+        "GitLab projects are read from gitlab.com. Set the address of your own GitLab host to read them from there instead; leave it empty for gitlab.com.": "GitLab-projecten worden van gitlab.com gelezen. Vul het adres van uw eigen GitLab-host in om ze daar vandaan te lezen; laat het leeg voor gitlab.com.",
+        "Self-managed GitLab host": "Eigen GitLab-host",
+        "Save GitLab host": "GitLab-host opslaan",
+        "Bind an installed app to a GitHub repository, a GitLab project, or a repository on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.": "Koppel een geïnstalleerde app aan een GitHub-repository, een GitLab-project of een repository op een eigen Forgejo- of Gitea-host, zodat de versies van die forge komen in plaats van uit de App Store. De repository moet op de lijst met vertrouwde bronnen staan."
     },
     "nplurals=2; plural=(n != 1);"
 )
