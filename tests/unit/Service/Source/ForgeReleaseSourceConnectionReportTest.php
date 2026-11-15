@@ -11,6 +11,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Source;
 
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
+
 use Exception;
 use OCA\Integriq\Event\ConnectionStatusReportedEvent;
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
@@ -19,6 +21,7 @@ use OCA\Versioniq\Service\Pat\PatResolver;
 use OCA\Versioniq\Service\Source\ForgeRegistry;
 use OCA\Versioniq\Service\Source\ForgeReleaseSource;
 use OCA\Versioniq\Service\Source\SourceBinding;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventDispatcher;
@@ -39,6 +42,8 @@ use Psr\Log\LoggerInterface;
  * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
  */
 final class ForgeReleaseSourceConnectionReportTest extends TestCase {
+	use BuildsByParameterName;
+
 	/** @var list<Event> */
 	private array $sent = [];
 
@@ -66,16 +71,16 @@ final class ForgeReleaseSourceConnectionReportTest extends TestCase {
 
 		$reports = new ConnectionReportService($dispatcher, $appConfig, $time, $this->createMock(LoggerInterface::class));
 
-		return new ForgeReleaseSource(
-			$clientService,
-			$this->createMock(LoggerInterface::class),
-			$patResolver,
-			$this->createMock(PatManager::class),
-			$userSession,
-			new ForgeRegistry($this->createMock(IAppConfig::class)),
-			$this->createMock(IConfig::class),
-			$reports,
-		);
+		return $this->buildByName(ForgeReleaseSource::class, [
+			'clientService' => $clientService,
+			'logger' => $this->createMock(LoggerInterface::class),
+			'patResolver' => $patResolver,
+			'patManager' => $this->createMock(PatManager::class),
+			'userSession' => $userSession,
+			'forgeRegistry' => new ForgeRegistry($this->createMock(IAppConfig::class)),
+			'config' => $this->createMock(IConfig::class),
+			'connectionReports' => $reports,
+		]);
 	}
 
 	private function answering(int $status, string $body): IClient {

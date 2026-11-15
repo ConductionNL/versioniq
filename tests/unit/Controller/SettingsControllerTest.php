@@ -2,11 +2,21 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Controller;
+
+require_once __DIR__ . '/../Support/AuditArgs.php';
+require_once __DIR__ . '/../Support/DispatchesLikeNextcloud.php';
 
 use OCA\Versioniq\Controller\SettingsController;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Settings\InstanceSettings;
+use OCA\Versioniq\Tests\Unit\Support\AuditArgs;
+use OCA\Versioniq\Tests\Unit\Support\DispatchesLikeNextcloud;
 use OCP\IAppConfig;
 use OCP\IGroupManager;
 use OCP\IRequest;
@@ -22,10 +32,12 @@ use PHPUnit\Framework\TestCase;
  * @spec openspec/specs/external-sources/spec.md
  */
 final class SettingsControllerTest extends TestCase {
+	use DispatchesLikeNextcloud;
+
 	/** @var array<string, string|int> */
 	private array $config = [];
 
-	private function controller(bool $admin, ?AuditLogger $audit = null): SettingsController {
+	private function controller(bool $admin, ?AuditLogger $audit = null, ?IRequest $request = null, bool $signedIn = true): SettingsController {
 		$appConfig = $this->createMock(IAppConfig::class);
 		$appConfig->method('getValueString')->willReturnCallback(
 			fn (string $app, string $key, string $default = ''): string => (string)($this->config[$key] ?? $default),
@@ -43,13 +55,13 @@ final class SettingsControllerTest extends TestCase {
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn('admin');
 		$session = $this->createMock(IUserSession::class);
-		$session->method('getUser')->willReturn($user);
+		$session->method('getUser')->willReturn($signedIn ? $user : null);
 		$groups = $this->createMock(IGroupManager::class);
 		$groups->method('isAdmin')->willReturn($admin);
 
 		return new SettingsController(
 			'versioniq',
-			$this->createMock(IRequest::class),
+			$request ?? $this->createMock(IRequest::class),
 			new InstanceSettings($appConfig),
 			$audit ?? $this->createMock(AuditLogger::class),
 			$groups,
@@ -61,7 +73,18 @@ final class SettingsControllerTest extends TestCase {
 		$controller = $this->controller(false);
 
 		self::assertSame(403, $controller->instanceSettings()->getStatus());
-		self::assertSame(403, $controller->updateInstanceSettings('90')->getStatus());
+		$request = $this->requestWith(['auditRetentionDays' => '90']);
+		self::assertSame(403, $this->dispatch($this->controller(false, null, $request), 'updateInstanceSettings', $request)->getStatus());
+		self::assertSame([], $this->config);
+	}
+
+	public function testSignedOutCallerCannotReadOrWrite(): void {
+		$audit = $this->createMock(AuditLogger::class);
+		$audit->expects(self::never())->method(self::anything());
+
+		self::assertSame(403, $this->controller(true, $audit, null, false)->instanceSettings()->getStatus());
+		$request = $this->requestWith(['auditRetentionDays' => '90']);
+		self::assertSame(403, $this->dispatch($this->controller(true, $audit, $request, false), 'updateInstanceSettings', $request)->getStatus());
 		self::assertSame([], $this->config);
 	}
 
@@ -74,9 +97,10 @@ final class SettingsControllerTest extends TestCase {
 
 	public function testUpdateStoresAndAuditsTheChange(): void {
 		$audit = $this->createMock(AuditLogger::class);
-		$audit->expects(self::once())->method('record')->with('admin', 'versioniq', AuditLogger::OPERATION_SETTINGS);
+		$audit->expects(self::once())->method('record')->with(...AuditArgs::expected('admin', 'versioniq', AuditLogger::OPERATION_SETTINGS));
 
-		$response = $this->controller(true, $audit)->updateInstanceSettings('90');
+		$request = $this->requestWith(['auditRetentionDays' => '90']);
+		$response = $this->dispatch($this->controller(true, $audit, $request), 'updateInstanceSettings', $request);
 
 		self::assertSame(200, $response->getStatus());
 		self::assertSame(90, $response->getData()['auditRetentionDays']);
@@ -84,7 +108,8 @@ final class SettingsControllerTest extends TestCase {
 	}
 
 	public function testAnInvalidValueIsA400(): void {
-		$response = $this->controller(true)->updateInstanceSettings('7');
+		$request = $this->requestWith(['auditRetentionDays' => '7']);
+		$response = $this->dispatch($this->controller(true, null, $request), 'updateInstanceSettings', $request);
 
 		self::assertSame(400, $response->getStatus());
 		self::assertSame([], $this->config);

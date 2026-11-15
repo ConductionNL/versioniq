@@ -13,83 +13,54 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
-use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Db\Pat;
-use OCA\Versioniq\Db\PatMapper;
-use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
+use OCA\Versioniq\Http\InstallVersionFields;
+use OCA\Versioniq\Http\RequestFieldsFrom;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
-use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
-use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
+use OCA\Versioniq\Service\Api\AccessCollaborators;
+use OCA\Versioniq\Service\Api\InstallCollaborators;
+use OCA\Versioniq\Service\Api\ReportCollaborators;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
-use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
-use OCA\Versioniq\Service\Cache\ArtifactCache;
-use OCA\Versioniq\Service\Connection\ConnectionReportService;
-use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
-use OCA\Versioniq\Service\InstallerService;
-use OCA\Versioniq\Service\Pat\PatDeeplinkBuilder;
-use OCA\Versioniq\Service\Pat\PatExpiryEvaluator;
-use OCA\Versioniq\Service\Pat\PatManager;
-use OCA\Versioniq\Service\Pat\PatValidator;
+use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
+use OCA\Versioniq\Service\Installer\InstallOptions;
+use OCA\Versioniq\Service\Installer\InstallRequest;
+use OCA\Versioniq\Service\Installer\InstallTarget;
+use OCA\Versioniq\Service\Installer\PinChoice;
+use OCA\Versioniq\Service\Pat\NewPat;
+use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Service\Pin\Pin;
-use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\Policy;
-use OCA\Versioniq\Service\Policy\PolicyStore;
-use OCA\Versioniq\Service\Settings\InstanceSettings;
+use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\UntrustedSourceException;
-use OCP\App\IAppManager;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
 use OCP\AppFramework\Http\DataResponse;
+use OCP\AppFramework\Http\Response;
 use OCP\AppFramework\OCSController;
-use OCP\AppFramework\Utility\ITimeFactory;
-use OCP\IGroupManager;
 use OCP\IRequest;
-use OCP\IUserSession;
-use OCP\ServerVersion;
+use OCP\IUser;
 
 /**
  * @psalm-suppress UnusedClass
  */
 class ApiController extends OCSController {
+	/** The spellings readBinaryBool() understands. */
+	private const BINARY_FLAGS = ['1', 'true', '0', 'false'];
+
 	/**
 	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
 	 */
 	public function __construct(
 		string $appName,
 		IRequest $request,
-		private InstallerService $installerService,
-		private IGroupManager $groupManager,
-		private IUserSession $userSession,
-		private ServerVersion $serverVersion,
-		private PatMapper $patMapper,
-		private PatManager $patManager,
-		private PatValidator $patValidator,
-		private PatDeeplinkBuilder $deeplinkBuilder,
-		private PatExpiryEvaluator $patExpiryEvaluator,
-		private DiscoveryAggregator $discoveryAggregator,
-		private AdvisoryResultStore $advisoryResultStore,
-		private AdvisorySettingsStore $advisorySettingsStore,
-		private AuditEntryMapper $auditEntryMapper,
-		private PinStore $pinStore,
-		private IAppManager $appManager,
-		private ITimeFactory $timeFactory,
-		private PolicyStore $policyStore,
-		private AutoUpdateSettingsStore $autoUpdateSettingsStore,
-		private ArtifactCache $artifactCache,
-		// Asks integriq to look again after a token save or removal
-		// (adopt-connection-registry). Optional and last, so every existing
-		// caller and test keeps working.
-		private ?ConnectionReportService $connectionReports = null,
-		// Lists and clears blocked automatic-update versions (#438). Optional
-		// and last for the same reason as the one above.
-		private ?AttemptLedger $attemptLedger = null,
-		// The pending-updates snapshot and the lag limit
-		// (inventory-pending-updates). Optional and last for the same reason.
-		private ?AvailabilityResultStore $availabilityResultStore = null,
-		private ?InstanceSettings $instanceSettings = null,
+		private AccessCollaborators $access,
+		private InstallCollaborators $install,
+		private AutoUpdateStores $autoUpdate,
+		private ReportCollaborators $reports,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -105,12 +76,13 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/version-management/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/apps')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/apps', postfix: 'v1')]
 	public function apps(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		return new DataResponse(['apps' => $this->installerService->getInstalledApps()]);
+		return new DataResponse(['apps' => $this->install->installerService->getInstalledApps()]);
 	}
 
 	/**
@@ -133,24 +105,30 @@ class ApiController extends OCSController {
 	 * six-hour-old one, or from an instance whose cron has never run — three
 	 * states that otherwise render as an identical empty map.
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{advisories: array<string, mixed>, checkedAt: ?int}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * `triage` is the stored dismissals and owners, keyed `{appId}|{advisoryId}`,
+	 * applied by the page; the snapshot itself stays raw (advisories-triage D1).
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{advisories: array<string, mixed>, checkedAt: ?int, triage: array<string, mixed>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Stored advisory correlation returned
 	 * 403: Caller is not an administrator
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/advisories')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/advisories', postfix: 'v1')]
 	public function advisories(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$snapshot = $this->advisoryResultStore->read();
+		$snapshot = $this->reports->stores->advisoryResultStore->read();
 
 		return new DataResponse([
 			'advisories' => $snapshot['advisories'],
 			'checkedAt' => $snapshot['checkedAt'],
+			'triage' => $this->reports->stores->advisoryTriageStore?->read() ?? [],
 		]);
 	}
 
@@ -163,7 +141,7 @@ class ApiController extends OCSController {
 	 * Like /api/advisories it reads what AvailabilityRefreshJob stored and
 	 * never calls a source (issue #160).
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{updates: array<array-key, mixed>, checkedAt: ?int, maxLinesBehind: ?int}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{updates: array<string, mixed>, checkedAt: ?int, maxLinesBehind: ?int}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Stored pending updates returned
 	 * 403: Caller is not an administrator
@@ -171,17 +149,18 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/pending-updates/spec.md#requirement-an-admin-sets-how-far-an-app-may-fall-behind
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/updates')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/updates', postfix: 'v1')]
 	public function updates(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$snapshot = $this->availabilityResultStore?->read() ?? ['updates' => [], 'checkedAt' => null];
+		$snapshot = $this->reports->stores->availabilityResultStore?->read() ?? ['updates' => [], 'checkedAt' => null];
 
 		return new DataResponse([
 			'updates' => $snapshot['updates'],
 			'checkedAt' => $snapshot['checkedAt'],
-			'maxLinesBehind' => $this->instanceSettings?->maxLinesBehind(),
+			'maxLinesBehind' => $this->reports->stores->instanceSettings?->maxLinesBehind(),
 		]);
 	}
 
@@ -196,13 +175,14 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/version-management/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/update-channel')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/update-channel', postfix: 'v1')]
 	public function updateChannel(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
 		return new DataResponse([
-			'updateChannel' => $this->serverVersion->getChannel(),
+			'updateChannel' => $this->install->serverVersion->getChannel(),
 		]);
 	}
 
@@ -217,14 +197,15 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/sources')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/sources', postfix: 'v1')]
 	public function sources(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
 		return new DataResponse([
-			'sources' => $this->installerService->getSourceRegistry()->listAvailable(),
-			'trustedPatterns' => $this->installerService->getTrustedSources()->getPatterns(),
+			'sources' => $this->install->installerService->getSourceRegistry()->listAvailable(),
+			'trustedPatterns' => $this->install->installerService->getTrustedSources()->getPatterns(),
 		]);
 	}
 
@@ -243,12 +224,13 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/source/{appId}/binding')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/source/{appId}/binding', postfix: 'v1')]
 	public function getBinding(string $appId): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$binding = $this->installerService->getBinding($appId);
+		$binding = $this->install->installerService->getBinding($appId);
 
 		return new DataResponse([
 			'appId' => $appId,
@@ -272,12 +254,13 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'DELETE', url: '/api/source/{appId}/binding')]
+	#[ApiRoute(verb: 'DELETE', url: '/api/v1/source/{appId}/binding', postfix: 'v1')]
 	public function clearBinding(string $appId): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$this->installerService->clearBinding($appId);
+		$this->install->installerService->clearBinding($appId);
 
 		return new DataResponse(['appId' => $appId, 'sourceId' => 'appstore']);
 	}
@@ -297,41 +280,65 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'POST', url: '/api/source/{appId}/bind')]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/source/{appId}/bind', postfix: 'v1')]
 	public function bindSource(string $appId): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$kind = $this->stringParam('kind', '');
-		$forge = $this->stringParam('forge', SourceBinding::FORGE_GITHUB);
 		try {
-			$binding = match ($kind) {
-				SourceBinding::KIND_APPSTORE => SourceBinding::appStore(),
-				// Any known forge, the self-hosted forgejo one included (issue
-				// #437); an unknown forge is a 400, not a silent GitHub binding.
-				SourceBinding::KIND_GITHUB_RELEASE => SourceBinding::release(
-					$forge,
-					$this->stringParam('owner', ''),
-					$this->stringParam('repo', ''),
-					$this->stringParam('assetPattern', '*.tar.gz'),
-				),
-				default => throw new InvalidArgumentException('Unknown source kind: ' . $kind),
-			};
+			$binding = $this->requestedBinding();
 		} catch (InvalidArgumentException $error) {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
 
 		try {
-			$this->installerService->bindSource($appId, $binding);
+			$this->install->installerService->bindSource($appId, $binding);
+		} catch (RetiredForgeException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
 		} catch (UntrustedSourceException $error) {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_FORBIDDEN);
 		}
 
-		// Re-read the persisted binding: rebinding to the same source id
-		// preserves any previously recorded SHA-256 digests, so the response
-		// should reflect what was actually written, not the pre-write value —
-		// see "Recorded digests are binding-scoped and surfaced".
-		$persisted = $this->installerService->getBinding($appId);
+		return $this->boundResponse($appId, $binding);
+	}
+
+	/**
+	 * The binding the request asks for: the App Store, or a release on any
+	 * known forge.
+	 *
+	 * @throws InvalidArgumentException For an unknown kind or forge, or invalid release arguments.
+	 */
+	private function requestedBinding(): SourceBinding {
+		$kind = $this->stringParam('kind', '');
+		$forge = $this->stringParam('forge', SourceBinding::FORGE_GITHUB);
+
+		return match ($kind) {
+			SourceBinding::KIND_APPSTORE => SourceBinding::appStore(),
+			// Any known forge, the self-hosted forgejo one included (issue
+			// #437); an unknown forge is a 400, not a silent GitHub binding.
+			SourceBinding::KIND_GITHUB_RELEASE => SourceBinding::release(
+				$forge,
+				$this->stringParam('owner', ''),
+				$this->stringParam('repo', ''),
+				$this->stringParam('assetPattern', '*.tar.gz'),
+			),
+			default => throw new InvalidArgumentException('Unknown source kind: ' . $kind),
+		};
+	}
+
+	/**
+	 * The answer to a bind, from the persisted binding.
+	 *
+	 * Re-read the persisted binding: rebinding to the same source id
+	 * preserves any previously recorded SHA-256 digests, so the response
+	 * should reflect what was actually written, not the pre-write value —
+	 * see "Recorded digests are binding-scoped and surfaced".
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, sourceId: string, binding: array<string, mixed>}, array{}>
+	 */
+	private function boundResponse(string $appId, SourceBinding $binding): DataResponse {
+		$persisted = $this->install->installerService->getBinding($appId);
 
 		return new DataResponse([
 			'appId' => $appId,
@@ -362,6 +369,7 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'POST', url: '/api/trusted-sources')]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/trusted-sources', postfix: 'v1')]
 	public function addTrustedSource(?string $repo = null): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -377,7 +385,9 @@ class ApiController extends OCSController {
 		$repo = ($repo !== null && trim($repo) !== '') ? trim($repo) : null;
 
 		try {
-			$patterns = $this->installerService->addTrustedPattern($forge, $owner, $repo);
+			$patterns = $this->install->installerService->addTrustedPattern($forge, $owner, $repo);
+		} catch (RetiredForgeException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
 		} catch (InvalidArgumentException $error) {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_UNPROCESSABLE_ENTITY);
 		}
@@ -401,6 +411,7 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'DELETE', url: '/api/trusted-sources')]
+	#[ApiRoute(verb: 'DELETE', url: '/api/v1/trusted-sources', postfix: 'v1')]
 	public function removeTrustedSource(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -411,7 +422,7 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'A pattern is required.'], Http::STATUS_BAD_REQUEST);
 		}
 
-		$patterns = $this->installerService->removeTrustedPattern($pattern);
+		$patterns = $this->install->installerService->removeTrustedPattern($pattern);
 
 		return new DataResponse(['trustedPatterns' => $patterns]);
 	}
@@ -444,6 +455,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/changelog-visibility/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/app/{appId}/versions')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/app/{appId}/versions', postfix: 'v1')]
 	public function appVersions(string $appId, ?string $source = null): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -451,12 +463,121 @@ class ApiController extends OCSController {
 
 		$sourceOverride = ($source !== null && trim($source) !== '') ? trim($source) : null;
 
-		$result = $this->installerService->getAppVersions($appId, $sourceOverride);
+		$result = $this->install->installerService->getAppVersions($appId, $sourceOverride);
 		$statusCode = $result['statusCode'] ?? Http::STATUS_OK;
 		unset($result['statusCode'], $result['hasError']);
 
 		/** @psalm-suppress InvalidReturnStatement Dynamic status passthrough — see the docblock. */
 		return new DataResponse($result, $this->toHttpStatus($statusCode, Http::STATUS_OK));
+	}
+
+	/**
+	 * How installs of each version of an app went on this instance
+	 * (admin-only), so another Versioniq can add them to its own totals; see
+	 * "Every version shows how widely it runs and how installs of it went"
+	 *
+	 * @param string $appId The app to count install outcomes for
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, outcomes: array<string, array{succeeded: int, failed: int}>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 *
+	 * 200: Successful and failed installs per version
+	 * 403: Caller is not an administrator
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+	 */
+	#[ApiRoute(verb: 'GET', url: '/api/app/{appId}/outcomes')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/app/{appId}/outcomes', postfix: 'v1')]
+	public function appOutcomes(string $appId): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$appId = trim($appId);
+
+		return new DataResponse(['appId' => $appId, 'outcomes' => $this->reports->auditEntryMapper->countOutcomesByVersion($appId)]);
+	}
+
+	/**
+	 * Records a known issue against a version (admin-only, password-confirmed,
+	 * audited as `settings`); see "Known issues of a version are shown before
+	 * and after installing it"
+	 *
+	 * @param string $appId The app
+	 * @param string $version The version the issue is in
+	 * @param string $text What goes wrong
+	 * @param string $workaround How to avoid it
+	 * @param string|null $link An https page about it
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, version: string, knownIssues: list<array<string, mixed>>}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_SERVICE_UNAVAILABLE, array{message: string}, array{}>
+	 *
+	 * 200: The version's known issues after the change
+	 * 400: Text missing or too long, or the link is not https
+	 * 403: Caller is not an administrator
+	 * 503: Known issues cannot be stored on this instance
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'PUT', url: '/api/app/{appId}/versions/{version}/known-issues')]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/app/{appId}/versions/{version}/known-issues', postfix: 'v1')]
+	public function addKnownIssue(string $appId, string $version, string $text = '', string $workaround = '', ?string $link = null): DataResponse {
+		return $this->changeKnownIssues(
+			['appId' => trim($appId), 'version' => trim($version)],
+			static fn (KnownIssueStore $store, array $target): array => $store->add($target, ['text' => $text, 'workaround' => $workaround, 'link' => $link])
+		);
+	}
+
+	/**
+	 * Removes a known issue of a version by its position (admin-only,
+	 * password-confirmed, audited as `settings`)
+	 *
+	 * @param string $appId The app
+	 * @param string $version The version
+	 * @param int $index The position of the issue in the version's list
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, version: string, knownIssues: list<array<string, mixed>>}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_SERVICE_UNAVAILABLE, array{message: string}, array{}>
+	 *
+	 * 200: The version's known issues after the change
+	 * 400: The version has no issue at that position
+	 * 403: Caller is not an administrator
+	 * 503: Known issues cannot be stored on this instance
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'DELETE', url: '/api/app/{appId}/versions/{version}/known-issues/{index}')]
+	#[ApiRoute(verb: 'DELETE', url: '/api/v1/app/{appId}/versions/{version}/known-issues/{index}', postfix: 'v1')]
+	public function removeKnownIssue(string $appId, string $version, int $index): DataResponse {
+		return $this->changeKnownIssues(
+			['appId' => trim($appId), 'version' => trim($version)],
+			static fn (KnownIssueStore $store, array $target): array => $store->remove($target, $index)
+		);
+	}
+
+	/**
+	 * Runs a known-issue change for an administrator and answers the version's list.
+	 *
+	 * @param array{appId: string, version: string} $target
+	 * @param callable(KnownIssueStore, array{appId: string, version: string, actor: string}): list<array<string, mixed>> $change
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, version: string, knownIssues: list<array<string, mixed>>}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_SERVICE_UNAVAILABLE, array{message: string}, array{}>
+	 */
+	private function changeKnownIssues(array $target, callable $change): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+		$store = $this->reports->knownIssues;
+		if ($store === null) {
+			return new DataResponse(['message' => 'Known issues are not available.'], Http::STATUS_SERVICE_UNAVAILABLE);
+		}
+
+		$actor = $this->access->caller->userSession->getUser()?->getUID() ?? '';
+		try {
+			$issues = $change($store, $target + ['actor' => $actor]);
+		} catch (InvalidArgumentException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
+
+		return new DataResponse($target + ['knownIssues' => $issues]);
 	}
 
 	/**
@@ -476,12 +597,6 @@ class ApiController extends OCSController {
 	 *
 	 * @param string $appId The app to install a version of
 	 * @param string $version The target version, overridable by a `targetVersion` or `version` body parameter
-	 * @param string|null $source Override the bound source for this install only
-	 * @param string $debug `1` to include debug output; on its own it still implies a dry run (deprecated)
-	 * @param string|null $dryRun `1` to simulate, `0` to install for real. OMITTED is distinct from `0`: only when omitted does `debug=1` still imply a dry run
-	 * @param string $pin `1` to pin the app to this version after installing
-	 * @param string $acceptNewSha `1` to accept a changed SHA-256 once and replace the recorded digest
-	 * @param string $allowDowngrade `1` to permit installing a version older than the installed one
 	 *
 	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_FORBIDDEN|Http::STATUS_INTERNAL_SERVER_ERROR, array<string, mixed>, array{}>
 	 *
@@ -504,72 +619,123 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'POST', url: '/api/app/{appId}/versions/{version}/install')]
-	public function installVersion(
-		string $appId,
-		string $version,
-		?string $source = null,
-		string $debug = '0',
-		?string $dryRun = null,
-		string $pin = '0',
-		string $acceptNewSha = '0',
-		string $allowDowngrade = '0',
-	): DataResponse {
+	#[ApiRoute(verb: 'POST', url: '/api/v1/app/{appId}/versions/{version}/install', postfix: 'v1')]
+	#[RequestFieldsFrom(InstallVersionFields::class)]
+	public function installVersion(string $appId, string $version): Response {
+		// The optional fields are declared in InstallVersionFields; one that is
+		// not text gets the empty 400 the Dispatcher gives a mistyped parameter.
+		$fields = InstallVersionFields::fromRequest($this->request);
+		if ($fields === null) {
+			/** @psalm-suppress LessSpecificReturnStatement Kept out of the documented contract, as before. */
+			return new Response(Http::STATUS_BAD_REQUEST);
+		}
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
+		$target = new InstallTarget($appId, $this->requestedVersion($version), self::sourceOverride($fields->source));
+		$refusal = self::unknownFlagRefusal($fields);
+		if ($refusal !== null) {
+			/** @psalm-suppress InvalidReturnStatement Status passthrough, as for the installer's own refusals. */
+			return $refusal;
+		}
+
+		$request = $this->installRequest($fields, $target);
+		$result = $this->install->installerService->installAppVersion($request);
+		$echo = ['requestedVersion' => $target->version, 'routeVersion' => $version] + self::deprecationNotice($fields, $request);
+
+		/** @psalm-suppress InvalidReturnStatement Dynamic status passthrough — see the docblock. */
+		return $this->installResponse($result, $echo);
+	}
+
+	/**
+	 * The version to install: a `targetVersion` body parameter, else a
+	 * `version` one, else the version in the route.
+	 */
+	private function requestedVersion(string $routeVersion): string {
 		$requestedVersion = $this->stringParam('targetVersion', '');
 		if ($requestedVersion === '') {
 			$requestedVersion = $this->stringParam('version', '');
 		}
 		if ($requestedVersion === '') {
-			$requestedVersion = $version;
+			$requestedVersion = $routeVersion;
 		}
 
-		$sourceOverride = ($source !== null && trim($source) !== '') ? trim($source) : null;
+		return $requestedVersion;
+	}
 
-		$includeDebug = $this->readBinaryBool($debug, false);
+	/** A non-blank `source` field, trimmed; null to use the app's own binding. */
+	private static function sourceOverride(?string $source): ?string {
+		return ($source !== null && trim($source) !== '') ? trim($source) : null;
+	}
 
-		// `dryRun` is independent of `debug` — see MODIFIED "Debug Mode".
-		// THE NULL DEFAULT IS LOAD-BEARING. A `?string` defaulting to null is
-		// still null when the caller omitted the parameter entirely, which is
-		// how we distinguish "not supplied" (legacy `debug`-implies-dry-run
-		// fallback still applies) from an explicit `dryRun=0` (a real install
-		// regardless of `debug`). This is exactly what `getParam('dryRun')`
-		// with no default used to give us; declaring it as a typed parameter
-		// changes the spelling, not the semantics. Give it a '0' default and
-		// the legacy fallback silently dies.
-		$dryRunSupplied = $dryRun !== null;
-		$dryRunFlag = $dryRunSupplied ? $this->readBinaryBool($dryRun, false) : null;
+	/**
+	 * The 400 for a `debug` or `dryRun` that is not a known boolean: read as
+	 * false, it would turn a requested dry run into a real install.
+	 *
+	 * @return DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>|null
+	 */
+	private static function unknownFlagRefusal(InstallVersionFields $fields): ?DataResponse {
+		foreach (['debug' => $fields->debug, 'dryRun' => $fields->dryRun] as $flag => $value) {
+			if ($value !== null && !in_array(strtolower(trim($value)), self::BINARY_FLAGS, true)) {
+				return new DataResponse(['message' => $flag . ' must be 1, true, 0 or false.'], Http::STATUS_BAD_REQUEST);
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * The install request for these fields. `dryRun` is independent of
+	 * `debug` — see MODIFIED "Debug Mode"; left out (null, see
+	 * InstallVersionFields::$dryRun), `debug` still implies a dry run.
+	 */
+	private function installRequest(InstallVersionFields $fields, InstallTarget $target): InstallRequest {
+		$includeDebug = $this->readBinaryBool($fields->debug, false);
+		$dryRunFlag = $fields->dryRun !== null ? $this->readBinaryBool($fields->dryRun, false) : null;
 
 		$overridePinRaw = $this->stringParam('overridePin', '');
 		$overridePin = $overridePinRaw === '' ? null : $overridePinRaw;
-		$pinRequested = $this->readBinaryBool($pin, false);
-		$acceptNewShaFlag = $this->readBinaryBool($acceptNewSha, false);
-		$allowDowngradeFlag = $this->readBinaryBool($allowDowngrade, false);
+		$pinRequested = $this->readBinaryBool($fields->pin, false);
+		$acceptNewShaFlag = $this->readBinaryBool($fields->acceptNewSha, false);
+		$allowDowngradeFlag = $this->readBinaryBool($fields->allowDowngrade, false);
 
-		$result = $this->installerService->installAppVersion(
-			$appId,
-			$requestedVersion,
-			$includeDebug,
-			$sourceOverride,
-			$overridePin,
-			$pinRequested,
-			$acceptNewShaFlag,
-			$allowDowngradeFlag,
-			$dryRunFlag,
+		return new InstallRequest(
+			$target,
+			new InstallOptions($includeDebug, $dryRunFlag ?? $includeDebug, $acceptNewShaFlag, $allowDowngradeFlag),
+			new PinChoice($overridePin, $pinRequested),
 		);
-		$result['payload']['requestedVersion'] = $requestedVersion;
-		$result['payload']['routeVersion'] = $version;
-		if (!$dryRunSupplied && $includeDebug) {
-			// Legacy back-compat path only — see MODIFIED "Debug Mode",
-			// Scenario "Legacy behavior preserved".
-			$result['payload']['deprecationNotice'] = 'debug=1 implying a dry run is deprecated; pass dryRun=1 explicitly instead.';
+	}
+
+	/**
+	 * The legacy notice when `debug` alone implied the dry run — see MODIFIED
+	 * "Debug Mode", Scenario "Legacy behavior preserved".
+	 *
+	 * @return array{deprecationNotice?: string}
+	 */
+	private static function deprecationNotice(InstallVersionFields $fields, InstallRequest $request): array {
+		if ($fields->dryRun === null && $request->options->includeDebug) {
+			return ['deprecationNotice' => 'debug=1 implying a dry run is deprecated; pass dryRun=1 explicitly instead.'];
 		}
 
-		/** @psalm-suppress InvalidReturnStatement Dynamic status passthrough — see the docblock. */
+		return [];
+	}
+
+	/**
+	 * The installer's payload with the request echoed into it, at the status
+	 * the installer reported.
+	 *
+	 * @param array{statusCode:int, payload:array<string, mixed>} $result The installer's result.
+	 * @param array<string, string> $echo The request fields to echo.
+	 */
+	private function installResponse(array $result, array $echo): DataResponse {
+		$payload = $result['payload'] ?? [];
+		foreach ($echo as $key => $value) {
+			$payload[$key] = $value;
+		}
+
 		return new DataResponse(
-			$result['payload'] ?? [],
+			$payload,
 			$this->toHttpStatus($result['statusCode'] ?? Http::STATUS_INTERNAL_SERVER_ERROR, Http::STATUS_INTERNAL_SERVER_ERROR)
 		);
 	}
@@ -586,15 +752,16 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/version-pinning/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/pins')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/pins', postfix: 'v1')]
 	public function pins(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
 		$pins = [];
-		foreach ($this->pinStore->all() as $appId => $pin) {
+		foreach ($this->autoUpdate->pinStore->all() as $appId => $pin) {
 			try {
-				$installed = $this->appManager->getAppVersion($appId, false);
+				$installed = $this->install->appManager->getAppVersion($appId, false);
 				$installedVersion = $installed !== '' ? $installed : null;
 			} catch (\Exception) {
 				$installedVersion = null;
@@ -626,18 +793,15 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PUT', url: '/api/app/{appId}/pin')]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/app/{appId}/pin', postfix: 'v1')]
 	public function pinApp(string $appId): DataResponse {
-		if (!$this->isAdmin()) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
-		}
-
-		$user = $this->userSession->getUser();
-		if ($user === null) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
 		}
 
 		try {
-			$installedVersion = $this->appManager->getAppVersion($appId, false);
+			$installedVersion = $this->install->appManager->getAppVersion($appId, false);
 		} catch (\Exception) {
 			$installedVersion = '';
 		}
@@ -659,14 +823,14 @@ class ApiController extends OCSController {
 			$pin = new Pin(
 				$installedVersion,
 				$user->getUID(),
-				$this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
+				$this->access->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
 				$reason === '' ? null : $reason,
 			);
 		} catch (InvalidArgumentException $error) {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
 
-		$this->pinStore->set($appId, $pin);
+		$this->autoUpdate->pinStore->set($appId, $pin);
 
 		return new DataResponse([
 			'appId' => $appId,
@@ -689,17 +853,14 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'DELETE', url: '/api/app/{appId}/pin')]
+	#[ApiRoute(verb: 'DELETE', url: '/api/v1/app/{appId}/pin', postfix: 'v1')]
 	public function unpinApp(string $appId): DataResponse {
-		if (!$this->isAdmin()) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
 		}
 
-		$user = $this->userSession->getUser();
-		if ($user === null) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
-		}
-
-		$this->pinStore->clear($appId, $user->getUID());
+		$this->autoUpdate->pinStore->clear($appId, $user->getUID());
 
 		return new DataResponse(['appId' => $appId, 'unpinned' => true]);
 	}
@@ -722,12 +883,13 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'DELETE', url: '/api/app/{appId}/attempts/{version}')]
+	#[ApiRoute(verb: 'DELETE', url: '/api/v1/app/{appId}/attempts/{version}', postfix: 'v1')]
 	public function retryAttempt(string $appId, string $version): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		if ($this->attemptLedger?->forget($appId, $version) !== true) {
+		if ($this->autoUpdate->attemptLedger->forget($appId, $version) !== true) {
 			return new DataResponse(['message' => 'No automatic update attempt is recorded for that version.'], Http::STATUS_NOT_FOUND);
 		}
 
@@ -747,26 +909,27 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/policies')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/policies', postfix: 'v1')]
 	public function policies(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
 		$policies = [];
-		foreach ($this->policyStore->all() as $appId => $policy) {
+		foreach ($this->autoUpdate->policyStore->all() as $appId => $policy) {
 			$policies[] = $policy->toArray() + [
 				'appId' => $appId,
 				// Versions whose automatic update failed and are skipped until
 				// the admin retries them (#438).
-				'blockedVersions' => $this->attemptLedger?->blockedVersions($appId) ?? [],
+				'blockedVersions' => $this->autoUpdate->attemptLedger->blockedVersions($appId),
 			];
 		}
 
 		return new DataResponse([
 			'policies' => $policies,
-			'autoUpdateEnabled' => $this->autoUpdateSettingsStore->isEnabled(),
-			'autoUpdateWindow' => $this->autoUpdateSettingsStore->getWindow(),
-			'autoUpdateTimeZone' => $this->autoUpdateSettingsStore->getTimeZoneName(),
+			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
+			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
+			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
 		]);
 	}
 
@@ -786,14 +949,11 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PUT', url: '/api/app/{appId}/policy')]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/app/{appId}/policy', postfix: 'v1')]
 	public function setPolicy(string $appId): DataResponse {
-		if (!$this->isAdmin()) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
-		}
-
-		$user = $this->userSession->getUser();
-		if ($user === null) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
 		}
 
 		$level = $this->stringParam('level', '');
@@ -807,9 +967,9 @@ class ApiController extends OCSController {
 		$policy = new Policy(
 			$level,
 			$user->getUID(),
-			$this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
+			$this->access->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
 		);
-		$this->policyStore->set($appId, $policy);
+		$this->autoUpdate->policyStore->set($appId, $policy);
 
 		return new DataResponse(['appId' => $appId, 'policy' => $policy->toArray()]);
 	}
@@ -829,12 +989,13 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'DELETE', url: '/api/app/{appId}/policy')]
+	#[ApiRoute(verb: 'DELETE', url: '/api/v1/app/{appId}/policy', postfix: 'v1')]
 	public function clearPolicy(string $appId): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$this->policyStore->clear($appId);
+		$this->autoUpdate->policyStore->clear($appId);
 
 		return new DataResponse(['appId' => $appId, 'cleared' => true]);
 	}
@@ -856,6 +1017,7 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PUT', url: '/api/auto-update/settings')]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/auto-update/settings', postfix: 'v1')]
 	public function updateAutoUpdateSettings(?string $enabled = null): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -884,16 +1046,16 @@ class ApiController extends OCSController {
 		}
 
 		if ($enabledParam !== null) {
-			$this->autoUpdateSettingsStore->setEnabled($this->readBinaryBool($enabledParam, $this->autoUpdateSettingsStore->isEnabled()));
+			$this->autoUpdate->settingsStore->setEnabled($this->readBinaryBool($enabledParam, $this->autoUpdate->settingsStore->isEnabled()));
 		}
 		if ($windowParam !== '') {
-			$this->autoUpdateSettingsStore->setWindow($windowParam);
+			$this->autoUpdate->settingsStore->setWindow($windowParam);
 		}
 
 		return new DataResponse([
-			'autoUpdateEnabled' => $this->autoUpdateSettingsStore->isEnabled(),
-			'autoUpdateWindow' => $this->autoUpdateSettingsStore->getWindow(),
-			'autoUpdateTimeZone' => $this->autoUpdateSettingsStore->getTimeZoneName(),
+			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
+			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
+			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
 		]);
 	}
 
@@ -905,7 +1067,7 @@ class ApiController extends OCSController {
 	 * hardcode the range in order to build a control will drift from the
 	 * server the first time the range changes.
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, ncscEnabled: bool, ncscStatus: array{readUpTo: ?string, caughtUp: bool}}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Advisory settings returned
 	 * 403: Caller is not an administrator
@@ -913,17 +1075,13 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/advisory/settings')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/advisory/settings', postfix: 'v1')]
 	public function advisorySettings(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		return new DataResponse([
-			'intervalHours' => $this->advisorySettingsStore->getIntervalHours(),
-			'minIntervalHours' => AdvisorySettingsStore::MIN_INTERVAL_HOURS,
-			'maxIntervalHours' => AdvisorySettingsStore::MAX_INTERVAL_HOURS,
-			'digestEnabled' => $this->advisorySettingsStore->isDigestEnabled(),
-		]);
+		return $this->advisorySettingsResponse();
 	}
 
 	/**
@@ -936,7 +1094,8 @@ class ApiController extends OCSController {
 	 *
 	 * @param ?string $intervalHours How often the sweep runs, in hours. Omitted leaves it unchanged.
 	 * @param ?string $digestEnabled Whether the weekly digest is sent ('1'/'0'). Omitted leaves it unchanged.
-	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @param ?string $ncscEnabled Whether the sweep also reads NCSC-NL's advisories ('1'/'0'). Omitted leaves it unchanged.
+	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, ncscEnabled: bool, ncscStatus: array{readUpTo: ?string, caughtUp: bool}}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Advisory settings updated
 	 * 400: intervalHours outside the supported range
@@ -945,47 +1104,97 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
 	 */
 	#[ApiRoute(verb: 'PUT', url: '/api/advisory/settings')]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/advisory/settings', postfix: 'v1')]
 	#[PasswordConfirmationRequired]
-	public function updateAdvisorySettings(?string $intervalHours = null, ?string $digestEnabled = null): DataResponse {
+	public function updateAdvisorySettings(?string $intervalHours = null, ?string $digestEnabled = null, ?string $ncscEnabled = null): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
 		if ($intervalHours !== null && $intervalHours !== '') {
-			if (!is_numeric($intervalHours)) {
-				return new DataResponse(
-					['message' => 'intervalHours must be a number.'],
-					Http::STATUS_BAD_REQUEST
-				);
+			$refusal = $this->storeIntervalHours($intervalHours);
+			if ($refusal !== null) {
+				return $refusal;
 			}
-			$hours = (int)$intervalHours;
-			if ($hours < AdvisorySettingsStore::MIN_INTERVAL_HOURS || $hours > AdvisorySettingsStore::MAX_INTERVAL_HOURS) {
-				return new DataResponse(
-					['message' => sprintf(
-						'intervalHours must be between %d and %d.',
-						AdvisorySettingsStore::MIN_INTERVAL_HOURS,
-						AdvisorySettingsStore::MAX_INTERVAL_HOURS,
-					)],
-					Http::STATUS_BAD_REQUEST
-				);
-			}
-			$this->advisorySettingsStore->setIntervalHours($hours);
 		}
 
 		// Same empty-string-is-an-explicit-false handling as the auto-update
 		// kill switch above: PHP casts a JSON `false` to "", not "0".
 		if ($digestEnabled !== null) {
-			$digestParam = ($digestEnabled === '') ? '0' : $digestEnabled;
-			$this->advisorySettingsStore->setDigestEnabled(
-				$this->readBinaryBool($digestParam, $this->advisorySettingsStore->isDigestEnabled()),
-			);
+			$this->storeDigestEnabled($digestEnabled);
 		}
 
+		if ($ncscEnabled !== null) {
+			$store = $this->reports->stores->advisorySettingsStore;
+			$store->setNcscEnabled($this->readBinaryBool($ncscEnabled === '' ? '0' : $ncscEnabled, $store->isNcscEnabled()));
+		}
+
+		return $this->advisorySettingsResponse();
+	}
+
+	/**
+	 * Stores the weekly digest flag; an empty string is an explicit false,
+	 * and an unknown value keeps the current one.
+	 */
+	private function storeDigestEnabled(string $digestEnabled): void {
+		$digestParam = ($digestEnabled === '') ? '0' : $digestEnabled;
+		$this->reports->stores->advisorySettingsStore->setDigestEnabled(
+			$this->readBinaryBool($digestParam, $this->reports->stores->advisorySettingsStore->isDigestEnabled()),
+		);
+	}
+
+	/**
+	 * Stores a valid sweep interval, or answers the 400 for one that is not a
+	 * number or outside the supported range.
+	 *
+	 * @return DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>|null
+	 */
+	private function storeIntervalHours(string $intervalHours): ?DataResponse {
+		if (!is_numeric($intervalHours)) {
+			return new DataResponse(
+				['message' => 'intervalHours must be a number.'],
+				Http::STATUS_BAD_REQUEST
+			);
+		}
+		$hours = (int)$intervalHours;
+		if ($hours < AdvisorySettingsStore::MIN_INTERVAL_HOURS || $hours > AdvisorySettingsStore::MAX_INTERVAL_HOURS) {
+			return self::intervalOutOfRange();
+		}
+		$this->reports->stores->advisorySettingsStore->setIntervalHours($hours);
+
+		return null;
+	}
+
+	/**
+	 * The 400 for a sweep interval outside the supported range.
+	 *
+	 * @return DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>
+	 */
+	private static function intervalOutOfRange(): DataResponse {
+		return new DataResponse(
+			['message' => sprintf(
+				'intervalHours must be between %d and %d.',
+				AdvisorySettingsStore::MIN_INTERVAL_HOURS,
+				AdvisorySettingsStore::MAX_INTERVAL_HOURS,
+			)],
+			Http::STATUS_BAD_REQUEST
+		);
+	}
+
+	/**
+	 * The advisory check settings as stored, with the supported interval range.
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, ncscEnabled: bool, ncscStatus: array{readUpTo: ?string, caughtUp: bool}}, array{}>
+	 */
+	private function advisorySettingsResponse(): DataResponse {
 		return new DataResponse([
-			'intervalHours' => $this->advisorySettingsStore->getIntervalHours(),
+			'intervalHours' => $this->reports->stores->advisorySettingsStore->getIntervalHours(),
 			'minIntervalHours' => AdvisorySettingsStore::MIN_INTERVAL_HOURS,
 			'maxIntervalHours' => AdvisorySettingsStore::MAX_INTERVAL_HOURS,
-			'digestEnabled' => $this->advisorySettingsStore->isDigestEnabled(),
+			'digestEnabled' => $this->reports->stores->advisorySettingsStore->isDigestEnabled(),
+			// advisories-ncsc-feed: the NCSC-NL switch, and how far its read got.
+			'ncscEnabled' => $this->reports->stores->advisorySettingsStore->isNcscEnabled(),
+			'ncscStatus' => $this->reports->stores->advisorySettingsStore->ncscStatus(),
 		]);
 	}
 
@@ -1002,17 +1211,14 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/pat-management/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/pats')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/pats', postfix: 'v1')]
 	public function listPats(): DataResponse {
-		if (!$this->isAdmin()) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
 		}
 
-		$user = $this->userSession->getUser();
-		if ($user === null) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
-		}
-
-		$pats = $this->patMapper->findVisibleTo($user->getUID());
+		$pats = $this->access->pats->patMapper->findVisibleTo($user->getUID());
 		$payload = array_map(
 			fn (Pat $pat): array => $this->serializePat($pat),
 			$pats
@@ -1029,7 +1235,7 @@ class ApiController extends OCSController {
 	 * @return array<string, mixed>
 	 */
 	private function serializePat(Pat $pat): array {
-		$expiry = $this->patExpiryEvaluator->evaluate($pat->getExpiresAt());
+		$expiry = $this->access->pats->patExpiryEvaluator->evaluate($pat->getExpiresAt());
 
 		return $pat->toRedacted() + [
 			'expiryState' => $expiry['state'],
@@ -1055,49 +1261,58 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'POST', url: '/api/pats')]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/pats', postfix: 'v1')]
 	public function createPat(): DataResponse {
-		if (!$this->isAdmin()) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
 		}
 
-		$user = $this->userSession->getUser();
-		if ($user === null) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		$params = $this->newPatParams();
+		if ($params === null) {
+			return new DataResponse(['message' => 'label, targetPattern and token are required.'], Http::STATUS_BAD_REQUEST);
 		}
 
-		$label = $this->stringParam('label', '');
-		$targetPattern = $this->stringParam('targetPattern', '');
-		$token = $this->stringParam('token', '');
-		$forge = $this->stringParam('forge', SourceBinding::FORGE_GITHUB);
-		if ($label === '' || $targetPattern === '' || $token === '') {
-			return new DataResponse(
-				['message' => 'label, targetPattern and token are required.'],
-				Http::STATUS_BAD_REQUEST
-			);
-		}
+		return $this->storePat($user, $params);
+	}
 
-		$result = $this->patValidator->validate($token, $forge);
+	/**
+	 * The label, target pattern, token and forge of a PAT upload, or null when
+	 * the label, target pattern or token is missing.
+	 *
+	 * @return array{label: string, targetPattern: string, token: string, forge: string}|null
+	 */
+	private function newPatParams(): ?array {
+		$params = [
+			'label' => $this->stringParam('label', ''),
+			'targetPattern' => $this->stringParam('targetPattern', ''),
+			'token' => $this->stringParam('token', ''),
+			'forge' => $this->stringParam('forge', SourceBinding::FORGE_GITHUB),
+		];
+
+		return in_array('', [$params['label'], $params['targetPattern'], $params['token']], true) ? null : $params;
+	}
+
+	/**
+	 * Validates an uploaded PAT and stores it for `$user` when the forge accepts it.
+	 *
+	 * @param array{label: string, targetPattern: string, token: string, forge: string} $params
+	 * @return DataResponse<Http::STATUS_OK, array{pat: array<string, mixed>, warnings: list<string>}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>
+	 */
+	private function storePat(IUser $user, array $params): DataResponse {
+		$result = $this->access->pats->patValidator->validate($params['token'], $params['forge']);
 		if (!$result->ok) {
 			return new DataResponse(['message' => $result->error ?? 'PAT validation failed.'], Http::STATUS_BAD_REQUEST);
 		}
 
 		// Forgejo and Gitea tokens are opaque; GitHub tokens are classified by prefix.
-		$kind = $forge !== SourceBinding::FORGE_GITHUB
-			? Pat::KIND_FORGE_TOKEN
-			: $this->patValidator->detectKind($token);
-
-		$pat = $this->patManager->create(
-			$user->getUID(),
-			$label,
-			$kind,
-			$targetPattern,
-			$token,
-			$result->scopes,
-			$result->warnings,
-			$result->expiresAt,
-			$forge,
-		);
-		$this->connectionReports?->forgeTokenSaved($forge);
+		$kind = $params['forge'] !== SourceBinding::FORGE_GITHUB ? Pat::KIND_FORGE_TOKEN : $this->access->pats->patValidator->detectKind($params['token']);
+		$new = (new NewPat($user->getUID(), $result))
+			->withForge($params['forge'])
+			->describedAs($params['label'], $params['targetPattern'])
+			->ofKind($kind);
+		$pat = $this->access->pats->patManager->create($new, $params['token']);
+		$this->access->connectionReports?->forgeTokenSaved($params['forge']);
 
 		return new DataResponse(['pat' => $this->serializePat($pat), 'warnings' => $result->warnings]);
 	}
@@ -1119,18 +1334,15 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PATCH', url: '/api/pats/{id}')]
+	#[ApiRoute(verb: 'PATCH', url: '/api/v1/pats/{id}', postfix: 'v1')]
 	public function patchPat(int $id, ?string $label = null, ?string $sharedWithAdmins = null): DataResponse {
-		if (!$this->isAdmin()) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
-		}
-
-		$user = $this->userSession->getUser();
-		if ($user === null) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
 		}
 
 		try {
-			$pat = $this->patMapper->findById($id);
+			$pat = $this->access->pats->patMapper->findById($id);
 		} catch (DoesNotExistException) {
 			return new DataResponse(['message' => 'PAT not found.'], Http::STATUS_NOT_FOUND);
 		}
@@ -1151,7 +1363,7 @@ class ApiController extends OCSController {
 			$pat->setSharedWithAdmins($this->readBinaryBool($sharedWithAdmins, $pat->getSharedWithAdmins()));
 		}
 
-		return new DataResponse(['pat' => $this->serializePat($this->patManager->update($pat))]);
+		return new DataResponse(['pat' => $this->serializePat($this->access->pats->patManager->update($pat))]);
 	}
 
 	/**
@@ -1173,18 +1385,15 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'DELETE', url: '/api/pats/{id}')]
+	#[ApiRoute(verb: 'DELETE', url: '/api/v1/pats/{id}', postfix: 'v1')]
 	public function deletePat(int $id): DataResponse {
-		if (!$this->isAdmin()) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
-		}
-
-		$user = $this->userSession->getUser();
-		if ($user === null) {
-			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
 		}
 
 		try {
-			$pat = $this->patMapper->findById($id);
+			$pat = $this->access->pats->patMapper->findById($id);
 		} catch (DoesNotExistException) {
 			return new DataResponse(['message' => 'PAT not found.'], Http::STATUS_NOT_FOUND);
 		}
@@ -1193,8 +1402,8 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Only the PAT owner can delete it.'], Http::STATUS_FORBIDDEN);
 		}
 
-		$this->patManager->delete($pat);
-		$this->connectionReports?->forgeTokenRemoved($pat->getForge());
+		$this->access->pats->patManager->delete($pat);
+		$this->access->connectionReports?->forgeTokenRemoved($pat->getForge());
 
 		return new DataResponse(['deleted' => $id]);
 	}
@@ -1213,6 +1422,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/app-discovery/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/discover')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/discover', postfix: 'v1')]
 	public function discover(string $installedOnly = '0'): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -1242,7 +1452,7 @@ class ApiController extends OCSController {
 		// which is what the frontend sends; only the local flag is renamed.
 		$installedOnlyFlag = $this->readBinaryBool($installedOnly, false);
 
-		$result = $this->discoveryAggregator->search($query, $sourceIds, $installedOnlyFlag);
+		$result = $this->reports->discoveryAggregator->search($query, new DiscoveryFilter($sourceIds, $installedOnlyFlag));
 
 		return new DataResponse($result);
 	}
@@ -1259,6 +1469,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/pat-management/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/pats/deeplink')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/pats/deeplink', postfix: 'v1')]
 	public function patDeeplink(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -1272,7 +1483,7 @@ class ApiController extends OCSController {
 			? Pat::KIND_FORGE_TOKEN
 			: $this->stringParam('kind', Pat::KIND_FINE_GRAINED);
 		try {
-			return new DataResponse($this->deeplinkBuilder->build($kind, $forge));
+			return new DataResponse($this->access->deeplinkBuilder->build($kind, $forge));
 		} catch (InvalidArgumentException $error) {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
@@ -1292,6 +1503,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/audit-trail/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/audit')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/audit', postfix: 'v1')]
 	public function auditLog(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -1302,7 +1514,7 @@ class ApiController extends OCSController {
 		$limit = max(1, min($limit, 200));
 		$offset = max(0, $this->intParam('offset', 0));
 
-		$entries = $this->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset);
+		$entries = $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset);
 
 		return new DataResponse([
 			'entries' => $entries,
@@ -1323,12 +1535,13 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/artifact-cache/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/cache')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/cache', postfix: 'v1')]
 	public function cacheSummary(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		return new DataResponse($this->artifactCache->summary());
+		return new DataResponse($this->install->artifactCache->summary());
 	}
 
 	/**
@@ -1345,15 +1558,16 @@ class ApiController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'DELETE', url: '/api/cache')]
+	#[ApiRoute(verb: 'DELETE', url: '/api/v1/cache', postfix: 'v1')]
 	public function clearCache(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
 		$appId = $this->stringParam('appId', '');
-		$this->artifactCache->clear($appId !== '' ? $appId : null);
+		$this->install->artifactCache->clear($appId !== '' ? $appId : null);
 
-		return new DataResponse($this->artifactCache->summary());
+		return new DataResponse($this->install->artifactCache->summary());
 	}
 
 	private function intParam(string $name, int $default): int {
@@ -1409,23 +1623,39 @@ class ApiController extends OCSController {
 		}
 		if (is_string($value)) {
 			$normalized = strtolower(trim($value));
-			if (in_array($normalized, ['1', 'true'], true)) {
-				return true;
-			}
-			if (in_array($normalized, ['0', 'false'], true)) {
-				return false;
+			if (in_array($normalized, self::BINARY_FLAGS, true)) {
+				return in_array($normalized, ['1', 'true'], true);
 			}
 		}
 
 		return $default;
 	}
 
+	/**
+	 * The signed-in admin, or the 403 to answer: for actions that act as the
+	 * admin, so the session is read again after the admin check.
+	 *
+	 * @return IUser|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 */
+	private function adminUser(): IUser|DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$user = $this->access->caller->userSession->getUser();
+		if ($user === null) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		return $user;
+	}
+
 	private function isAdmin(): bool {
-		$user = $this->userSession->getUser();
+		$user = $this->access->caller->userSession->getUser();
 		if ($user === null) {
 			return false;
 		}
 
-		return $this->groupManager->isAdmin($user->getUID());
+		return $this->access->caller->groupManager->isAdmin($user->getUID());
 	}
 }

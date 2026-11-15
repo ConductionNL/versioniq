@@ -2,11 +2,18 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Command;
 
 use OCA\Versioniq\Command\ListUpdates;
 use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
 use OCA\Versioniq\Service\Availability\AvailabilityService;
+use OCA\Versioniq\Service\ReleaseAlert\ReleaseNotifier;
+use OCA\Versioniq\Service\ReleaseAlert\ReleaseSweepRecorder;
 use OCA\Versioniq\Service\Settings\InstanceSettings;
 use OCP\AppFramework\Utility\ITimeFactory;
 use PHPUnit\Framework\TestCase;
@@ -34,7 +41,9 @@ final class ListUpdatesTest extends TestCase {
 		$time = $this->createMock(ITimeFactory::class);
 		$time->method('getTime')->willReturn(1_790_000_600);
 
-		return new CommandTester(new ListUpdates($service ?? $this->createMock(AvailabilityService::class), $store, $settings, $time));
+		$recorder = new ReleaseSweepRecorder($store, $this->createMock(ReleaseNotifier::class));
+
+		return new CommandTester(new ListUpdates($service ?? $this->createMock(AvailabilityService::class), $recorder, $settings, $time));
 	}
 
 	public function testTheTableListsEveryAppWithItsVersionsLinesAndPin(): void {
@@ -84,5 +93,24 @@ final class ListUpdatesTest extends TestCase {
 
 		self::assertSame(0, $tester->execute(['--outside-policy' => true, '--json' => true]));
 		self::assertSame(['openregister'], array_keys(json_decode($tester->getDisplay(), true)['updates']));
+	}
+
+	public function testOutsidePolicyWithTheCheckOffListsNothing(): void {
+		$tester = $this->tester(['updates' => self::SNAPSHOT, 'checkedAt' => 1_790_000_000]);
+
+		self::assertSame(0, $tester->execute(['--outside-policy' => true, '--json' => true]));
+		$decoded = json_decode($tester->getDisplay(), true, 512, JSON_THROW_ON_ERROR);
+		self::assertSame([], $decoded['updates']);
+		self::assertNull($decoded['maxLinesBehind']);
+	}
+
+	public function testJsonCarriesTheLagLimitAndTheTableTheLinesBehind(): void {
+		$json = $this->tester(['updates' => self::SNAPSHOT, 'checkedAt' => 1_790_000_000], null, null, 3);
+		self::assertSame(0, $json->execute(['--json' => true]));
+		self::assertSame(3, json_decode($json->getDisplay(), true, 512, JSON_THROW_ON_ERROR)['maxLinesBehind']);
+
+		$table = $this->tester(['updates' => ['openregister' => ['linesBehind' => 7] + self::SNAPSHOT['openregister']], 'checkedAt' => 1_790_000_000]);
+		self::assertSame(0, $table->execute([]));
+		self::assertMatchesRegularExpression('/openregister.*\|\s+7\s+\|/', $table->getDisplay());
 	}
 }

@@ -23,9 +23,28 @@ vi.mock('@nextcloud/vue/components/NcPasswordField', () => ({ default: { name: '
 vi.mock('@nextcloud/vue/components/NcSelect', () => ({ default: { name: 'NcSelect', template: '<div><slot /></div>' } }))
 vi.mock('@nextcloud/vue/components/NcTextField', () => ({ default: { name: 'NcTextField', template: '<div><slot /></div>' } }))
 
+/**
+ * A last-known-good record with the version before it.
+ *
+ * @param version The last good version.
+ * @param previous The version that ran before it, or null.
+ */
+function lkg (version: string, previous: string | null) {
+	return {
+		version,
+		recordedAt: '2026-11-14T10:00:00+00:00',
+		sourceId: 'appstore',
+		previous: previous === null ? null : { version: previous, recordedAt: '2026-11-01T10:00:00+00:00', sourceId: 'appstore' },
+	}
+}
+
 const apps = [
 	{ id: 'calendar', label: 'Calendar', isCore: false, installedVersion: '5.2.1', state: 'enabled' },
 	{ id: 'notyet', label: 'Not yet', isCore: false, installedVersion: null, state: 'notInstalled' },
+	// The last good version is installed: one target, the version before it.
+	{ id: 'dossiq', label: 'Dossiq', isCore: false, installedVersion: '0.4.46', state: 'enabled', lkg: lkg('0.4.46', '0.4.44') },
+	// 0.4.48 was put in place outside Versioniq: both targets.
+	{ id: 'drifted', label: 'Drifted', isCore: false, installedVersion: '0.4.48', state: 'enabled', lkg: lkg('0.4.46', '0.4.44') },
 ]
 
 /**
@@ -60,5 +79,16 @@ describe('App card', () => {
 
 		const notYet = wrapper.find('[data-app-id="notyet"]')
 		expect(notYet.find('[data-testid="app-installed-version"]').exists()).toBe(false)
+	})
+
+	it('offers the version before the last install, and the last good version when it differs from both', async () => {
+		vi.stubGlobal('fetch', vi.fn(ocsFetch))
+		const wrapper = mount(App, { global: { stubs: { CachePanel: true, SourcesPanel: true, TokensPanel: true, IntegrationsPanel: true, InstanceSettingsPanel: true, HistoryPanel: true, DiscoverPanel: true, AdvisoriesPanel: true, TrustedSourcesPanel: true, AutoUpdateOverview: true } } })
+		await flushPromises()
+
+		const labels = (id: string) => wrapper.find(`[data-app-id="${id}"]`).findAll('[data-testid="app-rollback-button"]').map((button) => button.text())
+		expect(labels('dossiq')).toEqual(['Roll back to 0.4.44'])
+		expect(labels('drifted')).toEqual(['Roll back to 0.4.44', 'Roll back to the last good version (0.4.46)'])
+		expect(labels('calendar')).toEqual([])
 	})
 })

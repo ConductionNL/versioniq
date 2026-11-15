@@ -1,7 +1,7 @@
 # security-advisory-correlation Specification
 
 ## Purpose
-TBD - created by archiving change security-advisory-correlation. Update Purpose after archive.
+An administrator learns which installed or pinned app versions are affected by a published security advisory, without leaving Nextcloud. The system reads Nextcloud's advisory feed and the forge advisories of bound sources on a schedule the admin sets, matches each advisory to the installed version per release branch, notifies admins of new advisories that affect them and sends a weekly digest of the rest. It never changes a version on its own.
 ## Requirements
 ### Requirement: The installed/pinned version is correlated against known security advisories
 
@@ -72,3 +72,83 @@ critical and a low advisory do not look the same.
 - **GIVEN** an app with a low and a critical advisory
 - **WHEN** the Apps tab renders its card
 - **THEN** the advisory badge MUST read the state followed by "Critical"
+
+
+### Requirement: Advisories are matched per release branch
+
+When an advisory lists patched versions, the system MUST decide whether the installed version is
+affected from that list, per `major.minor` branch, and not from the advisory's range text: when
+the installed version's own branch has a patch listed, that patch alone decides (at or above it
+is fixed, below it is affected); a branch with no patch listed falls through to the nearest
+higher patch in the same major; a version newer than every patch for its major is not affected.
+An advisory without a patched-version list MUST keep the range evaluation. Code:
+`lib/Service/Advisory/BranchAwareRange.php` (`resolvePatch`), called from
+`lib/Service/Advisory/AdvisoryService.php`.
+
+#### Scenario: A backported fix on a maintained branch reads fixed
+
+@e2e exclude needs a live feed fixture; covered by tests/unit/Service/Advisory/BranchAwareRangeTest.php, which sweeps the committed feed corpus (0 false positives in 458 probes, 0 misses in 412).
+
+- **GIVEN** an advisory with patched versions 21.1.10, 22.0.11 and 23.0.3
+- **WHEN** the installed version is 22.0.11
+- **THEN** the app MUST NOT be reported as affected
+- **AND** an installed 22.0.10 MUST be reported as affected, with 22.0.11 as the fix
+
+#### Scenario: Several lower bounds do not hide an affected version
+
+@e2e exclude covered by tests/unit/Service/Advisory/BranchAwareRangeTest.php.
+
+- **GIVEN** an advisory whose range reads ">= 3.5.0, >= 3.7.0, >= 4.1.0, >= 4.3.0" and whose patched versions are 3.7.25, 5.5.16, 5.6.20 and 5.7.13
+- **WHEN** the installed version is 3.6.0
+- **THEN** the app MUST be reported as affected
+
+### Requirement: The admin sets how often advisories are checked
+
+The advisory refresh job MUST run every N hours, where N is the interval the admin saved, 6 by
+default, between 1 and 24. The Apps tab MUST offer the interval in its security advisory
+checks settings, reading the bounds from `GET /api/advisory/settings`. `PUT
+/api/advisory/settings` MUST be admin-only and password-confirmed, and MUST refuse a value that
+is not a number or lies outside 1 to 24 with HTTP 400. The job reads the interval when it is
+constructed, so a change applies from the next run. Before the first check, the freshness line
+MUST name the saved interval. Code: `lib/Service/Advisory/AdvisorySettingsStore.php`,
+`lib/BackgroundJob/AdvisoryRefreshJob.php`, `lib/Controller/ApiController.php`
+(`advisorySettings`, `updateAdvisorySettings`), `src/App.vue` (`advisory-interval`),
+`src/utils/advisoryFreshness.ts`.
+
+#### Scenario: The admin changes the interval
+
+@e2e tests/e2e/advisories.spec.ts
+
+- **GIVEN** the admin opens the security advisory checks settings
+- **WHEN** they set the interval to 12 hours and save
+- **THEN** `GET /api/advisory/settings` MUST return `intervalHours` 12
+- **AND** a request for 30 hours MUST be refused with HTTP 400 and leave 12 stored
+
+### Requirement: Non-urgent advisories arrive in a weekly digest
+
+Once a week the system MUST send every admin one `advisory_digest` notification that counts the
+apps with published advisories that do not affect the installed version, and the advisories in
+total. The digest MUST NOT be sent when it is switched off, when one went out in the last seven
+days, or when there is nothing to report; a week with nothing to report MUST NOT start the
+seven-day wait. A failed dispatch MUST NOT count as sent. The digest is on by default, and the
+admin switches it in the security advisory checks settings (`digestEnabled`). The notifier MUST
+render the subject as "Weekly security advisory digest". Code:
+`lib/Service/Advisory/AdvisoryDigestNotifier.php` (`sendIfDue`), called from
+`lib/BackgroundJob/AdvisoryRefreshJob.php`, rendered by `lib/Notification/Notifier.php`.
+
+#### Scenario: The digest goes out once a week
+
+@e2e exclude the digest fires from a background job on a seven-day clock; covered by tests/unit/Service/Advisory/AdvisoryDigestNotifierTest.php.
+
+- **GIVEN** the digest is on, none was sent in the last seven days, and two apps have advisories that do not affect their installed version
+- **WHEN** the advisory refresh job runs
+- **THEN** every admin MUST receive one "Weekly security advisory digest" notification naming 2 apps
+- **AND** the next run within seven days MUST NOT send another
+
+#### Scenario: A switched-off digest stays silent
+
+@e2e exclude covered by tests/unit/Service/Advisory/AdvisoryDigestNotifierTest.php.
+
+- **GIVEN** the admin switched the digest off
+- **WHEN** the advisory refresh job runs
+- **THEN** no `advisory_digest` notification MUST be sent

@@ -13,7 +13,9 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Source;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Audit\AuditLogger;
+use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCP\IAppConfig;
 use OCP\IUserSession;
 use Psr\Log\LoggerInterface;
@@ -107,12 +109,8 @@ class SourceBindingStore {
 			: null;
 
 		$this->auditLogger->record(
-			$actorUid,
-			$appId,
-			AuditLogger::OPERATION_BIND_SOURCE,
-			null,
-			null,
-			$binding->getId(),
+			new AuditSubject($actorUid, $appId, AuditLogger::OPERATION_BIND_SOURCE),
+			new AuditedVersions(null, null, $binding->getId()),
 			AuditLogger::STATUS_SUCCESS,
 			$message,
 		);
@@ -130,12 +128,8 @@ class SourceBindingStore {
 		$this->config->deleteKey(Application::APP_ID, $this->key($appId));
 
 		$this->auditLogger->record(
-			$this->userSession->getUser()?->getUID() ?? 'system',
-			$appId,
-			AuditLogger::OPERATION_BIND_SOURCE,
-			null,
-			null,
-			SourceBinding::appStore()->getId(),
+			new AuditSubject($this->userSession->getUser()?->getUID() ?? 'system', $appId, AuditLogger::OPERATION_BIND_SOURCE),
+			new AuditedVersions(null, null, SourceBinding::appStore()->getId()),
 			AuditLogger::STATUS_SUCCESS,
 			$previous !== null ? sprintf('Binding removed, was %s', $previous->getId()) : 'Binding removed',
 		);

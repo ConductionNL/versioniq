@@ -2,12 +2,21 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Service\Discovery;
 
 use OCA\Versioniq\Service\Discovery\AppStoreDiscovery;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
+use OCA\Versioniq\Service\Discovery\DiscoveryProviders;
+use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
 use OCA\Versioniq\Service\Discovery\DiscoveryHit;
+use OCA\Versioniq\Service\Discovery\DiscoveryListing;
 use OCA\Versioniq\Service\Discovery\DiscoveryResult;
+use OCA\Versioniq\Service\Discovery\DiscoverySource;
 use OCA\Versioniq\Service\Discovery\GithubPrivateDiscovery;
 use OCA\Versioniq\Service\Discovery\GithubSearchDiscovery;
 use OCA\Versioniq\Service\Source\SourceBinding;
@@ -18,14 +27,18 @@ final class DiscoveryAggregatorTest extends TestCase {
 	private function makeHit(string $providerId, string $appId, string $name, bool $installable = true, array $binding = []): DiscoveryHit {
 		return new DiscoveryHit(
 			appId: $appId,
-			name: $name,
-			summary: $name . ' summary',
-			iconUrl: $providerId === AppStoreDiscovery::ID ? 'https://example/icon.png' : null,
-			sourceProviderId: $providerId,
-			sourceBinding: $binding ?: ['kind' => SourceBinding::KIND_APPSTORE],
-			installable: $installable,
-			installableReason: $installable ? null : 'reason',
-			homepageUrl: null,
+			listing: new DiscoveryListing(
+				name: $name,
+				summary: $name . ' summary',
+				iconUrl: $providerId === AppStoreDiscovery::ID ? 'https://example/icon.png' : null,
+				homepageUrl: null,
+			),
+			source: new DiscoverySource(
+				providerId: $providerId,
+				binding: $binding ?: ['kind' => SourceBinding::KIND_APPSTORE],
+				installable: $installable,
+				installableReason: $installable ? null : 'reason',
+			),
 		);
 	}
 
@@ -59,7 +72,7 @@ final class DiscoveryAggregatorTest extends TestCase {
 			static fn (string $appId): string => $installedApps[$appId] ?? ''
 		);
 
-		return new DiscoveryAggregator($appManager, $appStore, $gp, $gs);
+		return new DiscoveryAggregator($appManager, new DiscoveryProviders($appStore, $gp, $gs));
 	}
 
 	public function testEmptyProvidersReturnEmptyResults(): void {
@@ -113,7 +126,7 @@ final class DiscoveryAggregatorTest extends TestCase {
 				$this->makeHit(AppStoreDiscovery::ID, 'opencatalogi', 'Open Catalogi'),
 			]),
 			installedApps: ['openregister' => '0.2.13']
-		)->search('open', null, true);
+		)->search('open', new DiscoveryFilter(null, true));
 
 		$this->assertCount(1, $result['results']);
 		$this->assertSame('openregister', $result['results'][0]['appId']);
@@ -125,7 +138,7 @@ final class DiscoveryAggregatorTest extends TestCase {
 			githubPrivate: new DiscoveryResult([$this->makeHit(GithubPrivateDiscovery::ID, 'private_app', 'private-app',
 				binding: ['kind' => SourceBinding::KIND_GITHUB_RELEASE, 'owner' => 'me', 'repo' => 'private-app']
 			)]),
-		)->search('register', [AppStoreDiscovery::ID]);
+		)->search('register', new DiscoveryFilter([AppStoreDiscovery::ID]));
 
 		$this->assertCount(1, $result['results']);
 		$this->assertSame('openregister', $result['results'][0]['appId']);
@@ -160,14 +173,18 @@ final class DiscoveryAggregatorTest extends TestCase {
 			githubPrivate: new DiscoveryResult([
 				new DiscoveryHit(
 					appId: 'openregister',
-					name: 'openregister',
-					summary: 'github description that should NOT win',
-					iconUrl: null,
-					sourceProviderId: GithubPrivateDiscovery::ID,
-					sourceBinding: ['kind' => SourceBinding::KIND_GITHUB_RELEASE, 'owner' => 'ConductionNL', 'repo' => 'openregister'],
-					installable: true,
-					installableReason: null,
-					homepageUrl: null,
+					listing: new DiscoveryListing(
+						name: 'openregister',
+						summary: 'github description that should NOT win',
+						iconUrl: null,
+						homepageUrl: null,
+					),
+					source: new DiscoverySource(
+						providerId: GithubPrivateDiscovery::ID,
+						binding: ['kind' => SourceBinding::KIND_GITHUB_RELEASE, 'owner' => 'ConductionNL', 'repo' => 'openregister'],
+						installable: true,
+						installableReason: null,
+					),
 				),
 			]),
 		)->search('register');

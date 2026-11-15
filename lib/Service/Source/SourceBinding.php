@@ -44,6 +44,14 @@ final class SourceBinding {
 	private const ALLOWED_FORGES = self::FORGES;
 
 	/**
+	 * Forges kept only for what was stored under them: never offered for a
+	 * new binding, token or trusted pattern (codeberg-is-no-release-source).
+	 *
+	 * @var list<string>
+	 */
+	public const RETIRED_FORGES = [self::FORGE_CODEBERG];
+
+	/**
 	 * Cap on the number of `version => sha256` entries carried in the binding's
 	 * `sha256` map, oldest evicted first; see "Recorded digests are
 	 * binding-scoped and surfaced".
@@ -65,25 +73,64 @@ final class SourceBinding {
 		}
 
 		if ($kind === self::KIND_GITHUB_RELEASE) {
-			if (!isset($config['owner']) || !is_string($config['owner']) || $config['owner'] === '') {
-				throw new InvalidArgumentException('github-release binding requires non-empty owner');
-			}
-			if (!isset($config['repo']) || !is_string($config['repo']) || $config['repo'] === '') {
-				throw new InvalidArgumentException('github-release binding requires non-empty repo');
-			}
-			// Reject path-traversal characters in owner/repo. fnmatch in
-			// TrustedSourceList lets `*` match `/`, so `ConductionNL/../../../x`
-			// would otherwise pass the allowlist. GitHub's own owner/repo
-			// charset is the same as below. CWE-22 / OWASP A01:2021.
-			if (!preg_match('/^[A-Za-z0-9_.\-]+$/', $config['owner'])) {
-				throw new InvalidArgumentException('github-release owner contains invalid characters');
-			}
-			if (!preg_match('/^[A-Za-z0-9_.\-]+$/', $config['repo'])) {
-				throw new InvalidArgumentException('github-release repo contains invalid characters');
-			}
-			if (isset($config['forge']) && (!is_string($config['forge']) || !in_array($config['forge'], self::ALLOWED_FORGES, true))) {
-				throw new InvalidArgumentException('github-release binding has an unknown forge');
-			}
+			self::assertValidReleaseConfig($config);
+		}
+	}
+
+	/**
+	 * Validates a `github-release` binding's config, owner and repo first,
+	 * then their charset, then the forge; the first failing check throws.
+	 *
+	 * @param array<string, mixed> $config
+	 * @throws InvalidArgumentException
+	 */
+	private static function assertValidReleaseConfig(array $config): void {
+		self::requireNonEmptyString($config, 'owner');
+		self::requireNonEmptyString($config, 'repo');
+		// Reject path-traversal characters in owner/repo. fnmatch in
+		// TrustedSourceList lets `*` match `/`, so `ConductionNL/../../../x`
+		// would otherwise pass the allowlist. GitHub's own owner/repo
+		// charset is the same as below. CWE-22 / OWASP A01:2021.
+		self::requireSafeName($config, 'owner');
+		self::requireSafeName($config, 'repo');
+		self::requireKnownForge($config);
+	}
+
+	/**
+	 * @param array<string, mixed> $config
+	 * @throws InvalidArgumentException
+	 */
+	private static function requireNonEmptyString(array $config, string $field): void {
+		if (!isset($config[$field]) || !is_string($config[$field]) || $config[$field] === '') {
+			throw new InvalidArgumentException('github-release binding requires non-empty ' . $field);
+		}
+	}
+
+	/**
+	 * Requires a field already known to be a non-empty string to hold only
+	 * GitHub's owner/repo charset.
+	 *
+	 * @param array<string, mixed> $config
+	 * @throws InvalidArgumentException
+	 */
+	private static function requireSafeName(array $config, string $field): void {
+		/** @var string $value */
+		$value = $config[$field];
+		if (!preg_match('/^[A-Za-z0-9_.\-]+$/', $value)) {
+			throw new InvalidArgumentException('github-release ' . $field . ' contains invalid characters');
+		}
+	}
+
+	/**
+	 * An absent forge is a legacy row and defaults to github; a present one
+	 * must be one of the known forges.
+	 *
+	 * @param array<string, mixed> $config
+	 * @throws InvalidArgumentException
+	 */
+	private static function requireKnownForge(array $config): void {
+		if (isset($config['forge']) && (!is_string($config['forge']) || !in_array($config['forge'], self::ALLOWED_FORGES, true))) {
+			throw new InvalidArgumentException('github-release binding has an unknown forge');
 		}
 	}
 
@@ -344,6 +391,15 @@ final class SourceBinding {
 	 * @spec openspec/specs/external-sources/spec.md
 	 * @throws InvalidArgumentException
 	 */
+	/**
+	 * Whether a forge is retired, so a new binding or pattern may not name it.
+	 *
+	 * @spec openspec/changes/codeberg-is-no-release-source/specs/external-sources/spec.md
+	 */
+	public static function isRetiredForge(string $forge): bool {
+		return in_array($forge, self::RETIRED_FORGES, true);
+	}
+
 	public static function release(string $forge, string $owner, string $repo, string $assetPattern = '*.tar.gz'): self {
 		return self::forgeRelease($forge, $owner, $repo, $assetPattern);
 	}

@@ -25,6 +25,14 @@ context: |
 
   This is a standalone utility app — no sister apps, no OpenRegister, no shared specs needed.
 
+  mcp-coverage: |
+    OCA\Versioniq\Mcp\VersioniqToolProvider (admin-mcp-assistant), found by
+    OpenRegister's MCP discovery by class name when OpenRegister is installed;
+    without it nothing loads. Five read-only, admin-only tools:
+    versioniq.listApps, versioniq.listAdvisories, versioniq.explainAdvisory,
+    versioniq.listPendingUpdates, versioniq.listVersions. No write tool:
+    installs need password confirmation, which an assistant cannot give.
+
 rules:
   proposal:
     - This is an admin-only utility — all features require admin privileges
