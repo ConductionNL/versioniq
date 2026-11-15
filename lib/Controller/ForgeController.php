@@ -36,6 +36,8 @@ use OCP\IUserSession;
  * @psalm-suppress UnusedClass
  */
 class ForgeController extends OCSController {
+	use ChecksAdmin;
+
 	public function __construct(
 		string $appName,
 		IRequest $request,
@@ -57,6 +59,7 @@ class ForgeController extends OCSController {
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/forges/forgejo')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/forges/forgejo', postfix: 'v1')]
 	public function forgejoHost(): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -80,6 +83,7 @@ class ForgeController extends OCSController {
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PUT', url: '/api/forges/forgejo')]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/forges/forgejo', postfix: 'v1')]
 	public function setForgejoHost(string $host = ''): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
@@ -101,14 +105,5 @@ class ForgeController extends OCSController {
 		$host = $this->forgeRegistry->forgejoHost();
 
 		return ['host' => $host, 'configured' => $host !== ''];
-	}
-
-	private function isAdmin(): bool {
-		$user = $this->userSession->getUser();
-		if ($user === null) {
-			return false;
-		}
-
-		return $this->groupManager->isAdmin($user->getUID());
 	}
 }

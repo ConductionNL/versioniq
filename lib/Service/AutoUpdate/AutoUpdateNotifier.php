@@ -12,11 +12,10 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\AutoUpdate;
 
-use OCA\Versioniq\AppInfo\Application;
-use OCP\AppFramework\Utility\ITimeFactory;
-use OCP\IGroupManager;
-use OCP\IURLGenerator;
-use OCP\Notification\IManager;
+use OCA\Versioniq\Service\AdminNotice;
+use OCA\Versioniq\Service\AdminNotificationServices;
+use OCA\Versioniq\Service\NotifiesAdmins;
+use OCA\Versioniq\Service\ResolvesAdminUids;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -30,11 +29,11 @@ use Psr\Log\LoggerInterface;
  * @psalm-api
  */
 class AutoUpdateNotifier {
+	use NotifiesAdmins;
+	use ResolvesAdminUids;
+
 	public function __construct(
-		private IManager $notificationManager,
-		private IGroupManager $groupManager,
-		private ITimeFactory $timeFactory,
-		private IURLGenerator $urlGenerator,
+		private AdminNotificationServices $admin,
 		private LoggerInterface $logger,
 	) {
 	}
@@ -46,11 +45,11 @@ class AutoUpdateNotifier {
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 */
 	public function notifySuccess(string $appId, ?string $fromVersion, string $toVersion): void {
-		$this->fireAll($appId, $toVersion, 'auto_update_success', [
+		$this->notifyAdmins($this->notice('auto_update_success', [
 			'app' => $appId,
 			'fromVersion' => $fromVersion ?? '',
 			'toVersion' => $toVersion,
-		]);
+		])->withObject('auto_update', $appId . ':' . $toVersion));
 	}
 
 	/**
@@ -61,55 +60,25 @@ class AutoUpdateNotifier {
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 */
 	public function notifyFailure(string $appId, string $targetVersion, string $category, string $hint): void {
-		$this->fireAll($appId, $targetVersion, 'auto_update_failure', [
+		$this->notifyAdmins($this->notice('auto_update_failure', [
 			'app' => $appId,
 			'targetVersion' => $targetVersion,
 			'category' => $category,
 			'hint' => $hint,
-		]);
+		])->withObject('auto_update', $appId . ':' . $targetVersion));
 	}
 
 	/**
-	 * @param array<string, string> $subjectParameters
+	 * A notice with this subject, logged with its app and subject when it fails.
+	 *
+	 * @param array{app: string}&array<string, string> $parameters
 	 */
-	private function fireAll(string $appId, string $version, string $subject, array $subjectParameters): void {
-		// Links into the Versioniq admin settings page.
-		$link = $this->urlGenerator->linkToRouteAbsolute(
-			'settings.AdminSettings.index',
-			['section' => Application::APP_ID],
-		);
-
-		foreach ($this->adminUids() as $uid) {
-			try {
-				$notification = $this->notificationManager->createNotification();
-				$notification
-					->setApp(Application::APP_ID)
-					->setUser($uid)
-					->setDateTime($this->timeFactory->getDateTime())
-					->setObject('auto_update', $appId . ':' . $version)
-					->setSubject($subject, $subjectParameters)
-					->setLink($link);
-				$this->notificationManager->notify($notification);
-			} catch (\Throwable $error) {
-				$this->logger->warning('AutoUpdateNotifier: failed to raise notification', [
-					'appId' => $appId,
-					'subject' => $subject,
-					'uid' => $uid,
-					'message' => $error->getMessage(),
-				]);
-			}
-		}
-	}
-
-	/**
-	 * @return list<string>
-	 */
-	private function adminUids(): array {
-		$uids = [];
-		foreach ($this->groupManager->get('admin')?->getUsers() ?? [] as $user) {
-			$uids[] = $user->getUID();
-		}
-
-		return array_values(array_unique($uids));
+	private function notice(string $subject, array $parameters): AdminNotice {
+		return (new AdminNotice())
+			->withSubject($subject, $parameters)
+			->loggedAs('AutoUpdateNotifier: failed to raise notification', [
+				'appId' => $parameters['app'],
+				'subject' => $subject,
+			]);
 	}
 }

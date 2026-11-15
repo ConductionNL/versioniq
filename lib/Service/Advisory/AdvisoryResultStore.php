@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Advisory;
 
-use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Settings\StoredSnapshot;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
 
@@ -36,11 +36,12 @@ use Psr\Log\LoggerInterface;
  * @psalm-api
  */
 class AdvisoryResultStore {
-	/** App config key holding the JSON-encoded correlation snapshot. */
+	/**
+	 * App config key holding the JSON-encoded correlation snapshot; the unix
+	 * time of the last completed sweep is held under `advisory.results.checkedAt`
+	 * (see {@see StoredSnapshot}).
+	 */
 	private const KEY = 'advisory.results';
-
-	/** App config key holding the unix time of the last completed sweep. */
-	private const KEY_CHECKED_AT = 'advisory.results.checkedAt';
 
 	public function __construct(
 		private IAppConfig $config,
@@ -59,7 +60,7 @@ class AdvisoryResultStore {
 	 */
 	public function save(array $correlations, int $checkedAt): void {
 		try {
-			$encoded = json_encode($correlations, JSON_THROW_ON_ERROR);
+			$this->snapshot()->write($correlations, $checkedAt);
 		} catch (\JsonException $error) {
 			// A snapshot that cannot be encoded must not clear the previous
 			// one: a stale answer is worth more than no answer, and the UI
@@ -67,12 +68,7 @@ class AdvisoryResultStore {
 			$this->logger->error('AdvisoryResultStore: could not encode correlation snapshot; keeping the previous one', [
 				'message' => $error->getMessage(),
 			]);
-
-			return;
 		}
-
-		$this->config->setValueString(Application::APP_ID, self::KEY, $encoded);
-		$this->config->setValueInt(Application::APP_ID, self::KEY_CHECKED_AT, $checkedAt);
 	}
 
 	/**
@@ -84,13 +80,8 @@ class AdvisoryResultStore {
 	 * @return array{advisories: array<string, mixed>, checkedAt: ?int}
 	 */
 	public function read(): array {
-		$raw = $this->config->getValueString(Application::APP_ID, self::KEY, '');
-		if ($raw === '') {
-			return ['advisories' => [], 'checkedAt' => null];
-		}
-
 		try {
-			$decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+			$advisories = $this->snapshot()->readMap();
 		} catch (\JsonException $error) {
 			$this->logger->warning('AdvisoryResultStore: stored snapshot is not valid JSON; reporting as never checked', [
 				'message' => $error->getMessage(),
@@ -99,22 +90,20 @@ class AdvisoryResultStore {
 			return ['advisories' => [], 'checkedAt' => null];
 		}
 
-		if (!is_array($decoded)) {
+		if ($advisories === null) {
 			return ['advisories' => [], 'checkedAt' => null];
 		}
 
-		$checkedAt = $this->config->getValueInt(Application::APP_ID, self::KEY_CHECKED_AT, 0);
-
-		// json_decode yields array-key keys; the keys we wrote are app ids.
-		// Stated once here rather than re-derived by every caller.
-		/** @var array<string, mixed> $advisories */
-		$advisories = $decoded;
-
 		return [
 			'advisories' => $advisories,
-			// 0 means the key was absent. Reporting it as `null` keeps
-			// "never checked" one value rather than two.
-			'checkedAt' => $checkedAt > 0 ? $checkedAt : null,
+			'checkedAt' => $this->snapshot()->checkedAt(),
 		];
+	}
+
+	/**
+	 * The snapshot under {@see KEY}, its sweep time under `KEY.checkedAt`.
+	 */
+	private function snapshot(): StoredSnapshot {
+		return new StoredSnapshot($this->config, self::KEY);
 	}
 }

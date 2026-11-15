@@ -2,11 +2,20 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Service\Pin;
 
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\Service\Pin\Pin;
+use OCA\Versioniq\Service\Pin\PinDrift;
 use OCA\Versioniq\Service\Pin\PinDriftHandler;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IGroup;
 use OCP\IGroupManager;
@@ -18,6 +27,8 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 final class PinDriftHandlerTest extends TestCase {
+	use BuildsByParameterName;
+
 	private function timeFactory(): ITimeFactory {
 		$factory = $this->createMock(ITimeFactory::class);
 		$factory->method('getDateTime')->willReturn(new \DateTime('2026-06-12T00:00:00+00:00'));
@@ -57,14 +68,14 @@ final class PinDriftHandlerTest extends TestCase {
 		$notificationManager = $this->createMock(IManager::class);
 		$notificationManager->expects($this->never())->method('notify');
 
-		$handler = new PinDriftHandler(
-			$pinStore,
-			$notificationManager,
-			$this->groupManagerWithAdmins(['admin']),
-			$this->timeFactory(),
-			$this->urlGenerator(),
-			$this->createMock(LoggerInterface::class),
-		);
+		$handler = $this->buildByName(PinDriftHandler::class, [
+			'pinStore' => $pinStore,
+			'notificationManager' => $notificationManager,
+			'groupManager' => $this->groupManagerWithAdmins(['admin']),
+			'timeFactory' => $this->timeFactory(),
+			'urlGenerator' => $this->urlGenerator(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 
 		$handler->handle('openregister', '2.3.0');
 	}
@@ -77,14 +88,14 @@ final class PinDriftHandlerTest extends TestCase {
 		$notificationManager = $this->createMock(IManager::class);
 		$notificationManager->expects($this->never())->method('notify');
 
-		$handler = new PinDriftHandler(
-			$pinStore,
-			$notificationManager,
-			$this->groupManagerWithAdmins(['admin']),
-			$this->timeFactory(),
-			$this->urlGenerator(),
-			$this->createMock(LoggerInterface::class),
-		);
+		$handler = $this->buildByName(PinDriftHandler::class, [
+			'pinStore' => $pinStore,
+			'notificationManager' => $notificationManager,
+			'groupManager' => $this->groupManagerWithAdmins(['admin']),
+			'timeFactory' => $this->timeFactory(),
+			'urlGenerator' => $this->urlGenerator(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 
 		$handler->handle('openregister', '2.5.0');
 	}
@@ -94,7 +105,7 @@ final class PinDriftHandlerTest extends TestCase {
 		$pinStore->method('get')->willReturn(new Pin('2.3.0', 'alice', '2026-06-11T12:00:00+00:00'));
 		$pinStore->expects($this->once())
 			->method('markDrift')
-			->with('openregister', '2.5.0', '2026-06-12T00:00:00+00:00')
+			->with('openregister', new PinDrift('2.5.0', '2026-06-12T00:00:00+00:00'))
 			->willReturn(true);
 
 		$notification = $this->createMock(INotification::class);
@@ -112,14 +123,14 @@ final class PinDriftHandlerTest extends TestCase {
 		$notificationManager->method('createNotification')->willReturn($notification);
 		$notificationManager->expects($this->exactly(2))->method('notify')->with($notification);
 
-		$handler = new PinDriftHandler(
-			$pinStore,
-			$notificationManager,
-			$this->groupManagerWithAdmins(['admin', 'bob']),
-			$this->timeFactory(),
-			$this->urlGenerator(),
-			$this->createMock(LoggerInterface::class),
-		);
+		$handler = $this->buildByName(PinDriftHandler::class, [
+			'pinStore' => $pinStore,
+			'notificationManager' => $notificationManager,
+			'groupManager' => $this->groupManagerWithAdmins(['admin', 'bob']),
+			'timeFactory' => $this->timeFactory(),
+			'urlGenerator' => $this->urlGenerator(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 
 		$handler->handle('openregister', '2.5.0');
 	}
@@ -132,14 +143,14 @@ final class PinDriftHandlerTest extends TestCase {
 		$notificationManager = $this->createMock(IManager::class);
 		$notificationManager->expects($this->never())->method('notify');
 
-		$handler = new PinDriftHandler(
-			$pinStore,
-			$notificationManager,
-			$this->groupManagerWithAdmins(['admin']),
-			$this->timeFactory(),
-			$this->urlGenerator(),
-			$this->createMock(LoggerInterface::class),
-		);
+		$handler = $this->buildByName(PinDriftHandler::class, [
+			'pinStore' => $pinStore,
+			'notificationManager' => $notificationManager,
+			'groupManager' => $this->groupManagerWithAdmins(['admin']),
+			'timeFactory' => $this->timeFactory(),
+			'urlGenerator' => $this->urlGenerator(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 
 		$handler->handle('openregister', '2.5.0');
 	}

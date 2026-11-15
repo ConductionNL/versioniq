@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Advisory;
 
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
+
 use OCA\Versioniq\Service\Advisory\AdvisoryService;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
 use OCA\Versioniq\Service\Advisory\BranchAwareRange;
@@ -21,21 +23,24 @@ use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\SourceRegistry;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 final class AdvisoryServiceTest extends TestCase {
+	use BuildsByParameterName;
+
 	private function service(): AdvisoryService {
-		return new AdvisoryService(
-			$this->createMock(SourceRegistry::class),
-			$this->createMock(SourceBindingStore::class),
-			$this->createMock(IAppManager::class),
-			$this->quietFeed(),
-			new BranchAwareRange(),
-			$this->createMock(ServerVersionProvider::class),
-			$this->createMock(LoggerInterface::class),
-		);
+		return $this->buildByName(AdvisoryService::class, [
+			'sourceRegistry' => $this->createMock(SourceRegistry::class),
+			'bindingStore' => $this->createMock(SourceBindingStore::class),
+			'appManager' => $this->createMock(IAppManager::class),
+			'advisoryFeed' => $this->quietFeed(),
+			'branchRange' => new BranchAwareRange(),
+			'serverVersion' => $this->createMock(ServerVersionProvider::class),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 	}
 
 	/**
@@ -58,9 +63,11 @@ final class AdvisoryServiceTest extends TestCase {
 	 * @param array<string, list<array<string, mixed>>> $feedAdvisories
 	 * @param array<string, string> $installedVersions app id => version
 	 */
-	private function serviceWithFeed(array $feedAdvisories, array $installedVersions, string $serverVersion = '31.0.2'): AdvisoryService {
-		$feed = $this->createMock(NextcloudAdvisoryFeed::class);
-		$feed->method('fetchAll')->willReturn(['advisories' => $feedAdvisories, 'error' => null]);
+	private function serviceWithFeed(array $feedAdvisories, array $installedVersions, string $serverVersion = '31.0.2', ?NextcloudAdvisoryFeed $feed = null): AdvisoryService {
+		if ($feed === null) {
+			$feed = $this->createMock(NextcloudAdvisoryFeed::class);
+			$feed->method('fetchAll')->willReturn(['advisories' => $feedAdvisories, 'error' => null]);
+		}
 
 		$appManager = $this->createMock(IAppManager::class);
 		$appManager->method('getEnabledApps')->willReturn(array_keys($installedVersions));
@@ -79,15 +86,15 @@ final class AdvisoryServiceTest extends TestCase {
 		$provider = $this->createMock(ServerVersionProvider::class);
 		$provider->method('current')->willReturn($serverVersion);
 
-		return new AdvisoryService(
-			$registry,
-			$bindingStore,
-			$appManager,
-			$feed,
-			new BranchAwareRange(),
-			$provider,
-			$this->createMock(LoggerInterface::class),
-		);
+		return $this->buildByName(AdvisoryService::class, [
+			'sourceRegistry' => $registry,
+			'bindingStore' => $bindingStore,
+			'appManager' => $appManager,
+			'advisoryFeed' => $feed,
+			'branchRange' => new BranchAwareRange(),
+			'serverVersion' => $provider,
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 	}
 
 	/**
@@ -226,7 +233,15 @@ final class AdvisoryServiceTest extends TestCase {
 		$appManager = $this->createMock(IAppManager::class);
 		$appManager->method('getAppVersion')->willReturn('1.0.5');
 
-		$service = new AdvisoryService($registry, $bindingStore, $appManager, $this->quietFeed(), new BranchAwareRange(), $this->createMock(ServerVersionProvider::class), $this->createMock(LoggerInterface::class));
+		$service = $this->buildByName(AdvisoryService::class, [
+			'sourceRegistry' => $registry,
+			'bindingStore' => $bindingStore,
+			'appManager' => $appManager,
+			'advisoryFeed' => $this->quietFeed(),
+			'branchRange' => new BranchAwareRange(),
+			'serverVersion' => $this->createMock(ServerVersionProvider::class),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 		$result = $service->correlate('someapp');
 
 		$this->assertSame('someapp', $result['appId']);
@@ -234,6 +249,37 @@ final class AdvisoryServiceTest extends TestCase {
 		$this->assertSame(AdvisoryService::STATE_VULNERABLE, $result['state']);
 		$this->assertSame('1.2.3', $result['recommendedVersion']);
 		$this->assertNull($result['error']);
+	}
+
+	/**
+	 * The source is looked up through the binding stored for the app, not
+	 * through the App Store default.
+	 */
+	public function testCorrelateAsksTheRegistryForTheAppsOwnBinding(): void {
+		$binding = SourceBinding::github('acme', 'tool');
+
+		$bindingStore = $this->createMock(SourceBindingStore::class);
+		$bindingStore->expects($this->once())->method('get')->with('someapp')->willReturn($binding);
+
+		$registry = $this->createMock(SourceRegistry::class);
+		$registry->expects($this->once())
+			->method('get')
+			->with($this->identicalTo($binding))
+			->willReturn($this->createMock(SourceInterface::class));
+
+		$appManager = $this->createMock(IAppManager::class);
+		$appManager->method('getAppVersion')->willReturn('1.0.5');
+
+		$service = $this->buildByName(AdvisoryService::class, [
+			'sourceRegistry' => $registry,
+			'bindingStore' => $bindingStore,
+			'appManager' => $appManager,
+			'advisoryFeed' => $this->quietFeed(),
+			'branchRange' => new BranchAwareRange(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
+
+		$this->assertSame(AdvisoryService::STATE_NONE, $service->correlate('someapp')['state']);
 	}
 
 	public function testCorrelateReturnsNoneWhenSourceCannotAnswerAdvisories(): void {
@@ -251,7 +297,15 @@ final class AdvisoryServiceTest extends TestCase {
 		$appManager = $this->createMock(IAppManager::class);
 		$appManager->method('getAppVersion')->willReturn('1.0.0');
 
-		$service = new AdvisoryService($registry, $bindingStore, $appManager, $this->quietFeed(), new BranchAwareRange(), $this->createMock(ServerVersionProvider::class), $this->createMock(LoggerInterface::class));
+		$service = $this->buildByName(AdvisoryService::class, [
+			'sourceRegistry' => $registry,
+			'bindingStore' => $bindingStore,
+			'appManager' => $appManager,
+			'advisoryFeed' => $this->quietFeed(),
+			'branchRange' => new BranchAwareRange(),
+			'serverVersion' => $this->createMock(ServerVersionProvider::class),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
 		$result = $service->correlate('plainapp');
 
 		$this->assertSame(AdvisoryService::STATE_NONE, $result['state']);
@@ -276,6 +330,30 @@ final class AdvisoryServiceTest extends TestCase {
 		$this->assertSame(AdvisoryService::STATE_VULNERABLE, $results['mail']['state']);
 		$this->assertSame('3.7.25', $results['mail']['recommendedVersion']);
 		$this->assertNull($results['mail']['error']);
+	}
+
+	/**
+	 * Scenario "An App Store app is checked against Nextcloud's advisory feed"
+	 * (advisories-name-their-feeds): calendar 5.1.2 from the App Store is
+	 * affected by a feed advisory fixed in 5.1.3, and the sweep reads the feed
+	 * once for every app, not once per app.
+	 *
+	 * @spec openspec/changes/advisories-name-their-feeds/specs/security-advisory-correlation/spec.md
+	 */
+	public function testTheSweepReadsTheFeedOnceForEveryApp(): void {
+		$advisories = ['calendar' => [$this->feedAdvisory('GHSA-cal1', ['5.1.3'])]];
+		$feed = $this->createMock(NextcloudAdvisoryFeed::class);
+		$feed->expects($this->once())->method('fetchAll')->willReturn(['advisories' => $advisories, 'error' => null]);
+
+		$service = $this->serviceWithFeed($advisories, ['calendar' => '5.1.2', 'contacts' => '7.0.0', 'mail' => '5.5.0'], '31.0.2', $feed);
+
+		$results = $service->correlateAll(60.0);
+
+		$this->assertSame(AdvisoryService::STATE_VULNERABLE, $results['calendar']['state']);
+		$this->assertSame('5.1.3', $results['calendar']['recommendedVersion']);
+		$this->assertSame(['GHSA-cal1'], array_column($results['calendar']['advisories'], 'id'));
+		$this->assertSame(AdvisoryService::STATE_NONE, $results['contacts']['state']);
+		$this->assertSame(AdvisoryService::STATE_NONE, $results['mail']['state']);
 	}
 
 	/**
@@ -354,5 +432,48 @@ final class AdvisoryServiceTest extends TestCase {
 		$results = $service->correlateAll(60.0);
 
 		$this->assertSame('0.9.5', $results['tables']['recommendedVersion']);
+	}
+
+	/**
+	 * A feed read only in part is logged; with no budget left no app's source
+	 * is asked and each app says so; an app whose correlation throws is
+	 * reported with the error instead of aborting the sweep.
+	 */
+	public function testAPartialFeedTheBudgetAndAFailingApp(): void {
+		$logged = [];
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->method('warning')->willReturnCallback(static function (string $message, array $context) use (&$logged): void {
+			$logged[] = [$message, $context];
+		});
+		$feed = $this->createMock(NextcloudAdvisoryFeed::class);
+		$feed->method('fetchAll')->willReturn(['advisories' => [], 'error' => 'page 2 failed']);
+		$appManager = $this->createMock(IAppManager::class);
+		$appManager->method('getEnabledApps')->willReturn(['mail', 'deck']);
+		$appManager->method('getAppVersion')->willReturn('1.0.0');
+		$bindingStore = $this->createMock(SourceBindingStore::class);
+		$bindingStore->method('get')->willThrowException(new \RuntimeException('store down'));
+		$service = $this->buildByName(AdvisoryService::class, [
+			'sourceRegistry' => $this->createMock(SourceRegistry::class),
+			'bindingStore' => $bindingStore,
+			'appManager' => $appManager,
+			'advisoryFeed' => $feed,
+			'branchRange' => new BranchAwareRange(),
+			'serverVersion' => $this->createMock(ServerVersionProvider::class),
+			'logger' => $logger,
+		]);
+
+		$outOfTime = $service->correlateAll(-1.0);
+		$failing = $service->correlateAll(60.0);
+
+		$this->assertSame(['mail', 'deck'], array_keys($outOfTime));
+		$this->assertSame('Advisory correlation budget exceeded before this app was reached; its sources were not queried.', $outOfTime['deck']['error']);
+		$this->assertSame('1.0.0', $outOfTime['deck']['installedVersion']);
+		$this->assertSame('store down', $failing['mail']['error']);
+		$this->assertSame([
+			['AdvisoryService: the Nextcloud advisory feed could not be read in full', ['message' => 'page 2 failed']],
+			['AdvisoryService: the Nextcloud advisory feed could not be read in full', ['message' => 'page 2 failed']],
+			['AdvisoryService: correlation failed for app', ['app' => 'mail', 'message' => 'store down']],
+			['AdvisoryService: correlation failed for app', ['app' => 'deck', 'message' => 'store down']],
+		], $logged);
 	}
 }

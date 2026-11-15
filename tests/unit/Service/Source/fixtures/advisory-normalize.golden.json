@@ -1,0 +1,174 @@
+{
+    "forge forge full": {
+        "id": "GHSA-1",
+        "severity": "high",
+        "summary": "Bad",
+        "affected": [
+            "< 1.2.0",
+            ">= 0.9.0"
+        ],
+        "firstPatchedVersion": "1.2.0"
+    },
+    "forge forge patched string": {
+        "id": "ID-2",
+        "severity": "unknown",
+        "summary": "Titled",
+        "affected": [],
+        "firstPatchedVersion": "2.0"
+    },
+    "forge forge cve only": {
+        "id": "CVE-3",
+        "severity": "unknown",
+        "summary": "",
+        "affected": [],
+        "firstPatchedVersion": null
+    },
+    "forge no id": null,
+    "forge empty id": null,
+    "forge vulnerabilities not a list": {
+        "id": "GHSA-6",
+        "severity": "unknown",
+        "summary": "",
+        "affected": [],
+        "firstPatchedVersion": null
+    },
+    "forge first vulnerability not an array": {
+        "id": "GHSA-7",
+        "severity": "unknown",
+        "summary": "",
+        "affected": [],
+        "firstPatchedVersion": null
+    },
+    "forge patched empty": {
+        "id": "GHSA-8",
+        "severity": "unknown",
+        "summary": "",
+        "affected": [],
+        "firstPatchedVersion": null
+    },
+    "forge store affected string": {
+        "id": "S-1",
+        "severity": "critical",
+        "summary": "",
+        "affected": [],
+        "firstPatchedVersion": null
+    },
+    "forge store affected list": {
+        "id": "S-2",
+        "severity": "unknown",
+        "summary": "",
+        "affected": [],
+        "firstPatchedVersion": null
+    },
+    "forge store affectedVersions": {
+        "id": "S-3",
+        "severity": "unknown",
+        "summary": "",
+        "affected": [],
+        "firstPatchedVersion": null
+    },
+    "forge store affected wins": {
+        "id": "S-4",
+        "severity": "unknown",
+        "summary": "T",
+        "affected": [],
+        "firstPatchedVersion": null
+    },
+    "forge store affected other type": {
+        "id": "S-5",
+        "severity": "unknown",
+        "summary": "",
+        "affected": [],
+        "firstPatchedVersion": null
+    },
+    "forge not an array": "skipped",
+    "store all": [
+        {
+            "id": "GHSA-1",
+            "severity": "high",
+            "summary": "Bad",
+            "affected": [],
+            "firstPatchedVersion": null
+        },
+        {
+            "id": "ID-2",
+            "severity": "unknown",
+            "summary": "Titled",
+            "affected": [],
+            "firstPatchedVersion": null
+        },
+        {
+            "id": "ID-5",
+            "severity": "unknown",
+            "summary": "",
+            "affected": [],
+            "firstPatchedVersion": null
+        },
+        {
+            "id": "GHSA-6",
+            "severity": "unknown",
+            "summary": "",
+            "affected": [],
+            "firstPatchedVersion": null
+        },
+        {
+            "id": "GHSA-7",
+            "severity": "unknown",
+            "summary": "",
+            "affected": [],
+            "firstPatchedVersion": null
+        },
+        {
+            "id": "GHSA-8",
+            "severity": "unknown",
+            "summary": "",
+            "affected": [],
+            "firstPatchedVersion": null
+        },
+        {
+            "id": "S-1",
+            "severity": "critical",
+            "summary": "",
+            "affected": [
+                "< 1.0",
+                ">= 0.1"
+            ],
+            "firstPatchedVersion": "1.0.0"
+        },
+        {
+            "id": "S-2",
+            "severity": "unknown",
+            "summary": "",
+            "affected": [
+                "< 2.0",
+                ">= 1.5"
+            ],
+            "firstPatchedVersion": "2.0.0"
+        },
+        {
+            "id": "S-3",
+            "severity": "unknown",
+            "summary": "",
+            "affected": [
+                "< 3"
+            ],
+            "firstPatchedVersion": null
+        },
+        {
+            "id": "S-4",
+            "severity": "unknown",
+            "summary": "T",
+            "affected": [
+                "< 4"
+            ],
+            "firstPatchedVersion": null
+        },
+        {
+            "id": "S-5",
+            "severity": "unknown",
+            "summary": "",
+            "affected": [],
+            "firstPatchedVersion": null
+        }
+    ]
+}

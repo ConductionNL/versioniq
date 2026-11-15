@@ -1,0 +1,1003 @@
+{
+	"debug": {
+		"null": {
+			"lines": [
+				"—"
+			],
+			"text": [
+				"—"
+			],
+			"nested": [
+				"    —"
+			]
+		},
+		"undefined": {
+			"lines": [
+				"—"
+			],
+			"text": [
+				"—"
+			],
+			"nested": [
+				"    —"
+			]
+		},
+		"string": {
+			"lines": [
+				"hello"
+			],
+			"text": [
+				"hello"
+			],
+			"nested": [
+				"    hello"
+			]
+		},
+		"empty string": {
+			"lines": [
+				""
+			],
+			"text": [
+				""
+			],
+			"nested": [
+				"    "
+			]
+		},
+		"number": {
+			"lines": [
+				"42"
+			],
+			"text": [
+				"42"
+			],
+			"nested": [
+				"    42"
+			]
+		},
+		"boolean": {
+			"lines": [
+				"false"
+			],
+			"text": [
+				"false"
+			],
+			"nested": [
+				"    false"
+			]
+		},
+		"bigint": {
+			"lines": [
+				"12"
+			],
+			"text": [
+				"12"
+			],
+			"nested": [
+				"    12"
+			]
+		},
+		"empty array": {
+			"lines": [
+				"[]"
+			],
+			"text": [
+				"[]"
+			],
+			"nested": [
+				"    []"
+			]
+		},
+		"flat array": {
+			"lines": [
+				"[0]: 1",
+				"[1]: two",
+				"[2]: true",
+				"[3]: —",
+				"[4]: —"
+			],
+			"text": [
+				"[0]: 1",
+				"[1]: two",
+				"[2]: true",
+				"[3]: —",
+				"[4]: —"
+			],
+			"nested": [
+				"    [0]: 1",
+				"    [1]: two",
+				"    [2]: true",
+				"    [3]: —",
+				"    [4]: —"
+			]
+		},
+		"sparse array": {
+			"lines": [
+				"[0]: 1",
+				"[3]: x"
+			],
+			"text": [
+				"[0]: 1",
+				"[3]: x"
+			],
+			"nested": [
+				"    [0]: 1",
+				"    [3]: x"
+			]
+		},
+		"nested array": {
+			"lines": [
+				"[0]:",
+				"  [0]: 1",
+				"  [1]:",
+				"    [0]: 2",
+				"    [1]:",
+				"      []",
+				"[1]:",
+				"  a: 1",
+				"[2]:",
+				"  {}"
+			],
+			"text": [
+				"[0]:",
+				"  [0]: 1",
+				"  [1]:",
+				"    [0]: 2",
+				"    [1]:",
+				"      []",
+				"[1]:",
+				"  a: 1",
+				"[2]:",
+				"  {}"
+			],
+			"nested": [
+				"    [0]:",
+				"      [0]: 1",
+				"      [1]:",
+				"        [0]: 2",
+				"        [1]:",
+				"          []",
+				"    [1]:",
+				"      a: 1",
+				"    [2]:",
+				"      {}"
+			]
+		},
+		"empty object": {
+			"lines": [
+				"{}"
+			],
+			"text": [
+				"{}"
+			],
+			"nested": [
+				"    {}"
+			]
+		},
+		"flat object": {
+			"lines": [
+				"a: 1",
+				"b: two",
+				"c: —",
+				"d: —",
+				"e: false"
+			],
+			"text": [
+				"a: 1",
+				"b: two",
+				"c: —",
+				"d: —",
+				"e: false"
+			],
+			"nested": [
+				"    a: 1",
+				"    b: two",
+				"    c: —",
+				"    d: —",
+				"    e: false"
+			]
+		},
+		"nested object": {
+			"lines": [
+				"stage: download",
+				"data:",
+				"  url: https://x",
+				"  headers:",
+				"    accept: json",
+				"  list:",
+				"    [0]: 1",
+				"    [1]:",
+				"      deep:",
+				"        []",
+				"empty:",
+				"  {}"
+			],
+			"text": [
+				"stage: download",
+				"data:",
+				"  url: https://x",
+				"  headers:",
+				"    accept: json",
+				"  list:",
+				"    [0]: 1",
+				"    [1]:",
+				"      deep:",
+				"        []",
+				"empty:",
+				"  {}"
+			],
+			"nested": [
+				"    stage: download",
+				"    data:",
+				"      url: https://x",
+				"      headers:",
+				"        accept: json",
+				"      list:",
+				"        [0]: 1",
+				"        [1]:",
+				"          deep:",
+				"            []",
+				"    empty:",
+				"      {}"
+			]
+		},
+		"debug log": {
+			"lines": [
+				"[0]:",
+				"  stage: requested-install",
+				"  data:",
+				"    appId: someapp",
+				"    dryRun: false",
+				"[1]:",
+				"  stage: checksum",
+				"  data: —"
+			],
+			"text": [
+				"[0]:",
+				"  stage: requested-install",
+				"  data:",
+				"    appId: someapp",
+				"    dryRun: false",
+				"[1]:",
+				"  stage: checksum",
+				"  data: —"
+			],
+			"nested": [
+				"    [0]:",
+				"      stage: requested-install",
+				"      data:",
+				"        appId: someapp",
+				"        dryRun: false",
+				"    [1]:",
+				"      stage: checksum",
+				"      data: —"
+			]
+		}
+	},
+	"ranges": {
+		"no versions: (none) -> 2.0.0": "none",
+		"no versions: 1.0.0 -> (none)": "none",
+		"no versions: 1.0.0 -> 1.0.0": "none",
+		"no versions: 1.0.0 -> 2.0.0": {
+			"major": 1,
+			"minor": 0,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "1.0.0",
+			"to": "2.0.0"
+		},
+		"no versions: 2.0.0 -> 1.0.0": {
+			"major": 1,
+			"minor": 0,
+			"patch": 0,
+			"direction": "degrade",
+			"from": "2.0.0",
+			"to": "1.0.0"
+		},
+		"no versions: 1.2.3 -> 1.2.9": {
+			"major": 0,
+			"minor": 0,
+			"patch": 6,
+			"direction": "upgrade",
+			"from": "1.2.3",
+			"to": "1.2.9"
+		},
+		"no versions: 1.2.9 -> 1.2.3": {
+			"major": 0,
+			"minor": 0,
+			"patch": 6,
+			"direction": "degrade",
+			"from": "1.2.9",
+			"to": "1.2.3"
+		},
+		"no versions: 1.2.0 -> 1.5.0": {
+			"major": 0,
+			"minor": 3,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "1.2.0",
+			"to": "1.5.0"
+		},
+		"no versions: 1.0.0 -> 3.4.5": {
+			"major": 2,
+			"minor": 4,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "1.0.0",
+			"to": "3.4.5"
+		},
+		"no versions: 3.4.5 -> 1.0.0": {
+			"major": 2,
+			"minor": 4,
+			"patch": 0,
+			"direction": "degrade",
+			"from": "3.4.5",
+			"to": "1.0.0"
+		},
+		"no versions: 1.0 -> 1.0.0": {
+			"major": 0,
+			"minor": 0,
+			"patch": 0,
+			"direction": "degrade",
+			"from": "1.0",
+			"to": "1.0.0"
+		},
+		"no versions: 1.0.0-beta -> 1.0.0": {
+			"major": 0,
+			"minor": 0,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "1.0.0-beta",
+			"to": "1.0.0"
+		},
+		"no versions: 0.9.0 -> 9.9.9": {
+			"major": 9,
+			"minor": 0,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "0.9.0",
+			"to": "9.9.9"
+		},
+		"no versions: 2.1.0 -> 2.3.0": {
+			"major": 0,
+			"minor": 2,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "2.1.0",
+			"to": "2.3.0"
+		},
+		"no versions: 5.0.0 -> 6.0.0": {
+			"major": 1,
+			"minor": 0,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "5.0.0",
+			"to": "6.0.0"
+		},
+		"no versions: 1.2.3 -> 1.5.1": {
+			"major": 0,
+			"minor": 3,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "1.2.3",
+			"to": "1.5.1"
+		},
+		"no versions: 1.5.1 -> 1.2.3": {
+			"major": 0,
+			"minor": 3,
+			"patch": 0,
+			"direction": "degrade",
+			"from": "1.5.1",
+			"to": "1.2.3"
+		},
+		"no versions: 1.2.3 -> 2.2.9": {
+			"major": 1,
+			"minor": 0,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "1.2.3",
+			"to": "2.2.9"
+		},
+		"catalogue: (none) -> 2.0.0": "none",
+		"catalogue: 1.0.0 -> (none)": "none",
+		"catalogue: 1.0.0 -> 1.0.0": "none",
+		"catalogue: 1.0.0 -> 2.0.0": {
+			"major": 1,
+			"minor": 3,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "1.0.0",
+			"to": "2.0.0"
+		},
+		"catalogue: 2.0.0 -> 1.0.0": {
+			"major": 1,
+			"minor": 3,
+			"patch": 0,
+			"direction": "degrade",
+			"from": "2.0.0",
+			"to": "1.0.0"
+		},
+		"catalogue: 1.2.3 -> 1.2.9": {
+			"major": 0,
+			"minor": 0,
+			"patch": 6,
+			"direction": "upgrade",
+			"from": "1.2.3",
+			"to": "1.2.9"
+		},
+		"catalogue: 1.2.9 -> 1.2.3": {
+			"major": 0,
+			"minor": 0,
+			"patch": 6,
+			"direction": "degrade",
+			"from": "1.2.9",
+			"to": "1.2.3"
+		},
+		"catalogue: 1.2.0 -> 1.5.0": {
+			"major": 0,
+			"minor": 1,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "1.2.0",
+			"to": "1.5.0"
+		},
+		"catalogue: 1.0.0 -> 3.4.5": {
+			"major": 2,
+			"minor": 8,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "1.0.0",
+			"to": "3.4.5"
+		},
+		"catalogue: 3.4.5 -> 1.0.0": {
+			"major": 2,
+			"minor": 8,
+			"patch": 0,
+			"direction": "degrade",
+			"from": "3.4.5",
+			"to": "1.0.0"
+		},
+		"catalogue: 1.0 -> 1.0.0": {
+			"major": 0,
+			"minor": 0,
+			"patch": 0,
+			"direction": "degrade",
+			"from": "1.0",
+			"to": "1.0.0"
+		},
+		"catalogue: 1.0.0-beta -> 1.0.0": {
+			"major": 0,
+			"minor": 0,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "1.0.0-beta",
+			"to": "1.0.0"
+		},
+		"catalogue: 0.9.0 -> 9.9.9": {
+			"major": 3,
+			"minor": 9,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "0.9.0",
+			"to": "9.9.9"
+		},
+		"catalogue: 2.1.0 -> 2.3.0": {
+			"major": 0,
+			"minor": 2,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "2.1.0",
+			"to": "2.3.0"
+		},
+		"catalogue: 5.0.0 -> 6.0.0": {
+			"major": 1,
+			"minor": 0,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "5.0.0",
+			"to": "6.0.0"
+		},
+		"catalogue: 1.2.3 -> 1.5.1": {
+			"major": 0,
+			"minor": 1,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "1.2.3",
+			"to": "1.5.1"
+		},
+		"catalogue: 1.5.1 -> 1.2.3": {
+			"major": 0,
+			"minor": 1,
+			"patch": 0,
+			"direction": "degrade",
+			"from": "1.5.1",
+			"to": "1.2.3"
+		},
+		"catalogue: 1.2.3 -> 2.2.9": {
+			"major": 1,
+			"minor": 4,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "1.2.3",
+			"to": "2.2.9"
+		},
+		"sparse: (none) -> 2.0.0": "none",
+		"sparse: 1.0.0 -> (none)": "none",
+		"sparse: 1.0.0 -> 1.0.0": "none",
+		"sparse: 1.0.0 -> 2.0.0": {
+			"major": 0,
+			"minor": 0,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "1.0.0",
+			"to": "2.0.0"
+		},
+		"sparse: 2.0.0 -> 1.0.0": {
+			"major": 0,
+			"minor": 0,
+			"patch": 0,
+			"direction": "degrade",
+			"from": "2.0.0",
+			"to": "1.0.0"
+		},
+		"sparse: 1.2.3 -> 1.2.9": {
+			"major": 0,
+			"minor": 0,
+			"patch": 6,
+			"direction": "upgrade",
+			"from": "1.2.3",
+			"to": "1.2.9"
+		},
+		"sparse: 1.2.9 -> 1.2.3": {
+			"major": 0,
+			"minor": 0,
+			"patch": 6,
+			"direction": "degrade",
+			"from": "1.2.9",
+			"to": "1.2.3"
+		},
+		"sparse: 1.2.0 -> 1.5.0": {
+			"major": 0,
+			"minor": 3,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "1.2.0",
+			"to": "1.5.0"
+		},
+		"sparse: 1.0.0 -> 3.4.5": {
+			"major": 0,
+			"minor": 0,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "1.0.0",
+			"to": "3.4.5"
+		},
+		"sparse: 3.4.5 -> 1.0.0": {
+			"major": 0,
+			"minor": 0,
+			"patch": 0,
+			"direction": "degrade",
+			"from": "3.4.5",
+			"to": "1.0.0"
+		},
+		"sparse: 1.0 -> 1.0.0": {
+			"major": 0,
+			"minor": 0,
+			"patch": 0,
+			"direction": "degrade",
+			"from": "1.0",
+			"to": "1.0.0"
+		},
+		"sparse: 1.0.0-beta -> 1.0.0": {
+			"major": 0,
+			"minor": 0,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "1.0.0-beta",
+			"to": "1.0.0"
+		},
+		"sparse: 0.9.0 -> 9.9.9": {
+			"major": 1,
+			"minor": 1,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "0.9.0",
+			"to": "9.9.9"
+		},
+		"sparse: 2.1.0 -> 2.3.0": {
+			"major": 0,
+			"minor": 2,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "2.1.0",
+			"to": "2.3.0"
+		},
+		"sparse: 5.0.0 -> 6.0.0": {
+			"major": 1,
+			"minor": 0,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "5.0.0",
+			"to": "6.0.0"
+		},
+		"sparse: 1.2.3 -> 1.5.1": {
+			"major": 0,
+			"minor": 3,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "1.2.3",
+			"to": "1.5.1"
+		},
+		"sparse: 1.5.1 -> 1.2.3": {
+			"major": 0,
+			"minor": 3,
+			"patch": 0,
+			"direction": "degrade",
+			"from": "1.5.1",
+			"to": "1.2.3"
+		},
+		"sparse: 1.2.3 -> 2.2.9": {
+			"major": 1,
+			"minor": 0,
+			"patch": 0,
+			"direction": "upgrade",
+			"from": "1.2.3",
+			"to": "2.2.9"
+		}
+	},
+	"checks": {
+		"available versions, preserve false": {
+			"urls": [
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json"
+			],
+			"during": true,
+			"versions": [
+				{
+					"version": "2.0.0"
+				}
+			],
+			"selectedVersion": "",
+			"versionFilter": "",
+			"hasCheckedVersions": true,
+			"lastInstallDebug": [],
+			"lastInstallResult": null,
+			"hasInstallResult": false,
+			"isCheckingVersions": false,
+			"errorMessage": "",
+			"availableSource": "github:acme/app",
+			"installedVersion": "1.0.0"
+		},
+		"available versions, preserve true": {
+			"urls": [
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json"
+			],
+			"during": true,
+			"versions": [
+				{
+					"version": "2.0.0"
+				}
+			],
+			"selectedVersion": "",
+			"versionFilter": "",
+			"hasCheckedVersions": true,
+			"lastInstallDebug": [
+				{
+					"stage": "old"
+				}
+			],
+			"lastInstallResult": {
+				"status": "installed"
+			},
+			"hasInstallResult": true,
+			"isCheckingVersions": false,
+			"errorMessage": "",
+			"availableSource": "github:acme/app",
+			"installedVersion": "1.0.0"
+		},
+		"versions only, preserve false": {
+			"urls": [
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json"
+			],
+			"during": true,
+			"versions": [
+				{
+					"version": "1.5.0"
+				}
+			],
+			"selectedVersion": "",
+			"versionFilter": "",
+			"hasCheckedVersions": true,
+			"lastInstallDebug": [],
+			"lastInstallResult": null,
+			"hasInstallResult": false,
+			"isCheckingVersions": false,
+			"errorMessage": "",
+			"availableSource": "appstore",
+			"installedVersion": ""
+		},
+		"versions only, preserve true": {
+			"urls": [
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json"
+			],
+			"during": true,
+			"versions": [
+				{
+					"version": "1.5.0"
+				}
+			],
+			"selectedVersion": "",
+			"versionFilter": "",
+			"hasCheckedVersions": true,
+			"lastInstallDebug": [
+				{
+					"stage": "old"
+				}
+			],
+			"lastInstallResult": {
+				"status": "installed"
+			},
+			"hasInstallResult": true,
+			"isCheckingVersions": false,
+			"errorMessage": "",
+			"availableSource": "appstore",
+			"installedVersion": ""
+		},
+		"nothing, preserve false": {
+			"urls": [
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json"
+			],
+			"during": true,
+			"versions": [],
+			"selectedVersion": "",
+			"versionFilter": "",
+			"hasCheckedVersions": true,
+			"lastInstallDebug": [],
+			"lastInstallResult": null,
+			"hasInstallResult": false,
+			"isCheckingVersions": false,
+			"errorMessage": "",
+			"availableSource": "",
+			"installedVersion": ""
+		},
+		"nothing, preserve true": {
+			"urls": [
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json"
+			],
+			"during": true,
+			"versions": [],
+			"selectedVersion": "",
+			"versionFilter": "",
+			"hasCheckedVersions": true,
+			"lastInstallDebug": [
+				{
+					"stage": "old"
+				}
+			],
+			"lastInstallResult": {
+				"status": "installed"
+			},
+			"hasInstallResult": true,
+			"isCheckingVersions": false,
+			"errorMessage": "",
+			"availableSource": "",
+			"installedVersion": ""
+		},
+		"with error, preserve false": {
+			"urls": [
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json"
+			],
+			"during": true,
+			"versions": [],
+			"selectedVersion": "",
+			"versionFilter": "",
+			"hasCheckedVersions": true,
+			"lastInstallDebug": [],
+			"lastInstallResult": null,
+			"hasInstallResult": false,
+			"isCheckingVersions": false,
+			"errorMessage": "Source unreachable.",
+			"availableSource": "",
+			"installedVersion": "1.0.0"
+		},
+		"with error, preserve true": {
+			"urls": [
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json"
+			],
+			"during": true,
+			"versions": [],
+			"selectedVersion": "",
+			"versionFilter": "",
+			"hasCheckedVersions": true,
+			"lastInstallDebug": [
+				{
+					"stage": "old"
+				}
+			],
+			"lastInstallResult": {
+				"status": "installed"
+			},
+			"hasInstallResult": true,
+			"isCheckingVersions": false,
+			"errorMessage": "Source unreachable.",
+			"availableSource": "",
+			"installedVersion": "1.0.0"
+		},
+		"ocs failure, preserve false": {
+			"urls": [
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json"
+			],
+			"during": true,
+			"versions": [],
+			"selectedVersion": "",
+			"versionFilter": "",
+			"hasCheckedVersions": false,
+			"lastInstallDebug": [],
+			"lastInstallResult": null,
+			"hasInstallResult": false,
+			"isCheckingVersions": false,
+			"errorMessage": "App not found.",
+			"availableSource": "",
+			"installedVersion": ""
+		},
+		"ocs failure, preserve true": {
+			"urls": [
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json"
+			],
+			"during": true,
+			"versions": [],
+			"selectedVersion": "",
+			"versionFilter": "",
+			"hasCheckedVersions": false,
+			"lastInstallDebug": [
+				{
+					"stage": "old"
+				}
+			],
+			"lastInstallResult": {
+				"status": "installed"
+			},
+			"hasInstallResult": true,
+			"isCheckingVersions": false,
+			"errorMessage": "App not found.",
+			"availableSource": "",
+			"installedVersion": ""
+		},
+		"network error, preserve false": {
+			"urls": [
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json"
+			],
+			"during": true,
+			"versions": [],
+			"selectedVersion": "",
+			"versionFilter": "",
+			"hasCheckedVersions": false,
+			"lastInstallDebug": [],
+			"lastInstallResult": null,
+			"hasInstallResult": false,
+			"isCheckingVersions": false,
+			"errorMessage": "Failed to fetch",
+			"availableSource": "",
+			"installedVersion": ""
+		},
+		"network error, preserve true": {
+			"urls": [
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json"
+			],
+			"during": true,
+			"versions": [],
+			"selectedVersion": "",
+			"versionFilter": "",
+			"hasCheckedVersions": false,
+			"lastInstallDebug": [
+				{
+					"stage": "old"
+				}
+			],
+			"lastInstallResult": {
+				"status": "installed"
+			},
+			"hasInstallResult": true,
+			"isCheckingVersions": false,
+			"errorMessage": "Failed to fetch",
+			"availableSource": "",
+			"installedVersion": ""
+		},
+		"non-error rejection, preserve false": {
+			"urls": [
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json"
+			],
+			"during": true,
+			"versions": [],
+			"selectedVersion": "",
+			"versionFilter": "",
+			"hasCheckedVersions": false,
+			"lastInstallDebug": [],
+			"lastInstallResult": null,
+			"hasInstallResult": false,
+			"isCheckingVersions": false,
+			"errorMessage": "Could not fetch app versions.",
+			"availableSource": "",
+			"installedVersion": ""
+		},
+		"non-error rejection, preserve true": {
+			"urls": [
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json"
+			],
+			"during": true,
+			"versions": [],
+			"selectedVersion": "",
+			"versionFilter": "",
+			"hasCheckedVersions": false,
+			"lastInstallDebug": [
+				{
+					"stage": "old"
+				}
+			],
+			"lastInstallResult": {
+				"status": "installed"
+			},
+			"hasInstallResult": true,
+			"isCheckingVersions": false,
+			"errorMessage": "Could not fetch app versions.",
+			"availableSource": "",
+			"installedVersion": ""
+		},
+		"source override": {
+			"urls": [
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/notes/versions?source=github%3Aacme%2Fnotes&format=json"
+			],
+			"during": true,
+			"versions": [
+				{
+					"version": "1.5.0"
+				}
+			],
+			"selectedVersion": "",
+			"versionFilter": "",
+			"hasCheckedVersions": true,
+			"lastInstallDebug": [],
+			"lastInstallResult": null,
+			"hasInstallResult": false,
+			"isCheckingVersions": false,
+			"errorMessage": "",
+			"availableSource": "appstore",
+			"installedVersion": ""
+		},
+		"no app": {
+			"urls": [],
+			"during": false,
+			"versions": [],
+			"selectedVersion": "",
+			"versionFilter": "",
+			"hasCheckedVersions": false,
+			"lastInstallDebug": [],
+			"lastInstallResult": null,
+			"hasInstallResult": false,
+			"isCheckingVersions": false,
+			"errorMessage": "old error",
+			"availableSource": "old source",
+			"installedVersion": "0.1.0"
+		},
+		"no app, preserve": {
+			"urls": [],
+			"during": false,
+			"versions": [],
+			"selectedVersion": "",
+			"versionFilter": "",
+			"hasCheckedVersions": false,
+			"lastInstallDebug": [
+				{
+					"stage": "old"
+				}
+			],
+			"lastInstallResult": {
+				"status": "installed"
+			},
+			"hasInstallResult": true,
+			"isCheckingVersions": false,
+			"errorMessage": "old error",
+			"availableSource": "old source",
+			"installedVersion": "0.1.0"
+		}
+	}
+}

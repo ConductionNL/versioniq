@@ -26,6 +26,13 @@ export type InstallResult = {
 	integrityWarning?: string | null
 	/** True when the artifact came from the local cache rather than the source (#438). */
 	servedFromCache?: boolean
+	/** The free space the pre-flight found (safety-rollback-backup-and-preflight D2). */
+	space?: InstallSpace | null
+}
+
+export type InstallSpace = {
+	appsFree: number | null
+	tempFree: number | null
 }
 
 export type InstallPayload = {
@@ -44,6 +51,92 @@ export type InstallPayload = {
 	recordedShaMatched?: boolean
 	integrityWarning?: string | null
 	servedFromCache?: boolean
+	space?: { appsFree?: unknown, tempFree?: unknown } | null
+}
+
+/**
+ * Tells whether the payload's target version is below its source version.
+ *
+ * @param payload The install endpoint's payload.
+ */
+function versionDropped (payload: InstallPayload): boolean {
+	const from = payload.fromVersion ?? null
+	const to = payload.toVersion || ''
+	return from !== null && to !== '' && compareVersions(to, from) < 0
+}
+
+/**
+ * The message to show: the installer's own, with "App updated." reworded for
+ * a downgrade.
+ *
+ * @param payload The install endpoint's payload.
+ */
+function installMessage (payload: InstallPayload): string {
+	const message = payload.message || 'Install completed.'
+	const downgrade = payload.updateType === 'downgrade' || versionDropped(payload)
+	return downgrade && message === 'App updated.' ? 'App downgraded.' : message
+}
+
+/**
+ * The version fields of the result.
+ *
+ * @param payload The install endpoint's payload.
+ */
+function versionFields (payload: InstallPayload): Pick<InstallResult, 'fromVersion' | 'toVersion' | 'installedVersion' | 'updateType'> {
+	return {
+		fromVersion: payload.fromVersion ?? null,
+		toVersion: payload.toVersion || '',
+		installedVersion: payload.installedVersion ?? null,
+		updateType: payload.updateType ?? 'none',
+	}
+}
+
+/**
+ * The status fields of the result: dry run, status, stage, category and hint.
+ *
+ * @param payload The install endpoint's payload.
+ */
+function statusFields (payload: InstallPayload): Pick<InstallResult, 'dryRun' | 'installStatus' | 'stage' | 'category' | 'hint'> {
+	return {
+		dryRun: Boolean(payload.dryRun),
+		installStatus: payload.installStatus || 'failed',
+		stage: payload.stage ?? null,
+		category: payload.category ?? null,
+		hint: payload.hint ?? null,
+	}
+}
+
+/**
+ * The evidence fields of the result: debug log, checksum match, integrity
+ * warning and cache origin.
+ *
+ * @param payload The install endpoint's payload.
+ */
+function evidenceFields (payload: InstallPayload): Pick<InstallResult, 'debug' | 'recordedShaMatched' | 'integrityWarning' | 'servedFromCache' | 'space'> {
+	const space = spaceField(payload.space)
+
+	return {
+		debug: Array.isArray(payload.debug) ? payload.debug as InstallDebugEntry[] : [],
+		recordedShaMatched: payload.recordedShaMatched ?? null,
+		integrityWarning: typeof payload.integrityWarning === 'string' && payload.integrityWarning !== '' ? payload.integrityWarning : null,
+		servedFromCache: payload.servedFromCache === true,
+		// Present only when the pre-flight measured it, so other results keep their shape.
+		...(space === null ? {} : { space }),
+	}
+}
+
+/**
+ * The measured free space, or null when the pre-flight did not report one.
+ *
+ * @param space The payload's `space`.
+ */
+function spaceField (space: InstallPayload['space']): InstallSpace | null {
+	if (!space || typeof space !== 'object') {
+		return null
+	}
+	const bytes = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : null
+
+	return { appsFree: bytes(space.appsFree), tempFree: bytes(space.tempFree) }
 }
 
 /**
@@ -56,34 +149,12 @@ export type InstallPayload = {
  * @spec openspec/specs/external-sources/spec.md
  */
 export function normalizeInstallResult (payload: InstallPayload): InstallResult {
-	const normalizedUpdateType = payload.updateType ?? 'none'
-	const normalizedFrom = payload.fromVersion ?? null
-	const normalizedTo = payload.toVersion || ''
-	const resolvedMessage = payload.message || 'Install completed.'
-	const shouldForceDowngradeMessage = normalizedUpdateType === 'downgrade'
-		|| (normalizedFrom !== null && normalizedTo !== '' && compareVersions(normalizedTo, normalizedFrom) < 0)
-	const finalMessage = shouldForceDowngradeMessage
-		? (resolvedMessage === 'App updated.'
-			? 'App downgraded.'
-			: resolvedMessage)
-		: resolvedMessage
-
 	return {
 		appId: payload.appId || '',
-		fromVersion: normalizedFrom,
-		toVersion: normalizedTo,
-		installedVersion: payload.installedVersion ?? null,
-		updateType: normalizedUpdateType,
-		message: finalMessage,
-		dryRun: Boolean(payload.dryRun),
-		installStatus: payload.installStatus || 'failed',
-		stage: payload.stage ?? null,
-		category: payload.category ?? null,
-		hint: payload.hint ?? null,
-		debug: Array.isArray(payload.debug) ? payload.debug as InstallDebugEntry[] : [],
-		recordedShaMatched: payload.recordedShaMatched ?? null,
-		integrityWarning: typeof payload.integrityWarning === 'string' && payload.integrityWarning !== '' ? payload.integrityWarning : null,
-		servedFromCache: payload.servedFromCache === true,
+		...versionFields(payload),
+		message: installMessage(payload),
+		...statusFields(payload),
+		...evidenceFields(payload),
 	}
 }
 
