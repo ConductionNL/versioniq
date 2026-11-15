@@ -26,6 +26,15 @@
             "settingsUrl": "/settings/admin/versioniq#section-advisories",
             "reportedOnly": true,
             "unconfiguredMessage": "Not checked yet. Versioniq reports here after its next advisory check."
+        },
+        {
+            "key": "ncsc",
+            "title": "NCSC-NL security advisories",
+            "description": "Reads the advisories the Dutch NCSC publishes, keeps those about Nextcloud products and matches them to your installed versions. Off until an admin switches it on.",
+            "order": 40,
+            "settingsUrl": "/settings/admin/versioniq#section-advisories",
+            "reportedOnly": true,
+            "unconfiguredMessage": "Not checked yet. Versioniq reports here after its next advisory check with NCSC-NL switched on."
         }
     ]
 }
