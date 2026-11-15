@@ -41,6 +41,8 @@ class AuditLogger {
 	public const OPERATION_SETTINGS = 'settings';
 	/** A per-app auto-update policy changed; the versions hold the old and new level. */
 	public const OPERATION_POLICY = 'policy';
+	/** A connection to another Versioniq instance was added, changed or removed (install-multi-instance-promotion D1). */
+	public const OPERATION_INSTANCE_CONNECTION = 'instance_connection';
 
 	private const OPERATION_PATTERN = '/^[a-z_]{1,32}$/';
 	private const MESSAGE_MAX_LENGTH = 4000;
