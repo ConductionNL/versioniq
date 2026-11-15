@@ -27,6 +27,7 @@ import IntegrationsPanel from './components/IntegrationsPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
+import SafetyBadges from './components/SafetyBadges.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
 import SourceOverrideField from './components/SourceOverrideField.vue'
 import SourcesPanel from './components/SourcesPanel.vue'
@@ -65,6 +66,7 @@ type AppOption = {
 	installedVersion?: string | null
 	state?: 'enabled' | 'disabled' | 'notInstalled'
 	lkg?: LkgRecord | null
+	certificateRevoked?: boolean
 }
 
 type AppVersion = {
@@ -2517,6 +2519,9 @@ watch(dryRunEnabled, () => {
 																:title="advisoryFor(app.id)?.error ?? ''">
 																{{ t('versioniq', 'Advisories not checked') }}
 															</span>
+															<SafetyBadges
+																:certificateRevoked="app.certificateRevoked === true"
+																:installedWithdrawn="pendingUpdates[app.id]?.installedWithdrawn ?? null" />
 														</div>
 														<p :class="$style.appCardMeta">
 															{{ app.id }}

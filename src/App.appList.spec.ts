@@ -35,7 +35,7 @@ type Route = Answer | ((call: Call) => Answer | Promise<Answer>)
 const stubs = Object.fromEntries([
 	'AdvisoriesPanel', 'AppSourceBadges', 'AutoUpdateOverview', 'CachePanel', 'ChangelogRangePanel', 'DiscoverPanel',
 	'HistoryPanel', 'InstallResultNotices', 'InstanceSettingsPanel', 'IntegrationsPanel', 'PinDriftBanner', 'PolicySelector',
-	'ReleaseDate', 'ServerCompatBadge', 'SourceOverrideField', 'SourcesPanel', 'TokensPanel', 'TrustedSourcesPanel',
+	'ReleaseDate', 'SafetyBadges', 'ServerCompatBadge', 'SourceOverrideField', 'SourcesPanel', 'TokensPanel', 'TrustedSourcesPanel',
 	'VersionChangelog', 'DowngradeConfirmDialog', 'EnableAppDialog', 'PinDialog', 'PinOverrideDialog', 'ShaMismatchDialog',
 ].map((name) => [name, true]))
 
@@ -115,6 +115,19 @@ describe('App card badges', () => {
 		expect(card(wrapper, 'mail').find('[data-testid="app-state-badge"]').text()).toBe('Disabled')
 		expect(card(wrapper, 'blank').find('[data-testid="app-state-badge"]').text()).toBe('Not installed')
 		expect(card(wrapper, 'deck').find('[data-testid="app-state-badge"]').exists()).toBe(false)
+	})
+
+	// safety-withdrawn-and-revoked: the card shows the recheck's and the sweep's signals.
+	// @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md
+	it('marks a revoked certificate and a withdrawn installed version on the card', async () => {
+		const apps = APPS.map((app) => app.id === 'deck' ? { ...app, certificateRevoked: true } : app)
+		const updates = { ...UPDATES, mail: { error: null, installedWithdrawn: true, linesBehind: 0, updateAvailable: false } }
+		const { wrapper } = await mountPage({ ...LISTS, '/api/apps': { data: { apps } }, '/api/updates': { data: { updates, checkedAt: null, maxLinesBehind: 1 } } })
+
+		const deck = card(wrapper, 'deck').findComponent({ name: 'SafetyBadges' })
+		expect(deck.props()).toEqual({ certificateRevoked: true, installedWithdrawn: null })
+		const mail = card(wrapper, 'mail').findComponent({ name: 'SafetyBadges' })
+		expect(mail.props()).toEqual({ certificateRevoked: false, installedWithdrawn: true })
 	})
 
 	it('shows who pinned which version, with the reason when one was given', async () => {

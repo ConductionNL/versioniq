@@ -12,6 +12,8 @@ export type PendingUpdate = {
 	pinned: boolean
 	sourceId: string | null
 	error: string | null
+	/** The installed version is missing from a successful listing (safety-withdrawn-and-revoked D3); null when unknown. */
+	installedWithdrawn?: boolean | null
 }
 
 export type UpdatesFilter = 'all' | 'update' | 'outsidePolicy'
