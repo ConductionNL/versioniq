@@ -81,13 +81,22 @@ final class StoredSnapshot {
 	 * @param list<string> $errors
 	 * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
 	 */
-	public function writeOutcome(string $status, array $errors, ?int $checkedAt = null): void {
+	public function writeOutcome(string $status, array $errors, ?int $failedAt = null): void {
 		$this->config->setValueString(Application::APP_ID, $this->key . '.status', $status);
 		$this->config->setValueString(Application::APP_ID, $this->key . '.errors', json_encode(array_values($errors)) ?: '[]');
-		if ($checkedAt !== null) {
-			// A sweep that failed as a whole wrote no snapshot: its time is the attempt's.
-			$this->config->setValueInt(Application::APP_ID, $this->checkedAtKey(), $checkedAt);
-		}
+		// A sweep that failed as a whole wrote no snapshot: its attempt time is kept
+		// apart, so `checkedAt` stays the time of the last sweep that succeeded.
+		$this->config->setValueInt(Application::APP_ID, $this->key . '.failedAt', $failedAt ?? 0);
+	}
+
+	/**
+	 * The unix time of the last sweep that failed as a whole, null when the last
+	 * recorded outcome was not such a failure.
+	 */
+	public function failedAt(): ?int {
+		$failedAt = $this->config->getValueInt(Application::APP_ID, $this->key . '.failedAt', 0);
+
+		return $failedAt > 0 ? $failedAt : null;
 	}
 
 	/**

@@ -55,18 +55,18 @@ class AvailabilityResultStore {
 	}
 
 	/**
-	 * Records a sweep that failed as a whole: the previous snapshot stays, the
-	 * outcome says `failed` at the time of the attempt.
+	 * Records a sweep that failed as a whole: the previous snapshot and its
+	 * `checkedAt` stay, the outcome says `failed` with the attempt's time as `failedAt`.
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
 	 */
-	public function saveFailure(int $checkedAt): void {
-		$this->snapshot()->writeOutcome(SweepOutcome::FAILED, [], $checkedAt);
+	public function saveFailure(int $failedAt): void {
+		$this->snapshot()->writeOutcome(SweepOutcome::FAILED, [], $failedAt);
 	}
 
 	/**
 	 * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
-	 * @return array{updates: array<string, mixed>, checkedAt: ?int, status: ?string, errors: list<string>}
+	 * @return array{updates: array<string, mixed>, checkedAt: ?int, failedAt: ?int, status: ?string, errors: list<string>}
 	 */
 	public function read(): array {
 		try {
@@ -76,34 +76,38 @@ class AvailabilityResultStore {
 				'message' => $error->getMessage(),
 			]);
 
-			return ['updates' => [], 'checkedAt' => null, 'status' => null, 'errors' => []];
+			return ['updates' => [], 'checkedAt' => null, 'failedAt' => null, 'status' => null, 'errors' => []];
 		}
 
 		return ['updates' => $updates ?? []] + $this->outcome(map: $updates);
 	}
 
 	/**
-	 * The time and outcome of the last sweep. Without a snapshot only a failed
-	 * sweep has a time: "never checked" stays null.
+	 * The time of the last sweep that succeeded and the outcome of the last
+	 * sweep. `checkedAt` is never a failed attempt's time: readers that show it
+	 * without the status (occ, MCP) must not read a failure as freshly checked.
+	 * A sweep that failed as a whole has its time in `failedAt`.
 	 *
 	 * A snapshot stored before outcomes were recorded gets the outcome its own
 	 * entries give.
 	 *
 	 * @param array<string, mixed>|null $map The stored snapshot, null when there is none.
-	 * @return array{checkedAt: ?int, status: ?string, errors: list<string>}
+	 * @return array{checkedAt: ?int, failedAt: ?int, status: ?string, errors: list<string>}
 	 */
 	private function outcome(?array $map): array {
 		$status = $this->snapshot()->status();
+		$checkedAt = $map === null ? null : $this->snapshot()->checkedAt();
 		if ($map === null && $status !== SweepOutcome::FAILED) {
-			return ['checkedAt' => null, 'status' => null, 'errors' => []];
+			return ['checkedAt' => null, 'failedAt' => null, 'status' => null, 'errors' => []];
 		}
 
 		if ($status === null) {
-			return ['checkedAt' => $this->snapshot()->checkedAt()] + SweepOutcome::of($map ?? []);
+			return ['checkedAt' => $checkedAt, 'failedAt' => null] + SweepOutcome::of($map ?? []);
 		}
 
 		return [
-			'checkedAt' => $this->snapshot()->checkedAt(),
+			'checkedAt' => $checkedAt,
+			'failedAt' => $status === SweepOutcome::FAILED ? $this->snapshot()->failedAt() : null,
 			'status' => $status,
 			'errors' => $this->snapshot()->errors(),
 		];

@@ -29,7 +29,7 @@ final class AdvisoryResultStoreTest extends TestCase {
 		$config->method('getValueString')->willReturn('');
 
 		$this->assertSame(
-			['advisories' => [], 'checkedAt' => null, 'status' => null, 'errors' => []],
+			['advisories' => [], 'checkedAt' => null, 'failedAt' => null, 'status' => null, 'errors' => []],
 			$this->store($config)->read(),
 		);
 	}
@@ -44,7 +44,7 @@ final class AdvisoryResultStoreTest extends TestCase {
 		$config->method('getValueInt')->willReturn(1_700_000_000);
 
 		$this->assertSame(
-			['advisories' => $snapshot, 'checkedAt' => 1_700_000_000, 'status' => 'ok', 'errors' => []],
+			['advisories' => $snapshot, 'checkedAt' => 1_700_000_000, 'failedAt' => null, 'status' => 'ok', 'errors' => []],
 			$this->store($config)->read(),
 		);
 	}
@@ -73,7 +73,7 @@ final class AdvisoryResultStoreTest extends TestCase {
 		$logger->expects($this->once())->method('warning');
 
 		$this->assertSame(
-			['advisories' => [], 'checkedAt' => null, 'status' => null, 'errors' => []],
+			['advisories' => [], 'checkedAt' => null, 'failedAt' => null, 'status' => null, 'errors' => []],
 			$this->store($config, $logger)->read(),
 		);
 	}
@@ -103,7 +103,7 @@ final class AdvisoryResultStoreTest extends TestCase {
 			],
 			$strings
 		);
-		$this->assertSame(['advisory.results.checkedAt' => 1_700_000_000], $ints);
+		$this->assertSame(['advisory.results.checkedAt' => 1_700_000_000, 'advisory.results.failedAt' => 0], $ints);
 	}
 
 	/**

@@ -42,7 +42,7 @@ final class AvailabilityResultStoreTest extends TestCase {
 	}
 
 	public function testNeverSweptReadsAsCheckedAtNull(): void {
-		self::assertSame(['updates' => [], 'checkedAt' => null, 'status' => null, 'errors' => []], $this->store()->read());
+		self::assertSame(['updates' => [], 'checkedAt' => null, 'failedAt' => null, 'status' => null, 'errors' => []], $this->store()->read());
 	}
 
 	public function testASavedSnapshotReadsBackWithItsTime(): void {
@@ -50,7 +50,7 @@ final class AvailabilityResultStoreTest extends TestCase {
 		$store->save(['deck' => ['installedVersion' => '1.0.0', 'newestCompatibleVersion' => '1.1.0']], 1_790_000_000);
 
 		self::assertSame(
-			['updates' => ['deck' => ['installedVersion' => '1.0.0', 'newestCompatibleVersion' => '1.1.0']], 'checkedAt' => 1_790_000_000, 'status' => 'ok', 'errors' => []],
+			['updates' => ['deck' => ['installedVersion' => '1.0.0', 'newestCompatibleVersion' => '1.1.0']], 'checkedAt' => 1_790_000_000, 'failedAt' => null, 'status' => 'ok', 'errors' => []],
 			$store->read(),
 		);
 	}
@@ -60,7 +60,7 @@ final class AvailabilityResultStoreTest extends TestCase {
 		$store->save(['deck' => ['installedVersion' => '1.0.0']], 1_790_000_000);
 		$store->save(['deck' => ['installedVersion' => "\xB1\x31"]], 1_790_000_600);
 
-		self::assertSame(['updates' => ['deck' => ['installedVersion' => '1.0.0']], 'checkedAt' => 1_790_000_000, 'status' => 'ok', 'errors' => []], $store->read());
+		self::assertSame(['updates' => ['deck' => ['installedVersion' => '1.0.0']], 'checkedAt' => 1_790_000_000, 'failedAt' => null, 'status' => 'ok', 'errors' => []], $store->read());
 	}
 
 	/**
@@ -81,20 +81,25 @@ final class AvailabilityResultStoreTest extends TestCase {
 	}
 
 	/**
-	 * A sweep that failed as a whole keeps the previous snapshot and says
-	 * failed at the time of the attempt; with no snapshot at all it is still
-	 * reported, not "never checked".
+	 * A sweep that failed as a whole keeps the previous snapshot and its
+	 * `checkedAt` (the last sweep that succeeded, which occ and MCP show without
+	 * the status) and says failed with the attempt's time as `failedAt`; with
+	 * no snapshot at all it is still reported, not "never checked". The next
+	 * successful sweep clears `failedAt`.
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
 	 */
 	public function testAWholeFailureKeepsTheSnapshotAndSaysFailed(): void {
 		$store = $this->store();
 		$store->saveFailure(1_790_000_000);
-		self::assertSame(['updates' => [], 'checkedAt' => 1_790_000_000, 'status' => 'failed', 'errors' => []], $store->read());
+		self::assertSame(['updates' => [], 'checkedAt' => null, 'failedAt' => 1_790_000_000, 'status' => 'failed', 'errors' => []], $store->read());
 
 		$store->save(['deck' => ['installedVersion' => '1.0.0']], 1_790_000_100);
 		$store->saveFailure(1_790_000_200);
-		self::assertSame(['updates' => ['deck' => ['installedVersion' => '1.0.0']], 'checkedAt' => 1_790_000_200, 'status' => 'failed', 'errors' => []], $store->read());
+		self::assertSame(['updates' => ['deck' => ['installedVersion' => '1.0.0']], 'checkedAt' => 1_790_000_100, 'failedAt' => 1_790_000_200, 'status' => 'failed', 'errors' => []], $store->read());
+
+		$store->save(['deck' => ['installedVersion' => '1.0.1']], 1_790_000_300);
+		self::assertSame(['updates' => ['deck' => ['installedVersion' => '1.0.1']], 'checkedAt' => 1_790_000_300, 'failedAt' => null, 'status' => 'ok', 'errors' => []], $store->read());
 	}
 
 	/**

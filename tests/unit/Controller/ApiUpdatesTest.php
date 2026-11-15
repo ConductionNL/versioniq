@@ -111,4 +111,22 @@ final class ApiUpdatesTest extends TestCase {
 		self::assertSame(Http::STATUS_OK, $response->getStatus());
 		self::assertSame(['updates' => $snapshot, 'checkedAt' => 1_790_000_000, 'status' => 'partial', 'errors' => ['pipelinq'], 'maxLinesBehind' => 1], $response->getData());
 	}
+
+	/**
+	 * A sweep that failed as a whole: the check line gets the attempt's time with
+	 * `failed`, while the store's `checkedAt` stays the last sweep that succeeded.
+	 *
+	 * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+	 */
+	public function testAFailedSweepIsReportedAtTheAttemptsTime(): void {
+		$snapshot = ['openregister' => ['installedVersion' => '2.3.0']];
+		$store = $this->createMock(AvailabilityResultStore::class);
+		$store->method('read')->willReturn(['updates' => $snapshot, 'checkedAt' => 1_790_000_000, 'failedAt' => 1_790_000_600, 'status' => 'failed', 'errors' => []]);
+		$settings = $this->createMock(InstanceSettings::class);
+		$settings->method('maxLinesBehind')->willReturn(null);
+
+		$response = $this->controller(true, $store, $settings)->updates();
+
+		self::assertSame(['updates' => $snapshot, 'checkedAt' => 1_790_000_600, 'status' => 'failed', 'errors' => [], 'maxLinesBehind' => null], $response->getData());
+	}
 }

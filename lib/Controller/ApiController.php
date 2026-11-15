@@ -127,7 +127,8 @@ class ApiController extends OCSController {
 
 		return new DataResponse([
 			'advisories' => $snapshot['advisories'],
-			'checkedAt' => $snapshot['checkedAt'],
+			// The check line shows the status with this time: a failed sweep's is its attempt's.
+			'checkedAt' => $snapshot['failedAt'] ?? $snapshot['checkedAt'],
 			'status' => $snapshot['status'],
 			'errors' => $snapshot['errors'],
 			'triage' => $this->reports->stores->advisoryTriageStore?->read() ?? [],
@@ -157,11 +158,12 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$snapshot = $this->reports->stores->availabilityResultStore?->read() ?? ['updates' => [], 'checkedAt' => null, 'status' => null, 'errors' => []];
+		$snapshot = $this->reports->stores->availabilityResultStore?->read() ?? ['updates' => [], 'checkedAt' => null, 'failedAt' => null, 'status' => null, 'errors' => []];
 
 		return new DataResponse([
 			'updates' => $snapshot['updates'],
-			'checkedAt' => $snapshot['checkedAt'],
+			// The check line shows the status with this time: a failed sweep's is its attempt's.
+			'checkedAt' => $snapshot['failedAt'] ?? $snapshot['checkedAt'],
 			'status' => $snapshot['status'],
 			'errors' => $snapshot['errors'],
 			'maxLinesBehind' => $this->reports->stores->instanceSettings?->maxLinesBehind(),

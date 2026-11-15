@@ -85,7 +85,7 @@ final class SnapshotResultStoresGoldenTest extends TestCase {
 
 	#[DataProvider('stores')]
 	public function testNothingStoredReadsAsNeverChecked(string $which, string $key, string $field): void {
-		self::assertSame([$field => [], 'checkedAt' => null, 'status' => null, 'errors' => []], $this->store($which)->read());
+		self::assertSame([$field => [], 'checkedAt' => null, 'failedAt' => null, 'status' => null, 'errors' => []], $this->store($which)->read());
 		self::assertSame(["getValueString versioniq $key", "getValueString versioniq $key.status"], $this->calls);
 		self::assertSame([], $this->logs);
 	}
@@ -95,7 +95,7 @@ final class SnapshotResultStoresGoldenTest extends TestCase {
 		$this->values[$key] = '{not json';
 		$this->values["$key.checkedAt"] = 1_790_000_000;
 
-		self::assertSame([$field => [], 'checkedAt' => null, 'status' => null, 'errors' => []], $this->store($which)->read());
+		self::assertSame([$field => [], 'checkedAt' => null, 'failedAt' => null, 'status' => null, 'errors' => []], $this->store($which)->read());
 		self::assertSame(["getValueString versioniq $key"], $this->calls);
 		$expected = $which === 'advisory'
 			? 'AdvisoryResultStore: stored snapshot is not valid JSON; reporting as never checked'
@@ -108,7 +108,7 @@ final class SnapshotResultStoresGoldenTest extends TestCase {
 		$this->values[$key] = '"text"';
 		$this->values["$key.checkedAt"] = 1_790_000_000;
 
-		self::assertSame([$field => [], 'checkedAt' => null, 'status' => null, 'errors' => []], $this->store($which)->read());
+		self::assertSame([$field => [], 'checkedAt' => null, 'failedAt' => null, 'status' => null, 'errors' => []], $this->store($which)->read());
 		self::assertSame(["getValueString versioniq $key", "getValueString versioniq $key.status"], $this->calls);
 		self::assertSame([], $this->logs);
 	}
@@ -117,7 +117,7 @@ final class SnapshotResultStoresGoldenTest extends TestCase {
 	public function testZeroTimestampReadsAsNull(string $which, string $key, string $field): void {
 		$this->values[$key] = '{"deck":{"a":1}}';
 
-		self::assertSame([$field => ['deck' => ['a' => 1]], 'checkedAt' => null, 'status' => 'ok', 'errors' => []], $this->store($which)->read());
+		self::assertSame([$field => ['deck' => ['a' => 1]], 'checkedAt' => null, 'failedAt' => null, 'status' => 'ok', 'errors' => []], $this->store($which)->read());
 		self::assertSame(["getValueString versioniq $key", "getValueString versioniq $key.status", "getValueInt versioniq $key.checkedAt 0"], $this->calls);
 	}
 
@@ -131,8 +131,9 @@ final class SnapshotResultStoresGoldenTest extends TestCase {
 			"setValueInt versioniq $key.checkedAt 1790000000",
 			"setValueString versioniq $key.status ok",
 			"setValueString versioniq $key.errors []",
+			"setValueInt versioniq $key.failedAt 0",
 		], $this->calls);
-		self::assertSame([$field => ['deck' => ['a' => 1]], 'checkedAt' => 1_790_000_000, 'status' => 'ok', 'errors' => []], $store->read());
+		self::assertSame([$field => ['deck' => ['a' => 1]], 'checkedAt' => 1_790_000_000, 'failedAt' => null, 'status' => 'ok', 'errors' => []], $store->read());
 		self::assertSame([], $this->logs);
 	}
 
