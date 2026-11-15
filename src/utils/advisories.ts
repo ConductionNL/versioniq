@@ -101,3 +101,156 @@ export function splitAdvisoryRows (snapshot: Record<string, AdvisoryCorrelation>
 		})
 	return { server, apps }
 }
+
+/** The owner of an advisory: an admin user, or a group whose admins own it. */
+export type AdvisoryAssignee = {
+	type: 'user' | 'group'
+	id: string
+}
+
+/** A recorded decision that an advisory does not apply here. */
+export type AdvisoryDismissal = {
+	reason: string
+	comment?: string
+	by: string
+	at: string
+	until: string | null
+	installedVersion: string | null
+}
+
+/** The triage of one advisory of one app, as GET /api/advisories returns it. */
+export type AdvisoryTriageEntry = {
+	assignee?: AdvisoryAssignee
+	assignedBy?: string
+	assignedAt?: string
+	dismissal?: AdvisoryDismissal
+	lastSeenAt?: string
+}
+
+/** The triage map, keyed `{appId}|{advisoryId}`. */
+export type AdvisoryTriageMap = Record<string, AdvisoryTriageEntry>
+
+/** An advisory with its owner and, when dismissed, its dismissal. */
+export type TriagedAdvisory = AdvisoryRecord & {
+	assignee?: AdvisoryAssignee
+	dismissal?: AdvisoryDismissal
+}
+
+/** A row with the triage applied: what still counts, and what a dismissal holds. */
+export type TriagedCorrelation = Omit<AdvisoryCorrelation, 'advisories'> & {
+	advisories: TriagedAdvisory[]
+	dismissedAdvisories: TriagedAdvisory[]
+}
+
+/** The reasons an admin can give for a dismissal, in the order the dialog lists them. */
+export const DISMISS_REASONS = ['not_used', 'inaccurate', 'tolerable_risk', 'mitigated', 'fix_planned'] as const
+
+/**
+ * The key of one app's advisory in the triage map.
+ *
+ * @param appId The app id, or `:server`.
+ * @param advisoryId The advisory id.
+ * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+ */
+export function triageKey (appId: string, advisoryId: string): string {
+	return `${appId}|${advisoryId}`
+}
+
+/**
+ * Whether a dismissal still holds: no end date or one still ahead, and the
+ * version it was made on still installed. An unreadable end date has passed.
+ *
+ * @param dismissal The stored dismissal, if any.
+ * @param installedVersion The installed version of the row.
+ * @param now The time to judge the end date by, in milliseconds.
+ * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+ */
+export function isDismissalActive (dismissal: AdvisoryDismissal | undefined, installedVersion: string | null, now: number): boolean {
+	if (!dismissal || (dismissal.installedVersion ?? null) !== installedVersion) {
+		return false
+	}
+	if (!dismissal.until) {
+		return true
+	}
+	const end = Date.parse(dismissal.until)
+	return !Number.isNaN(end) && end > now
+}
+
+/**
+ * The row with the triage applied, as AdvisoryTriage::apply() does on the
+ * server: actively dismissed advisories move to `dismissedAdvisories`, each
+ * advisory carries its owner, and a row with nothing left that counts drops
+ * from `pinned-to-vulnerable` to `advisory-available` (losing its
+ * recommendation) or from `advisory-available` to `none`.
+ *
+ * @param row The stored row.
+ * @param triage The triage map.
+ * @param now The time to judge end dates by, in milliseconds.
+ * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+ */
+export function applyTriage (row: AdvisoryCorrelation, triage: AdvisoryTriageMap, now: number = Date.now()): TriagedCorrelation {
+	const kept: TriagedAdvisory[] = []
+	const dismissed: TriagedAdvisory[] = []
+	for (const advisory of row.advisories ?? []) {
+		const entry = triage[triageKey(row.appId, advisory.id)] ?? {}
+		const triaged: TriagedAdvisory = entry.assignee ? { ...advisory, assignee: entry.assignee } : { ...advisory }
+		if (isDismissalActive(entry.dismissal, row.installedVersion ?? null, now)) {
+			dismissed.push({ ...triaged, dismissal: entry.dismissal })
+		} else {
+			kept.push(triaged)
+		}
+	}
+	const applied: TriagedCorrelation = { ...row, advisories: kept, dismissedAdvisories: dismissed }
+	if (dismissed.length === 0 || kept.length > 0) {
+		return applied
+	}
+	if (row.state === 'pinned-to-vulnerable') {
+		return { ...applied, state: 'advisory-available', recommendedVersion: null }
+	}
+	return row.state === 'advisory-available' ? { ...applied, state: 'none' } : applied
+}
+
+/**
+ * Whether an advisory is owned by the current admin: directly, or through a
+ * group they are a member of.
+ *
+ * @param advisory The triaged advisory.
+ * @param uid The current user's id.
+ * @param groups The current user's groups.
+ * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-assigns-an-advisory-to-an-owner
+ */
+export function isAssignedTo (advisory: TriagedAdvisory, uid: string, groups: string[]): boolean {
+	const owner = advisory.assignee
+	if (!owner) {
+		return false
+	}
+	return owner.type === 'user' ? owner.id === uid : groups.includes(owner.id)
+}
+
+/**
+ * A readable name for a dismissal reason.
+ *
+ * @param reason The stored reason.
+ * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+ */
+export function dismissReasonLabel (reason: string): string {
+	return {
+		not_used: t('versioniq', 'The affected feature is not used here'),
+		inaccurate: t('versioniq', 'The advisory is inaccurate for this setup'),
+		tolerable_risk: t('versioniq', 'The risk is tolerable'),
+		mitigated: t('versioniq', 'The risk is mitigated another way'),
+		fix_planned: t('versioniq', 'A fix is planned'),
+	}[reason] ?? reason
+}
+
+/**
+ * A readable name for an advisory's owner.
+ *
+ * @param assignee The owner.
+ * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-assigns-an-advisory-to-an-owner
+ */
+export function assigneeLabel (assignee: AdvisoryAssignee): string {
+	return assignee.type === 'group'
+		? t('versioniq', 'Group {group}', { group: assignee.id })
+		: assignee.id
+}
