@@ -49,9 +49,6 @@
     <MixedAssignment>
       <code><![CDATA[$key]]></code>
     </MixedAssignment>
-    <RedundantCastGivenDocblockType>
-      <code><![CDATA[(string)$installedVersion]]></code>
-    </RedundantCastGivenDocblockType>
     <RedundantFunctionCall>
       <code><![CDATA[array_values]]></code>
     </RedundantFunctionCall>
