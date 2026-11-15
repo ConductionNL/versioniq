@@ -15,6 +15,7 @@ namespace OCA\Versioniq\Service;
 use Exception;
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Discovery\PublisherTrust;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFailure;
@@ -52,7 +53,7 @@ use OCP\IUserSession;
  *
  * @psalm-api
  * @psalm-type AppLists = array{enabled: array<string>, versions: array<string, string>, core: array<string>, info: array<string, array<string, mixed>>}
- * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string,previous?:array{version:string,recordedAt:string,sourceId:?string}}}
+ * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,publisher:?string,marks:list<string>,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string,previous?:array{version:string,recordedAt:string,sourceId:?string}}}
  */
 class InstallerService {
 	/** Server-side changelog size cap; see "Version listings carry release notes". */
@@ -153,11 +154,33 @@ class InstallerService {
 	 * @return InstalledAppCard
 	 */
 	private function appCard(string $appId, array $lists): array {
+		$binding = $this->sources->bindingStore->get($appId);
+
+		// The publisher is the app's info.xml authors, the marks those a named
+		// source backs; the featured flag is not read here, because the card
+		// list does not load the catalogue. See "Hits and cards name the
+		// publisher and the trust marks the data backs".
 		return [
 			'id' => $appId,
 			...self::appTexts($lists['info'][$appId] ?? [], $appId),
-			...$this->appStatus($appId, $lists),
+			...$this->appStatus($appId, $lists, $binding),
+			'publisher' => PublisherTrust::publisherFromAuthors($lists['info'][$appId]['author'] ?? null),
+			'marks' => $this->cardMarks($appId, $binding),
 		];
+	}
+
+	/**
+	 * The trust marks a card's source backs; none without the publisher trust.
+	 *
+	 * @spec openspec/changes/inventory-verified-publisher/specs/app-discovery/spec.md#requirement-hits-and-cards-name-the-publisher-and-the-trust-marks-the-data-backs
+	 * @return list<string>
+	 */
+	private function cardMarks(string $appId, ?SourceBinding $binding): array {
+		return $this->sources->publisherTrust?->marksFor(
+			$appId,
+			$binding?->toArray() ?? ['kind' => SourceBinding::KIND_APPSTORE],
+			false
+		) ?? [];
 	}
 
 	/**
@@ -190,22 +213,36 @@ class InstallerService {
 	 * last-known-good record for its card.
 	 *
 	 * @param AppLists $lists
+	 * @param ?SourceBinding $binding The app's source binding, read once per card.
 	 * @return array{isCore: bool, isShipped: bool, boundSourceId: ?string, manageable: bool, warning: ?string, installedVersion: ?string, state: 'enabled'|'disabled'|'notInstalled', lkg: ?array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}}
 	 */
-	private function appStatus(string $appId, array $lists): array {
-		$binding = $this->sources->bindingStore->get($appId);
-		$env = $this->appEnvironment($appId);
-		$installedVersion = $this->installedVersion($appId, $lists);
+	private function appStatus(string $appId, array $lists, ?SourceBinding $binding): array {
+		$install = $this->appInstallStatus($appId, $lists);
 
 		return [
 			'isCore' => in_array($appId, $lists['core'], true),
 			'isShipped' => $this->server->appManager->isShipped($appId),
 			'boundSourceId' => $binding?->getId(),
+			...$install,
+			'state' => self::appState($appId, $lists),
+			'lkg' => $this->state->lkgStore->get($appId)?->toArray(),
+		];
+	}
+
+	/**
+	 * Whether the app's folder can be managed here, and its installed version.
+	 *
+	 * @param AppLists $lists
+	 * @return array{manageable: bool, warning: ?string, installedVersion: ?string}
+	 */
+	private function appInstallStatus(string $appId, array $lists): array {
+		$env = $this->appEnvironment($appId);
+		$installedVersion = $this->installedVersion($appId, $lists);
+
+		return [
 			'manageable' => $env['manageable'],
 			'warning' => $env['warning'],
 			'installedVersion' => $installedVersion === '' ? null : $installedVersion,
-			'state' => self::appState($appId, $lists),
-			'lkg' => $this->state->lkgStore->get($appId)?->toArray(),
 		];
 	}
 
