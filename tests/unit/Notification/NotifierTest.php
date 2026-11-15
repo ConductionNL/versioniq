@@ -191,7 +191,7 @@ final class NotifierTest extends TestCase {
 
 	public function testTheSubjectScanFindsTheKnownSenders(): void {
 		$found = array_keys(self::sentSubjects());
-		foreach (['advisory_digest', 'auto_update_failure', 'auto_update_success', 'pat_expired', 'pat_expiring', 'pin_drift', 'pinned_to_vulnerable'] as $expected) {
+		foreach (['advisory_assigned', 'advisory_digest', 'auto_update_failure', 'auto_update_success', 'pat_expired', 'pat_expiring', 'pin_drift', 'pinned_to_vulnerable'] as $expected) {
 			$this->assertContains($expected, $found);
 		}
 	}
@@ -226,5 +226,32 @@ final class NotifierTest extends TestCase {
 		$incompatible->expects($this->once())->method('setParsedSubject')->with('New version of calendar: 5.2.0')->willReturnSelf();
 		$incompatible->expects($this->once())->method('setParsedMessage')->with('It does not run on this server version.')->willReturnSelf();
 		$notifier->prepare($incompatible, 'en');
+	}
+
+	/**
+	 * `advisory_assigned` names who assigned which advisory for which app, and
+	 * says "the Nextcloud server" for the `:server` row (advisories-triage D3).
+	 */
+	public function testAdvisoryAssignedNamesTheAppTheAdvisoryAndWhoAssignedIt(): void {
+		$notifier = new Notifier($this->l10nFactory());
+		$messages = [];
+		foreach (['openregister', ':server'] as $app) {
+			$notification = $this->createMock(INotification::class);
+			$notification->method('getApp')->willReturn(Application::APP_ID);
+			$notification->method('getSubject')->willReturn('advisory_assigned');
+			$notification->method('getSubjectParameters')->willReturn(['app' => $app, 'advisory' => 'GHSA-1', 'by' => 'alice']);
+			$notification->expects($this->once())->method('setParsedSubject')->with('A security advisory was assigned to you')->willReturnSelf();
+			$notification->expects($this->once())->method('setParsedMessage')->willReturnCallback(function (string $message) use ($notification, &$messages): INotification {
+				$messages[] = $message;
+
+				return $notification;
+			});
+			$notifier->prepare($notification, 'en');
+		}
+
+		$this->assertSame([
+			'alice assigned advisory GHSA-1 for openregister to you. Review it on the Versioniq Advisories tab.',
+			'alice assigned advisory GHSA-1 for the Nextcloud server to you. Review it on the Versioniq Advisories tab.',
+		], $messages);
 	}
 }
