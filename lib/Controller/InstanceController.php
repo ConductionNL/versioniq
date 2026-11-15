@@ -19,6 +19,8 @@ use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCA\Versioniq\Service\Instance\InstanceConnection;
 use OCA\Versioniq\Service\Instance\InstanceConnectionStore;
 use OCA\Versioniq\Service\Instance\ManifestBuilder;
+use OCA\Versioniq\Service\Instance\PromotionRefusal;
+use OCA\Versioniq\Service\Instance\PromotionService;
 use OCA\Versioniq\Service\Instance\RemoteInstanceReader;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
@@ -50,6 +52,7 @@ class InstanceController extends OCSController {
 		private IUserSession $userSession,
 		private ?ManifestBuilder $manifest = null,
 		private ?RemoteInstanceReader $reader = null,
+		private ?PromotionService $promotions = null,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -128,6 +131,85 @@ class InstanceController extends OCSController {
 		}
 
 		return new DataResponse($this->manifest->build());
+	}
+
+	/**
+	 * What promoting an app from a connection would install, from its cached manifest
+	 *
+	 * @param string $appId The app to promote
+	 * @param string $connection The connection id of the earlier stage
+	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_FORBIDDEN|Http::STATUS_NOT_FOUND|Http::STATUS_CONFLICT|Http::STATUS_BAD_GATEWAY|Http::STATUS_SERVICE_UNAVAILABLE, array{code?: string, message: string}, array{}>
+	 *
+	 * 200: The version, source, digest, direction and waiting-period verdict
+	 * 403: Caller is not an administrator
+	 * 404: No such connection
+	 * 409: The connection does not run this app
+	 * 502: The connection has no readable manifest
+	 * 503: Promotion is not available on this instance
+	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-promotes-the-exact-package-an-earlier-stage-runs
+	 * @psalm-suppress InvalidReturnType
+	 */
+	#[ApiRoute(verb: 'GET', url: '/api/app/{appId}/promote')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/app/{appId}/promote', postfix: 'v1')]
+	public function promotionPlan(string $appId, string $connection = ''): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		if ($this->promotions === null) {
+			return new DataResponse(['message' => 'Unavailable'], Http::STATUS_SERVICE_UNAVAILABLE);
+		}
+
+		$plan = $this->promotions->plan($connection, $appId);
+		if ($plan instanceof PromotionRefusal) {
+			/** @psalm-suppress InvalidReturnStatement, ArgumentTypeCoercion Dynamic status passthrough — see the docblock. */
+			return new DataResponse(['code' => $plan->code, 'message' => $plan->message], $plan->statusCode);
+		}
+
+		return new DataResponse($plan);
+	}
+
+	/**
+	 * Promotes the version an earlier stage runs to this instance (password-confirmed)
+	 *
+	 * @param string $appId The app to promote
+	 * @param string $connection The connection id of the earlier stage
+	 * @param string $version The version the admin saw; refused when the earlier stage runs another one now
+	 * @param bool $allowDowngrade Acknowledges that the promotion installs an older version
+	 * @param bool $overrideMinDays Promotes inside the waiting period; written into the audit row
+	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_NOT_FOUND|Http::STATUS_CONFLICT|Http::STATUS_UNPROCESSABLE_ENTITY|Http::STATUS_INTERNAL_SERVER_ERROR|Http::STATUS_BAD_GATEWAY|Http::STATUS_SERVICE_UNAVAILABLE, array<string, mixed>, array{}>
+	 *
+	 * 200: Installed; the payload names the previous version for the rollback
+	 * 400: The install request is not acceptable
+	 * 403: Caller is not an administrator, or the source is not trusted
+	 * 404: No such connection, or the version is not in the source
+	 * 409: The waiting period is not met, the version moved, the digests differ, or a guard refused
+	 * 422: The package differs from the recorded digest
+	 * 500: The install failed
+	 * 502: The connection could not be read
+	 * 503: Promotion is not available on this instance
+	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-promotes-the-exact-package-an-earlier-stage-runs
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+	 * @psalm-suppress InvalidReturnType
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'POST', url: '/api/app/{appId}/promote')]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/app/{appId}/promote', postfix: 'v1')]
+	public function promote(string $appId, string $connection = '', string $version = '', bool $allowDowngrade = false, bool $overrideMinDays = false): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		if ($this->promotions === null) {
+			return new DataResponse(['message' => 'Unavailable'], Http::STATUS_SERVICE_UNAVAILABLE);
+		}
+
+		$result = $this->promotions->promote($connection, $appId, $allowDowngrade, $overrideMinDays, $version === '' ? null : $version);
+
+		/** @psalm-suppress InvalidReturnStatement, ArgumentTypeCoercion Dynamic status passthrough — see the docblock. */
+		return new DataResponse($result['payload'], $result['statusCode']);
 	}
 
 	/**
