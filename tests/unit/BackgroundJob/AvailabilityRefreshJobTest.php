@@ -12,19 +12,27 @@ namespace OCA\Versioniq\Tests\Unit\BackgroundJob;
 use OCA\Versioniq\BackgroundJob\AvailabilityRefreshJob;
 use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
 use OCA\Versioniq\Service\Availability\AvailabilityService;
+use OCA\Versioniq\Service\ReleaseAlert\ReleaseNotifier;
+use OCA\Versioniq\Service\ReleaseAlert\ReleaseSweepRecorder;
 use OCP\AppFramework\Utility\ITimeFactory;
+use OCA\Versioniq\Service\ReleaseAlert\FollowList;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 /**
  * @spec openspec/specs/pending-updates/spec.md
+ *
+ * @uses \OCA\Versioniq\Service\ReleaseAlert\ReleaseSweepRecorder
+ * @uses \OCA\Versioniq\Service\ReleaseAlert\ReleaseEventDetector
+ * @uses \OCA\Versioniq\Service\ReleaseAlert\FollowList
  */
 final class AvailabilityRefreshJobTest extends TestCase {
-	private function runJob(AvailabilityService $service, AvailabilityResultStore $store, ?LoggerInterface $logger = null): AvailabilityRefreshJob {
+	private function runJob(AvailabilityService $service, AvailabilityResultStore $store, ?LoggerInterface $logger = null, ?FollowList $follows = null): AvailabilityRefreshJob {
 		$time = $this->createMock(ITimeFactory::class);
 		$time->method('getTime')->willReturn(1_790_000_000);
 
-		$job = new AvailabilityRefreshJob($time, $service, $store, $logger ?? $this->createMock(LoggerInterface::class));
+		$recorder = new ReleaseSweepRecorder($store, $this->createMock(ReleaseNotifier::class), $follows);
+		$job = new AvailabilityRefreshJob($time, $service, $recorder, $logger ?? $this->createMock(LoggerInterface::class));
 		$method = new \ReflectionMethod($job, 'run');
 		$method->setAccessible(true);
 		$method->invoke($job, null);
@@ -64,5 +72,21 @@ final class AvailabilityRefreshJobTest extends TestCase {
 		$logger->expects(self::once())->method('error');
 
 		$this->runJob($service, $store, $logger);
+	}
+
+	/**
+	 * releases-new-release-alerts D3: the followed apps reach the sweep.
+	 *
+	 * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-an-admin-follows-the-releases-of-an-app-that-is-not-installed
+	 */
+	public function testTheFollowedAppsReachTheSweep(): void {
+		$followed = [['appId' => 'forms', 'sourceId' => 'appstore', 'addedBy' => 'alice', 'addedAt' => '2026-11-14T10:00:00+00:00']];
+		$follows = $this->createMock(FollowList::class);
+		$follows->method('all')->willReturn($followed);
+
+		$service = $this->createMock(AvailabilityService::class);
+		$service->expects(self::once())->method('sweep')->with(AvailabilityRefreshJob::SWEEP_BUDGET_SECONDS, $followed)->willReturn([]);
+
+		$this->runJob($service, $this->createMock(AvailabilityResultStore::class), null, $follows);
 	}
 }
