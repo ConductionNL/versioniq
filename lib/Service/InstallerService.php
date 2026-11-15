@@ -52,7 +52,7 @@ use OCP\IUserSession;
  *
  * @psalm-api
  * @psalm-type AppLists = array{enabled: array<string>, versions: array<string, string>, core: array<string>, info: array<string, array<string, mixed>>}
- * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string}}
+ * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string,previous?:array{version:string,recordedAt:string,sourceId:?string}}}
  */
 class InstallerService {
 	/** Server-side changelog size cap; see "Version listings carry release notes". */
@@ -190,7 +190,7 @@ class InstallerService {
 	 * last-known-good record for its card.
 	 *
 	 * @param AppLists $lists
-	 * @return array{isCore: bool, isShipped: bool, boundSourceId: ?string, manageable: bool, warning: ?string, installedVersion: ?string, state: 'enabled'|'disabled'|'notInstalled', lkg: ?array{version: string, recordedAt: string, sourceId: ?string}}
+	 * @return array{isCore: bool, isShipped: bool, boundSourceId: ?string, manageable: bool, warning: ?string, installedVersion: ?string, state: 'enabled'|'disabled'|'notInstalled', lkg: ?array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}}
 	 */
 	private function appStatus(string $appId, array $lists): array {
 		$binding = $this->sources->bindingStore->get($appId);
@@ -701,7 +701,7 @@ class InstallerService {
 		}
 		$run->pin = $this->state->pinStore->get($run->request->target->appId);
 
-		return $this->pinRefusal($run) ?? $this->sameVersionOutcome($run) ?? $this->withdrawnRefusal($run) ?? $this->preflightRefusal($run);
+		return $this->pinRefusal($run) ?? $this->sameVersionOutcome($run) ?? $this->withdrawnRefusal($run) ?? $this->environmentRefusal($run);
 	}
 
 	/**
@@ -808,6 +808,18 @@ class InstallerService {
 	}
 
 	/**
+	 * The two pre-flight checks on the environment, sharing one lookup of the
+	 * installed app's folder.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 */
+	private function environmentRefusal(InstallRun $run): ?array {
+		$existingPath = $this->existingAppPath($run->request->target->appId);
+
+		return $this->preflightRefusal($run, $existingPath) ?? $this->spaceRefusal($run, $existingPath);
+	}
+
+	/**
 	 * Pre-flight: replacing an existing app renames its folder, which needs a
 	 * writable parent directory. A bind-mounted dev checkout (owned by another
 	 * uid) is not writable by the web-server user, so the install can never
@@ -815,8 +827,7 @@ class InstallerService {
 	 *
 	 * @return array{statusCode:int, payload:array<string, mixed>}|null
 	 */
-	private function preflightRefusal(InstallRun $run): ?array {
-		$existingPath = $this->existingAppPath($run->request->target->appId);
+	private function preflightRefusal(InstallRun $run, ?string $existingPath): ?array {
 		if ($existingPath === null || $this->installers->environmentCheck->isDestinationWritable($existingPath)) {
 			return null;
 		}
@@ -827,6 +838,36 @@ class InstallerService {
 			'category' => $category,
 			'stage' => FailureClassifier::STAGE_REQUESTED,
 			'hint' => $this->installers->failureClassifier->hintFor($category),
+			'installStatus' => 'failed',
+		]) + $run->debugSuffix([]));
+	}
+
+	/**
+	 * Pre-flight: the apps folder and the temp folder must have room for the
+	 * package before anything is downloaded (safety-rollback-backup-and-preflight
+	 * D2). The release is not resolved yet, so the size is the default.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 *
+	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+	 */
+	private function spaceRefusal(InstallRun $run, ?string $existingPath): ?array {
+		$space = $this->installers->environmentCheck->hasSpaceFor($existingPath);
+		if (isset($space['fits'])) {
+			$run->space = $space;
+		}
+		// No verdict counts as room, like a folder whose free space is unknown.
+		if (($space['fits'] ?? true) !== false) {
+			return null;
+		}
+		$category = FailureClassifier::CATEGORY_PREFLIGHT_SPACE;
+
+		return $this->installEnvelope($this->installers->failureClassifier->httpStatusFor($category), $this->outcomePayload($run, [
+			'message' => $this->installers->failureClassifier->messageFor($category),
+			'category' => $category,
+			'stage' => FailureClassifier::STAGE_REQUESTED,
+			'hint' => $this->installers->failureClassifier->hintFor($category),
+			'space' => $space,
 			'installStatus' => 'failed',
 		]) + $run->debugSuffix([]));
 	}
@@ -1001,6 +1042,10 @@ class InstallerService {
 			// states when the download fell back to a locally cached artifact.
 			'servedFromCache' => (bool)($result['servedFromCache'] ?? false),
 		];
+		if ($run->space !== null) {
+			// The progress shows the free space the pre-flight found (D2).
+			$payload['space'] = $run->space;
+		}
 
 		return $payload + $this->optionalResultFields($result) + $run->debugSuffix((array)($result['debug'] ?? []));
 	}
