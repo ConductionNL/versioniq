@@ -17,7 +17,7 @@ use OCA\Versioniq\BackgroundJob\AutoUpdateJob;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\Audit\AuditNote;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
-use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
+use OCA\Versioniq\Service\AutoUpdate\MinimumAgePlanner;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
 use OCA\Versioniq\Service\InstallerService;
@@ -62,7 +62,7 @@ final class AutoUpdateJobTest extends TestCase {
 			'settingsStore' => $this->createMock(AutoUpdateSettingsStore::class),
 			'notifier' => $this->createMock(AutoUpdateNotifier::class),
 			'logger' => $this->createMock(LoggerInterface::class),
-			'planner' => $this->createMock(AutoUpdatePlanner::class),
+			'planner' => $this->createMock(MinimumAgePlanner::class),
 		];
 	}
 
@@ -480,7 +480,7 @@ final class AutoUpdateJobTest extends TestCase {
 	 */
 	public function testAVersionHeldBackByTheMinimumAgeIsNotInstalled(): void {
 		$mocks = $this->openWindowWithOneApp(new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00', 5));
-		$mocks['planner'] = $this->createMock(AutoUpdatePlanner::class);
+		$mocks['planner'] = $this->createMock(MinimumAgePlanner::class);
 		$mocks['planner']->expects($this->once())->method('plan')
 			->with('openregister', '2.3.0', [['version' => '2.3.4', 'releasedAt' => '2026-07-22T09:00:00+00:00']], Policy::LEVEL_PATCH, 5)
 			->willReturn([
@@ -502,13 +502,13 @@ final class AutoUpdateJobTest extends TestCase {
 	public function testABypassedSecurityFixIsInstalledWithTheNote(): void {
 		$mocks = $this->openWindowWithOneApp(new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00'));
 		$mocks['settingsStore']->method('getMinAgeDays')->willReturn(7);
-		$mocks['planner'] = $this->createMock(AutoUpdatePlanner::class);
+		$mocks['planner'] = $this->createMock(MinimumAgePlanner::class);
 		$mocks['planner']->expects($this->once())->method('plan')
 			->with('openregister', '2.3.0', $this->anything(), Policy::LEVEL_PATCH, 7)
 			->willReturn([
 				'next' => '2.3.4',
 				'heldBack' => [],
-				'securityBypass' => ['version' => '2.3.4', 'advisories' => ['GHSA-1', 'GHSA-2'], 'reason' => AutoUpdatePlanner::REASON_SECURITY_FIX],
+				'securityBypass' => ['version' => '2.3.4', 'advisories' => ['GHSA-1', 'GHSA-2'], 'reason' => MinimumAgePlanner::REASON_SECURITY_FIX],
 				'exception' => null,
 			]);
 		$auditMessage = null;
@@ -531,11 +531,11 @@ final class AutoUpdateJobTest extends TestCase {
 	 */
 	public function testAnOrdinaryInstallCarriesNoNote(): void {
 		$mocks = $this->openWindowWithOneApp(new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00'));
-		$mocks['planner'] = $this->createMock(AutoUpdatePlanner::class);
+		$mocks['planner'] = $this->createMock(MinimumAgePlanner::class);
 		$mocks['planner']->method('plan')->willReturn([
 			'next' => '2.3.4',
 			'heldBack' => [],
-			'securityBypass' => ['version' => '3.0.1', 'advisories' => ['GHSA-9'], 'reason' => AutoUpdatePlanner::REASON_OUTSIDE_LEVEL],
+			'securityBypass' => ['version' => '3.0.1', 'advisories' => ['GHSA-9'], 'reason' => MinimumAgePlanner::REASON_OUTSIDE_LEVEL],
 			'exception' => null,
 		]);
 		$auditMessage = 'unset';

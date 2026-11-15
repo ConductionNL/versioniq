@@ -28,7 +28,7 @@ final class AutoUpdateInstall {
 		public readonly InstallerService $installerService,
 		public readonly IAppManager $appManager,
 		public readonly CandidateSelector $candidateSelector,
-		public readonly AutoUpdatePlanner $planner,
+		public readonly MinimumAgePlanner $planner,
 	) {
 	}
 }

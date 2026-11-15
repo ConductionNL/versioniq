@@ -81,6 +81,43 @@ final class ListVersionsTest extends TestCase {
 		self::assertMatchesRegularExpression('/\|\s*1\.0\.5\s*\|\s*newer\s*\|\s*unknown\s*\|/', $display);
 	}
 
+	/**
+	 * The table's Released column shows each version's release day, blank
+	 * without one; the JSON carries the version facts unchanged.
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-carries-its-release-date
+	 */
+	public function testListingShowsTheReleaseDayAndTheJsonCarriesTheVersionFacts(): void {
+		$facts = ['releasedAt' => '2026-10-02T09:15:00Z', 'downloads' => 312, 'outcomes' => ['succeeded' => 3, 'failed' => 1], 'breaking' => true, 'knownIssues' => ['Sync stalls']];
+		$installer = $this->createMock(InstallerService::class);
+		$installer->method('getAppVersions')->willReturn([
+			'installedVersion' => '1.0.0',
+			'availableVersions' => [
+				['version' => '2.0.0', 'changelog' => null, 'recordedSha' => null] + $facts,
+				['version' => '1.1.0', 'changelog' => null, 'recordedSha' => null, 'releasedAt' => null],
+				['version' => '1.0.9', 'changelog' => null, 'recordedSha' => null, 'releasedAt' => 'soon'],
+			],
+			'versions' => [],
+			'source' => 'github-release',
+			'sourceId' => 'github:acme/deck',
+			'statusCode' => Http::STATUS_OK,
+			'hasError' => false,
+		]);
+
+		$tester = new CommandTester(new ListVersions($installer));
+		self::assertSame(0, $tester->execute(['appId' => 'deck']));
+		$display = $tester->getDisplay();
+		self::assertStringContainsString('Released', $display);
+		self::assertMatchesRegularExpression('/\|\s*2\.0\.0\s*\|.*\|\s*2026-10-02\s*\|/', $display);
+		self::assertMatchesRegularExpression('/\|\s*1\.1\.0\s*\|.*\|\s*\|$/m', $display);
+		self::assertMatchesRegularExpression('/\|\s*1\.0\.9\s*\|.*\|\s*\|$/m', $display);
+
+		$json = new CommandTester(new ListVersions($installer));
+		self::assertSame(0, $json->execute(['appId' => 'deck', '--json' => true]));
+		$decoded = json_decode($json->getDisplay(), true, 512, JSON_THROW_ON_ERROR);
+		self::assertSame($facts, array_intersect_key($decoded['availableVersions'][0], $facts));
+	}
+
 	public function testJsonListingEmitsMachineReadableEnvelopeWithRequiredFields(): void {
 		$installer = $this->createMock(InstallerService::class);
 		$installer->method('getAppVersions')->willReturn([

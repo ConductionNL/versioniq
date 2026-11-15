@@ -1,201 +1,183 @@
 <?php
 
 declare(strict_types=1);
+
 /**
  * @license EUPL-1.2
  * @copyright Copyright (c) 2026, Conduction B.V. <info@conduction.nl>
+ *
  * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
  * SPDX-License-Identifier: EUPL-1.2
  */
 
 namespace OCA\Versioniq\Service\AutoUpdate;
 
-use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
-use OCA\Versioniq\Service\Advisory\AdvisoryService;
-use OCA\Versioniq\Service\Audit\AuditedVersions;
-use OCA\Versioniq\Service\Audit\AuditLogger;
-use OCA\Versioniq\Service\Audit\AuditSubject;
+use OCA\Versioniq\Service\Policy\Policy;
+use Psr\Log\LoggerInterface;
 
 /**
- * What a nightly run would install for one app, and what waits
- * (releases-minimum-age D3, D5, D6).
+ * Plans an automatic-update run before anything installs
+ * (autoupdate-run-batching D1): for every app with a policy it does what the
+ * job used to do up to the candidate, and records why an app will not
+ * install. It makes the same source calls the job made, and no others: a
+ * pinned or unmanageable app is not looked up, and an app that is not
+ * installed is not asked for releases.
  *
- * The versions the policy level accepts are split into eligible ones and
- * ones younger than the minimum age; only the eligible ones go to the
- * candidate selector, so `next` is the newest eligible version even while a
- * newer one waits. An admin's exception (D5) and a security fix the advisory
- * snapshot recommends (D6) count as eligible; the level still applies to
- * both. An exception that has done its work is removed and audited.
- *
- * @psalm-type HeldVersion = array{version: string, releasedAt: string, eligibleAt: string, reason: string}
- * @psalm-type SecurityBypass = array{version: string, advisories: list<string>, reason: string}
- * @psalm-type Plan = array{next: ?string, heldBack: list<HeldVersion>, securityBypass: ?SecurityBypass, exception: ?string}
- *
- * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
- * @psalm-api
+ * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
  */
-class AutoUpdatePlanner {
-	public const REASON_MINIMUM_AGE = 'minimum_age';
-	/** A security fix let through before the minimum age. */
-	public const REASON_SECURITY_FIX = 'security_fix';
-	/** A security fix the policy level does not reach, so it is not installed automatically. */
-	public const REASON_OUTSIDE_LEVEL = 'outside_level';
-
+final class AutoUpdatePlanner {
 	public function __construct(
-		private CandidateSelector $candidateSelector,
-		private MinimumAgeRule $minimumAgeRule,
-		private MinAgeExceptionStore $exceptions,
-		private AdvisoryResultStore $advisories,
-		private AuditLogger $auditLogger,
+		private AutoUpdateStores $stores,
+		private AutoUpdateInstall $install,
+		private LoggerInterface $logger,
 	) {
 	}
 
 	/**
-	 * The plan for one app.
+	 * The plan for a run: one member per app with a policy other than `none`,
+	 * in policy order. An app that fails to plan is logged and left out, so
+	 * one broken app never blocks the rest.
 	 *
-	 * @param list<array{version: string, releasedAt?: ?string}> $entries The versions the app's source lists
-	 * @param string $level The policy level
-	 * @param int $minAgeDays The effective minimum age in days (the policy's, else the instance value)
-	 * @return Plan
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	public function plan(?\DateTimeImmutable $now = null): AutoUpdatePlan {
+		$now ??= new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+		$members = [];
+		foreach ($this->stores->policyStore->all() as $appId => $policy) {
+			if ($policy->level === Policy::LEVEL_NONE) {
+				continue;
+			}
+
+			$member = $this->planIsolated($appId, $policy, $now);
+			if ($member !== null) {
+				$members[] = $member;
+			}
+		}
+
+		return new AutoUpdatePlan($members);
+	}
+
+	/**
+	 * Plan one app; a failure is logged and leaves the app out of the plan.
+	 */
+	private function planIsolated(string $appId, Policy $policy, \DateTimeImmutable $now): ?AutoUpdateMember {
+		try {
+			return $this->planApp($appId, $policy, $now);
+		} catch (\Throwable $error) {
+			// Per-app isolation — see "the job MUST proceed to the next app
+			// after any failure".
+			$this->logger->warning('AutoUpdateJob: failed to process an app', [
+				'appId' => $appId,
+				'message' => $error->getMessage(),
+			]);
+
+			return null;
+		}
+	}
+
+	/**
+	 * One app's place in the plan, or null when it has no place: it is not
+	 * manageable here, or not installed.
+	 */
+	private function planApp(string $appId, Policy $policy, \DateTimeImmutable $now): ?AutoUpdateMember {
+		if ($this->stores->pinStore->get($appId) !== null) {
+			return new AutoUpdateMember($appId, null, null, AutoUpdateMember::REASON_PINNED);
+		}
+
+		if (!$this->install->installerService->isManageableApp($appId)) {
+			return null;
+		}
+
+		return $this->planCandidate($appId, $policy, $now);
+	}
+
+	/**
+	 * The member for a managed, unpinned app: its candidate, or why it has
+	 * none; null when the app is not installed.
+	 */
+	private function planCandidate(string $appId, Policy $policy, \DateTimeImmutable $now): ?AutoUpdateMember {
+		$installedVersion = $this->installedVersionOf($appId);
+		if ($installedVersion === null) {
+			return null;
+		}
+
+		$entries = $this->availableEntries($appId);
+		if ($entries === null) {
+			return new AutoUpdateMember($appId, $installedVersion, null, AutoUpdateMember::REASON_SOURCE_ERROR);
+		}
+
+		// releases-minimum-age: the newest in-policy version old enough, an
+		// admin's exception, or a security fix let through before the minimum age.
+		$agePlan = $this->install->planner->plan(
+			$appId,
+			$installedVersion,
+			$entries,
+			$policy->level,
+			$policy->minAgeDays ?? $this->stores->settingsStore->getMinAgeDays(),
+			$now
+		);
+		$candidate = $agePlan['next'];
+		if ($candidate === null) {
+			return new AutoUpdateMember($appId, $installedVersion, null, AutoUpdateMember::REASON_NO_CANDIDATE);
+		}
+
+		if ($this->stores->attemptLedger->hasAttempted($appId, $candidate)) {
+			// Never-retry — see "Failed attempt is not retried".
+			return new AutoUpdateMember($appId, $installedVersion, $candidate, AutoUpdateMember::REASON_BLOCKED);
+		}
+
+		return new AutoUpdateMember($appId, $installedVersion, $candidate, null, self::bypassAdvisories($agePlan['securityBypass'], $candidate));
+	}
+
+	/**
+	 * The advisories of a security fix the minimum-age plan lets through
+	 * before the minimum age, when that fix is the version to install; []
+	 * otherwise.
+	 *
+	 * @param array{version: string, advisories: list<string>, reason: string}|null $bypass
+	 * @return list<string>
 	 *
 	 * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
 	 */
-	public function plan(string $appId, string $installedVersion, array $entries, string $level, int $minAgeDays, \DateTimeImmutable $now): array {
-		$byVersion = [];
-		foreach ($entries as $entry) {
-			$byVersion[$entry['version']] = $entry;
+	private static function bypassAdvisories(?array $bypass, string $candidate): array {
+		if ($bypass === null || $bypass['version'] !== $candidate || $bypass['reason'] !== MinimumAgePlanner::REASON_SECURITY_FIX) {
+			return [];
 		}
 
-		$exception = $this->liveException($appId, $installedVersion, $byVersion, $minAgeDays, $now);
-		$security = $this->securityFix($appId);
-
-		$eligible = [];
-		$heldBack = [];
-		$bypassed = null;
-		$excepted = null;
-		foreach ($byVersion as $version => $entry) {
-			$version = (string)$version;
-			if ($this->candidateSelector->select($installedVersion, [$version], $level) !== $version) {
-				continue;
-			}
-			if (!$this->minimumAgeRule->isHeld($appId, $entry, $minAgeDays, $now)) {
-				$eligible[] = $version;
-				continue;
-			}
-			if ($version === $exception) {
-				$eligible[] = $version;
-				$excepted = $version;
-				continue;
-			}
-			if ($security !== null && $version === $security['version']) {
-				$eligible[] = $version;
-				$bypassed = $version;
-				continue;
-			}
-			$releasedAt = $this->minimumAgeRule->releasedAt($appId, $entry, $now);
-			$heldBack[] = [
-				'version' => $version,
-				'releasedAt' => $releasedAt->format(DATE_ATOM),
-				'eligibleAt' => MinimumAgeRule::eligibleAt($releasedAt, $minAgeDays)->format(DATE_ATOM),
-				'reason' => self::REASON_MINIMUM_AGE,
-			];
-		}
-		usort($heldBack, static fn (array $a, array $b): int => version_compare($a['version'], $b['version']));
-
-		$next = $this->candidateSelector->select($installedVersion, $eligible, $level);
-
-		return [
-			'next' => $next,
-			'heldBack' => $heldBack,
-			'securityBypass' => $this->securityBypass($security, $bypassed, $next, $installedVersion, $byVersion, $level),
-			'exception' => $excepted,
-		];
+		return $bypass['advisories'];
 	}
 
 	/**
-	 * The app's exception version while it still has work to do; one that
-	 * has done its work is removed here, with an audit row saying why.
-	 *
-	 * @param array<string, array{version: string, releasedAt?: ?string}> $byVersion
+	 * The installed version, or null when the app is not installed.
 	 */
-	private function liveException(string $appId, string $installedVersion, array $byVersion, int $minAgeDays, \DateTimeImmutable $now): ?string {
-		$stored = $this->exceptions->get($appId);
-		if ($stored === null) {
+	private function installedVersionOf(string $appId): ?string {
+		try {
+			$installed = $this->install->appManager->getAppVersion($appId, false);
+		} catch (\Throwable) {
 			return null;
 		}
-		$version = $stored['version'];
 
-		$reason = match (true) {
-			version_compare($installedVersion, $version, '>=') => 'version ' . $installedVersion . ' is installed',
-			!isset($byVersion[$version]) => 'the source no longer lists it',
-			!$this->minimumAgeRule->isHeld($appId, $byVersion[$version], $minAgeDays, $now) => 'it reached the minimum age',
-			default => null,
-		};
-		if ($reason === null) {
-			return $version;
-		}
-
-		$this->exceptions->remove($appId);
-		$this->auditLogger->record(
-			new AuditSubject('', $appId, AuditLogger::OPERATION_SETTINGS),
-			new AuditedVersions($installedVersion, $version, null),
-			AuditLogger::STATUS_SUCCESS,
-			sprintf('Minimum-age exception for %s removed: %s', $version, $reason),
-		);
-
-		return null;
+		return $installed !== '' ? $installed : null;
 	}
 
 	/**
-	 * The fix the advisory snapshot recommends for an app that runs a
-	 * vulnerable version, with the advisory ids, or null.
+	 * The versions the app's source lists, with their release time when the
+	 * source gives one, or null when it reported an error.
 	 *
-	 * @return array{version: string, advisories: list<string>}|null
+	 * @return list<array{version: string, releasedAt: ?string}>|null
 	 */
-	private function securityFix(string $appId): ?array {
-		/** @var mixed $correlation */
-		$correlation = $this->advisories->read()['advisories'][$appId] ?? null;
-		if (!is_array($correlation) || ($correlation['state'] ?? null) !== AdvisoryService::STATE_VULNERABLE) {
-			return null;
-		}
-		$recommended = $correlation['recommendedVersion'] ?? null;
-		if (!is_string($recommended) || $recommended === '') {
+	private function availableEntries(string $appId): ?array {
+		$result = $this->install->installerService->getAppVersions($appId);
+		if (($result['hasError'] ?? false) === true) {
 			return null;
 		}
 
-		$ids = [];
-		/** @var mixed $advisory */
-		foreach ((array)($correlation['advisories'] ?? []) as $advisory) {
-			if (is_array($advisory) && is_string($advisory['id'] ?? null)) {
-				$ids[] = $advisory['id'];
-			}
+		$entries = [];
+		foreach ($result['availableVersions'] ?? [] as $entry) {
+			$released = $entry['releasedAt'] ?? null;
+			$entries[] = ['version' => (string)$entry['version'], 'releasedAt' => is_string($released) ? $released : null];
 		}
 
-		return ['version' => $recommended, 'advisories' => $ids];
-	}
-
-	/**
-	 * The bypass to report: the fix the run installs before the minimum age,
-	 * or a listed, newer fix the level does not reach, so the plan says why
-	 * it is not installed.
-	 *
-	 * @param array{version: string, advisories: list<string>}|null $security
-	 * @param array<string, mixed> $byVersion
-	 * @return array{version: string, advisories: list<string>, reason: string}|null
-	 */
-	private function securityBypass(?array $security, ?string $bypassed, ?string $next, string $installedVersion, array $byVersion, string $level): ?array {
-		if ($security === null) {
-			return null;
-		}
-		if ($bypassed !== null && $bypassed === $next) {
-			return $security + ['reason' => self::REASON_SECURITY_FIX];
-		}
-		$version = $security['version'];
-		$inLevel = $this->candidateSelector->select($installedVersion, [$version], $level) === $version;
-		if (!$inLevel && isset($byVersion[$version]) && version_compare($version, $installedVersion, '>')) {
-			return $security + ['reason' => self::REASON_OUTSIDE_LEVEL];
-		}
-
-		return null;
+		return $entries;
 	}
 }

@@ -226,4 +226,75 @@ final class AdvisoryNotifierTest extends TestCase {
 			['warning', 'AdvisoryNotifier: failed to raise notification', ['app' => 'openregister', 'advisory' => 'GHSA-xxxx', 'message' => 'notifications app is gone']],
 		], $calls);
 	}
+
+	/**
+	 * The stored triage dismissing the openregister advisory on 1.0.5.
+	 */
+	private function dismissOpenregister(?string $until = null, string $version = '1.0.5'): void {
+		$this->store['advisory.triage'] = json_encode([
+			'openregister|GHSA-xxxx' => ['dismissal' => [
+				'reason' => 'not_used', 'comment' => '', 'by' => 'alice', 'at' => '2026-07-01T00:00:00+00:00',
+				'until' => $until, 'installedVersion' => $version,
+			]],
+		], JSON_THROW_ON_ERROR);
+	}
+
+	private function countingNotifier(int &$notified): AdvisoryNotifier {
+		$manager = $this->createMock(IManager::class);
+		$manager->method('createNotification')->willReturn($this->fluentNotification());
+		$manager->method('notify')->willReturnCallback(function () use (&$notified): void {
+			$notified++;
+		});
+
+		return $this->buildByName(AdvisoryNotifier::class, [
+			'notificationManager' => $manager,
+			'appConfig' => $this->appConfig(),
+			'groupManager' => $this->groupManagerWithAdmin(),
+			'timeFactory' => $this->timeFactory(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
+	}
+
+	/**
+	 * An actively dismissed pair never notifies, and reopening it afterwards
+	 * does not fire a late notification: it counted as notified (D2).
+	 */
+	public function testADismissedPairDoesNotNotifyNorAfterAReopen(): void {
+		$notified = 0;
+		$notifier = $this->countingNotifier($notified);
+		$this->dismissOpenregister();
+
+		$this->assertSame(0, $notifier->notifyNewAdvisories($this->vulnerableCorrelation()));
+		$this->assertSame(['openregister:GHSA-xxxx'], json_decode($this->store['advisory.notified'], true));
+
+		unset($this->store['advisory.triage']);
+		$this->assertSame(0, $notifier->notifyNewAdvisories($this->vulnerableCorrelation()));
+		$this->assertSame(0, $notified);
+	}
+
+	/**
+	 * A dismissal past its end date, or made on another installed version,
+	 * no longer holds, so a never-notified pair notifies.
+	 */
+	public function testALapsedDismissalNotifies(): void {
+		$notified = 0;
+		$this->dismissOpenregister(until: '2026-07-06T00:00:00+00:00');
+		$this->assertSame(1, $this->countingNotifier($notified)->notifyNewAdvisories($this->vulnerableCorrelation()));
+
+		$this->store = [];
+		$this->dismissOpenregister(version: '1.0.4');
+		$this->assertSame(1, $this->countingNotifier($notified)->notifyNewAdvisories($this->vulnerableCorrelation()));
+		$this->assertSame(2, $notified);
+	}
+
+	/**
+	 * A dismissal whose end date is still ahead holds.
+	 */
+	public function testAFutureEndDateHolds(): void {
+		$notified = 0;
+		$this->dismissOpenregister(until: '2026-08-01T00:00:00+00:00');
+
+		$this->assertSame(0, $this->countingNotifier($notified)->notifyNewAdvisories($this->vulnerableCorrelation()));
+		$this->assertSame(0, $notified);
+	}
 }
