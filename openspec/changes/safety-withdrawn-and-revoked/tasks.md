@@ -20,3 +20,4 @@
 ## 4. Close
 
 - [ ] 4.1 Add strings to `l10n/en` and `l10n/nl` (verify `npm run check:l10n-js`), set the matrix rows `rel-withdrawn-versions`, `saf-revoked-certificate` and `adv-malicious-package` to `built` with evidence lines, then archive this change.
+  - Strings (en, nl) and the three matrix rows are done; archiving is left until the e2e `withdrawn.spec.ts` of 3.2 has run.

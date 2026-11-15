@@ -300,7 +300,17 @@ OC.L10N.register(
         "Outside the update policy": "Buiten het updatebeleid",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Aantal releases dat een app achter mag lopen (0 tot {max}, laat leeg om de controle uit te zetten)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "Een app die verder achterloopt, wordt gemarkeerd op het tabblad Apps. 1 betekent de nieuwste release of de release daarvoor.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"]
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Buiten het updatebeleid: %n release achter","Buiten het updatebeleid: %n releases achter"],
+        "Certificate revoked: %s": "Certificaat ingetrokken: %s",
+        "Nextcloud revoked the signing certificate of %s. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.": "Nextcloud heeft het ondertekeningscertificaat van %s ingetrokken. Nextcloud trekt een certificaat in om een app terug te trekken waarvan bekend is dat die gecompromitteerd of kwaadaardig is.",
+        "Revoked certificates": "Ingetrokken certificaten",
+        "Revocation list address (leave empty to use only the list the server shipped with)": "Adres van de intrekkingslijst (laat leeg om alleen de lijst te gebruiken die met de server is meegeleverd)",
+        "A list is used only when Nextcloud signed it and it is newer than the shipped one. Default: {url}": "Een lijst wordt alleen gebruikt als Nextcloud die heeft ondertekend en die nieuwer is dan de meegeleverde lijst. Standaard: {url}",
+        "Disable an app automatically when its certificate is revoked": "Een app automatisch uitschakelen als het certificaat ervan wordt ingetrokken",
+        "Nextcloud revoked the signing certificate of this app. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.": "Nextcloud heeft het ondertekeningscertificaat van deze app ingetrokken. Nextcloud trekt een certificaat in om een app terug te trekken waarvan bekend is dat die gecompromitteerd of kwaadaardig is.",
+        "Certificate revoked": "Certificaat ingetrokken",
+        "The source no longer lists the installed version. Pick another version to install.": "De bron vermeldt de geïnstalleerde versie niet meer. Kies een andere versie om te installeren.",
+        "Version withdrawn by the publisher": "Versie teruggetrokken door de uitgever"
     },
     "nplurals=2; plural=(n != 1);"
 )

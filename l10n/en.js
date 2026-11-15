@@ -271,7 +271,17 @@ OC.L10N.register(
         "Outside the update policy": "Outside the update policy",
         "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)": "Releases an app may fall behind (0 to {max}, leave empty to turn the check off)",
         "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.": "An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.",
-        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"]
+        "_Outside the update policy: %n release behind_::_Outside the update policy: %n releases behind_": ["Outside the update policy: %n release behind","Outside the update policy: %n releases behind"],
+        "Certificate revoked: %s": "Certificate revoked: %s",
+        "Nextcloud revoked the signing certificate of %s. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.": "Nextcloud revoked the signing certificate of %s. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.",
+        "Revoked certificates": "Revoked certificates",
+        "Revocation list address (leave empty to use only the list the server shipped with)": "Revocation list address (leave empty to use only the list the server shipped with)",
+        "A list is used only when Nextcloud signed it and it is newer than the shipped one. Default: {url}": "A list is used only when Nextcloud signed it and it is newer than the shipped one. Default: {url}",
+        "Disable an app automatically when its certificate is revoked": "Disable an app automatically when its certificate is revoked",
+        "Nextcloud revoked the signing certificate of this app. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.": "Nextcloud revoked the signing certificate of this app. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.",
+        "Certificate revoked": "Certificate revoked",
+        "The source no longer lists the installed version. Pick another version to install.": "The source no longer lists the installed version. Pick another version to install.",
+        "Version withdrawn by the publisher": "Version withdrawn by the publisher"
     },
     "nplurals=2; plural=(n != 1);"
 )
