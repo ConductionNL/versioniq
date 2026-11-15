@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Service\Pat;
 
 use Exception;
@@ -173,5 +178,12 @@ final class PatValidatorTest extends TestCase {
 
 		$this->assertFalse($result->ok);
 		$this->assertSame('Token is invalid or revoked.', $result->error);
+	}
+
+	public function testValidateKeepsTheTokenOutOfStackTraces(): void {
+		$token = (new \ReflectionMethod(PatValidator::class, 'validate'))->getParameters()[0];
+
+		$this->assertSame('token', $token->getName());
+		$this->assertCount(1, $token->getAttributes(\SensitiveParameter::class));
 	}
 }

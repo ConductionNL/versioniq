@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Service\Settings;
 
 use InvalidArgumentException;
@@ -113,6 +118,22 @@ final class InstanceSettingsTest extends TestCase {
 		$this->store()->update(['githubApiBase' => 'http://ghe.example.org/api/v3']);
 	}
 
+	public function testTheNcscDirectoryMustBeHttps(): void {
+		$this->expectException(InvalidArgumentException::class);
+		$this->store()->update(['ncscFeedUrl' => 'http://csaf.example.org/v2']);
+	}
+
+	public function testAnHttpsNcscDirectoryIsStoredAndReadBackBesideItsDefault(): void {
+		$store = $this->store();
+
+		self::assertSame(['ncscFeedUrl'], $store->update(['ncscFeedUrl' => 'https://csaf.example.org/v2/']));
+
+		$settings = $store->read();
+		self::assertSame('https://csaf.example.org/v2', $settings['ncscFeedUrl']);
+		self::assertSame('https://advisories.ncsc.nl/csaf/v2/', $settings['ncscFeedDefault']);
+		self::assertSame('https://csaf.example.org/v2', $this->config['advisory.ncsc_feed_base']);
+	}
+
 	public function testAUrlWithCredentialsIsRejected(): void {
 		$this->expectException(InvalidArgumentException::class);
 		$this->store()->update(['appStoreApiBase' => 'https://user:pw@store.example.org']);
@@ -167,5 +188,44 @@ final class InstanceSettingsTest extends TestCase {
 			}
 		}
 		self::assertArrayNotHasKey(InstanceSettings::KEY_MAX_LINES_BEHIND, $this->config);
+	}
+
+	/**
+	 * Every rule of an address field, for the https-only GitHub API base and
+	 * the http-or-https advisory feed: the stored value, or the message.
+	 *
+	 * @dataProvider addresses
+	 */
+	public function testEveryAddressRule(string $field, string $raw, string $expected): void {
+		$key = ['githubApiBase' => 'forge.github.api_base', 'advisoryFeedUrl' => 'advisory.feed_base'][$field];
+		try {
+			$this->store()->update([$field => $raw]);
+			$actual = (string)($this->config[$key] ?? '(cleared)');
+		} catch (InvalidArgumentException $error) {
+			$actual = $error->getMessage();
+		}
+
+		self::assertSame($expected, $actual);
+	}
+
+	/**
+	 * @return iterable<string, array{0: string, 1: string, 2: string}>
+	 */
+	public static function addresses(): iterable {
+		$https = 'Enter an https address without a username, password or query, for example https://ghe.example.org/api/v3.';
+		$http = 'Enter an http or https address without a username, password or query.';
+		foreach (['githubApiBase' => $https, 'advisoryFeedUrl' => $http] as $field => $refusal) {
+			yield "$field trailing slashes trimmed" => [$field, '  https://ghe.example.org/api/v3// ', 'https://ghe.example.org/api/v3'];
+			yield "$field http" => [$field, 'http://ghe.example.org', $field === 'githubApiBase' ? $https : 'http://ghe.example.org'];
+			yield "$field ftp" => [$field, 'ftp://ghe.example.org', $refusal];
+			yield "$field no scheme" => [$field, 'ghe.example.org', $refusal];
+			yield "$field no host" => [$field, 'https:///path', $refusal];
+			yield "$field user" => [$field, 'https://bot@ghe.example.org', $refusal];
+			yield "$field password" => [$field, 'https://:pw@ghe.example.org', $refusal];
+			yield "$field query" => [$field, 'https://ghe.example.org/?a=1', $refusal];
+			yield "$field fragment" => [$field, 'https://ghe.example.org/#top', $refusal];
+			yield "$field port and path" => [$field, 'https://ghe.example.org:8443/api', 'https://ghe.example.org:8443/api'];
+			yield "$field unparseable" => [$field, 'https://', $refusal];
+		}
 	}
 }

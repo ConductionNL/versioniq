@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Service\Pin;
 
 use InvalidArgumentException;
@@ -17,6 +22,11 @@ final class PinTest extends TestCase {
 	public function testConstructorRejectsInvalidVersionCharacters(): void {
 		$this->expectException(InvalidArgumentException::class);
 		new Pin('2.3.0; rm -rf', 'alice', '2026-06-11T12:00:00+00:00');
+	}
+
+	public function testConstructorRejectsATrailingNewline(): void {
+		$this->expectException(InvalidArgumentException::class);
+		new Pin("2.3.0\n", 'alice', '2026-06-11T12:00:00+00:00');
 	}
 
 	public function testConstructorRejectsEmptyPinnedBy(): void {
@@ -99,5 +109,13 @@ final class PinTest extends TestCase {
 	public function testFromArrayThrowsWhenRequiredFieldsMissing(): void {
 		$this->expectException(InvalidArgumentException::class);
 		Pin::fromArray(['version' => '2.3.0']);
+	}
+
+	public function testFromArrayReadsEmptyOptionalFieldsAsUnset(): void {
+		$pin = Pin::fromArray(['version' => '2.3.0', 'pinnedBy' => 'admin', 'pinnedAt' => '2026-07-01T00:00:00+00:00', 'reason' => '', 'driftedTo' => '', 'driftedAt' => '']);
+
+		$this->assertNull($pin->reason);
+		$this->assertNull($pin->driftedTo);
+		$this->assertNull($pin->driftedAt);
 	}
 }

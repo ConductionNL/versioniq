@@ -12,11 +12,11 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Pin;
 
-use OCA\Versioniq\AppInfo\Application;
-use OCP\AppFramework\Utility\ITimeFactory;
-use OCP\IGroupManager;
-use OCP\IURLGenerator;
-use OCP\Notification\IManager;
+use OCA\Versioniq\Service\AdminNotice;
+use OCA\Versioniq\Service\AdminNotificationServices;
+use OCA\Versioniq\Service\Audit\AuditOrigin;
+use OCA\Versioniq\Service\NotifiesAdmins;
+use OCA\Versioniq\Service\ResolvesAdminUids;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -34,12 +34,12 @@ use Psr\Log\LoggerInterface;
  * @psalm-api
  */
 class PinDriftHandler {
+	use NotifiesAdmins;
+	use ResolvesAdminUids;
+
 	public function __construct(
 		private PinStore $pinStore,
-		private IManager $notificationManager,
-		private IGroupManager $groupManager,
-		private ITimeFactory $timeFactory,
-		private IURLGenerator $urlGenerator,
+		private AdminNotificationServices $admin,
 		private LoggerInterface $logger,
 	) {
 	}
@@ -52,19 +52,26 @@ class PinDriftHandler {
 	 * @spec openspec/specs/version-pinning/spec.md
 	 */
 	public function handle(string $appId, string $installedVersion): void {
+		// The drift row reads `listener`, whatever request or job noticed it.
+		AuditOrigin::during(AuditOrigin::LISTENER, fn () => $this->handleDrift($appId, $installedVersion));
+	}
+
+	/**
+	 * The drift check itself, under the listener's audit origin.
+	 *
+	 * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-every-audit-row-says-where-it-came-from
+	 */
+	private function handleDrift(string $appId, string $installedVersion): void {
 		$pin = $this->pinStore->get($appId);
-		if ($pin === null) {
-			return;
-		}
-		if ($pin->version === $installedVersion) {
-			// Matches the pin — nothing drifted (also covers the "adjusted before
-			// finalize" self-install case: the pin was already moved to this
-			// version, so this compares equal and never raises a false alarm).
+		if ($pin === null || $pin->version === $installedVersion) {
+			// No pin, or it matches — nothing drifted (also covers the "adjusted
+			// before finalize" self-install case: the pin was already moved to
+			// this version, so this compares equal and never raises a false alarm).
 			return;
 		}
 
-		$driftedAt = $this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM);
-		$newlyDrifted = $this->pinStore->markDrift($appId, $installedVersion, $driftedAt);
+		$driftedAt = $this->admin->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM);
+		$newlyDrifted = $this->pinStore->markDrift($appId, new PinDrift($installedVersion, $driftedAt));
 		if (!$newlyDrifted) {
 			// Either already recorded for this exact drifted version, or the
 			// pin disappeared between get() and markDrift() — either way, no
@@ -72,50 +79,21 @@ class PinDriftHandler {
 			return;
 		}
 
-		$this->notifyAdmins($appId, $pin->version, $installedVersion);
-	}
-
-	private function notifyAdmins(string $appId, string $pinnedVersion, string $observedVersion): void {
-		// Links into the Versioniq admin settings page; see "Admins are notified".
-		$link = $this->urlGenerator->linkToRouteAbsolute(
-			'settings.AdminSettings.index',
-			['section' => Application::APP_ID],
-		);
-
-		foreach ($this->adminUids() as $uid) {
-			try {
-				$notification = $this->notificationManager->createNotification();
-				$notification
-					->setApp(Application::APP_ID)
-					->setUser($uid)
-					->setDateTime($this->timeFactory->getDateTime())
-					->setObject('pin_drift', $appId)
-					->setSubject('pin_drift', [
-						'app' => $appId,
-						'pinnedVersion' => $pinnedVersion,
-						'observedVersion' => $observedVersion,
-					])
-					->setLink($link);
-				$this->notificationManager->notify($notification);
-			} catch (\Throwable $error) {
-				$this->logger->warning('PinDriftHandler: failed to raise drift notification', [
-					'appId' => $appId,
-					'uid' => $uid,
-					'message' => $error->getMessage(),
-				]);
-			}
-		}
+		$this->notifyAdmins($this->driftNotice($appId, [
+			'pinnedVersion' => $pin->version,
+			'observedVersion' => $installedVersion,
+		]));
 	}
 
 	/**
-	 * @return list<string>
+	 * The `pin_drift` notice for an app; see "Admins are notified".
+	 *
+	 * @param array{pinnedVersion: string, observedVersion: string} $versions
 	 */
-	private function adminUids(): array {
-		$uids = [];
-		foreach ($this->groupManager->get('admin')?->getUsers() ?? [] as $user) {
-			$uids[] = $user->getUID();
-		}
-
-		return array_values(array_unique($uids));
+	private function driftNotice(string $appId, array $versions): AdminNotice {
+		return (new AdminNotice())
+			->withObject('pin_drift', $appId)
+			->withSubject('pin_drift', ['app' => $appId] + $versions)
+			->loggedAs('PinDriftHandler: failed to raise drift notification', ['appId' => $appId]);
 	}
 }

@@ -15,6 +15,8 @@ namespace OCA\Versioniq\Service\Audit;
 use OCA\Versioniq\Db\AuditEntry;
 use OCA\Versioniq\Db\AuditEntryMapper;
 use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\EventDispatcher\IEventDispatcher;
+use OCP\Log\Audit\CriticalActionPerformedEvent;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -37,6 +39,17 @@ class AuditLogger {
 	public const OPERATION_PIN_DRIFT = 'pin_drift';
 	/** An instance setting changed from the Settings tab (#438). */
 	public const OPERATION_SETTINGS = 'settings';
+	/** A connection to another Versioniq instance was added, changed or removed (install-multi-instance-promotion D1). */
+	public const OPERATION_INSTANCE_CONNECTION = 'instance_connection';
+
+	/** An advisory dismissed with a reason (advisories-triage). */
+	public const OPERATION_ADVISORY_DISMISS = 'advisory_dismiss';
+
+	/** A dismissed advisory reopened (advisories-triage). */
+	public const OPERATION_ADVISORY_REOPEN = 'advisory_reopen';
+
+	/** An advisory assigned to an owner, or unassigned (advisories-triage). */
+	public const OPERATION_ADVISORY_ASSIGN = 'advisory_assign';
 
 	private const OPERATION_PATTERN = '/^[a-z_]{1,32}$/';
 	private const MESSAGE_MAX_LENGTH = 4000;
@@ -45,6 +58,7 @@ class AuditLogger {
 		private AuditEntryMapper $mapper,
 		private ITimeFactory $timeFactory,
 		private LoggerInterface $logger,
+		private ?IEventDispatcher $eventDispatcher = null,
 	) {
 	}
 
@@ -57,35 +71,21 @@ class AuditLogger {
 	 * @spec openspec/specs/version-pinning/spec.md
 	 */
 	public function record(
-		string $actorUid,
-		string $appId,
-		string $operation,
-		?string $fromVersion,
-		?string $toVersion,
-		?string $sourceId,
+		AuditSubject $subject,
+		AuditedVersions $versions,
 		string $status,
 		?string $message = null,
 	): void {
-		if (preg_match(self::OPERATION_PATTERN, $operation) !== 1) {
-			$this->logger->warning('AuditLogger: rejected malformed operation name, entry not recorded', [
-				'appId' => $appId,
-				'operation' => $operation,
-			]);
-
+		if ($this->rejectsOperation($subject)) {
 			return;
 		}
 
 		try {
-			$entry = new AuditEntry();
-			$entry->setActorUid($actorUid);
-			$entry->setAppId($appId);
-			$entry->setOperation($operation);
-			$entry->setFromVersion($fromVersion === '' ? null : $fromVersion);
-			$entry->setToVersion($toVersion === '' ? null : $toVersion);
-			$entry->setSourceId($sourceId === '' ? null : $sourceId);
+			$entry = $this->entryFor($subject, $versions);
 			$entry->setStatus($status);
 			$entry->setMessage($this->sanitizeMessage($message));
 			$entry->setCreatedAt($this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'));
+			$entry->setOrigin($subject->origin ?? AuditOrigin::current());
 
 			$this->mapper->insert($entry);
 		} catch (\Throwable $error) {
@@ -93,12 +93,84 @@ class AuditLogger {
 			// caller (an install / bind operation), which would turn a logging
 			// bug into an outage. See design.md "Write path: best-effort by
 			// construction".
-			$this->logger->error('AuditLogger: failed to record audit entry', [
-				'appId' => $appId,
-				'operation' => $operation,
-				'message' => $error->getMessage(),
-			]);
+			$this->logWriteFailure($subject, $error);
+			return;
 		}
+
+		$this->forward($entry);
+	}
+
+	/**
+	 * Hands the recorded row to the platform's audit log as a critical action,
+	 * so `admin_audit` writes it to the target the admin configured. The
+	 * message is the sanitised one already on the row. Best effort, like the
+	 * write: a failing listener never reaches the operation.
+	 *
+	 * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-audit-rows-reach-the-platforms-audit-log-and-activity-stream
+	 */
+	private function forward(AuditEntry $entry): void {
+		if ($this->eventDispatcher === null) {
+			return;
+		}
+
+		try {
+			$this->eventDispatcher->dispatchTyped(new CriticalActionPerformedEvent(
+				'Versioniq %s of app "%s" from %s to %s by "%s" (%s): %s %s',
+				[
+					'operation' => $entry->getOperation(),
+					'appId' => $entry->getAppId(),
+					'fromVersion' => $entry->getFromVersion() ?? '-',
+					'toVersion' => $entry->getToVersion() ?? '-',
+					'actorUid' => $entry->getActorUid(),
+					'origin' => $entry->getOrigin() ?? '-',
+					'status' => $entry->getStatus(),
+					'message' => $entry->getMessage() ?? '',
+				],
+			));
+		} catch (\Throwable $error) {
+			$this->logger->warning('Versioniq: forwarding an audit entry to the platform audit log failed', ['exception' => $error]);
+		}
+	}
+
+	/**
+	 * Whether the operation name is malformed; such an entry is logged and
+	 * not recorded.
+	 */
+	private function rejectsOperation(AuditSubject $subject): bool {
+		if (preg_match(self::OPERATION_PATTERN, $subject->operation) === 1) {
+			return false;
+		}
+
+		$this->logger->warning('AuditLogger: rejected malformed operation name, entry not recorded', [
+			'appId' => $subject->appId,
+			'operation' => $subject->operation,
+		]);
+
+		return true;
+	}
+
+	/**
+	 * A new entry with who did what to which app, and the versions it went
+	 * between; empty versions are stored as null.
+	 */
+	private function entryFor(AuditSubject $subject, AuditedVersions $versions): AuditEntry {
+		$entry = new AuditEntry();
+		$entry->setActorUid($subject->actorUid);
+		$entry->setAppId($subject->appId);
+		$entry->setOperation($subject->operation);
+		$entry->setFromVersion($versions->fromVersion === '' ? null : $versions->fromVersion);
+		$entry->setToVersion($versions->toVersion === '' ? null : $versions->toVersion);
+		$entry->setSourceId($versions->sourceId === '' ? null : $versions->sourceId);
+
+		return $entry;
+	}
+
+	private function logWriteFailure(AuditSubject $subject, \Throwable $error): void {
+		$this->logger->error('AuditLogger: failed to record audit entry', [
+			'appId' => $subject->appId,
+			'operation' => $subject->operation,
+			'message' => $error->getMessage(),
+		]);
 	}
 
 	/**

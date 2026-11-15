@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Service\Cache;
 
 use OCP\Files\NotFoundException;
@@ -75,6 +80,13 @@ final class FakeSimpleFolder implements ISimpleFolder {
 		$this->folders[$path] = $folder;
 
 		return $folder;
+	}
+
+	/**
+	 * Added to ISimpleFolder in Nextcloud 35; harmless extra method on 32-34.
+	 */
+	public function getOrCreateFolder(string $path, int $maxRetries = 5): ISimpleFolder {
+		return $this->folders[$path] ?? $this->newFolder($path);
 	}
 
 	public function rememberFile(FakeSimpleFile $file): void {

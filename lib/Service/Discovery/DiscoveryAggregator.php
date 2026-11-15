@@ -23,6 +23,8 @@ use OCP\App\IAppManager;
  * The aggregator is intentionally simple: synchronous PHP iteration over
  * providers. If a provider becomes too slow we swap in `IClient::getMulti`
  * later — for now total wall time is acceptable for an admin-facing search.
+ *
+ * @psalm-import-type Group from DiscoveryMerge
  */
 class DiscoveryAggregator {
 	/** @var list<DiscoveryProviderInterface> */
@@ -33,11 +35,10 @@ class DiscoveryAggregator {
 	 */
 	public function __construct(
 		private IAppManager $appManager,
-		AppStoreDiscovery $appStore,
-		GithubPrivateDiscovery $githubPrivate,
-		GithubSearchDiscovery $githubSearch,
+		DiscoveryProviders $providers,
+		private ?PublisherTrust $trust = null,
 	) {
-		$this->providers = [$appStore, $githubPrivate, $githubSearch];
+		$this->providers = $providers->all();
 	}
 
 	/**
@@ -62,82 +63,109 @@ class DiscoveryAggregator {
 	 * see "Result aggregation".
 	 *
 	 * @spec openspec/specs/app-discovery/spec.md
-	 * @param list<string>|null $sourceIds when null, all enabled providers run
 	 * @return array{results: list<array<string, mixed>>, providers: list<array{id: string, label: string, enabled: bool}>, errors: list<array{providerId: string, message: string}>}
 	 */
-	public function search(string $query, ?array $sourceIds = null, bool $installedOnly = false): array {
-		$active = $this->resolveActive($sourceIds);
-		$installed = $this->snapshotInstalled();
-
-		$grouped = [];
-		$errors = [];
+	public function search(string $query, DiscoveryFilter $filter = new DiscoveryFilter()): array {
+		$active = $this->resolveActive($filter->sourceIds);
+		$merge = new DiscoveryMerge($this->snapshotInstalled());
 
 		foreach ($active as $provider) {
-			try {
-				$result = $provider->search($query);
-			} catch (Exception $error) {
-				$errors[] = ['providerId' => $provider->getId(), 'message' => $error->getMessage()];
-				continue;
-			}
-
-			if ($result->error !== null) {
-				$errors[] = ['providerId' => $provider->getId(), 'message' => $result->error];
-			}
-
-			foreach ($result->hits as $hit) {
-				$key = $hit->appId;
-				if (!isset($grouped[$key])) {
-					$grouped[$key] = [
-						'appId' => $hit->appId,
-						'name' => $hit->name,
-						'summary' => $hit->summary,
-						'iconUrl' => $hit->iconUrl,
-						'homepageUrl' => $hit->homepageUrl,
-						'installedVersion' => $installed[$hit->appId] ?? null,
-						'sourceCandidates' => [],
-					];
-				}
-
-				// Prefer App Store summary/icon when present (best metadata) but never overwrite to empty.
-				if ($hit->sourceProviderId === AppStoreDiscovery::ID) {
-					if ($hit->summary !== '') {
-						$grouped[$key]['summary'] = $hit->summary;
-					}
-					if ($hit->iconUrl !== null) {
-						$grouped[$key]['iconUrl'] = $hit->iconUrl;
-					}
-				}
-
-				$grouped[$key]['sourceCandidates'][] = [
-					'providerId' => $hit->sourceProviderId,
-					'sourceBinding' => $hit->sourceBinding,
-					'installable' => $hit->installable,
-					'installableReason' => $hit->installableReason,
-				];
-			}
+			$merge->add($provider->getId(), $this->runProvider($provider, $query));
 		}
-
-		$results = array_values($grouped);
-
-		if ($installedOnly) {
-			$results = array_values(array_filter($results, static fn (array $r): bool => $r['installedVersion'] !== null));
-		}
-
-		usort($results, static function (array $a, array $b): int {
-			$aInstalled = $a['installedVersion'] !== null ? 1 : 0;
-			$bInstalled = $b['installedVersion'] !== null ? 1 : 0;
-			if ($aInstalled !== $bInstalled) {
-				return $bInstalled - $aInstalled;
-			}
-
-			return strcmp((string)$a['name'], (string)$b['name']);
-		});
 
 		return [
-			'results' => $results,
+			'results' => self::withSimilarNames($this->markedResults($merge->results($filter->installedOnly))),
 			'providers' => $this->listProviders(),
-			'errors' => $errors,
+			'errors' => $merge->errors(),
 		];
+	}
+
+	/**
+	 * The results with every trust mark a named source backs; see "Hits and
+	 * cards name the publisher".
+	 *
+	 * @spec openspec/changes/inventory-verified-publisher/specs/app-discovery/spec.md#requirement-hits-and-cards-name-the-publisher-and-the-trust-marks-the-data-backs
+	 * @param list<Group> $results
+	 * @return list<Group>
+	 */
+	private function markedResults(array $results): array {
+		if ($this->trust === null) {
+			return $results;
+		}
+
+		foreach ($results as $index => $result) {
+			$featured = in_array(PublisherTrust::MARK_FEATURED, $result['marks'], true);
+			$marks = $result['marks'];
+			foreach ($result['sourceCandidates'] as $candidate) {
+				$marks = [...$marks, ...$this->trust->marksFor($result['appId'], $candidate['sourceBinding'], $featured)];
+			}
+			$results[$index]['marks'] = array_values(array_intersect(PublisherTrust::MARKS, $marks));
+		}
+
+		return array_values($results);
+	}
+
+	/**
+	 * Gives every result whose normalised name it shares with a result from
+	 * another publisher a `similarTo` list naming those results; see "Hits
+	 * and cards name the publisher". The name is lower-cased, spaces, dashes
+	 * and underscores are removed, and a trailing "app" is dropped.
+	 *
+	 * @spec openspec/changes/inventory-verified-publisher/specs/app-discovery/spec.md#requirement-hits-and-cards-name-the-publisher-and-the-trust-marks-the-data-backs
+	 * @param list<Group> $results
+	 * @return list<Group>
+	 */
+	public static function withSimilarNames(array $results): array {
+		$byName = [];
+		foreach ($results as $index => $result) {
+			$byName[self::normalisedName($result['name'])][] = $index;
+		}
+
+		foreach ($results as $index => $result) {
+			$similar = [];
+			foreach ($byName[self::normalisedName($result['name'])] as $other) {
+				$candidate = $results[$other];
+				if ($other === $index || self::samePublisher($result['publisher'], $candidate['publisher'])) {
+					continue;
+				}
+				$similar[] = ['appId' => $candidate['appId'], 'name' => $candidate['name'], 'publisher' => $candidate['publisher']];
+			}
+			$results[$index]['similarTo'] = $similar;
+		}
+
+		return array_values($results);
+	}
+
+	/**
+	 * The comparable form of an app name.
+	 *
+	 * @spec openspec/changes/inventory-verified-publisher/specs/app-discovery/spec.md#requirement-hits-and-cards-name-the-publisher-and-the-trust-marks-the-data-backs
+	 */
+	public static function normalisedName(string $name): string {
+		$plain = (string)preg_replace('/[\s_-]+/u', '', mb_strtolower($name));
+		if (strlen($plain) > 3 && str_ends_with($plain, 'app')) {
+			$plain = substr($plain, 0, -3);
+		}
+
+		return $plain;
+	}
+
+	/**
+	 * Two publishers are the same only when both are known and equal, ignoring case.
+	 */
+	private static function samePublisher(?string $left, ?string $right): bool {
+		return $left !== null && $right !== null && mb_strtolower(trim($left)) === mb_strtolower(trim($right));
+	}
+
+	/**
+	 * The provider's result, or a failed result carrying the message when it throws.
+	 */
+	private function runProvider(DiscoveryProviderInterface $provider, string $query): DiscoveryResult {
+		try {
+			return $provider->search($query);
+		} catch (Exception $error) {
+			return DiscoveryResult::failed($error->getMessage());
+		}
 	}
 
 	/**

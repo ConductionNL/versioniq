@@ -2,10 +2,18 @@
 
 declare(strict_types=1);
 
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 namespace OCA\Versioniq\Tests\Unit\Service\Source;
+
+require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
 
 use OCA\Versioniq\Service\Source\AppStoreSource;
 use OCA\Versioniq\Service\Source\SourceBinding;
+use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
 use OCP\Http\Client\IResponse;
@@ -18,6 +26,8 @@ use PHPUnit\Framework\TestCase;
  * @spec openspec/specs/changelog-visibility/spec.md
  */
 final class AppStoreSourceTest extends TestCase {
+	use BuildsByParameterName;
+
 	/**
 	 * @param array<string, mixed> $appPayload
 	 */
@@ -40,7 +50,12 @@ final class AppStoreSourceTest extends TestCase {
 		$l10nFactory = $this->createMock(IFactory::class);
 		$l10nFactory->method('findLanguage')->willReturn($language);
 
-		return new AppStoreSource($clientService, $config, $appConfig, $l10nFactory);
+		return $this->buildByName(AppStoreSource::class, [
+			'clientService' => $clientService,
+			'config' => $config,
+			'appConfig' => $appConfig,
+			'l10nFactory' => $l10nFactory,
+		]);
 	}
 
 	private function binding(): SourceBinding {
@@ -252,13 +267,87 @@ final class AppStoreSourceTest extends TestCase {
 		$l10nFactory = $this->createMock(IFactory::class);
 		$l10nFactory->method('findLanguage')->willReturn('en');
 
-		$source = new AppStoreSource($clientService, $config, $appConfig, $l10nFactory);
+		$source = $this->buildByName(AppStoreSource::class, [
+			'clientService' => $clientService,
+			'config' => $config,
+			'appConfig' => $appConfig,
+			'l10nFactory' => $l10nFactory,
+		]);
 
 		$first = $source->listVersions('openregister', $this->binding());
 		$second = $source->listVersions('openregister', $this->binding());
 
 		$this->assertSame('2.3.0', $first['versions'][0]['version']);
 		$this->assertSame($first['versions'], $second['versions'], 'cached listing must match the fetched one');
+	}
+
+	/**
+	 * The payload cache must be LAZY app config, on write and on read.
+	 *
+	 * Nextcloud preloads every eager app-config row of every app on every
+	 * request. Written eagerly, this cache put 36 MB into that preload and
+	 * ~300 ms onto every request of the instance (measured 2026-10-06). A
+	 * test that only checks the round trip passes either way, so this one
+	 * records the flag each call carries.
+	 *
+	 * @spec exclude Storage flag of an internal cache; the version-management
+	 *  spec says the payload is cached, not how the row is stored.
+	 */
+	public function testPayloadCacheIsReadAndWrittenLazy(): void {
+		$body = json_encode([
+			'data' => [[
+				'id' => 'openregister',
+				'releases' => [['version' => '2.3.0']],
+			]],
+		], JSON_THROW_ON_ERROR);
+
+		$response = $this->createMock(IResponse::class);
+		$response->method('getStatusCode')->willReturn(200);
+		$response->method('getBody')->willReturn($body);
+
+		$client = $this->createMock(IClient::class);
+		$client->method('get')->willReturn($response);
+		$clientService = $this->createMock(IClientService::class);
+		$clientService->method('newClient')->willReturn($client);
+
+		$store = [];
+		$writes = [];
+		$reads = [];
+		$config = $this->createMock(IConfig::class);
+		$config->method('getSystemValueString')->willReturn('28.0.0');
+		$appConfig = $this->createMock(IAppConfig::class);
+		$appConfig->method('setValueString')->willReturnCallback(
+			function (string $app, string $key, string $value, bool $lazy = false) use (&$store, &$writes): bool {
+				$store[$key] = $value;
+				$writes[$key] = $lazy;
+
+				return true;
+			},
+		);
+		$appConfig->method('getValueString')->willReturnCallback(
+			function (string $app, string $key, string $default = '', bool $lazy = false) use (&$store, &$reads): string {
+				$reads[$key] = $lazy;
+
+				return $store[$key] ?? $default;
+			},
+		);
+
+		$l10nFactory = $this->createMock(IFactory::class);
+		$l10nFactory->method('findLanguage')->willReturn('en');
+
+		$source = $this->buildByName(AppStoreSource::class, [
+			'clientService' => $clientService,
+			'config' => $config,
+			'appConfig' => $appConfig,
+			'l10nFactory' => $l10nFactory,
+		]);
+		$source->listVersions('openregister', $this->binding());
+		$source->listVersions('openregister', $this->binding());
+
+		foreach (['appstore.payload.openregister', 'appstore.payload_ts.openregister'] as $key) {
+			$this->assertTrue($writes[$key] ?? false, $key . ' must be written lazy');
+			$this->assertTrue($reads[$key] ?? false, $key . ' must be read lazy');
+		}
 	}
 
 	public function testExpiredCacheIsRefetched(): void {
@@ -295,7 +384,12 @@ final class AppStoreSourceTest extends TestCase {
 		$l10nFactory = $this->createMock(IFactory::class);
 		$l10nFactory->method('findLanguage')->willReturn('en');
 
-		$source = new AppStoreSource($clientService, $config, $appConfig, $l10nFactory);
+		$source = $this->buildByName(AppStoreSource::class, [
+			'clientService' => $clientService,
+			'config' => $config,
+			'appConfig' => $appConfig,
+			'l10nFactory' => $l10nFactory,
+		]);
 		$source->listVersions('openregister', $this->binding());
 		$source->listVersions('openregister', $this->binding());
 	}
@@ -346,7 +440,12 @@ final class AppStoreSourceTest extends TestCase {
 		$l10nFactory = $this->createMock(IFactory::class);
 		$l10nFactory->method('findLanguage')->willReturn('en');
 
-		$source = new AppStoreSource($clientService, $config, $appConfig, $l10nFactory);
+		$source = $this->buildByName(AppStoreSource::class, [
+			'clientService' => $clientService,
+			'config' => $config,
+			'appConfig' => $appConfig,
+			'l10nFactory' => $l10nFactory,
+		]);
 		$result = $source->listVersions('openregister', $this->binding());
 
 		$this->assertSame('2.3.0', $result['versions'][0]['version'], 'stale cache must serve during an upstream outage');
@@ -403,7 +502,12 @@ final class AppStoreSourceTest extends TestCase {
 		$l10nFactory = $this->createMock(IFactory::class);
 		$l10nFactory->method('findLanguage')->willReturn('en');
 
-		$source = new AppStoreSource($clientService, $config, $appConfig, $l10nFactory);
+		$source = $this->buildByName(AppStoreSource::class, [
+			'clientService' => $clientService,
+			'config' => $config,
+			'appConfig' => $appConfig,
+			'l10nFactory' => $l10nFactory,
+		]);
 
 		$first = $source->listVersions('notes', $this->binding());
 		$second = $source->listVersions('calendar', $this->binding());

@@ -31,6 +31,7 @@ use ReflectionClass;
  * phpcs:disable CustomSniffs.Functions.NamedParameters
  *
  * @covers \OCA\Versioniq\Repair\MigrateSchemaApplicationId
+ * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
  *
  * @spec exclude No canonical spec covers the `app_versions` -> `versioniq` schema
  *  application-id migration. Pointing this at an existing spec would report
