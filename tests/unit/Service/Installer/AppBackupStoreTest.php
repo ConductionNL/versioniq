@@ -14,6 +14,7 @@ require_once __DIR__ . '/../Cache/FakeSimpleFile.php';
 require_once __DIR__ . '/../Cache/FakeAppData.php';
 
 use OCA\Versioniq\Service\Installer\AppBackupStore;
+use OCA\Versioniq\Service\Installer\BackupSource;
 use OCA\Versioniq\Tests\Unit\Service\Cache\FakeAppData;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Files\AppData\IAppDataFactory;
@@ -49,7 +50,7 @@ final class AppBackupStoreTest extends TestCase {
 	public function testCreateKeepsTheFolderAndTablesWithSizeAndKeepTime(): void {
 		$tables = ['notes_items' => [['id' => 1, 'title' => 'a']]];
 
-		$backup = $this->store(14)->create('notes', $this->root . '/apps/notes', '1.0.0', 'yes', $tables);
+		$backup = $this->store(14)->create(new BackupSource('notes', $this->root . '/apps/notes', '1.0.0', 'yes'), $tables);
 
 		$this->assertNotNull($backup);
 		$this->assertSame('notes', $backup['appId']);
@@ -67,7 +68,7 @@ final class AppBackupStoreTest extends TestCase {
 	}
 
 	public function testZeroKeepDaysMakesNoBackup(): void {
-		$this->assertNull($this->store(0)->create('notes', $this->root . '/apps/notes', '1.0.0', 'yes', []));
+		$this->assertNull($this->store(0)->create(new BackupSource('notes', $this->root . '/apps/notes', '1.0.0', 'yes'), []));
 		$this->assertSame([], $this->appData->getDirectoryListing());
 	}
 
@@ -75,15 +76,15 @@ final class AppBackupStoreTest extends TestCase {
 		$this->expectException(RuntimeException::class);
 		$this->expectExceptionMessage('There is no app folder to back up.');
 
-		$this->store(14)->create('notes', $this->root . '/apps/missing', '1.0.0', 'yes', []);
+		$this->store(14)->create(new BackupSource('notes', $this->root . '/apps/missing', '1.0.0', 'yes'), []);
 	}
 
 	public function testLatestIsTheNewestKeptBackupOfThatApp(): void {
 		$store = $this->store(14);
-		$store->create('notes', $this->root . '/apps/notes', '1.0.0', 'yes', []);
+		$store->create(new BackupSource('notes', $this->root . '/apps/notes', '1.0.0', 'yes'), []);
 		$this->now = self::OCT_1 + 3600;
-		$store->create('notes', $this->root . '/apps/notes', '1.1.0', 'no', []);
-		$store->create('note', $this->root . '/apps/notes', '9.0.0', 'yes', []);
+		$store->create(new BackupSource('notes', $this->root . '/apps/notes', '1.1.0', 'no'), []);
+		$store->create(new BackupSource('note', $this->root . '/apps/notes', '9.0.0', 'yes'), []);
 		$this->now = self::OCT_1 + 7200;
 
 		$this->assertSame('1.1.0', $store->latest('notes')['version'] ?? null);
@@ -93,9 +94,9 @@ final class AppBackupStoreTest extends TestCase {
 
 	public function testAnExpiredBackupIsNotOfferedAndIsPruned(): void {
 		$store = $this->store(14);
-		$store->create('notes', $this->root . '/apps/notes', '1.0.0', 'yes', []);
+		$store->create(new BackupSource('notes', $this->root . '/apps/notes', '1.0.0', 'yes'), []);
 		$this->now = self::OCT_1 + 15 * 86400;
-		$store->create('calendar', $this->root . '/apps/notes', '2.0.0', 'yes', []);
+		$store->create(new BackupSource('calendar', $this->root . '/apps/notes', '2.0.0', 'yes'), []);
 
 		$this->assertNull($store->latest('notes'));
 		$this->assertSame(1, $store->prune());
@@ -107,7 +108,7 @@ final class AppBackupStoreTest extends TestCase {
 	public function testRestoreFolderPutsTheBackedUpFilesBack(): void {
 		$appPath = $this->root . '/apps/notes';
 		$store = $this->store(14);
-		$backup = $store->create('notes', $appPath, '1.0.0', 'yes', ['notes_items' => [['id' => 2]]]);
+		$backup = $store->create(new BackupSource('notes', $appPath, '1.0.0', 'yes'), ['notes_items' => [['id' => 2]]]);
 		$this->assertNotNull($backup);
 		file_put_contents($appPath . '/lib/Plugin.php', '<?php // new');
 		file_put_contents($appPath . '/lib/Added.php', '<?php // only in the new version');
@@ -124,7 +125,7 @@ final class AppBackupStoreTest extends TestCase {
 	public function testABrokenZipLeavesTheCurrentFolderInPlace(): void {
 		$appPath = $this->root . '/apps/notes';
 		$store = $this->store(14);
-		$backup = $store->create('notes', $appPath, '1.0.0', 'yes', []);
+		$backup = $store->create(new BackupSource('notes', $appPath, '1.0.0', 'yes'), []);
 		$this->assertNotNull($backup);
 		$this->appData->getFolder('backup-' . self::OCT_1 . '-notes')->getFile('app.zip')->putContent('not a zip');
 		file_put_contents($appPath . '/lib/Plugin.php', '<?php // new');

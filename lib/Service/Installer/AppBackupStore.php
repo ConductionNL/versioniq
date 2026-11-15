@@ -45,6 +45,8 @@ class AppBackupStore {
 	private const TABLES = 'tables.json';
 	private const META = 'meta.json';
 	private const DAY = 86400;
+	private const STAGING = '.versioniq-restore';
+	private const ASIDE = '.versioniq-restore-old';
 
 	private ?IAppData $appData = null;
 
@@ -65,49 +67,74 @@ class AppBackupStore {
 	 * Writes a backup of the app folder and the dumped tables.
 	 *
 	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 * @param BackupSource $source The app, its folder and its state before the install.
 	 * @param array<string, list<array<string, mixed>>> $tables
 	 * @return array{appId: string, version: string, enabled: string, createdAt: int, keptUntil: int, sizeBytes: int, tables: list<string>}|null The backup, or null when backups are off.
 	 * @throws RuntimeException When the backup cannot be written.
 	 */
-	public function create(string $appId, string $appPath, string $version, string $enabled, array $tables): ?array {
+	public function create(BackupSource $source, array $tables): ?array {
 		$keepDays = $this->keepDays();
 		if ($keepDays <= 0) {
 			return null;
 		}
-		if (!AppIdFormat::isValid($appId) || !is_dir($appPath)) {
+		if (!AppIdFormat::isValid($source->appId) || !is_dir($source->appPath)) {
 			throw new RuntimeException('There is no app folder to back up.');
 		}
 
 		$createdAt = $this->timeFactory->getTime();
-		$zip = $this->zipFolder($appPath);
+		$zip = $this->zipFolder($source->appPath);
 		$tablesJson = json_encode($tables, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 		$meta = [
-			'appId' => $appId,
-			'version' => $version,
-			'enabled' => $enabled,
+			'appId' => $source->appId,
+			'version' => $source->version,
+			'enabled' => $source->enabled,
 			'createdAt' => $createdAt,
 			'keptUntil' => $createdAt + $keepDays * self::DAY,
 			'sizeBytes' => (int)filesize($zip) + strlen($tablesJson),
 			'tables' => array_keys($tables),
 		];
-
-		$folder = $this->getAppData()->newFolder(self::FOLDER_PREFIX . $createdAt . '-' . $appId);
+		$files = [self::ZIP => $zip, self::TABLES => $tablesJson, self::META => json_encode($meta, JSON_THROW_ON_ERROR)];
 		try {
-			$stream = fopen($zip, 'rb');
-			if ($stream === false) {
-				throw new RuntimeException('Could not read the app folder backup.');
-			}
-			$folder->newFile(self::ZIP, $stream);
-			$folder->newFile(self::TABLES, $tablesJson);
-			$folder->newFile(self::META, json_encode($meta, JSON_THROW_ON_ERROR));
-		} catch (\Throwable $error) {
-			$folder->delete();
-			throw new RuntimeException('Could not write the backup: ' . $error->getMessage(), 0, $error);
+			$this->writeBackup(name: self::FOLDER_PREFIX . $createdAt . '-' . $source->appId, files: $files);
 		} finally {
 			@unlink($zip);
 		}
 
 		return $meta;
+	}
+
+	/**
+	 * Write one backup folder: the zip from its temporary path, then the other
+	 * named files. A failure removes the folder again.
+	 *
+	 * @param string $name The backup folder name.
+	 * @param array<string, string> $files File name => content; for `app.zip` the temporary zip's path.
+	 * @throws RuntimeException When the backup cannot be written.
+	 */
+	private function writeBackup(string $name, array $files): void {
+		$folder = $this->getAppData()->newFolder($name);
+		try {
+			$folder->newFile(self::ZIP, self::openForReading($files[self::ZIP]));
+			foreach (array_diff_key($files, [self::ZIP => true]) as $file => $content) {
+				$folder->newFile($file, $content);
+			}
+		} catch (\Throwable $error) {
+			$folder->delete();
+			throw new RuntimeException('Could not write the backup: ' . $error->getMessage(), 0, $error);
+		}
+	}
+
+	/**
+	 * @return resource
+	 * @throws RuntimeException When the file cannot be opened.
+	 */
+	private static function openForReading(string $path) {
+		$stream = fopen($path, 'rb');
+		if ($stream === false) {
+			throw new RuntimeException('Could not read the app folder backup.');
+		}
+
+		return $stream;
 	}
 
 	/**
@@ -119,17 +146,33 @@ class AppBackupStore {
 	public function latest(string $appId): ?array {
 		$now = $this->timeFactory->getTime();
 		$newest = null;
-		foreach ($this->backupFolders() as $entry) {
-			if ($entry['appId'] !== $appId || ($newest !== null && $entry['createdAt'] <= $newest['createdAt'])) {
-				continue;
-			}
-			$meta = $this->readMeta($entry['folder']);
-			if ($meta !== null && $meta['keptUntil'] >= $now) {
-				$newest = $meta;
+		foreach ($this->backupFoldersOf($appId) as $entry) {
+			if ($newest === null || $entry['createdAt'] > $newest['createdAt']) {
+				$newest = $this->keptMeta(folder: $entry['folder'], now: $now) ?? $newest;
 			}
 		}
 
 		return $newest;
+	}
+
+	/**
+	 * The backup folders of one app.
+	 *
+	 * @return list<array{folder: ISimpleFolder, createdAt: int, appId: string}>
+	 */
+	private function backupFoldersOf(string $appId): array {
+		return array_values(array_filter($this->backupFolders(), static fn (array $entry): bool => $entry['appId'] === $appId));
+	}
+
+	/**
+	 * The folder's meta while the backup is still kept, else null.
+	 *
+	 * @return array{appId: string, version: string, enabled: string, createdAt: int, keptUntil: int, sizeBytes: int, tables: list<string>}|null
+	 */
+	private function keptMeta(ISimpleFolder $folder, int $now): ?array {
+		$meta = $this->readMeta($folder);
+
+		return ($meta !== null && $meta['keptUntil'] >= $now) ? $meta : null;
 	}
 
 	/**
@@ -204,7 +247,18 @@ class AppBackupStore {
 		if (!is_string($zipPath) || $zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
 			throw new RuntimeException('Could not create the app folder backup.');
 		}
-		$root = rtrim($appPath, '/');
+		self::addTree(zip: $zip, root: rtrim($appPath, '/'));
+		if (!$zip->close()) {
+			throw new RuntimeException('Could not create the app folder backup.');
+		}
+
+		return $zipPath;
+	}
+
+	/**
+	 * Add every folder and file under the root to the zip, by its path relative to the root.
+	 */
+	private static function addTree(ZipArchive $zip, string $root): void {
 		$items = new \RecursiveIteratorIterator(
 			new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS),
 			\RecursiveIteratorIterator::SELF_FIRST,
@@ -218,25 +272,36 @@ class AppBackupStore {
 				$zip->addFile($item->getPathname(), $relative);
 			}
 		}
-		if (!$zip->close()) {
-			throw new RuntimeException('Could not create the app folder backup.');
-		}
-
-		return $zipPath;
 	}
 
 	private function swapIn(string $zipPath, string $appPath): void {
-		$staging = $appPath . '.versioniq-restore';
-		$aside = $appPath . '.versioniq-restore-old';
-		self::removeTree($staging);
-		self::removeTree($aside);
+		self::removeTree($appPath . self::STAGING);
+		self::removeTree($appPath . self::ASIDE);
+		self::unpack(zipPath: $zipPath, staging: $appPath . self::STAGING);
+		self::replaceFolder($appPath);
+		self::removeTree($appPath . self::ASIDE);
+	}
+
+	/**
+	 * @throws RuntimeException When the zip cannot be unpacked.
+	 */
+	private static function unpack(string $zipPath, string $staging): void {
 		$zip = new ZipArchive();
 		if ($zip->open($zipPath) !== true || !$zip->extractTo($staging)) {
 			self::removeTree($staging);
 			throw new RuntimeException('Could not unpack the app folder backup.');
 		}
 		$zip->close();
+	}
 
+	/**
+	 * Move the current folder aside and the staged one into its place; on failure put the old one back.
+	 *
+	 * @throws RuntimeException When a folder cannot be moved.
+	 */
+	private static function replaceFolder(string $appPath): void {
+		$staging = $appPath . self::STAGING;
+		$aside = $appPath . self::ASIDE;
 		if (is_dir($appPath) && !rename($appPath, $aside)) {
 			self::removeTree($staging);
 			throw new RuntimeException('Could not move the current app folder aside.');
@@ -248,7 +313,6 @@ class AppBackupStore {
 			self::removeTree($staging);
 			throw new RuntimeException('Could not put the backed-up app folder in place.');
 		}
-		self::removeTree($aside);
 	}
 
 	/**
@@ -281,7 +345,7 @@ class AppBackupStore {
 		} catch (NotFoundException|\JsonException) {
 			return null;
 		}
-		if (!is_array($meta) || !is_string($meta['appId'] ?? null) || !is_string($meta['version'] ?? null) || !is_int($meta['createdAt'] ?? null) || !is_int($meta['keptUntil'] ?? null)) {
+		if (!is_array($meta) || !self::isWellFormed($meta)) {
 			return null;
 		}
 
@@ -294,6 +358,18 @@ class AppBackupStore {
 			'sizeBytes' => is_int($meta['sizeBytes'] ?? null) ? $meta['sizeBytes'] : 0,
 			'tables' => array_values(array_filter((array)($meta['tables'] ?? []), 'is_string')),
 		];
+	}
+
+	/**
+	 * Whether decoded meta carries the fields every backup has.
+	 *
+	 * @param array<array-key, mixed> $meta
+	 */
+	private static function isWellFormed(array $meta): bool {
+		return is_string($meta['appId'] ?? null)
+			&& is_string($meta['version'] ?? null)
+			&& is_int($meta['createdAt'] ?? null)
+			&& is_int($meta['keptUntil'] ?? null);
 	}
 
 	private static function removeTree(string $path): void {
@@ -312,10 +388,6 @@ class AppBackupStore {
 	}
 
 	private function getAppData(): IAppData {
-		if ($this->appData === null) {
-			$this->appData = $this->appDataFactory->get(Application::APP_ID);
-		}
-
-		return $this->appData;
+		return $this->appData ??= $this->appDataFactory->get(Application::APP_ID);
 	}
 }

@@ -144,14 +144,33 @@ function backupField (backup: InstallPayload['backup']): InstallBackupNote | nul
 	if (!backup || typeof backup !== 'object') {
 		return null
 	}
-	if (backup.made === true && typeof backup.sizeBytes === 'number' && typeof backup.keptUntil === 'string') {
-		return { made: true, sizeBytes: backup.sizeBytes, keptUntil: backup.keptUntil }
-	}
-	if (backup.made === false && (backup.reason === 'disabled' || backup.reason === 'failed')) {
-		return { made: false, reason: backup.reason, ...(typeof backup.message === 'string' ? { message: backup.message } : {}) }
+
+	return madeBackup(backup) ?? skippedBackup(backup)
+}
+
+/**
+ * The backup that was made, or null when the payload does not describe one.
+ *
+ * @param backup The payload's `backup`.
+ */
+function madeBackup (backup: NonNullable<InstallPayload['backup']>): InstallBackupNote | null {
+	const complete = backup.made === true && typeof backup.sizeBytes === 'number' && typeof backup.keptUntil === 'string'
+
+	return complete ? { made: true, sizeBytes: backup.sizeBytes as number, keptUntil: backup.keptUntil as string } : null
+}
+
+/**
+ * Why no backup was made, or null when the payload does not say.
+ *
+ * @param backup The payload's `backup`.
+ */
+function skippedBackup (backup: NonNullable<InstallPayload['backup']>): InstallBackupNote | null {
+	const reason = backup.reason
+	if (backup.made !== false || (reason !== 'disabled' && reason !== 'failed')) {
+		return null
 	}
 
-	return null
+	return { made: false, reason, ...(typeof backup.message === 'string' ? { message: backup.message } : {}) }
 }
 
 /**

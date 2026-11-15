@@ -11,6 +11,7 @@ namespace OCA\Versioniq\Tests\Unit\Service\Installer;
 
 use OCA\Versioniq\Service\Installer\AppBackupStore;
 use OCA\Versioniq\Service\Installer\AppTableDumper;
+use OCA\Versioniq\Service\Installer\BackupSource;
 use OCA\Versioniq\Service\Installer\InstallBackup;
 use OCP\App\IAppManager;
 use PHPUnit\Framework\TestCase;
@@ -24,7 +25,7 @@ final class InstallBackupTest extends TestCase {
 		$store = $this->createMock(AppBackupStore::class);
 		$store->method('keepDays')->willReturn(14);
 		$store->expects($this->once())->method('create')
-			->with('notes', '/apps/notes', '1.0.0', 'yes', ['notes_items' => [['id' => 1]]])
+			->with(new BackupSource('notes', '/apps/notes', '1.0.0', 'yes'), ['notes_items' => [['id' => 1]]])
 			->willReturn(['appId' => 'notes', 'version' => '1.0.0', 'enabled' => 'yes', 'createdAt' => 1_759_276_800, 'keptUntil' => 1_760_486_400, 'sizeBytes' => 190_840_832, 'tables' => ['notes_items']]);
 		$dumper = $this->createMock(AppTableDumper::class);
 		$dumper->expects($this->once())->method('tablesOf')->with('/apps/notes', 'OCA\\Notes')->willReturn(['notes_items']);

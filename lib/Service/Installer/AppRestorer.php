@@ -55,19 +55,11 @@ class AppRestorer {
 			throw new NoBackupException('There is no backup to restore ' . $appId . ' from. Roll back to an earlier version instead.');
 		}
 
-		try {
-			$current = $this->appManager->getAppVersion($appId);
-		} catch (\Throwable) {
-			$current = '';
-		}
-		$versions = new AuditedVersions($current === '' ? null : $current, $backup['version'], null);
+		$versions = new AuditedVersions($this->currentVersion($appId), $backup['version'], null);
 		$subject = new AuditSubject($this->userSession->getUser()?->getUID() ?? 'system', $appId, AuditLogger::OPERATION_RESTORE);
 
 		try {
-			$this->store->restoreFolder($backup, $this->appManager->getAppPath($appId, true));
-			if (function_exists('opcache_reset')) {
-				opcache_reset();
-			}
+			$this->putBackFolder(appId: $appId, backup: $backup);
 			$tables = $this->store->tables($backup);
 			$rows = $this->dumper->restore($tables);
 			$this->appConfig->setValueString($appId, 'installed_version', $backup['version']);
@@ -88,5 +80,30 @@ class AppRestorer {
 			'rows' => $rows,
 			'backupCreatedAt' => $restoredAt,
 		];
+	}
+
+	/**
+	 * The installed version of the app, or null when it cannot be read.
+	 */
+	private function currentVersion(string $appId): ?string {
+		try {
+			$current = $this->appManager->getAppVersion($appId);
+		} catch (\Throwable) {
+			$current = '';
+		}
+
+		return $current === '' ? null : $current;
+	}
+
+	/**
+	 * Put the backed-up app folder in place and drop cached opcodes of the replaced files.
+	 *
+	 * @param array{appId: string, version: string, enabled: string, createdAt: int, keptUntil: int, sizeBytes: int, tables: list<string>} $backup
+	 */
+	private function putBackFolder(string $appId, array $backup): void {
+		$this->store->restoreFolder($backup, $this->appManager->getAppPath($appId, true));
+		if (function_exists('opcache_reset')) {
+			opcache_reset();
+		}
 	}
 }
