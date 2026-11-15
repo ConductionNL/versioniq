@@ -26,7 +26,7 @@
 
 ## 5. Commands
 
-- [ ] 5.1 Add `lib/Command/ListInstances.php` (`versioniq:instances`, `--json`, `--refresh`) and `lib/Command/PromoteVersion.php` (`versioniq:promote`, `--dry-run`, `--allow-downgrade`, `--override-min-days`, `--continue`), registered in `appinfo/info.xml`. Verify: `tests/unit/Command/PromoteVersionTest.php` covers exit codes 0, 10, 11 and a passed-through install code; extend `tests/e2e/cli.spec.ts` with one `versioniq:instances --json` run.
+- [x] 5.1 Add `lib/Command/ListInstances.php` (`versioniq:instances`, `--json`, `--refresh`) and `lib/Command/PromoteVersion.php` (`versioniq:promote`, `--dry-run`, `--allow-downgrade`, `--override-min-days`, `--continue`), registered in `appinfo/info.xml`. Verify: `tests/unit/Command/PromoteVersionTest.php` covers exit codes 0, 10, 11 and a passed-through install code; extend `tests/e2e/cli.spec.ts` with one `versioniq:instances --json` run.
 
 ## 6. Close
 
