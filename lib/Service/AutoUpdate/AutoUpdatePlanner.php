@@ -87,18 +87,19 @@ final class AutoUpdatePlanner {
 			return null;
 		}
 
+		return $this->planCandidate($appId, $level);
+	}
+
+	/**
+	 * The member for a managed, unpinned app: its candidate, or why it has
+	 * none; null when the app is not installed.
+	 */
+	private function planCandidate(string $appId, string $level): ?AutoUpdateMember {
 		$installedVersion = $this->installedVersionOf($appId);
 		if ($installedVersion === null) {
 			return null;
 		}
 
-		return $this->planCandidate($appId, $installedVersion, $level);
-	}
-
-	/**
-	 * The member for an installed, managed, unpinned app: its candidate, or why it has none.
-	 */
-	private function planCandidate(string $appId, string $installedVersion, string $level): AutoUpdateMember {
 		$available = $this->availableVersions($appId);
 		if ($available === null) {
 			return new AutoUpdateMember($appId, $installedVersion, null, AutoUpdateMember::REASON_SOURCE_ERROR);
