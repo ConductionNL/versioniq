@@ -235,6 +235,10 @@ namespace phpseclib3\File {
 			return $this->handle(__FUNCTION__, [$serial]);
 		}
 
+		public function getExtension(string $id): mixed {
+			return $this->handle(__FUNCTION__, [$id]);
+		}
+
 		/**
 		 * @param array<int, mixed> $args
 		 */

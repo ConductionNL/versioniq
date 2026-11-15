@@ -31,6 +31,7 @@ use OCA\Versioniq\Service\Installer\SignedInstall;
 use OCA\Versioniq\Service\Installer\SignedRelease;
 use OCA\Versioniq\Service\Installer\SignedReleaseRun;
 use OCA\Versioniq\Service\Installer\TempArchive;
+use OCA\Versioniq\Service\Safety\RevocationList;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceInterface;
 use OCP\App\AppPathNotFoundException;
@@ -76,6 +77,9 @@ class SelectedReleaseInstallerService {
 		private IUserSession $userSession,
 		private MigrationDiffer $migrationDiffer,
 		private ArtifactCache $artifactCache,
+		// The one list installs and the daily recheck share (design D1 of
+		// safety-withdrawn-and-revoked); without it the shipped list applies.
+		private ?RevocationList $revocationList = null,
 	) {
 	}
 
@@ -160,11 +164,18 @@ class SelectedReleaseInstallerService {
 	 * @param string $appId
 	 * @param string $certificate
 	 * @throws Exception
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/tasks.md#1.1
 	 */
 	private function verifyCertificate(string $appId, string $certificate): void {
-		[$rootCrt, $rootCrl] = self::codeSigningRoots();
+		$rootCrl = null;
+		if ($this->revocationList !== null) {
+			$rootCrtList = $this->revocationList->rootCertificates();
+		} else {
+			[$rootCrt, $rootCrl] = self::codeSigningRoots();
+			$rootCrtList = $this->splitCerts($rootCrt);
+		}
+
 		$x509 = $this->newX509();
-		$rootCrtList = $this->splitCerts($rootCrt);
 		foreach ($rootCrtList as $rootCertificate) {
 			$x509->loadCA($rootCertificate);
 		}
@@ -174,7 +185,9 @@ class SelectedReleaseInstallerService {
 			throw new Exception('Could not parse app certificate.');
 		}
 
-		$crl = $this->validatedCrl($rootCrtList, $rootCrl);
+		$crl = $this->revocationList !== null
+			? $this->revocationList->current()
+			: $this->validatedCrl($rootCrtList, (string)$rootCrl);
 		$serial = self::serialNumberOf($loadedCertificate);
 		$revoked = $crl->getRevoked($serial);
 		if ($revoked !== false) {
