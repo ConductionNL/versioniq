@@ -583,6 +583,17 @@
         "Repository archived": "Repository archived",
         "End of support": "End of support",
         "No release in a year": "No release in a year",
-        "Nextcloud {major} reaches end of life on {date}.": "Nextcloud {major} reaches end of life on {date}."
+        "Nextcloud {major} reaches end of life on {date}.": "Nextcloud {major} reaches end of life on {date}.",
+        "Could not load the successor list.": "Could not load the successor list.",
+        "Could not add the successor.": "Could not add the successor.",
+        "Could not remove the successor.": "Could not remove the successor.",
+        "Successors": "Successors",
+        "Apps that were renamed or replaced. When the successor can be installed on this server, the old app's card offers to replace it. The old app's data is kept.": "Apps that were renamed or replaced. When the successor can be installed on this server, the old app's card offers to replace it. The old app's data is kept.",
+        "{from} is succeeded by {to} from {source}": "{from} is succeeded by {to} from {source}",
+        "(shipped with Versioniq)": "(shipped with Versioniq)",
+        "Old app id": "Old app id",
+        "Successor app id": "Successor app id",
+        "Successor source (appstore or forge:owner/repository)": "Successor source (appstore or forge:owner/repository)",
+        "Add successor": "Add successor"
     }
 }

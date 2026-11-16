@@ -12,7 +12,7 @@
 
 ## 3. Successors
 
-- [ ] 3.1 Add `SuccessorList` with `lib/Settings/successors.json` and the admin entries in app config, and the Settings tab list. Verify: a unit test that an entry whose successor lists no compatible version is not offered.
+- [x] 3.1 Add `SuccessorList` with `lib/Settings/successors.json` and the admin entries in app config, and the Settings tab list. Verify: a unit test that an entry whose successor lists no compatible version is not offered.
 - [ ] 3.2 Add `POST /api/app/{appId}/replace` and `ReplaceAppDialog.vue`. Verify: unit tests that a failed successor install leaves the old app enabled, and that success writes two audit rows; `tests/e2e/lifecycle.spec.ts` replaces a fixture app with a fixture successor from the forge fixture.
 
 ## 4. Close

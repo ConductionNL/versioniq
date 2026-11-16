@@ -556,7 +556,18 @@ OC.L10N.register(
         "Repository archived": "Repository gearchiveerd",
         "End of support": "Einde ondersteuning",
         "No release in a year": "Al een jaar geen release",
-        "Nextcloud {major} reaches end of life on {date}.": "Nextcloud {major} bereikt het einde van de levensduur op {date}."
+        "Nextcloud {major} reaches end of life on {date}.": "Nextcloud {major} bereikt het einde van de levensduur op {date}.",
+        "Could not load the successor list.": "De lijst met opvolgers kon niet worden geladen.",
+        "Could not add the successor.": "De opvolger kon niet worden toegevoegd.",
+        "Could not remove the successor.": "De opvolger kon niet worden verwijderd.",
+        "Successors": "Opvolgers",
+        "Apps that were renamed or replaced. When the successor can be installed on this server, the old app's card offers to replace it. The old app's data is kept.": "Apps die een nieuwe naam kregen of zijn vervangen. Als de opvolger op deze server kan worden geïnstalleerd, biedt de kaart van de oude app aan om die te vervangen. De gegevens van de oude app blijven bewaard.",
+        "{from} is succeeded by {to} from {source}": "{from} wordt opgevolgd door {to} uit {source}",
+        "(shipped with Versioniq)": "(meegeleverd met Versioniq)",
+        "Old app id": "App-id van de oude app",
+        "Successor app id": "App-id van de opvolger",
+        "Successor source (appstore or forge:owner/repository)": "Bron van de opvolger (appstore of forge:eigenaar/repository)",
+        "Add successor": "Opvolger toevoegen"
     },
     "nplurals=2; plural=(n != 1);"
 )

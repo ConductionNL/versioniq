@@ -37,6 +37,7 @@ import ReleaseDate from './components/ReleaseDate.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
 import SourceOverrideField from './components/SourceOverrideField.vue'
 import SourcesPanel from './components/SourcesPanel.vue'
+import SuccessorsPanel from './components/SuccessorsPanel.vue'
 import TokensPanel from './components/TokensPanel.vue'
 import TrustedSourcesPanel from './components/TrustedSourcesPanel.vue'
 import VersionChangelog from './components/VersionChangelog.vue'
@@ -3309,6 +3310,7 @@ watch(dryRunEnabled, () => {
 					aria-labelledby="settings-tab">
 					<InstanceSettingsPanel />
 					<PatchPolicyPanel />
+					<SuccessorsPanel />
 				</div>
 				<IntegrationsPanel v-if="integriqInstalled && currentTab === 'integrations'"
 					id="integrations-panel"
