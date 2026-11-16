@@ -49,7 +49,7 @@ final class PatchPolicyTest extends TestCase {
 	}
 
 	public function testTheExampleIsReadAsWritten(): void {
-		$policy = PatchPolicy::fromArray(self::example(), 'alice', '2026-09-27T10:00:00+00:00');
+		$policy = PatchPolicy::fromArray(self::example())->recordedBy('alice', '2026-09-27T10:00:00+00:00');
 
 		$this->assertTrue($policy->isRecorded());
 		$this->assertSame('next_window', $policy->securityHandling('critical'));
@@ -123,7 +123,7 @@ final class PatchPolicyTest extends TestCase {
 
 	public function testTheChangedFieldsAreNamed(): void {
 		$before = PatchPolicy::none();
-		$after = PatchPolicy::fromArray(['security' => ['critical' => ['deadlineDays' => 3, 'handling' => 'next_window']], 'regular' => ['major' => 'manual'], 'statement' => 'x'], 'alice', 'now');
+		$after = PatchPolicy::fromArray(['security' => ['critical' => ['deadlineDays' => 3, 'handling' => 'next_window']], 'regular' => ['major' => 'manual'], 'statement' => 'x'])->recordedBy('alice', 'now');
 
 		$this->assertSame(['security.critical', 'regular.major', 'statement'], $after->changedFrom($before));
 		$this->assertSame([], $after->changedFrom($after));

@@ -13,9 +13,7 @@ namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
 use OCA\Versioniq\Service\Api\ApiCaller;
-use OCA\Versioniq\Service\Audit\AuditedVersions;
-use OCA\Versioniq\Service\Audit\AuditLogger;
-use OCA\Versioniq\Service\Audit\AuditSubject;
+use OCA\Versioniq\Service\Audit\AdminChangeAuditInterface;
 use OCA\Versioniq\Service\Policy\PatchPolicy;
 use OCA\Versioniq\Service\Policy\PatchPolicyServices;
 use OCP\AppFramework\Http;
@@ -55,7 +53,7 @@ class PatchPolicyController extends OCSController {
 	#[ApiRoute(verb: 'GET', url: '/api/patch-policy')]
 	#[ApiRoute(verb: 'GET', url: '/api/v1/patch-policy', postfix: 'v1')]
 	public function patchPolicy(): DataResponse {
-		if ($this->adminUid() === null) {
+		if ($this->caller->adminUid() === null) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
@@ -82,7 +80,7 @@ class PatchPolicyController extends OCSController {
 	#[ApiRoute(verb: 'PUT', url: '/api/patch-policy')]
 	#[ApiRoute(verb: 'PUT', url: '/api/v1/patch-policy', postfix: 'v1')]
 	public function updatePatchPolicy(array $security = [], array $regular = [], string $statement = ''): DataResponse {
-		$uid = $this->adminUid();
+		$uid = $this->caller->adminUid();
 		if ($uid === null) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
@@ -101,8 +99,7 @@ class PatchPolicyController extends OCSController {
 	private function record(array $input, string $uid): DataResponse {
 		$previous = $this->policy->store->effective();
 		try {
-			$next = PatchPolicy::fromArray(
-				$input,
+			$next = PatchPolicy::fromArray($input)->recordedBy(
 				$uid,
 				$this->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
 			);
@@ -117,10 +114,9 @@ class PatchPolicyController extends OCSController {
 		}
 
 		$this->policy->store->write($next);
-		$this->policy->auditLogger->record(
-			new AuditSubject($uid, 'versioniq', AuditLogger::OPERATION_PATCH_POLICY),
-			new AuditedVersions(null, null, null),
-			AuditLogger::STATUS_SUCCESS,
+		$this->policy->auditLogger->recordAdminChange(
+			$uid,
+			AdminChangeAuditInterface::OPERATION_PATCH_POLICY,
 			'Patch policy changed: ' . ($changed === [] ? 'recorded' : implode(', ', $changed)),
 		);
 
@@ -145,15 +141,5 @@ class PatchPolicyController extends OCSController {
 				'statementMaxLength' => PatchPolicy::STATEMENT_MAX_LENGTH,
 			],
 		];
-	}
-
-	/** The signed-in administrator's uid, or null for anyone else. */
-	private function adminUid(): ?string {
-		$user = $this->caller->userSession->getUser();
-		if ($user === null || !$this->caller->groupManager->isAdmin($user->getUID())) {
-			return null;
-		}
-
-		return $user->getUID();
 	}
 }

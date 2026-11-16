@@ -48,9 +48,9 @@ final class SecurityCandidate {
 	 * Whether a snapshot taken at `$checkedAt` may still decide installs:
 	 * it exists and is at most two advisory intervals old.
 	 *
-	 * @param int|null $checkedAt       Unix time of the last completed sweep, null for never.
-	 * @param int      $now             Unix time now.
-	 * @param int      $intervalSeconds The advisory sweep interval.
+	 * @param int|null $checkedAt Unix time of the last completed sweep, null for never.
+	 * @param int $now Unix time now.
+	 * @param int $intervalSeconds The advisory sweep interval.
 	 *
 	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md
 	 */
@@ -65,50 +65,97 @@ final class SecurityCandidate {
 	/**
 	 * The fix to install for one app, or the reason there is none.
 	 *
-	 * @param string                    $installed The installed version.
-	 * @param array<string, mixed>|null $row       The app's row in the advisory snapshot, null when it has none.
-	 * @param list<string>              $available The versions the app's source lists.
-	 * @param bool                      $fresh     Whether the snapshot is fresh (see isFresh()).
+	 * @param PlanSubject $app The app: its installed version and the versions its source lists.
+	 * @param PlanRun $run The run: the advisory snapshot and whether it is fresh (see isFresh()).
 	 *
 	 * @return array{version: ?string, reason: ?string} Exactly one of the two is set.
 	 *
 	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md
 	 */
-	public static function decide(string $installed, ?array $row, array $available, bool $fresh): array {
-		$reason = $fresh ? self::refusal(installed: $installed, row: $row) : self::REASON_STALE;
-		if ($reason === null && in_array($row['recommendedVersion'] ?? null, $available, true) === false) {
-			$reason = self::REASON_NOT_IN_SOURCE;
-		}
-
+	public static function decide(PlanSubject $app, PlanRun $run): array {
+		$reason = self::reasonAgainst(app: $app, run: $run);
 		if ($reason !== null) {
 			return ['version' => null, 'reason' => $reason];
 		}
 
-		return ['version' => (string)$row['recommendedVersion'], 'reason' => null];
+		return ['version' => (string)($run->rowOf($app->appId)['recommendedVersion'] ?? ''), 'reason' => null];
+	}
+
+	/**
+	 * The recommended fix of an affected app when the snapshot is fresh and the
+	 * app's source lists it; null otherwise. No version rules: a level's own
+	 * selection decides whether it may install.
+	 *
+	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md
+	 */
+	public static function listedFix(PlanSubject $app, PlanRun $run): ?string {
+		$row = $run->rowOf($app->appId);
+		if (!$run->fresh || !self::isAffected(row: $row)) {
+			return null;
+		}
+
+		return self::listed(app: $app, version: $row['recommendedVersion'] ?? null);
+	}
+
+	/**
+	 * Why the app gets no security install: a stale snapshot, a refusal by the
+	 * snapshot row, or a fix the source does not list; null when it may install.
+	 */
+	private static function reasonAgainst(PlanSubject $app, PlanRun $run): ?string {
+		if (!$run->fresh) {
+			return self::REASON_STALE;
+		}
+
+		$row = $run->rowOf($app->appId);
+		$refusal = self::refusal(installed: $app->installedVersion, row: $row);
+		if ($refusal !== null) {
+			return $refusal;
+		}
+
+		return self::listed(app: $app, version: $row['recommendedVersion'] ?? null) === null ? self::REASON_NOT_IN_SOURCE : null;
 	}
 
 	/**
 	 * Why a fresh snapshot gives the app no security install, before the
 	 * source is asked; null when the recommended fix may install.
 	 *
-	 * @param string                    $installed The installed version.
-	 * @param array<string, mixed>|null $row       The app's snapshot row.
+	 * @param string $installed The installed version.
+	 * @param array<string, mixed>|null $row The app's snapshot row.
 	 */
 	private static function refusal(string $installed, ?array $row): ?string {
-		if (($row['state'] ?? null) !== AdvisoryService::STATE_VULNERABLE) {
+		if (!self::isAffected(row: $row)) {
 			return self::REASON_NOT_AFFECTED;
 		}
 
 		$recommended = $row['recommendedVersion'] ?? null;
-		if (is_string($recommended) === false || $recommended === '' || version_compare($recommended, $installed, '>') === false) {
+		if (!is_string($recommended) || !self::isNewer(recommended: $recommended, installed: $installed)) {
 			return self::REASON_NO_FIX;
 		}
 
-		if (self::major($recommended) !== self::major($installed)) {
-			return self::REASON_NEEDS_MAJOR;
-		}
+		return self::major($recommended) !== self::major($installed) ? self::REASON_NEEDS_MAJOR : null;
+	}
 
-		return null;
+	/**
+	 * Whether the snapshot row says the installed version is affected.
+	 *
+	 * @param array<string, mixed>|null $row The app's snapshot row.
+	 */
+	private static function isAffected(?array $row): bool {
+		return ($row['state'] ?? null) === AdvisoryService::STATE_VULNERABLE;
+	}
+
+	/**
+	 * Whether the recommended version is a version above the installed one.
+	 */
+	private static function isNewer(string $recommended, string $installed): bool {
+		return $recommended !== '' && version_compare($recommended, $installed, '>');
+	}
+
+	/**
+	 * The version when it is a string the app's source lists, else null.
+	 */
+	private static function listed(PlanSubject $app, mixed $version): ?string {
+		return is_string($version) && in_array($version, $app->available, true) ? $version : null;
 	}
 
 	/** The major part of a version: everything before its first dot. */

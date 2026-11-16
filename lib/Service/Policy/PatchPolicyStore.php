@@ -23,9 +23,9 @@ use Psr\Log\LoggerInterface;
  * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-an-admin-records-a-patch-policy-and-security-fixes-go-first
  */
 class PatchPolicyStore {
-	public const CONFIG_KEY = 'patch_policy';
-
 	private const JSON_DEPTH = 8;
+
+	public const CONFIG_KEY = 'patch_policy';
 
 	public function __construct(
 		private IAppConfig $config,

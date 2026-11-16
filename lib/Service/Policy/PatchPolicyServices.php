@@ -11,7 +11,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Policy;
 
-use OCA\Versioniq\Service\Audit\AuditLogger;
+use OCA\Versioniq\Service\Audit\AdminChangeAuditInterface;
 
 /**
  * What the patch policy endpoints work with: the stored policy, the
@@ -25,7 +25,7 @@ final class PatchPolicyServices {
 	public function __construct(
 		public readonly PatchPolicyStore $store,
 		public readonly PatchPolicyStatement $statement,
-		public readonly AuditLogger $auditLogger,
+		public readonly AdminChangeAuditInterface $auditLogger,
 	) {
 	}
 }

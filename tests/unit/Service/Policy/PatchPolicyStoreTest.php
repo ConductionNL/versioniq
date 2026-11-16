@@ -54,7 +54,7 @@ final class PatchPolicyStoreTest extends TestCase {
 
 	public function testTheExampleRoundTrips(): void {
 		$store = $this->store();
-		$policy = PatchPolicy::fromArray(PatchPolicyTest::example(), 'alice', '2026-09-27T10:00:00+00:00');
+		$policy = PatchPolicy::fromArray(PatchPolicyTest::example())->recordedBy('alice', '2026-09-27T10:00:00+00:00');
 
 		$store->write($policy);
 

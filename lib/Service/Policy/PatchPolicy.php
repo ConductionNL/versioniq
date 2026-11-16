@@ -26,13 +26,7 @@ use OCA\Versioniq\Service\Advisory\AdvisorySeverity;
  * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-an-admin-records-a-patch-policy-and-security-fixes-go-first
  */
 final class PatchPolicy {
-	public const SEVERITIES = [
-		AdvisorySeverity::CRITICAL,
-		AdvisorySeverity::HIGH,
-		AdvisorySeverity::MEDIUM,
-		AdvisorySeverity::LOW,
-		AdvisorySeverity::UNKNOWN,
-	];
+	public const SEVERITIES = AdvisorySeverity::ORDER;
 
 	public const HANDLING_NEXT_WINDOW = 'next_window';
 	public const HANDLING_SCHEDULED = 'scheduled';
@@ -93,16 +87,26 @@ final class PatchPolicy {
 	 *
 	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-an-admin-records-a-patch-policy-and-security-fixes-go-first
 	 */
-	public static function fromArray(array $payload, ?string $setBy = null, ?string $setAt = null): self {
+	public static function fromArray(array $payload): self {
 		$none = self::none();
 
 		return new self(
 			self::securityFrom($payload['security'] ?? [], $none->security),
 			self::regularFrom($payload['regular'] ?? [], $none->regular),
 			self::statementFrom($payload['statement'] ?? ''),
-			$setBy ?? self::optionalString($payload['setBy'] ?? null),
-			$setAt ?? self::optionalString($payload['setAt'] ?? null),
+			self::optionalString($payload['setBy'] ?? null),
+			self::optionalString($payload['setAt'] ?? null),
 		);
+	}
+
+	/**
+	 * This policy as recorded by an administrator at a moment: who set it and
+	 * when replace what the payload said.
+	 *
+	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-an-admin-records-a-patch-policy-and-security-fixes-go-first
+	 */
+	public function recordedBy(string $setBy, string $setAt): self {
+		return new self($this->security, $this->regular, $this->statement, $setBy, $setAt);
 	}
 
 	/**
@@ -254,13 +258,8 @@ final class PatchPolicy {
 			static fn (mixed $advisory): string => AdvisorySeverity::normalize(is_array($advisory) ? ($advisory['severity'] ?? null) : null),
 			$advisories,
 		);
-		foreach (self::SEVERITIES as $severity) {
-			if (in_array($severity, $found, true)) {
-				return $severity;
-			}
-		}
 
-		return AdvisorySeverity::UNKNOWN;
+		return AdvisorySeverity::highestOf($found);
 	}
 
 	/**

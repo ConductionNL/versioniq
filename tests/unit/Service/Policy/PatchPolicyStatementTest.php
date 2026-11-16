@@ -35,7 +35,7 @@ final class PatchPolicyStatementTest extends TestCase {
 	}
 
 	public function testTheExampleReadsAsSentences(): void {
-		$lines = $this->statement()->lines(PatchPolicy::fromArray(PatchPolicyTest::example(), 'alice', '2026-09-27T10:00:00+00:00'));
+		$lines = $this->statement()->lines(PatchPolicy::fromArray(PatchPolicyTest::example())->recordedBy('alice', '2026-09-27T10:00:00+00:00'));
 
 		$this->assertSame([
 			'Critical security fixes: installed at the next update window. Deadline: 3 days.',
@@ -52,7 +52,7 @@ final class PatchPolicyStatementTest extends TestCase {
 	}
 
 	public function testOneDayIsSingular(): void {
-		$lines = $this->statement()->lines(PatchPolicy::fromArray(['security' => ['critical' => ['deadlineDays' => 1, 'handling' => 'next_window']]], 'bob', '2026-01-02T00:00:00+00:00'));
+		$lines = $this->statement()->lines(PatchPolicy::fromArray(['security' => ['critical' => ['deadlineDays' => 1, 'handling' => 'next_window']]])->recordedBy('bob', '2026-01-02T00:00:00+00:00'));
 
 		$this->assertSame('Critical security fixes: installed at the next update window. Deadline: 1 day.', $lines[0]);
 		$this->assertSame('Last changed by bob on 2 January 2026.', end($lines));
@@ -66,7 +66,7 @@ final class PatchPolicyStatementTest extends TestCase {
 	}
 
 	public function testAnUnreadableDateIsShownAsStored(): void {
-		$lines = $this->statement()->lines(PatchPolicy::fromArray([], 'alice', 'not a date'));
+		$lines = $this->statement()->lines(PatchPolicy::fromArray([])->recordedBy('alice', 'not a date'));
 
 		$this->assertSame('Last changed by alice on not a date.', end($lines));
 	}

@@ -16,8 +16,8 @@ require_once __DIR__ . '/../Service/Policy/PatchPolicyTest.php';
 use OCA\Versioniq\Controller\PatchPolicyController;
 use OCA\Versioniq\Service\Api\ApiCaller;
 use OCA\Versioniq\Service\Audit\AuditLogger;
-use OCA\Versioniq\Service\Policy\PatchPolicyStatement;
 use OCA\Versioniq\Service\Policy\PatchPolicyServices;
+use OCA\Versioniq\Service\Policy\PatchPolicyStatement;
 use OCA\Versioniq\Service\Policy\PatchPolicyStore;
 use OCA\Versioniq\Tests\Unit\Service\Policy\PatchPolicyTest;
 use OCA\Versioniq\Tests\Unit\Support\AuditArgs;
@@ -85,14 +85,14 @@ final class PatchPolicyControllerTest extends TestCase {
 			new PatchPolicyServices(
 				new PatchPolicyStore($appConfig, $this->createMock(LoggerInterface::class)),
 				new PatchPolicyStatement($l),
-				$audit ?? $this->createMock(AuditLogger::class),
+				$audit ?? $this->getMockBuilder(AuditLogger::class)->disableOriginalConstructor()->onlyMethods(['record'])->getMock(),
 			),
 			new ApiCaller($session, $groups, $time),
 		);
 	}
 
 	public function testANonAdminCannotReadOrWrite(): void {
-		$audit = $this->createMock(AuditLogger::class);
+		$audit = $this->getMockBuilder(AuditLogger::class)->disableOriginalConstructor()->onlyMethods(['record'])->getMock();
 		$audit->expects(self::never())->method(self::anything());
 		$request = $this->requestWith(PatchPolicyTest::example());
 
@@ -119,7 +119,7 @@ final class PatchPolicyControllerTest extends TestCase {
 	}
 
 	public function testSavingStoresTheSentencesAndOneAuditEntry(): void {
-		$audit = $this->createMock(AuditLogger::class);
+		$audit = $this->getMockBuilder(AuditLogger::class)->disableOriginalConstructor()->onlyMethods(['record'])->getMock();
 		$audit->expects(self::once())->method('record')->with(
 			...AuditArgs::expected('alice', 'versioniq', AuditLogger::OPERATION_PATCH_POLICY, null, null, null, AuditLogger::STATUS_SUCCESS, 'Patch policy changed: security.critical, security.high, security.medium, security.low, security.unknown, regular.major, statement'),
 		);
@@ -153,7 +153,7 @@ final class PatchPolicyControllerTest extends TestCase {
 	 * @param array<string, mixed> $body
 	 */
 	public function testAnInvalidFieldIsA400AndWritesNothing(array $body): void {
-		$audit = $this->createMock(AuditLogger::class);
+		$audit = $this->getMockBuilder(AuditLogger::class)->disableOriginalConstructor()->onlyMethods(['record'])->getMock();
 		$audit->expects(self::never())->method('record');
 		$request = $this->requestWith($body);
 
@@ -169,7 +169,7 @@ final class PatchPolicyControllerTest extends TestCase {
 		$this->dispatch($this->controller(true, $request), 'updatePatchPolicy', $request);
 		$stored = $this->config['patch_policy'];
 
-		$audit = $this->createMock(AuditLogger::class);
+		$audit = $this->getMockBuilder(AuditLogger::class)->disableOriginalConstructor()->onlyMethods(['record'])->getMock();
 		$audit->expects(self::never())->method('record');
 		$response = $this->dispatch($this->controller(true, $request, $audit), 'updatePatchPolicy', $request);
 
@@ -178,7 +178,7 @@ final class PatchPolicyControllerTest extends TestCase {
 	}
 
 	public function testRecordingTheNoPolicyValuesStillRecordsWho(): void {
-		$audit = $this->createMock(AuditLogger::class);
+		$audit = $this->getMockBuilder(AuditLogger::class)->disableOriginalConstructor()->onlyMethods(['record'])->getMock();
 		$audit->expects(self::once())->method('record')->with(
 			...AuditArgs::expected('alice', 'versioniq', AuditLogger::OPERATION_PATCH_POLICY, null, null, null, AuditLogger::STATUS_SUCCESS, 'Patch policy changed: recorded'),
 		);

@@ -43,15 +43,7 @@ class SecurityHoldStore {
 	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-the-security-level-installs-only-advisory-fixes-in-the-window
 	 */
 	public function read(): array {
-		$raw = $this->config->getValueString(Application::APP_ID, self::CONFIG_KEY, '');
-		try {
-			$decoded = $raw === '' ? [] : json_decode($raw, true, self::JSON_DEPTH, JSON_THROW_ON_ERROR);
-		} catch (\JsonException) {
-			$decoded = [];
-		}
-		if (!is_array($decoded)) {
-			return [];
-		}
+		$decoded = self::decode(raw: $this->config->getValueString(Application::APP_ID, self::CONFIG_KEY, ''));
 
 		$holds = [];
 		/** @var mixed $reason */
@@ -62,6 +54,22 @@ class SecurityHoldStore {
 		}
 
 		return $holds;
+	}
+
+	/**
+	 * The stored JSON as an array; empty when it is missing, broken or no array.
+	 *
+	 * @return array<array-key, mixed>
+	 */
+	private static function decode(string $raw): array {
+		try {
+			/** @var mixed $decoded */
+			$decoded = $raw === '' ? [] : json_decode($raw, true, self::JSON_DEPTH, JSON_THROW_ON_ERROR);
+		} catch (\JsonException) {
+			return [];
+		}
+
+		return is_array($decoded) ? $decoded : [];
 	}
 
 	/**

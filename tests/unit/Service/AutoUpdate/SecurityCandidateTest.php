@@ -12,7 +12,10 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\Service\AutoUpdate;
 
 use OCA\Versioniq\Service\Advisory\AdvisoryService;
+use OCA\Versioniq\Service\AutoUpdate\PlanRun;
+use OCA\Versioniq\Service\AutoUpdate\PlanSubject;
 use OCA\Versioniq\Service\AutoUpdate\SecurityCandidate;
+use OCA\Versioniq\Service\Policy\PatchPolicy;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -40,15 +43,31 @@ final class SecurityCandidateTest extends TestCase {
 		];
 	}
 
+	/**
+	 * Decide for app `openregister` with this snapshot row, source and freshness.
+	 *
+	 * @param array<string, mixed>|null $row
+	 * @param list<string> $available
+	 * @return array{version: ?string, reason: ?string}
+	 */
+	private static function decide(string $installed, ?array $row, array $available, bool $fresh): array {
+		$rows = $row === null ? [] : ['openregister' => $row];
+
+		return SecurityCandidate::decide(
+			new PlanSubject('openregister', 'security', $installed, $available),
+			new PlanRun($rows, $fresh, PatchPolicy::none()),
+		);
+	}
+
 	public function testAnAffectedAppGetsTheRecommendedFix(): void {
 		$this->assertSame(
 			['version' => '2.3.5', 'reason' => null],
-			SecurityCandidate::decide('2.3.4', self::affected('2.3.5'), ['2.3.5', '2.4.0', '3.0.0'], true)
+			self::decide('2.3.4', self::affected('2.3.5'), ['2.3.5', '2.4.0', '3.0.0'], true)
 		);
 	}
 
 	public function testTheRecommendedFixWinsOverAHigherVersionInTheSameMajor(): void {
-		$this->assertSame('2.3.5', SecurityCandidate::decide('2.3.4', self::affected('2.3.5'), ['2.9.9', '2.3.5'], true)['version']);
+		$this->assertSame('2.3.5', self::decide('2.3.4', self::affected('2.3.5'), ['2.9.9', '2.3.5'], true)['version']);
 	}
 
 	/**
@@ -69,11 +88,11 @@ final class SecurityCandidateTest extends TestCase {
 
 	/**
 	 * @param array<string, mixed>|null $row
-	 * @param list<string>              $available
+	 * @param list<string> $available
 	 */
 	#[DataProvider('refusals')]
 	public function testEachReasonInstallsNothing(?array $row, array $available, bool $fresh, string $reason): void {
-		$this->assertSame(['version' => null, 'reason' => $reason], SecurityCandidate::decide('2.3.4', $row, $available, $fresh));
+		$this->assertSame(['version' => null, 'reason' => $reason], self::decide('2.3.4', $row, $available, $fresh));
 	}
 
 	public function testASnapshotIsFreshForTwoIntervals(): void {
