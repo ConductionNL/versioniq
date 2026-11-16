@@ -26,6 +26,8 @@ use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\AutoUpdate\SecurityCandidate;
+use OCA\Versioniq\Service\AutoUpdate\UpdateGroup;
+use OCA\Versioniq\Service\AutoUpdate\UpdateGroupInput;
 use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
@@ -960,6 +962,8 @@ class ApiController extends OCSController {
 			'securityHolds' => (object)$this->autoUpdate->security->securityHolds->read(),
 			'advisoriesFresh' => $this->advisoriesFresh(),
 			'manualKinds' => ($this->autoUpdate->security->patchPolicyStore->read() ?? PatchPolicy::none())->manualKinds(),
+			// Update groups, in their stored order (autoupdate-run-batching D2).
+			'groups' => self::groupsPayload($this->autoUpdate->groupStore->all()),
 		] + $this->autoUpdateCaps());
 	}
 
@@ -1044,6 +1048,54 @@ class ApiController extends OCSController {
 		$this->autoUpdate->policyStore->clear($appId);
 
 		return new DataResponse(['appId' => $appId, 'cleared' => true]);
+	}
+
+	/**
+	 * Replaces the update groups (password-confirmed). The whole list is
+	 * checked first: a group of one, a duplicate name, an app in two groups
+	 * or an app this instance cannot manage is refused with 400 and nothing
+	 * changes.
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{groups: list<array<string, mixed>>}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 *
+	 * 200: The stored groups
+	 * 400: The list is refused
+	 * 403: Caller is not an administrator
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'PUT', url: '/api/auto-update/groups')]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/auto-update/groups', postfix: 'v1')]
+	public function updateAutoUpdateGroups(): DataResponse {
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
+		}
+
+		try {
+			$groups = UpdateGroupInput::parse(
+				$this->request->getParam('groups'),
+				fn (string $appId): bool => $this->install->installerService->isManageableApp($appId),
+				['by' => $user->getUID(), 'at' => $this->access->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM)],
+			);
+		} catch (\InvalidArgumentException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
+
+		$this->autoUpdate->groupStore->replaceAll($groups);
+
+		return new DataResponse(['groups' => self::groupsPayload($groups)]);
+	}
+
+	/**
+	 * The groups as the API returns them.
+	 *
+	 * @param list<UpdateGroup> $groups
+	 * @return list<array<string, mixed>>
+	 */
+	private static function groupsPayload(array $groups): array {
+		return array_map(static fn (UpdateGroup $group): array => $group->toArray(), $groups);
 	}
 
 	/**

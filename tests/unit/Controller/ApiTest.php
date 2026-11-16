@@ -23,6 +23,8 @@ use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\Advisory\AdvisoryTriageStore;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
+use OCA\Versioniq\Service\AutoUpdate\UpdateGroup;
+use OCA\Versioniq\Service\AutoUpdate\UpdateGroupStore;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
 use OCA\Versioniq\Service\InstallerService;
@@ -120,6 +122,7 @@ final class ApiTest extends TestCase {
 		?ArtifactCache $artifactCache = null,
 		?AttemptLedger $attemptLedger = null,
 		?KnownIssueStore $knownIssues = null,
+		?UpdateGroupStore $groupStore = null,
 	): ApiController {
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn($uid);
@@ -154,6 +157,7 @@ final class ApiTest extends TestCase {
 			'connectionReports' => null,
 			'attemptLedger' => $attemptLedger ?? $this->createMock(AttemptLedger::class),
 			'knownIssues' => $knownIssues,
+			'groupStore' => $groupStore ?? $this->createMock(UpdateGroupStore::class),
 		]);
 	}
 
@@ -801,6 +805,113 @@ final class ApiTest extends TestCase {
 
 		$this->assertSame(200, $response->getStatus());
 		$this->assertSame(40, $response->getData()['maxPerWeek']);
+	}
+
+	/**
+	 * An admin controller for the groups endpoint, with every app manageable
+	 * except `notmanaged`.
+	 */
+	private function groupsController(IRequest $request, UpdateGroupStore $groupStore): ApiController {
+		$installer = $this->createMock(InstallerService::class);
+		$installer->method('isManageableApp')->willReturnCallback(static fn (string $appId): bool => $appId !== 'notmanaged');
+
+		return $this->buildAdminController($installer, $request, null, null, null, 'admin', null, null, null, null, null, $groupStore);
+	}
+
+	public function testUpdateAutoUpdateGroupsIsForbiddenForANonAdmin(): void {
+		$groupStore = $this->createMock(UpdateGroupStore::class);
+		$groupStore->expects($this->never())->method('replaceAll');
+		$controller = $this->buildByName(ApiController::class, [
+			'appName' => 'versioniq',
+			'request' => $this->paramsRequest(['groups' => [['name' => 'Registers', 'apps' => ['openregister', 'opencatalogi']]]]),
+			'serverVersion' => $this->fakeServerVersion(),
+			'connectionReports' => null,
+			'knownIssues' => null,
+			'groupStore' => $groupStore,
+		]);
+
+		$this->assertSame(403, $controller->updateAutoUpdateGroups()->getStatus());
+	}
+
+	/**
+	 * autoupdate-run-batching D2: the whole list is refused with 400 and
+	 * nothing is stored.
+	 *
+	 * @dataProvider badGroupsProvider
+	 */
+	public function testUpdateAutoUpdateGroupsRefusesABadList(mixed $groups, string $message): void {
+		$groupStore = $this->createMock(UpdateGroupStore::class);
+		$groupStore->expects($this->never())->method('replaceAll');
+
+		$response = $this->groupsController($this->paramsRequest(['groups' => $groups]), $groupStore)->updateAutoUpdateGroups();
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertSame($message, $response->getData()['message']);
+	}
+
+	/**
+	 * @return array<string, array{0: mixed, 1: string}>
+	 */
+	public static function badGroupsProvider(): array {
+		return [
+			'a duplicate name' => [
+				[['name' => 'Registers', 'apps' => ['a', 'b']], ['name' => 'registers', 'apps' => ['c', 'd']]],
+				'The group name "registers" is used twice.',
+			],
+			'an app in two groups' => [
+				[['name' => 'One', 'apps' => ['a', 'b']], ['name' => 'Two', 'apps' => ['b', 'c']]],
+				'b is in two groups: "One" and "Two".',
+			],
+			'a group of one' => [
+				[['name' => 'Solo', 'apps' => ['a']]],
+				'Group "Solo" must hold 2 to 20 different apps.',
+			],
+			'an app this instance cannot manage' => [
+				[['name' => 'One', 'apps' => ['a', 'notmanaged']]],
+				'notmanaged cannot be updated automatically on this instance.',
+			],
+			'no name' => [[['apps' => ['a', 'b']]], 'Every group needs a name.'],
+			'not a list' => ['Registers', 'groups must be a list.'],
+		];
+	}
+
+	public function testUpdateAutoUpdateGroupsStoresTheListInOrder(): void {
+		$groupStore = $this->createMock(UpdateGroupStore::class);
+		$stored = null;
+		$groupStore->expects($this->once())->method('replaceAll')->willReturnCallback(static function (array $groups) use (&$stored): void {
+			$stored = $groups;
+		});
+		$request = $this->paramsRequest(['groups' => [
+			['id' => 'g1', 'name' => 'Registers', 'apps' => ['openregister', 'opencatalogi']],
+			['name' => 'Docs', 'apps' => ['docudesk', 'pipelinq']],
+		]]);
+
+		$response = $this->groupsController($request, $groupStore)->updateAutoUpdateGroups();
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertIsArray($stored);
+		$this->assertSame(['g1', 'Registers', ['openregister', 'opencatalogi'], 'admin', '2026-07-24T00:00:00+00:00'], [$stored[0]->id, $stored[0]->name, $stored[0]->apps, $stored[0]->setBy, $stored[0]->setAt]);
+		$this->assertSame(['docudesk', 'pipelinq'], $stored[1]->apps);
+		$this->assertNotSame('', $stored[1]->id);
+		$this->assertSame(['Registers', 'Docs'], array_column($response->getData()['groups'], 'name'));
+	}
+
+	public function testPoliciesReturnsTheGroups(): void {
+		$groupStore = $this->createMock(UpdateGroupStore::class);
+		$groupStore->method('all')->willReturn([
+			new UpdateGroup('g1', 'Registers', ['openregister', 'opencatalogi'], ['by' => 'admin', 'at' => '2026-07-01T00:00:00+00:00']),
+		]);
+
+		$response = $this->groupsController($this->paramsRequest([]), $groupStore)->policies();
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame([[
+			'id' => 'g1',
+			'name' => 'Registers',
+			'apps' => ['openregister', 'opencatalogi'],
+			'setBy' => 'admin',
+			'setAt' => '2026-07-01T00:00:00+00:00',
+		]], $response->getData()['groups']);
 	}
 
 	// --- dryRun decoupled from debug (see MODIFIED "Debug Mode") ---
