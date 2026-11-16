@@ -47,7 +47,7 @@ class InstallBackup {
 
 		try {
 			$namespace = AppAutoloader::resolveNamespace($appId, $this->appManager);
-			$tables = $this->dumper->dump($this->dumper->tablesOf($appPath, $namespace));
+			$tables = $this->dumper->dumpTables($this->dumper->tablesOf($appPath, $namespace));
 			$backup = $this->store->create(new BackupSource($appId, $appPath, $version, $enabled), $tables);
 		} catch (\Throwable $error) {
 			$this->logger->warning('InstallBackup: the backup before the install could not be made', ['appId' => $appId, 'message' => $error->getMessage()]);

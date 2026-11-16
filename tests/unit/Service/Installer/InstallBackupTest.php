@@ -29,7 +29,7 @@ final class InstallBackupTest extends TestCase {
 			->willReturn(['appId' => 'notes', 'version' => '1.0.0', 'enabled' => 'yes', 'createdAt' => 1_759_276_800, 'keptUntil' => 1_760_486_400, 'sizeBytes' => 190_840_832, 'tables' => ['notes_items']]);
 		$dumper = $this->createMock(AppTableDumper::class);
 		$dumper->expects($this->once())->method('tablesOf')->with('/apps/notes', 'OCA\\Notes')->willReturn(['notes_items']);
-		$dumper->expects($this->once())->method('dump')->with(['notes_items'])->willReturn(['notes_items' => [['id' => 1]]]);
+		$dumper->expects($this->once())->method('dumpTables')->with(['notes_items'])->willReturn(['notes_items' => [['id' => 1]]]);
 
 		$result = (new InstallBackup($store, $dumper, $this->appManager(), $this->createMock(LoggerInterface::class)))->make('notes', '/apps/notes', '1.0.0', 'yes');
 
@@ -54,7 +54,7 @@ final class InstallBackupTest extends TestCase {
 		$store->method('create')->willThrowException(new \RuntimeException('disk full'));
 		$dumper = $this->createMock(AppTableDumper::class);
 		$dumper->method('tablesOf')->willReturn([]);
-		$dumper->method('dump')->willReturn([]);
+		$dumper->method('dumpTables')->willReturn([]);
 		$logger = $this->createMock(LoggerInterface::class);
 		$logger->expects($this->once())->method('warning')
 			->with('InstallBackup: the backup before the install could not be made', ['appId' => 'notes', 'message' => 'disk full']);

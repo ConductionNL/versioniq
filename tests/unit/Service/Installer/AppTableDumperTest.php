@@ -107,7 +107,7 @@ final class AppTableDumperTest extends TestCase {
 		$db = $this->createMock(IDBConnection::class);
 		$db->method('getQueryBuilder')->willReturn($query);
 
-		$dump = $this->dumper($db, $this->createMock(LoggerInterface::class))->dump(['notes_items']);
+		$dump = $this->dumper($db, $this->createMock(LoggerInterface::class))->dumpTables(['notes_items']);
 
 		$this->assertSame(['notes_items' => [
 			['id' => 1, 'data' => ['__base64' => base64_encode("\xff\xfe")]],

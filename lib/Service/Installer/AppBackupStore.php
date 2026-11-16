@@ -58,7 +58,11 @@ class AppBackupStore {
 	) {
 	}
 
-	/** Days a backup is kept; 0 or less means no backup is made. */
+	/**
+	 * Days a backup is kept; 0 or less means no backup is made.
+	 *
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 */
 	public function keepDays(): int {
 		return $this->appConfig->getValueInt(Application::APP_ID, self::CONFIG_KEEP_DAYS, self::DEFAULT_KEEP_DAYS);
 	}

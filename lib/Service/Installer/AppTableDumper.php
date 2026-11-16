@@ -121,7 +121,7 @@ class AppTableDumper {
 	 * @param list<string> $tables
 	 * @return array<string, list<array<string, mixed>>>
 	 */
-	public function dump(array $tables): array {
+	public function dumpTables(array $tables): array {
 		$dump = [];
 		foreach ($tables as $table) {
 			$result = $this->db->getQueryBuilder()->select('*')->from($table)->executeQuery();
@@ -206,21 +206,27 @@ class AppTableDumper {
 
 	private static function silentOutput(): IOutput {
 		return new class implements IOutput {
+			/** @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables */
 			public function debug(string $message): void {
 			}
 
+			/** @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables */
 			public function info($message) {
 			}
 
+			/** @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables */
 			public function warning($message) {
 			}
 
+			/** @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables */
 			public function startProgress($max = 0) {
 			}
 
+			/** @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables */
 			public function advance($step = 1, $description = '') {
 			}
 
+			/** @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables */
 			public function finishProgress() {
 			}
 		};
