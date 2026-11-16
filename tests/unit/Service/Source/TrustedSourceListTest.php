@@ -126,4 +126,17 @@ final class TrustedSourceListTest extends TestCase {
 		$this->assertFalse($list->isAllowed('github:acme/widget'));
 		$this->assertFalse($list->isAllowed('codeberg:acme/widget'));
 	}
+
+	/**
+	 * sources-gitlab-forge 1.2: `gitlab:group/*` trusts the group's projects,
+	 * subgroups included, and nothing outside it.
+	 */
+	public function testAGitlabGroupPatternTrustsItsNestedProjects(): void {
+		$list = $this->withPatterns('["gitlab:group/*"]');
+
+		$this->assertTrue($list->isAllowed('gitlab:group/project'));
+		$this->assertTrue($list->isAllowed('gitlab:group/sub/project'));
+		$this->assertFalse($list->isAllowed('gitlab:other/project'));
+		$this->assertFalse($list->isAllowed('github:group/project'));
+	}
 }
