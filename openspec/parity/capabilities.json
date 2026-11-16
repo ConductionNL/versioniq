@@ -4998,12 +4998,12 @@
 			"osv-scanner": "yes",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "building",
-				"evidence": "lib/Service/Advisory/NextcloudAdvisoryFeed.php:263, lib/Service/Settings/InstanceSettings.php:105, src/components/InstanceSettingsPanel.vue:178",
-				"reachedOn": "Settings tab (Advisory feed address); occ config:app:set versioniq advisory.feed_base",
+				"state": "built",
+				"evidence": "lib/Service/Advisory/LocalFeedCopy.php:63, lib/Service/Advisory/NextcloudAdvisoryFeed.php:362, lib/Controller/SettingsController.php:154, src/components/InstanceSettingsPanel.vue:258",
+				"reachedOn": "Settings tab (Read advisories from: the local copy; Import a local copy of the advisory feed)",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/audit-trail",
-				"readOn": "2026-10-07",
+				"readOn": "2026-11-14",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
@@ -5922,16 +5922,17 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "building",
-				"evidence": "lib/Service/Discovery/GithubSearchDiscovery.php:55, lib/Service/Discovery/DiscoveryAggregator.php:40",
-				"reachedOn": "Discover tab, only after occ config:app:set versioniq discovery.github_search_enabled true",
+				"state": "built",
+				"evidence": "lib/Service/Discovery/GithubSearchDiscovery.php:55, src/components/DiscoverPanel.vue:285, lib/Service/Settings/InstanceSettings.php:101",
+				"reachedOn": "Discover tab (Search public GitHub repositories switch)",
 				"owner": "ConductionNL/versioniq",
 				"change": "sources-trust-audit-and-offline-feed",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqOntdekken"
 				},
-				"requirement": "openspec/changes/sources-trust-audit-and-offline-feed/specs/app-discovery :: Public GitHub search is switched on and off on the page"
+				"requirement": "openspec/changes/sources-trust-audit-and-offline-feed/specs/app-discovery :: Public GitHub search is switched on and off on the page",
+				"readOn": "2026-11-14"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6362,8 +6363,8 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "building",
-				"evidence": "lib/Service/Source/SourceBindingStore.php:109, lib/Service/Source/TrustedSourceList.php:80",
+				"state": "built",
+				"evidence": "lib/Service/Source/TrustedSourceList.php:58, lib/Service/Source/SourceBindingStore.php:132, src/utils/auditOperations.ts:30",
 				"reachedOn": "History tab",
 				"owner": "ConductionNL/versioniq",
 				"change": "sources-trust-audit-and-offline-feed",
@@ -6371,7 +6372,8 @@
 					"canvas": "design-system",
 					"board": "VqHistorie"
 				},
-				"requirement": "openspec/changes/sources-trust-audit-and-offline-feed/specs/audit-trail :: Trusted-source changes and cleared bindings are recorded"
+				"requirement": "openspec/changes/sources-trust-audit-and-offline-feed/specs/audit-trail :: Trusted-source changes and cleared bindings are recorded",
+				"readOn": "2026-11-14"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
