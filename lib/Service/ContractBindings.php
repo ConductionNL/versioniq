@@ -81,6 +81,8 @@ final class ContractBindings {
 
 	/**
 	 * Registers every binding as a service alias.
+	 *
+	 * @spec exclude Structural wiring, no functional requirement.
 	 */
 	public function register(IRegistrationContext $context): void {
 		foreach (self::BINDINGS as $contract => $service) {
