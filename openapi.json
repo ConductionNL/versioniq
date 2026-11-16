@@ -12015,54 +12015,6 @@
                 }
             }
         },
-        "/openapi.json": {
-            "get": {
-                "operationId": "open_api-show",
-                "summary": "The OpenAPI document of this API",
-                "description": "Returns this document. It needs no authentication and can be read from any origin.",
-                "tags": [
-                    "open_api"
-                ],
-                "security": [],
-                "responses": {
-                    "200": {
-                        "description": "The OpenAPI document.",
-                        "headers": {
-                            "access-control-allow-origin": {
-                                "description": "Always `*`.",
-                                "schema": {
-                                    "type": "string",
-                                    "enum": [
-                                        "*"
-                                    ]
-                                }
-                            },
-                            "API-Version": {
-                                "$ref": "#/components/headers/API-Version"
-                            }
-                        },
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "additionalProperties": true
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "The document is not installed.",
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Problem"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/advisory/feed-copy": {
             "post": {
                 "operationId": "settings-import-advisory-feed-copy-v1",
@@ -12110,7 +12062,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -12134,6 +12086,11 @@
                                     }
                                 }
                             }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
                         }
                     },
                     "400": {
@@ -12154,7 +12111,7 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {
                                                     "type": "object",
@@ -12194,7 +12151,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {
                                                             "type": "object",
@@ -12225,7 +12182,7 @@
                                                     ],
                                                     "properties": {
                                                         "meta": {
-                                                            "$ref": "#/components/schemas/OCSMeta"
+                                                            "$ref": "#/components/schemas/OcsMeta"
                                                         },
                                                         "data": {}
                                                     }
@@ -12255,12 +12212,60 @@
                                             ],
                                             "properties": {
                                                 "meta": {
-                                                    "$ref": "#/components/schemas/OCSMeta"
+                                                    "$ref": "#/components/schemas/OcsMeta"
                                                 },
                                                 "data": {}
                                             }
                                         }
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/openapi.json": {
+            "get": {
+                "operationId": "open_api-show",
+                "summary": "The OpenAPI document of this API",
+                "description": "Returns this document. It needs no authentication and can be read from any origin.",
+                "tags": [
+                    "open_api"
+                ],
+                "security": [],
+                "responses": {
+                    "200": {
+                        "description": "The OpenAPI document.",
+                        "headers": {
+                            "access-control-allow-origin": {
+                                "description": "Always `*`.",
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "*"
+                                    ]
+                                }
+                            },
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": true
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The document is not installed.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
                                 }
                             }
                         }
