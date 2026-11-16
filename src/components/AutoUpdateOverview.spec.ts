@@ -122,4 +122,61 @@ describe('AutoUpdateOverview security holds', () => {
 			'Patch updates are set to by hand in the patch policy, so no app gets them automatically.',
 		])
 	})
+
+	it('shows a group held by a failed version of one member, and a group that moves', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: {
+				policies,
+				labels: { deck: 'Deck' },
+				autoUpdateEnabled: true,
+				window: '01:00-05:00',
+				timeZone: 'UTC',
+				groups: [
+					{ id: 'g1', name: 'Office', apps: ['calendar', 'deck'] },
+					{ id: 'g2', name: 'Mail', apps: ['mail', 'calendar'] },
+				],
+			},
+		})
+
+		const rows = wrapper.findAll('[data-testid="overview-group-row"]')
+		expect(rows).toHaveLength(2)
+		expect(rows[0].text()).toContain('calendar → Deck')
+		expect(rows[0].text()).toContain('Blocked until the failed update of Deck is retried')
+		expect(rows[0].find('[data-held="true"]').exists()).toBe(true)
+		expect(rows[1].text()).toContain('Updates together, in this order')
+	})
+
+	it('shows a group held by a pin on one member', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: {
+				policies,
+				labels: {},
+				autoUpdateEnabled: true,
+				window: '01:00-05:00',
+				timeZone: 'UTC',
+				groups: [{ id: 'g1', name: 'Registers', apps: ['calendar', 'mail'] }],
+				updates: { mail: { pinned: true } } as never,
+			},
+		})
+
+		expect(wrapper.find('[data-testid="overview-group-row"]').text()).toContain('Held by the pin on mail')
+	})
+
+	it('lists what a limit held back, oldest first', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: {
+				policies,
+				labels: { deck: 'Deck' },
+				autoUpdateEnabled: true,
+				window: '01:00-05:00',
+				timeZone: 'UTC',
+				waiting: { 'app:deck': '2026-09-03T02:00:00+00:00', 'group:Office': '2026-09-02T02:00:00+00:00' },
+			},
+		})
+
+		expect(wrapper.findAll('[data-testid="overview-waiting-row"]').map((row) => row.text())).toEqual([
+			'Update group Office: waiting for the limit since 2026-09-02',
+			'Deck: waiting for the limit since 2026-09-03',
+		])
+	})
 })

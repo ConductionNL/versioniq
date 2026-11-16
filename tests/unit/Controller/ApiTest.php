@@ -896,13 +896,16 @@ final class ApiTest extends TestCase {
 		$this->assertSame(['Registers', 'Docs'], array_column($response->getData()['groups'], 'name'));
 	}
 
-	public function testPoliciesReturnsTheGroups(): void {
+	public function testPoliciesReturnsTheGroupsAndTheWaitingList(): void {
+		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore->method('getDeferred')->willReturn(['group:Registers' => '2026-07-20T02:00:00+00:00']);
 		$groupStore = $this->createMock(UpdateGroupStore::class);
 		$groupStore->method('all')->willReturn([
 			new UpdateGroup('g1', 'Registers', ['openregister', 'opencatalogi'], ['by' => 'admin', 'at' => '2026-07-01T00:00:00+00:00']),
 		]);
 
-		$response = $this->groupsController($this->paramsRequest([]), $groupStore)->policies();
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $this->paramsRequest([]), null, null, null, 'admin', null, $settingsStore, null, null, null, $groupStore)->policies();
 
 		$this->assertSame(200, $response->getStatus());
 		$this->assertSame([[
@@ -912,6 +915,7 @@ final class ApiTest extends TestCase {
 			'setBy' => 'admin',
 			'setAt' => '2026-07-01T00:00:00+00:00',
 		]], $response->getData()['groups']);
+		$this->assertEquals((object)['group:Registers' => '2026-07-20T02:00:00+00:00'], $response->getData()['waiting']);
 	}
 
 	// --- dryRun decoupled from debug (see MODIFIED "Debug Mode") ---

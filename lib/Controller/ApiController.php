@@ -962,8 +962,10 @@ class ApiController extends OCSController {
 			'securityHolds' => (object)$this->autoUpdate->security->securityHolds->read(),
 			'advisoriesFresh' => $this->advisoriesFresh(),
 			'manualKinds' => ($this->autoUpdate->security->patchPolicyStore->read() ?? PatchPolicy::none())->manualKinds(),
-			// Update groups, in their stored order (autoupdate-run-batching D2).
+			// Update groups, in their stored order, and the units a cap held
+			// back with the time each was first held (autoupdate-run-batching D2, D5).
 			'groups' => self::groupsPayload($this->autoUpdate->groupStore->all()),
+			'waiting' => (object)$this->autoUpdate->settingsStore->getDeferred(),
 		] + $this->autoUpdateCaps());
 	}
 
