@@ -13,10 +13,10 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
+use OCA\Versioniq\Kernel\Contracts\ManifestBuilderInterface;
 use OCA\Versioniq\Service\Audit\AdminChangeAuditInterface;
 use OCA\Versioniq\Service\Instance\InstanceConnection;
 use OCA\Versioniq\Service\Instance\InstanceConnectionStore;
-use OCA\Versioniq\Service\Instance\ManifestBuilder;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
@@ -45,7 +45,7 @@ class InstanceController extends OCSController {
 		private AdminChangeAuditInterface $auditLogger,
 		private IGroupManager $groupManager,
 		private IUserSession $userSession,
-		private ?ManifestBuilder $manifest = null,
+		private ?ManifestBuilderInterface $manifest = null,
 	) {
 		parent::__construct($appName, $request);
 	}

@@ -15,6 +15,7 @@ namespace OCA\Versioniq\Service;
 use Exception;
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\InstallerServiceInterface;
 use OCA\Versioniq\Service\Discovery\PublisherTrust;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
@@ -55,7 +56,7 @@ use OCP\IUserSession;
  * @psalm-type AppLists = array{enabled: array<string>, versions: array<string, string>, core: array<string>, info: array<string, array<string, mixed>>}
  * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,publisher:?string,marks:list<string>,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string,previous?:array{version:string,recordedAt:string,sourceId:?string}},provenance:?array{kind:'versioniq'|'outside',sourceId:?string,version:string}}
  */
-class InstallerService {
+class InstallerService implements InstallerServiceInterface {
 	/** Server-side changelog size cap; see "Version listings carry release notes". */
 	private const CHANGELOG_MAX_BYTES = 8192;
 	private const CHANGELOG_TRUNCATION_MARKER = ' …[truncated]';

@@ -11,8 +11,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\BackgroundJob;
 
-use OCA\Versioniq\Service\Alert\WebhookSender;
-use OCA\Versioniq\Service\Alert\WebhookTargetStore;
+use OCA\Versioniq\Kernel\Contracts\WebhookSenderInterface;
+use OCA\Versioniq\Kernel\Contracts\WebhookTargetStoreInterface;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\IJobList;
 use OCP\BackgroundJob\QueuedJob;
@@ -30,8 +30,8 @@ class WebhookDeliveryJob extends QueuedJob {
 
 	public function __construct(
 		ITimeFactory $time,
-		private WebhookTargetStore $targets,
-		private WebhookSender $sender,
+		private WebhookTargetStoreInterface $targets,
+		private WebhookSenderInterface $sender,
 		private IJobList $jobList,
 	) {
 		parent::__construct($time);
