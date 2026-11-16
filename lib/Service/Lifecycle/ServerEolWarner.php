@@ -68,21 +68,31 @@ class ServerEolWarner {
 			return null;
 		}
 
-		$entry = $major . '|' . $date . '|' . $threshold;
+		return $this->warnOnce(['major' => $major, 'date' => $date, 'days' => $days, 'threshold' => $threshold]);
+	}
+
+	/**
+	 * Notify the admins of this major, date and threshold unless they were already told.
+	 *
+	 * @param array{major: int, date: string, days: int, threshold: int} $due
+	 * @return int|null The threshold sent, or null when it was sent before.
+	 */
+	private function warnOnce(array $due): ?int {
+		$entry = $due['major'] . '|' . $due['date'] . '|' . $due['threshold'];
 		$warned = $this->warned();
 		if (in_array($entry, $warned, true)) {
 			return null;
 		}
 
 		$this->notifyAdmins((new AdminNotice())
-			->withObject('server_eol', (string)$major)
-			->withSubject('server_eol', ['major' => (string)$major, 'date' => $date, 'daysRemaining' => $days])
-			->loggedAs('ServerEolWarner: failed to notify an admin', ['major' => $major]));
+			->withObject('server_eol', (string)$due['major'])
+			->withSubject('server_eol', ['major' => (string)$due['major'], 'date' => $due['date'], 'daysRemaining' => $due['days']])
+			->loggedAs('ServerEolWarner: failed to notify an admin', ['major' => $due['major']]));
 
 		$warned[] = $entry;
 		$this->config->setValueString(Application::APP_ID, self::KEY_WARNED, (string)json_encode($warned));
 
-		return $threshold;
+		return $due['threshold'];
 	}
 
 	/**

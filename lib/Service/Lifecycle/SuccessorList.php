@@ -60,15 +60,23 @@ class SuccessorList {
 	 * @throws InvalidArgumentException For a malformed entry, an app that would succeed itself, or one already listed.
 	 */
 	public function add(string $from, string $to, string $source): array {
-		$entry = self::validEntry(trim($from), trim($to), trim($source));
+		$entry = self::validEntry(['from' => trim($from), 'to' => trim($to), 'source' => trim($source)]);
+		$this->assertNotListed($entry);
+		$this->store([...$this->custom(), $entry]);
+
+		return $entry;
+	}
+
+	/**
+	 * @param Successor $entry
+	 * @throws InvalidArgumentException When the same successor is already listed.
+	 */
+	private function assertNotListed(array $entry): void {
 		foreach ($this->entries() as $existing) {
 			if ($existing['from'] === $entry['from'] && $existing['to'] === $entry['to']) {
 				throw new InvalidArgumentException('This successor is already listed.');
 			}
 		}
-		$this->store([...$this->custom(), $entry]);
-
-		return $entry;
 	}
 
 	/**
@@ -121,11 +129,20 @@ class SuccessorList {
 			return null;
 		}
 
+		return self::newestCompatible($listing['availableVersions']);
+	}
+
+	/**
+	 * The highest version a listing marks as compatible with this server.
+	 *
+	 * @param array<array-key, mixed> $versions
+	 */
+	private static function newestCompatible(array $versions): ?string {
 		$newest = null;
 		/** @var mixed $version */
-		foreach ($listing['availableVersions'] as $version) {
-			$candidate = is_array($version) && ($version['serverCompatible'] ?? null) === true ? ($version['version'] ?? null) : null;
-			if (is_string($candidate) && ($newest === null || version_compare($candidate, $newest, '>'))) {
+		foreach ($versions as $version) {
+			$candidate = self::compatibleVersion($version);
+			if ($candidate !== null && ($newest === null || version_compare($candidate, $newest, '>'))) {
 				$newest = $candidate;
 			}
 		}
@@ -134,19 +151,28 @@ class SuccessorList {
 	}
 
 	/**
+	 * The version string of a listing entry marked compatible with this server, else null.
+	 */
+	private static function compatibleVersion(mixed $version): ?string {
+		$candidate = is_array($version) && ($version['serverCompatible'] ?? null) === true ? ($version['version'] ?? null) : null;
+
+		return is_string($candidate) ? $candidate : null;
+	}
+
+	/**
 	 * @return list<Successor>
 	 */
 	private static function shipped(): array {
 		$raw = @file_get_contents(self::SHIPPED_FILE);
 
-		return self::entriesFrom(is_string($raw) ? $raw : '', false, 'successors');
+		return self::entriesFrom(self::listIn(is_string($raw) ? $raw : '', 'successors'), false);
 	}
 
 	/**
 	 * @return list<Successor>
 	 */
 	private function custom(): array {
-		return self::entriesFrom($this->config->getValueString(Application::APP_ID, self::KEY_CUSTOM, ''), true, null);
+		return self::entriesFrom(self::listIn($this->config->getValueString(Application::APP_ID, self::KEY_CUSTOM, ''), null), true);
 	}
 
 	/**
@@ -158,11 +184,11 @@ class SuccessorList {
 	}
 
 	/**
-	 * The well-formed entries of a JSON document, under `$key` or at its root.
+	 * The list in a JSON document, under `$key` or at its root; empty when there is none.
 	 *
-	 * @return list<Successor>
+	 * @return array<array-key, mixed>
 	 */
-	private static function entriesFrom(string $raw, bool $custom, ?string $key): array {
+	private static function listIn(string $raw, ?string $key): array {
 		try {
 			/** @var mixed $decoded */
 			$decoded = $raw === '' ? [] : json_decode($raw, true, 8, JSON_THROW_ON_ERROR);
@@ -172,9 +198,19 @@ class SuccessorList {
 		/** @var mixed $list */
 		$list = $key !== null && is_array($decoded) ? ($decoded[$key] ?? []) : $decoded;
 
+		return is_array($list) ? $list : [];
+	}
+
+	/**
+	 * The well-formed entries of a list.
+	 *
+	 * @param array<array-key, mixed> $list
+	 * @return list<Successor>
+	 */
+	private static function entriesFrom(array $list, bool $custom): array {
 		$entries = [];
 		/** @var mixed $item */
-		foreach (is_array($list) ? $list : [] as $item) {
+		foreach ($list as $item) {
 			$entry = self::entryOf($item, $custom);
 			if ($entry !== null) {
 				$entries[] = $entry;
@@ -190,11 +226,11 @@ class SuccessorList {
 	 * @return Successor|null
 	 */
 	private static function entryOf(mixed $item, bool $custom): ?array {
-		if (!is_array($item) || !is_string($item['from'] ?? null) || !is_string($item['to'] ?? null) || !is_string($item['source'] ?? null)) {
+		if (!self::hasTextFields($item)) {
 			return null;
 		}
 		try {
-			$entry = self::validEntry($item['from'], $item['to'], $item['source']);
+			$entry = self::validEntry(['from' => $item['from'], 'to' => $item['to'], 'source' => $item['source']]);
 			$entry['custom'] = $custom;
 
 			return $entry;
@@ -204,22 +240,40 @@ class SuccessorList {
 	}
 
 	/**
+	 * Whether a stored item is an array whose from, to and source are strings.
+	 *
+	 * @psalm-assert-if-true array{from: string, to: string, source: string} $item
+	 */
+	private static function hasTextFields(mixed $item): bool {
+		return is_array($item) && is_string($item['from'] ?? null) && is_string($item['to'] ?? null) && is_string($item['source'] ?? null);
+	}
+
+	/**
 	 * A checked entry.
 	 *
+	 * @param array{from: string, to: string, source: string} $raw
 	 * @return Successor
 	 * @throws InvalidArgumentException
 	 */
-	private static function validEntry(string $from, string $to, string $source): array {
+	private static function validEntry(array $raw): array {
+		['from' => $from, 'to' => $to, 'source' => $source] = $raw;
 		if (!AppIdFormat::isValid($from) || !AppIdFormat::isValid($to)) {
 			throw new InvalidArgumentException('Both apps must be app ids.');
 		}
 		if ($from === $to) {
 			throw new InvalidArgumentException('An app cannot be its own successor.');
 		}
-		if ($source !== 'appstore' && preg_match('#^[a-z]+:[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$#', $source) !== 1) {
+		if (!self::isSource($source)) {
 			throw new InvalidArgumentException('The source must be appstore or <forge>:<owner>/<repo>.');
 		}
 
 		return ['from' => $from, 'to' => $to, 'source' => $source, 'custom' => true];
+	}
+
+	/**
+	 * Whether a source is `appstore` or `<forge>:<owner>/<repo>`.
+	 */
+	private static function isSource(string $source): bool {
+		return $source === 'appstore' || preg_match('#^[a-z]+:[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$#', $source) === 1;
 	}
 }

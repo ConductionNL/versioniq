@@ -124,14 +124,8 @@ class ServerEolFeed {
 		}
 
 		$today = $this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format('Y-m-d');
-		$maintained = [];
-		foreach ($majors as $major => $eol) {
-			if ($eol === '' || $eol > $today) {
-				$maintained[] = $major;
-			}
-		}
 
-		return $maintained;
+		return array_keys(array_filter($majors, static fn (string $eol): bool => $eol === '' || $eol > $today));
 	}
 
 	/**
@@ -156,15 +150,8 @@ class ServerEolFeed {
 	 * @return array<int, string>|null
 	 */
 	private function cached(string $url): ?array {
-		$raw = $this->config->getValueString(Application::APP_ID, self::KEY_CACHE, '');
-		/** @var mixed $cache */
-		$cache = json_decode($raw, true);
-		if (!is_array($cache) || ($cache['url'] ?? null) !== $url || !is_array($cache['majors'] ?? null)) {
-			return null;
-		}
-
-		$age = $this->timeFactory->getTime() - (int)($cache['fetchedAt'] ?? 0);
-		if ($age < 0 || $age >= self::CACHE_SECONDS) {
+		$cache = $this->freshCache($url);
+		if ($cache === null) {
 			return null;
 		}
 
@@ -174,6 +161,23 @@ class ServerEolFeed {
 		}
 
 		return $majors;
+	}
+
+	/**
+	 * The stored cache when it is for this URL, holds majors and is younger than CACHE_SECONDS.
+	 *
+	 * @return array{majors: array<array-key, mixed>}|null
+	 */
+	private function freshCache(string $url): ?array {
+		/** @var mixed $cache */
+		$cache = json_decode($this->config->getValueString(Application::APP_ID, self::KEY_CACHE, ''), true);
+		if (!is_array($cache) || ($cache['url'] ?? null) !== $url || !is_array($cache['majors'] ?? null)) {
+			return null;
+		}
+
+		$age = $this->timeFactory->getTime() - (int)($cache['fetchedAt'] ?? 0);
+
+		return $age < 0 || $age >= self::CACHE_SECONDS ? null : $cache;
 	}
 
 	/**

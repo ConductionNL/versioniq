@@ -144,6 +144,14 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 
 			return null;
 		}
+
+		return self::archivedIn($response);
+	}
+
+	/**
+	 * The `archived` field of a 200 repository answer, or null for any other answer.
+	 */
+	private static function archivedIn(IResponse $response): ?bool {
 		if ($response->getStatusCode() !== 200) {
 			return null;
 		}

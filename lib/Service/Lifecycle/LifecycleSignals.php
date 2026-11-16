@@ -94,7 +94,7 @@ class LifecycleSignals {
 		$last = null;
 		foreach ($versions as $version) {
 			$released = $version['releasedAt'] ?? null;
-			if (is_string($released) && $released !== '' && ($last === null || $released > $last)) {
+			if (is_string($released) && $released !== '' && $released > (string)$last) {
 				$last = $released;
 			}
 		}
