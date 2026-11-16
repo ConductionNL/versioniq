@@ -1,6 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2024 Conduction B.V. <info@conduction.nl> -->
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
+import type {Provenance} from './components/AppSourceBadges.vue';
 import type {PrefillBindPayload} from './components/DiscoverPanel.vue';
 import type {BlockedVersion, PolicyLevel} from './components/PolicySelector.vue';
 import type { PinRecord } from './dialogs/PinDialog.vue'
@@ -8,6 +9,7 @@ import type {AdvisoryCorrelation, AdvisoryTriageMap, Compliance, NcscStatus} fro
 import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
 import type {LkgRecord} from './utils/migrationSafety.ts';
 import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
+import type { SweepStatus } from './utils/sweepOutcome.ts'
 import type {BatchCandidate, BatchRow} from './utils/updateBatch.ts';
 
 import { loadState } from '@nextcloud/initial-state'
@@ -26,6 +28,7 @@ import HistoryPanel from './components/HistoryPanel.vue'
 import InstallResultNotices from './components/InstallResultNotices.vue'
 import InstanceSettingsPanel from './components/InstanceSettingsPanel.vue'
 import IntegrationsPanel from './components/IntegrationsPanel.vue'
+import PatchPolicyPanel from './components/PatchPolicyPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
 import PublisherMark from './components/PublisherMark.vue'
@@ -54,6 +57,7 @@ import { lkgRollbackTargets } from './utils/migrationSafety.ts'
 import { filterByUpdates, isOutsidePolicy, outsidePolicyLabel, updateBadge, updatesFreshnessLabel as updatesFreshnessLabelFor } from './utils/pendingUpdates.ts'
 import { repinApp } from './utils/repin.ts'
 import { isBlockedBySafeMode } from './utils/safeMode.ts'
+import { sweepStateOf } from './utils/sweepOutcome.ts'
 import { batchOutcome, quickUpdateTarget, runUpdateBatch, updateAllCandidates } from './utils/updateBatch.ts'
 import { compareVersions, parseVersionCore } from './utils/versionCompare.ts'
 
@@ -71,6 +75,7 @@ type AppOption = {
 	installedVersion?: string | null
 	state?: 'enabled' | 'disabled' | 'notInstalled'
 	lkg?: LkgRecord | null
+	provenance?: Provenance | null
 	publisher?: string | null
 	marks?: string[]
 }
@@ -94,6 +99,8 @@ const showFilters = ref(false)
 const coreAppsVisibility = ref<'show' | 'hide'>('show')
 // inventory-pending-updates: narrows the list to apps with an update, or past the lag limit.
 const updatesFilter = ref<UpdatesFilter>('all')
+// The pinned filter of the status bar (pin-list): only the pinned apps.
+const pinnedOnly = ref(false)
 const updateChannel = ref('')
 const selectedApp = ref('')
 const versions = ref<AppVersion[]>([])
@@ -227,6 +234,12 @@ const autoUpdateWindowInput = ref(AUTO_UPDATE_WINDOW_DEFAULT)
 const savedAutoUpdateWindow = ref(AUTO_UPDATE_WINDOW_DEFAULT)
 // The zone the server reads the window in (Nextcloud's default_timezone, else UTC).
 const autoUpdateTimeZone = ref('UTC')
+// Why the last run held a security fix back, whether the advisory check is
+// recent enough to act on, and the kinds the patch policy sets to by hand
+// (autoupdate-security-first).
+const securityHolds = ref<Record<string, string>>({})
+const advisoriesFresh = ref(true)
+const manualKinds = ref<string[]>([])
 const isSavingAutoUpdateSettings = ref(false)
 const autoUpdateSettingsError = ref('')
 const autoUpdateSettingsNotice = ref('')
@@ -614,6 +627,8 @@ async function loadApps (): Promise<void> {
  */
 // Unix seconds of the last completed sweep; null means none has completed.
 const advisoriesCheckedAt = ref<number | null>(null)
+const advisoriesStatus = ref<SweepStatus | null>(null)
+const advisoriesErrors = ref<string[]>([])
 // The instance's one patch compliance status (advisories-per-app-detail D4).
 const advisoryCompliance = ref<Compliance | null>(null)
 // True only when the fetch itself failed — never merely because the map is empty.
@@ -625,10 +640,13 @@ const advisoriesUnavailable = ref(false)
 async function loadAdvisories (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/advisories')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ advisories: Record<string, AdvisoryCorrelation>, checkedAt: number | null, compliance?: Compliance, triage?: AdvisoryTriageMap }>(response)
+		const payload = await unwrapOcsResponse<{ advisories: Record<string, AdvisoryCorrelation>, checkedAt: number | null, status?: SweepStatus | null, errors?: string[], compliance?: Compliance, triage?: AdvisoryTriageMap }>(response)
 		advisories.value = payload.advisories || {}
 		advisoryTriage.value = payload.triage && !Array.isArray(payload.triage) ? payload.triage : {}
 		advisoriesCheckedAt.value = payload.checkedAt ?? null
+		const sweep = sweepStateOf(payload)
+		advisoriesStatus.value = sweep.status
+		advisoriesErrors.value = sweep.errors
 		advisoryCompliance.value = payload.compliance ?? null
 		advisoriesUnavailable.value = false
 	} catch {
@@ -648,6 +666,8 @@ async function loadAdvisories (): Promise<void> {
 // out in issue #160.
 const pendingUpdates = ref<Record<string, PendingUpdate>>({})
 const updatesCheckedAt = ref<number | null>(null)
+const updatesStatus = ref<SweepStatus | null>(null)
+const updatesErrors = ref<string[]>([])
 const updatesUnavailable = ref(false)
 const maxLinesBehind = ref<number | null>(null)
 
@@ -657,9 +677,12 @@ const maxLinesBehind = ref<number | null>(null)
 async function loadUpdates (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/updates')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ updates: Record<string, PendingUpdate>, checkedAt: number | null, maxLinesBehind: number | null }>(response)
+		const payload = await unwrapOcsResponse<{ updates: Record<string, PendingUpdate>, checkedAt: number | null, status?: SweepStatus | null, errors?: string[], maxLinesBehind: number | null }>(response)
 		pendingUpdates.value = payload.updates || {}
 		updatesCheckedAt.value = payload.checkedAt ?? null
+		const sweep = sweepStateOf(payload)
+		updatesStatus.value = sweep.status
+		updatesErrors.value = sweep.errors
 		maxLinesBehind.value = payload.maxLinesBehind ?? null
 		updatesUnavailable.value = false
 	} catch {
@@ -673,6 +696,8 @@ const updatesFreshnessLabel = computed((): string => updatesFreshnessLabelFor({
 	unavailable: updatesUnavailable.value,
 	checkedAt: updatesCheckedAt.value,
 	nowSeconds: Date.now() / 1000,
+	status: updatesStatus.value,
+	errors: updatesErrors.value.map((appId) => apps.value.find((app) => app.id === appId)?.label ?? appId),
 }))
 
 const updateBadgeFor = (appId: string) => updateBadge(pendingUpdates.value[appId])
@@ -791,6 +816,8 @@ const advisoryFreshnessLabel = computed((): string => advisoryFreshnessLabelFor(
 	checkedAt: advisoriesCheckedAt.value,
 	intervalHours: Number(advisorySavedInterval.value) || 6,
 	nowSeconds: Date.now() / 1000,
+	status: advisoriesStatus.value,
+	errors: advisoriesErrors.value.map((appId) => apps.value.find((app) => app.id === appId)?.label ?? appId),
 }))
 
 /**
@@ -884,7 +911,7 @@ function pinTooltip (pin: PinRecord | null): string {
 async function loadPolicies (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/policies')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string }>(response)
+		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string, securityHolds?: Record<string, string>, advisoriesFresh?: boolean, manualKinds?: string[] }>(response)
 		const map: Record<string, PolicyRecord> = {}
 		for (const policy of payload.policies || []) {
 			map[policy.appId] = policy
@@ -894,6 +921,9 @@ async function loadPolicies (): Promise<void> {
 		savedAutoUpdateEnabled.value = autoUpdateEnabled.value
 		autoUpdateWindowInput.value = payload.autoUpdateWindow || AUTO_UPDATE_WINDOW_DEFAULT
 		autoUpdateTimeZone.value = payload.autoUpdateTimeZone || 'UTC'
+		securityHolds.value = payload.securityHolds ?? {}
+		advisoriesFresh.value = payload.advisoriesFresh !== false
+		manualKinds.value = payload.manualKinds ?? []
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
 	} catch {
 		// Non-fatal: the app list stays usable without policy badges.
@@ -1301,14 +1331,20 @@ function clearSelectedApp () {
 	resetSelectedAppState()
 }
 
+// How many listed apps are pinned, for the status bar's Pinned filter.
+const pinnedCount = computed((): number => apps.value.filter((app) => pins.value[app.id] !== undefined).length)
+
 const filteredApps = computed(() => {
 	const filter = appFilter.value.trim().toLowerCase()
-	const visibleApps = filterByUpdates(
+	const filteredByUpdates = filterByUpdates(
 		coreAppsVisibility.value === 'hide' ? apps.value.filter((app) => !app.isCore) : apps.value,
 		pendingUpdates.value,
 		updatesFilter.value,
 		maxLinesBehind.value,
 	)
+	const visibleApps = pinnedOnly.value
+		? filteredByUpdates.filter((app) => pins.value[app.id] !== undefined)
+		: filteredByUpdates
 
 	if (filter === '') {
 		return visibleApps
@@ -2655,7 +2691,12 @@ watch(dryRunEnabled, () => {
 									:autoUpdateEnabled="autoUpdateEnabled"
 									:window="savedAutoUpdateWindow"
 									:timeZone="autoUpdateTimeZone"
+									:securityHolds="securityHolds"
+									:advisoriesFresh="advisoriesFresh"
+									:manualKinds="manualKinds"
 									:disabled="isSavingPolicy"
+									:updates="pendingUpdates"
+									:updatesCheckedLabel="updatesFreshnessLabel"
 									@retry="onRetryAttempt" />
 
 								<h3 id="section-advisories" :class="$style.advisorySettingsHeading">{{ t('versioniq', 'Security advisory checks') }}</h3>
@@ -2720,6 +2761,15 @@ watch(dryRunEnabled, () => {
 											:class="$style.filterToggleButton"
 											@click="showFilters = !showFilters">
 											{{ showFilters ? t('versioniq', 'Hide filters') : t('versioniq', 'Show filters') }}
+										</button>
+										<button
+											type="button"
+											:class="[$style.filterToggleButton, { [$style.filterToggleActive]: pinnedOnly }]"
+											:aria-pressed="pinnedOnly ? 'true' : 'false'"
+											:disabled="pinnedCount === 0 && !pinnedOnly"
+											data-testid="pinned-filter"
+											@click="pinnedOnly = !pinnedOnly">
+											{{ t('versioniq', 'Pinned {count}', { count: pinnedCount }) }}
 										</button>
 									</div>
 									<div v-if="showFilters" :class="$style.filterPanel">
@@ -2822,7 +2872,8 @@ watch(dryRunEnabled, () => {
 														<AppSourceBadges
 															:isShipped="app.isShipped === true"
 															:isCore="app.isCore"
-															:boundSourceId="app.boundSourceId ?? null" />
+															:boundSourceId="app.boundSourceId ?? null"
+															:provenance="app.provenance ?? null" />
 														<p
 															v-if="advisoryFor(app.id)?.state === 'pinned-to-vulnerable'"
 															:class="$style.advisoryDetail">
@@ -3250,10 +3301,13 @@ watch(dryRunEnabled, () => {
 					id="cache-panel"
 					role="tabpanel"
 					aria-labelledby="cache-tab" />
-				<InstanceSettingsPanel v-if="currentTab === 'settings'"
+				<div v-if="currentTab === 'settings'"
 					id="settings-panel"
 					role="tabpanel"
-					aria-labelledby="settings-tab" />
+					aria-labelledby="settings-tab">
+					<InstanceSettingsPanel />
+					<PatchPolicyPanel />
+				</div>
 				<IntegrationsPanel v-if="integriqInstalled && currentTab === 'integrations'"
 					id="integrations-panel"
 					role="tabpanel"
@@ -3409,6 +3463,11 @@ watch(dryRunEnabled, () => {
 
 .filterToggleButton {
 	align-self: flex-start;
+}
+
+.filterToggleActive {
+	font-weight: bold;
+	border-color: var(--color-primary-element);
 }
 
 .filterPanel {

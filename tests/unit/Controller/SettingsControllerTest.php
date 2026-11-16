@@ -65,7 +65,7 @@ final class SettingsControllerTest extends TestCase {
 			'versioniq',
 			$request ?? $this->createMock(IRequest::class),
 			new InstanceSettings($appConfig),
-			$audit ?? $this->createMock(AuditLogger::class),
+			$audit ?? $this->getMockBuilder(AuditLogger::class)->disableOriginalConstructor()->onlyMethods(['record'])->getMock(),
 			$groups,
 			$session,
 		);
@@ -81,7 +81,7 @@ final class SettingsControllerTest extends TestCase {
 	}
 
 	public function testSignedOutCallerCannotReadOrWrite(): void {
-		$audit = $this->createMock(AuditLogger::class);
+		$audit = $this->getMockBuilder(AuditLogger::class)->disableOriginalConstructor()->onlyMethods(['record'])->getMock();
 		$audit->expects(self::never())->method(self::anything());
 
 		self::assertSame(403, $this->controller(true, $audit, null, false)->instanceSettings()->getStatus());
@@ -98,7 +98,7 @@ final class SettingsControllerTest extends TestCase {
 	}
 
 	public function testUpdateStoresAndAuditsTheChange(): void {
-		$audit = $this->createMock(AuditLogger::class);
+		$audit = $this->getMockBuilder(AuditLogger::class)->disableOriginalConstructor()->onlyMethods(['record'])->getMock();
 		$audit->expects(self::once())->method('record')->with(...AuditArgs::expected('admin', 'versioniq', AuditLogger::OPERATION_SETTINGS));
 
 		$request = $this->requestWith(['auditRetentionDays' => '90']);
@@ -139,7 +139,7 @@ final class SettingsControllerTest extends TestCase {
 			'versioniq',
 			$request,
 			new InstanceSettings($this->createMock(IAppConfig::class)),
-			$audit ?? $this->createMock(AuditLogger::class),
+			$audit ?? $this->getMockBuilder(AuditLogger::class)->disableOriginalConstructor()->onlyMethods(['record'])->getMock(),
 			$groups,
 			$session,
 			$copy,
@@ -161,7 +161,7 @@ final class SettingsControllerTest extends TestCase {
 		$copy = $this->createMock(LocalFeedCopy::class);
 		$copy->expects(self::once())->method('import')->with('[{"ghsa_id":"GHSA-aaaa"}]', 1792800000)
 			->willReturn(['copiedAt' => 1792800000, 'records' => 1]);
-		$audit = $this->createMock(AuditLogger::class);
+		$audit = $this->getMockBuilder(AuditLogger::class)->disableOriginalConstructor()->onlyMethods(['record'])->getMock();
 		$audit->expects(self::once())->method('record')->willReturnCallback(
 			static function ($subject, $versions, string $status, ?string $message): void {
 				self::assertSame('admin', $subject->actorUid);
@@ -180,7 +180,7 @@ final class SettingsControllerTest extends TestCase {
 	public function testABrokenFileIsRefusedWithTheReasonAndNotAudited(): void {
 		$copy = $this->createMock(LocalFeedCopy::class);
 		$copy->method('import')->willThrowException(new \InvalidArgumentException('The file is not valid JSON: Syntax error'));
-		$audit = $this->createMock(AuditLogger::class);
+		$audit = $this->getMockBuilder(AuditLogger::class)->disableOriginalConstructor()->onlyMethods(['record'])->getMock();
 		$audit->expects(self::never())->method('record');
 
 		$response = $this->importController(true, $copy, $this->upload('<html>'), $audit)->importAdvisoryFeedCopy();
