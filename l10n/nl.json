@@ -596,7 +596,13 @@
         "Old app id": "App-id van de oude app",
         "Successor app id": "App-id van de opvolger",
         "Successor source (appstore or forge:owner/repository)": "Bron van de opvolger (appstore of forge:eigenaar/repository)",
-        "Add successor": "Opvolger toevoegen"
+        "Add successor": "Opvolger toevoegen",
+        "{successor} could not be installed; {app} stays enabled. {reason}": "{successor} kon niet worden geïnstalleerd; {app} blijft ingeschakeld. {reason}",
+        "Could not replace the app.": "De app kon niet worden vervangen.",
+        "Replace with {successor}": "Vervangen door {successor}",
+        "Replace {app}": "{app} vervangen",
+        "Versioniq installs {successor} {version} from {source}, and disables {app} only after that install succeeded.": "Versioniq installeert {successor} {version} uit {source} en schakelt {app} pas uit nadat die installatie is gelukt.",
+        "The data of {app} is kept. Moving it to {successor} is the successor's own migration.": "De gegevens van {app} blijven bewaard. Ze overzetten naar {successor} is de eigen migratie van de opvolger."
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

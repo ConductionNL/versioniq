@@ -565,7 +565,13 @@ OC.L10N.register(
         "Old app id": "Old app id",
         "Successor app id": "Successor app id",
         "Successor source (appstore or forge:owner/repository)": "Successor source (appstore or forge:owner/repository)",
-        "Add successor": "Add successor"
+        "Add successor": "Add successor",
+        "{successor} could not be installed; {app} stays enabled. {reason}": "{successor} could not be installed; {app} stays enabled. {reason}",
+        "Could not replace the app.": "Could not replace the app.",
+        "Replace with {successor}": "Replace with {successor}",
+        "Replace {app}": "Replace {app}",
+        "Versioniq installs {successor} {version} from {source}, and disables {app} only after that install succeeded.": "Versioniq installs {successor} {version} from {source}, and disables {app} only after that install succeeded.",
+        "The data of {app} is kept. Moving it to {successor} is the successor's own migration.": "The data of {app} is kept. Moving it to {successor} is the successor's own migration."
     },
     "nplurals=2; plural=(n != 1);"
 )

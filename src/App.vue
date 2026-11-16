@@ -46,6 +46,7 @@ import EnableAppDialog from './dialogs/EnableAppDialog.vue'
 import PinDialog from './dialogs/PinDialog.vue'
 import PinOverrideDialog from './dialogs/PinOverrideDialog.vue'
 import QuickUpdateDialog from './dialogs/QuickUpdateDialog.vue'
+import ReplaceAppDialog from './dialogs/ReplaceAppDialog.vue'
 import ShaMismatchDialog from './dialogs/ShaMismatchDialog.vue'
 import UpdateAllDialog from './dialogs/UpdateAllDialog.vue'
 import { advisoryAnchor, advisoryBadgeText, applyTriage, complianceSentence } from './utils/advisories.ts'
@@ -93,6 +94,9 @@ type AppVersion = {
 
 const isLoading = ref(true)
 const apps = ref<AppOption[]>([])
+// The app the replace dialog is open for; its successor offer comes from the
+// pending-updates snapshot (inventory-lifecycle-signals, design D4).
+const replaceTarget = ref<string | null>(null)
 const advisories = ref<Record<string, AdvisoryCorrelation>>({})
 // Dismissals and owners per `{appId}|{advisoryId}`, applied when read (advisories-triage).
 const advisoryTriage = ref<AdvisoryTriageMap>({})
@@ -612,6 +616,14 @@ async function loadApps (): Promise<void> {
 	} catch (error) {
 		errorMessage.value = error instanceof Error ? error.message : 'Could not fetch app list.'
 	}
+}
+
+/**
+ * Re-reads the app list after an app was replaced by its successor.
+ */
+async function onReplaced (): Promise<void> {
+	replaceTarget.value = null
+	await loadApps()
 }
 
 // Advisory correlation is fetched separately from the app list so a slow or
@@ -2520,6 +2532,12 @@ watch(dryRunEnabled, () => {
 				:busy="isInstallingVersion"
 				@update:open="isDowngradeConfirmOpen = $event"
 				@resolve="onDowngradeResolved" />
+			<ReplaceAppDialog v-if="replaceTarget && pendingUpdates[replaceTarget]?.successor"
+				:open="true"
+				:appId="replaceTarget"
+				:offer="pendingUpdates[replaceTarget].successor"
+				@update:open="(value: boolean) => { if (!value) { replaceTarget = null } }"
+				@replaced="onReplaced" />
 			<PinDialog
 				:open="isPinDialogOpen"
 				:appId="pinDialogAppId"
@@ -2893,6 +2911,15 @@ watch(dryRunEnabled, () => {
 															data-testid="safe-version-button"
 															@click.stop="openQuickUpdate(app.id, safeVersionFor(app) ?? '', advisoryFor(app.id)?.advisories?.[0]?.id ?? null)">
 															{{ t('versioniq', 'Update to safe version {version}', { version: safeVersionFor(app) ?? '' }) }}
+														</button>
+														<button
+															v-if="pendingUpdates[app.id]?.successor"
+															type="button"
+															:class="$style.appCardButton"
+															:disabled="isCheckingVersions || isInstallingVersion"
+															data-testid="replace-successor-button"
+															@click.stop="replaceTarget = app.id">
+															{{ t('versioniq', 'Replace with {successor}', { successor: pendingUpdates[app.id]?.successor?.to ?? '' }) }}
 														</button>
 													</div>
 													<div :class="$style.appCardMedia">

@@ -13,6 +13,7 @@ namespace OCA\Versioniq\Service\Availability;
 
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Lifecycle\LifecycleSignals;
+use OCA\Versioniq\Service\Lifecycle\SuccessorList;
 use OCA\Versioniq\Service\Pin\PinStore;
 use Psr\Log\LoggerInterface;
 
@@ -44,6 +45,7 @@ class AvailabilityService {
 		private LoggerInterface $logger,
 		private ?WithdrawnVersionStore $withdrawnVersions = null,
 		private ?LifecycleSignals $lifecycle = null,
+		private ?SuccessorList $successors = null,
 	) {
 	}
 
@@ -187,7 +189,7 @@ class AvailabilityService {
 			$entry['installedWithdrawn'] = null;
 		}
 
-		return $this->withArchived($appId, $entry);
+		return $this->withSuccessor($appId, $this->withArchived($appId, $entry));
 	}
 
 	/**
@@ -222,6 +224,24 @@ class AvailabilityService {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Adds the successor offered for the app, under `successor`, when the
+	 * successor list names one this server can run; the card offers to
+	 * replace the app with it (inventory-lifecycle-signals, design D4).
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-an-admin-replaces-an-app-with-its-successor-in-one-action
+	 * @param array<string, mixed> $entry
+	 * @return array<string, mixed>
+	 */
+	private function withSuccessor(string $appId, array $entry): array {
+		$offer = $this->successors?->offerFor($appId);
+		if ($offer !== null) {
+			$entry['successor'] = $offer;
+		}
+
+		return $entry;
 	}
 
 	/**

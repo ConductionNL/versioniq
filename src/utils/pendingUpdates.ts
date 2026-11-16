@@ -17,7 +17,11 @@ export type PendingUpdate = {
 	sourceId: string | null
 	error: string | null
 	lifecycle?: LifecycleSignals
+	successor?: SuccessorOffer
 }
+
+/** The successor the sweep found offered for an app, with the newest version of it this server can run. */
+export type SuccessorOffer = { from: string, to: string, source: string, custom: boolean, version: string }
 
 export type UpdatesFilter = 'all' | 'update' | 'outsidePolicy'
 
