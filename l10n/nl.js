@@ -555,7 +555,8 @@ OC.L10N.register(
         "Removed from the App Store": "Verwijderd uit de App Store",
         "Repository archived": "Repository gearchiveerd",
         "End of support": "Einde ondersteuning",
-        "No release in a year": "Al een jaar geen release"
+        "No release in a year": "Al een jaar geen release",
+        "Nextcloud {major} reaches end of life on {date}.": "Nextcloud {major} bereikt het einde van de levensduur op {date}."
     },
     "nplurals=2; plural=(n != 1);"
 )

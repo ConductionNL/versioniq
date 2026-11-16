@@ -8,7 +8,7 @@
 
 ## 2. Server end of life
 
-- [ ] 2.1 Add `ServerEolWarningJob`, the `server_eol` subject in `Notifier`, and the date on the server section of the Advisories tab. Verify: `tests/unit/BackgroundJob/ServerEolWarningJobTest.php` fires once at 90 days and once at 30, and `tests/unit/Notification/NotifierTest.php` renders the subject.
+- [x] 2.1 Add `ServerEolWarningJob`, the `server_eol` subject in `Notifier`, and the date on the server section of the Advisories tab. Verify: `tests/unit/BackgroundJob/ServerEolWarningJobTest.php` fires once at 90 days and once at 30, and `tests/unit/Notification/NotifierTest.php` renders the subject.
 
 ## 3. Successors
 
