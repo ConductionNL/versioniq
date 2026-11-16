@@ -11,8 +11,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Controller;
 
+use OCA\Versioniq\Kernel\Contracts\ReleaseFeedInterface;
 use OCA\Versioniq\Service\Api\ApiCaller;
-use OCA\Versioniq\Service\ReleaseAlert\ReleaseFeed;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\FrontpageRoute;
@@ -35,7 +35,7 @@ class FeedController extends Controller {
 	public function __construct(
 		string $appName,
 		IRequest $request,
-		private ReleaseFeed $feed,
+		private ReleaseFeedInterface $feed,
 		private ApiCaller $caller,
 	) {
 		parent::__construct($appName, $request);
