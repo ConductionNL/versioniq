@@ -25,6 +25,9 @@ vi.mock('@nextcloud/vue/components/NcDialog', () => ({
 vi.mock('@nextcloud/vue/components/NcTextField', () => ({
 	default: { name: 'NcTextField', props: ['modelValue', 'label', 'disabled', 'error', 'helperText'], emits: ['update:modelValue'], template: '<input :aria-label="label" :value="modelValue" :disabled="disabled" @input="$emit(\'update:modelValue\', $event.target.value)">' },
 }))
+vi.mock('@nextcloud/vue/components/NcNoteCard', () => ({
+	default: { name: 'NcNoteCard', props: ['type'], template: '<div role="alert" :data-type="type"><slot /></div>' },
+}))
 vi.mock('../ocs', () => ({
 	ocsWrite: vi.fn(),
 }))

@@ -1672,9 +1672,9 @@ function openKnownIssueDialog (version: string): void {
  * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
  */
 function onKnownIssuesChanged (version: string, issues: AdminKnownIssue[]): void {
-	versions.value = versions.value.map((entry) => entry.version === version ? { ...entry, adminKnownIssues: issues } : entry)
+	versions.value = versions.value.map((entry) => (entry.version === version ? { ...entry, adminKnownIssues: issues } : entry))
 	if (version === installedVersion.value) {
-		apps.value = apps.value.map((app) => app.id === selectedApp.value ? { ...app, installedKnownIssues: issues } : app)
+		apps.value = apps.value.map((app) => (app.id === selectedApp.value ? { ...app, installedKnownIssues: issues } : app))
 	}
 }
 

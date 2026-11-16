@@ -12,14 +12,18 @@ import type { AdminKnownIssue } from '../utils/versionFacts.ts'
 import { t } from '@nextcloud/l10n'
 import { computed, ref, watch } from 'vue'
 import NcDialog from '@nextcloud/vue/components/NcDialog'
+import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { ocsWrite } from '../ocs.ts'
 
-const props = defineProps<{
+/** The dialog's props: whether it is open, and the app version the issue is recorded against. */
+interface KnownIssueDialogProps {
 	open: boolean
 	appId: string
 	version: string
-}>()
+}
+
+const props = defineProps<KnownIssueDialogProps>()
 
 const emit = defineEmits<{
 	'update:open': [value: boolean]
@@ -130,9 +134,9 @@ const buttons = computed(() => [
 				:error="linkError !== ''"
 				:helperText="linkError"
 				@update:modelValue="(value: string) => (link = value)" />
-			<p v-if="error" :class="$style.error" role="alert">
+			<NcNoteCard v-if="error" type="error">
 				{{ error }}
-			</p>
+			</NcNoteCard>
 		</div>
 	</NcDialog>
 </template>
@@ -142,11 +146,5 @@ const buttons = computed(() => [
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
-}
-
-.error {
-	margin: 0;
-	color: var(--color-error);
-	font-size: 13px;
 }
 </style>
