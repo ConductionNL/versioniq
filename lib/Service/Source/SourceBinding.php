@@ -89,9 +89,7 @@ final class SourceBinding {
 	private static function assertValidReleaseConfig(array $config): void {
 		if (($config['forge'] ?? null) === self::FORGE_GITLAB) {
 			self::requireNonEmptyString($config, 'path');
-			/** @var string $path */
-			$path = $config['path'];
-			GitlabProjectPath::assertSafe($path);
+			GitlabProjectPath::assertSafe((string)$config['path']);
 			return;
 		}
 		self::requireNonEmptyString($config, 'owner');
@@ -293,14 +291,9 @@ final class SourceBinding {
 		$sanitized = [];
 		/** @var mixed $sha */
 		foreach ($map as $version => $sha) {
-			if (!is_string($version) || $version === '' || !is_string($sha)) {
-				continue;
+			if (is_string($version) && $version !== '' && is_string($sha) && preg_match(self::SHA256_PATTERN, strtolower($sha)) === 1) {
+				$sanitized[$version] = strtolower($sha);
 			}
-			$lower = strtolower($sha);
-			if (preg_match(self::SHA256_PATTERN, $lower) !== 1) {
-				continue;
-			}
-			$sanitized[$version] = $lower;
 		}
 
 		return $sanitized;
@@ -434,30 +427,20 @@ final class SourceBinding {
 	 * @spec openspec/changes/sources-gitlab-forge/specs/external-sources/spec.md
 	 */
 	public static function gitlab(string $path, string $assetPattern = '*.tar.gz'): self {
-		return new self(
-			self::KIND_GITHUB_RELEASE,
-			[
-				'forge' => self::FORGE_GITLAB,
-				'path' => $path,
-				'assetPattern' => $assetPattern,
-			],
-			(new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format(\DateTimeInterface::ATOM),
-		);
+		return new self(self::KIND_GITHUB_RELEASE, ['forge' => self::FORGE_GITLAB, 'path' => $path, 'assetPattern' => $assetPattern], self::boundNow());
 	}
 
 	/**
 	 * Shared factory for forge-release bindings with a boundAt timestamp.
 	 */
 	private static function forgeRelease(string $forge, string $owner, string $repo, string $assetPattern): self {
-		return new self(
-			self::KIND_GITHUB_RELEASE,
-			[
-				'forge' => $forge,
-				'owner' => $owner,
-				'repo' => $repo,
-				'assetPattern' => $assetPattern,
-			],
-			(new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format(\DateTimeInterface::ATOM),
-		);
+		return new self(self::KIND_GITHUB_RELEASE, ['forge' => $forge, 'owner' => $owner, 'repo' => $repo, 'assetPattern' => $assetPattern], self::boundNow());
+	}
+
+	/**
+	 * The moment a new binding is made, in UTC, as its `boundAt`.
+	 */
+	private static function boundNow(): string {
+		return (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format(\DateTimeInterface::ATOM);
 	}
 }
