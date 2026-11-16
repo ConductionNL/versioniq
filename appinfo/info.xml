@@ -26,6 +26,7 @@ Versioniq gives Nextcloud administrators the ability to roll back apps to previo
 		<job>OCA\Versioniq\BackgroundJob\PatExpiryWarningJob</job>
 		<job>OCA\Versioniq\BackgroundJob\ServerEolWarningJob</job>
 		<job>OCA\Versioniq\BackgroundJob\AutoUpdateJob</job>
+		<job>OCA\Versioniq\BackgroundJob\AutoUpdatePlanJob</job>
 		<job>OCA\Versioniq\BackgroundJob\PruneAuditJob</job>
 		<job>OCA\Versioniq\BackgroundJob\PinReconcileJob</job>
 		<job>OCA\Versioniq\BackgroundJob\AvailabilityRefreshJob</job>
