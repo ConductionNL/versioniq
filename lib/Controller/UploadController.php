@@ -122,7 +122,7 @@ class UploadController extends OCSController {
 
 		$outcome = $this->installer->installUploadedArchive($token, $expectedSha256, $acceptShown, $allowDowngrade, $overridePin);
 
-		/** @psalm-suppress InvalidReturnStatement Status passthrough, see the docblock. */
+		/** @psalm-suppress InvalidReturnStatement, ArgumentTypeCoercion Status passthrough, see the docblock. */
 		return new DataResponse($outcome['payload'], $outcome['statusCode']);
 	}
 

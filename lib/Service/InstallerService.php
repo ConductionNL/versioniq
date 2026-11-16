@@ -824,7 +824,9 @@ class InstallerService {
 			'installStatus' => $result['status'] ?? 'unknown',
 		];
 		if (array_key_exists('orphanedMigrations', $result)) {
-			$payload['orphanedMigrations'] = $result['orphanedMigrations'];
+			/** @var list<string>|null $orphanedMigrations */
+			$orphanedMigrations = $result['orphanedMigrations'];
+			$payload['orphanedMigrations'] = $orphanedMigrations;
 		}
 		$this->settlePin($run, $appVersion);
 		$this->dispatchUpdateEvent($run, $appVersion);

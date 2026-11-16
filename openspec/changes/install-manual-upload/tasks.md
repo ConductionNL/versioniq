@@ -7,8 +7,8 @@
 
 ## 2. Install
 
-- [ ] 2.1 Add `installUploadedArchive()` with the guards of `installAppVersion()`, the signed and unsigned pipelines, and `POST /api/upload/{token}/install`. Verify: unit tests for a signed upload, an unsigned upload with the setting off (refused), a wrong expected SHA-256 (refused), a pinned app (409), a downgrade without acknowledgement (409).
-- [ ] 2.2 Write the audit row with source `upload` and the archive to the artifact cache. Verify: a unit test on both writes.
+- [x] 2.1 Add `installUploadedArchive()` with the guards of `installAppVersion()`, the signed and unsigned pipelines, and `POST /api/upload/{token}/install`. Verify: unit tests for a signed upload, an unsigned upload with the setting off (refused), a wrong expected SHA-256 (refused), a pinned app (409), a downgrade without acknowledgement (409).
+- [x] 2.2 Write the audit row with source `upload` and the archive to the artifact cache. Verify: a unit test on both writes.
 - [x] 2.3 Add `install.allow_unsigned_upload` to `InstanceSettings` and the Settings tab. Verify: `InstanceSettingsPanel.spec.ts`.
 
 ## 3. Page
