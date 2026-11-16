@@ -118,6 +118,34 @@ class UploadedArchive {
 	}
 
 	/**
+	 * Write an upload's archive to a file, for an installer to read.
+	 *
+	 * @throws InvalidArgumentException when the token is unknown or the archive cannot be written
+	 *
+	 * @spec openspec/changes/install-manual-upload/tasks.md#task-2.1
+	 */
+	public function copyTo(string $token, string $path): void {
+		$folder = $this->folder();
+		if (preg_match(self::TOKEN_PATTERN, $token) !== 1 || !$folder->fileExists($token . '.tar.gz')) {
+			throw new InvalidArgumentException('This upload is unknown or expired.');
+		}
+
+		$source = $folder->getFile($token . '.tar.gz')->read();
+		$target = @fopen($path, 'wb');
+		if (!is_resource($source) || $target === false) {
+			throw new InvalidArgumentException('The upload could not be read.');
+		}
+		try {
+			if (stream_copy_to_stream($source, $target) === false) {
+				throw new InvalidArgumentException('The upload could not be read.');
+			}
+		} finally {
+			fclose($source);
+			fclose($target);
+		}
+	}
+
+	/**
 	 * Drop an upload and what was read from it.
 	 *
 	 * @spec openspec/changes/install-manual-upload/tasks.md#task-1.1

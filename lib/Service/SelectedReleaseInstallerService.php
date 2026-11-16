@@ -24,6 +24,7 @@ use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstalledFolder;
 use OCA\Versioniq\Service\Installer\InstallFailure;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
+use OCA\Versioniq\Service\Installer\LocalArchive;
 use OCA\Versioniq\Service\Installer\MigrationDiffer;
 use OCA\Versioniq\Service\Installer\ReleaseTarget;
 use OCA\Versioniq\Service\Installer\ReplacesAppFolder;
@@ -69,6 +70,9 @@ class SelectedReleaseInstallerService {
 
 	/** Whether the last install's archive was served from {@see ArtifactCache} after a download failure; see "Cached fallback with full re-verification". */
 	private bool $servedFromCache = false;
+
+	/** The uploaded archive the current install reads instead of downloading; null for a download (install-manual-upload D2). */
+	private ?LocalArchive $localArchive = null;
 
 	public function __construct(
 		private InstallFinalizer $finalizer,
@@ -383,6 +387,51 @@ class SelectedReleaseInstallerService {
 	}
 
 	/**
+	 * Installs an App Store release from an archive already on this server, an
+	 * admin's upload, instead of downloading it. Every check of the signed path
+	 * runs on it: certificate, signature over the uploaded bytes, app id and
+	 * version, migration diff, backup and restore, finalize. The install is
+	 * audited and cached under source id `upload`.
+	 *
+	 * @param array<string, mixed> $release The store release whose signature verified the archive.
+	 * @return array<string, mixed>
+	 * @throws Exception
+	 *
+	 * @spec openspec/changes/install-manual-upload/tasks.md#task-2.1
+	 */
+	public function installLocalArchive(string $appId, array $release, LocalArchive $archive): array {
+		$this->localArchive = $archive;
+		try {
+			return $this->installFromSelectedRelease($appId, $release);
+		} finally {
+			$this->localArchive = null;
+		}
+	}
+
+	/**
+	 * Whether a release certificate chains to the code-signing root, is not
+	 * revoked and is issued to the app.
+	 *
+	 * @spec openspec/changes/install-manual-upload/tasks.md#task-1.2
+	 */
+	public function trustsCertificate(string $appId, string $certificate): bool {
+		try {
+			$this->verifyCertificate($appId, $certificate);
+		} catch (Exception) {
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * The source id the install is recorded under: `upload` for an uploaded archive, else the App Store's.
+	 */
+	private function recordedSourceId(): string {
+		return $this->localArchive !== null ? LocalArchive::SOURCE_ID : SourceBinding::appStore()->getId();
+	}
+
+	/**
 	 * Reads the version installed now and the app's enabled value before anything changes.
 	 *
 	 * @param array<string, mixed> $release
@@ -521,7 +570,7 @@ class SelectedReleaseInstallerService {
 	 */
 	private function finalizeInstall(SignedInstall $install, InstalledFolder $folder): string {
 		try {
-			return $this->finalizer->finalize($folder->appPath, $folder->info, $install->enabledAfter(), null, SourceBinding::appStore()->getId());
+			return $this->finalizer->finalize($folder->appPath, $folder->info, $install->enabledAfter(), null, $this->recordedSourceId());
 		} catch (\Throwable $finalizeError) {
 			$restoreState = $folder->backup === null
 				? FailureClassifier::RESTORE_NONE
@@ -574,9 +623,9 @@ class SelectedReleaseInstallerService {
 		$actorUid = $this->userSession->getUser()?->getUID() ?? 'system';
 		$this->auditLogger->record(
 			new AuditSubject($actorUid, $install->appId, AuditLogger::OPERATION_INSTALL),
-			new AuditedVersions($install->fromVersion(), $install->requestedVersion(), SourceBinding::appStore()->getId()),
+			new AuditedVersions($install->fromVersion(), $install->requestedVersion(), $this->recordedSourceId()),
 			$outcome[0],
-			$outcome[1],
+			$this->localArchive?->withAuditNote($outcome[1]) ?? $outcome[1],
 		);
 	}
 
@@ -635,6 +684,14 @@ class SelectedReleaseInstallerService {
 	}
 
 	private function downloadRelease(SignedReleaseRun $run): void {
+		if ($this->localArchive !== null) {
+			if (!@copy($this->localArchive->path, $run->temp->file)) {
+				throw new Exception('Could not read the uploaded archive.');
+			}
+			$this->addDebug('downloaded', ['tempFile' => $run->temp->file, 'source' => LocalArchive::SOURCE_ID]);
+
+			return;
+		}
 		try {
 			$client = $this->getClientService()->newClient();
 			$client->get($run->release->download, [
@@ -785,7 +842,7 @@ class SelectedReleaseInstallerService {
 		$this->lastArchivePath = $run->temp->file;
 		$this->lastArchiveMeta = [
 			'sha256' => strtolower(hash('sha256', $downloadedContent)),
-			'sourceId' => SourceBinding::appStore()->getId(),
+			'sourceId' => $this->recordedSourceId(),
 			'installerKind' => SourceInterface::INSTALLER_SIGNED,
 			'signature' => $run->release->signature,
 			'certificate' => $run->release->certificate,

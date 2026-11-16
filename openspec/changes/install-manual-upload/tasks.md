@@ -3,7 +3,7 @@
 ## 1. Inspect
 
 - [x] 1.1 Add `UploadedArchive` (temporary storage, `info.xml` read, SHA-256, one-hour expiry) and `POST /api/upload/inspect`. Verify: `tests/unit/Service/Installer/UploadedArchiveTest.php` with a valid archive, one without `info.xml`, and one over the cap; `tests/unit/Controller/ApiTest.php` asserts 403 for a non-admin.
-- [ ] 1.2 Check a store-listed upload against the store signature. Verify: a unit test with a fixture store release whose signature matches, and one where the bytes differ.
+- [x] 1.2 Check a store-listed upload against the store signature. Verify: a unit test with a fixture store release whose signature matches, and one where the bytes differ.
 
 ## 2. Install
 

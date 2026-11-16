@@ -19,14 +19,18 @@ use OCA\Versioniq\Service\Discovery\PublisherTrust;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFailure;
+use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallRun;
 use OCA\Versioniq\Service\Installer\InstallState;
 use OCA\Versioniq\Service\Installer\InstallTarget;
+use OCA\Versioniq\Service\Installer\LocalArchive;
+use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Installer\ReleaseInstall;
 use OCA\Versioniq\Service\Installer\ReleaseInstallers;
 use OCA\Versioniq\Service\Installer\ServerAccess;
 use OCA\Versioniq\Service\Installer\ShaMismatchException;
+use OCA\Versioniq\Service\Installer\UploadSupport;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Release\ReleaseNotesReader;
 use OCA\Versioniq\Service\Source\AppStoreSource;
@@ -78,6 +82,7 @@ class InstallerService {
 		private InstallState $state,
 		private IUserSession $userSession,
 		private ITimeFactory $timeFactory,
+		private ?UploadSupport $upload = null,
 	) {
 	}
 
@@ -647,6 +652,226 @@ class InstallerService {
 	}
 
 	/**
+	 * Installs the app version an admin uploaded and inspected
+	 * (install-manual-upload D2). The guards of {@see installAppVersion()} run
+	 * first, in the same order: valid and manageable app, downgrade, pin, same
+	 * version, withdrawn, pre-flight. Then the archive must still be the one
+	 * the admin saw and match the SHA-256 they pasted, if any. An archive the
+	 * App Store's signature verifies installs through the signed installer;
+	 * any other archive only when unsigned uploads are on and the admin pasted
+	 * the SHA-256 or accepted the shown one, through the external installer.
+	 * The source binding is not changed. The upload is dropped once an install
+	 * ran; after a refusal it stays, so the admin can correct the request.
+	 *
+	 * @param string $token The token the inspect step returned.
+	 * @param ?string $expectedSha256 The SHA-256 the admin expects; blank or null when none was pasted.
+	 * @param bool $acceptShown Whether the admin accepted the SHA-256 shown for an unsigned archive.
+	 * @param bool $allowDowngrade Acknowledges a downgrade, as on the normal install path.
+	 * @param ?string $overridePin `repin` or `unpin` to install over a pin, as on the normal install path.
+	 * @return array{statusCode:int, payload:array<string, mixed>}
+	 *
+	 * @spec openspec/changes/install-manual-upload/tasks.md#task-2.1
+	 */
+	public function installUploadedArchive(string $token, ?string $expectedSha256, bool $acceptShown, bool $allowDowngrade = false, ?string $overridePin = null): array {
+		$upload = $this->upload;
+		$inspected = $upload?->archives->inspected($token);
+		if ($upload === null || $inspected === null) {
+			return $this->installEnvelope(Http::STATUS_NOT_FOUND, ['message' => 'This upload is unknown or expired. Upload the archive again.']);
+		}
+
+		$appId = $inspected['appId'];
+		$request = new InstallRequest(
+			new InstallTarget($appId, $inspected['version'], null),
+			new InstallOptions(false, false, false, $allowDowngrade),
+			new PinChoice($overridePin, false),
+		);
+		$refusal = $this->requestRefusal($request);
+		if ($refusal !== null) {
+			return $refusal;
+		}
+		// The binding is read, never resolved against the allowlist or written:
+		// an upload is not the bound source (D3).
+		$run = new InstallRun($request, $this->sources->bindingStore->get($appId) ?? SourceBinding::appStore(), $this->freshInstalledVersion($appId));
+		$refusal = $this->installRunRefusal($run) ?? $this->expectedShaRefusal($run, $inspected['sha256'], $expectedSha256);
+		if ($refusal !== null) {
+			return self::fromUpload($refusal);
+		}
+
+		$path = $upload->tempManager->getTemporaryFile('.tar.gz');
+		if (!is_string($path)) {
+			return $this->installEnvelope(Http::STATUS_INTERNAL_SERVER_ERROR, $this->briefPayload($run, 'Could not allocate a temporary file.'));
+		}
+		try {
+			$upload->archives->copyTo($token, $path);
+			$actualSha = hash_file('sha256', $path);
+			if ($actualSha === false || !hash_equals($inspected['sha256'], strtolower($actualSha))) {
+				return $this->installEnvelope(Http::STATUS_CONFLICT, $this->briefPayload($run, 'The uploaded archive changed after it was inspected. Upload it again.'));
+			}
+			$release = $upload->signatures->storeRelease($appId, $inspected['version'], $path);
+			$archive = new LocalArchive($path, $inspected['sha256'], $release !== null);
+			$refusal = $release === null ? $this->unsignedUploadRefusal($run, $upload, $expectedSha256, $acceptShown) : null;
+			if ($refusal !== null) {
+				return self::fromUpload($refusal);
+			}
+
+			$outcome = $this->installUpload($run, $archive, $release);
+			$upload->archives->remove($token);
+
+			return $outcome;
+		} catch (InvalidArgumentException $error) {
+			return $this->installEnvelope(Http::STATUS_NOT_FOUND, $this->briefPayload($run, $error->getMessage()));
+		} finally {
+			@unlink($path);
+		}
+	}
+
+	/**
+	 * Refuses an upload whose SHA-256 differs from the one the admin pasted.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 */
+	private function expectedShaRefusal(InstallRun $run, string $actualSha, ?string $expectedSha256): ?array {
+		$expected = strtolower(trim($expectedSha256 ?? ''));
+		if ($expected === '' || hash_equals($actualSha, $expected)) {
+			return null;
+		}
+
+		return $this->installEnvelope(Http::STATUS_CONFLICT, $this->outcomePayload($run, [
+			'message' => 'The archive\'s SHA-256 is not the one you expected. Nothing was installed.',
+			'category' => FailureClassifier::CATEGORY_SHA_MISMATCH,
+			'code' => 'sha_mismatch',
+			'installStatus' => 'failed',
+		]) + ['expectedSha' => $expected, 'actualSha' => $actualSha]);
+	}
+
+	/**
+	 * Refuses an archive the App Store does not sign unless unsigned uploads
+	 * are on and the admin pasted the SHA-256 (already checked) or accepted
+	 * the shown one (D4).
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 */
+	private function unsignedUploadRefusal(InstallRun $run, UploadSupport $upload, ?string $expectedSha256, bool $acceptShown): ?array {
+		if (!$upload->settings->allowsUnsignedUpload()) {
+			return $this->installEnvelope(Http::STATUS_FORBIDDEN, $this->outcomePayload($run, [
+				'message' => 'The App Store does not sign this archive, and unsigned uploads are off. Switch on "Allow unsigned uploads" in the Settings tab to install it.',
+				'category' => 'unsigned_upload',
+				'installStatus' => 'failed',
+			]));
+		}
+		if (trim($expectedSha256 ?? '') === '' && !$acceptShown) {
+			return $this->installEnvelope(Http::STATUS_BAD_REQUEST, $this->outcomePayload($run, [
+				'message' => 'Paste the SHA-256 you expect, or accept the one shown, before installing an archive the App Store does not sign.',
+				'category' => 'unsigned_upload',
+				'installStatus' => 'failed',
+			]));
+		}
+
+		return null;
+	}
+
+	/**
+	 * Installs the upload under maintenance mode through the signed installer
+	 * (a store release verified it) or the external installer, and reports
+	 * the outcome as the normal install path does, with source `upload`.
+	 *
+	 * @param array<string, mixed>|null $release The store release that verified the archive.
+	 * @return array{statusCode:int, payload:array<string, mixed>}
+	 */
+	private function installUpload(InstallRun $run, LocalArchive $archive, ?array $release): array {
+		$target = $run->request->target;
+		$maintenanceWasSet = false;
+		try {
+			if ($this->shouldEnterMaintenance($run)) {
+				$maintenanceWasSet = true;
+				$this->server->configs->config->setSystemValue('maintenance', true);
+			}
+			$result = $release !== null
+				? $this->installers->signedInstaller->installLocalArchive($target->appId, $release, $archive)
+				: $this->installers->externalInstaller->installLocalArchive($target->appId, $target->version, $archive, $run->binding);
+
+			return $this->uploadSuccess($run, $archive, $result);
+		} catch (InstallFailure $failure) {
+			return $this->uploadOutcome($this->installFailureOutcome($run, $this->uploadDebugLog($archive), $failure), $archive);
+		} catch (Exception $error) {
+			return $this->uploadOutcome($this->classifiedFailureOutcome($run, $this->uploadDebugLog($archive), $error), $archive);
+		} finally {
+			if ($maintenanceWasSet) {
+				$this->server->configs->config->setSystemValue('maintenance', false);
+			}
+		}
+	}
+
+	/**
+	 * Reads the installed version back, settles the pin and raises the update
+	 * event, as the normal install path does; the binding stays as it was.
+	 *
+	 * @param array<string, mixed> $result
+	 * @return array{statusCode:int, payload:array<string, mixed>}
+	 */
+	private function uploadSuccess(InstallRun $run, LocalArchive $archive, array $result): array {
+		$appId = $run->request->target->appId;
+		$this->server->appManager->clearAppsCache();
+		$appVersion = $this->versionAfterInstall($appId);
+		$payload = [
+			'appId' => $appId,
+			'fromVersion' => $run->fromVersion(),
+			'toVersion' => $appVersion,
+			'installedVersion' => $appVersion,
+			'updateType' => $this->classifyUpdateType($run, $appVersion),
+			'message' => $this->classifyMessage($run, $appVersion),
+			'dryRun' => false,
+			'installStatus' => $result['status'] ?? 'unknown',
+		];
+		if (array_key_exists('orphanedMigrations', $result)) {
+			$payload['orphanedMigrations'] = $result['orphanedMigrations'];
+		}
+		$this->settlePin($run, $appVersion);
+		$this->dispatchUpdateEvent($run, $appVersion);
+
+		return $this->uploadOutcome($this->installEnvelope(Http::STATUS_OK, $payload), $archive);
+	}
+
+	/**
+	 * An outcome with source `upload`, the archive's SHA-256 and whether the App Store signed it.
+	 *
+	 * @param array{statusCode:int, payload:array<string, mixed>} $outcome
+	 * @return array{statusCode:int, payload:array<string, mixed>}
+	 */
+	private static function uploadOutcome(array $outcome, LocalArchive $archive): array {
+		$outcome['payload'] = [
+			'sourceId' => LocalArchive::SOURCE_ID,
+			'sha256' => $archive->sha256,
+			'signedByStore' => $archive->signed,
+		] + $outcome['payload'];
+
+		return $outcome;
+	}
+
+	/**
+	 * A refusal of an upload, naming source `upload` instead of the binding.
+	 *
+	 * @param array{statusCode:int, payload:array<string, mixed>} $outcome
+	 * @return array{statusCode:int, payload:array<string, mixed>}
+	 */
+	private static function fromUpload(array $outcome): array {
+		if (array_key_exists('sourceId', $outcome['payload'])) {
+			$outcome['payload']['sourceId'] = LocalArchive::SOURCE_ID;
+		}
+
+		return $outcome;
+	}
+
+	/**
+	 * The breadcrumb log of the installer an upload went through.
+	 *
+	 * @return array<int, mixed>
+	 */
+	private function uploadDebugLog(LocalArchive $archive): array {
+		return $archive->signed ? $this->installers->signedInstaller->getDebugLog() : $this->installers->externalInstaller->getDebugLog();
+	}
+
+	/**
 	 * Runs one install request through its guards, in order, and then installs.
 	 *
 	 * @return array{statusCode:int, payload:array<string, mixed>}
@@ -1009,9 +1234,9 @@ class InstallerService {
 		} catch (ShaMismatchException $error) {
 			return $this->shaMismatchOutcome($install, $error);
 		} catch (InstallFailure $failure) {
-			return $this->installFailureOutcome($install, $failure);
+			return $this->installFailureOutcome($install->run, $this->installerDebugLog($install->source), $failure);
 		} catch (Exception $error) {
-			return $this->classifiedFailureOutcome($install, $error);
+			return $this->classifiedFailureOutcome($install->run, $this->installerDebugLog($install->source), $error);
 		} finally {
 			if ($maintenanceWasSet) {
 				$this->server->configs->config->setSystemValue('maintenance', false);
@@ -1042,10 +1267,10 @@ class InstallerService {
 		$install->appVersion = $this->versionAfterInstall($appId);
 		$payload = $this->successPayload($install, $result);
 		if (!$run->request->options->dryRun) {
-			$this->settlePin($install);
+			$this->settlePin($run, $install->appVersion);
 			// After the pin is settled, so our own listener does not read a
 			// re-pinned install as drift.
-			$this->dispatchUpdateEvent($install);
+			$this->dispatchUpdateEvent($run, $install->appVersion);
 		}
 
 		return $this->installEnvelope(Http::STATUS_OK, $payload);
@@ -1123,8 +1348,8 @@ class InstallerService {
 			'fromVersion' => $run->fromVersion(),
 			'toVersion' => $dryRun ? $run->request->target->version : $install->appVersion,
 			'installedVersion' => $install->appVersion,
-			'updateType' => $this->classifyUpdateType($install),
-			'message' => $this->classifyMessage($install),
+			'updateType' => $this->classifyUpdateType($run, $install->appVersion),
+			'message' => $this->classifyMessage($run, $install->appVersion),
 			'dryRun' => $dryRun,
 			'installStatus' => $result['status'] ?? 'unknown',
 			'sourceId' => $run->binding->getId(),
@@ -1172,15 +1397,14 @@ class InstallerService {
 	 * here, inside the same request and before returning, is what keeps a
 	 * later drift check from misreading our own override as drift.
 	 */
-	private function settlePin(ReleaseInstall $install): void {
-		$run = $install->run;
+	private function settlePin(InstallRun $run, string $appVersion): void {
 		$overridden = $run->pinBeingOverridden();
 		if ($overridden !== null) {
-			$this->applyPinOverride($install, $overridden);
+			$this->applyPinOverride($run, $appVersion, $overridden);
 			return;
 		}
 		if ($run->pin === null && $run->request->pinChoice->pinRequested) {
-			$this->state->pinStore->set($run->request->target->appId, new Pin($install->appVersion, $this->currentActorUid(), $this->nowIso()));
+			$this->state->pinStore->set($run->request->target->appId, new Pin($appVersion, $this->currentActorUid(), $this->nowIso()));
 			return;
 		}
 		$this->clearPinDrift($run);
@@ -1190,10 +1414,10 @@ class InstallerService {
 	 * An overridden pin moves to the installed version (`repin`) or is
 	 * cleared (`unpin`); the pin guard already refused a missing override.
 	 */
-	private function applyPinOverride(ReleaseInstall $install, Pin $pin): void {
-		$appId = $install->run->request->target->appId;
-		if ($install->run->request->pinChoice->overridePin === self::OVERRIDE_PIN_REPIN) {
-			$this->state->pinStore->set($appId, new Pin($install->appVersion, $this->currentActorUid(), $this->nowIso(), $pin->reason));
+	private function applyPinOverride(InstallRun $run, string $appVersion, Pin $pin): void {
+		$appId = $run->request->target->appId;
+		if ($run->request->pinChoice->overridePin === self::OVERRIDE_PIN_REPIN) {
+			$this->state->pinStore->set($appId, new Pin($appVersion, $this->currentActorUid(), $this->nowIso(), $pin->reason));
 			return;
 		}
 		$this->state->pinStore->clear($appId, $this->currentActorUid());
@@ -1229,10 +1453,10 @@ class InstallerService {
 	 * The installer already handled filesystem recovery; this reports the
 	 * honest outcome (reverted / installed-but-broken) instead of a 500.
 	 *
+	 * @param array<int, mixed> $debugLog The breadcrumb log of the installer that ran.
 	 * @return array{statusCode:int, payload:array<string, mixed>}
 	 */
-	private function installFailureOutcome(ReleaseInstall $install, InstallFailure $failure): array {
-		$debugLog = $this->installerDebugLog($install->source);
+	private function installFailureOutcome(InstallRun $run, array $debugLog, InstallFailure $failure): array {
 		$isBroken = $failure->getOutcome() === InstallFailure::OUTCOME_INSTALLED_BUT_BROKEN;
 		$category = $isBroken
 			? FailureClassifier::CATEGORY_FINALIZE
@@ -1241,33 +1465,33 @@ class InstallerService {
 			? $this->installers->failureClassifier->finalizeHint($failure->getRestoreState())
 			: $this->installers->failureClassifier->revertedHint();
 
-		return $this->installEnvelope($this->installers->failureClassifier->httpStatusFor($category), $this->outcomePayload($install->run, [
+		return $this->installEnvelope($this->installers->failureClassifier->httpStatusFor($category), $this->outcomePayload($run, [
 			'message' => $failure->getMessage(),
 			'category' => $category,
 			'stage' => $failure->getStage(),
 			'hint' => $hint,
 			'installStatus' => $failure->getOutcome(),
-		]) + $install->run->debugSuffix($debugLog));
+		]) + $run->debugSuffix($debugLog));
 	}
 
 	/**
 	 * Classified failure: stage, category and hint are attached regardless of
 	 * debug, and the HTTP status follows the category (no blanket 500).
 	 *
+	 * @param array<int, mixed> $debugLog The breadcrumb log of the installer that ran.
 	 * @return array{statusCode:int, payload:array<string, mixed>}
 	 */
-	private function classifiedFailureOutcome(ReleaseInstall $install, Exception $error): array {
-		$debugLog = $this->installerDebugLog($install->source);
+	private function classifiedFailureOutcome(InstallRun $run, array $debugLog, Exception $error): array {
 		$lastStage = $this->lastStageOf($debugLog);
 		$classification = $this->installers->failureClassifier->classify($error, $lastStage);
 
-		return $this->installEnvelope($classification['statusCode'], $this->outcomePayload($install->run, [
+		return $this->installEnvelope($classification['statusCode'], $this->outcomePayload($run, [
 			'message' => $error->getMessage(),
 			'category' => $classification['category'],
 			'stage' => $lastStage,
 			'hint' => $classification['hint'],
 			'installStatus' => 'failed',
-		]) + $install->run->debugSuffix($debugLog));
+		]) + $run->debugSuffix($debugLog));
 	}
 
 	/**
@@ -1465,9 +1689,8 @@ class InstallerService {
 	 *
 	 * @spec openspec/changes/releases-notes-reach/tasks.md#task-1.1
 	 */
-	private function dispatchUpdateEvent(ReleaseInstall $install): void {
-		$fromVersion = $install->run->installedVersion;
-		$toVersion = $install->appVersion;
+	private function dispatchUpdateEvent(InstallRun $run, string $toVersion): void {
+		$fromVersion = $run->installedVersion;
 		if ($fromVersion === '' || $toVersion === '' || $fromVersion === $toVersion) {
 			return;
 		}
@@ -1475,7 +1698,7 @@ class InstallerService {
 			return;
 		}
 
-		$this->server->eventDispatcher->dispatchTyped(new AppUpdateEvent($install->run->request->target->appId));
+		$this->server->eventDispatcher->dispatchTyped(new AppUpdateEvent($run->request->target->appId));
 	}
 
 	private function resolveBinding(string $appId, ?string $sourceOverride): SourceBinding {
@@ -1514,10 +1737,9 @@ class InstallerService {
 	 * The kind of version change an install made: `dry-run`, `install`,
 	 * `none`, `upgrade` or `downgrade`.
 	 */
-	private function classifyUpdateType(ReleaseInstall $install): string {
-		$previousVersion = $install->run->installedVersion;
-		$newVersion = $install->appVersion;
-		if ($install->run->request->options->dryRun) {
+	private function classifyUpdateType(InstallRun $run, string $newVersion): string {
+		$previousVersion = $run->installedVersion;
+		if ($run->request->options->dryRun) {
 			return 'dry-run';
 		}
 		if ($previousVersion === '') {
@@ -1533,10 +1755,9 @@ class InstallerService {
 	/**
 	 * The human summary of an install's version change.
 	 */
-	private function classifyMessage(ReleaseInstall $install): string {
-		$previousVersion = $install->run->installedVersion;
-		$newVersion = $install->appVersion;
-		if ($install->run->request->options->dryRun) {
+	private function classifyMessage(InstallRun $run, string $newVersion): string {
+		$previousVersion = $run->installedVersion;
+		if ($run->request->options->dryRun) {
 			return 'Dry run mode: no changes were applied.';
 		}
 		if ($previousVersion === '') {
