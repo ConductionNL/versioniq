@@ -54,19 +54,7 @@ final class AutoUpdateLimiter {
 			return $members;
 		}
 
-		$installable = [];
-		$others = [];
-		foreach (self::units($members) as $key => $unit) {
-			if (self::cost($unit) > 0) {
-				$installable[$key] = $unit;
-				continue;
-			}
-
-			array_push($others, ...$unit);
-			if (self::hasNoCandidate($unit)) {
-				unset($deferred[$key]);
-			}
-		}
+		[$installable, $others, $deferred] = self::partition($members, $deferred);
 
 		$ordered = [];
 		foreach ($this->runOrder($installable, $deferred) as $key => $unit) {
@@ -88,6 +76,34 @@ final class AutoUpdateLimiter {
 		$this->settings->setDeferred($deferred);
 
 		return array_merge($ordered, $others);
+	}
+
+	/**
+	 * Splits the members into the units that would install something and the
+	 * members that would not, and lets go of the hold on a unit with nothing
+	 * left to install.
+	 *
+	 * @param list<AutoUpdateMember> $members  The planned members.
+	 * @param array<string, string>  $deferred The held units, by key.
+	 *
+	 * @return array{0: array<string, list<AutoUpdateMember>>, 1: list<AutoUpdateMember>, 2: array<string, string>}
+	 */
+	private static function partition(array $members, array $deferred): array {
+		$installable = [];
+		$others = [];
+		foreach (self::units($members) as $key => $unit) {
+			if (self::cost($unit) > 0) {
+				$installable[$key] = $unit;
+				continue;
+			}
+
+			array_push($others, ...$unit);
+			if (self::hasNoCandidate($unit)) {
+				unset($deferred[$key]);
+			}
+		}
+
+		return [$installable, $others, $deferred];
 	}
 
 	/**

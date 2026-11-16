@@ -1147,18 +1147,9 @@ class ApiController extends OCSController {
 
 		// autoupdate-run-batching D4: both caps are checked before anything is
 		// stored, so a bad one changes nothing.
-		$caps = [];
-		foreach (['maxPerRun' => AutoUpdateSettingsStore::MAX_PER_RUN_LIMIT, 'maxPerWeek' => AutoUpdateSettingsStore::MAX_PER_WEEK_LIMIT] as $name => $limit) {
-			$cap = $this->capParam($name, $limit);
-			if ($cap === false) {
-				return new DataResponse(
-					['message' => sprintf('%s must be a whole number from 1 to %d, or empty for no limit.', $name, $limit)],
-					Http::STATUS_BAD_REQUEST
-				);
-			}
-			if ($cap !== true) {
-				$caps[$name] = $cap;
-			}
+		$caps = $this->capParams();
+		if ($caps instanceof DataResponse) {
+			return $caps;
 		}
 
 		if ($enabledParam !== null) {
@@ -1167,12 +1158,7 @@ class ApiController extends OCSController {
 		if ($windowParam !== '') {
 			$this->autoUpdate->settingsStore->setWindow($windowParam);
 		}
-		if (array_key_exists('maxPerRun', $caps)) {
-			$this->autoUpdate->settingsStore->setMaxPerRun($caps['maxPerRun']);
-		}
-		if (array_key_exists('maxPerWeek', $caps)) {
-			$this->autoUpdate->settingsStore->setMaxPerWeek($caps['maxPerWeek']);
-		}
+		$this->storeCaps($caps);
 
 		return new DataResponse([
 			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
@@ -1703,6 +1689,44 @@ class ApiController extends OCSController {
 		}
 
 		return $default;
+	}
+
+	/**
+	 * The caps the request sets, by name, each an int or null for no limit; a
+	 * cap the request leaves out is absent. A bad cap answers 400.
+	 *
+	 * @return array<string, int|null>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>
+	 */
+	private function capParams(): array|DataResponse {
+		$caps = [];
+		foreach (['maxPerRun' => AutoUpdateSettingsStore::MAX_PER_RUN_LIMIT, 'maxPerWeek' => AutoUpdateSettingsStore::MAX_PER_WEEK_LIMIT] as $name => $limit) {
+			$cap = $this->capParam($name, $limit);
+			if ($cap === false) {
+				return new DataResponse(
+					['message' => sprintf('%s must be a whole number from 1 to %d, or empty for no limit.', $name, $limit)],
+					Http::STATUS_BAD_REQUEST
+				);
+			}
+			if ($cap !== true) {
+				$caps[$name] = $cap;
+			}
+		}
+
+		return $caps;
+	}
+
+	/**
+	 * Stores each cap the request set.
+	 *
+	 * @param array<string, int|null> $caps The caps, by name.
+	 */
+	private function storeCaps(array $caps): void {
+		if (array_key_exists('maxPerRun', $caps)) {
+			$this->autoUpdate->settingsStore->setMaxPerRun($caps['maxPerRun']);
+		}
+		if (array_key_exists('maxPerWeek', $caps)) {
+			$this->autoUpdate->settingsStore->setMaxPerWeek($caps['maxPerWeek']);
+		}
 	}
 
 	/**

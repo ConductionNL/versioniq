@@ -946,15 +946,30 @@ async function loadPolicies (): Promise<void> {
 		securityHolds.value = payload.securityHolds ?? {}
 		advisoriesFresh.value = payload.advisoriesFresh !== false
 		manualKinds.value = payload.manualKinds ?? []
-		updateGroups.value = payload.groups ?? []
-		waitingUnits.value = payload.waiting ?? {}
-		maxPerRun.value = payload.maxPerRun ?? null
-		maxPerWeek.value = payload.maxPerWeek ?? null
+		applyRunBatching(payload)
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
 	} catch {
 		// Non-fatal: the app list stays usable without policy badges.
 		policies.value = {}
 	}
+}
+
+/**
+ * Stores the update groups, the units a cap holds back and both caps from a
+ * policies payload; absent fields read as none.
+ *
+ * @param payload The policies payload.
+ * @param payload.groups The update groups, in their stored order.
+ * @param payload.waiting The held units, by key, with the time each was first held.
+ * @param payload.maxPerRun The per-run cap, or null for no limit.
+ * @param payload.maxPerWeek The weekly cap, or null for no limit.
+ * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+ */
+function applyRunBatching (payload: { groups?: UpdateGroupView[], waiting?: Record<string, string>, maxPerRun?: number | null, maxPerWeek?: number | null }): void {
+	updateGroups.value = payload.groups ?? []
+	waitingUnits.value = payload.waiting ?? {}
+	maxPerRun.value = payload.maxPerRun ?? null
+	maxPerWeek.value = payload.maxPerWeek ?? null
 }
 
 const policyLevelFor = (appId: string): PolicyLevel => policies.value[appId]?.level ?? 'none'
