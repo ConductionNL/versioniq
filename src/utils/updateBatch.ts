@@ -81,21 +81,19 @@ export function quickUpdateTarget (entry: PendingUpdate | undefined): string | n
 	if (!entry || !offersUpdate(entry)) {
 		return null
 	}
+	const target = entry.newestCompatibleVersion as string
 
-	return entry.newestCompatibleVersion as string
+	return target === entry.installedVersion ? null : target
 }
 
 /**
- * Whether a snapshot entry offers a newer compatible version than the installed one.
+ * Whether a snapshot entry offers an update at all: no error, an update
+ * available and a newest compatible version to go to.
  *
  * @param entry The app's snapshot entry.
  */
 function offersUpdate (entry: PendingUpdate): boolean {
-	if (entry.error || !entry.updateAvailable || !entry.newestCompatibleVersion) {
-		return false
-	}
-
-	return entry.newestCompatibleVersion !== entry.installedVersion
+	return !entry.error && Boolean(entry.updateAvailable) && Boolean(entry.newestCompatibleVersion)
 }
 
 /**
@@ -109,45 +107,28 @@ function offersUpdate (entry: PendingUpdate): boolean {
 export async function runUpdateBatch (candidates: BatchCandidate[], options: BatchRunOptions): Promise<BatchRunResult> {
 	const queue = candidates.filter((candidate) => candidate.selected)
 	const rows: BatchRow[] = queue.map((candidate) => ({ appId: candidate.appId, toVersion: candidate.toVersion, state: 'pending' }))
+	const report = (row: BatchRow): void => options.onRow?.({ ...row })
 	let stopped = false
 
 	for (const [index, candidate] of queue.entries()) {
 		const row = rows[index] as BatchRow
-		stopped = stopped || options.shouldStop?.() === true
-		await (stopped ? skipBatchRow(row, options) : runBatchRow(row, candidate, options))
+		if (stopped || options.shouldStop?.() === true) {
+			stopped = true
+			row.state = 'skipped'
+			report(row)
+			continue
+		}
+
+		row.state = 'running'
+		report(row)
+		const outcome = await installOne(candidate, options.install)
+		row.state = outcome.state
+		row.category = outcome.category
+		row.message = outcome.message
+		report(row)
 	}
 
 	return { rows, stopped }
-}
-
-/**
- * Marks one row of the batch skipped after a stop request and reports it.
- *
- * @param row The row to update in place.
- * @param options The progress callback.
- */
-async function skipBatchRow (row: BatchRow, options: BatchRunOptions): Promise<void> {
-	row.state = 'skipped'
-	options.onRow?.({ ...row })
-}
-
-/**
- * Installs one row of the batch: running, then the install's outcome. Every
- * state change is reported.
- *
- * @param row The row to update in place.
- * @param candidate The app to install.
- * @param options The installer and the progress callback.
- */
-async function runBatchRow (row: BatchRow, candidate: BatchCandidate, options: BatchRunOptions): Promise<void> {
-	const report = (): void => options.onRow?.({ ...row })
-	row.state = 'running'
-	report()
-	const outcome = await installOne(candidate, options.install)
-	row.state = outcome.state
-	row.category = outcome.category
-	row.message = outcome.message
-	report()
 }
 
 /**
@@ -184,9 +165,9 @@ export function batchOutcome (response: BatchInstallResponse): BatchInstallOutco
 	}
 	const { payload, metaMessage } = response
 	if (metaMessage) {
-		return { state: 'failed', category: payload?.category, message: refusalMessage(payload, metaMessage) }
+		return refusedOutcome(payload, metaMessage)
 	}
-	if (payload?.fromVersion && payload.fromVersion === payload.toVersion) {
+	if (stayedOnItsVersion(payload)) {
 		return { state: 'upToDate' }
 	}
 
@@ -194,11 +175,20 @@ export function batchOutcome (response: BatchInstallResponse): BatchInstallOutco
 }
 
 /**
- * The message of a refused install: the hint, else the payload's message, else the meta message.
+ * A refused install: failed, with its category and the most specific message.
  *
  * @param payload The install answer's payload.
- * @param metaMessage The OCS meta message.
+ * @param metaMessage The refusal message.
  */
-function refusalMessage (payload: NonNullable<BatchInstallResponse>['payload'] | undefined, metaMessage: string): string {
-	return payload?.hint || payload?.message || metaMessage
+function refusedOutcome (payload: NonNullable<BatchInstallResponse>['payload'], metaMessage: string): BatchInstallOutcome {
+	return { state: 'failed', category: payload?.category, message: payload?.hint || payload?.message || metaMessage }
+}
+
+/**
+ * Whether the install left the app on the version it already had.
+ *
+ * @param payload The install answer's payload.
+ */
+function stayedOnItsVersion (payload: NonNullable<BatchInstallResponse>['payload']): boolean {
+	return Boolean(payload?.fromVersion) && payload.fromVersion === payload.toVersion
 }

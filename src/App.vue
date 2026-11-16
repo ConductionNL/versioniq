@@ -2190,12 +2190,25 @@ const quickUpdateTargetFor = (appId: string): string | null => quickUpdateTarget
  * @spec openspec/changes/install-one-click-updates/specs/security-advisory-correlation/spec.md#requirement-an-admin-updates-to-the-safe-version-straight-from-the-advisory
  */
 function safeVersionFor (app: { id: string, installedVersion?: string | null }): string | null {
-	const advisory = advisoryFor(app.id)
-	const recommended = advisory?.recommendedVersion ?? null
-	if (!advisory || advisory.state === 'none' || !recommended || !app.installedVersion) {
+	const recommended = advisoryRecommendation(app.id)
+	if (!recommended || !app.installedVersion) {
 		return null
 	}
 	return compareVersions(recommended, app.installedVersion) > 0 ? recommended : null
+}
+
+/**
+ * The version an app's open advisory recommends, or null when there is none.
+ *
+ * @param appId The app id.
+ * @spec openspec/changes/install-one-click-updates/specs/security-advisory-correlation/spec.md#requirement-an-admin-updates-to-the-safe-version-straight-from-the-advisory
+ */
+function advisoryRecommendation (appId: string): string | null {
+	const advisory = advisoryFor(appId)
+	if (!advisory || advisory.state === 'none') {
+		return null
+	}
+	return advisory.recommendedVersion ?? null
 }
 
 /**
@@ -2208,7 +2221,7 @@ function safeVersionFor (app: { id: string, installedVersion?: string | null }):
  * @spec openspec/changes/install-one-click-updates/specs/version-management/spec.md#requirement-an-admin-updates-one-app-or-all-apps-in-one-action
  */
 async function openQuickUpdate (appId: string, toVersion: string, advisoryId: string | null = null): Promise<void> {
-	if (isInstallingVersion.value || isCheckingVersions.value) {
+	if (isVersionWorkRunning()) {
 		return
 	}
 	onSelectApp(appId)
@@ -2216,14 +2229,33 @@ async function openQuickUpdate (appId: string, toVersion: string, advisoryId: st
 	isQuickUpdateLoading.value = true
 	isQuickUpdateOpen.value = true
 	try {
-		await checkVersions()
-		if (installedVersion.value !== '') {
-			quickUpdate.value = { ...quickUpdate.value, fromVersion: installedVersion.value }
-		}
-		selectedVersion.value = toVersion
+		await loadQuickUpdateVersions(toVersion)
 	} finally {
 		isQuickUpdateLoading.value = false
 	}
+}
+
+/**
+ * Whether an install or a version check is already running.
+ */
+function isVersionWorkRunning (): boolean {
+	return isInstallingVersion.value || isCheckingVersions.value
+}
+
+/**
+ * Loads the selected app's releases for the one-app confirmation, takes the
+ * installed version they report, and preselects the target version.
+ *
+ * @param toVersion The version to install.
+ * @spec openspec/changes/install-one-click-updates/specs/version-management/spec.md#requirement-an-admin-updates-one-app-or-all-apps-in-one-action
+ */
+async function loadQuickUpdateVersions (toVersion: string): Promise<void> {
+	await checkVersions()
+	const current = quickUpdate.value
+	if (current !== null && installedVersion.value !== '') {
+		quickUpdate.value = { ...current, fromVersion: installedVersion.value }
+	}
+	selectedVersion.value = toVersion
 }
 
 /**
