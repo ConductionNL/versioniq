@@ -461,18 +461,11 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			return ['ok' => false, 'error' => $this->statusError($forge, $status)];
 		}
 
-		try {
-			$decoded = json_decode((string)$response->getBody(), true, 32, JSON_THROW_ON_ERROR);
-		} catch (\JsonException) {
+		$decoded = $this->decodeReleaseList($response);
+		if (is_string($decoded)) {
 			$this->connectionReports?->forgeAnswered($forge->id, $forge->apiBaseUrl, $status, false);
 
-			return ['ok' => false, 'error' => $this->forgeName($forge) . ' API returned malformed JSON.'];
-		}
-
-		if (!is_array($decoded) || !array_is_list($decoded)) {
-			$this->connectionReports?->forgeAnswered($forge->id, $forge->apiBaseUrl, $status, false);
-
-			return ['ok' => false, 'error' => $this->forgeName($forge) . ' API returned an unexpected payload shape.'];
+			return ['ok' => false, 'error' => $this->forgeName($forge) . ' API returned ' . $decoded . '.'];
 		}
 
 		$this->connectionReports?->forgeAnswered($forge->id, $forge->apiBaseUrl, $status);
@@ -482,6 +475,26 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		}
 
 		return ['ok' => true, 'releases' => $decoded];
+	}
+
+	/**
+	 * The body of a forge answer as a JSON list, or what is wrong with it.
+	 *
+	 * @return array<int, mixed>|string The list, or `malformed JSON` / `an unexpected payload shape`.
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-2.1
+	 */
+	private function decodeReleaseList(IResponse $response): array|string {
+		try {
+			$decoded = json_decode((string)$response->getBody(), true, 32, JSON_THROW_ON_ERROR);
+		} catch (\JsonException) {
+			return 'malformed JSON';
+		}
+
+		if (!is_array($decoded) || !array_is_list($decoded)) {
+			return 'an unexpected payload shape';
+		}
+
+		return $decoded;
 	}
 
 	/**
@@ -502,6 +515,23 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			return $release;
 		}
 
+		return [
+			'tag_name' => $release['tag_name'] ?? null,
+			'body' => $release['description'] ?? null,
+			'published_at' => ($release['upcoming_release'] ?? false) === true ? null : ($release['released_at'] ?? null),
+			'assets' => self::gitlabAssets($release),
+		];
+	}
+
+	/**
+	 * A GitLab release's `assets.links[]` as name and download URL, the
+	 * link's `direct_asset_url` before its `url`; non-array links are skipped.
+	 *
+	 * @param array<array-key, mixed> $release One GitLab release object.
+	 * @return list<array{name: mixed, browser_download_url: ?string}>
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-2.1
+	 */
+	private static function gitlabAssets(array $release): array {
 		$assets = [];
 		$links = is_array($release['assets'] ?? null) ? ($release['assets']['links'] ?? null) : null;
 		foreach (is_array($links) ? $links : [] as $link) {
@@ -512,12 +542,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			$assets[] = ['name' => $link['name'] ?? null, 'browser_download_url' => $url];
 		}
 
-		return [
-			'tag_name' => $release['tag_name'] ?? null,
-			'body' => $release['description'] ?? null,
-			'published_at' => ($release['upcoming_release'] ?? false) === true ? null : ($release['released_at'] ?? null),
-			'assets' => $assets,
-		];
+		return $assets;
 	}
 
 	/**

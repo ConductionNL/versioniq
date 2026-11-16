@@ -86,24 +86,33 @@ class SourceRegistry {
 			if (!str_starts_with($sourceId, $prefix)) {
 				continue;
 			}
-			$ownerRepo = substr($sourceId, strlen($prefix));
-			if ($forge === SourceBinding::FORGE_GITLAB) {
-				// The whole remainder is the nested project path.
-				return SourceBinding::gitlab($ownerRepo);
-			}
-			if (!str_contains($ownerRepo, '/')) {
-				throw new InvalidArgumentException(sprintf('%s source id must be of the form %s:owner/repo', $forge, $forge));
-			}
-			$parts = explode('/', $ownerRepo, 2);
-			$owner = $parts[0];
-			$repo = $parts[1] ?? '';
-			if ($owner === '' || $repo === '') {
-				throw new InvalidArgumentException(sprintf('%s source id has empty owner or repo', $forge));
-			}
-
-			return SourceBinding::release($forge, $owner, $repo);
+			return self::forgeBinding($forge, substr($sourceId, strlen($prefix)));
 		}
 
 		throw new InvalidArgumentException('Unknown source id: ' . $sourceId);
+	}
+
+	/**
+	 * The binding for the part of a source id after `<forge>:`.
+	 *
+	 * @throws InvalidArgumentException
+	 * @spec openspec/specs/external-sources/spec.md
+	 */
+	private static function forgeBinding(string $forge, string $ownerRepo): SourceBinding {
+		if ($forge === SourceBinding::FORGE_GITLAB) {
+			// The whole remainder is the nested project path.
+			return SourceBinding::gitlab($ownerRepo);
+		}
+		if (!str_contains($ownerRepo, '/')) {
+			throw new InvalidArgumentException(sprintf('%s source id must be of the form %s:owner/repo', $forge, $forge));
+		}
+		$parts = explode('/', $ownerRepo, 2);
+		$owner = $parts[0];
+		$repo = $parts[1] ?? '';
+		if ($owner === '' || $repo === '') {
+			throw new InvalidArgumentException(sprintf('%s source id has empty owner or repo', $forge));
+		}
+
+		return SourceBinding::release($forge, $owner, $repo);
 	}
 }

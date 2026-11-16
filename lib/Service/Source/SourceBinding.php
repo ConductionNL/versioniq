@@ -36,9 +36,6 @@ final class SourceBinding {
 	/** GitLab: the binding holds a nested project `path` instead of owner and repo (sources-gitlab-forge D3). */
 	public const FORGE_GITLAB = 'gitlab';
 
-	/** Most segments a GitLab project path may have; GitLab nests at most 20 levels. */
-	public const MAX_PATH_SEGMENTS = 20;
-
 	/**
 	 * Every forge a stored binding, source id or trusted pattern may carry,
 	 * the retired one included.
@@ -91,7 +88,10 @@ final class SourceBinding {
 	 */
 	private static function assertValidReleaseConfig(array $config): void {
 		if (($config['forge'] ?? null) === self::FORGE_GITLAB) {
-			self::requireSafePath($config);
+			self::requireNonEmptyString($config, 'path');
+			/** @var string $path */
+			$path = $config['path'];
+			GitlabProjectPath::assertSafe($path);
 			return;
 		}
 		self::requireNonEmptyString($config, 'owner');
@@ -127,30 +127,6 @@ final class SourceBinding {
 		$value = $config[$field];
 		if (!preg_match('/^[A-Za-z0-9_.\-]+$/', $value)) {
 			throw new InvalidArgumentException('github-release ' . $field . ' contains invalid characters');
-		}
-	}
-
-	/**
-	 * Requires a GitLab binding's `path`: two to 20 segments, each in the
-	 * owner/repo charset, and no `.` or `..` segment, so the path-traversal
-	 * guard holds for nested groups (CWE-22).
-	 *
-	 * @param array<string, mixed> $config
-	 * @throws InvalidArgumentException
-	 * @spec openspec/changes/sources-gitlab-forge/specs/external-sources/spec.md
-	 */
-	private static function requireSafePath(array $config): void {
-		self::requireNonEmptyString($config, 'path');
-		/** @var string $path */
-		$path = $config['path'];
-		$segments = explode('/', $path);
-		if (count($segments) < 2 || count($segments) > self::MAX_PATH_SEGMENTS) {
-			throw new InvalidArgumentException('gitlab path must have 2 to ' . self::MAX_PATH_SEGMENTS . ' segments');
-		}
-		foreach ($segments as $segment) {
-			if ($segment === '.' || $segment === '..' || preg_match('/^[A-Za-z0-9_.\-]+$/', $segment) !== 1) {
-				throw new InvalidArgumentException('gitlab path contains an invalid segment');
-			}
 		}
 	}
 

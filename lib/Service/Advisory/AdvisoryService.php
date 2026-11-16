@@ -119,15 +119,7 @@ class AdvisoryService {
 		// more: the centrally-published feed may still cover it, and for App
 		// Store apps it is the only thing that does.
 		if (!$source instanceof AdvisorySourceInterface) {
-			if ($feedAdvisories === []) {
-				return $this->emptyResult($appId, $installedVersion);
-			}
-
-			$evaluated = $this->evaluate($installedVersion, $feedAdvisories, []);
-			$evaluated['appId'] = $appId;
-			$evaluated['error'] = null;
-
-			return $evaluated;
+			return $this->feedOnly($appId, $installedVersion, $feedAdvisories, null);
 		}
 
 		if ($source instanceof ForgeReleaseSource && !$source->publishesAdvisories($binding)) {
@@ -138,11 +130,8 @@ class AdvisoryService {
 		$advisories = [...$feedAdvisories, ...$advisoryResult['advisories']];
 		$error = $advisoryResult['error'];
 
-		$available = [];
 		$versionResult = $source->listVersions($appId, $binding);
-		foreach ($versionResult['versions'] as $entry) {
-			$available[] = $entry['version'];
-		}
+		$available = array_values(array_map(static fn (mixed $entry): mixed => $entry['version'], $versionResult['versions']));
 
 		$evaluated = $this->evaluate($installedVersion, $advisories, $available);
 		$evaluated['appId'] = $appId;
@@ -624,13 +613,26 @@ class AdvisoryService {
 	 */
 	private function withoutAdvisorySource(string $appId, string $installedVersion, array $feedAdvisories, string $forge): array {
 		$reason = sprintf('No advisory source: %s publishes no repository security advisories.', $forge);
+
+		return $this->feedOnly($appId, $installedVersion, $feedAdvisories, $reason);
+	}
+
+	/**
+	 * Only the central feed's advisories, evaluated with no available versions;
+	 * an empty feed gives the empty result. `$error` is carried on either.
+	 *
+	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>}> $feedAdvisories The feed's advisories for this app.
+	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}
+	 * @spec openspec/specs/security-advisory-correlation/spec.md
+	 */
+	private function feedOnly(string $appId, string $installedVersion, array $feedAdvisories, ?string $error): array {
 		if ($feedAdvisories === []) {
-			return $this->emptyResult($appId, $installedVersion, $reason);
+			return $this->emptyResult($appId, $installedVersion, $error);
 		}
 
 		$evaluated = $this->evaluate($installedVersion, $feedAdvisories, []);
 		$evaluated['appId'] = $appId;
-		$evaluated['error'] = $reason;
+		$evaluated['error'] = $error;
 
 		return $evaluated;
 	}
