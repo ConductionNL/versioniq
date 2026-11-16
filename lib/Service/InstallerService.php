@@ -254,15 +254,21 @@ class InstallerService {
 	 * finalized when its record matches the installed version, else from
 	 * outside Versioniq; null when the app is not installed.
 	 *
-	 * @param array{version: string, recordedAt: string, sourceId: ?string}|null $lkg
+	 * @param array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}|null $lkg
 	 * @return array{kind: 'versioniq'|'outside', sourceId: ?string, version: string}|null
 	 * @spec openspec/specs/external-sources/spec.md#requirement-the-card-names-where-the-installed-version-came-from
 	 */
-	public static function provenance(string|null $installedVersion, array|null $lkg): array|null {
-		if ($installedVersion === null) {
-			return null;
-		}
+	public static function provenance(?string $installedVersion, ?array $lkg): ?array {
+		return $installedVersion === null ? null : self::installedFrom($installedVersion, $lkg);
+	}
 
+	/**
+	 * Where an installed version came from; see {@see self::provenance()}.
+	 *
+	 * @param array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}|null $lkg
+	 * @return array{kind: 'versioniq'|'outside', sourceId: ?string, version: string}
+	 */
+	private static function installedFrom(string $installedVersion, ?array $lkg): array {
 		if ($lkg === null || $lkg['version'] !== $installedVersion) {
 			return ['kind' => 'outside', 'sourceId' => null, 'version' => $installedVersion];
 		}
