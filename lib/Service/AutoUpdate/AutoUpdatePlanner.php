@@ -39,8 +39,10 @@ final class AutoUpdatePlanner {
 	 * Security fixes the patch policy handles at the next window run first
 	 * (autoupdate-security-first D4), then every other member in policy
 	 * order. An app that fails to plan is logged and left out, so one broken
-	 * app never blocks the rest. The per-run and weekly caps and the waiting
-	 * list then decide the run order and what waits (D4, D5).
+	 * app never blocks the rest. Members of an update group then move
+	 * together, in the group's order, or wait together (D3), and the per-run
+	 * and weekly caps and the waiting list decide the run order and what
+	 * waits (D4, D5).
 	 *
 	 * @param array{rows: array<string, mixed>, fresh: bool} $advisories The run's advisory snapshot.
 	 * @param PatchPolicy|null $patchPolicy The patch policy; null reads as none.
@@ -59,7 +61,8 @@ final class AutoUpdatePlanner {
 		}
 
 		$limiter = new AutoUpdateLimiter($this->stores->settingsStore, $this->stores->attemptLedger);
-		$members = self::firstThenLater(array_values(array_filter($planned)));
+		$grouped = AutoUpdateGroups::apply(array_values(array_filter($planned)), $this->stores->groupStore->all());
+		$members = self::firstThenLater($grouped);
 
 		return new AutoUpdatePlan($limiter->apply($members, $now ?? new \DateTimeImmutable()), $run->holds());
 	}

@@ -20,6 +20,8 @@ use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
 use OCA\Versioniq\Service\AutoUpdate\SecurityHoldStore;
+use OCA\Versioniq\Service\AutoUpdate\UpdateGroup;
+use OCA\Versioniq\Service\AutoUpdate\UpdateGroupStore;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
@@ -42,6 +44,7 @@ final class AutoUpdatePlannerTest extends TestCase {
 	private IAppManager&MockObject $apps;
 	private AttemptLedger&MockObject $ledger;
 	private LoggerInterface&MockObject $logger;
+	private UpdateGroupStore&MockObject $groups;
 
 	protected function setUp(): void {
 		$this->policies = $this->createMock(PolicyStore::class);
@@ -50,6 +53,7 @@ final class AutoUpdatePlannerTest extends TestCase {
 		$this->apps = $this->createMock(IAppManager::class);
 		$this->ledger = $this->createMock(AttemptLedger::class);
 		$this->logger = $this->createMock(LoggerInterface::class);
+		$this->groups = $this->createMock(UpdateGroupStore::class);
 	}
 
 	private function planner(?AutoUpdateSettingsStore $settings = null): AutoUpdatePlanner {
@@ -65,6 +69,7 @@ final class AutoUpdatePlannerTest extends TestCase {
 					$this->createMock(PatchPolicyStore::class),
 					$this->createMock(SecurityHoldStore::class),
 				),
+				$this->groups,
 			),
 			new AutoUpdateInstall($this->installer, $this->apps, new CandidateSelector()),
 			$this->logger,
@@ -204,5 +209,142 @@ final class AutoUpdatePlannerTest extends TestCase {
 		$this->assertSame(['alpha', 'beta'], array_map(static fn (AutoUpdateMember $member): string => $member->appId, $plan->installable()));
 		$this->assertSame(AutoUpdateMember::REASON_LIMIT, $plan->members[2]->reason);
 		$this->assertSame('gamma', $plan->members[2]->appId);
+	}
+
+	private static function group(string $name, string ...$apps): UpdateGroup {
+		return new UpdateGroup(strtolower($name), $name, array_values($apps), ['by' => 'admin', 'at' => '2026-11-01T00:00:00+00:00']);
+	}
+
+	/**
+	 * @return list<array{0: string, 1: ?string, 2: ?string}> In run order: app, reason, group.
+	 */
+	private static function runOrder(\OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlan $plan): array {
+		return array_map(static fn (AutoUpdateMember $member): array => [$member->appId, $member->reason, $member->group], $plan->members);
+	}
+
+	public function testAGroupInstallsInItsStoredOrderAndCarriesItsName(): void {
+		$this->policies->method('all')->willReturn([
+			'alpha' => self::policy(Policy::LEVEL_PATCH),
+			'opencatalogi' => self::policy(Policy::LEVEL_PATCH),
+			'openregister' => self::policy(Policy::LEVEL_PATCH),
+		]);
+		$this->pins->method('get')->willReturn(null);
+		$this->withSources(array_fill_keys(['alpha', 'opencatalogi', 'openregister'], ['availableVersions' => [['version' => '1.0.1']], 'hasError' => false]));
+		$this->ledger->method('hasAttempted')->willReturn(false);
+		$this->groups->method('all')->willReturn([self::group('Registers', 'openregister', 'opencatalogi')]);
+
+		$this->assertSame([
+			['alpha', null, null],
+			['openregister', null, 'Registers'],
+			['opencatalogi', null, 'Registers'],
+		], self::runOrder($this->planner()->plan()));
+	}
+
+	public function testAPinnedMemberHoldsTheWholeGroup(): void {
+		$this->policies->method('all')->willReturn([
+			'openregister' => self::policy(Policy::LEVEL_PATCH),
+			'opencatalogi' => self::policy(Policy::LEVEL_PATCH),
+		]);
+		$this->pins->method('get')->willReturnCallback(static fn (string $appId): ?Pin => $appId === 'opencatalogi' ? new Pin('1.0.0', 'alice', '2026-11-01T00:00:00+00:00') : null);
+		$this->withSources(['openregister' => ['availableVersions' => [['version' => '1.0.1']], 'hasError' => false]]);
+		$this->ledger->method('hasAttempted')->willReturn(false);
+		$this->groups->method('all')->willReturn([self::group('Registers', 'openregister', 'opencatalogi')]);
+
+		$plan = $this->planner()->plan();
+
+		$this->assertSame([
+			['openregister', AutoUpdateMember::REASON_PINNED, 'Registers'],
+			['opencatalogi', AutoUpdateMember::REASON_PINNED, 'Registers'],
+		], self::runOrder($plan));
+		$this->assertSame([], $plan->installable());
+	}
+
+	public function testAFailedVersionOfOneMemberHoldsTheGroupAsBlocked(): void {
+		$this->policies->method('all')->willReturn([
+			'openregister' => self::policy(Policy::LEVEL_PATCH),
+			'opencatalogi' => self::policy(Policy::LEVEL_PATCH),
+			'third' => self::policy(Policy::LEVEL_PATCH),
+		]);
+		$this->pins->method('get')->willReturn(null);
+		$this->withSources([
+			'openregister' => ['availableVersions' => [['version' => '1.0.1']], 'hasError' => false],
+			'opencatalogi' => ['availableVersions' => [['version' => '1.0.1']], 'hasError' => false],
+			'third' => ['availableVersions' => [], 'hasError' => false],
+		]);
+		$this->ledger->method('hasAttempted')->willReturnCallback(static fn (string $appId): bool => $appId === 'openregister');
+		$this->groups->method('all')->willReturn([self::group('Registers', 'openregister', 'opencatalogi', 'third')]);
+
+		$this->assertSame([
+			['openregister', AutoUpdateMember::REASON_BLOCKED, 'Registers'],
+			['opencatalogi', AutoUpdateMember::REASON_BLOCKED, 'Registers'],
+			['third', AutoUpdateMember::REASON_BLOCKED, 'Registers'],
+		], self::runOrder($this->planner()->plan()));
+	}
+
+	public function testAMemberWithNoCandidateDoesNotHoldItsGroup(): void {
+		$this->policies->method('all')->willReturn([
+			'openregister' => self::policy(Policy::LEVEL_PATCH),
+			'opencatalogi' => self::policy(Policy::LEVEL_PATCH),
+		]);
+		$this->pins->method('get')->willReturn(null);
+		$this->withSources([
+			'openregister' => ['availableVersions' => [], 'hasError' => false],
+			'opencatalogi' => ['availableVersions' => [['version' => '1.0.1']], 'hasError' => false],
+		]);
+		$this->ledger->method('hasAttempted')->willReturn(false);
+		$this->groups->method('all')->willReturn([self::group('Registers', 'openregister', 'opencatalogi')]);
+
+		$this->assertSame([
+			['openregister', AutoUpdateMember::REASON_NO_CANDIDATE, 'Registers'],
+			['opencatalogi', null, 'Registers'],
+		], self::runOrder($this->planner()->plan()));
+	}
+
+	public function testAGroupOfThreeWaitsWholeForARemainingBudgetOfTwo(): void {
+		$this->policies->method('all')->willReturn([
+			'a1' => self::policy(Policy::LEVEL_PATCH),
+			'a2' => self::policy(Policy::LEVEL_PATCH),
+			'a3' => self::policy(Policy::LEVEL_PATCH),
+			'solo' => self::policy(Policy::LEVEL_PATCH),
+		]);
+		$this->pins->method('get')->willReturn(null);
+		$this->withSources(array_fill_keys(['a1', 'a2', 'a3', 'solo'], ['availableVersions' => [['version' => '1.0.1']], 'hasError' => false]));
+		$this->ledger->method('hasAttempted')->willReturn(false);
+		$this->groups->method('all')->willReturn([self::group('Batch', 'a1', 'a2', 'a3')]);
+		$settings = $this->createMock(AutoUpdateSettingsStore::class);
+		$settings->method('getMaxPerRun')->willReturn(2);
+		$settings->method('getDeferred')->willReturn([]);
+		$settings->expects($this->once())->method('setDeferred')->with(['group:Batch' => '2026-11-15T02:00:00+00:00']);
+
+		$plan = $this->planner($settings)->plan(now: new \DateTimeImmutable('2026-11-15T02:00:00+00:00'));
+
+		$this->assertSame(['solo'], array_map(static fn (AutoUpdateMember $member): string => $member->appId, $plan->installable()));
+		$this->assertSame([
+			['a1', AutoUpdateMember::REASON_LIMIT, 'Batch'],
+			['a2', AutoUpdateMember::REASON_LIMIT, 'Batch'],
+			['a3', AutoUpdateMember::REASON_LIMIT, 'Batch'],
+			['solo', null, null],
+		], self::runOrder($plan));
+	}
+
+	public function testAHeldGroupGoesFirstInTheNextRun(): void {
+		$this->policies->method('all')->willReturn([
+			'a1' => self::policy(Policy::LEVEL_PATCH),
+			'a2' => self::policy(Policy::LEVEL_PATCH),
+			'solo' => self::policy(Policy::LEVEL_PATCH),
+		]);
+		$this->pins->method('get')->willReturn(null);
+		$this->withSources(array_fill_keys(['a1', 'a2', 'solo'], ['availableVersions' => [['version' => '1.0.1']], 'hasError' => false]));
+		$this->ledger->method('hasAttempted')->willReturn(false);
+		$this->groups->method('all')->willReturn([self::group('Zeta', 'a1', 'a2')]);
+		$settings = $this->createMock(AutoUpdateSettingsStore::class);
+		$settings->method('getMaxPerRun')->willReturn(2);
+		$settings->method('getDeferred')->willReturn(['group:Zeta' => '2026-11-14T02:00:00+00:00']);
+		$settings->expects($this->once())->method('setDeferred')->with(['app:solo' => '2026-11-15T02:00:00+00:00']);
+
+		$plan = $this->planner($settings)->plan(now: new \DateTimeImmutable('2026-11-15T02:00:00+00:00'));
+
+		$this->assertSame(['a1', 'a2'], array_map(static fn (AutoUpdateMember $member): string => $member->appId, $plan->installable()));
+		$this->assertSame(AutoUpdateMember::REASON_LIMIT, $plan->members[2]->reason);
 	}
 }

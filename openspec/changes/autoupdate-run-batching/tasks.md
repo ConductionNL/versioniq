@@ -7,8 +7,8 @@
 ## 2. Groups
 
 - [x] 2.1 Add `UpdateGroup` and `UpdateGroupStore` per D2. Verify: `tests/unit/Service/AutoUpdate/UpdateGroupStoreTest.php` round-trips a group and reads malformed JSON as no groups.
-- [ ] 2.2 Apply the group rules of D3 in the planner and the job: wait whole, install in order, stop at the first failure, "not attempted" for the rest, message "Update group {name}". Verify: `AutoUpdateJobTest` covers a pinned member holding the group, a failed second member stopping the third, and the next run holding the group as `blocked`.
-- [ ] 2.3 Add the `auto_update_group` notification in `AutoUpdateNotifier` and render it in `Notifier::prepare()`. Verify: `tests/unit/Notification/NotifierTest.php` renders a three-member outcome list; `AutoUpdateNotifierTest` asserts no per-app notification for group members.
+- [x] 2.2 Apply the group rules of D3 in the planner and the job: wait whole, install in order, stop at the first failure, "not attempted" for the rest, message "Update group {name}". Verify: `AutoUpdateJobTest` covers a pinned member holding the group, a failed second member stopping the third, and the next run holding the group as `blocked`.
+- [x] 2.3 Add the `auto_update_group` notification in `AutoUpdateNotifier` and render it in `Notifier::prepare()`. Verify: `tests/unit/Notification/NotifierTest.php` renders a three-member outcome list; `AutoUpdateNotifierTest` asserts no per-app notification for group members.
 - [ ] 2.4 Add `PUT /api/auto-update/groups` and return groups from `GET /api/policies`. Verify: `tests/unit/Controller/ApiTest.php` asserts 403 for a non-admin, and 400 for a duplicate name, an app in two groups and a group of one.
 
 ## 3. Caps

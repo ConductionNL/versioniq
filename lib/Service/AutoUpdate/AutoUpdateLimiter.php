@@ -22,13 +22,15 @@ namespace OCA\Versioniq\Service\AutoUpdate;
  * `limit` and joins the waiting list; it leaves the list when it installs or
  * no longer has a candidate. Without a cap and with an empty waiting list the
  * plan is returned as it came, so nothing changes until an admin sets a cap.
- * Each unit is one app until update groups are planned (D2); a unit's cost is
- * one.
+ * A unit is one app, or one update group (D2): a group costs the number of
+ * its members that would install, and a group that does not fit what is left
+ * waits whole.
  *
  * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
  */
 final class AutoUpdateLimiter {
 	private const UNIT_PREFIX = 'app:';
+	private const GROUP_PREFIX = 'group:';
 
 	public function __construct(
 		private AutoUpdateSettingsStore $settings,
@@ -52,26 +54,34 @@ final class AutoUpdateLimiter {
 			return $members;
 		}
 
-		$installable = array_values(array_filter($members, static fn (AutoUpdateMember $member): bool => $member->willInstall()));
-		$others = array_values(array_filter($members, static fn (AutoUpdateMember $member): bool => !$member->willInstall()));
-
-		$ordered = [];
-		foreach ($this->runOrder($installable, $deferred) as $member) {
-			$key = self::unitKey($member);
-			if ($budget === null || $budget >= 1) {
-				$budget = ($budget === null) ? null : $budget - 1;
-				unset($deferred[$key]);
-				$ordered[] = $member;
+		$installable = [];
+		$others = [];
+		foreach (self::units($members) as $key => $unit) {
+			if (self::cost($unit) > 0) {
+				$installable[$key] = $unit;
 				continue;
 			}
 
-			$deferred[$key] ??= $now->format(\DateTimeInterface::ATOM);
-			$ordered[] = new AutoUpdateMember($member->appId, $member->installedVersion, $member->candidate, AutoUpdateMember::REASON_LIMIT);
+			array_push($others, ...$unit);
+			if (self::hasNoCandidate($unit)) {
+				unset($deferred[$key]);
+			}
 		}
 
-		foreach ($others as $member) {
-			if ($member->reason === AutoUpdateMember::REASON_NO_CANDIDATE) {
-				unset($deferred[self::unitKey($member)]);
+		$ordered = [];
+		foreach ($this->runOrder($installable, $deferred) as $key => $unit) {
+			$cost = self::cost($unit);
+			if ($budget === null || $budget >= $cost) {
+				$budget = ($budget === null) ? null : $budget - $cost;
+				unset($deferred[$key]);
+				array_push($ordered, ...$unit);
+				continue;
+			}
+
+			// The unit does not fit what is left: it waits whole (D4).
+			$deferred[$key] ??= $now->format(\DateTimeInterface::ATOM);
+			foreach ($unit as $member) {
+				$ordered[] = $member->willInstall() ? $member->withReason(AutoUpdateMember::REASON_LIMIT) : $member;
 			}
 		}
 
@@ -101,17 +111,17 @@ final class AutoUpdateLimiter {
 	}
 
 	/**
-	 * Held units first, oldest first, then the rest by app id.
+	 * Held units first, oldest first, then the rest by app id or group name.
 	 *
-	 * @param list<AutoUpdateMember> $members
+	 * @param array<string, list<AutoUpdateMember>> $units
 	 * @param array<string, string> $deferred
 	 *
-	 * @return list<AutoUpdateMember>
+	 * @return array<string, list<AutoUpdateMember>>
 	 */
-	private function runOrder(array $members, array $deferred): array {
-		usort($members, static function (AutoUpdateMember $a, AutoUpdateMember $b) use ($deferred): int {
-			$heldA = $deferred[self::unitKey($a)] ?? null;
-			$heldB = $deferred[self::unitKey($b)] ?? null;
+	private function runOrder(array $units, array $deferred): array {
+		uksort($units, static function (string $a, string $b) use ($deferred): int {
+			$heldA = $deferred[$a] ?? null;
+			$heldB = $deferred[$b] ?? null;
 			if ($heldA !== null && $heldB !== null && $heldA !== $heldB) {
 				return strcmp($heldA, $heldB);
 			}
@@ -120,16 +130,64 @@ final class AutoUpdateLimiter {
 				return ($heldA === null) ? 1 : -1;
 			}
 
-			return strcmp($a->appId, $b->appId);
+			return strcmp(self::sortName($a), self::sortName($b));
 		});
 
-		return $members;
+		return $units;
+	}
+
+	/**
+	 * The members by unit: one unit per app, one per update group, in the
+	 * order they were planned. A group's members stay together in its order.
+	 *
+	 * @param list<AutoUpdateMember> $members
+	 *
+	 * @return array<string, list<AutoUpdateMember>>
+	 */
+	private static function units(array $members): array {
+		$units = [];
+		foreach ($members as $member) {
+			$units[self::unitKey($member)][] = $member;
+		}
+
+		return $units;
+	}
+
+	/**
+	 * What a unit costs against the caps: the members that would install.
+	 *
+	 * @param list<AutoUpdateMember> $unit
+	 */
+	private static function cost(array $unit): int {
+		return count(array_filter($unit, static fn (AutoUpdateMember $member): bool => $member->willInstall()));
+	}
+
+	/**
+	 * Whether no member of the unit has a candidate, so it leaves the waiting list.
+	 *
+	 * @param list<AutoUpdateMember> $unit
+	 */
+	private static function hasNoCandidate(array $unit): bool {
+		foreach ($unit as $member) {
+			if ($member->reason !== AutoUpdateMember::REASON_NO_CANDIDATE) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * The app id or group name a unit sorts by.
+	 */
+	private static function sortName(string $key): string {
+		return substr($key, (int)strpos($key, ':') + 1);
 	}
 
 	/**
 	 * The waiting-list key of a member's unit.
 	 */
 	private static function unitKey(AutoUpdateMember $member): string {
-		return self::UNIT_PREFIX . $member->appId;
+		return $member->group === null ? self::UNIT_PREFIX . $member->appId : self::GROUP_PREFIX . $member->group;
 	}
 }

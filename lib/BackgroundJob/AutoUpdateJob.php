@@ -12,10 +12,12 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\BackgroundJob;
 
+use OCA\Versioniq\Service\Audit\AuditNote;
 use OCA\Versioniq\Service\Audit\AuditOrigin;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateMember;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlan;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
@@ -150,26 +152,77 @@ class AutoUpdateJob extends TimedJob {
 
 	/**
 	 * Install every member of the plan that will install, one app at a time.
+	 * Members of an update group install in the group's order; at the first
+	 * failure the group stops and the members after it are not attempted, so
+	 * they are not written to the ledger and plan again next run (D3). A
+	 * group's installs are audited as "Update group {name}" and reported in
+	 * one notification per group instead of one per app.
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
 	 */
 	private function installPlanned(AutoUpdatePlan $plan): void {
+		/** @var array<string, list<array{appId: string, version: string, outcome: string}>> $groupOutcomes */
+		$groupOutcomes = [];
+		/** @var array<string, true> $stopped */
+		$stopped = [];
 		foreach ($plan->installable() as $member) {
-			try {
-				$this->attemptInstall(
-					new InstallTarget($member->appId, (string)$member->candidate, null),
-					(string)$member->installedVersion
-				);
-			} catch (\Throwable $error) {
-				// Per-app isolation — see "the job MUST proceed to the next app
-				// after any failure".
-				$this->logger->warning('AutoUpdateJob: failed to process an app', [
-					'appId' => $member->appId,
-					'message' => $error->getMessage(),
-				]);
+			$group = $member->group;
+			if ($group !== null && isset($stopped[$group])) {
+				$groupOutcomes[$group][] = ['appId' => $member->appId, 'version' => (string)$member->candidate, 'outcome' => AutoUpdateNotifier::OUTCOME_NOT_ATTEMPTED];
+				continue;
 			}
+
+			$installed = $group === null
+				? $this->installMember($member)
+				: AuditNote::during('Update group ' . $group, fn (): bool => $this->installMember($member));
+			if ($group === null) {
+				continue;
+			}
+
+			$groupOutcomes[$group][] = [
+				'appId' => $member->appId,
+				'version' => (string)$member->candidate,
+				'outcome' => $installed ? AutoUpdateNotifier::OUTCOME_INSTALLED : AutoUpdateNotifier::OUTCOME_FAILED,
+			];
+			if (!$installed) {
+				$stopped[$group] = true;
+			}
+		}
+
+		foreach ($groupOutcomes as $group => $outcomes) {
+			$this->notifier->notifyGroup($group, $outcomes);
 		}
 	}
 
-	private function attemptInstall(InstallTarget $target, string $installedVersion): void {
+	/**
+	 * Installs one member; whether it installed. An error is logged and
+	 * counts as a failure, and the run moves on.
+	 */
+	private function installMember(AutoUpdateMember $member): bool {
+		try {
+			return $this->attemptInstall(
+				new InstallTarget($member->appId, (string)$member->candidate, null),
+				(string)$member->installedVersion,
+				$member->group === null
+			);
+		} catch (\Throwable $error) {
+			// Per-app isolation — see "the job MUST proceed to the next app
+			// after any failure".
+			$this->logger->warning('AutoUpdateJob: failed to process an app', [
+				'appId' => $member->appId,
+				'message' => $error->getMessage(),
+			]);
+
+			return false;
+		}
+	}
+
+	/**
+	 * Installs the target and records the attempt; whether it installed.
+	 * The per-app notification is sent only when $notify is set: a group
+	 * member is reported in its group's notification.
+	 */
+	private function attemptInstall(InstallTarget $target, string $installedVersion, bool $notify = true): bool {
 		$installResult = $this->install->installerService->installAppVersion(new InstallRequest(
 			$target,
 			new InstallOptions(false, false, false, false),
@@ -185,14 +238,20 @@ class AutoUpdateJob extends TimedJob {
 			$toVersion = is_string($payload['installedVersion'] ?? null) && $payload['installedVersion'] !== ''
 				? $payload['installedVersion']
 				: $target->version;
-			$this->notifier->notifySuccess($target->appId, $installedVersion, $toVersion);
+			if ($notify) {
+				$this->notifier->notifySuccess($target->appId, $installedVersion, $toVersion);
+			}
 
-			return;
+			return true;
 		}
 
 		$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedger::OUTCOME_FAILURE, $at);
 		$category = is_string($payload['category'] ?? null) ? $payload['category'] : 'unknown';
 		$hint = is_string($payload['hint'] ?? null) ? $payload['hint'] : '';
-		$this->notifier->notifyFailure($target->appId, $target->version, $category, $hint);
+		if ($notify) {
+			$this->notifier->notifyFailure($target->appId, $target->version, $category, $hint);
+		}
+
+		return false;
 	}
 }
