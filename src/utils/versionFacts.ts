@@ -37,6 +37,7 @@ export type VersionFactsEntry = {
  * @param from The installed version.
  * @param to The chosen version.
  * @return The breaking versions in the range.
+ * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-a-version-its-publisher-marks-as-breaking-is-flagged
  */
 export function breakingBetween (versions: VersionFactsEntry[], from: string, to: string): string[] {
 	if (!from || !to || from === to) {
@@ -57,6 +58,7 @@ export function breakingBetween (versions: VersionFactsEntry[], from: string, to
  *
  * @param breaking The breaking versions.
  * @return The sentence.
+ * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-a-version-its-publisher-marks-as-breaking-is-flagged
  */
 export function breakingSentence (breaking: string[]): string {
 	if (breaking.length === 0) {
@@ -72,6 +74,7 @@ export function breakingSentence (breaking: string[]): string {
  * @param version The version.
  * @param installed The installed version, '' when none.
  * @return True for a major step up.
+ * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-a-version-its-publisher-marks-as-breaking-is-flagged
  */
 export function isMajorStep (version: string, installed: string): boolean {
 	if (!installed) {
@@ -86,6 +89,7 @@ export function isMajorStep (version: string, installed: string): boolean {
  *
  * @param downloads The count, or null.
  * @return The text.
+ * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
  */
 export function downloadsText (downloads: number | null | undefined): string {
 	if (typeof downloads !== 'number' || !Number.isFinite(downloads) || downloads < 0) {
@@ -100,6 +104,7 @@ export function downloadsText (downloads: number | null | undefined): string {
  *
  * @param outcomes The counts, or null.
  * @return The text.
+ * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
  */
 export function outcomesText (outcomes: VersionOutcomes | null | undefined): string {
 	const succeeded = outcomes?.succeeded ?? 0
