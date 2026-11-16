@@ -643,6 +643,30 @@ final class ApiTest extends TestCase {
 		$this->assertSame('alice', $response->getData()['policy']['setBy']);
 	}
 
+	/**
+	 * @spec openspec/changes/autoupdate-security-first/tasks.md#task-1.1
+	 */
+	public function testSetPolicyStoresTheSecurityLevel(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'level' => 'security',
+				default => $default,
+			}
+		);
+
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->expects($this->once())
+			->method('set')
+			->with('openregister', $this->callback(static fn ($policy): bool => $policy->level === 'security'));
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'alice', $policyStore)->setPolicy('openregister');
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame('security', $response->getData()['policy']['level']);
+	}
+
 	public function testClearPolicyClearsTheStore(): void {
 		$request = $this->createMock(IRequest::class);
 
@@ -842,7 +866,7 @@ final class ApiTest extends TestCase {
 		$request->method('getParam')->willReturnCallback(
 			static fn (string $name, mixed $default = null): mixed => match ($name) {
 				'kind' => 'github-release',
-				'forge' => 'gitlab',
+				'forge' => 'bitbucket',
 				'owner' => 'acme',
 				'repo' => 'widget',
 				default => $default,
@@ -966,7 +990,7 @@ final class ApiTest extends TestCase {
 	public function testAdvisoriesCarriesTheTriageMap(): void {
 		$triage = ['notes|GHSA-1' => ['dismissal' => ['reason' => 'not_used', 'by' => 'alice', 'installedVersion' => '4.1.0']]];
 		$results = $this->createMock(AdvisoryResultStore::class);
-		$results->method('read')->willReturn(['advisories' => ['notes' => ['state' => 'advisory-available']], 'checkedAt' => 1_700_000_000]);
+		$results->method('read')->willReturn(['advisories' => ['notes' => ['state' => 'advisory-available']], 'checkedAt' => 1_700_000_000, 'status' => 'ok', 'errors' => []]);
 		$triageStore = $this->createMock(AdvisoryTriageStore::class);
 		$triageStore->expects($this->once())->method('read')->willReturn($triage);
 		$user = $this->createMock(IUser::class);
@@ -991,10 +1015,12 @@ final class ApiTest extends TestCase {
 		$response = $controller->advisories();
 
 		$this->assertSame(200, $response->getStatus());
-		$this->assertSame([
-			'advisories' => ['notes' => ['state' => 'advisory-available']],
-			'checkedAt' => 1_700_000_000,
-			'triage' => $triage,
-		], $response->getData());
+		$data = $response->getData();
+		$this->assertSame(['notes' => ['state' => 'advisory-available', 'heldByPin' => false]], $data['advisories']);
+		$this->assertSame(1_700_000_000, $data['checkedAt']);
+		$this->assertSame(['advisories', 'checkedAt', 'status', 'errors', 'compliance', 'triage'], array_keys($data));
+		$this->assertSame('ok', $data['status']);
+		$this->assertSame([], $data['errors']);
+		$this->assertSame($triage, $data['triage']);
 	}
 }

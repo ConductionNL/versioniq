@@ -24,8 +24,8 @@ final class ForgeFieldsGoldenTest extends TestCase {
 	 * @return array<string, array{0: array<string, string>, 1: array<string, array<string, mixed>>}>
 	 */
 	public static function configurations(): array {
-		$github = ['id' => 'github', 'apiBaseUrl' => 'https://api.github.com', 'webBaseUrl' => 'https://github.com', 'authScheme' => 'Bearer', 'exposesScopeHeader' => true, 'tokenCreateUrl' => 'https://github.com/settings/tokens'];
-		$codeberg = ['id' => 'codeberg', 'apiBaseUrl' => 'https://codeberg.org/api/v1', 'webBaseUrl' => 'https://codeberg.org', 'authScheme' => 'token', 'exposesScopeHeader' => false, 'tokenCreateUrl' => 'https://codeberg.org/user/settings/applications'];
+		$github = ['id' => 'github', 'apiBaseUrl' => 'https://api.github.com', 'webBaseUrl' => 'https://github.com', 'authScheme' => 'Bearer', 'exposesScopeHeader' => true, 'tokenCreateUrl' => 'https://github.com/settings/tokens', 'dialect' => 'github'];
+		$codeberg = ['id' => 'codeberg', 'apiBaseUrl' => 'https://codeberg.org/api/v1', 'webBaseUrl' => 'https://codeberg.org', 'authScheme' => 'token', 'exposesScopeHeader' => false, 'tokenCreateUrl' => 'https://codeberg.org/user/settings/applications', 'dialect' => 'github'];
 
 		return [
 			'defaults' => [[], ['github' => $github, 'codeberg' => $codeberg]],
@@ -35,11 +35,11 @@ final class ForgeFieldsGoldenTest extends TestCase {
 			],
 			'forgejo host only' => [
 				['forge.forgejo.web_base' => 'https://git.example.test/'],
-				['github' => $github, 'codeberg' => $codeberg, 'forgejo' => ['id' => 'forgejo', 'apiBaseUrl' => 'https://git.example.test/api/v1', 'webBaseUrl' => 'https://git.example.test', 'authScheme' => 'token', 'exposesScopeHeader' => false, 'tokenCreateUrl' => 'https://git.example.test/user/settings/applications']],
+				['github' => $github, 'codeberg' => $codeberg, 'forgejo' => ['id' => 'forgejo', 'apiBaseUrl' => 'https://git.example.test/api/v1', 'webBaseUrl' => 'https://git.example.test', 'authScheme' => 'token', 'exposesScopeHeader' => false, 'tokenCreateUrl' => 'https://git.example.test/user/settings/applications', 'dialect' => 'github']],
 			],
 			'forgejo with its own api' => [
 				['forge.forgejo.web_base' => 'https://git.example.test', 'forge.forgejo.api_base' => 'https://api.git.example.test'],
-				['github' => $github, 'codeberg' => $codeberg, 'forgejo' => ['id' => 'forgejo', 'apiBaseUrl' => 'https://api.git.example.test', 'webBaseUrl' => 'https://git.example.test', 'authScheme' => 'token', 'exposesScopeHeader' => false, 'tokenCreateUrl' => 'https://git.example.test/user/settings/applications']],
+				['github' => $github, 'codeberg' => $codeberg, 'forgejo' => ['id' => 'forgejo', 'apiBaseUrl' => 'https://api.git.example.test', 'webBaseUrl' => 'https://git.example.test', 'authScheme' => 'token', 'exposesScopeHeader' => false, 'tokenCreateUrl' => 'https://git.example.test/user/settings/applications', 'dialect' => 'github']],
 			],
 		];
 	}
