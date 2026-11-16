@@ -10,6 +10,7 @@ import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
 import type {LkgRecord} from './utils/migrationSafety.ts';
 import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
 import type { SweepStatus } from './utils/sweepOutcome.ts'
+import type {BatchCandidate, BatchRow} from './utils/updateBatch.ts';
 
 import { loadState } from '@nextcloud/initial-state'
 import { n, t } from '@nextcloud/l10n'
@@ -40,7 +41,9 @@ import DowngradeConfirmDialog from './dialogs/DowngradeConfirmDialog.vue'
 import EnableAppDialog from './dialogs/EnableAppDialog.vue'
 import PinDialog from './dialogs/PinDialog.vue'
 import PinOverrideDialog from './dialogs/PinOverrideDialog.vue'
+import QuickUpdateDialog from './dialogs/QuickUpdateDialog.vue'
 import ShaMismatchDialog from './dialogs/ShaMismatchDialog.vue'
+import UpdateAllDialog from './dialogs/UpdateAllDialog.vue'
 import { advisoryBadgeText, applyTriage } from './utils/advisories.ts'
 import { advisoryFreshnessLabel as advisoryFreshnessLabelFor } from './utils/advisoryFreshness.ts'
 import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow.ts'
@@ -52,6 +55,7 @@ import { lkgRollbackTargets } from './utils/migrationSafety.ts'
 import { filterByUpdates, isOutsidePolicy, outsidePolicyLabel, updateBadge, updatesFreshnessLabel as updatesFreshnessLabelFor } from './utils/pendingUpdates.ts'
 import { repinApp } from './utils/repin.ts'
 import { isBlockedBySafeMode } from './utils/safeMode.ts'
+import { batchOutcome, quickUpdateTarget, runUpdateBatch, updateAllCandidates } from './utils/updateBatch.ts'
 import { compareVersions, parseVersionCore } from './utils/versionCompare.ts'
 
 type AppOption = {
@@ -2183,6 +2187,169 @@ async function rollbackToLastKnownGood (appId: string, version: string): Promise
 	}
 }
 
+// One-click updates (install-one-click-updates). Every action goes through
+// runInstall() / requestInstallWithRetries(), the same guarded path as the
+// picker: no override flags are sent, so a pinned app answers 409 and the
+// PinOverrideDialog takes over, and the server-side guards stay in place.
+const isQuickUpdateOpen = ref(false)
+const isQuickUpdateLoading = ref(false)
+const quickUpdate = ref<{ appId: string, fromVersion: string, toVersion: string, advisoryId: string | null } | null>(null)
+
+const quickUpdateTargetFor = (appId: string): string | null => quickUpdateTarget(pendingUpdates.value[appId])
+
+/**
+ * The safe version the advisory line offers, when it is newer than the installed one.
+ *
+ * @param app The card's app.
+ * @param app.id The app id.
+ * @param app.installedVersion The installed version, if any.
+ * @spec openspec/changes/install-one-click-updates/specs/security-advisory-correlation/spec.md#requirement-an-admin-updates-to-the-safe-version-straight-from-the-advisory
+ */
+function safeVersionFor (app: { id: string, installedVersion?: string | null }): string | null {
+	const recommended = advisoryRecommendation(app.id)
+	if (!recommended || !app.installedVersion) {
+		return null
+	}
+	return compareVersions(recommended, app.installedVersion) > 0 ? recommended : null
+}
+
+/**
+ * The version an app's open advisory recommends, or null when there is none.
+ *
+ * @param appId The app id.
+ * @spec openspec/changes/install-one-click-updates/specs/security-advisory-correlation/spec.md#requirement-an-admin-updates-to-the-safe-version-straight-from-the-advisory
+ */
+function advisoryRecommendation (appId: string): string | null {
+	const advisory = advisoryFor(appId)
+	if (!advisory || advisory.state === 'none') {
+		return null
+	}
+	return advisory.recommendedVersion ?? null
+}
+
+/**
+ * Opens the one-app confirmation: selects the app, loads its releases for
+ * the release notes in between, and preselects the target version.
+ *
+ * @param appId The app to update.
+ * @param toVersion The version to install.
+ * @param advisoryId The advisory the version resolves, for the safe-version button.
+ * @spec openspec/changes/install-one-click-updates/specs/version-management/spec.md#requirement-an-admin-updates-one-app-or-all-apps-in-one-action
+ */
+async function openQuickUpdate (appId: string, toVersion: string, advisoryId: string | null = null): Promise<void> {
+	if (isVersionWorkRunning()) {
+		return
+	}
+	onSelectApp(appId)
+	quickUpdate.value = { appId, fromVersion: pendingUpdates.value[appId]?.installedVersion ?? '', toVersion, advisoryId }
+	isQuickUpdateLoading.value = true
+	isQuickUpdateOpen.value = true
+	try {
+		await loadQuickUpdateVersions(toVersion)
+	} finally {
+		isQuickUpdateLoading.value = false
+	}
+}
+
+/**
+ * Whether an install or a version check is already running.
+ */
+function isVersionWorkRunning (): boolean {
+	return isInstallingVersion.value || isCheckingVersions.value
+}
+
+/**
+ * Loads the selected app's releases for the one-app confirmation, takes the
+ * installed version they report, and preselects the target version.
+ *
+ * @param toVersion The version to install.
+ * @spec openspec/changes/install-one-click-updates/specs/version-management/spec.md#requirement-an-admin-updates-one-app-or-all-apps-in-one-action
+ */
+async function loadQuickUpdateVersions (toVersion: string): Promise<void> {
+	await checkVersions()
+	const current = quickUpdate.value
+	if (current !== null && installedVersion.value !== '') {
+		quickUpdate.value = { ...current, fromVersion: installedVersion.value }
+	}
+	selectedVersion.value = toVersion
+}
+
+/**
+ * Installs the confirmed version through the normal install path.
+ *
+ * @spec openspec/changes/install-one-click-updates/specs/version-management/spec.md#requirement-an-admin-updates-one-app-or-all-apps-in-one-action
+ */
+async function confirmQuickUpdate (): Promise<void> {
+	const target = quickUpdate.value
+	if (!target) {
+		return
+	}
+	await runInstall({ appId: target.appId, fromVersion: target.fromVersion, toVersion: target.toVersion, allowDowngrade: false })
+	await loadUpdates()
+}
+
+const isUpdateAllOpen = ref(false)
+const isUpdateAllRunning = ref(false)
+const updateAllRows = ref<Record<string, BatchRow>>({})
+let updateAllStopRequested = false
+
+const updateAllList = computed((): BatchCandidate[] => updateAllCandidates(pendingUpdates.value)
+	.map((candidate) => ({ ...candidate, pinnedVersion: pinFor(candidate.appId)?.version })))
+
+/**
+ * Opens the Update all dialog with a fresh list.
+ */
+function openUpdateAll (): void {
+	updateAllRows.value = {}
+	updateAllStopRequested = false
+	isUpdateAllOpen.value = true
+}
+
+/**
+ * Runs the ticked installs one after the other, asking for the password at
+ * most once up front; a failure never stops the run.
+ *
+ * @param selected The ticked apps.
+ * @spec openspec/changes/install-one-click-updates/specs/version-management/spec.md#requirement-an-admin-updates-one-app-or-all-apps-in-one-action
+ */
+async function startUpdateAll (selected: BatchCandidate[]): Promise<void> {
+	if (isUpdateAllRunning.value || isInstallingVersion.value || selected.length === 0) {
+		return
+	}
+	try {
+		await ensurePasswordConfirmation()
+	} catch {
+		return
+	}
+	isUpdateAllRunning.value = true
+	isInstallingVersion.value = true
+	try {
+		await runUpdateBatch(selected, {
+			// Asks again only when the platform's confirmation window has run out,
+			// so a long run waits for the prompt instead of failing.
+			install: async (candidate) => {
+				await ensurePasswordConfirmation()
+				return batchOutcome(await requestInstallWithRetries({ appId: candidate.appId, version: candidate.toVersion }))
+			},
+			onRow: (row) => { updateAllRows.value = { ...updateAllRows.value, [row.appId]: row } },
+			shouldStop: () => updateAllStopRequested,
+		})
+	} finally {
+		isUpdateAllRunning.value = false
+		isInstallingVersion.value = false
+		await loadUpdates()
+		await loadPins()
+		await loadApps()
+	}
+}
+
+/**
+ * Lets the current install finish, then stops the run.
+ */
+function stopUpdateAll (): void {
+	updateAllStopRequested = true
+}
+
 onBeforeUnmount(() => {
 	window.removeEventListener('hashchange', openSectionFromHash)
 })
@@ -2341,6 +2508,24 @@ watch(dryRunEnabled, () => {
 				:targetVersion="pinOverrideTargetVersion"
 				@update:open="isPinOverrideDialogOpen = $event"
 				@resolve="onPinOverrideResolve" />
+			<QuickUpdateDialog
+				:open="isQuickUpdateOpen"
+				:appId="quickUpdate?.appId ?? ''"
+				:fromVersion="quickUpdate?.fromVersion ?? ''"
+				:toVersion="quickUpdate?.toVersion ?? ''"
+				:advisoryId="quickUpdate?.advisoryId ?? null"
+				:entries="changelogRange"
+				:loading="isQuickUpdateLoading"
+				@update:open="isQuickUpdateOpen = $event"
+				@confirm="confirmQuickUpdate" />
+			<UpdateAllDialog
+				:open="isUpdateAllOpen"
+				:candidates="updateAllList"
+				:rows="updateAllRows"
+				:running="isUpdateAllRunning"
+				@update:open="isUpdateAllOpen = $event"
+				@start="startUpdateAll"
+				@stop="stopUpdateAll" />
 			<EnableAppDialog
 				:open="isEnableDialogOpen"
 				:appId="enableDialogAppId"
@@ -2384,6 +2569,16 @@ watch(dryRunEnabled, () => {
 					:class="$style.advisoryFreshness"
 					data-testid="updates-freshness">
 					{{ updatesFreshnessLabel }}
+				</p>
+				<p v-show="currentTab === 'apps' && updateAllList.length > 0">
+					<button
+						type="button"
+						:class="$style.appCardButton"
+						:disabled="isCheckingVersions || isInstallingVersion"
+						data-testid="update-all-button"
+						@click="openUpdateAll">
+						{{ t('versioniq', 'Update all ({count})', { count: updateAllList.length }) }}
+					</button>
 				</p>
 				<div v-show="currentTab === 'apps'"
 					id="apps-panel"
@@ -2653,6 +2848,15 @@ watch(dryRunEnabled, () => {
 																· {{ t('versioniq', 'safe version: {version}', { version: advisoryFor(app.id)?.recommendedVersion ?? '' }) }}
 															</template>
 														</p>
+														<button
+															v-if="safeVersionFor(app)"
+															type="button"
+															:class="$style.appCardButton"
+															:disabled="isCheckingVersions || isInstallingVersion"
+															data-testid="safe-version-button"
+															@click.stop="openQuickUpdate(app.id, safeVersionFor(app) ?? '', advisoryFor(app.id)?.advisories?.[0]?.id ?? null)">
+															{{ t('versioniq', 'Update to safe version {version}', { version: safeVersionFor(app) ?? '' }) }}
+														</button>
 													</div>
 													<div :class="$style.appCardMedia">
 														<img
@@ -2690,6 +2894,15 @@ watch(dryRunEnabled, () => {
 												:disabled="isCheckingVersions || isInstallingVersion"
 												@click="onPickApp(app.id)">
 												{{ selectedApp === app.id && isCheckingVersions ? t('versioniq', 'Loading…') : t('versioniq', 'Choose app') }}
+											</button>
+											<button
+												v-if="!app.isCore && quickUpdateTargetFor(app.id)"
+												type="button"
+												:class="$style.appCardButton"
+												:disabled="isCheckingVersions || isInstallingVersion"
+												data-testid="quick-update-button"
+												@click="openQuickUpdate(app.id, quickUpdateTargetFor(app.id) ?? '')">
+												{{ t('versioniq', 'Update to {version}', { version: quickUpdateTargetFor(app.id) ?? '' }) }}
 											</button>
 											<button
 												v-if="app.state === 'disabled'"
