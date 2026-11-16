@@ -72,23 +72,21 @@ final class ComplianceStatus {
 			return array_replace($result, ['reason' => self::REASON_STALE]);
 		}
 
-		$bySeverity = [];
-		$affectedIds = [];
-		$unreached = 0;
-		/** @var mixed $row */
-		foreach ($snapshot as $key => $row) {
-			if (!is_array($row)) {
-				continue;
-			}
-			if (($row['state'] ?? null) === AdvisoryService::STATE_VULNERABLE) {
-				$affectedIds[] = (string)($row['appId'] ?? $key);
-				$severity = self::highestSeverity($row['advisories'] ?? []);
-				$bySeverity[$severity] = ($bySeverity[$severity] ?? 0) + 1;
-			} elseif (is_string($row['error'] ?? null) && $row['error'] !== '') {
-				$unreached++;
-			}
-		}
+		return self::fromRows($result, $snapshot);
+	}
 
+	/**
+	 * The status of a fresh snapshot: not compliant when any row is affected,
+	 * unknown when nothing is but some rows carry an error, else compliant.
+	 *
+	 * @param array{status: string, reason: ?string, affected: int, bySeverity: array<string, int>, affectedIds: list<string>, unreached: int, checkedAt: ?int} $result The empty status
+	 * @param array<array-key, mixed> $snapshot The stored rows, keyed by app id (or the server key)
+	 * @return array{status: string, reason: ?string, affected: int, bySeverity: array<string, int>, affectedIds: list<string>, unreached: int, checkedAt: ?int}
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation/spec.md#requirement-the-instance-has-one-patch-compliance-status
+	 */
+	private static function fromRows(array $result, array $snapshot): array {
+		[$affectedIds, $bySeverity, $unreached] = self::tally($snapshot);
 		$result['unreached'] = $unreached;
 		if ($affectedIds !== []) {
 			return array_replace($result, [
@@ -106,18 +104,62 @@ final class ComplianceStatus {
 	}
 
 	/**
+	 * The affected target ids, the number of affected targets per highest
+	 * severity, and the number of unaffected rows that carry an error.
+	 *
+	 * @param array<array-key, mixed> $snapshot The stored rows, keyed by app id (or the server key)
+	 * @return array{0: list<string>, 1: array<string, int>, 2: int}
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation/spec.md#requirement-the-instance-has-one-patch-compliance-status
+	 */
+	private static function tally(array $snapshot): array {
+		$bySeverity = [];
+		$affectedIds = [];
+		$unreached = 0;
+		/** @var mixed $row */
+		foreach ($snapshot as $key => $row) {
+			if (!is_array($row)) {
+				continue;
+			}
+			if (($row['state'] ?? null) === AdvisoryService::STATE_VULNERABLE) {
+				$affectedIds[] = (string)($row['appId'] ?? $key);
+				$severity = self::highestSeverity($row['advisories'] ?? []);
+				$bySeverity[$severity] = ($bySeverity[$severity] ?? 0) + 1;
+			} elseif (is_string($row['error'] ?? null) && $row['error'] !== '') {
+				$unreached++;
+			}
+		}
+
+		return [$affectedIds, $bySeverity, $unreached];
+	}
+
+	/**
+	 * The normalised severity of each of a row's advisories.
+	 *
+	 * @return list<string>
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation/spec.md#requirement-the-instance-has-one-patch-compliance-status
+	 */
+	private static function severities(mixed $advisories): array {
+		if (!is_array($advisories)) {
+			return [];
+		}
+		$found = [];
+		/** @var mixed $advisory */
+		foreach ($advisories as $advisory) {
+			$found[] = AdvisorySeverity::normalize(is_array($advisory) ? ($advisory['severity'] ?? null) : null);
+		}
+
+		return $found;
+	}
+
+	/**
 	 * The worst severity among a row's affecting advisories.
 	 *
 	 * @spec openspec/changes/advisories-per-app-detail/tasks.md#3.1
 	 */
 	private static function highestSeverity(mixed $advisories): string {
-		$found = [];
-		if (is_array($advisories)) {
-			/** @var mixed $advisory */
-			foreach ($advisories as $advisory) {
-				$found[] = AdvisorySeverity::normalize(is_array($advisory) ? ($advisory['severity'] ?? null) : null);
-			}
-		}
+		$found = self::severities($advisories);
 		foreach (self::SEVERITY_ORDER as $severity) {
 			if (in_array($severity, $found, true)) {
 				return $severity;

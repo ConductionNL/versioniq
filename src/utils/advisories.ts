@@ -217,24 +217,31 @@ export function fixSentence (row: AdvisoryCorrelation, isServer = false): string
 	if (row.state !== 'pinned-to-vulnerable') {
 		return ''
 	}
-	const version = row.recommendedVersion ?? ''
 	if (row.heldByPin === true) {
-		return t('versioniq', 'A pin holds this app below the fix {version}.', { version })
+		return t('versioniq', 'A pin holds this app below the fix {version}.', { version: row.recommendedVersion ?? '' })
 	}
-	switch (row.fixStatus) {
-	case 'installable':
-		return isServer
+	return fixStatusSentence(row, isServer)
+}
+
+/**
+ * The sentence for one fix status of an affected, unpinned target.
+ *
+ * @param row The target's advisory correlation.
+ * @param isServer Whether the row is the Nextcloud server's own.
+ * @spec openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation/spec.md#requirement-an-affected-version-without-an-installable-fix-says-why
+ */
+function fixStatusSentence (row: AdvisoryCorrelation, isServer: boolean): string {
+	const version = row.recommendedVersion ?? ''
+	const sentences: Record<string, () => string> = {
+		installable: () => isServer
 			? t('versioniq', 'Upgrade Nextcloud to {version} or later.', { version })
-			: t('versioniq', 'Install {version} to fix it.', { version })
-	case 'no_fix_published':
-		return t('versioniq', 'No fixed version is published yet.')
-	case 'not_in_source':
-		return t('versioniq', 'The fixed version {version} is not offered by the source this app installs from.', { version })
-	case 'needs_newer_server':
-		return t('versioniq', 'The fix needs a newer Nextcloud than this server runs.')
-	default:
-		return ''
+			: t('versioniq', 'Install {version} to fix it.', { version }),
+		no_fix_published: () => t('versioniq', 'No fixed version is published yet.'),
+		not_in_source: () => t('versioniq', 'The fixed version {version} is not offered by the source this app installs from.', { version }),
+		needs_newer_server: () => t('versioniq', 'The fix needs a newer Nextcloud than this server runs.'),
 	}
+	const sentence = sentences[row.fixStatus ?? '']
+	return sentence ? sentence() : ''
 }
 
 /**
@@ -251,17 +258,37 @@ export function complianceSentence (compliance: Compliance | null): string {
 		return t('versioniq', 'Compliant')
 	}
 	if (compliance.status === 'not_compliant') {
-		const counts = Object.entries(Array.isArray(compliance.bySeverity) ? {} : compliance.bySeverity)
-			.map(([severity, count]) => t('versioniq', '{count} {severity}', { count: String(count), severity: severityLabel(severity).toLowerCase() }))
-			.join(', ')
-		return n(
-			'versioniq',
-			'Not compliant: %n app runs an affected version ({counts})',
-			'Not compliant: %n apps run an affected version ({counts})',
-			compliance.affected,
-			{ counts },
-		)
+		return notCompliantSentence(compliance)
 	}
+	return unknownComplianceSentence(compliance)
+}
+
+/**
+ * The compliance line of an instance running affected versions, with the counts per severity.
+ *
+ * @param compliance The not-compliant status.
+ * @spec openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation/spec.md#requirement-the-instance-has-one-patch-compliance-status
+ */
+function notCompliantSentence (compliance: Compliance): string {
+	const counts = Object.entries(Array.isArray(compliance.bySeverity) ? {} : compliance.bySeverity)
+		.map(([severity, count]) => t('versioniq', '{count} {severity}', { count: String(count), severity: severityLabel(severity).toLowerCase() }))
+		.join(', ')
+	return n(
+		'versioniq',
+		'Not compliant: %n app runs an affected version ({counts})',
+		'Not compliant: %n apps run an affected version ({counts})',
+		compliance.affected,
+		{ counts },
+	)
+}
+
+/**
+ * The compliance line when the status is unknown, by its reason.
+ *
+ * @param compliance The unknown status.
+ * @spec openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation/spec.md#requirement-the-instance-has-one-patch-compliance-status
+ */
+function unknownComplianceSentence (compliance: Compliance): string {
 	if (compliance.reason === 'never_checked') {
 		return t('versioniq', 'Compliance unknown: no advisory check has completed yet')
 	}

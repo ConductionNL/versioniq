@@ -135,11 +135,8 @@ class AdvisoryService {
 		$advisories = [...$feedAdvisories, ...$advisoryResult['advisories']];
 		$error = $advisoryResult['error'];
 
-		$available = [];
 		$versionResult = $source->listVersions($appId, $binding);
-		foreach ($versionResult['versions'] as $entry) {
-			$available[] = $entry['version'];
-		}
+		$available = array_column($versionResult['versions'], 'version');
 
 		$evaluated = $this->evaluate($installedVersion, $advisories, $available);
 		$evaluated['appId'] = $appId;

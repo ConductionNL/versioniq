@@ -52,20 +52,7 @@ final class AdvisoryReferences {
 		/** @var mixed $first */
 		$first = $record['cve_id'] ?? $record['cveId'] ?? null;
 		$candidates = is_string($first) ? [$first] : [];
-		/** @var mixed $identifiers */
-		$identifiers = $record['identifiers'] ?? null;
-		if (is_array($identifiers)) {
-			/** @var mixed $identifier */
-			foreach ($identifiers as $identifier) {
-				/** @var mixed $type */
-				$type = is_array($identifier) ? ($identifier['type'] ?? null) : null;
-				/** @var mixed $value */
-				$value = is_array($identifier) ? ($identifier['value'] ?? null) : null;
-				if (is_string($type) && strtoupper($type) === 'CVE' && is_string($value)) {
-					$candidates[] = $value;
-				}
-			}
-		}
+		$candidates = array_merge($candidates, self::cveIdentifiers($record['identifiers'] ?? null));
 
 		$ids = [];
 		foreach ($candidates as $candidate) {
@@ -76,6 +63,32 @@ final class AdvisoryReferences {
 		}
 
 		return $ids;
+	}
+
+	/**
+	 * The values of the CVE entries in an advisory's `identifiers` list.
+	 *
+	 * @return list<string>
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/tasks.md#1.1
+	 */
+	private static function cveIdentifiers(mixed $identifiers): array {
+		if (!is_array($identifiers)) {
+			return [];
+		}
+		$values = [];
+		/** @var mixed $identifier */
+		foreach ($identifiers as $identifier) {
+			/** @var mixed $type */
+			$type = is_array($identifier) ? ($identifier['type'] ?? null) : null;
+			/** @var mixed $value */
+			$value = is_array($identifier) ? ($identifier['value'] ?? null) : null;
+			if (is_string($type) && strtoupper($type) === 'CVE' && is_string($value)) {
+				$values[] = $value;
+			}
+		}
+
+		return $values;
 	}
 
 	/**

@@ -77,22 +77,26 @@ function rowStatus (candidate: BatchCandidate): string {
 			? t('versioniq', 'Pinned to {version}', { version: candidate.pinnedVersion ?? candidate.fromVersion })
 			: ''
 	}
-	switch (row.state) {
-	case 'running':
-		return t('versioniq', 'Updating…')
-	case 'updated':
-		return t('versioniq', 'Updated to {version}', { version: row.toVersion })
-	case 'upToDate':
-		return t('versioniq', 'Already up to date')
-	case 'failed':
-		return row.category
+	return rowStateText(row)
+}
+
+/**
+ * The text of a row the batch has reached, by its state.
+ *
+ * @param row The row's progress.
+ */
+function rowStateText (row: BatchRow): string {
+	const texts: Record<string, () => string> = {
+		running: () => t('versioniq', 'Updating…'),
+		updated: () => t('versioniq', 'Updated to {version}', { version: row.toVersion }),
+		upToDate: () => t('versioniq', 'Already up to date'),
+		failed: () => row.category
 			? t('versioniq', 'Failed ({category}): {message}', { category: row.category, message: row.message ?? '' })
-			: t('versioniq', 'Failed: {message}', { message: row.message ?? '' })
-	case 'skipped':
-		return t('versioniq', 'Skipped')
-	default:
-		return t('versioniq', 'Waiting')
+			: t('versioniq', 'Failed: {message}', { message: row.message ?? '' }),
+		skipped: () => t('versioniq', 'Skipped'),
 	}
+	const text = texts[row.state]
+	return text ? text() : t('versioniq', 'Waiting')
 }
 
 const buttons = computed(() => [

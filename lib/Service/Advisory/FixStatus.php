@@ -55,6 +55,18 @@ final class FixStatus {
 			return self::INSTALLABLE;
 		}
 
+		return self::forListedFix($versions, $fix);
+	}
+
+	/**
+	 * The status of an app's published fix against the versions its source lists.
+	 *
+	 * @param list<array{version: string, changelog?: ?string, serverCompatible?: ?bool, releasedAt?: ?string}> $versions The versions the bound source listed
+	 * @param string $fix The fixed version
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation/spec.md#requirement-an-affected-version-without-an-installable-fix-says-why
+	 */
+	private static function forListedFix(array $versions, string $fix): string {
 		if (!self::isListed($versions, $fix)) {
 			return self::NOT_IN_SOURCE;
 		}
@@ -90,17 +102,29 @@ final class FixStatus {
 				$held[$key] = $row;
 				continue;
 			}
-			/** @var mixed $fix */
-			$fix = $row['recommendedVersion'] ?? null;
-			$pin = $pins[$key] ?? null;
-			$row['heldByPin'] = $pin !== null
-				&& ($row['fixStatus'] ?? null) === self::INSTALLABLE
-				&& is_string($fix)
-				&& version_compare($pin->version, $fix, '<');
+			$row['heldByPin'] = self::isHeldByPin($row, $pins[$key] ?? null);
 			$held[$key] = $row;
 		}
 
 		return $held;
+	}
+
+	/**
+	 * Whether a pin holds an app with an installable fix below that fix.
+	 *
+	 * @param array<array-key, mixed> $row The stored row
+	 * @param ?Pin $pin The app's pin, if any
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation/spec.md#requirement-an-affected-version-without-an-installable-fix-says-why
+	 */
+	private static function isHeldByPin(array $row, ?Pin $pin): bool {
+		/** @var mixed $fix */
+		$fix = $row['recommendedVersion'] ?? null;
+
+		return $pin !== null
+			&& ($row['fixStatus'] ?? null) === self::INSTALLABLE
+			&& is_string($fix)
+			&& version_compare($pin->version, $fix, '<');
 	}
 
 	/**

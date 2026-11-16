@@ -75,11 +75,7 @@ class ListAdvisories extends Command {
 			$this->time->getTime(),
 		);
 
-		/** @var mixed $app */
-		$app = $input->getOption('app');
-		if (is_string($app) && $app !== '') {
-			$rows = array_key_exists($app, $rows) ? [$app => $rows[$app]] : [];
-		}
+		$rows = self::onlyApp($rows, $input->getOption('app'));
 
 		if ((bool)$input->getOption('json')) {
 			$output->writeln(json_encode([
@@ -96,6 +92,22 @@ class ListAdvisories extends Command {
 	}
 
 	/**
+	 * The rows of the one app the --app option names, or all rows without it.
+	 *
+	 * @param array<array-key, mixed> $rows
+	 * @return array<array-key, mixed>
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/tasks.md#5.1
+	 */
+	private static function onlyApp(array $rows, mixed $app): array {
+		if (!is_string($app) || $app === '') {
+			return $rows;
+		}
+
+		return array_key_exists($app, $rows) ? [$app => $rows[$app]] : [];
+	}
+
+	/**
 	 * The status in one line, as the Apps and Advisories tabs say it.
 	 *
 	 * @param array{status: string, reason: ?string, affected: int, bySeverity: array<string, int>, affectedIds?: list<string>, unreached: int, checkedAt?: ?int} $compliance
@@ -107,13 +119,7 @@ class ListAdvisories extends Command {
 			return 'Compliant: no installed version is affected by a known advisory.';
 		}
 		if ($compliance['status'] === ComplianceStatus::NOT_COMPLIANT) {
-			$counts = [];
-			foreach ($compliance['bySeverity'] as $severity => $count) {
-				$counts[] = $count . ' ' . $severity;
-			}
-			$n = $compliance['affected'];
-
-			return sprintf('Not compliant: %d %s an affected version (%s).', $n, $n === 1 ? 'app runs' : 'apps run', implode(', ', $counts));
+			return self::notCompliantLine($compliance['affected'], $compliance['bySeverity']);
 		}
 
 		return match ($compliance['reason']) {
@@ -158,46 +164,89 @@ class ListAdvisories extends Command {
 	 */
 	private function tableRows(array $rows): array {
 		$lines = [];
+		/** @var mixed $row */
 		foreach ($rows as $target => $row) {
-			if (!is_array($row)) {
-				continue;
-			}
-			/** @var mixed $history */
-			$history = $row['history'] ?? null;
-			$history = is_array($history) ? $history : [];
-			$shown = 0;
-			/** @var mixed $advisory */
-			foreach ($history as $advisory) {
-				if (!is_array($advisory)) {
-					continue;
-				}
-				/** @var mixed $cves */
-				$cves = $advisory['cveIds'] ?? null;
-				/** @var mixed $date */
-				$date = $advisory['publishedAt'] ?? null;
-				$affects = ($advisory['affectsInstalled'] ?? false) === true;
-				if (!$affects && $shown >= self::RECENT) {
-					continue;
-				}
-				$shown++;
-				$lines[] = [
-					(string)$target,
-					(string)($row['installedVersion'] ?? ''),
-					(string)($advisory['id'] ?? ''),
-					is_array($cves) && $cves !== [] ? implode(', ', array_map(strval(...), array_filter($cves, is_string(...)))) : 'no CVE id',
-					is_string($date) ? substr($date, 0, 10) : 'date unknown',
-					(string)($advisory['severity'] ?? ''),
-					$affects ? 'affected' . self::fixNote($row) : 'fixed',
-				];
-			}
-			/** @var mixed $error */
-			$error = $row['error'] ?? null;
-			if ($history === [] && is_string($error)) {
-				$lines[] = [(string)$target, (string)($row['installedVersion'] ?? ''), '', '', '', '', 'not checked: ' . $error];
+			if (is_array($row)) {
+				$lines = array_merge($lines, $this->targetLines((string)$target, $row));
 			}
 		}
 
 		return $lines;
+	}
+
+	/**
+	 * The table lines of one target: its affecting advisories and the most
+	 * recent others, or a "not checked" line when it has no history but an error.
+	 *
+	 * @param array<array-key, mixed> $row
+	 * @return list<list<string>>
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/tasks.md#5.1
+	 */
+	private function targetLines(string $target, array $row): array {
+		/** @var mixed $history */
+		$history = $row['history'] ?? null;
+		$history = is_array($history) ? $history : [];
+		$head = [$target, (string)($row['installedVersion'] ?? ''), self::fixNote($row)];
+		$lines = array_map(fn (array $advisory): array => $this->advisoryLine($head, $advisory), self::shownAdvisories($history));
+		/** @var mixed $error */
+		$error = $row['error'] ?? null;
+		if ($history === [] && is_string($error)) {
+			$lines[] = [$target, (string)($row['installedVersion'] ?? ''), '', '', '', '', 'not checked: ' . $error];
+		}
+
+		return $lines;
+	}
+
+	/**
+	 * The advisories of a history the table shows: every affecting one, and
+	 * others while fewer than RECENT advisories are shown.
+	 *
+	 * @param array<array-key, mixed> $history
+	 * @return list<array<array-key, mixed>>
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/tasks.md#5.1
+	 */
+	private static function shownAdvisories(array $history): array {
+		$shown = [];
+		/** @var mixed $advisory */
+		foreach ($history as $advisory) {
+			if (!is_array($advisory)) {
+				continue;
+			}
+			if (($advisory['affectsInstalled'] ?? false) === true || count($shown) < self::RECENT) {
+				$shown[] = $advisory;
+			}
+		}
+
+		return $shown;
+	}
+
+	/**
+	 * One advisory of a target as a table line.
+	 *
+	 * @param array{0: string, 1: string, 2: string} $head The target, its installed version and its fix note
+	 * @param array<array-key, mixed> $advisory
+	 * @return list<string>
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/tasks.md#5.1
+	 */
+	private function advisoryLine(array $head, array $advisory): array {
+		/** @var mixed $cves */
+		$cves = $advisory['cveIds'] ?? null;
+		/** @var mixed $date */
+		$date = $advisory['publishedAt'] ?? null;
+		$affects = ($advisory['affectsInstalled'] ?? false) === true;
+
+		return [
+			$head[0],
+			$head[1],
+			(string)($advisory['id'] ?? ''),
+			is_array($cves) && $cves !== [] ? implode(', ', array_map(strval(...), array_filter($cves, is_string(...)))) : 'no CVE id',
+			is_string($date) ? substr($date, 0, 10) : 'date unknown',
+			(string)($advisory['severity'] ?? ''),
+			$affects ? 'affected' . $head[2] : 'fixed',
+		];
 	}
 
 	/**
@@ -219,5 +268,21 @@ class ListAdvisories extends Command {
 			FixStatus::NEEDS_NEWER_SERVER => ' - the fix needs a newer Nextcloud',
 			default => '',
 		};
+	}
+
+	/**
+	 * The status line of a non-compliant instance, with the counts per severity.
+	 *
+	 * @param array<string, int> $bySeverity
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/tasks.md#5.1
+	 */
+	private static function notCompliantLine(int $affected, array $bySeverity): string {
+		$counts = [];
+		foreach ($bySeverity as $severity => $count) {
+			$counts[] = $count . ' ' . $severity;
+		}
+
+		return sprintf('Not compliant: %d %s an affected version (%s).', $affected, $affected === 1 ? 'app runs' : 'apps run', implode(', ', $counts));
 	}
 }
