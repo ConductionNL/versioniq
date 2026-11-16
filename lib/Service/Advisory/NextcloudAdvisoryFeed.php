@@ -57,6 +57,11 @@ class NextcloudAdvisoryFeed {
 	 */
 	private const MAX_PAGES = 20;
 
+	/** Where advisories are read from: `remote` (the feed address, the default) or `local` (the imported copy). */
+	public const CONFIG_FEED_SOURCE = 'advisory.feed_source';
+	public const SOURCE_REMOTE = 'remote';
+	public const SOURCE_LOCAL = 'local';
+
 	private const PER_PAGE = 100;
 	private const FETCH_TIMEOUT_SECONDS = 30;
 
@@ -70,6 +75,9 @@ class NextcloudAdvisoryFeed {
 		private IAppConfig $config,
 		private AdvisoryPackageMap $packageMap,
 		private LoggerInterface $logger,
+		// The imported copy read instead of the feed address when the feed
+		// source is `local` (sources-trust-audit-and-offline-feed).
+		private ?LocalFeedCopy $localCopy = null,
 	) {
 	}
 
@@ -90,6 +98,15 @@ class NextcloudAdvisoryFeed {
 	 * @return array{advisories: array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>>, error: ?string}
 	 */
 	public function fetchAll(): array {
+		return $this->usesLocalCopy() ? $this->fetchLocal() : $this->fetchRemote();
+	}
+
+	/**
+	 * Every advisory of the feed address, page by page; see {@see self::fetchAll()}.
+	 *
+	 * @return array{advisories: array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}>>, error: ?string}
+	 */
+	private function fetchRemote(): array {
 		$client = $this->http->clientService->newClient();
 		$url = $this->feedUrl() . '?per_page=' . self::PER_PAGE;
 		$collected = new FeedCollection();
@@ -329,6 +346,36 @@ class NextcloudAdvisoryFeed {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Whether advisories are read from the imported copy rather than the feed address.
+	 *
+	 * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/security-advisory-correlation/spec.md
+	 */
+	public function usesLocalCopy(): bool {
+		return $this->config->getValueString(Application::APP_ID, self::CONFIG_FEED_SOURCE, self::SOURCE_REMOTE) === self::SOURCE_LOCAL;
+	}
+
+	/**
+	 * Every advisory of the imported copy, grouped like the feed's, with no
+	 * network request. No copy is an error, not "no advisories".
+	 *
+	 * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/security-advisory-correlation/spec.md
+	 * @return array{advisories: array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}>>, error: ?string}
+	 */
+	private function fetchLocal(): array {
+		$records = $this->localCopy?->records();
+		if ($records === null) {
+			$this->logger->warning('NextcloudAdvisoryFeed: the feed source is the local copy, but no readable copy was imported');
+
+			return ['advisories' => [], 'error' => 'The feed source is the local copy, but no copy of the advisory feed has been imported.'];
+		}
+
+		$collected = new FeedCollection();
+		$this->collect($collected, $records);
+
+		return ['advisories' => $collected->byTarget, 'error' => null];
 	}
 
 	private function feedUrl(): string {
