@@ -131,12 +131,20 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 			return null;
 		}
 
+		return self::releaseWithVersion($payload, $version);
+	}
+
+	/**
+	 * The payload's release carrying exactly this version, with the app's
+	 * certificate and the source kind added, or null when none carries it.
+	 *
+	 * @param array<array-key, mixed> $payload An app payload whose `releases` is an array.
+	 * @return array<string, mixed>|null
+	 */
+	private static function releaseWithVersion(array $payload, string $version): ?array {
 		/** @var mixed $release */
 		foreach ($payload['releases'] as $release) {
-			if (!is_array($release)) {
-				continue;
-			}
-			if (($release['version'] ?? null) === $version) {
+			if (is_array($release) && ($release['version'] ?? null) === $version) {
 				/** @var array<string, mixed> $resolved */
 				$resolved = array_merge(
 					$release,
@@ -264,18 +272,34 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 	 * @return array<array-key, mixed>|null
 	 */
 	private function readCachedPayload(string $appId, bool $ignoreTtl): ?array {
-		if (!$ignoreTtl) {
-			$cachedAt = (int)$this->appConfig->getValueString(
-				Application::APP_ID,
-				self::PAYLOAD_CACHE_TS_PREFIX . $appId,
-				'0',
-				lazy: true,
-			);
-			if ($cachedAt <= 0 || (time() - $cachedAt) >= self::PAYLOAD_CACHE_TTL_SECONDS) {
-				return null;
-			}
+		if (!$ignoreTtl && !$this->isCachedPayloadFresh($appId)) {
+			return null;
 		}
 
+		return $this->decodeCachedPayload($appId);
+	}
+
+	/**
+	 * Whether the app's cached payload was stored within the cache TTL.
+	 */
+	private function isCachedPayloadFresh(string $appId): bool {
+		$cachedAt = (int)$this->appConfig->getValueString(
+			Application::APP_ID,
+			self::PAYLOAD_CACHE_TS_PREFIX . $appId,
+			'0',
+			lazy: true,
+		);
+
+		return $cachedAt > 0 && (time() - $cachedAt) < self::PAYLOAD_CACHE_TTL_SECONDS;
+	}
+
+	/**
+	 * The app's cached payload regardless of its age, or null when there is
+	 * none or the stored JSON is malformed.
+	 *
+	 * @return array<array-key, mixed>|null
+	 */
+	private function decodeCachedPayload(string $appId): ?array {
 		$raw = $this->appConfig->getValueString(Application::APP_ID, self::PAYLOAD_CACHE_PREFIX . $appId, '', lazy: true);
 		if ($raw === '') {
 			return null;
@@ -732,25 +756,38 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 		$serverParts = explode('.', $serverVersion);
 		$satisfied = true;
 		foreach (preg_split('/\s+/', $spec) ?: [] as $constraint) {
-			if (preg_match('/^(>=|<=|>|<|==|=)?(\d+(?:\.\d+)*)$/', $constraint, $match) !== 1) {
+			$holds = self::constraintHolds($serverParts, $constraint);
+			if ($holds === null) {
 				return null;
 			}
-			$bound = $match[2];
-			$precision = count(explode('.', $bound));
-			$server = implode('.', array_pad(array_slice($serverParts, 0, $precision), $precision, '0'));
-			$holds = match ($match[1]) {
-				'>=' => version_compare($server, $bound, '>='),
-				'<=' => version_compare($server, $bound, '<='),
-				'>' => version_compare($server, $bound, '>'),
-				'<' => version_compare($server, $bound, '<'),
-				default => version_compare($server, $bound, '=='),
-			};
-			if (!$holds) {
-				$satisfied = false;
-			}
+			$satisfied = $satisfied && $holds;
 		}
 
 		return $satisfied;
+	}
+
+	/**
+	 * Whether the server version satisfies one constraint of a platform spec,
+	 * compared at the bound's own precision; null when the constraint cannot
+	 * be read.
+	 *
+	 * @param list<string> $serverParts The server version split on dots.
+	 */
+	private static function constraintHolds(array $serverParts, string $constraint): ?bool {
+		if (preg_match('/^(>=|<=|>|<|==|=)?(\d+(?:\.\d+)*)$/', $constraint, $match) !== 1) {
+			return null;
+		}
+		$bound = $match[2];
+		$precision = count(explode('.', $bound));
+		$server = implode('.', array_pad(array_slice($serverParts, 0, $precision), $precision, '0'));
+
+		return match ($match[1]) {
+			'>=' => version_compare($server, $bound, '>='),
+			'<=' => version_compare($server, $bound, '<='),
+			'>' => version_compare($server, $bound, '>'),
+			'<' => version_compare($server, $bound, '<'),
+			default => version_compare($server, $bound, '=='),
+		};
 	}
 
 	/**
@@ -774,6 +811,32 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 	 * @param array<array-key, mixed> $release
 	 */
 	private function rawChangelogFrom(array $release): ?string {
+		$entry = $this->translationEntry($release);
+		if ($entry === null) {
+			return null;
+		}
+
+		/** @var mixed $changelog */
+		$changelog = $entry['changelog'] ?? null;
+		if ($changelog === null) {
+			return null;
+		}
+		if (!is_string($changelog)) {
+			throw new UnexpectedValueException('changelog is not a string.');
+		}
+
+		return trim($changelog) === '' ? null : $changelog;
+	}
+
+	/**
+	 * The release's translation block for the UI language, falling back to
+	 * `en`; null when the release carries none.
+	 *
+	 * @param array<array-key, mixed> $release
+	 * @return array<array-key, mixed>|null
+	 * @throws UnexpectedValueException When the translations or the entry is not an array.
+	 */
+	private function translationEntry(array $release): ?array {
 		/** @var mixed $translations */
 		$translations = $release['translations'] ?? null;
 		if ($translations === null) {
@@ -793,15 +856,6 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 			throw new UnexpectedValueException('translation entry is not an array.');
 		}
 
-		/** @var mixed $changelog */
-		$changelog = $entry['changelog'] ?? null;
-		if ($changelog === null) {
-			return null;
-		}
-		if (!is_string($changelog)) {
-			throw new UnexpectedValueException('changelog is not a string.');
-		}
-
-		return trim($changelog) === '' ? null : $changelog;
+		return $entry;
 	}
 }
