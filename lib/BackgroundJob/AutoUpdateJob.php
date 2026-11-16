@@ -12,16 +12,21 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\BackgroundJob;
 
+use OCA\Versioniq\Service\Audit\AuditOrigin;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlan;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\AutoUpdate\SecurityCandidate;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\PinChoice;
+use OCA\Versioniq\Service\Policy\PatchPolicy;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCP\AppFramework\Http;
 use OCP\BackgroundJob\TimedJob;
@@ -77,6 +82,16 @@ class AutoUpdateJob extends TimedJob {
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 */
 	protected function run($argument): void {
+		// Every audit row the run writes, by whichever installer, reads `job`.
+		AuditOrigin::during(AuditOrigin::JOB, fn () => $this->runUpdates());
+	}
+
+	/**
+	 * The run itself, under the job's audit origin.
+	 *
+	 * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-every-audit-row-says-where-it-came-from
+	 */
+	private function runUpdates(): void {
 		if (!$this->stores->settingsStore->isEnabled()) {
 			// Kill switch off — policies remain stored but inert; see "Global
 			// kill switch and window" ("Kill switch inert-but-stored").
@@ -99,84 +114,59 @@ class AutoUpdateJob extends TimedJob {
 		}
 		$this->stores->settingsStore->markWindowSwept($openingKey);
 
-		foreach ($this->stores->policyStore->all() as $appId => $policy) {
-			if ($policy->level === Policy::LEVEL_NONE) {
-				continue;
-			}
+		// Plan first, then install (autoupdate-run-batching D1). The advisory
+		// snapshot and the patch policy are read once per run
+		// (autoupdate-security-first D2, D3); no stored policy reads as
+		// today's behaviour, and security fixes are planned first (D4).
+		$plan = (new AutoUpdatePlanner($this->stores, $this->install, $this->logger))->plan(
+			$this->advisorySnapshot(),
+			$this->stores->security->patchPolicyStore->read() ?? PatchPolicy::none()
+		);
+		$this->installPlanned($plan);
+		$this->stores->security->securityHolds->replace($plan->securityHolds);
+	}
 
+	/**
+	 * The last advisory snapshot, and whether it is fresh enough to decide
+	 * security installs (autoupdate-security-first D2).
+	 *
+	 * @return array{rows: array<string, mixed>, fresh: bool}
+	 *
+	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md
+	 */
+	private function advisorySnapshot(): array {
+		$snapshot = $this->stores->security->advisoryResults->read();
+		$checkedAt = $snapshot['checkedAt'] ?? null;
+
+		return [
+			'rows' => is_array($snapshot['advisories'] ?? null) ? $snapshot['advisories'] : [],
+			'fresh' => SecurityCandidate::isFresh(
+				is_int($checkedAt) ? $checkedAt : null,
+				$this->time->getTime(),
+				$this->stores->security->advisorySettings->getIntervalSeconds()
+			),
+		];
+	}
+
+	/**
+	 * Install every member of the plan that will install, one app at a time.
+	 */
+	private function installPlanned(AutoUpdatePlan $plan): void {
+		foreach ($plan->installable() as $member) {
 			try {
-				$this->processApp($appId, $policy->level);
+				$this->attemptInstall(
+					new InstallTarget($member->appId, (string)$member->candidate, null),
+					(string)$member->installedVersion
+				);
 			} catch (\Throwable $error) {
 				// Per-app isolation — see "the job MUST proceed to the next app
 				// after any failure".
 				$this->logger->warning('AutoUpdateJob: failed to process an app', [
-					'appId' => $appId,
+					'appId' => $member->appId,
 					'message' => $error->getMessage(),
 				]);
 			}
 		}
-	}
-
-	private function processApp(string $appId, string $level): void {
-		if ($this->isSkipped($appId)) {
-			return;
-		}
-
-		$installedVersion = $this->installedVersionOf($appId);
-		$available = $installedVersion === null ? null : $this->availableVersions($appId);
-		if ($installedVersion === null || $available === null) {
-			return;
-		}
-
-		$candidate = $this->install->candidateSelector->select($installedVersion, $available, $level);
-		if ($candidate === null || $this->stores->attemptLedger->hasAttempted($appId, $candidate)) {
-			// Never-retry — see "Failed attempt is not retried".
-			return;
-		}
-
-		$this->attemptInstall(new InstallTarget($appId, $candidate, null), $installedVersion);
-	}
-
-	/**
-	 * Pinned apps are skipped entirely, before any source query (see "Pinned
-	 * app skipped"), and so are apps Versioniq does not manage.
-	 */
-	private function isSkipped(string $appId): bool {
-		return $this->stores->pinStore->get($appId) !== null
-			|| !$this->install->installerService->isManageableApp($appId);
-	}
-
-	/** The installed version, or null when the app reports none or cannot be read. */
-	private function installedVersionOf(string $appId): ?string {
-		$installedVersion = null;
-		try {
-			$installed = $this->install->appManager->getAppVersion($appId, false);
-			$installedVersion = $installed !== '' ? $installed : null;
-		} catch (\Throwable) {
-			$installedVersion = null;
-		}
-
-		return $installedVersion;
-	}
-
-	/**
-	 * The versions the app's source lists, or null when it reported an error.
-	 *
-	 * @return list<string>|null
-	 */
-	private function availableVersions(string $appId): ?array {
-		$result = $this->install->installerService->getAppVersions($appId);
-		if (($result['hasError'] ?? false) === true) {
-			return null;
-		}
-
-		/** @var list<string> $available */
-		$available = array_map(
-			static fn (array $entry): string => (string)$entry['version'],
-			$result['availableVersions'] ?? []
-		);
-
-		return $available;
 	}
 
 	private function attemptInstall(InstallTarget $target, string $installedVersion): void {

@@ -15,6 +15,7 @@ namespace OCA\Versioniq\Service;
 use Exception;
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Discovery\PublisherTrust;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFailure;
@@ -27,7 +28,9 @@ use OCA\Versioniq\Service\Installer\ReleaseInstallers;
 use OCA\Versioniq\Service\Installer\ServerAccess;
 use OCA\Versioniq\Service\Installer\ShaMismatchException;
 use OCA\Versioniq\Service\Pin\Pin;
+use OCA\Versioniq\Service\Release\ReleaseNotesReader;
 use OCA\Versioniq\Service\Source\AppStoreSource;
+use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
@@ -50,7 +53,7 @@ use OCP\IUserSession;
  *
  * @psalm-api
  * @psalm-type AppLists = array{enabled: array<string>, versions: array<string, string>, core: array<string>, info: array<string, array<string, mixed>>}
- * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string}}
+ * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,publisher:?string,marks:list<string>,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string,previous?:array{version:string,recordedAt:string,sourceId:?string}},provenance:?array{kind:'versioniq'|'outside',sourceId:?string,version:string}}
  */
 class InstallerService {
 	/** Server-side changelog size cap; see "Version listings carry release notes". */
@@ -151,11 +154,33 @@ class InstallerService {
 	 * @return InstalledAppCard
 	 */
 	private function appCard(string $appId, array $lists): array {
+		$binding = $this->sources->bindingStore->get($appId);
+
+		// The publisher is the app's info.xml authors, the marks those a named
+		// source backs; the featured flag is not read here, because the card
+		// list does not load the catalogue. See "Hits and cards name the
+		// publisher and the trust marks the data backs".
 		return [
 			'id' => $appId,
 			...self::appTexts($lists['info'][$appId] ?? [], $appId),
-			...$this->appStatus($appId, $lists),
+			...$this->appStatus($appId, $lists, $binding),
+			'publisher' => PublisherTrust::publisherFromAuthors($lists['info'][$appId]['author'] ?? null),
+			'marks' => $this->cardMarks($appId, $binding),
 		];
+	}
+
+	/**
+	 * The trust marks a card's source backs; none without the publisher trust.
+	 *
+	 * @spec openspec/changes/inventory-verified-publisher/specs/app-discovery/spec.md#requirement-hits-and-cards-name-the-publisher-and-the-trust-marks-the-data-backs
+	 * @return list<string>
+	 */
+	private function cardMarks(string $appId, ?SourceBinding $binding): array {
+		return $this->sources->publisherTrust?->marksFor(
+			$appId,
+			$binding?->toArray() ?? ['kind' => SourceBinding::KIND_APPSTORE],
+			false
+		) ?? [];
 	}
 
 	/**
@@ -188,23 +213,67 @@ class InstallerService {
 	 * last-known-good record for its card.
 	 *
 	 * @param AppLists $lists
-	 * @return array{isCore: bool, isShipped: bool, boundSourceId: ?string, manageable: bool, warning: ?string, installedVersion: ?string, state: 'enabled'|'disabled'|'notInstalled', lkg: ?array{version: string, recordedAt: string, sourceId: ?string}}
+	 * @param ?SourceBinding $binding The app's source binding, read once per card.
+	 * @return array{isCore: bool, isShipped: bool, boundSourceId: ?string, manageable: bool, warning: ?string, installedVersion: ?string, state: 'enabled'|'disabled'|'notInstalled', lkg: ?array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}, provenance: ?array{kind: 'versioniq'|'outside', sourceId: ?string, version: string}}
 	 */
-	private function appStatus(string $appId, array $lists): array {
-		$binding = $this->sources->bindingStore->get($appId);
+	private function appStatus(string $appId, array $lists, ?SourceBinding $binding): array {
+		$install = $this->appInstallStatus($appId, $lists);
+
+		$card = [
+			'isCore' => in_array($appId, $lists['core'], true),
+			'isShipped' => $this->server->appManager->isShipped($appId),
+			'boundSourceId' => $binding?->getId(),
+			...$install,
+			'state' => self::appState($appId, $lists),
+			'lkg' => $this->state->lkgStore->get($appId)?->toArray(),
+		];
+		$card['provenance'] = self::provenance($card['installedVersion'], $card['lkg']);
+
+		return $card;
+	}
+
+	/**
+	 * Whether the app's folder can be managed here, and its installed version.
+	 *
+	 * @param AppLists $lists
+	 * @return array{manageable: bool, warning: ?string, installedVersion: ?string}
+	 */
+	private function appInstallStatus(string $appId, array $lists): array {
 		$env = $this->appEnvironment($appId);
 		$installedVersion = $this->installedVersion($appId, $lists);
 
 		return [
-			'isCore' => in_array($appId, $lists['core'], true),
-			'isShipped' => $this->server->appManager->isShipped($appId),
-			'boundSourceId' => $binding?->getId(),
 			'manageable' => $env['manageable'],
 			'warning' => $env['warning'],
 			'installedVersion' => $installedVersion === '' ? null : $installedVersion,
-			'state' => self::appState($appId, $lists),
-			'lkg' => $this->state->lkgStore->get($appId)?->toArray(),
 		];
+	}
+
+	/**
+	 * Where the installed version came from: the last install Versioniq
+	 * finalized when its record matches the installed version, else from
+	 * outside Versioniq; null when the app is not installed.
+	 *
+	 * @param array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}|null $lkg
+	 * @return array{kind: 'versioniq'|'outside', sourceId: ?string, version: string}|null
+	 * @spec openspec/specs/external-sources/spec.md#requirement-the-card-names-where-the-installed-version-came-from
+	 */
+	public static function provenance(?string $installedVersion, ?array $lkg): ?array {
+		return $installedVersion === null ? null : self::installedFrom($installedVersion, $lkg);
+	}
+
+	/**
+	 * Where an installed version came from; see {@see self::provenance()}.
+	 *
+	 * @param array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}|null $lkg
+	 * @return array{kind: 'versioniq'|'outside', sourceId: ?string, version: string}
+	 */
+	private static function installedFrom(string $installedVersion, ?array $lkg): array {
+		if ($lkg === null || $lkg['version'] !== $installedVersion) {
+			return ['kind' => 'outside', 'sourceId' => null, 'version' => $installedVersion];
+		}
+
+		return ['kind' => 'versioniq', 'sourceId' => $lkg['sourceId'], 'version' => $installedVersion];
 	}
 
 	/**
@@ -281,7 +350,13 @@ class InstallerService {
 		$result = $this->listSourceVersions($appId, $binding);
 		$installedVersion = $this->installedVersionOrNull($appId);
 
-		$versions = $this->applyChangelogTruncation($result['versions']);
+		// releases-version-facts D3/D4: read the full notes, before truncation.
+		$versions = self::applyReleaseNotesFacts($result['versions']);
+		// releases-version-facts D2: how installs of each version went here.
+		$versions = $this->state->outcomes?->stamp($versions, $appId) ?? $versions;
+		// releases-version-facts D4: the admin's own notes on each version.
+		$versions = self::applyAdminKnownIssues($versions, $this->state->knownIssues?->forApp($appId) ?? []);
+		$versions = $this->applyChangelogTruncation($versions);
 		$versions = $this->applyRecordedSha($versions, $binding);
 		$versions = $this->applyCachedOffline($versions, $appId);
 		/** @var list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool}> $versions */
@@ -328,7 +403,7 @@ class InstallerService {
 	 */
 	private function listSourceVersions(string $appId, SourceBinding $binding): array {
 		$result = $this->sources->sourceRegistry->get($binding)->listVersions($appId, $binding);
-		if ($result['error'] === 'App is not available in the Nextcloud App Store.'
+		if ($result['error'] === AppStoreSource::NOT_IN_STORE
 			&& $this->server->appManager->isShipped($appId)
 		) {
 			$result['error'] = 'This app ships with Nextcloud itself: its version follows the server release and it is not distributed via the App Store. Bind a forge source to manage it from a repository instead.';
@@ -363,6 +438,47 @@ class InstallerService {
 		}
 
 		return ['hasError' => $result['versions'] === [], 'error' => $result['error']];
+	}
+
+	/**
+	 * Stamps `breaking` and `knownIssues` on each version from its full
+	 * release notes (releases-version-facts D3, D4).
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-a-version-its-publisher-marks-as-breaking-is-flagged
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+	 * @param list<array<string, mixed>> $versions
+	 * @return list<array<string, mixed>>
+	 */
+	private static function applyReleaseNotesFacts(array $versions): array {
+		$reader = new ReleaseNotesReader();
+		return array_map(
+			static function (array $entry) use ($reader): array {
+				$notes = is_string($entry['changelog'] ?? null) ? $entry['changelog'] : '';
+				$entry['breaking'] = $reader->isBreaking($notes);
+				$entry['knownIssues'] = $reader->knownIssues($notes);
+				return $entry;
+			},
+			$versions
+		);
+	}
+
+	/**
+	 * Stamps `adminKnownIssues` on each version: the known issues an admin
+	 * recorded against it, none when there are none (releases-version-facts D4).
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+	 * @param list<array<string, mixed>> $versions
+	 * @param array<string, list<array<string, mixed>>> $notes Version => the admin's notes.
+	 * @return list<array<string, mixed>>
+	 */
+	private static function applyAdminKnownIssues(array $versions, array $notes): array {
+		return array_map(
+			static function (array $entry) use ($notes): array {
+				$entry['adminKnownIssues'] = $notes[(string)($entry['version'] ?? '')] ?? [];
+				return $entry;
+			},
+			$versions
+		);
 	}
 
 	/**
@@ -675,7 +791,31 @@ class InstallerService {
 		}
 		$run->pin = $this->state->pinStore->get($run->request->target->appId);
 
-		return $this->pinRefusal($run) ?? $this->sameVersionOutcome($run) ?? $this->preflightRefusal($run);
+		return $this->pinRefusal($run) ?? $this->sameVersionOutcome($run) ?? $this->withdrawnRefusal($run) ?? $this->environmentRefusal($run);
+	}
+
+	/**
+	 * Withdrawn guard: a version its publisher withdrew is never installed by
+	 * accident, even while a stale catalogue still resolves it
+	 * (safety-withdrawn-and-revoked, design D3). Reinstalling the version that
+	 * already runs is answered before this, as a no-op.
+	 *
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-a-withdrawn-installed-version-is-marked-and-never-reinstalled-by-accident
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 */
+	private function withdrawnRefusal(InstallRun $run): ?array {
+		$withdrawn = $this->state->withdrawnVersions;
+		$target = $run->request->target;
+		if ($withdrawn === null || !$withdrawn->isWithdrawn($target->appId, $target->version)) {
+			return null;
+		}
+
+		return $this->installEnvelope(Http::STATUS_CONFLICT, $this->outcomePayload($run, [
+			'message' => sprintf('Version %s of %s was withdrawn by its publisher.', $target->version, $target->appId),
+			'category' => 'withdrawn',
+			'hint' => 'Choose another version from the list.',
+			'installStatus' => 'failed',
+		]));
 	}
 
 	/**
@@ -758,6 +898,18 @@ class InstallerService {
 	}
 
 	/**
+	 * The two pre-flight checks on the environment, sharing one lookup of the
+	 * installed app's folder.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 */
+	private function environmentRefusal(InstallRun $run): ?array {
+		$existingPath = $this->existingAppPath($run->request->target->appId);
+
+		return $this->preflightRefusal($run, $existingPath) ?? $this->spaceRefusal($run, $existingPath);
+	}
+
+	/**
 	 * Pre-flight: replacing an existing app renames its folder, which needs a
 	 * writable parent directory. A bind-mounted dev checkout (owned by another
 	 * uid) is not writable by the web-server user, so the install can never
@@ -765,8 +917,7 @@ class InstallerService {
 	 *
 	 * @return array{statusCode:int, payload:array<string, mixed>}|null
 	 */
-	private function preflightRefusal(InstallRun $run): ?array {
-		$existingPath = $this->existingAppPath($run->request->target->appId);
+	private function preflightRefusal(InstallRun $run, ?string $existingPath): ?array {
 		if ($existingPath === null || $this->installers->environmentCheck->isDestinationWritable($existingPath)) {
 			return null;
 		}
@@ -777,6 +928,36 @@ class InstallerService {
 			'category' => $category,
 			'stage' => FailureClassifier::STAGE_REQUESTED,
 			'hint' => $this->installers->failureClassifier->hintFor($category),
+			'installStatus' => 'failed',
+		]) + $run->debugSuffix([]));
+	}
+
+	/**
+	 * Pre-flight: the apps folder and the temp folder must have room for the
+	 * package before anything is downloaded (safety-rollback-backup-and-preflight
+	 * D2). The release is not resolved yet, so the size is the default.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 *
+	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+	 */
+	private function spaceRefusal(InstallRun $run, ?string $existingPath): ?array {
+		$space = $this->installers->environmentCheck->hasSpaceFor($existingPath);
+		if (isset($space['fits'])) {
+			$run->space = $space;
+		}
+		// No verdict counts as room, like a folder whose free space is unknown.
+		if (($space['fits'] ?? true) !== false) {
+			return null;
+		}
+		$category = FailureClassifier::CATEGORY_PREFLIGHT_SPACE;
+
+		return $this->installEnvelope($this->installers->failureClassifier->httpStatusFor($category), $this->outcomePayload($run, [
+			'message' => $this->installers->failureClassifier->messageFor($category),
+			'category' => $category,
+			'stage' => FailureClassifier::STAGE_REQUESTED,
+			'hint' => $this->installers->failureClassifier->hintFor($category),
+			'space' => $space,
 			'installStatus' => 'failed',
 		]) + $run->debugSuffix([]));
 	}
@@ -951,6 +1132,10 @@ class InstallerService {
 			// states when the download fell back to a locally cached artifact.
 			'servedFromCache' => (bool)($result['servedFromCache'] ?? false),
 		];
+		if ($run->space !== null) {
+			// The progress shows the free space the pre-flight found (D2).
+			$payload['space'] = $run->space;
+		}
 
 		return $payload + $this->optionalResultFields($result) + $run->debugSuffix((array)($result['debug'] ?? []));
 	}
@@ -1091,6 +1276,9 @@ class InstallerService {
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
 	public function bindSource(string $appId, SourceBinding $binding): void {
+		if (SourceBinding::isRetiredForge($binding->getForge())) {
+			throw new RetiredForgeException($binding->getForge());
+		}
 		$this->state->trustedSources->assertBindingAllowed($binding);
 		$this->sources->bindingStore->set($appId, $binding);
 	}
@@ -1131,6 +1319,9 @@ class InstallerService {
 	 */
 	public function addTrustedPattern(string $forge, string $owner, ?string $repo): array {
 		self::assertKnownForge($forge);
+		if (SourceBinding::isRetiredForge($forge)) {
+			throw new RetiredForgeException($forge);
+		}
 		$pattern = self::forgePattern($forge, self::ownerRepoPath($owner, $repo));
 
 		$patterns = $this->state->trustedSources->getPatterns();

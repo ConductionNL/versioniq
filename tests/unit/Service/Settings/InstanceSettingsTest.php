@@ -127,6 +127,22 @@ final class InstanceSettingsTest extends TestCase {
 		$this->store()->update(['githubApiBase' => 'http://ghe.example.org/api/v3']);
 	}
 
+	public function testTheNcscDirectoryMustBeHttps(): void {
+		$this->expectException(InvalidArgumentException::class);
+		$this->store()->update(['ncscFeedUrl' => 'http://csaf.example.org/v2']);
+	}
+
+	public function testAnHttpsNcscDirectoryIsStoredAndReadBackBesideItsDefault(): void {
+		$store = $this->store();
+
+		self::assertSame(['ncscFeedUrl'], $store->update(['ncscFeedUrl' => 'https://csaf.example.org/v2/']));
+
+		$settings = $store->read();
+		self::assertSame('https://csaf.example.org/v2', $settings['ncscFeedUrl']);
+		self::assertSame('https://advisories.ncsc.nl/csaf/v2/', $settings['ncscFeedDefault']);
+		self::assertSame('https://csaf.example.org/v2', $this->config['advisory.ncsc_feed_base']);
+	}
+
 	public function testAUrlWithCredentialsIsRejected(): void {
 		$this->expectException(InvalidArgumentException::class);
 		$this->store()->update(['appStoreApiBase' => 'https://user:pw@store.example.org']);

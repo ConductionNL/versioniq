@@ -15,9 +15,7 @@ namespace OCA\Versioniq\Controller;
 use InvalidArgumentException;
 use OCA\Versioniq\Http\InstanceSettingsFields;
 use OCA\Versioniq\Http\RequestFieldsFrom;
-use OCA\Versioniq\Service\Audit\AuditedVersions;
-use OCA\Versioniq\Service\Audit\AuditLogger;
-use OCA\Versioniq\Service\Audit\AuditSubject;
+use OCA\Versioniq\Service\Audit\AdminChangeAuditInterface;
 use OCA\Versioniq\Service\Settings\InstanceSettings;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
@@ -42,11 +40,13 @@ use OCP\IUserSession;
  * @psalm-suppress UnusedClass
  */
 class SettingsController extends OCSController {
+	use ChecksAdmin;
+
 	public function __construct(
 		string $appName,
 		IRequest $request,
 		private InstanceSettings $settings,
-		private AuditLogger $auditLogger,
+		private AdminChangeAuditInterface $auditLogger,
 		private IGroupManager $groupManager,
 		private IUserSession $userSession,
 	) {
@@ -114,10 +114,9 @@ class SettingsController extends OCSController {
 
 		$after = $this->settings->read();
 		if ($applied !== []) {
-			$this->auditLogger->record(
-				new AuditSubject($this->userSession->getUser()?->getUID() ?? '', 'versioniq', AuditLogger::OPERATION_SETTINGS),
-				new AuditedVersions(null, null, null),
-				AuditLogger::STATUS_SUCCESS,
+			$this->auditLogger->recordAdminChange(
+				$this->userSession->getUser()?->getUID() ?? '',
+				AdminChangeAuditInterface::OPERATION_SETTINGS,
 				'Settings changed: ' . implode(', ', array_map(
 					static fn (string $field): string => $field . '=' . self::auditValue($after[$field]),
 					$applied,
@@ -137,14 +136,5 @@ class SettingsController extends OCSController {
 		}
 
 		return (string)$value;
-	}
-
-	private function isAdmin(): bool {
-		$user = $this->userSession->getUser();
-		if ($user === null) {
-			return false;
-		}
-
-		return $this->groupManager->isAdmin($user->getUID());
 	}
 }

@@ -17,8 +17,10 @@ require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
 use OCA\Versioniq\Service\Advisory\AdvisoryService;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
 use OCA\Versioniq\Service\Advisory\BranchAwareRange;
+use OCA\Versioniq\Service\Advisory\FixStatus;
 use OCA\Versioniq\Service\Advisory\NextcloudAdvisoryFeed;
 use OCA\Versioniq\Service\Advisory\ServerVersionProvider;
+use OCA\Versioniq\Service\Source\ForgeReleaseSource;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
@@ -63,9 +65,11 @@ final class AdvisoryServiceTest extends TestCase {
 	 * @param array<string, list<array<string, mixed>>> $feedAdvisories
 	 * @param array<string, string> $installedVersions app id => version
 	 */
-	private function serviceWithFeed(array $feedAdvisories, array $installedVersions, string $serverVersion = '31.0.2'): AdvisoryService {
-		$feed = $this->createMock(NextcloudAdvisoryFeed::class);
-		$feed->method('fetchAll')->willReturn(['advisories' => $feedAdvisories, 'error' => null]);
+	private function serviceWithFeed(array $feedAdvisories, array $installedVersions, string $serverVersion = '31.0.2', ?NextcloudAdvisoryFeed $feed = null): AdvisoryService {
+		if ($feed === null) {
+			$feed = $this->createMock(NextcloudAdvisoryFeed::class);
+			$feed->method('fetchAll')->willReturn(['advisories' => $feedAdvisories, 'error' => null]);
+		}
 
 		$appManager = $this->createMock(IAppManager::class);
 		$appManager->method('getEnabledApps')->willReturn(array_keys($installedVersions));
@@ -247,6 +251,8 @@ final class AdvisoryServiceTest extends TestCase {
 		$this->assertSame(AdvisoryService::STATE_VULNERABLE, $result['state']);
 		$this->assertSame('1.2.3', $result['recommendedVersion']);
 		$this->assertNull($result['error']);
+		// The listed fix carries no incompatibility mark (advisories-per-app-detail D2).
+		$this->assertSame(FixStatus::INSTALLABLE, $result['fixStatus']);
 	}
 
 	/**
@@ -331,6 +337,30 @@ final class AdvisoryServiceTest extends TestCase {
 	}
 
 	/**
+	 * Scenario "An App Store app is checked against Nextcloud's advisory feed"
+	 * (advisories-name-their-feeds): calendar 5.1.2 from the App Store is
+	 * affected by a feed advisory fixed in 5.1.3, and the sweep reads the feed
+	 * once for every app, not once per app.
+	 *
+	 * @spec openspec/changes/advisories-name-their-feeds/specs/security-advisory-correlation/spec.md
+	 */
+	public function testTheSweepReadsTheFeedOnceForEveryApp(): void {
+		$advisories = ['calendar' => [$this->feedAdvisory('GHSA-cal1', ['5.1.3'])]];
+		$feed = $this->createMock(NextcloudAdvisoryFeed::class);
+		$feed->expects($this->once())->method('fetchAll')->willReturn(['advisories' => $advisories, 'error' => null]);
+
+		$service = $this->serviceWithFeed($advisories, ['calendar' => '5.1.2', 'contacts' => '7.0.0', 'mail' => '5.5.0'], '31.0.2', $feed);
+
+		$results = $service->correlateAll(60.0);
+
+		$this->assertSame(AdvisoryService::STATE_VULNERABLE, $results['calendar']['state']);
+		$this->assertSame('5.1.3', $results['calendar']['recommendedVersion']);
+		$this->assertSame(['GHSA-cal1'], array_column($results['calendar']['advisories'], 'id'));
+		$this->assertSame(AdvisoryService::STATE_NONE, $results['contacts']['state']);
+		$this->assertSame(AdvisoryService::STATE_NONE, $results['mail']['state']);
+	}
+
+	/**
 	 * The branch-aware rule reaching the real evaluation path. Under the old
 	 * AND semantics these four lower bounds collapse to `>= 4.3.0` and 3.6.0
 	 * is cleared — a false negative on two thirds of real advisories.
@@ -379,6 +409,7 @@ final class AdvisoryServiceTest extends TestCase {
 		$this->assertSame('31.0.5', $results[AdvisoryService::SERVER_KEY]['installedVersion']);
 		$this->assertSame(AdvisoryService::STATE_VULNERABLE, $results[AdvisoryService::SERVER_KEY]['state']);
 		$this->assertSame('31.0.12', $results[AdvisoryService::SERVER_KEY]['recommendedVersion']);
+		$this->assertSame(FixStatus::INSTALLABLE, $results[AdvisoryService::SERVER_KEY]['fixStatus']);
 	}
 
 	/**
@@ -449,5 +480,116 @@ final class AdvisoryServiceTest extends TestCase {
 			['AdvisoryService: correlation failed for app', ['app' => 'mail', 'message' => 'store down']],
 			['AdvisoryService: correlation failed for app', ['app' => 'deck', 'message' => 'store down']],
 		], $logged);
+	}
+
+	/**
+	 * sources-gitlab-forge 2.2: an app bound to a forge without repository
+	 * advisories reads "no advisory source", is never asked for advisories,
+	 * and still gets the central feed's findings.
+	 */
+	private function gitlabBoundService(ForgeReleaseSource $source): AdvisoryService {
+		$appManager = $this->createMock(IAppManager::class);
+		$appManager->method('getAppVersion')->willReturn('1.2.0');
+		$registry = $this->createMock(SourceRegistry::class);
+		$registry->method('get')->willReturn($source);
+		$bindingStore = $this->createMock(SourceBindingStore::class);
+		$bindingStore->method('get')->willReturn(SourceBinding::gitlab('gemeente/team/zaakapp'));
+
+		return $this->buildByName(AdvisoryService::class, [
+			'sourceRegistry' => $registry,
+			'bindingStore' => $bindingStore,
+			'appManager' => $appManager,
+			'advisoryFeed' => $this->quietFeed(),
+			'branchRange' => new BranchAwareRange(),
+			'serverVersion' => $this->createMock(ServerVersionProvider::class),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
+	}
+
+	public function testAGitlabBoundAppReadsNoAdvisorySourceAndIsNeverClean(): void {
+		$source = $this->createMock(ForgeReleaseSource::class);
+		$source->method('publishesAdvisories')->willReturn(false);
+		$source->expects($this->never())->method('listAdvisories');
+		$source->expects($this->never())->method('listVersions');
+
+		$result = $this->gitlabBoundService($source)->correlate('zaakapp');
+
+		$this->assertSame(AdvisoryService::STATE_NONE, $result['state']);
+		$this->assertSame([], $result['advisories']);
+		$this->assertSame('No advisory source: gitlab publishes no repository security advisories.', $result['error']);
+	}
+
+	public function testAGitlabBoundAppStillGetsTheFeedFindings(): void {
+		$source = $this->createMock(ForgeReleaseSource::class);
+		$source->method('publishesAdvisories')->willReturn(false);
+
+		$result = $this->gitlabBoundService($source)->correlate('zaakapp', [
+			['id' => 'GHSA-zaak', 'severity' => 'high', 'summary' => 'x', 'affected' => ['< 1.3.0'], 'firstPatchedVersion' => '1.3.0', 'patchedVersions' => ['1.3.0']],
+		]);
+
+		$this->assertSame('GHSA-zaak', $result['advisories'][0]['id']);
+		$this->assertNotSame(AdvisoryService::STATE_NONE, $result['state']);
+		$this->assertSame('No advisory source: gitlab publishes no repository security advisories.', $result['error']);
+	}
+
+	public function testAForgeThatPublishesAdvisoriesIsStillAsked(): void {
+		$source = $this->createMock(ForgeReleaseSource::class);
+		$source->method('publishesAdvisories')->willReturn(true);
+		$source->expects($this->once())->method('listAdvisories')->willReturn(['advisories' => [], 'error' => null]);
+		$source->method('listVersions')->willReturn(['versions' => [], 'error' => null]);
+
+		$result = $this->gitlabBoundService($source)->correlate('zaakapp');
+
+		$this->assertNull($result['error']);
+	}
+
+	/**
+	 * advisories-per-app-detail 1.2: every row carries the full history,
+	 * newest first (undated last, then by id), each marked as affecting the
+	 * installed version or not, while `advisories` keeps its meaning.
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/tasks.md#1.2
+	 */
+	public function testHistoryIsNewestFirstAndMarksWhatAffectsTheInstalledVersion(): void {
+		$dated = static fn (array $advisory, ?string $publishedAt, array $cves = []): array => $advisory + ['publishedAt' => $publishedAt, 'cveIds' => $cves, 'url' => null];
+		$advisories = [
+			$dated($this->advisory('GHSA-old', ['< 1.0.0'], '1.0.0'), '2025-11-02T00:00:00Z'),
+			$dated($this->advisory('GHSA-zzz', ['< 1.0.0'], '1.0.0'), null),
+			$dated($this->advisory('GHSA-new', ['< 2.0.0'], '2.0.0'), '2026-08-01T00:00:00Z', ['CVE-2026-1111']),
+			$dated($this->advisory('GHSA-aaa', ['< 1.0.0'], '1.0.0'), null),
+		];
+
+		$affected = $this->service()->evaluate('1.5.0', $advisories, ['2.0.0']);
+
+		$this->assertSame(['GHSA-new', 'GHSA-old', 'GHSA-aaa', 'GHSA-zzz'], array_column($affected['history'], 'id'));
+		$this->assertSame([true, false, false, false], array_column($affected['history'], 'affectsInstalled'));
+		$this->assertSame(['CVE-2026-1111'], $affected['history'][0]['cveIds']);
+		$this->assertSame('2026-08-01T00:00:00Z', $affected['history'][0]['publishedAt']);
+		// `advisories` still holds only the active ones for an affected version.
+		$this->assertSame(['GHSA-new'], array_column($affected['advisories'], 'id'));
+
+		$safe = $this->service()->evaluate('2.0.0', $advisories, []);
+		$this->assertSame(AdvisoryService::STATE_AVAILABLE, $safe['state']);
+		$this->assertSame([false, false, false, false], array_column($safe['history'], 'affectsInstalled'));
+		// ... and every advisory for an unaffected one, as before.
+		$this->assertSame(['GHSA-old', 'GHSA-zzz', 'GHSA-new', 'GHSA-aaa'], array_column($safe['advisories'], 'id'));
+	}
+
+	/**
+	 * advisories-per-app-detail 2.1: a version list that cannot be read for
+	 * the fix status costs the row nothing but the explanation.
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/tasks.md#2.1
+	 */
+	public function testAFeedAppWhoseSourceCannotListVersionsKeepsItsState(): void {
+		$service = $this->serviceWithFeed(
+			['mail' => [$this->feedAdvisory('GHSA-aaaa', ['3.7.25', '5.5.16'])]],
+			['mail' => '3.6.0'],
+		);
+
+		$mail = $service->correlateAll(60.0)['mail'];
+
+		$this->assertSame(AdvisoryService::STATE_VULNERABLE, $mail['state']);
+		$this->assertSame(FixStatus::NOT_IN_SOURCE, $mail['fixStatus']);
 	}
 }

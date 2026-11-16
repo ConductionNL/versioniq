@@ -34,6 +34,8 @@ use OCP\IUserSession;
  * @psalm-suppress UnusedClass
  */
 class UploadController extends OCSController {
+	use ChecksAdmin;
+
 	/** The multipart field that carries the archive. */
 	public const FIELD = 'archive';
 
@@ -105,14 +107,5 @@ class UploadController extends OCSController {
 	 */
 	protected function isUpload(string $path): bool {
 		return is_uploaded_file($path);
-	}
-
-	private function isAdmin(): bool {
-		$user = $this->userSession->getUser();
-		if ($user === null) {
-			return false;
-		}
-
-		return $this->groupManager->isAdmin($user->getUID());
 	}
 }

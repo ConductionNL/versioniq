@@ -7,7 +7,7 @@
 	<description>> ⚠️ **Active development — not for production use yet.** This app is under active development. Although it may carry a stable release status, **please do not use it in production environments before 12 June 2026.** See [conduction.nl/apps](https://conduction.nl/apps) for release planning and what this app does.
 
 Versioniq gives Nextcloud administrators the ability to roll back apps to previous versions or install specific newer versions. Essential for debugging, testing compatibility, and recovering from broken updates.</description>
-	<version>1.6.7-unstable.20261007150243</version>
+	<version>1.6.7-unstable.20261114120000</version>
 	<licence>EUPL-1.2</licence>
 	<author mail="info@conduction.nl" homepage="https://conduction.nl">Conduction B.V.</author>
 	<namespace>Versioniq</namespace>
@@ -24,6 +24,7 @@ Versioniq gives Nextcloud administrators the ability to roll back apps to previo
 	<background-jobs>
 		<job>OCA\Versioniq\BackgroundJob\AdvisoryRefreshJob</job>
 		<job>OCA\Versioniq\BackgroundJob\PatExpiryWarningJob</job>
+		<job>OCA\Versioniq\BackgroundJob\ServerEolWarningJob</job>
 		<job>OCA\Versioniq\BackgroundJob\AutoUpdateJob</job>
 		<job>OCA\Versioniq\BackgroundJob\PruneAuditJob</job>
 		<job>OCA\Versioniq\BackgroundJob\PinReconcileJob</job>
@@ -130,6 +131,7 @@ Versioniq gives Nextcloud administrators the ability to roll back apps to previo
 		<command>OCA\Versioniq\Command\ListVersions</command>
 		<command>OCA\Versioniq\Command\InstallVersion</command>
 		<command>OCA\Versioniq\Command\ListUpdates</command>
+		<command>OCA\Versioniq\Command\ListAdvisories</command>
 	</commands>
 	<settings>
 		<admin>OCA\Versioniq\Settings\Admin</admin>

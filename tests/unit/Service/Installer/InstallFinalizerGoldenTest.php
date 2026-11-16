@@ -49,6 +49,12 @@ final class InstallFinalizerGoldenTest extends TestCase {
 	/** @var list<array<int, mixed>> */
 	private array $calls = [];
 
+	/** The record the store holds before the finalize. */
+	private ?Lkg $storedLkg = null;
+
+	/** The record the finalize wrote. */
+	private ?Lkg $writtenLkg = null;
+
 	private string $root = '';
 
 	private mixed $savedServer = null;
@@ -195,6 +201,56 @@ final class InstallFinalizerGoldenTest extends TestCase {
 	}
 
 	/**
+	 * safety-rollback-backup-and-preflight 1.2: a successful update keeps the
+	 * record it replaces as `previous`, so the card can roll back one step.
+	 */
+	public function testASuccessfulUpdateKeepsTheReplacedRecordAsPrevious(): void {
+		$this->storedLkg = new Lkg('1.0.0', '2026-10-01T08:00:00+00:00', 'github:acme/someapp');
+		$outcome = $this->runCase([
+			'path' => 'plain', 'info' => ['id' => 'someapp', 'version' => '2.0.0'], 'enabled' => 'yes',
+			'output' => false, 'sourceId' => null, 'previous' => '1.0.0', 'appVersion' => '1.9.0',
+			'appInfo' => ['types' => []], 'throwAt' => null, 'noChild' => true,
+		]);
+
+		self::assertSame('someapp', $outcome['returned']);
+		self::assertSame('2.0.0', $this->writtenLkg?->version);
+		self::assertSame(['version' => '1.0.0', 'recordedAt' => '2026-10-01T08:00:00+00:00', 'sourceId' => 'github:acme/someapp'], $this->writtenLkg?->previous?->toArray());
+	}
+
+	/**
+	 * An install over a disabled app, or over an app enabled for one group,
+	 * writes back exactly the `enabled` value it was handed — the previous one
+	 * the installers read before the install (retro-enabled-state-and-unattended-tokens
+	 * task 2.1; version-management "Install Specific Version").
+	 *
+	 * @dataProvider previousEnabledValues
+	 * @spec openspec/changes/retro-enabled-state-and-unattended-tokens/specs/version-management/spec.md
+	 */
+	public function testTheFinalizeWritesThePreviousEnabledValue(string $previousEnabled): void {
+		$outcome = $this->runCase([
+			'path' => 'plain', 'info' => ['id' => 'someapp', 'version' => '2.0.0'], 'enabled' => $previousEnabled,
+			'output' => false, 'sourceId' => null, 'previous' => '1.0.0', 'appVersion' => '1.9.0',
+			'appInfo' => ['types' => []], 'throwAt' => null,
+		]);
+
+		$enabledWrites = array_values(array_filter(
+			$outcome['calls'],
+			static fn (array $call): bool => $call[0] === 'config.setAppValue' && ($call[2] ?? null) === 'enabled',
+		));
+		self::assertSame([['config.setAppValue', 'someapp', 'enabled', $previousEnabled]], $enabledWrites);
+	}
+
+	/**
+	 * @return array<string, array{0: string}>
+	 */
+	public static function previousEnabledValues(): array {
+		return [
+			'disabled' => ['no'],
+			'enabled for one group' => ['["admins"]'],
+		];
+	}
+
+	/**
 	 * A FRESH install has no previous version to clash with, so the same
 	 * missing child finalizer must stay silent.
 	 */
@@ -332,8 +388,10 @@ final class InstallFinalizerGoldenTest extends TestCase {
 
 	private function lkgStore(): LkgStore {
 		$store = $this->createMock(LkgStore::class);
+		$store->method('get')->willReturnCallback(fn (): ?Lkg => $this->storedLkg);
 		$store->method('set')->willReturnCallback(function (string $appId, Lkg $lkg): void {
 			$this->calls[] = ['lkg.set', $appId, $lkg->version, $lkg->recordedAt, $lkg->sourceId];
+			$this->writtenLkg = $lkg;
 		});
 
 		return $store;

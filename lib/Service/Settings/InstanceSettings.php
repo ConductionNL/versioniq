@@ -15,8 +15,10 @@ namespace OCA\Versioniq\Service\Settings;
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\BackgroundJob\PruneAuditJob;
+use OCA\Versioniq\Service\Advisory\NcscAdvisoryFeed;
 use OCA\Versioniq\Service\Advisory\NextcloudAdvisoryFeed;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
+use OCA\Versioniq\Service\Lifecycle\ServerEolFeed;
 use OCA\Versioniq\Service\Source\AppStoreSource;
 use OCA\Versioniq\Service\Source\ForgeRegistry;
 use OCP\IAppConfig;
@@ -65,6 +67,8 @@ class InstanceSettings {
 		'githubApiBase' => [self::KEY_GITHUB_API_BASE, true],
 		'githubWebBase' => [self::KEY_GITHUB_WEB_BASE, true],
 		'advisoryFeedUrl' => [self::KEY_ADVISORY_FEED, false],
+		// The NCSC-NL CSAF directory (advisories-ncsc-feed), https only.
+		'ncscFeedUrl' => [NcscAdvisoryFeed::CONFIG_BASE, true],
 	];
 
 	public function __construct(
@@ -78,7 +82,7 @@ class InstanceSettings {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, allowUnsignedUpload: bool}
+	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, eolFeedUrl: string, eolFeedOff: bool, eolFeedDefault: string, ncscFeedUrl: string, ncscFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, allowUnsignedUpload: bool}
 	 */
 	public function read(): array {
 		$retention = $this->config->getValueInt(Application::APP_ID, PruneAuditJob::CONFIG_KEY_RETENTION_DAYS, PruneAuditJob::DEFAULT_RETENTION_DAYS);
@@ -98,6 +102,12 @@ class InstanceSettings {
 			'githubWebDefault' => ForgeRegistry::GITHUB_WEB_DEFAULT,
 			'advisoryFeedUrl' => $this->stored(self::KEY_ADVISORY_FEED),
 			'advisoryFeedDefault' => NextcloudAdvisoryFeed::DEFAULT_FEED_URL,
+			// '' with the key present means the admin switched the feed off.
+			'eolFeedUrl' => $this->stored(ServerEolFeed::KEY_FEED),
+			'eolFeedOff' => $this->config->hasKey(Application::APP_ID, ServerEolFeed::KEY_FEED) && $this->stored(ServerEolFeed::KEY_FEED) === '',
+			'eolFeedDefault' => ServerEolFeed::DEFAULT_FEED_URL,
+			'ncscFeedUrl' => $this->stored(NcscAdvisoryFeed::CONFIG_BASE),
+			'ncscFeedDefault' => NcscAdvisoryFeed::DEFAULT_BASE,
 			'maxLinesBehind' => $this->maxLinesBehind(),
 			'maxLinesBehindMax' => self::MAX_LINES_BEHIND,
 			'allowUnsignedUpload' => $this->allowsUnsignedUpload(),
@@ -121,6 +131,7 @@ class InstanceSettings {
 		$lagLimit = $this->validatedLagLimit($fields);
 		$urls = $this->validatedUrls($fields);
 		$unsigned = $this->validatedSwitch($fields, 'allowUnsignedUpload', 'Allow unsigned uploads');
+		$eolFeed = isset($fields['eolFeedUrl']) ? $this->url($fields['eolFeedUrl'], false) : null;
 
 		$this->storeInts($ints);
 		if ($unsigned !== null) {
@@ -131,6 +142,11 @@ class InstanceSettings {
 		}
 		foreach ($urls as $key => $value) {
 			$this->storeOrClear($key, $value);
+		}
+		if ($eolFeed !== null) {
+			// Unlike the other addresses, an empty end-of-life feed is kept:
+			// it switches the warnings off instead of falling back to the default.
+			$this->config->setValueString(Application::APP_ID, ServerEolFeed::KEY_FEED, $eolFeed);
 		}
 
 		return self::appliedFields($fields);
@@ -144,7 +160,7 @@ class InstanceSettings {
 	 */
 	private static function appliedFields(array $fields): array {
 		return array_values(array_filter(
-			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS), 'allowUnsignedUpload'],
+			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS), 'eolFeedUrl', 'allowUnsignedUpload'],
 			static fn (string $field): bool => isset($fields[$field]),
 		));
 	}
