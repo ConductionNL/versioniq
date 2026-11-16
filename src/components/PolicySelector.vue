@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
 import { t } from '@nextcloud/l10n'
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 
@@ -16,15 +16,46 @@ const props = withDefaults(defineProps<{
 	autoUpdateEnabled: boolean
 	disabled?: boolean
 	blockedVersions?: BlockedVersion[]
+	minAgeDays?: number | null
+	instanceMinAgeDays?: number
 }>(), {
 	disabled: false,
 	blockedVersions: () => [],
+	minAgeDays: null,
+	instanceMinAgeDays: 0,
 })
 
 const emit = defineEmits<{
 	(event: 'change', appId: string, level: PolicyLevel): void
 	(event: 'retry', appId: string, version: string): void
+	(event: 'minAge', appId: string, minAgeDays: number | null): void
 }>()
+
+// The app's own minimum age (releases-minimum-age D1): empty uses the
+// instance value, 0 to 90 days otherwise.
+const minAgeInput = ref<string | number>(props.minAgeDays === null ? '' : String(props.minAgeDays))
+const minAgeText = (): string => String(minAgeInput.value ?? '').trim()
+watch(() => props.minAgeDays, (value) => {
+	minAgeInput.value = value === null ? '' : String(value)
+})
+
+const minAgeValid = computed(() => minAgeText() === '' || /^(\d|[1-8]\d|90)$/.test(minAgeText()))
+
+/**
+ * Saves the app's minimum age when it is valid and changed.
+ *
+ * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+ */
+function saveMinAge (): void {
+	if (!minAgeValid.value) {
+		return
+	}
+	const trimmed = minAgeText()
+	const next = trimmed === '' ? null : Number(trimmed)
+	if (next !== props.minAgeDays) {
+		emit('minAge', props.appId, next)
+	}
+}
 
 type SelectOption = { id: PolicyLevel, label: string }
 
@@ -59,6 +90,20 @@ const isActive = computed(() => props.level !== 'none')
 			label="label" />
 		<span v-if="isActive" :class="$style.badge" data-testid="policy-active-badge">
 			{{ t('versioniq', 'Auto-update: {level}', { level: selected.label }) }}
+		</span>
+		<label v-if="isActive" :class="$style.minAge">
+			<span>{{ t('versioniq', 'Minimum age in days (empty uses {days})', { days: instanceMinAgeDays }) }}</span>
+			<input
+				v-model="minAgeInput"
+				type="number"
+				min="0"
+				max="90"
+				data-testid="policy-min-age"
+				:disabled="disabled"
+				@change="saveMinAge">
+		</label>
+		<span v-if="isActive && !minAgeValid" :class="$style.disabledHint" data-testid="policy-min-age-error">
+			{{ t('versioniq', 'Use a whole number of days from 0 to 90.') }}
 		</span>
 		<span v-if="isActive && !autoUpdateEnabled" :class="$style.disabledHint" data-testid="policy-disabled-hint">
 			{{ t('versioniq', 'Automation is disabled. Enable it in settings to take effect.') }}
@@ -109,6 +154,14 @@ const isActive = computed(() => props.level !== 'none')
 	display: flex;
 	align-items: center;
 	gap: 8px;
+}
+
+.minAge {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	font-size: 12px;
+	color: var(--color-text-maxcontrast);
 }
 
 .disabledHint {

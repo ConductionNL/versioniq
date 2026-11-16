@@ -2,6 +2,7 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
 import type {Provenance} from './components/AppSourceBadges.vue';
+import type {AutoUpdatePlanEntry, MinAgeException} from './components/AutoUpdateOverview.vue';
 import type {PrefillBindPayload} from './components/DiscoverPanel.vue';
 import type {BlockedVersion, PolicyLevel} from './components/PolicySelector.vue';
 import type { PinRecord } from './dialogs/PinDialog.vue'
@@ -225,13 +226,18 @@ let shaMismatchResolve: ((accept: boolean) => void) | null = null
 // execution through the standard installer", "Global kill switch and
 // window"). Policies and the two global settings are fetched together from
 // GET /api/policies, mirroring the `pins`/`advisories` per-appId map pattern.
-type PolicyRecord = { appId: string, level: PolicyLevel, setBy: string, setAt: string, blockedVersions?: BlockedVersion[] }
+type PolicyRecord = { appId: string, level: PolicyLevel, setBy: string, setAt: string, minAgeDays?: number, blockedVersions?: BlockedVersion[], plan?: AutoUpdatePlanEntry | null, minAgeException?: MinAgeException | null }
 const policies = ref<Record<string, PolicyRecord>>({})
 const isSavingPolicy = ref(false)
 const autoUpdateEnabled = ref(false)
 const savedAutoUpdateEnabled = ref(false)
 const autoUpdateWindowInput = ref(AUTO_UPDATE_WINDOW_DEFAULT)
 const savedAutoUpdateWindow = ref(AUTO_UPDATE_WINDOW_DEFAULT)
+// The minimum age a version must reach before the job installs it, and when
+// the plan of the next run was worked out (releases-minimum-age).
+const autoUpdateMinAgeInput = ref<string | number>('0')
+const savedAutoUpdateMinAge = ref(0)
+const planCheckedAt = ref<number | null>(null)
 // The zone the server reads the window in (Nextcloud's default_timezone, else UTC).
 const autoUpdateTimeZone = ref('UTC')
 // Why the last run held a security fix back, whether the advisory check is
@@ -911,7 +917,7 @@ function pinTooltip (pin: PinRecord | null): string {
 async function loadPolicies (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/policies')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string, securityHolds?: Record<string, string>, advisoriesFresh?: boolean, manualKinds?: string[] }>(response)
+		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string, securityHolds?: Record<string, string>, advisoriesFresh?: boolean, manualKinds?: string[], autoUpdateMinAgeDays?: number, planCheckedAt?: number | null }>(response)
 		const map: Record<string, PolicyRecord> = {}
 		for (const policy of payload.policies || []) {
 			map[policy.appId] = policy
@@ -925,6 +931,9 @@ async function loadPolicies (): Promise<void> {
 		advisoriesFresh.value = payload.advisoriesFresh !== false
 		manualKinds.value = payload.manualKinds ?? []
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
+		savedAutoUpdateMinAge.value = payload.autoUpdateMinAgeDays ?? 0
+		autoUpdateMinAgeInput.value = String(savedAutoUpdateMinAge.value)
+		planCheckedAt.value = payload.planCheckedAt ?? null
 	} catch {
 		// Non-fatal: the app list stays usable without policy badges.
 		policies.value = {}
@@ -991,14 +1000,74 @@ async function clearPolicy (appId: string): Promise<void> {
  * @param appId The app whose policy is set.
  * @param level The policy level to set.
  */
-async function setPolicy (appId: string, level: PolicyLevel): Promise<void> {
-	const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/policy`, { level })), {
+async function setPolicy (appId: string, level: PolicyLevel, minAgeDays: number | null = policies.value[appId]?.minAgeDays ?? null): Promise<void> {
+	// The app's own minimum age goes with every write, so changing the level keeps it.
+	const query: Record<string, string> = minAgeDays === null ? { level } : { level, minAgeDays: String(minAgeDays) }
+	const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/policy`, query)), {
 		method: 'PUT',
 		headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
-		body: JSON.stringify({ level }),
+		body: JSON.stringify(query),
 	})
 	const payload = await unwrapOcsResponse<{ appId: string, policy: PolicyRecord }>(response)
-	policies.value = { ...policies.value, [appId]: { ...payload.policy, appId } }
+	const current = policies.value[appId]
+	policies.value = { ...policies.value, [appId]: { ...current, ...payload.policy, minAgeDays: payload.policy.minAgeDays, appId } }
+}
+
+/**
+ * Sets an app's own minimum age, keeping its level (releases-minimum-age D1).
+ *
+ * @param appId The app.
+ * @param minAgeDays The days, or null to use the instance value.
+ * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+ */
+async function onPolicyMinAge (appId: string, minAgeDays: number | null): Promise<void> {
+	const level = policyLevelFor(appId)
+	if (isSavingPolicy.value || level === 'none') {
+		return
+	}
+	isSavingPolicy.value = true
+	errorMessage.value = ''
+	try {
+		await ensurePasswordConfirmation()
+		await setPolicy(appId, level, minAgeDays)
+	} catch (e) {
+		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not update the auto-update policy.')
+	} finally {
+		isSavingPolicy.value = false
+	}
+}
+
+/**
+ * Releases one held version before the minimum age, or withdraws that
+ * (releases-minimum-age D5); the overview shows the result at once.
+ *
+ * @param appId The app.
+ * @param version The held version.
+ * @param release True to release it now, false to withdraw the release.
+ * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+ */
+async function onMinAgeException (appId: string, version: string, release: boolean): Promise<void> {
+	if (isSavingPolicy.value) {
+		return
+	}
+	isSavingPolicy.value = true
+	errorMessage.value = ''
+	try {
+		await ensurePasswordConfirmation()
+		const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/min-age-exception/${encodeURIComponent(version)}`)), {
+			method: release ? 'POST' : 'DELETE',
+			headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
+		})
+		const payload = await unwrapOcsResponse<{ exception?: MinAgeException }>(response)
+		const current = policies.value[appId]
+		if (current) {
+			policies.value = { ...policies.value, [appId]: { ...current, minAgeException: release ? (payload.exception ?? null) : null } }
+		}
+	} catch (e) {
+		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not change the early release.')
+	} finally {
+		isSavingPolicy.value = false
+	}
 }
 
 /**
@@ -1027,9 +1096,12 @@ async function onPolicyChange (appId: string, level: PolicyLevel): Promise<void>
 }
 
 const isAutoUpdateWindowValid = computed(() => isValidAutoUpdateWindow(autoUpdateWindowInput.value))
+const autoUpdateMinAgeText = computed(() => String(autoUpdateMinAgeInput.value ?? '').trim())
+const isAutoUpdateMinAgeValid = computed(() => /^(\d|[1-8]\d|90)$/.test(autoUpdateMinAgeText.value))
 const isAutoUpdateSettingsDirty = computed(() => (
 	autoUpdateEnabled.value !== savedAutoUpdateEnabled.value
 	|| autoUpdateWindowInput.value.trim() !== savedAutoUpdateWindow.value
+	|| autoUpdateMinAgeText.value !== String(savedAutoUpdateMinAge.value)
 ))
 
 /**
@@ -1047,9 +1119,11 @@ async function saveAutoUpdateSettings (): Promise<void> {
 	try {
 		await ensurePasswordConfirmation()
 		const window = autoUpdateWindowInput.value.trim()
+		const minAgeDays = autoUpdateMinAgeText.value
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/auto-update/settings', {
 			enabled: autoUpdateEnabled.value ? '1' : '0',
 			window,
+			minAgeDays,
 		})), {
 			method: 'PUT',
 			headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
@@ -1065,13 +1139,15 @@ async function saveAutoUpdateSettings (): Promise<void> {
 			//
 			// The query string above already sends '1'/'0'; this makes the body
 			// agree with it so the value cannot depend on which one wins.
-			body: JSON.stringify({ enabled: autoUpdateEnabled.value ? '1' : '0', window }),
+			body: JSON.stringify({ enabled: autoUpdateEnabled.value ? '1' : '0', window, minAgeDays }),
 		})
-		const payload = await unwrapOcsResponse<{ autoUpdateEnabled?: boolean, autoUpdateWindow?: string }>(response)
+		const payload = await unwrapOcsResponse<{ autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateMinAgeDays?: number }>(response)
 		autoUpdateEnabled.value = Boolean(payload.autoUpdateEnabled)
 		autoUpdateWindowInput.value = payload.autoUpdateWindow || window
 		savedAutoUpdateEnabled.value = autoUpdateEnabled.value
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
+		savedAutoUpdateMinAge.value = payload.autoUpdateMinAgeDays ?? Number(minAgeDays)
+		autoUpdateMinAgeInput.value = String(savedAutoUpdateMinAge.value)
 		autoUpdateSettingsNotice.value = t('versioniq', 'Automatic update settings saved.')
 	} catch (e) {
 		autoUpdateSettingsError.value = e instanceof Error ? e.message : t('versioniq', 'Could not save automatic update settings.')
@@ -2669,6 +2745,21 @@ watch(dryRunEnabled, () => {
 										:class="$style.appFilterInput"
 										:disabled="isSavingAutoUpdateSettings">
 								</label>
+								<label :class="$style.filterField" for="auto-update-min-age">
+									<span :class="$style.filterFieldLabel">{{ t('versioniq', 'Minimum age of a new version in days (0 to 90, 0 is off)') }}</span>
+									<input
+										id="auto-update-min-age"
+										v-model="autoUpdateMinAgeInput"
+										type="number"
+										min="0"
+										max="90"
+										data-testid="auto-update-min-age"
+										:class="$style.appFilterInput"
+										:disabled="isSavingAutoUpdateSettings">
+								</label>
+								<p v-if="!isAutoUpdateMinAgeValid" :class="$style.autoUpdateWindowError" data-testid="auto-update-min-age-error">
+									{{ t('versioniq', 'Use a whole number of days from 0 to 90.') }}
+								</p>
 								<p v-if="autoUpdateWindowInput.trim() !== '' && !isAutoUpdateWindowValid" :class="$style.autoUpdateWindowError" data-testid="auto-update-window-error">
 									{{ t('versioniq', 'Use the HH:MM-HH:MM format, e.g. 01:00-05:00.') }}
 								</p>
@@ -2681,7 +2772,7 @@ watch(dryRunEnabled, () => {
 								<NcButton
 									variant="primary"
 									data-testid="auto-update-settings-save"
-									:disabled="isSavingAutoUpdateSettings || !isAutoUpdateSettingsDirty || !isAutoUpdateWindowValid"
+									:disabled="isSavingAutoUpdateSettings || !isAutoUpdateSettingsDirty || !isAutoUpdateWindowValid || !isAutoUpdateMinAgeValid"
 									@click="saveAutoUpdateSettings">
 									{{ t('versioniq', 'Save') }}
 								</NcButton>
@@ -2697,7 +2788,10 @@ watch(dryRunEnabled, () => {
 									:disabled="isSavingPolicy"
 									:updates="pendingUpdates"
 									:updatesCheckedLabel="updatesFreshnessLabel"
-									@retry="onRetryAttempt" />
+									:planCheckedAt="planCheckedAt"
+									@retry="onRetryAttempt"
+									@release="(appId, version) => onMinAgeException(appId, version, true)"
+									@withdraw="(appId, version) => onMinAgeException(appId, version, false)" />
 
 								<h3 id="section-advisories" :class="$style.advisorySettingsHeading">{{ t('versioniq', 'Security advisory checks') }}</h3>
 								<p :class="$style.hint">
@@ -2918,8 +3012,11 @@ watch(dryRunEnabled, () => {
 													:autoUpdateEnabled="autoUpdateEnabled"
 													:disabled="isSavingPolicy"
 													:blockedVersions="blockedVersionsFor(app.id)"
+													:minAgeDays="policies[app.id]?.minAgeDays ?? null"
+													:instanceMinAgeDays="savedAutoUpdateMinAge"
 													@change="onPolicyChange"
-													@retry="onRetryAttempt" />
+													@retry="onRetryAttempt"
+													@minAge="onPolicyMinAge" />
 											</div>
 											<button
 												v-if="!app.isCore"

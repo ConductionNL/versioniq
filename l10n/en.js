@@ -551,7 +551,21 @@ OC.L10N.register(
         "Save GitLab host": "Save GitLab host",
         "Bind an installed app to a GitHub repository, a GitLab project, or a repository on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.": "Bind an installed app to a GitHub repository, a GitLab project, or a repository on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.",
         "Bind an installed app to a GitHub repository, or to one on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.": "Bind an installed app to a GitHub repository, or to one on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.",
-        "Security fix, installed before the minimum age: %s": "Security fix, installed before the minimum age: %s"
+        "Security fix, installed before the minimum age: %s": "Security fix, installed before the minimum age: %s",
+        "Could not change the early release.": "Could not change the early release.",
+        "Minimum age of a new version in days (0 to 90, 0 is off)": "Minimum age of a new version in days (0 to 90, 0 is off)",
+        "Use a whole number of days from 0 to 90.": "Use a whole number of days from 0 to 90.",
+        "The next update of each app has not been worked out yet.": "The next update of each app has not been worked out yet.",
+        "Next updates worked out at {time}.": "Next updates worked out at {time}.",
+        "No update qualifies": "No update qualifies",
+        "Next update: {version}": "Next update: {version}",
+        "{version} held back until {date} (minimum age {days} days)": "{version} held back until {date} (minimum age {days} days)",
+        "Security fix {version} is outside the update policy, so it is not installed automatically.": "Security fix {version} is outside the update policy, so it is not installed automatically.",
+        "Security fix {version} skips the minimum age.": "Security fix {version} skips the minimum age.",
+        "Release now": "Release now",
+        "{version} is released before the minimum age.": "{version} is released before the minimum age.",
+        "Withdraw": "Withdraw",
+        "Minimum age in days (empty uses {days})": "Minimum age in days (empty uses {days})"
     },
     "nplurals=2; plural=(n != 1);"
 )

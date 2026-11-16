@@ -152,8 +152,8 @@ describe('App automatic update settings', () => {
 
 		expect(calls).toEqual([{
 			method: 'PUT',
-			path: '/api/auto-update/settings?enabled=0&window=01%3A00-03%3A00',
-			body: { enabled: '0', window: '01:00-03:00' },
+			path: '/api/auto-update/settings?enabled=0&window=01%3A00-03%3A00&minAgeDays=0',
+			body: { enabled: '0', window: '01:00-03:00', minAgeDays: '0' },
 		}])
 		expect([vm.autoUpdateEnabled, vm.savedAutoUpdateEnabled]).toEqual([false, false])
 		expect([vm.autoUpdateWindowInput, vm.savedAutoUpdateWindow]).toEqual(['01:00-03:00', '01:00-03:00'])
@@ -169,7 +169,7 @@ describe('App automatic update settings', () => {
 		await vm.saveAutoUpdateSettings()
 		await flushPromises()
 
-		expect(calls[0].body).toEqual({ enabled: '1', window: '22:00-23:30' })
+		expect(calls[0].body).toEqual({ enabled: '1', window: '22:00-23:30', minAgeDays: '0' })
 		expect([vm.autoUpdateEnabled, vm.autoUpdateWindowInput, vm.savedAutoUpdateWindow]).toEqual([true, '22:00-23:30', '22:00-23:30'])
 	})
 
