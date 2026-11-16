@@ -931,6 +931,7 @@ class ApiController extends OCSController {
 	 * 403: Caller is not an administrator
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
+	 * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/policies')]
 	#[ApiRoute(verb: 'GET', url: '/api/v1/policies', postfix: 'v1')]
@@ -939,6 +940,7 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
+		$snapshot = $this->autoUpdate->planStore?->read() ?? ['plans' => [], 'checkedAt' => null];
 		$policies = [];
 		foreach ($this->autoUpdate->policyStore->all() as $appId => $policy) {
 			$policies[] = $policy->toArray() + [
@@ -946,6 +948,10 @@ class ApiController extends OCSController {
 				// Versions whose automatic update failed and are skipped until
 				// the admin retries them (#438).
 				'blockedVersions' => $this->autoUpdate->attemptLedger->blockedVersions($appId),
+				// What the next run would do, from the six-hourly plan, and the
+				// version an admin released early (releases-minimum-age D4, D5).
+				'plan' => $snapshot['plans'][$appId] ?? null,
+				'minAgeException' => $this->autoUpdate->minAgeExceptions?->get($appId),
 			];
 		}
 
@@ -960,6 +966,9 @@ class ApiController extends OCSController {
 			'securityHolds' => (object)$this->autoUpdate->security->securityHolds->read(),
 			'advisoriesFresh' => $this->advisoriesFresh(),
 			'manualKinds' => ($this->autoUpdate->security->patchPolicyStore->read() ?? PatchPolicy::none())->manualKinds(),
+			'autoUpdateMinAgeDays' => $this->autoUpdate->settingsStore->getMinAgeDays(),
+			// When the plan was last worked out; null when it never was.
+			'planCheckedAt' => $snapshot['checkedAt'],
 		]);
 	}
 

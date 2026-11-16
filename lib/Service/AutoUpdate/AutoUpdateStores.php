@@ -19,7 +19,8 @@ use OCA\Versioniq\Service\Policy\PolicyStore;
  * that hold an app back, the global settings (on/off, window, time zone) and
  * the ledger of versions already attempted, and the security side (see
  * AutoUpdateSecurityStores), which the `security` level and the patch
- * policy read.
+ * policy read; and, for the overview, the plan snapshot and the admins'
+ * minimum-age exceptions (releases-minimum-age).
  *
  * @psalm-api
  */
@@ -30,6 +31,8 @@ final class AutoUpdateStores {
 		public readonly AutoUpdateSettingsStore $settingsStore,
 		public readonly AttemptLedger $attemptLedger,
 		public readonly AutoUpdateSecurityStores $security,
+		public readonly ?AutoUpdatePlanStore $planStore = null,
+		public readonly ?MinAgeExceptionStore $minAgeExceptions = null,
 	) {
 	}
 }
