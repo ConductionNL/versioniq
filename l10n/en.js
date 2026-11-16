@@ -293,7 +293,6 @@ OC.L10N.register(
         "Not installed": "Not installed",
         "This app is installed but not enabled.": "This app is installed but not enabled.",
         "Update window (HH:MM-HH:MM, time zone {timeZone})": "Update window (HH:MM-HH:MM, time zone {timeZone})",
-        "Bind an installed app to a GitHub repository, or to one on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.": "Bind an installed app to a GitHub repository, or to one on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.",
         "Self-hosted Forgejo or Gitea": "Self-hosted Forgejo or Gitea",
         "Self-hosted Forgejo or Gitea host": "Self-hosted Forgejo or Gitea host",
         "Set the address of your Forgejo or Gitea host to bind apps, store tokens and trust owners on it. Leave it empty to turn the forge off.": "Set the address of your Forgejo or Gitea host to bind apps, store tokens and trust owners on it. Leave it empty to turn the forge off.",
@@ -481,7 +480,18 @@ OC.L10N.register(
         "Update all ({count})": "Update all ({count})",
         "Update to {version}": "Update to {version}",
         "Update to safe version {version}": "Update to safe version {version}",
-        "_Update %n app_::_Update %n apps_": ["Update %n app","Update %n apps"]
+        "_Update %n app_::_Update %n apps_": ["Update %n app","Update %n apps"],
+        "Could not load the GitLab host.": "Could not load the GitLab host.",
+        "Could not save the GitLab host.": "Could not save the GitLab host.",
+        "GitLab host saved.": "GitLab host saved.",
+        "GitLab reads from gitlab.com again.": "GitLab reads from gitlab.com again.",
+        "Group or namespace": "Group or namespace",
+        "Project": "Project",
+        "GitLab": "GitLab",
+        "GitLab projects are read from gitlab.com. Set the address of your own GitLab host to read them from there instead; leave it empty for gitlab.com.": "GitLab projects are read from gitlab.com. Set the address of your own GitLab host to read them from there instead; leave it empty for gitlab.com.",
+        "Self-managed GitLab host": "Self-managed GitLab host",
+        "Save GitLab host": "Save GitLab host",
+        "Bind an installed app to a GitHub repository, a GitLab project, or a repository on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.": "Bind an installed app to a GitHub repository, a GitLab project, or a repository on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list."
     },
     "nplurals=2; plural=(n != 1);"
 )

@@ -9,7 +9,6 @@ declare(strict_types=1);
  * SPDX-License-Identifier: EUPL-1.2
  */
 
-
 namespace OCA\Versioniq\Service\Source;
 
 use Exception;
@@ -283,6 +282,19 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		return is_string($tag) && ($this->normalizeVersion($tag) === $version || $tag === $version);
 	}
 	/**
+	 * Whether the binding's forge publishes repository security advisories.
+	 * GitLab does not (sources-gitlab-forge D6), so an app bound there has no
+	 * advisory source of its own.
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/specs/external-sources/spec.md
+	 */
+	public function publishesAdvisories(SourceBinding $binding): bool {
+		$ownerRepo = $binding->getOwnerRepo();
+
+		return $ownerRepo !== null && $this->forgeRegistry->get($binding->getForge())->advisoriesEndpoint($ownerRepo) !== null;
+	}
+
+	/**
 	 * Lists published security advisories for the bound `owner/repo` from the
 	 * forge's `/security-advisories` endpoint (GitHub GHSA / Forgejo), reusing
 	 * the same PAT-authenticated fetch path as release listing — no new HTTP
@@ -407,6 +419,11 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		$pat = $this->pats->patResolver->findFor($forge->id, $ownerRepo, $uid);
 
 		$endpoint = $forge->advisoriesEndpoint($ownerRepo);
+		if ($endpoint === null) {
+			// A forge without repository advisories is never read as "no
+			// advisories": the check reports it could not look.
+			return ['ok' => false, 'error' => sprintf('%s publishes no repository security advisories.', $forge->id)];
+		}
 
 		if ($pat === null) {
 			return $this->performFetch($forge, $endpoint, null);
@@ -512,23 +529,88 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			return ['ok' => false, 'error' => $this->statusError($forge, $status)];
 		}
 
-		try {
-			$decoded = json_decode((string)$response->getBody(), true, 32, JSON_THROW_ON_ERROR);
-		} catch (\JsonException) {
+		$decoded = $this->decodeReleaseList($response);
+		if (is_string($decoded)) {
 			$this->connectionReports?->forgeAnswered($forge->id, $forge->apiBaseUrl, $status, false);
 
-			return ['ok' => false, 'error' => $this->forgeName($forge) . ' API returned malformed JSON.'];
-		}
-
-		if (!is_array($decoded) || !array_is_list($decoded)) {
-			$this->connectionReports?->forgeAnswered($forge->id, $forge->apiBaseUrl, $status, false);
-
-			return ['ok' => false, 'error' => $this->forgeName($forge) . ' API returned an unexpected payload shape.'];
+			return ['ok' => false, 'error' => $this->forgeName($forge) . ' API returned ' . $decoded . '.'];
 		}
 
 		$this->connectionReports?->forgeAnswered($forge->id, $forge->apiBaseUrl, $status);
 
+		if ($forge->dialect === Forge::DIALECT_GITLAB) {
+			$decoded = array_map(static fn (mixed $release): mixed => self::fromGitlabRelease($release), $decoded);
+		}
+
 		return ['ok' => true, 'releases' => $decoded];
+	}
+
+	/**
+	 * The body of a forge answer as a JSON list, or what is wrong with it.
+	 *
+	 * @return array<int, mixed>|string The list, or `malformed JSON` / `an unexpected payload shape`.
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-2.1
+	 */
+	private function decodeReleaseList(IResponse $response): array|string {
+		try {
+			$decoded = json_decode((string)$response->getBody(), true, 32, JSON_THROW_ON_ERROR);
+		} catch (\JsonException) {
+			return 'malformed JSON';
+		}
+
+		if (!is_array($decoded) || !array_is_list($decoded)) {
+			return 'an unexpected payload shape';
+		}
+
+		return $decoded;
+	}
+
+	/**
+	 * A GitLab release in the shape the rest of this source reads (sources-gitlab-forge D4):
+	 * `description` as the changelog body, `released_at` as the publish date (none for
+	 * an upcoming release), and `assets.links[]` as the asset list, each link's
+	 * `direct_asset_url` (else `url`) as its download URL. Asset selection, the sibling
+	 * checksum, recorded digests and the cache then work unchanged. Anything that is
+	 * not a release object passes through and is skipped as before.
+	 *
+	 * @param mixed $release One entry of GitLab's releases list.
+	 * @return mixed
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-2.1
+	 */
+	public static function fromGitlabRelease(mixed $release): mixed {
+		if (!is_array($release)) {
+			return $release;
+		}
+
+		return [
+			'tag_name' => $release['tag_name'] ?? null,
+			'body' => $release['description'] ?? null,
+			'published_at' => ($release['upcoming_release'] ?? false) === true ? null : ($release['released_at'] ?? null),
+			'assets' => self::gitlabAssets($release),
+		];
+	}
+
+	/**
+	 * A GitLab release's `assets.links[]` as name and download URL, the
+	 * link's `direct_asset_url` before its `url`; non-array links are skipped.
+	 *
+	 * @param array<array-key, mixed> $release One GitLab release object.
+	 * @return list<array{name: mixed, browser_download_url: ?string}>
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-2.1
+	 */
+	private static function gitlabAssets(array $release): array {
+		$assets = [];
+		$links = is_array($release['assets'] ?? null) ? ($release['assets']['links'] ?? null) : null;
+		foreach (is_array($links) ? $links : [] as $link) {
+			if (!is_array($link)) {
+				continue;
+			}
+			$url = self::nonEmptyString($link['direct_asset_url'] ?? null) ?? self::nonEmptyString($link['url'] ?? null);
+			$assets[] = ['name' => $link['name'] ?? null, 'browser_download_url' => $url];
+		}
+
+		return $assets;
 	}
 
 	/**
@@ -604,9 +686,9 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * @param array<string, string> $shaAssets checksum asset name => url
 	 */
 	private function checksumUrl(array $matchingAssets, array $shaAssets): ?string {
-		$sibling = isset($matchingAssets[0]) ? $matchingAssets[0]['name'] . '.sha256' : null;
-		if ($sibling !== null && isset($shaAssets[$sibling])) {
-			return $shaAssets[$sibling];
+		$named = isset($matchingAssets[0]) ? ($shaAssets[$matchingAssets[0]['name'] . '.sha256'] ?? null) : null;
+		if ($named !== null) {
+			return $named;
 		}
 
 		return count($shaAssets) === 1 ? reset($shaAssets) : null;
