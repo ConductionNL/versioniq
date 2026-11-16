@@ -258,16 +258,16 @@ class InstallerService {
 	 * @return array{kind: 'versioniq'|'outside', sourceId: ?string, version: string}|null
 	 * @spec openspec/specs/external-sources/spec.md#requirement-the-card-names-where-the-installed-version-came-from
 	 */
-	public static function provenance(?string $installedVersion, ?array $lkg): ?array {
+	public static function provenance(string|null $installedVersion, array|null $lkg): array|null {
 		if ($installedVersion === null) {
 			return null;
 		}
 
-		if ($lkg !== null && $lkg['version'] === $installedVersion) {
-			return ['kind' => 'versioniq', 'sourceId' => $lkg['sourceId'], 'version' => $installedVersion];
+		if ($lkg === null || $lkg['version'] !== $installedVersion) {
+			return ['kind' => 'outside', 'sourceId' => null, 'version' => $installedVersion];
 		}
 
-		return ['kind' => 'outside', 'sourceId' => null, 'version' => $installedVersion];
+		return ['kind' => 'versioniq', 'sourceId' => $lkg['sourceId'], 'version' => $installedVersion];
 	}
 
 	/**

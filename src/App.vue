@@ -56,6 +56,7 @@ import { lkgRollbackTargets } from './utils/migrationSafety.ts'
 import { filterByUpdates, isOutsidePolicy, outsidePolicyLabel, updateBadge, updatesFreshnessLabel as updatesFreshnessLabelFor } from './utils/pendingUpdates.ts'
 import { repinApp } from './utils/repin.ts'
 import { isBlockedBySafeMode } from './utils/safeMode.ts'
+import { sweepStateOf } from './utils/sweepOutcome.ts'
 import { batchOutcome, quickUpdateTarget, runUpdateBatch, updateAllCandidates } from './utils/updateBatch.ts'
 import { compareVersions, parseVersionCore } from './utils/versionCompare.ts'
 
@@ -636,8 +637,9 @@ async function loadAdvisories (): Promise<void> {
 		advisories.value = payload.advisories || {}
 		advisoryTriage.value = payload.triage && !Array.isArray(payload.triage) ? payload.triage : {}
 		advisoriesCheckedAt.value = payload.checkedAt ?? null
-		advisoriesStatus.value = payload.status ?? null
-		advisoriesErrors.value = payload.errors ?? []
+		const sweep = sweepStateOf(payload)
+		advisoriesStatus.value = sweep.status
+		advisoriesErrors.value = sweep.errors
 		advisoryCompliance.value = payload.compliance ?? null
 		advisoriesUnavailable.value = false
 	} catch {
@@ -671,8 +673,9 @@ async function loadUpdates (): Promise<void> {
 		const payload = await unwrapOcsResponse<{ updates: Record<string, PendingUpdate>, checkedAt: number | null, status?: SweepStatus | null, errors?: string[], maxLinesBehind: number | null }>(response)
 		pendingUpdates.value = payload.updates || {}
 		updatesCheckedAt.value = payload.checkedAt ?? null
-		updatesStatus.value = payload.status ?? null
-		updatesErrors.value = payload.errors ?? []
+		const sweep = sweepStateOf(payload)
+		updatesStatus.value = sweep.status
+		updatesErrors.value = sweep.errors
 		maxLinesBehind.value = payload.maxLinesBehind ?? null
 		updatesUnavailable.value = false
 	} catch {

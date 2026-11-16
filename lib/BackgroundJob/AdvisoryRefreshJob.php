@@ -116,19 +116,20 @@ class AdvisoryRefreshJob extends TimedJob {
 			}
 		} catch (\Throwable $error) {
 			$this->logger->error('AdvisoryRefreshJob: refresh failed', ['message' => $error->getMessage()]);
-			// Only the sweep itself failing makes the check line say so; a
-			// notification that fails after a stored sweep does not.
-			if (!$saved) {
-				$this->recordFailure();
-			}
+			$this->recordFailureUnlessSaved($saved);
 		}
 	}
 
 	/**
-	 * Says the sweep failed, so the check line does not read as checked.
-	 * Recording it must not throw out of the job either.
+	 * Says the sweep failed, so the check line does not read as checked. Only
+	 * the sweep itself failing makes the check line say so; a notification
+	 * that fails after a stored sweep does not. Recording it must not throw
+	 * out of the job either.
 	 */
-	private function recordFailure(): void {
+	private function recordFailureUnlessSaved(bool $saved): void {
+		if ($saved) {
+			return;
+		}
 		try {
 			$this->steps->resultStore->saveFailure($this->time->getTime());
 		} catch (\Throwable $error) {

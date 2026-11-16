@@ -41,12 +41,17 @@ export function advisoryFreshnessLabel (state: AdvisoryFreshnessState): string {
 		)
 	}
 
-	const outcome = sweepOutcomeLabel('advisories', state)
-	if (outcome !== null) {
-		return outcome
-	}
+	return sweepOutcomeLabel('advisories', state) ?? advisoriesCheckedAgo(state.checkedAt, state.nowSeconds)
+}
 
-	const ageMinutes = Math.max(0, Math.round((state.nowSeconds - state.checkedAt) / 60))
+/**
+ * The check line of a sweep that read every source: how long ago it ran.
+ *
+ * @param checkedAt Unix seconds of the sweep.
+ * @param nowSeconds Current time in unix seconds.
+ */
+function advisoriesCheckedAgo (checkedAt: number, nowSeconds: number): string {
+	const ageMinutes = Math.max(0, Math.round((nowSeconds - checkedAt) / 60))
 	if (ageMinutes < 1) {
 		return t('versioniq', 'Advisories checked just now')
 	}

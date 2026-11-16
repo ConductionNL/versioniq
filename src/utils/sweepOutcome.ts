@@ -40,18 +40,58 @@ export function sweepOutcomeLabel (
 	kind: 'advisories' | 'updates',
 	state: { status?: SweepStatus | null, errors?: string[], checkedAt: number | null, nowSeconds: number },
 ): string | null {
-	if (state.checkedAt === null || !state.status || state.status === 'ok') {
+	if (state.checkedAt === null || !hasIssue(state.status)) {
 		return null
 	}
 	const age = sweepAge(state.checkedAt, state.nowSeconds)
-	if (state.status === 'failed') {
-		return kind === 'advisories'
-			? t('versioniq', 'Advisories could not be checked ({age})', { age })
-			: t('versioniq', 'Updates could not be checked ({age})', { age })
-	}
-	const apps = (state.errors ?? []).join(', ')
 
+	return state.status === 'failed'
+		? failedLabel(kind, age)
+		: partialLabel(kind, age, (state.errors ?? []).join(', '))
+}
+
+/**
+ * Whether a sweep status says not every source was read.
+ *
+ * @param status The sweep's status, if any.
+ */
+function hasIssue (status: SweepStatus | null | undefined): boolean {
+	return status === 'failed' || status === 'partial'
+}
+
+/**
+ * The check line of a sweep that failed as a whole.
+ *
+ * @param kind Which sweep: the advisories or the updates.
+ * @param age How long ago it ran.
+ */
+function failedLabel (kind: 'advisories' | 'updates', age: string): string {
+	return kind === 'advisories'
+		? t('versioniq', 'Advisories could not be checked ({age})', { age })
+		: t('versioniq', 'Updates could not be checked ({age})', { age })
+}
+
+/**
+ * The check line of a sweep that could not check some apps.
+ *
+ * @param kind Which sweep: the advisories or the updates.
+ * @param age How long ago it ran.
+ * @param apps The apps it could not check, comma-separated.
+ */
+function partialLabel (kind: 'advisories' | 'updates', age: string, apps: string): string {
 	return kind === 'advisories'
 		? t('versioniq', 'Advisories checked {age}, except for {apps}', { age, apps })
 		: t('versioniq', 'Updates checked {age}, except for {apps}', { age, apps })
+}
+
+/**
+ * The sweep status and unchecked apps of a stored-sweep answer, with the
+ * defaults of an answer that predates them.
+ *
+ * @param payload The answer of /api/advisories or /api/updates.
+ * @param payload.status The sweep's status.
+ * @param payload.errors The apps the sweep could not check.
+ */
+export function sweepStateOf (payload: { status?: SweepStatus | null, errors?: string[] }): { status: SweepStatus | null, errors: string[] } {
+	return { status: payload.status ?? null, errors: payload.errors ?? [] }
 }

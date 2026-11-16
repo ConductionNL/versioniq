@@ -52,17 +52,37 @@ export function pendingAutoUpdates (policies: Record<string, PolicyLike>, update
 	for (const [key, policy] of Object.entries(policies)) {
 		const appId = policy.appId || key
 		const update = updates[appId]
-		if (policy.level === 'none' || !update || update.error) {
-			continue
+		const version = policy.level === 'none' ? null : newerVersion(update)
+		if (version !== null) {
+			rows.push({ appId, version, state: stateOf(policy, update, version) })
 		}
-		const version = update.newestCompatibleVersion ?? update.newestVersion
-		if (!version || !update.installedVersion || compareVersions(version, update.installedVersion) <= 0) {
-			continue
-		}
-		rows.push({ appId, version, state: stateOf(policy, update, version) })
 	}
 
 	return rows.sort((a, b) => a.appId.localeCompare(b.appId))
+}
+
+/**
+ * The newer version an app's stored availability offers, or null when there
+ * is none, the app is not installed, or its check failed.
+ *
+ * @param update The app's stored availability, if any.
+ */
+function newerVersion (update: PendingUpdate | undefined): string | null {
+	if (!update || update.error || !update.installedVersion) {
+		return null
+	}
+
+	return newerThan(update.newestCompatibleVersion ?? update.newestVersion, update.installedVersion)
+}
+
+/**
+ * The offered version when it is newer than the installed one, else null.
+ *
+ * @param version The newest version on offer, if any.
+ * @param installed The installed version.
+ */
+function newerThan (version: string | null | undefined, installed: string): string | null {
+	return version && compareVersions(version, installed) > 0 ? version : null
 }
 
 /**

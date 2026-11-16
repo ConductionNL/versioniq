@@ -116,12 +116,17 @@ export function updatesFreshnessLabel (state: UpdatesFreshnessState): string {
 		return t('versioniq', 'Updates not checked yet. The background job runs every 6 hours.')
 	}
 
-	const outcome = sweepOutcomeLabel('updates', state)
-	if (outcome !== null) {
-		return outcome
-	}
+	return sweepOutcomeLabel('updates', state) ?? updatesCheckedAgo(state.checkedAt, state.nowSeconds)
+}
 
-	const ageMinutes = Math.max(0, Math.round((state.nowSeconds - state.checkedAt) / 60))
+/**
+ * The check line of a sweep that read every source: how long ago it ran.
+ *
+ * @param checkedAt Unix seconds of the sweep.
+ * @param nowSeconds Current time in unix seconds.
+ */
+function updatesCheckedAgo (checkedAt: number, nowSeconds: number): string {
+	const ageMinutes = Math.max(0, Math.round((nowSeconds - checkedAt) / 60))
 	if (ageMinutes < 1) {
 		return t('versioniq', 'Updates checked just now')
 	}
