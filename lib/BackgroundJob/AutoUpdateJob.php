@@ -182,15 +182,34 @@ class AutoUpdateJob extends TimedJob {
 
 		if ($statusCode >= Http::STATUS_OK && $statusCode < Http::STATUS_MULTIPLE_CHOICES) {
 			$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedgerInterface::OUTCOME_SUCCESS, $at);
-			$toVersion = is_string($payload['installedVersion'] ?? null) && $payload['installedVersion'] !== ''
-				? $payload['installedVersion']
-				: $target->version;
-			$this->notifier->notifySuccess($target->appId, $installedVersion, $toVersion);
+			$this->notifier->notifySuccess($target->appId, $installedVersion, self::versionInstalled($payload, $target));
 
 			return;
 		}
 
 		$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedgerInterface::OUTCOME_FAILURE, $at);
+		$this->notifyFailure($target, $payload);
+	}
+
+	/**
+	 * The version the installer reports it installed, else the target version.
+	 *
+	 * @param array<array-key, mixed> $payload The installer's outcome payload.
+	 */
+	private static function versionInstalled(array $payload, InstallTarget $target): string {
+		/** @var mixed $reported */
+		$reported = $payload['installedVersion'] ?? null;
+
+		return is_string($reported) && $reported !== '' ? $reported : $target->version;
+	}
+
+	/**
+	 * Tells the admins an automatic install failed, with the failure category
+	 * and hint the installer gave ('unknown' and '' when it gave none).
+	 *
+	 * @param array<array-key, mixed> $payload The installer's outcome payload.
+	 */
+	private function notifyFailure(InstallTarget $target, array $payload): void {
 		$category = is_string($payload['category'] ?? null) ? $payload['category'] : 'unknown';
 		$hint = is_string($payload['hint'] ?? null) ? $payload['hint'] : '';
 		$this->notifier->notifyFailure($target->appId, $target->version, $category, $hint);
