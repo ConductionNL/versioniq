@@ -25,6 +25,9 @@ const props = defineProps<{
 	autoUpdateEnabled: boolean
 	window: string
 	timeZone: string
+	securityHolds?: Record<string, string>
+	advisoriesFresh?: boolean
+	manualKinds?: string[]
 	disabled?: boolean
 	updates?: Record<string, PendingUpdate>
 	updatesCheckedLabel?: string
@@ -60,6 +63,44 @@ const blocked = computed(() => Object.entries(props.policies)
 	.flatMap(([appId, policy]) => (policy.blockedVersions ?? []).map((entry) => ({ appId: policy.appId || appId, version: entry.version, at: entry.at })))
 	.sort((a, b) => a.appId.localeCompare(b.appId)))
 
+// Why the last run installed no security fix for an app (autoupdate-security-first).
+const held = computed(() => Object.entries(props.securityHolds ?? {})
+	.map(([appId, reason]) => ({ appId, reason }))
+	.sort((a, b) => a.appId.localeCompare(b.appId)))
+
+// The stale-snapshot line shows while any app is on `security`.
+const showStale = computed(() => props.advisoriesFresh === false
+	&& Object.values(props.policies).some((policy) => policy.level === 'security'))
+
+const byHand = computed(() => (props.manualKinds ?? []).map((kind) => kindByHand(kind)))
+
+/**
+ * @param reason The reason the job recorded.
+ * @param app The app's name.
+ * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md
+ */
+function holdText (reason: string, app: string): string {
+	return {
+		no_fix: t('versioniq', '{app} is affected by an advisory that names no fix to install.', { app }),
+		needs_major: t('versioniq', 'The security fix for {app} needs a major update, so it was not installed.', { app }),
+		not_in_source: t('versioniq', 'The security fix for {app} is not available from its source yet.', { app }),
+		stale: t('versioniq', 'The security fix for {app} waits until advisories are checked again.', { app }),
+		manual: t('versioniq', 'The patch policy sets the security fix for {app} to by hand.', { app }),
+	}[reason] ?? `${app}: ${reason}`
+}
+
+/**
+ * @param kind The regular kind of update.
+ * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md
+ */
+function kindByHand (kind: string): string {
+	return {
+		patch: t('versioniq', 'Patch updates are set to by hand in the patch policy, so no app gets them automatically.'),
+		minor: t('versioniq', 'Minor updates are set to by hand in the patch policy, so no app gets them automatically.'),
+		major: t('versioniq', 'Major updates are set to by hand in the patch policy, so no app gets them automatically.'),
+	}[kind] ?? kind
+}
+
 /**
  * @param appId The app id.
  * @spec openspec/specs/auto-update-policies/spec.md
@@ -78,6 +119,7 @@ function levelLabel (level: PolicyLevel): string {
 		patch: t('versioniq', 'Patch'),
 		minor: t('versioniq', 'Minor'),
 		all: t('versioniq', 'All'),
+		security: t('versioniq', 'Security fixes only'),
 	}[level] ?? level
 }
 </script>
@@ -100,6 +142,17 @@ function levelLabel (level: PolicyLevel): string {
 				{{ t('versioniq', 'policy: {level}', { level: levelLabel(row.level) }) }}
 			</li>
 		</ul>
+		<p v-if="showStale" :class="$style.warning" data-testid="overview-stale">
+			{{ t('versioniq', 'Advisories were not checked recently, so security fixes wait.') }}
+		</p>
+		<ul v-if="held.length > 0" :class="$style.list">
+			<li v-for="row in held" :key="row.appId" data-testid="overview-held-row">
+				{{ holdText(row.reason, labelFor(row.appId)) }}
+			</li>
+		</ul>
+		<p v-for="line in byHand" :key="line" :class="$style.hint" data-testid="overview-by-hand">
+			{{ line }}
+		</p>
 		<h5 :class="$style.subheading">
 			{{ t('versioniq', 'Pending updates') }}
 		</h5>

@@ -28,13 +28,7 @@ final class ComplianceStatus {
 	public const REASON_UNREACHED = 'unreached';
 
 	/** Highest first: the order a target's worst advisory is picked in, and the order counts are listed in. */
-	private const SEVERITY_ORDER = [
-		AdvisorySeverity::CRITICAL,
-		AdvisorySeverity::HIGH,
-		AdvisorySeverity::MEDIUM,
-		AdvisorySeverity::LOW,
-		AdvisorySeverity::UNKNOWN,
-	];
+	private const SEVERITY_ORDER = AdvisorySeverity::ORDER;
 
 	/**
 	 * The compliance status of a stored snapshot.
@@ -159,14 +153,7 @@ final class ComplianceStatus {
 	 * @spec openspec/changes/advisories-per-app-detail/tasks.md#3.1
 	 */
 	private static function highestSeverity(mixed $advisories): string {
-		$found = self::severities($advisories);
-		foreach (self::SEVERITY_ORDER as $severity) {
-			if (in_array($severity, $found, true)) {
-				return $severity;
-			}
-		}
-
-		return AdvisorySeverity::UNKNOWN;
+		return AdvisorySeverity::highestOf(self::severities($advisories));
 	}
 
 	/**
