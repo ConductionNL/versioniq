@@ -39,7 +39,7 @@ function lkg (version: string, previous: string | null) {
 }
 
 const apps = [
-	{ id: 'calendar', label: 'Calendar', isCore: false, installedVersion: '5.2.1', state: 'enabled' },
+	{ id: 'calendar', label: 'Calendar', isCore: false, installedVersion: '5.2.1', state: 'enabled', installedKnownIssues: [{ text: 'Export to CSV times out', workaround: 'Export per schema' }, { text: 'Second' }] },
 	{ id: 'notyet', label: 'Not yet', isCore: false, installedVersion: null, state: 'notInstalled' },
 	// The last good version is installed: one target, the version before it.
 	{ id: 'dossiq', label: 'Dossiq', isCore: false, installedVersion: '0.4.46', state: 'enabled', lkg: lkg('0.4.46', '0.4.44') },
@@ -90,5 +90,16 @@ describe('App card', () => {
 		expect(labels('dossiq')).toEqual(['Roll back to 0.4.44'])
 		expect(labels('drifted')).toEqual(['Roll back to 0.4.44', 'Roll back to the last good version (0.4.46)'])
 		expect(labels('calendar')).toEqual([])
+	})
+
+	it('says a known issue is recorded for the installed version, with each workaround in its tooltip (releases-version-facts D4)', async () => {
+		vi.stubGlobal('fetch', vi.fn(ocsFetch))
+		const wrapper = mount(App, { global: { stubs: { CachePanel: true, SourcesPanel: true, TokensPanel: true, IntegrationsPanel: true, InstanceSettingsPanel: true, HistoryPanel: true, DiscoverPanel: true, AdvisoriesPanel: true, TrustedSourcesPanel: true, AutoUpdateOverview: true } } })
+		await flushPromises()
+
+		const notice = wrapper.find('[data-app-id="calendar"] [data-testid="app-known-issue"]')
+		expect(notice.text()).toBe('Known issue in the installed version')
+		expect(notice.attributes('title')).toBe('Export to CSV times out Workaround: Export per schema\nSecond')
+		expect(wrapper.find('[data-app-id="dossiq"] [data-testid="app-known-issue"]').exists()).toBe(false)
 	})
 })
