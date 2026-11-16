@@ -112,10 +112,10 @@ class ForgeRegistry {
 				$this->baseUrl(self::FORGE_GITLAB, 'api_base', $web . '/api/v4'),
 				$web,
 				$web . '/-/user_settings/personal_access_tokens',
+				Forge::DIALECT_GITLAB,
 			),
 			Forge::SCHEME_BEARER,
 			false,
-			Forge::DIALECT_GITLAB,
 		);
 	}
 

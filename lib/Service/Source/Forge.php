@@ -44,14 +44,14 @@ final class Forge {
 	/**
 	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-1.1
 	 */
-	public function __construct(string $id, ForgeUrls $urls, string $authScheme, bool $exposesScopeHeader, string $dialect = self::DIALECT_GITHUB) {
+	public function __construct(string $id, ForgeUrls $urls, string $authScheme, bool $exposesScopeHeader) {
 		$this->id = $id;
 		$this->apiBaseUrl = $urls->api;
 		$this->webBaseUrl = $urls->web;
 		$this->authScheme = $authScheme;
 		$this->exposesScopeHeader = $exposesScopeHeader;
 		$this->tokenCreateUrl = $urls->tokenCreate;
-		$this->dialect = $dialect;
+		$this->dialect = $urls->dialect;
 	}
 
 	/**

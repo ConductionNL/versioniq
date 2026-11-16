@@ -29,7 +29,7 @@ final class ForgeDialectTest extends TestCase {
 	 * GitLab: the project path url-encoded as one segment, a token info endpoint, no advisories.
 	 */
 	public function testGitlabBuildsProjectEndpointsAndHasNoAdvisories(): void {
-		$forge = new Forge('gitlab', new ForgeUrls('https://gitlab.com/api/v4', 'https://gitlab.com', 'https://gitlab.com/-/user_settings/personal_access_tokens'), Forge::SCHEME_BEARER, false, Forge::DIALECT_GITLAB);
+		$forge = new Forge('gitlab', new ForgeUrls('https://gitlab.com/api/v4', 'https://gitlab.com', 'https://gitlab.com/-/user_settings/personal_access_tokens', Forge::DIALECT_GITLAB), Forge::SCHEME_BEARER, false);
 
 		self::assertSame('https://gitlab.com/api/v4/projects/group%2Fsub%2Fproject/releases?per_page=100', $forge->releasesEndpoint('group/sub/project'));
 		self::assertSame('https://gitlab.com/api/v4/personal_access_tokens/self', $forge->tokenInfoEndpoint());
