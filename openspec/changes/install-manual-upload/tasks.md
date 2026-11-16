@@ -13,8 +13,8 @@
 
 ## 3. Page
 
-- [ ] 3.1 Add `UploadInstallDialog.vue` (pick file, show app, version, SHA-256 and signed state, expected SHA-256 field, Install). Verify: `UploadInstallDialog.spec.ts`.
-- [ ] 3.2 Add strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
+- [x] 3.1 Add `UploadInstallDialog.vue` (pick file, show app, version, SHA-256 and signed state, expected SHA-256 field, Install). Verify: `UploadInstallDialog.spec.ts`.
+- [x] 3.2 Add strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
 - [ ] 3.3 Add `tests/e2e/upload.spec.ts`: upload a fixture archive with unsigned uploads on, install it, and see the History row with source `upload`.
 
 ## 4. Close

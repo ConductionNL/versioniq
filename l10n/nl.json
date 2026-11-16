@@ -583,7 +583,24 @@
         "Bind an installed app to a GitHub repository, a GitLab project, or a repository on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.": "Koppel een geïnstalleerde app aan een GitHub-repository, een GitLab-project of een repository op een eigen Forgejo- of Gitea-host, zodat de versies van die forge komen in plaats van uit de App Store. De repository moet op de lijst met vertrouwde bronnen staan.",
         "Installing from a file": "Installeren vanuit een bestand",
         "Allow unsigned uploads": "Niet-ondertekende uploads toestaan",
-        "An archive the App Store does not sign runs whatever code it contains. Leave this off unless you install such archives and check them yourself.": "Een archief dat de App Store niet ondertekent, voert alle code uit die erin zit. Laat dit uit, tenzij je zulke archieven installeert en ze zelf controleert."
+        "An archive the App Store does not sign runs whatever code it contains. Leave this off unless you install such archives and check them yourself.": "Een archief dat de App Store niet ondertekent, voert alle code uit die erin zit. Laat dit uit, tenzij je zulke archieven installeert en ze zelf controleert.",
+        "Install from a file": "Installeren vanuit een bestand",
+        "Pick a .tar.gz app archive. Versioniq reads its app id, version and SHA-256 and shows them before anything is installed.": "Kies een .tar.gz-app-archief. Versioniq leest de app-id, de versie en de SHA-256 ervan en toont die voordat er iets wordt geïnstalleerd.",
+        "App archive": "App-archief",
+        "Read archive": "Archief lezen",
+        "Install {appId} {version}": "{appId} {version} installeren",
+        "Version": "Versie",
+        "SHA-256": "SHA-256",
+        "Signature": "Handtekening",
+        "Signed by the App Store": "Ondertekend door de App Store",
+        "Not signed by the App Store": "Niet ondertekend door de App Store",
+        "This archive is {archiveApp}, not {app}.": "Dit archief is {archiveApp}, niet {app}.",
+        "An archive the App Store does not sign runs whatever code it contains. It installs only when \"Allow unsigned uploads\" is on in the Settings tab.": "Een archief dat de App Store niet ondertekent, voert alle code uit die erin zit. Het wordt alleen geïnstalleerd als \"Niet-ondertekende uploads toestaan\" aan staat op het tabblad Instellingen.",
+        "Expected SHA-256": "Verwachte SHA-256",
+        "Paste the checksum the supplier gave you.": "Plak de controlesom die je van de leverancier hebt gekregen.",
+        "I accept the SHA-256 shown above": "Ik accepteer de SHA-256 hierboven",
+        "Could not read the archive.": "Het archief kon niet worden gelezen.",
+        "Could not install the archive.": "Het archief kon niet worden geïnstalleerd."
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }
