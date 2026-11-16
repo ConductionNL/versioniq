@@ -16,6 +16,8 @@ namespace OCA\Versioniq\Kernel\Contracts;
  * on this contract instead of the implementation.
  *
  * @spec exclude Structural contract, no functional requirement.
+ *
+ * @psalm-import-type Alert from \OCA\Versioniq\Service\Alert\WebhookSender
  */
 interface WebhookSenderInterface {
 	/**
