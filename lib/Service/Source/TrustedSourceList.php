@@ -13,11 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Source;
 
 use OCA\Versioniq\AppInfo\Application;
-use OCA\Versioniq\Service\Audit\AuditedVersions;
-use OCA\Versioniq\Service\Audit\AuditLogger;
-use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCP\IAppConfig;
-use OCP\IUserSession;
 
 /**
  * Reads and enforces the trusted-source allowlist. Bindings whose owner/repo
@@ -39,8 +35,8 @@ class TrustedSourceList {
 
 	public function __construct(
 		private IAppConfig $config,
-		private ?AuditLogger $auditLogger = null,
-		private ?IUserSession $userSession = null,
+		// Audits trust changes (sources-trust-audit-and-offline-feed).
+		private ?SourceBindingStore $sourceAudit = null,
 	) {
 	}
 
@@ -55,7 +51,7 @@ class TrustedSourceList {
 		if (!in_array($pattern, $patterns, true)) {
 			$patterns[] = $pattern;
 			$this->setPatterns($patterns);
-			$this->record(AuditLogger::OPERATION_TRUST_SOURCE, $pattern);
+			$this->sourceAudit?->recordTrustChange($pattern, true);
 		}
 
 		return $this->getPatterns();
@@ -72,23 +68,10 @@ class TrustedSourceList {
 		$kept = array_values(array_filter($patterns, static fn (string $p): bool => $p !== $pattern));
 		$this->setPatterns($kept);
 		if (count($kept) !== count($patterns)) {
-			$this->record(AuditLogger::OPERATION_UNTRUST_SOURCE, $pattern);
+			$this->sourceAudit?->recordTrustChange($pattern, false);
 		}
 
 		return $this->getPatterns();
-	}
-
-	/**
-	 * One audit row for a trust change: instance-wide, so the app is Versioniq
-	 * itself, and the pattern is the message.
-	 */
-	private function record(string $operation, string $pattern): void {
-		$this->auditLogger?->record(
-			new AuditSubject($this->userSession?->getUser()?->getUID() ?? 'system', Application::APP_ID, $operation),
-			new AuditedVersions(null, null, null),
-			AuditLogger::STATUS_SUCCESS,
-			$pattern,
-		);
 	}
 
 	/**

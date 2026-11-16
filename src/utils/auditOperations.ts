@@ -22,23 +22,22 @@ export function displayPattern (pattern: string): string {
 	return pattern.trim().replace(/\/\*$/, '').replace(/\/$/, '')
 }
 
+// The label of each operation the History tab names itself, by operation.
+// An operation not listed here shows as its own name.
+const OPERATION_LABELS = new Map<string, (pattern: string) => string>([
+	['trust_source', (pattern) => t('versioniq', 'Trusted source added: {pattern}', { pattern })],
+	['untrust_source', (pattern) => t('versioniq', 'Trusted source removed: {pattern}', { pattern })],
+	['unbind_source', () => t('versioniq', 'Source binding cleared')],
+])
+
 /**
  * The text the History tab shows for an entry's operation.
  *
  * @param entry the audit entry
  */
 export function operationLabel (entry: OperationEntry): string {
-	const pattern = displayPattern(entry.message ?? '')
-	switch (entry.operation) {
-	case 'trust_source':
-		return t('versioniq', 'Trusted source added: {pattern}', { pattern })
-	case 'untrust_source':
-		return t('versioniq', 'Trusted source removed: {pattern}', { pattern })
-	case 'unbind_source':
-		return t('versioniq', 'Source binding cleared')
-	default:
-		return entry.operation
-	}
+	const label = OPERATION_LABELS.get(entry.operation)
+	return label ? label(displayPattern(entry.message ?? '')) : entry.operation
 }
 
 /**

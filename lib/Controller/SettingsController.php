@@ -126,7 +126,7 @@ class SettingsController extends OCSController {
 				new AuditedVersions(null, null, null),
 				AuditLogger::STATUS_SUCCESS,
 				'Settings changed: ' . implode(', ', array_map(
-					static fn (string $field): string => $field . '=' . (is_bool($after[$field]) ? ($after[$field] ? 'on' : 'off') : (string)$after[$field]),
+					static fn (string $field): string => $field . '=' . self::settingText($after[$field]),
 					$applied,
 				)),
 			);
@@ -157,19 +157,10 @@ class SettingsController extends OCSController {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
-		if ($this->localFeedCopy === null || $this->time === null) {
-			return new DataResponse(['message' => 'The local advisory copy is not available.'], Http::STATUS_BAD_REQUEST);
-		}
 
-		$content = $this->uploadedContent();
-		if ($content === null) {
-			return new DataResponse(['message' => 'Choose a feed file to import.'], Http::STATUS_BAD_REQUEST);
-		}
-
-		try {
-			$copy = $this->localFeedCopy->import($content, $this->time->getTime());
-		} catch (InvalidArgumentException $error) {
-			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
+		$copy = $this->importUploadedFeedCopy();
+		if ($copy instanceof DataResponse) {
+			return $copy;
 		}
 
 		$this->auditLogger->record(
@@ -183,20 +174,64 @@ class SettingsController extends OCSController {
 	}
 
 	/**
+	 * Imports the uploaded `file` as the local advisory copy: the stored copy's
+	 * summary, or the 400 that says why nothing was stored.
+	 *
+	 * @return array{copiedAt: int, records: int}|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>
+	 */
+	private function importUploadedFeedCopy(): array|DataResponse {
+		if ($this->localFeedCopy === null || $this->time === null) {
+			return new DataResponse(['message' => 'The local advisory copy is not available.'], Http::STATUS_BAD_REQUEST);
+		}
+
+		$content = $this->uploadedContent();
+		if ($content === null) {
+			return new DataResponse(['message' => 'Choose a feed file to import.'], Http::STATUS_BAD_REQUEST);
+		}
+
+		try {
+			return $this->localFeedCopy->import($content, $this->time->getTime());
+		} catch (InvalidArgumentException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
+	}
+
+	/**
 	 * The content of the uploaded `file`, or null when none arrived whole.
 	 */
 	private function uploadedContent(): ?string {
-		/** @var mixed $upload */
-		$upload = $this->request->getUploadedFile('file');
-		if (!is_array($upload) || ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-			return null;
-		}
-		$path = $upload['tmp_name'] ?? null;
-		if (!is_string($path) || !is_readable($path)) {
+		$path = $this->uploadedPath();
+		if ($path === null) {
 			return null;
 		}
 		$content = file_get_contents($path);
 
 		return is_string($content) ? $content : null;
+	}
+
+	/**
+	 * The readable temporary path of the uploaded `file`, or null when none arrived whole.
+	 */
+	private function uploadedPath(): ?string {
+		/** @var mixed $upload */
+		$upload = $this->request->getUploadedFile('file');
+		if (!is_array($upload) || ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+			return null;
+		}
+		/** @var mixed $path */
+		$path = $upload['tmp_name'] ?? null;
+
+		return is_string($path) && is_readable($path) ? $path : null;
+	}
+
+	/**
+	 * A setting's value as the audit message writes it: on/off for a switch.
+	 */
+	private static function settingText(bool|int|string|null $value): string {
+		if (is_bool($value)) {
+			return $value ? 'on' : 'off';
+		}
+
+		return (string)$value;
 	}
 }

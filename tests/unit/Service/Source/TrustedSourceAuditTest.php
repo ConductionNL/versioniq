@@ -12,17 +12,20 @@ namespace OCA\Versioniq\Tests\Unit\Service\Source;
 use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Audit\AuditSubject;
+use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
 use OCP\IAppConfig;
 use OCP\IUser;
 use OCP\IUserSession;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 
 /**
  * Trusting and untrusting a source is audited once per real change, with the
  * pattern as the message (sources-trust-audit-and-offline-feed 1.1).
  *
  * @covers \OCA\Versioniq\Service\Source\TrustedSourceList
+ * @uses \OCA\Versioniq\Service\Source\SourceBindingStore
  *
  * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/audit-trail/spec.md
  */
@@ -84,7 +87,9 @@ final class TrustedSourceAuditTest extends TestCase {
 		}
 		$session->method('getUser')->willReturn($user);
 
-		return new TrustedSourceList($this->config(), $audit, $session);
+		$store = new SourceBindingStore($this->createMock(IAppConfig::class), $audit, $session, $this->createMock(LoggerInterface::class));
+
+		return new TrustedSourceList($this->config(), $store);
 	}
 
 	private function config(): IAppConfig {

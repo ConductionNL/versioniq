@@ -186,4 +186,25 @@ class SourceBindingStore {
 			]);
 		}
 	}
+
+	/**
+	 * Audits a trusted-source pattern added or removed: instance-wide, so the
+	 * app is Versioniq itself, and the pattern is the message
+	 * (sources-trust-audit-and-offline-feed). The trust list calls it, so a
+	 * source's binding and trust changes are written by one recorder.
+	 *
+	 * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/audit-trail/spec.md
+	 */
+	public function recordTrustChange(string $pattern, bool $trusted): void {
+		$this->auditLogger->record(
+			new AuditSubject(
+				$this->userSession->getUser()?->getUID() ?? 'system',
+				Application::APP_ID,
+				$trusted ? AuditLogger::OPERATION_TRUST_SOURCE : AuditLogger::OPERATION_UNTRUST_SOURCE,
+			),
+			new AuditedVersions(null, null, null),
+			AuditLogger::STATUS_SUCCESS,
+			$pattern,
+		);
+	}
 }

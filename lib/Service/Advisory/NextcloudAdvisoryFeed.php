@@ -98,10 +98,15 @@ class NextcloudAdvisoryFeed {
 	 * @return array{advisories: array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}>>, error: ?string}
 	 */
 	public function fetchAll(): array {
-		if ($this->usesLocalCopy()) {
-			return $this->fetchLocal();
-		}
+		return $this->usesLocalCopy() ? $this->fetchLocal() : $this->fetchRemote();
+	}
 
+	/**
+	 * Every advisory of the feed address, page by page; see {@see self::fetchAll()}.
+	 *
+	 * @return array{advisories: array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}>>, error: ?string}
+	 */
+	private function fetchRemote(): array {
 		$client = $this->http->clientService->newClient();
 		$url = $this->feedUrl() . '?per_page=' . self::PER_PAGE;
 		$collected = new FeedCollection();
