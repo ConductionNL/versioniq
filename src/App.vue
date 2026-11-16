@@ -28,6 +28,7 @@ import InstanceSettingsPanel from './components/InstanceSettingsPanel.vue'
 import IntegrationsPanel from './components/IntegrationsPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
+import PublisherMark from './components/PublisherMark.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
 import SourceOverrideField from './components/SourceOverrideField.vue'
@@ -70,6 +71,8 @@ type AppOption = {
 	installedVersion?: string | null
 	state?: 'enabled' | 'disabled' | 'notInstalled'
 	lkg?: LkgRecord | null
+	publisher?: string | null
+	marks?: string[]
 }
 
 type AppVersion = {
@@ -2792,6 +2795,7 @@ watch(dryRunEnabled, () => {
 														<p :class="$style.appCardMeta">
 															{{ app.id }}
 														</p>
+														<PublisherMark :publisher="app.publisher ?? null" :marks="app.marks ?? []" />
 														<p
 															v-if="app.installedVersion"
 															:class="$style.appCardMeta"

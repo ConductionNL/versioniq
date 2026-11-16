@@ -1,6 +1,8 @@
 <!-- SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl> -->
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
+import type { PublisherSimilar } from './PublisherMark.vue'
+
 import { t } from '@nextcloud/l10n'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
@@ -9,6 +11,7 @@ import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
+import PublisherMark from './PublisherMark.vue'
 import { ocsGet, ocsWrite } from '../ocs.ts'
 import { errorMessage } from '../utils/errorMessage.ts'
 
@@ -35,6 +38,9 @@ type DiscoveryHit = {
 	homepageUrl: string | null
 	installedVersion: string | null
 	sourceCandidates: DiscoveryCandidate[]
+	publisher?: string | null
+	marks?: string[]
+	similarTo?: PublisherSimilar[]
 }
 
 type ProviderInfo = { id: string, label: string, enabled: boolean }
@@ -438,6 +444,9 @@ async function handleFollow (hit: DiscoveryHit): Promise<void> {
 							</p>
 						</div>
 					</div>
+					<PublisherMark :publisher="hit.publisher ?? null"
+						:marks="hit.marks ?? []"
+						:similarTo="hit.similarTo ?? []" />
 					<p v-if="hit.summary" :class="$style.hitSummary">
 						{{ hit.summary }}
 					</p>
