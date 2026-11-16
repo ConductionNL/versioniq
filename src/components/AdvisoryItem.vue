@@ -1,26 +1,34 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
-import type { TriagedAdvisory } from '../utils/advisories.ts'
+import type { AdvisoryHistoryEntry, TriagedAdvisory } from '../utils/advisories.ts'
 
 import { t } from '@nextcloud/l10n'
 import { computed } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
-import { assigneeLabel, normalizeSeverity, severityLabel } from '../utils/advisories.ts'
+import { assigneeLabel, cveLabel, normalizeSeverity, publishedLabel, severityLabel } from '../utils/advisories.ts'
 
 /**
- * One advisory that still counts: its severity, id and summary, its owner
- * once assigned, and the Dismiss and Assign controls. An NCSC-NL record also
- * shows the NCSC-NL label, its CVE ids, NCSC-NL's own likelihood and damage
+ * One advisory: its severity, id and summary, its owner once assigned, and
+ * the Dismiss and Assign controls while it still counts. Given its history
+ * entry it also shows the CVE ids, the publication date, the link and
+ * whether the installed version is affected. An NCSC-NL record also shows
+ * the NCSC-NL label, its CVE ids, NCSC-NL's own likelihood and damage
  * ratings as published, its release date and a link, and says so when
  * NCSC-NL does not state which versions are affected; a record that a
  * duplicate was folded into names the other ids (advisories-ncsc-feed D7).
  *
  * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-assigns-an-advisory-to-an-owner
+ * @spec openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation/spec.md#requirement-each-product-lists-its-recent-advisories-with-cve-ids-and-dates
  * @spec openspec/changes/advisories-ncsc-feed/specs/security-advisory-correlation/spec.md#requirement-ncsc-nl-advisories-are-matched-to-the-installed-server-and-apps
  */
-const props = defineProps<{
+const props = withDefaults(defineProps<{
 	advisory: TriagedAdvisory
-}>()
+	entry?: AdvisoryHistoryEntry | null
+	readOnly?: boolean
+}>(), {
+	entry: null,
+	readOnly: false,
+})
 
 const emit = defineEmits<{
 	dismiss: []
@@ -43,7 +51,19 @@ const released = computed(() => (props.advisory.published ?? '').slice(0, 10))
 			data-testid="advisory-severity"
 			:data-severity="severity">{{ severityLabel(advisory.severity) }}</span>
 		<span v-if="isNcsc" :class="$style.source" data-testid="advisory-source">{{ t('versioniq', 'NCSC-NL') }}</span>
-		<code>{{ advisory.id }}</code>
+		<template v-if="entry">
+			<span data-testid="advisory-cve">{{ cveLabel(entry) }}</span>
+			<a v-if="entry.url"
+				:href="entry.url"
+				target="_blank"
+				rel="noopener noreferrer"><code>{{ advisory.id }}</code></a>
+			<code v-else>{{ advisory.id }}</code>
+			<span data-testid="advisory-date">{{ publishedLabel(entry) }}</span>
+			<span :class="{ [$style.affected]: entry.affectsInstalled }" data-testid="advisory-affects">
+				{{ entry.affectsInstalled ? t('versioniq', 'Affects the installed version') : t('versioniq', 'Fixed in the installed version') }}
+			</span>
+		</template>
+		<code v-else>{{ advisory.id }}</code>
 		<span>{{ advisory.summary }}</span>
 		<span v-if="advisory.relatedIds && advisory.relatedIds.length > 0" data-testid="advisory-related">
 			{{ t('versioniq', 'Also published as {ids}', { ids: advisory.relatedIds.join(', ') }) }}
@@ -62,7 +82,7 @@ const released = computed(() => (props.advisory.published ?? '').slice(0, 10))
 		<span v-if="advisory.assignee" :class="$style.owner" data-testid="advisory-owner">
 			{{ t('versioniq', 'Owner: {owner}', { owner: assigneeLabel(advisory.assignee) }) }}
 		</span>
-		<span :class="$style.actions">
+		<span v-if="!readOnly" :class="$style.actions">
 			<NcButton variant="tertiary" size="small" data-testid="advisory-dismiss" @click="emit('dismiss')">
 				{{ t('versioniq', 'Dismiss advisory') }}
 			</NcButton>
@@ -79,6 +99,11 @@ const released = computed(() => (props.advisory.published ?? '').slice(0, 10))
 	flex-wrap: wrap;
 	gap: 8px;
 	align-items: baseline;
+}
+
+.affected {
+	color: var(--color-error-text);
+	font-weight: bold;
 }
 
 .hint,

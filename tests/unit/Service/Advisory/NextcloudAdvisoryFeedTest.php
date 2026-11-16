@@ -252,4 +252,34 @@ final class NextcloudAdvisoryFeedTest extends TestCase {
 		self::assertSame('high', $result['advisories']['spreed'][0]['severity']);
 		self::assertSame('medium', $result['advisories']['tables'][0]['severity']);
 	}
+
+	/**
+	 * advisories-per-app-detail 1.1: the feed keeps the CVE ids, date and
+	 * link the GHSA record carries, for every target it names, and leaves
+	 * them empty when the record has none.
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/tasks.md#1.1
+	 */
+	public function testKeepsTheCveIdsDateAndLinkOfTheRecord(): void {
+		$full = $this->advisory('GHSA-aaaa', [['package' => 'Mail', 'patched' => '3.7.25'], ['package' => 'Talk', 'patched' => '21.1.10']]) + [
+			'cve_id' => 'cve-2026-1111',
+			'identifiers' => [['type' => 'CVE', 'value' => 'CVE-2026-1111'], ['type' => 'GHSA', 'value' => 'GHSA-aaaa']],
+			'published_at' => '2026-08-01T12:30:00+02:00',
+			'html_url' => 'https://github.com/nextcloud/security-advisories/security/advisories/GHSA-aaaa',
+		];
+		$body = json_encode([$full, $this->advisory('GHSA-bbbb', [['package' => 'Tables', 'patched' => '1.0.1']])], JSON_THROW_ON_ERROR);
+
+		$result = $this->feed([['body' => $body]])->fetchAll();
+
+		foreach (['mail', 'spreed'] as $target) {
+			$advisory = $result['advisories'][$target][0];
+			self::assertSame(['CVE-2026-1111'], $advisory['cveIds']);
+			self::assertSame('2026-08-01T10:30:00Z', $advisory['publishedAt']);
+			self::assertSame('https://github.com/nextcloud/security-advisories/security/advisories/GHSA-aaaa', $advisory['url']);
+		}
+		$bare = $result['advisories']['tables'][0];
+		self::assertSame([], $bare['cveIds']);
+		self::assertNull($bare['publishedAt']);
+		self::assertNull($bare['url']);
+	}
 }

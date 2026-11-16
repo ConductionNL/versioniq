@@ -991,10 +991,10 @@ final class ApiTest extends TestCase {
 		$response = $controller->advisories();
 
 		$this->assertSame(200, $response->getStatus());
-		$this->assertSame([
-			'advisories' => ['notes' => ['state' => 'advisory-available']],
-			'checkedAt' => 1_700_000_000,
-			'triage' => $triage,
-		], $response->getData());
+		$data = $response->getData();
+		$this->assertSame(['notes' => ['state' => 'advisory-available', 'heldByPin' => false]], $data['advisories']);
+		$this->assertSame(1_700_000_000, $data['checkedAt']);
+		$this->assertSame(['advisories', 'checkedAt', 'compliance', 'triage'], array_keys($data));
+		$this->assertSame($triage, $data['triage']);
 	}
 }
