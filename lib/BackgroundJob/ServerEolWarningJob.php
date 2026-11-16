@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\BackgroundJob;
 
-use OCA\Versioniq\Service\Lifecycle\ServerEolWarner;
+use OCA\Versioniq\Kernel\Contracts\ServerEolWarnerInterface;
 use OCP\BackgroundJob\TimedJob;
 use Psr\Log\LoggerInterface;
 
@@ -28,7 +28,7 @@ class ServerEolWarningJob extends TimedJob {
 
 	public function __construct(
 		JobRuntime $runtime,
-		private ServerEolWarner $warner,
+		private ServerEolWarnerInterface $warner,
 	) {
 		parent::__construct($runtime->time);
 		$this->logger = $runtime->logger;

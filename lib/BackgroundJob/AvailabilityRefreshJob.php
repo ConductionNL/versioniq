@@ -11,8 +11,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\BackgroundJob;
 
-use OCA\Versioniq\Service\Availability\AvailabilityService;
-use OCA\Versioniq\Service\ReleaseAlert\ReleaseSweepRecorder;
+use OCA\Versioniq\Kernel\Contracts\AvailabilityServiceInterface;
+use OCA\Versioniq\Kernel\Contracts\ReleaseSweepRecorderInterface;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
 use Psr\Log\LoggerInterface;
@@ -33,8 +33,8 @@ class AvailabilityRefreshJob extends TimedJob {
 
 	public function __construct(
 		ITimeFactory $time,
-		private AvailabilityService $availabilityService,
-		private ReleaseSweepRecorder $recorder,
+		private AvailabilityServiceInterface $availabilityService,
+		private ReleaseSweepRecorderInterface $recorder,
 		private LoggerInterface $logger,
 	) {
 		parent::__construct($time);

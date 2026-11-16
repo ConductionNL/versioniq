@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Command;
 
-use OCA\Versioniq\Service\InstallerService;
+use OCA\Versioniq\Kernel\Contracts\InstallerServiceInterface;
 use OCP\AppFramework\Http;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\Table;
@@ -33,7 +33,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class ListVersions extends Command {
 	public function __construct(
-		private InstallerService $installerService,
+		private InstallerServiceInterface $installerService,
 	) {
 		parent::__construct();
 	}
