@@ -14,6 +14,7 @@ namespace OCA\Versioniq\Service\Source;
 
 use Exception;
 use OCA\Versioniq\Service\Advisory\AdvisoryClauses;
+use OCA\Versioniq\Service\Advisory\AdvisoryReferences;
 use OCA\Versioniq\Service\Advisory\AdvisorySeverity;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
@@ -106,6 +107,64 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		}
 
 		return ['versions' => $this->dedupeAndSort($this->versionEntries($result['releases'] ?? [], $binding->getAssetPattern())), 'error' => null];
+	}
+
+	/**
+	 * Whether the forge reports the bound repository as archived; null when
+	 * the binding is no forge binding or the forge could not be asked. One
+	 * request, made by the availability sweep only.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 */
+	public function isArchived(SourceBinding $binding): ?bool {
+		$ownerRepo = $binding->getOwnerRepo();
+		if ($ownerRepo === null) {
+			return null;
+		}
+		$forge = $this->forgeRegistry->get($binding->getForge());
+		$uid = $this->pats->userSession->getUser()?->getUID();
+		$pat = $this->pats->patResolver->findFor($forge->id, $ownerRepo, $uid);
+		$endpoint = $forge->repositoryEndpoint($ownerRepo);
+
+		if ($pat === null) {
+			return $this->archivedFlag($forge, $endpoint, null);
+		}
+
+		/** @var ?bool */
+		return $this->pats->patManager->useToken($pat, fn (string $token): ?bool => $this->archivedFlag($forge, $endpoint, $token));
+	}
+
+	/**
+	 * The `archived` field of a repository answer, or null for a failed or unreadable one.
+	 */
+	private function archivedFlag(Forge $forge, string $endpoint, ?string $token): ?bool {
+		try {
+			$response = $this->clientService->newClient()->get($endpoint, $this->requestOptions($forge, $token));
+		} catch (Exception $error) {
+			$this->logger->info('ForgeReleaseSource: repository lookup failed', ['forge' => $forge->id, 'message' => $error->getMessage()]);
+
+			return null;
+		}
+
+		return self::archivedIn($response);
+	}
+
+	/**
+	 * The `archived` field of a 200 repository answer, or null for any other answer.
+	 */
+	private static function archivedIn(IResponse $response): ?bool {
+		if ($response->getStatusCode() !== 200) {
+			return null;
+		}
+
+		try {
+			/** @var mixed $decoded */
+			$decoded = json_decode((string)$response->getBody(), true, 32, JSON_THROW_ON_ERROR);
+		} catch (\JsonException) {
+			return null;
+		}
+
+		return is_array($decoded) && is_bool($decoded['archived'] ?? null) ? $decoded['archived'] : null;
 	}
 
 	/**
@@ -232,7 +291,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * `error` string rather than throwing.
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
-	 * @return array{advisories: list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string}>, error: ?string}
+	 * @return array{advisories: list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, error: ?string}
 	 */
 	public function listAdvisories(string $appId, SourceBinding $binding): array {
 		$ownerRepo = $binding->getOwnerRepo();
@@ -260,7 +319,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * object or has no id.
 	 *
 	 * @param array<array-key, mixed> $entries
-	 * @return list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string}>
+	 * @return list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>
 	 */
 	private function advisoriesIn(array $entries): array {
 		$advisories = [];
@@ -280,7 +339,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * the first vulnerability entry (forge advisories list one package).
 	 *
 	 * @param array<array-key, mixed> $entry
-	 * @return array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string}|null
+	 * @return array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}|null
 	 */
 	private function normalizeAdvisory(array $entry): ?array {
 		/** @var mixed $id */
@@ -301,7 +360,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			'summary' => is_string($summary) ? $summary : '',
 			'affected' => $affected,
 			'firstPatchedVersion' => $firstPatched,
-		];
+		] + AdvisoryReferences::from($entry);
 	}
 
 	/**
@@ -384,16 +443,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 */
 	private function performFetch(Forge $forge, string $endpoint, ?string $token): array {
 		try {
-			$response = $this->clientService->newClient()->get($endpoint, [
-				'headers' => $this->requestHeaders($forge, $token),
-				'timeout' => 30,
-				// IClient throws on 4xx by default; we want to inspect the
-				// status code ourselves to produce useful errors.
-				'http_errors' => false,
-				// SSRF defence-in-depth: local addresses are blocked unless the
-				// operator has enabled Nextcloud's allow_local_remote_servers.
-				'nextcloud' => ['allow_local_address' => $this->allowLocalAddress()],
-			]);
+			$response = $this->clientService->newClient()->get($endpoint, $this->requestOptions($forge, $token));
 		} catch (Exception $error) {
 			$this->logger->warning('ForgeReleaseSource: fetch failed', [
 				'forge' => $forge->id,
@@ -407,6 +457,24 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		}
 
 		return $this->readReleaseList($forge, $response);
+	}
+
+	/**
+	 * The client options of one forge call.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function requestOptions(Forge $forge, ?string $token): array {
+		return [
+			'headers' => $this->requestHeaders($forge, $token),
+			'timeout' => 30,
+			// IClient throws on 4xx by default; we want to inspect the
+			// status code ourselves to produce useful errors.
+			'http_errors' => false,
+			// SSRF defence-in-depth: local addresses are blocked unless the
+			// operator has enabled Nextcloud's allow_local_remote_servers.
+			'nextcloud' => ['allow_local_address' => $this->allowLocalAddress()],
+		];
 	}
 
 	/**

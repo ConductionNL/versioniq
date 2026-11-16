@@ -17,6 +17,8 @@ use OCA\Versioniq\Db\Pat;
 use OCA\Versioniq\Http\InstallVersionFields;
 use OCA\Versioniq\Http\RequestFieldsFrom;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Service\Advisory\ComplianceStatus;
+use OCA\Versioniq\Service\Advisory\FixStatus;
 use OCA\Versioniq\Service\Api\AccessCollaborators;
 use OCA\Versioniq\Service\Api\InstallCollaborators;
 use OCA\Versioniq\Service\Api\ReportCollaborators;
@@ -105,15 +107,20 @@ class ApiController extends OCSController {
 	 * six-hour-old one, or from an instance whose cron has never run — three
 	 * states that otherwise render as an identical empty map.
 	 *
+	 * `compliance` is the one patch compliance status of the server and all
+	 * apps (ComplianceStatus), and each row carries `heldByPin` when a pin
+	 * holds it below an installable fix (advisories-per-app-detail).
+	 *
 	 * `triage` is the stored dismissals and owners, keyed `{appId}|{advisoryId}`,
 	 * applied by the page; the snapshot itself stays raw (advisories-triage D1).
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{advisories: array<string, mixed>, checkedAt: ?int, status: ?string, errors: list<string>, triage: array<string, mixed>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{advisories: array<string, mixed>, checkedAt: ?int, status: ?string, errors: list<string>, compliance: array<string, mixed>, triage: array<string, mixed>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Stored advisory correlation returned
 	 * 403: Caller is not an administrator
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
+	 * @spec openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation/spec.md#requirement-the-instance-has-one-patch-compliance-status
 	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/advisories')]
@@ -124,13 +131,21 @@ class ApiController extends OCSController {
 		}
 
 		$snapshot = $this->reports->stores->advisoryResultStore->read();
+		// A pin is read now, not at sweep time: it can change between sweeps.
+		$rows = FixStatus::withPins($snapshot['advisories'], $this->autoUpdate->pinStore->all());
 
 		return new DataResponse([
-			'advisories' => $snapshot['advisories'],
+			'advisories' => $rows,
 			// The check line shows the status with this time: a failed sweep's is its attempt's.
 			'checkedAt' => $snapshot['failedAt'] ?? $snapshot['checkedAt'],
 			'status' => $snapshot['status'],
 			'errors' => $snapshot['errors'],
+			'compliance' => ComplianceStatus::from(
+				$rows,
+				$snapshot['checkedAt'],
+				$this->reports->stores->advisorySettingsStore->getIntervalHours(),
+				$this->access->caller->timeFactory->getDateTime('now')->getTimestamp(),
+			),
 			'triage' => $this->reports->stores->advisoryTriageStore?->read() ?? [],
 		]);
 	}
