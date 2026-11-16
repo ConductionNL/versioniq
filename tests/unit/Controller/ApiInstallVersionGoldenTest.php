@@ -42,6 +42,7 @@ use PHPUnit\Framework\TestCase;
  * @uses \OCA\Versioniq\Service\Api\ReportCollaborators
  * @uses \OCA\Versioniq\Service\Api\ReportStores
  * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores
+ * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateSecurityStores
  * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
  * @uses \OCA\Versioniq\Service\Installer\InstallOptions
  * @uses \OCA\Versioniq\Service\Installer\InstallRequest
