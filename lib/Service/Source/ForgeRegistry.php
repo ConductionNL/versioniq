@@ -13,6 +13,7 @@ namespace OCA\Versioniq\Service\Source;
 
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\ForgeRegistryInterface;
 use OCP\IAppConfig;
 
 /**
@@ -40,13 +41,11 @@ use OCP\IAppConfig;
  * @spec openspec/specs/external-sources/spec.md
  * @psalm-api
  */
-class ForgeRegistry {
+class ForgeRegistry implements ForgeRegistryInterface {
 	public const FORGE_GITHUB = 'github';
 	public const FORGE_FORGEJO = 'forgejo';
 	public const FORGE_CODEBERG = 'codeberg';
 	public const FORGE_GITLAB = 'gitlab';
-
-	public const GITLAB_WEB_DEFAULT = 'https://gitlab.com';
 
 	/** Public GitHub; overridden by `forge.github.api_base` / `web_base` for GitHub Enterprise. */
 	public const GITHUB_API_DEFAULT = 'https://api.github.com';

@@ -13,6 +13,7 @@ namespace OCA\Versioniq\Service\Instance;
 
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Db\AuditEntryMapper;
+use OCA\Versioniq\Kernel\Contracts\ManifestBuilderInterface;
 use OCA\Versioniq\Service\Advisory\ServerVersionProvider;
 use OCA\Versioniq\Service\InstallerService;
 use OCP\App\IAppManager;
@@ -28,7 +29,7 @@ use OCP\IURLGenerator;
  * @psalm-type ManifestApp = array{appId:string,installedVersion:?string,state:string,sourceId:?string,sha256:?string,runningSince:?string}
  * @psalm-type InstanceManifest = array{instanceName:string,stage:string,serverVersion:string,versioniqVersion:string,apps:list<ManifestApp>}
  */
-class ManifestBuilder {
+class ManifestBuilder implements ManifestBuilderInterface {
 	public function __construct(
 		private InstallerService $installer,
 		private InstanceConnectionStore $connections,

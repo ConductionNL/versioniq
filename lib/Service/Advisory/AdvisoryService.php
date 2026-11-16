@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Advisory;
 
+use OCA\Versioniq\Kernel\Contracts\AdvisoryServiceInterface;
 use OCA\Versioniq\Service\Source\ForgeReleaseSource;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceInterface;
@@ -44,9 +45,7 @@ use Psr\Log\LoggerInterface;
  *
  * @psalm-api
  */
-class AdvisoryService {
-	public const STATE_NONE = 'none';
-
+class AdvisoryService implements AdvisoryServiceInterface {
 	/**
 	 * Default wall-clock ceiling for a correlateAll() sweep, in seconds.
 	 *
@@ -66,7 +65,6 @@ class AdvisoryService {
 	 * @var float
 	 */
 	public const CORRELATE_ALL_BUDGET_SECONDS = 5.0;
-	public const STATE_AVAILABLE = 'advisory-available';
 	public const STATE_VULNERABLE = 'pinned-to-vulnerable';
 
 	/**
@@ -127,16 +125,28 @@ class AdvisoryService {
 			return $this->withoutAdvisorySource(['id' => $appId, 'installed' => $installedVersion, 'source' => $source, 'binding' => $binding], $feedAdvisories);
 		}
 
-		$advisoryResult = $source->listAdvisories($appId, $binding);
-		$advisories = [...$feedAdvisories, ...$advisoryResult['advisories']];
-		$error = $advisoryResult['error'];
+		return $this->correlateWithSource(['id' => $appId, 'installed' => $installedVersion, 'source' => $source, 'binding' => $binding], $feedAdvisories);
+	}
 
-		$versionResult = $source->listVersions($appId, $binding);
+	/**
+	 * The feed's advisories together with those the app's own source
+	 * publishes, evaluated against the versions that source lists.
+	 *
+	 * @param array{id: string, installed: string, source: AdvisorySourceInterface&SourceInterface, binding: SourceBinding} $app The app, its installed version, source and binding.
+	 * @param list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions?: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}> $feedAdvisories The feed's advisories for this app.
+	 * @return array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, recommendedVersion: ?string, error: ?string, history?: list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool}>, fixStatus?: ?string}
+	 * @spec openspec/specs/security-advisory-correlation/spec.md
+	 */
+	private function correlateWithSource(array $app, array $feedAdvisories): array {
+		$advisoryResult = $app['source']->listAdvisories($app['id'], $app['binding']);
+		$advisories = [...$feedAdvisories, ...$advisoryResult['advisories']];
+
+		$versionResult = $app['source']->listVersions($app['id'], $app['binding']);
 		$available = array_column($versionResult['versions'], 'version');
 
-		$evaluated = $this->evaluate($installedVersion, $advisories, $available);
-		$evaluated['appId'] = $appId;
-		$evaluated['error'] = $error;
+		$evaluated = $this->evaluate($app['installed'], $advisories, $available);
+		$evaluated['appId'] = $app['id'];
+		$evaluated['error'] = $advisoryResult['error'];
 		// The version list this sweep already fetched, with its server
 		// compatibility, says why an affected version has no fix (D2).
 		$evaluated['fixStatus'] = FixStatus::for($evaluated, $versionResult['versions']);
@@ -149,11 +159,12 @@ class AdvisoryService {
 	 * names a fix: a feed-covered app's source is otherwise not asked.
 	 *
 	 * @param array<string, mixed> $evaluated
+	 * @param array{id: string, installed: string, source: SourceInterface, binding: SourceBinding} $app The app, its installed version, source and binding.
 	 * @return list<array{version: string, changelog: ?string, serverCompatible?: ?bool, releasedAt?: ?string}>
 	 *
 	 * @spec openspec/changes/advisories-per-app-detail/tasks.md#2.1
 	 */
-	private function versionsForFix(array $evaluated, SourceInterface $source, string $appId, SourceBinding $binding): array {
+	private function versionsForFix(array $evaluated, array $app): array {
 		if (($evaluated['state'] ?? null) !== self::STATE_VULNERABLE || ($evaluated['recommendedVersion'] ?? null) === null) {
 			return [];
 		}
@@ -161,10 +172,10 @@ class AdvisoryService {
 		// Fail-soft: the fix status is an explanation, so a source that cannot
 		// list its versions now must not cost the row its advisory state.
 		try {
-			$listing = $source->listVersions($appId, $binding);
+			$listing = $app['source']->listVersions($app['id'], $app['binding']);
 		} catch (\Throwable $error) {
 			$this->logger->info('AdvisoryService: versions for the fix status could not be listed', [
-				'app' => $appId,
+				'app' => $app['id'],
 				'message' => $error->getMessage(),
 			]);
 
@@ -574,12 +585,27 @@ class AdvisoryService {
 			return true;
 		}
 
-		if (preg_match('/^(<=|>=|<|>|=)?\s*(.+)$/', $clause, $matches) !== 1) {
+		$parsed = self::parseClause($clause);
+		if ($parsed === null) {
 			return false;
+		}
+
+		return version_compare($version, $parsed['bound'], $parsed['operator']);
+	}
+
+	/**
+	 * The operator and bound of a non-empty clause, or null when either
+	 * cannot be read.
+	 *
+	 * @return array{operator: '<'|'<='|'>'|'>='|'=', bound: string}|null
+	 */
+	private static function parseClause(string $clause): ?array {
+		if (preg_match('/^(<=|>=|<|>|=)?\s*(.+)$/', $clause, $matches) !== 1) {
+			return null;
 		}
 		$bound = trim($matches[2]);
 		if ($bound === '') {
-			return false;
+			return null;
 		}
 
 		// version_compare's third argument is a CLOSED SET, and with an
@@ -597,10 +623,10 @@ class AdvisoryService {
 			default => null,
 		};
 		if ($operator === null) {
-			return false;
+			return null;
 		}
 
-		return version_compare($version, $bound, $operator);
+		return ['operator' => $operator, 'bound' => $bound];
 	}
 
 	/**
@@ -719,7 +745,7 @@ class AdvisoryService {
 		$evaluated = $this->evaluate($app['installed'], $feedAdvisories, []);
 		$evaluated['appId'] = $app['id'];
 		$evaluated['error'] = $error;
-		$evaluated['fixStatus'] = FixStatus::for($evaluated, $this->versionsForFix($evaluated, $app['source'], $app['id'], $app['binding']));
+		$evaluated['fixStatus'] = FixStatus::for($evaluated, $this->versionsForFix($evaluated, $app));
 
 		return $evaluated;
 	}
