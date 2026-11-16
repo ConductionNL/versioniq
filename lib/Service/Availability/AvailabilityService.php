@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Availability;
 
 use OCA\Versioniq\Service\InstallerService;
+use OCA\Versioniq\Service\Lifecycle\LifecycleSignals;
 use OCA\Versioniq\Service\Pin\PinStore;
 use Psr\Log\LoggerInterface;
 
@@ -42,6 +43,7 @@ class AvailabilityService {
 		private PinStore $pinStore,
 		private LoggerInterface $logger,
 		private ?WithdrawnVersionStore $withdrawnVersions = null,
+		private ?LifecycleSignals $lifecycle = null,
 	) {
 	}
 
@@ -52,7 +54,7 @@ class AvailabilityService {
 	 * than left out, so the page says "not checked" instead of nothing.
 	 *
 	 * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
-	 * @return array<string, array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, installedWithdrawn: ?bool}>
+	 * @return array<string, array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, installedWithdrawn: ?bool, lifecycle?: array<string, mixed>}>
 	 * @param list<array{appId: string, sourceId: ?string}> $followed Followed apps that join the sweep when not installed (releases-new-release-alerts D3).
 	 */
 	public function sweep(float $budgetSeconds, array $followed = []): array {
@@ -164,7 +166,7 @@ class AvailabilityService {
 	 * The row for an app from its source's version listing; a listing that
 	 * fails or reports an error is recorded as that error.
 	 *
-	 * @return array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, installedWithdrawn: ?bool}
+	 * @return array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, installedWithdrawn: ?bool, lifecycle?: array<string, mixed>}
 	 */
 	private function listedEntry(string $appId, AppVersionCheck $check): array {
 		try {
@@ -175,24 +177,64 @@ class AvailabilityService {
 			return $this->entry($check, [], $error->getMessage());
 		}
 
-		$error = ($listing['hasError'] ?? false) === true
-			? ($listing['error'] ?? 'The source did not answer.')
-			: null;
+		$error = self::listingError($listing);
 		$versions = $error === null && is_array($listing['availableVersions'] ?? null) ? $listing['availableVersions'] : [];
 		$sourceId = is_string($listing['sourceId'] ?? null) ? $listing['sourceId'] : $check->sourceId;
-		$listed = self::listedVersions($versions);
-		// Only a successful listing that names versions says anything about
-		// withdrawal. A failed, malformed or empty one withdraws nothing: an
-		// empty answer from a misconfigured source would otherwise mark every
-		// earlier version withdrawn and block reinstalling it.
-		$judged = $error === null && $listed !== [];
-		if ($judged && $this->withdrawnVersions !== null) {
-			$this->withdrawnVersions->recordListing($appId, $listed);
-		}
+		$judged = $this->recordWithdrawals($appId, $error === null ? $versions : []);
 
 		$entry = $this->entry($check->withSource($sourceId), $versions, $error);
 		if (!$judged) {
 			$entry['installedWithdrawn'] = null;
+		}
+
+		return $this->withArchived($appId, $entry);
+	}
+
+	/**
+	 * The error a listing reports, or null for a successful one.
+	 *
+	 * @param array<string, mixed> $listing
+	 */
+	private static function listingError(array $listing): ?string {
+		return ($listing['hasError'] ?? false) === true
+			? ($listing['error'] ?? 'The source did not answer.')
+			: null;
+	}
+
+	/**
+	 * Records which versions a successful listing names, and says whether it
+	 * could judge withdrawal at all.
+	 *
+	 * Only a successful listing that names versions says anything about
+	 * withdrawal. A failed, malformed or empty one withdraws nothing: an
+	 * empty answer from a misconfigured source would otherwise mark every
+	 * earlier version withdrawn and block reinstalling it.
+	 *
+	 * @param list<array<string, mixed>> $versions The listing's versions; empty for a failed listing.
+	 */
+	private function recordWithdrawals(string $appId, array $versions): bool {
+		$listed = self::listedVersions($versions);
+		if ($listed === []) {
+			return false;
+		}
+		if ($this->withdrawnVersions !== null) {
+			$this->withdrawnVersions->recordListing($appId, $listed);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Stamps whether the app's repository is archived on an entry that carries life cycle signals.
+	 *
+	 * A failed listing leaves it unknown.
+	 *
+	 * @param array<string, mixed> $entry
+	 * @return array<string, mixed>
+	 */
+	private function withArchived(string $appId, array $entry): array {
+		if (isset($entry['lifecycle']) && $this->lifecycle !== null) {
+			$entry['lifecycle']['archived'] = $entry['error'] === null ? $this->lifecycle->archived($appId) : null;
 		}
 
 		return $entry;
@@ -200,7 +242,7 @@ class AvailabilityService {
 
 	/**
 	 * @param list<array<string, mixed>> $versions
-	 * @return array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, installedWithdrawn: ?bool}
+	 * @return array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, installedWithdrawn: ?bool, lifecycle?: array<string, mixed>}
 	 */
 	private function entry(AppVersionCheck $check, array $versions, ?string $error): array {
 		$installedParts = $this->parse($check->installedVersion);
@@ -216,7 +258,18 @@ class AvailabilityService {
 			'sourceId' => $check->sourceId,
 			'error' => $error,
 			'installedWithdrawn' => $error === null ? $this->installedWithdrawn($check->installedVersion, $versions, $installedParts) : null,
-		];
+		] + $this->lifecycleOf($error, $versions);
+	}
+
+	/**
+	 * The app's life cycle signals, under `lifecycle`, when the sweep reads them.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 * @param list<array<string, mixed>> $versions
+	 * @return array{lifecycle?: array{removedFromStore: bool, noReleaseFor12Months: ?bool, lastReleasedAt: ?string}}
+	 */
+	private function lifecycleOf(?string $error, array $versions): array {
+		return $this->lifecycle === null ? [] : ['lifecycle' => $this->lifecycle->signals($error, $versions)];
 	}
 
 	/**

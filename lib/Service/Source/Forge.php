@@ -67,6 +67,13 @@ final class Forge {
 	}
 
 	/**
+	 * The repository endpoint, which tells whether the repository is archived.
+	 */
+	public function repositoryEndpoint(string $ownerRepo): string {
+		return sprintf('%s/repos/%s', $this->apiBaseUrl, $ownerRepo);
+	}
+
+	/**
 	 * Repository security-advisories endpoint for an `owner/repo`. GitHub and
 	 * Forgejo both expose `/repos/{owner}/{repo}/security-advisories`; the JSON
 	 * shape (ghsa_id / severity / summary / vulnerabilities[]) is compatible.
