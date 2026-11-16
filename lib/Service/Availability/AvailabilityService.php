@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Availability;
 
+use OCA\Versioniq\Kernel\Contracts\AvailabilityServiceInterface;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Lifecycle\LifecycleSignals;
 use OCA\Versioniq\Service\Pin\PinStore;
@@ -31,7 +32,7 @@ use Psr\Log\LoggerInterface;
  * @psalm-api
  * @psalm-import-type InstalledAppCard from InstallerService
  */
-class AvailabilityService {
+class AvailabilityService implements AvailabilityServiceInterface {
 	/** Plain major.minor.patch, the rule CandidateSelector applies. */
 	private const SEMVER_PATTERN = '/^(\d+)\.(\d+)\.(\d+)$/';
 

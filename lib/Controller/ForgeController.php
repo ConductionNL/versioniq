@@ -13,7 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
-use OCA\Versioniq\Service\Source\ForgeRegistry;
+use OCA\Versioniq\Kernel\Contracts\ForgeRegistryInterface;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
@@ -42,7 +42,7 @@ class ForgeController extends OCSController {
 	public function __construct(
 		string $appName,
 		IRequest $request,
-		private ForgeRegistry $forgeRegistry,
+		private ForgeRegistryInterface $forgeRegistry,
 		private IGroupManager $groupManager,
 		private IUserSession $userSession,
 	) {
@@ -155,7 +155,7 @@ class ForgeController extends OCSController {
 	private function gitlabPayload(): array {
 		$host = $this->forgeRegistry->gitlabHost();
 
-		return ['host' => $host, 'selfManaged' => $host !== ForgeRegistry::GITLAB_WEB_DEFAULT];
+		return ['host' => $host, 'selfManaged' => $host !== ForgeRegistryInterface::GITLAB_WEB_DEFAULT];
 	}
 
 	/**

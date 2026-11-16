@@ -118,20 +118,7 @@ class AdvisoryPackageMap {
 		foreach ($this->appManager->getEnabledApps() as $appId) {
 			$index[$this->normalise($appId)] = $appId;
 
-			try {
-				$info = $this->appManager->getAppInfo($appId);
-			} catch (\Throwable $error) {
-				$this->logger->debug('AdvisoryPackageMap: could not read app info', [
-					'app' => $appId,
-					'message' => $error->getMessage(),
-				]);
-				continue;
-			}
-			if (!is_array($info)) {
-				continue;
-			}
-
-			foreach ($this->displayNames($info) as $name) {
+			foreach ($this->appDisplayNames($appId) as $name) {
 				$key = $this->normalise($name);
 				// An id match is more trustworthy than a name match, so never
 				// let a name overwrite one.
@@ -144,6 +131,27 @@ class AdvisoryPackageMap {
 		$this->index = $index;
 
 		return $index;
+	}
+
+	/**
+	 * The display names in an enabled app's info.xml; none when it cannot be
+	 * read.
+	 *
+	 * @return list<string>
+	 */
+	private function appDisplayNames(string $appId): array {
+		try {
+			$info = $this->appManager->getAppInfo($appId);
+		} catch (\Throwable $error) {
+			$this->logger->debug('AdvisoryPackageMap: could not read app info', [
+				'app' => $appId,
+				'message' => $error->getMessage(),
+			]);
+
+			return [];
+		}
+
+		return is_array($info) ? $this->displayNames($info) : [];
 	}
 
 	/**
