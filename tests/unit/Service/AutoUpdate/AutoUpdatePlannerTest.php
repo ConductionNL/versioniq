@@ -9,16 +9,21 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\AutoUpdate;
 
+use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
+use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateMember;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSecurityStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\AutoUpdate\SecurityHoldStore;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Policy\PatchPolicyStore;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyStore;
 use OCP\App\IAppManager;
@@ -47,9 +52,20 @@ final class AutoUpdatePlannerTest extends TestCase {
 		$this->logger = $this->createMock(LoggerInterface::class);
 	}
 
-	private function planner(): AutoUpdatePlanner {
+	private function planner(?AutoUpdateSettingsStore $settings = null): AutoUpdatePlanner {
 		return new AutoUpdatePlanner(
-			new AutoUpdateStores($this->policies, $this->pins, $this->createMock(AutoUpdateSettingsStore::class), $this->ledger),
+			new AutoUpdateStores(
+				$this->policies,
+				$this->pins,
+				$settings ?? $this->createMock(AutoUpdateSettingsStore::class),
+				$this->ledger,
+				new AutoUpdateSecurityStores(
+					$this->createMock(AdvisoryResultStore::class),
+					$this->createMock(AdvisorySettingsStore::class),
+					$this->createMock(PatchPolicyStore::class),
+					$this->createMock(SecurityHoldStore::class),
+				),
+			),
 			new AutoUpdateInstall($this->installer, $this->apps, new CandidateSelector()),
 			$this->logger,
 		);
@@ -181,13 +197,9 @@ final class AutoUpdatePlannerTest extends TestCase {
 		$settings->method('getMaxPerRun')->willReturn(2);
 		$settings->method('getDeferred')->willReturn([]);
 		$settings->expects($this->once())->method('setDeferred')->with(['app:gamma' => '2026-11-15T02:00:00+00:00']);
-		$planner = new AutoUpdatePlanner(
-			new AutoUpdateStores($this->policies, $this->pins, $settings, $this->ledger),
-			new AutoUpdateInstall($this->installer, $this->apps, new CandidateSelector()),
-			$this->logger,
-		);
+		$planner = $this->planner($settings);
 
-		$plan = $planner->plan(new \DateTimeImmutable('2026-11-15T02:00:00+00:00'));
+		$plan = $planner->plan(now: new \DateTimeImmutable('2026-11-15T02:00:00+00:00'));
 
 		$this->assertSame(['alpha', 'beta'], array_map(static fn (AutoUpdateMember $member): string => $member->appId, $plan->installable()));
 		$this->assertSame(AutoUpdateMember::REASON_LIMIT, $plan->members[2]->reason);

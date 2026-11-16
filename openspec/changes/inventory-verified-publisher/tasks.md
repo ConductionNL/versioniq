@@ -10,8 +10,9 @@
 
 ## 2. Page
 
-- [ ] 2.1 Add `PublisherMark.vue` and use it in `DiscoverPanel.vue` and on the app card, with the similar-name hint. Verify: `PublisherMark.spec.ts` and an extended `DiscoverPanel.spec.ts`.
-- [ ] 2.2 Add strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
+- [x] 2.1 Add `PublisherMark.vue` and use it in `DiscoverPanel.vue` and on the app card, with the similar-name hint. Verify: `PublisherMark.spec.ts` and an extended `DiscoverPanel.spec.ts`.
+- [x] 2.2 Add strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
+  - Built: `PublisherMark.vue` (publisher, the four marks with a tooltip naming who claims each, similar-name hints) on every Discover hit and under the id on each app card; 13 English and Dutch strings. `PublisherMark.spec.ts` and two new `DiscoverPanel.spec.ts` cases.
 - [ ] 2.3 Extend `tests/e2e/discovery.spec.ts`: a search in the App Store fixture shows the publisher and the featured mark on a featured app.
 
 ## 3. Close

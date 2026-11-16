@@ -15,6 +15,7 @@ namespace OCA\Versioniq\Service\Source;
 use Exception;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Advisory\AdvisoryClauses;
+use OCA\Versioniq\Service\Advisory\AdvisoryReferences;
 use OCA\Versioniq\Service\Advisory\AdvisorySeverity;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
 use OCA\Versioniq\Service\Connection\ReportedHttp;
@@ -38,6 +39,9 @@ use UnexpectedValueException;
  */
 class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	public const DEFAULT_API_BASE = 'https://garm3.nextcloud.com/api/v1';
+
+	/** The listing error for an app the catalogue does not list. */
+	public const NOT_IN_STORE = 'App is not available in the Nextcloud App Store.';
 	private const MAX_PAGES = 20;
 
 	/**
@@ -120,7 +124,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 		}
 
 		if ($payload === null) {
-			return ['versions' => [], 'error' => 'App is not available in the Nextcloud App Store.'];
+			return ['versions' => [], 'error' => self::NOT_IN_STORE];
 		}
 
 		$releases = $payload['releases'] ?? [];
@@ -173,7 +177,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 * new HTTP client.
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
-	 * @return array{advisories: list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string}>, error: ?string}
+	 * @return array{advisories: list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, error: ?string}
 	 */
 	public function listAdvisories(string $appId, SourceBinding $binding): array {
 		try {
@@ -197,7 +201,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 
 	/**
 	 * @param array<array-key, mixed> $raw
-	 * @return list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string}>
+	 * @return list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>
 	 */
 	private function normalizeAdvisories(array $raw): array {
 		$advisories = [];
@@ -216,7 +220,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 * One App Store advisory entry as an advisory record, or null without an id.
 	 *
 	 * @param array<array-key, mixed> $entry
-	 * @return array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string}|null
+	 * @return array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}|null
 	 */
 	private static function advisoryFrom(array $entry): ?array {
 		/** @var mixed $id */
@@ -235,7 +239,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 			'summary' => is_string($summary) ? $summary : '',
 			'affected' => AdvisoryClauses::from($entry['affected'] ?? $entry['affectedVersions'] ?? []),
 			'firstPatchedVersion' => is_string($patched) && $patched !== '' ? $patched : null,
-		];
+		] + AdvisoryReferences::from($entry);
 	}
 
 	/**

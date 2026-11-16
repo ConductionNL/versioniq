@@ -1,6 +1,8 @@
 <!-- SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl> -->
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
+import type { PublisherSimilar } from './PublisherMark.vue'
+
 import { t } from '@nextcloud/l10n'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
@@ -9,7 +11,8 @@ import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
-import { ocsGet } from '../ocs.ts'
+import PublisherMark from './PublisherMark.vue'
+import { ocsGet, ocsWrite } from '../ocs.ts'
 import { errorMessage } from '../utils/errorMessage.ts'
 
 type DiscoverySourceBinding = {
@@ -35,6 +38,9 @@ type DiscoveryHit = {
 	homepageUrl: string | null
 	installedVersion: string | null
 	sourceCandidates: DiscoveryCandidate[]
+	publisher?: string | null
+	marks?: string[]
+	similarTo?: PublisherSimilar[]
 }
 
 type ProviderInfo = { id: string, label: string, enabled: boolean }
@@ -321,6 +327,42 @@ function handleInstall (hit: DiscoveryHit): void {
 function handleOpenTrusted (): void {
 	emit('openTrusted')
 }
+
+// releases-new-release-alerts D3: follow the releases of an app that is not installed.
+const followed = ref<Set<string>>(new Set())
+const followError = ref('')
+
+/**
+ * The source id a follow entry records for a hit: its forge release, or empty for the app's default source.
+ *
+ * @param hit The hit
+ */
+function followSourceId (hit: DiscoveryHit): string {
+	const binding = hit.sourceCandidates[0]?.sourceBinding
+	if (binding?.owner && binding?.repo && (binding.forge ?? 'github') === 'github') {
+		return `github:${binding.owner}/${binding.repo}`
+	}
+	return ''
+}
+
+/**
+ * Follows the releases of a hit (admin, password-confirmed); see "An admin follows the releases of an app that is not installed".
+ *
+ * @param hit The hit
+ */
+async function handleFollow (hit: DiscoveryHit): Promise<void> {
+	followError.value = ''
+	try {
+		const { error: apiError } = await ocsWrite('POST', '/ocs/v2.php/apps/versioniq/api/follow', { appId: hit.appId, sourceId: followSourceId(hit) })
+		if (apiError) {
+			followError.value = apiError
+			return
+		}
+		followed.value = new Set([...followed.value, hit.appId])
+	} catch (e) {
+		followError.value = errorMessage(e, t('versioniq', 'Could not follow this app.'))
+	}
+}
 </script>
 
 <template>
@@ -402,6 +444,9 @@ function handleOpenTrusted (): void {
 							</p>
 						</div>
 					</div>
+					<PublisherMark :publisher="hit.publisher ?? null"
+						:marks="hit.marks ?? []"
+						:similarTo="hit.similarTo ?? []" />
 					<p v-if="hit.summary" :class="$style.hitSummary">
 						{{ hit.summary }}
 					</p>
@@ -437,10 +482,20 @@ function handleOpenTrusted (): void {
 								{{ t('versioniq', 'Go to Trusted sources') }}
 							</NcButton>
 						</div>
+						<NcButton v-if="!hit.installedVersion"
+							variant="tertiary"
+							:disabled="followed.has(hit.appId)"
+							data-testid="discover-follow"
+							@click="handleFollow(hit)">
+							{{ followed.has(hit.appId) ? t('versioniq', 'Following releases') : t('versioniq', 'Follow releases') }}
+						</NcButton>
 					</div>
 				</article>
 			</li>
 		</ul>
+		<NcNoteCard v-if="followError" type="error" data-testid="discover-follow-error">
+			{{ followError }}
+		</NcNoteCard>
 		<p v-else :class="$style.status" data-testid="discover-idle">
 			{{ t('versioniq', 'Type an app name to search across your configured sources.') }}
 		</p>

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\Pat;
 
+use OCA\Versioniq\Service\Alert\AlertDispatcher;
 use OCA\Versioniq\Db\Pat;
 use OCA\Versioniq\Service\Pat\PatDeeplinkBuilder;
 use OCA\Versioniq\Service\Pat\PatExpiryEvaluator;
@@ -111,5 +112,33 @@ final class PatExpiryNotifierTest extends TestCase {
 		$result = $notifier->notify($this->pat(), PatExpiryEvaluator::THRESHOLD_14D, 5);
 
 		$this->assertFalse($result);
+	}
+
+	/**
+	 * releases-new-release-alerts D6: a raised token alert is queued for the webhooks once; a failed one is not.
+	 *
+	 * @spec openspec/changes/releases-new-release-alerts/specs/alert-webhooks/spec.md#requirement-every-versioniq-alert-is-delivered-to-matching-targets-in-the-background
+	 */
+	public function testARaisedAlertIsDispatchedOnceToTheWebhooks(): void {
+		$notification = $this->createMock(INotification::class);
+		foreach (['setApp', 'setUser', 'setDateTime', 'setObject', 'setLink', 'setSubject'] as $setter) {
+			$notification->method($setter)->willReturnSelf();
+		}
+		$notification->method('getSubject')->willReturn('pat_expired');
+		$notification->method('getSubjectParameters')->willReturn(['label' => 'conduction-bot', 'forge' => 'github']);
+		$manager = $this->createMock(IManager::class);
+		$manager->method('createNotification')->willReturn($notification);
+		$alerts = $this->createMock(AlertDispatcher::class);
+		$alerts->expects($this->once())->method('dispatch')->with('pat_expired', ['label' => 'conduction-bot', 'forge' => 'github']);
+
+		$notifier = new PatExpiryNotifier($manager, $this->deeplinkBuilder(), $this->timeFactory(), $this->createMock(LoggerInterface::class), $alerts);
+
+		$this->assertTrue($notifier->notify($this->pat(), PatExpiryEvaluator::THRESHOLD_EXPIRED, null));
+
+		$failing = $this->createMock(IManager::class);
+		$failing->method('createNotification')->willReturn($notification);
+		$failing->method('notify')->willThrowException(new \RuntimeException('down'));
+		$this->assertFalse((new PatExpiryNotifier($failing, $this->deeplinkBuilder(), $this->timeFactory(), $this->createMock(LoggerInterface::class), $alerts))
+			->notify($this->pat(), PatExpiryEvaluator::THRESHOLD_EXPIRED, null));
 	}
 }
