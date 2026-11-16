@@ -83,7 +83,8 @@ final class StoredSnapshot {
 	 */
 	public function writeOutcome(string $status, array $errors, ?int $failedAt = null): void {
 		$this->config->setValueString(Application::APP_ID, $this->key . '.status', $status);
-		$this->config->setValueString(Application::APP_ID, $this->key . '.errors', json_encode(array_values($errors)) ?: '[]');
+		$encoded = json_encode($errors);
+		$this->config->setValueString(Application::APP_ID, $this->key . '.errors', is_string($encoded) ? $encoded : '[]');
 		// A sweep that failed as a whole wrote no snapshot: its attempt time is kept
 		// apart, so `checkedAt` stays the time of the last sweep that succeeded.
 		$this->config->setValueInt(Application::APP_ID, $this->key . '.failedAt', $failedAt ?? 0);
@@ -120,6 +121,71 @@ final class StoredSnapshot {
 		}
 
 		return array_values(array_map('strval', array_filter($decoded, 'is_scalar')));
+	}
+
+	/**
+	 * Writes a completed sweep: the snapshot, its time, and the outcome its
+	 * entries give. Nothing is written when the snapshot cannot be encoded.
+	 *
+	 * @param array<array-key, mixed> $map
+	 * @throws \JsonException when the snapshot cannot be encoded
+	 * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+	 */
+	public function writeSweep(array $map, int $checkedAt): void {
+		$this->write($map, $checkedAt);
+		$outcome = SweepOutcome::of($map);
+		$this->writeOutcome($outcome['status'], $outcome['errors']);
+	}
+
+	/**
+	 * The time of the last sweep that succeeded and the outcome of the last
+	 * sweep. `checkedAt` is never a failed attempt's time: readers that show it
+	 * without the status (occ, MCP) must not read a failure as freshly checked.
+	 * A sweep that failed as a whole has its time in `failedAt`.
+	 *
+	 * A snapshot stored before outcomes were recorded gets the outcome its own
+	 * entries give.
+	 *
+	 * @param array<string, mixed>|null $map The stored snapshot, null when there is none.
+	 * @return array{checkedAt: ?int, failedAt: ?int, status: ?string, errors: list<string>}
+	 * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+	 */
+	public function outcome(?array $map): array {
+		$status = $this->status();
+		if ($map === null) {
+			return $this->outcomeWithoutSnapshot($status);
+		}
+		if ($status === null) {
+			return ['checkedAt' => $this->checkedAt(), 'failedAt' => null] + SweepOutcome::of($map);
+		}
+
+		return $this->recordedOutcome($status, $this->checkedAt());
+	}
+
+	/**
+	 * The outcome when no snapshot is stored: only a recorded whole-sweep
+	 * failure says anything.
+	 *
+	 * @return array{checkedAt: ?int, failedAt: ?int, status: ?string, errors: list<string>}
+	 */
+	private function outcomeWithoutSnapshot(?string $status): array {
+		if ($status !== SweepOutcome::FAILED) {
+			return ['checkedAt' => null, 'failedAt' => null, 'status' => null, 'errors' => []];
+		}
+
+		return $this->recordedOutcome($status, null);
+	}
+
+	/**
+	 * @return array{checkedAt: ?int, failedAt: ?int, status: string, errors: list<string>}
+	 */
+	private function recordedOutcome(string $status, ?int $checkedAt): array {
+		return [
+			'checkedAt' => $checkedAt,
+			'failedAt' => $status === SweepOutcome::FAILED ? $this->failedAt() : null,
+			'status' => $status,
+			'errors' => $this->errors(),
+		];
 	}
 
 	private function checkedAtKey(): string {

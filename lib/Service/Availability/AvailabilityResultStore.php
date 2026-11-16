@@ -44,9 +44,7 @@ class AvailabilityResultStore {
 	 */
 	public function save(array $updates, int $checkedAt): void {
 		try {
-			$this->snapshot()->write($updates, $checkedAt);
-			$outcome = SweepOutcome::of($updates);
-			$this->snapshot()->writeOutcome($outcome['status'], $outcome['errors']);
+			$this->snapshot()->writeSweep($updates, $checkedAt);
 		} catch (\JsonException $error) {
 			$this->logger->error('AvailabilityResultStore: could not encode the snapshot; keeping the previous one', [
 				'message' => $error->getMessage(),
@@ -79,39 +77,9 @@ class AvailabilityResultStore {
 			return ['updates' => [], 'checkedAt' => null, 'failedAt' => null, 'status' => null, 'errors' => []];
 		}
 
-		return ['updates' => $updates ?? []] + $this->outcome(map: $updates);
+		return ['updates' => $updates ?? []] + $this->snapshot()->outcome(map: $updates);
 	}
 
-	/**
-	 * The time of the last sweep that succeeded and the outcome of the last
-	 * sweep. `checkedAt` is never a failed attempt's time: readers that show it
-	 * without the status (occ, MCP) must not read a failure as freshly checked.
-	 * A sweep that failed as a whole has its time in `failedAt`.
-	 *
-	 * A snapshot stored before outcomes were recorded gets the outcome its own
-	 * entries give.
-	 *
-	 * @param array<string, mixed>|null $map The stored snapshot, null when there is none.
-	 * @return array{checkedAt: ?int, failedAt: ?int, status: ?string, errors: list<string>}
-	 */
-	private function outcome(?array $map): array {
-		$status = $this->snapshot()->status();
-		$checkedAt = $map === null ? null : $this->snapshot()->checkedAt();
-		if ($map === null && $status !== SweepOutcome::FAILED) {
-			return ['checkedAt' => null, 'failedAt' => null, 'status' => null, 'errors' => []];
-		}
-
-		if ($status === null) {
-			return ['checkedAt' => $checkedAt, 'failedAt' => null] + SweepOutcome::of($map ?? []);
-		}
-
-		return [
-			'checkedAt' => $checkedAt,
-			'failedAt' => $status === SweepOutcome::FAILED ? $this->snapshot()->failedAt() : null,
-			'status' => $status,
-			'errors' => $this->snapshot()->errors(),
-		];
-	}
 
 	private function snapshot(): StoredSnapshot {
 		return new StoredSnapshot($this->config, self::KEY);

@@ -61,9 +61,7 @@ class AdvisoryResultStore {
 	 */
 	public function save(array $correlations, int $checkedAt): void {
 		try {
-			$this->snapshot()->write($correlations, $checkedAt);
-			$outcome = SweepOutcome::of($correlations);
-			$this->snapshot()->writeOutcome($outcome['status'], $outcome['errors']);
+			$this->snapshot()->writeSweep($correlations, $checkedAt);
 		} catch (\JsonException $error) {
 			// A snapshot that cannot be encoded must not clear the previous
 			// one: a stale answer is worth more than no answer, and the UI
@@ -103,39 +101,9 @@ class AdvisoryResultStore {
 			return ['advisories' => [], 'checkedAt' => null, 'failedAt' => null, 'status' => null, 'errors' => []];
 		}
 
-		return ['advisories' => $advisories ?? []] + $this->outcome(map: $advisories);
+		return ['advisories' => $advisories ?? []] + $this->snapshot()->outcome(map: $advisories);
 	}
 
-	/**
-	 * The time of the last sweep that succeeded and the outcome of the last
-	 * sweep. `checkedAt` is never a failed attempt's time: readers that show it
-	 * without the status (occ, MCP) must not read a failure as freshly checked.
-	 * A sweep that failed as a whole has its time in `failedAt`.
-	 *
-	 * A snapshot stored before outcomes were recorded gets the outcome its own
-	 * entries give.
-	 *
-	 * @param array<string, mixed>|null $map The stored snapshot, null when there is none.
-	 * @return array{checkedAt: ?int, failedAt: ?int, status: ?string, errors: list<string>}
-	 */
-	private function outcome(?array $map): array {
-		$status = $this->snapshot()->status();
-		$checkedAt = $map === null ? null : $this->snapshot()->checkedAt();
-		if ($map === null && $status !== SweepOutcome::FAILED) {
-			return ['checkedAt' => null, 'failedAt' => null, 'status' => null, 'errors' => []];
-		}
-
-		if ($status === null) {
-			return ['checkedAt' => $checkedAt, 'failedAt' => null] + SweepOutcome::of($map ?? []);
-		}
-
-		return [
-			'checkedAt' => $checkedAt,
-			'failedAt' => $status === SweepOutcome::FAILED ? $this->snapshot()->failedAt() : null,
-			'status' => $status,
-			'errors' => $this->snapshot()->errors(),
-		];
-	}
 
 	/**
 	 * The snapshot under {@see KEY}, its sweep time under `KEY.checkedAt`.
