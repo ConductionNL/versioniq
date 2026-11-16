@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Availability;
 
+use OCA\Versioniq\Kernel\Contracts\AvailabilityResultStoreInterface;
 use OCA\Versioniq\Service\Settings\StoredSnapshot;
 use OCA\Versioniq\Service\Settings\SweepOutcome;
 use OCP\IAppConfig;
@@ -26,7 +27,7 @@ use Psr\Log\LoggerInterface;
  *
  * @psalm-api
  */
-class AvailabilityResultStore {
+class AvailabilityResultStore implements AvailabilityResultStoreInterface {
 	/** The sweep time is held under `availability.results.checkedAt`; see {@see StoredSnapshot}. */
 	private const KEY = 'availability.results';
 

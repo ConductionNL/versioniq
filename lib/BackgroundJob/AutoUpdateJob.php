@@ -12,12 +12,13 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\BackgroundJob;
 
+use OCA\Versioniq\Kernel\Contracts\AttemptLedgerInterface;
+use OCA\Versioniq\Kernel\Contracts\AutoUpdateNotifierInterface;
 use OCA\Versioniq\Service\Audit\AuditNote;
 use OCA\Versioniq\Service\Audit\AuditOrigin;
-use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall;
-use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateMember;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlan;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
@@ -46,8 +47,8 @@ use Psr\Log\LoggerInterface;
  * through {@see \OCA\Versioniq\Service\InstallerService::installAppVersion()}, the same verified
  * path (signature/integrity checks, backup/restore, structured outcomes,
  * audit trail) as every other install in this app. Every attempt is recorded
- * in the {@see AttemptLedger} (never-retry) and reported via
- * {@see AutoUpdateNotifier} (success or failure — a no-op app is never
+ * in the {@see AttemptLedgerInterface} (never-retry) and reported via
+ * {@see AutoUpdateNotifierInterface} (success or failure — a no-op app is never
  * notified).
  *
  * No-ops entirely (no source queries, no installs) when the global kill
@@ -72,7 +73,7 @@ class AutoUpdateJob extends TimedJob {
 		JobRuntime $runtime,
 		private AutoUpdateStores $stores,
 		private AutoUpdateInstall $install,
-		private AutoUpdateNotifier $notifier,
+		private AutoUpdateNotifierInterface $notifier,
 	) {
 		parent::__construct($runtime->time);
 		$this->logger = $runtime->logger;
@@ -234,24 +235,43 @@ class AutoUpdateJob extends TimedJob {
 		$payload = $installResult['payload'] ?? [];
 
 		if ($statusCode >= Http::STATUS_OK && $statusCode < Http::STATUS_MULTIPLE_CHOICES) {
-			$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedger::OUTCOME_SUCCESS, $at);
-			$toVersion = is_string($payload['installedVersion'] ?? null) && $payload['installedVersion'] !== ''
-				? $payload['installedVersion']
-				: $target->version;
+			$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedgerInterface::OUTCOME_SUCCESS, $at);
 			if ($notify) {
-				$this->notifier->notifySuccess($target->appId, $installedVersion, $toVersion);
+				$this->notifier->notifySuccess($target->appId, $installedVersion, self::versionInstalled($payload, $target));
 			}
 
 			return true;
 		}
 
-		$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedger::OUTCOME_FAILURE, $at);
-		$category = is_string($payload['category'] ?? null) ? $payload['category'] : 'unknown';
-		$hint = is_string($payload['hint'] ?? null) ? $payload['hint'] : '';
+		$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedgerInterface::OUTCOME_FAILURE, $at);
 		if ($notify) {
-			$this->notifier->notifyFailure($target->appId, $target->version, $category, $hint);
+			$this->notifyFailure($target, $payload);
 		}
 
 		return false;
+	}
+
+	/**
+	 * The version the installer reports it installed, else the target version.
+	 *
+	 * @param array<array-key, mixed> $payload The installer's outcome payload.
+	 */
+	private static function versionInstalled(array $payload, InstallTarget $target): string {
+		/** @var mixed $reported */
+		$reported = $payload['installedVersion'] ?? null;
+
+		return is_string($reported) && $reported !== '' ? $reported : $target->version;
+	}
+
+	/**
+	 * Tells the admins an automatic install failed, with the failure category
+	 * and hint the installer gave ('unknown' and '' when it gave none).
+	 *
+	 * @param array<array-key, mixed> $payload The installer's outcome payload.
+	 */
+	private function notifyFailure(InstallTarget $target, array $payload): void {
+		$category = is_string($payload['category'] ?? null) ? $payload['category'] : 'unknown';
+		$hint = is_string($payload['hint'] ?? null) ? $payload['hint'] : '';
+		$this->notifier->notifyFailure($target->appId, $target->version, $category, $hint);
 	}
 }

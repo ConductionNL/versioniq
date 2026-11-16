@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Lifecycle;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\ServerEolWarnerInterface;
 use OCA\Versioniq\Service\AdminNotice;
 use OCA\Versioniq\Service\AdminNotificationServices;
 use OCA\Versioniq\Service\Advisory\ServerVersionProvider;
@@ -30,7 +31,7 @@ use Psr\Log\LoggerInterface;
  *
  * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-admins-are-warned-before-the-server-leaves-support
  */
-class ServerEolWarner {
+class ServerEolWarner implements ServerEolWarnerInterface {
 	use NotifiesAdmins;
 	use ResolvesAdminUids;
 

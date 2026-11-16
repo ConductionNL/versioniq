@@ -16,7 +16,7 @@ use InvalidArgumentException;
 use OCA\Versioniq\Db\Pat;
 use OCA\Versioniq\Http\InstallVersionFields;
 use OCA\Versioniq\Http\RequestFieldsFrom;
-use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Kernel\Contracts\AdvisorySettingsStoreInterface;
 use OCA\Versioniq\Service\Advisory\ComplianceStatus;
 use OCA\Versioniq\Service\Advisory\FixStatus;
 use OCA\Versioniq\Service\Api\AccessCollaborators;
@@ -1279,7 +1279,7 @@ class ApiController extends OCSController {
 			);
 		}
 		$hours = (int)$intervalHours;
-		if ($hours < AdvisorySettingsStore::MIN_INTERVAL_HOURS || $hours > AdvisorySettingsStore::MAX_INTERVAL_HOURS) {
+		if ($hours < AdvisorySettingsStoreInterface::MIN_INTERVAL_HOURS || $hours > AdvisorySettingsStoreInterface::MAX_INTERVAL_HOURS) {
 			return self::intervalOutOfRange();
 		}
 		$this->reports->stores->advisorySettingsStore->setIntervalHours($hours);
@@ -1296,8 +1296,8 @@ class ApiController extends OCSController {
 		return new DataResponse(
 			['message' => sprintf(
 				'intervalHours must be between %d and %d.',
-				AdvisorySettingsStore::MIN_INTERVAL_HOURS,
-				AdvisorySettingsStore::MAX_INTERVAL_HOURS,
+				AdvisorySettingsStoreInterface::MIN_INTERVAL_HOURS,
+				AdvisorySettingsStoreInterface::MAX_INTERVAL_HOURS,
 			)],
 			Http::STATUS_BAD_REQUEST
 		);
@@ -1311,8 +1311,8 @@ class ApiController extends OCSController {
 	private function advisorySettingsResponse(): DataResponse {
 		return new DataResponse([
 			'intervalHours' => $this->reports->stores->advisorySettingsStore->getIntervalHours(),
-			'minIntervalHours' => AdvisorySettingsStore::MIN_INTERVAL_HOURS,
-			'maxIntervalHours' => AdvisorySettingsStore::MAX_INTERVAL_HOURS,
+			'minIntervalHours' => AdvisorySettingsStoreInterface::MIN_INTERVAL_HOURS,
+			'maxIntervalHours' => AdvisorySettingsStoreInterface::MAX_INTERVAL_HOURS,
 			'digestEnabled' => $this->reports->stores->advisorySettingsStore->isDigestEnabled(),
 			// advisories-ncsc-feed: the NCSC-NL switch, and how far its read got.
 			'ncscEnabled' => $this->reports->stores->advisorySettingsStore->isNcscEnabled(),

@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\AutoUpdate;
 
+use OCA\Versioniq\Kernel\Contracts\AutoUpdateNotifierInterface;
 use OCA\Versioniq\Service\AdminNotice;
 use OCA\Versioniq\Service\AdminNotificationServices;
 use OCA\Versioniq\Service\NotifiesAdmins;
@@ -28,7 +29,7 @@ use Psr\Log\LoggerInterface;
  *
  * @psalm-api
  */
-class AutoUpdateNotifier {
+class AutoUpdateNotifier implements AutoUpdateNotifierInterface {
 	use NotifiesAdmins;
 	use ResolvesAdminUids;
 
