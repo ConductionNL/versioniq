@@ -423,13 +423,6 @@ final class SourceBinding {
 	}
 
 	/**
-	 * Builds a validated release binding on any known forge; an unknown forge
-	 * is rejected by the constructor.
-	 *
-	 * @spec openspec/specs/external-sources/spec.md
-	 * @throws InvalidArgumentException
-	 */
-	/**
 	 * Whether a forge is retired, so a new binding or pattern may not name it.
 	 *
 	 * @spec openspec/changes/codeberg-is-no-release-source/specs/external-sources/spec.md
@@ -438,6 +431,15 @@ final class SourceBinding {
 		return in_array($forge, self::RETIRED_FORGES, true);
 	}
 
+	/**
+	 * Builds a validated release binding on any known forge; an unknown forge
+	 * is rejected by the constructor. A gitlab binding takes the namespace and
+	 * the project name together as its project path.
+	 *
+	 * @spec openspec/specs/external-sources/spec.md
+	 * @spec openspec/changes/sources-gitlab-forge/specs/external-sources/spec.md
+	 * @throws InvalidArgumentException
+	 */
 	public static function release(string $forge, string $owner, string $repo, string $assetPattern = '*.tar.gz'): self {
 		if ($forge === self::FORGE_GITLAB) {
 			// A GitLab project has a path, not an owner and a repo: the

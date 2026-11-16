@@ -19,6 +19,8 @@ const RETIRED_FORGES = ['codeberg']
 
 /**
  * The forges an admin may pick for something new.
+ *
+ * @spec openspec/changes/sources-gitlab-forge/specs/external-sources/spec.md
  */
 export function forgeOptions (): ForgeOption[] {
 	return [
