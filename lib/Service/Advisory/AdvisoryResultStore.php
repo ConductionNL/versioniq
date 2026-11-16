@@ -56,7 +56,7 @@ class AdvisoryResultStore {
 	 * never replaces a good one.
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
-	 * @param array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}> $correlations
+	 * @param array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, recommendedVersion: ?string, error: ?string, history?: list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool}>, fixStatus?: ?string}> $correlations
 	 */
 	public function save(array $correlations, int $checkedAt): void {
 		try {

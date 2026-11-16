@@ -19,6 +19,7 @@ use OCA\Versioniq\Service\Advisory\LocalFeedCopy;
 use OCA\Versioniq\Service\Advisory\NcscAdvisoryFeed;
 use OCA\Versioniq\Service\Advisory\NextcloudAdvisoryFeed;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
+use OCA\Versioniq\Service\Lifecycle\ServerEolFeed;
 use OCA\Versioniq\Service\Source\AppStoreSource;
 use OCA\Versioniq\Service\Source\ForgeRegistry;
 use OCP\IAppConfig;
@@ -79,7 +80,7 @@ class InstanceSettings {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, ncscFeedUrl: string, ncscFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int}
+	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, eolFeedUrl: string, eolFeedOff: bool, eolFeedDefault: string, ncscFeedUrl: string, ncscFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int}
 	 */
 	public function read(): array {
 		$retention = $this->config->getValueInt(Application::APP_ID, PruneAuditJob::CONFIG_KEY_RETENTION_DAYS, PruneAuditJob::DEFAULT_RETENTION_DAYS);
@@ -99,6 +100,10 @@ class InstanceSettings {
 			'githubWebDefault' => ForgeRegistry::GITHUB_WEB_DEFAULT,
 			'advisoryFeedUrl' => $this->stored(self::KEY_ADVISORY_FEED),
 			'advisoryFeedDefault' => NextcloudAdvisoryFeed::DEFAULT_FEED_URL,
+			// '' with the key present means the admin switched the feed off.
+			'eolFeedUrl' => $this->stored(ServerEolFeed::KEY_FEED),
+			'eolFeedOff' => $this->config->hasKey(Application::APP_ID, ServerEolFeed::KEY_FEED) && $this->stored(ServerEolFeed::KEY_FEED) === '',
+			'eolFeedDefault' => ServerEolFeed::DEFAULT_FEED_URL,
 			'ncscFeedUrl' => $this->stored(NcscAdvisoryFeed::CONFIG_BASE),
 			'ncscFeedDefault' => NcscAdvisoryFeed::DEFAULT_BASE,
 			'maxLinesBehind' => $this->maxLinesBehind(),
@@ -126,6 +131,7 @@ class InstanceSettings {
 		$urls = $this->validatedUrls($fields);
 		$githubSearch = self::validatedSwitch($fields, 'githubSearchEnabled', 'GitHub search');
 		$feedSource = self::validatedFeedSource($fields);
+		$eolFeed = isset($fields['eolFeedUrl']) ? $this->url($fields['eolFeedUrl'], false) : null;
 
 		$this->storeInts($ints);
 		if ($githubSearch !== null) {
@@ -140,6 +146,11 @@ class InstanceSettings {
 		foreach ($urls as $key => $value) {
 			$this->storeOrClear($key, $value);
 		}
+		if ($eolFeed !== null) {
+			// Unlike the other addresses, an empty end-of-life feed is kept:
+			// it switches the warnings off instead of falling back to the default.
+			$this->config->setValueString(Application::APP_ID, ServerEolFeed::KEY_FEED, $eolFeed);
+		}
 
 		return self::appliedFields($fields);
 	}
@@ -152,7 +163,7 @@ class InstanceSettings {
 	 */
 	private static function appliedFields(array $fields): array {
 		return array_values(array_filter(
-			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS), 'githubSearchEnabled', 'advisoryFeedSource'],
+			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS), 'githubSearchEnabled', 'advisoryFeedSource', 'eolFeedUrl'],
 			static fn (string $field): bool => isset($fields[$field]),
 		));
 	}

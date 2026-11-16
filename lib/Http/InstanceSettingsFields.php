@@ -38,6 +38,9 @@ final class InstanceSettingsFields extends RequestFields {
 	/** @var string|null Advisory feed URL; blank uses the published Nextcloud feed */
 	public ?string $advisoryFeedUrl = null;
 
+	/** @var string|null Server end-of-life feed URL; blank switches the end-of-life warnings off */
+	public ?string $eolFeedUrl = null;
+
 	/** @var string|null NCSC-NL CSAF directory URL, https only; blank uses the one NCSC-NL publishes */
 	public ?string $ncscFeedUrl = null;
 
