@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\ReleaseAlert;
 
+use OCA\Versioniq\Kernel\Contracts\ReleaseSweepRecorderInterface;
 use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
 
 /**
@@ -21,7 +22,7 @@ use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
  *
  * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-a-new-release-is-detected-after-each-availability-sweep-and-logged
  */
-class ReleaseSweepRecorder {
+class ReleaseSweepRecorder implements ReleaseSweepRecorderInterface {
 	public function __construct(
 		private AvailabilityResultStore $store,
 		private ReleaseNotifier $notifier,

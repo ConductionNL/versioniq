@@ -11,9 +11,9 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Command;
 
-use OCA\Versioniq\Service\Availability\AvailabilityService;
-use OCA\Versioniq\Service\ReleaseAlert\ReleaseSweepRecorder;
-use OCA\Versioniq\Service\Settings\InstanceSettings;
+use OCA\Versioniq\Kernel\Contracts\AvailabilityServiceInterface;
+use OCA\Versioniq\Kernel\Contracts\InstanceSettingsInterface;
+use OCA\Versioniq\Kernel\Contracts\ReleaseSweepRecorderInterface;
 use OCP\AppFramework\Utility\ITimeFactory;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\Table;
@@ -35,9 +35,9 @@ class ListUpdates extends Command {
 	private const REFRESH_BUDGET_SECONDS = 600.0;
 
 	public function __construct(
-		private AvailabilityService $availabilityService,
-		private ReleaseSweepRecorder $recorder,
-		private InstanceSettings $instanceSettings,
+		private AvailabilityServiceInterface $availabilityService,
+		private ReleaseSweepRecorderInterface $recorder,
+		private InstanceSettingsInterface $instanceSettings,
 		private ITimeFactory $time,
 	) {
 		parent::__construct();
