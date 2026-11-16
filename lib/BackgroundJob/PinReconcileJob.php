@@ -13,7 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\BackgroundJob;
 
 use OCA\Versioniq\Kernel\Contracts\PinDriftHandlerInterface;
-use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Kernel\Contracts\PinStoreInterface;
 use OCP\App\IAppManager;
 use OCP\BackgroundJob\TimedJob;
 use Psr\Log\LoggerInterface;
@@ -40,7 +40,7 @@ class PinReconcileJob extends TimedJob {
 
 	public function __construct(
 		JobRuntime $runtime,
-		private PinStore $pinStore,
+		private PinStoreInterface $pinStore,
 		private IAppManager $appManager,
 		private PinDriftHandlerInterface $driftHandler,
 	) {

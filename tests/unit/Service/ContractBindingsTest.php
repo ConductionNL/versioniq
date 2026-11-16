@@ -13,7 +13,10 @@ use OCA\Versioniq\Kernel\Contracts\AdvisoryDigestNotifierInterface;
 use OCA\Versioniq\Kernel\Contracts\AdvisoryNotifierInterface;
 use OCA\Versioniq\Kernel\Contracts\AdvisoryResultStoreInterface;
 use OCA\Versioniq\Kernel\Contracts\AdvisoryServiceInterface;
+use OCA\Versioniq\Kernel\Contracts\AdvisorySettingsStoreInterface;
 use OCA\Versioniq\Kernel\Contracts\AppStoreSourceInterface;
+use OCA\Versioniq\Kernel\Contracts\AttemptLedgerInterface;
+use OCA\Versioniq\Kernel\Contracts\AutoUpdateNotifierInterface;
 use OCA\Versioniq\Kernel\Contracts\AvailabilityResultStoreInterface;
 use OCA\Versioniq\Kernel\Contracts\AvailabilityServiceInterface;
 use OCA\Versioniq\Kernel\Contracts\FailureClassifierInterface;
@@ -23,6 +26,7 @@ use OCA\Versioniq\Kernel\Contracts\InstanceSettingsInterface;
 use OCA\Versioniq\Kernel\Contracts\ManifestBuilderInterface;
 use OCA\Versioniq\Kernel\Contracts\PatExpiryEvaluatorInterface;
 use OCA\Versioniq\Kernel\Contracts\PinDriftHandlerInterface;
+use OCA\Versioniq\Kernel\Contracts\PinStoreInterface;
 use OCA\Versioniq\Kernel\Contracts\ReleaseFeedInterface;
 use OCA\Versioniq\Kernel\Contracts\ReleaseSweepRecorderInterface;
 use OCA\Versioniq\Kernel\Contracts\ServerEolWarnerInterface;
@@ -32,8 +36,11 @@ use OCA\Versioniq\Service\Advisory\AdvisoryDigestNotifier;
 use OCA\Versioniq\Service\Advisory\AdvisoryNotifier;
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisoryService;
+use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\Alert\WebhookSender;
 use OCA\Versioniq\Service\Alert\WebhookTargetStore;
+use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
 use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
 use OCA\Versioniq\Service\Availability\AvailabilityService;
 use OCA\Versioniq\Service\ContractBindings;
@@ -43,6 +50,7 @@ use OCA\Versioniq\Service\Instance\ManifestBuilder;
 use OCA\Versioniq\Service\Lifecycle\ServerEolWarner;
 use OCA\Versioniq\Service\Pat\PatExpiryEvaluator;
 use OCA\Versioniq\Service\Pin\PinDriftHandler;
+use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\ReleaseAlert\ReleaseFeed;
 use OCA\Versioniq\Service\ReleaseAlert\ReleaseSweepRecorder;
 use OCA\Versioniq\Service\Settings\InstanceSettings;
@@ -69,6 +77,9 @@ final class ContractBindingsTest extends TestCase {
 		AdvisoryNotifierInterface::class => AdvisoryNotifier::class,
 		AdvisoryResultStoreInterface::class => AdvisoryResultStore::class,
 		AdvisoryServiceInterface::class => AdvisoryService::class,
+		AdvisorySettingsStoreInterface::class => AdvisorySettingsStore::class,
+		AttemptLedgerInterface::class => AttemptLedger::class,
+		AutoUpdateNotifierInterface::class => AutoUpdateNotifier::class,
 		AvailabilityResultStoreInterface::class => AvailabilityResultStore::class,
 		AvailabilityServiceInterface::class => AvailabilityService::class,
 		ForgeRegistryInterface::class => ForgeRegistry::class,
@@ -77,6 +88,7 @@ final class ContractBindingsTest extends TestCase {
 		ManifestBuilderInterface::class => ManifestBuilder::class,
 		PatExpiryEvaluatorInterface::class => PatExpiryEvaluator::class,
 		PinDriftHandlerInterface::class => PinDriftHandler::class,
+		PinStoreInterface::class => PinStore::class,
 		ReleaseFeedInterface::class => ReleaseFeed::class,
 		ReleaseSweepRecorderInterface::class => ReleaseSweepRecorder::class,
 		ServerEolWarnerInterface::class => ServerEolWarner::class,
@@ -116,6 +128,10 @@ final class ContractBindingsTest extends TestCase {
 		$this->assertSame('downgrade_guard', FailureClassifier::CATEGORY_DOWNGRADE_GUARD);
 		$this->assertSame('preflight_permission', FailureClassifier::CATEGORY_PREFLIGHT_PERMISSION);
 		$this->assertSame('unknown', FailureClassifier::CATEGORY_UNKNOWN);
+		$this->assertSame(1, AdvisorySettingsStore::MIN_INTERVAL_HOURS);
+		$this->assertSame(24, AdvisorySettingsStore::MAX_INTERVAL_HOURS);
+		$this->assertSame('success', AttemptLedger::OUTCOME_SUCCESS);
+		$this->assertSame('failure', AttemptLedger::OUTCOME_FAILURE);
 	}
 
 	public function testTheConstantContractsAreImplementedByTheirOwners(): void {

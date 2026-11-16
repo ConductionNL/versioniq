@@ -14,7 +14,7 @@ namespace OCA\Versioniq\BackgroundJob;
 
 use OCA\Versioniq\Kernel\Contracts\AdvisoryNotifierInterface;
 use OCA\Versioniq\Kernel\Contracts\AdvisoryServiceInterface;
-use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Kernel\Contracts\AdvisorySettingsStoreInterface;
 use OCA\Versioniq\Service\Advisory\AdvisoryTriageStore;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
@@ -53,7 +53,7 @@ class AdvisoryRefreshJob extends TimedJob {
 		// would suggest the job can re-read the setting mid-life, which it
 		// cannot — the next run after a change picks up the new value because
 		// the job is constructed afresh.
-		AdvisorySettingsStore $settings,
+		AdvisorySettingsStoreInterface $settings,
 		private LoggerInterface $logger,
 	) {
 		parent::__construct($time);

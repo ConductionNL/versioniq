@@ -12,10 +12,10 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Command;
 
 use OCA\Versioniq\Kernel\Contracts\AdvisoryResultStoreInterface;
-use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Kernel\Contracts\AdvisorySettingsStoreInterface;
+use OCA\Versioniq\Kernel\Contracts\PinStoreInterface;
 use OCA\Versioniq\Service\Advisory\ComplianceStatus;
 use OCA\Versioniq\Service\Advisory\FixStatus;
-use OCA\Versioniq\Service\Pin\PinStore;
 use OCP\AppFramework\Utility\ITimeFactory;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\Table;
@@ -43,8 +43,8 @@ class ListAdvisories extends Command {
 
 	public function __construct(
 		private AdvisoryResultStoreInterface $resultStore,
-		private AdvisorySettingsStore $settings,
-		private PinStore $pins,
+		private AdvisorySettingsStoreInterface $settings,
+		private PinStoreInterface $pins,
 		private ITimeFactory $time,
 	) {
 		parent::__construct();
