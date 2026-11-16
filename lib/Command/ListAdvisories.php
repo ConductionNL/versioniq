@@ -11,7 +11,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Command;
 
-use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
+use OCA\Versioniq\Kernel\Contracts\AdvisoryResultStoreInterface;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\Advisory\ComplianceStatus;
 use OCA\Versioniq\Service\Advisory\FixStatus;
@@ -42,7 +42,7 @@ class ListAdvisories extends Command {
 	private const RECENT = 5;
 
 	public function __construct(
-		private AdvisoryResultStore $resultStore,
+		private AdvisoryResultStoreInterface $resultStore,
 		private AdvisorySettingsStore $settings,
 		private PinStore $pins,
 		private ITimeFactory $time,

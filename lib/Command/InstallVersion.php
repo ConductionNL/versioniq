@@ -12,12 +12,12 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Command;
 
-use OCA\Versioniq\Service\Installer\FailureClassifier;
+use OCA\Versioniq\Kernel\Contracts\FailureClassifierInterface;
+use OCA\Versioniq\Kernel\Contracts\InstallerServiceInterface;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\PinChoice;
-use OCA\Versioniq\Service\InstallerService;
 use OCP\AppFramework\Http;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -60,7 +60,7 @@ class InstallVersion extends Command {
 	private const EXIT_UNTRUSTED_SOURCE = 9;
 
 	public function __construct(
-		private InstallerService $installerService,
+		private InstallerServiceInterface $installerService,
 	) {
 		parent::__construct();
 	}
@@ -196,15 +196,15 @@ class InstallVersion extends Command {
 		$category = $payload['category'] ?? null;
 		if (is_string($category)) {
 			$mapped = match ($category) {
-				FailureClassifier::CATEGORY_DOWNGRADE_GUARD => self::EXIT_DOWNGRADE_REFUSED,
-				FailureClassifier::CATEGORY_PREFLIGHT_PERMISSION => self::EXIT_PREFLIGHT_PERMISSION,
-				FailureClassifier::CATEGORY_DOWNLOAD => self::EXIT_DOWNLOAD,
-				FailureClassifier::CATEGORY_CHECKSUM_MISMATCH,
-				FailureClassifier::CATEGORY_SHA_MISMATCH,
-				FailureClassifier::CATEGORY_APPID_MISMATCH,
-				FailureClassifier::CATEGORY_VERSION_MISMATCH => self::EXIT_INTEGRITY,
-				FailureClassifier::CATEGORY_INCOMPATIBLE => self::EXIT_INCOMPATIBLE,
-				FailureClassifier::CATEGORY_FINALIZE => self::EXIT_FINALIZE,
+				FailureClassifierInterface::CATEGORY_DOWNGRADE_GUARD => self::EXIT_DOWNGRADE_REFUSED,
+				FailureClassifierInterface::CATEGORY_PREFLIGHT_PERMISSION => self::EXIT_PREFLIGHT_PERMISSION,
+				FailureClassifierInterface::CATEGORY_DOWNLOAD => self::EXIT_DOWNLOAD,
+				FailureClassifierInterface::CATEGORY_CHECKSUM_MISMATCH,
+				FailureClassifierInterface::CATEGORY_SHA_MISMATCH,
+				FailureClassifierInterface::CATEGORY_APPID_MISMATCH,
+				FailureClassifierInterface::CATEGORY_VERSION_MISMATCH => self::EXIT_INTEGRITY,
+				FailureClassifierInterface::CATEGORY_INCOMPATIBLE => self::EXIT_INCOMPATIBLE,
+				FailureClassifierInterface::CATEGORY_FINALIZE => self::EXIT_FINALIZE,
 				default => null,
 			};
 			if ($mapped !== null) {
