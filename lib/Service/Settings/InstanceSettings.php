@@ -15,6 +15,7 @@ namespace OCA\Versioniq\Service\Settings;
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\BackgroundJob\PruneAuditJob;
+use OCA\Versioniq\Kernel\Contracts\InstanceSettingsInterface;
 use OCA\Versioniq\Service\Advisory\NcscAdvisoryFeed;
 use OCA\Versioniq\Service\Advisory\NextcloudAdvisoryFeed;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
@@ -39,7 +40,7 @@ use OCP\IAppConfig;
  *
  * @psalm-api
  */
-class InstanceSettings {
+class InstanceSettings implements InstanceSettingsInterface {
 	public const KEY_APPSTORE_API_BASE = 'appstore.api_base';
 	public const KEY_GITHUB_API_BASE = 'forge.github.api_base';
 	public const KEY_GITHUB_WEB_BASE = 'forge.github.web_base';

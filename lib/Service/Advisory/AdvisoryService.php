@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Advisory;
 
+use OCA\Versioniq\Kernel\Contracts\AdvisoryServiceInterface;
 use OCA\Versioniq\Service\Source\ForgeReleaseSource;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceInterface;
@@ -44,9 +45,7 @@ use Psr\Log\LoggerInterface;
  *
  * @psalm-api
  */
-class AdvisoryService {
-	public const STATE_NONE = 'none';
-
+class AdvisoryService implements AdvisoryServiceInterface {
 	/**
 	 * Default wall-clock ceiling for a correlateAll() sweep, in seconds.
 	 *
@@ -66,7 +65,6 @@ class AdvisoryService {
 	 * @var float
 	 */
 	public const CORRELATE_ALL_BUDGET_SECONDS = 5.0;
-	public const STATE_AVAILABLE = 'advisory-available';
 	public const STATE_VULNERABLE = 'pinned-to-vulnerable';
 
 	/**

@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Advisory;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\AdvisoryDigestNotifierInterface;
 use OCA\Versioniq\Service\AdminNotificationServices;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
@@ -34,7 +35,7 @@ use Throwable;
  *
  * @psalm-api
  */
-class AdvisoryDigestNotifier {
+class AdvisoryDigestNotifier implements AdvisoryDigestNotifierInterface {
 	private const CONFIG_LAST_SENT = 'advisory.digest_last_sent';
 
 	/** Seven days. */

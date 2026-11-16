@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Advisory;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\AdvisorySettingsStoreInterface;
 use OCP\IAppConfig;
 
 /**
@@ -28,7 +29,7 @@ use OCP\IAppConfig;
  *
  * @psalm-api
  */
-class AdvisorySettingsStore {
+class AdvisorySettingsStore implements AdvisorySettingsStoreInterface {
 	public const CONFIG_INTERVAL_HOURS = 'advisory.interval_hours';
 	public const CONFIG_DIGEST_ENABLED = 'advisory.digest_enabled';
 
@@ -37,19 +38,6 @@ class AdvisorySettingsStore {
 
 	/** Four sweeps a day: well inside the window in which an advisory matters. */
 	public const DEFAULT_INTERVAL_HOURS = 6;
-
-	/**
-	 * Hourly is the floor because the sweep pulls the App Store catalogue and
-	 * the GHSA feed; more often than that is sustained upstream traffic for no
-	 * practical gain.
-	 */
-	public const MIN_INTERVAL_HOURS = 1;
-
-	/**
-	 * Daily is the ceiling. Beyond it, "your instance is checked for known
-	 * vulnerabilities" stops being a claim the feature can honestly make.
-	 */
-	public const MAX_INTERVAL_HOURS = 24;
 
 	public function __construct(
 		private IAppConfig $config,
