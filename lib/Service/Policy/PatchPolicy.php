@@ -308,6 +308,8 @@ final class PatchPolicy {
 
 	/**
 	 * @return array{security: array<string, array{deadlineDays: ?int, handling: string}>, regular: array<string, string>, statement: string, setBy: ?string, setAt: ?string}
+	 *
+	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-an-admin-records-a-patch-policy-and-security-fixes-go-first
 	 */
 	public function toArray(): array {
 		return [

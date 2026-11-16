@@ -38,6 +38,8 @@ final class PlanRun {
 	 * The app's advisory row, or null when the snapshot has none.
 	 *
 	 * @return array<string, mixed>|null
+	 *
+	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-the-security-level-installs-only-advisory-fixes-in-the-window
 	 */
 	public function rowOf(string $appId): ?array {
 		$row = $this->rows[$appId] ?? null;
@@ -45,12 +47,20 @@ final class PlanRun {
 		return is_array($row) ? $row : null;
 	}
 
-	/** Records why the app's security fix was held back. */
+	/**
+	 * Records why the app's security fix was held back.
+	 *
+	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-the-security-level-installs-only-advisory-fixes-in-the-window
+	 */
 	public function hold(string $appId, string $reason): void {
 		$this->holds[$appId] = $reason;
 	}
 
-	/** @return array<string, string> Why a fix was held back, by app id. */
+	/**
+	 * @return array<string, string> Why a fix was held back, by app id.
+	 *
+	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-the-security-level-installs-only-advisory-fixes-in-the-window
+	 */
 	public function holds(): array {
 		return $this->holds;
 	}
