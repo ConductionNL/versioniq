@@ -81,6 +81,8 @@ final class AutoUpdateJobTest extends TestCase {
 				'heldBack' => [],
 				'securityBypass' => null,
 				'exception' => null,
+				'eligible' => array_column($entries, 'version'),
+				'bypassed' => null,
 			]
 		);
 	}
@@ -488,6 +490,8 @@ final class AutoUpdateJobTest extends TestCase {
 				'heldBack' => [['version' => '2.3.4', 'releasedAt' => '2026-07-22T09:00:00+00:00', 'eligibleAt' => '2026-07-27T09:00:00+00:00', 'reason' => 'minimum_age']],
 				'securityBypass' => null,
 				'exception' => null,
+				'eligible' => [],
+				'bypassed' => null,
 			]);
 		$mocks['installerService']->expects($this->never())->method('installAppVersion');
 		$mocks['notifier']->expects($this->never())->method('notifySuccess');
@@ -510,6 +514,8 @@ final class AutoUpdateJobTest extends TestCase {
 				'heldBack' => [],
 				'securityBypass' => ['version' => '2.3.4', 'advisories' => ['GHSA-1', 'GHSA-2'], 'reason' => MinimumAgePlanner::REASON_SECURITY_FIX],
 				'exception' => null,
+				'eligible' => ['2.3.4'],
+				'bypassed' => '2.3.4',
 			]);
 		$auditMessage = null;
 		$mocks['installerService']->expects($this->once())->method('installAppVersion')
@@ -531,12 +537,15 @@ final class AutoUpdateJobTest extends TestCase {
 	 */
 	public function testAnOrdinaryInstallCarriesNoNote(): void {
 		$mocks = $this->openWindowWithOneApp(new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00'));
+		$mocks['settingsStore']->method('getMinAgeDays')->willReturn(7);
 		$mocks['planner'] = $this->createMock(MinimumAgePlanner::class);
-		$mocks['planner']->method('plan')->willReturn([
+		$mocks['planner']->expects($this->once())->method('plan')->willReturn([
 			'next' => '2.3.4',
 			'heldBack' => [],
 			'securityBypass' => ['version' => '3.0.1', 'advisories' => ['GHSA-9'], 'reason' => MinimumAgePlanner::REASON_OUTSIDE_LEVEL],
 			'exception' => null,
+			'eligible' => ['2.3.4'],
+			'bypassed' => null,
 		]);
 		$auditMessage = 'unset';
 		$mocks['installerService']->method('installAppVersion')
@@ -570,6 +579,10 @@ final class AutoUpdateJobTest extends TestCase {
 			'hasError' => false,
 		]);
 		$mocks['attemptLedger']->method('hasAttempted')->willReturn(false);
+		// The real choice among the versions the age planner leaves eligible.
+		$mocks['candidateSelector']->method('select')->willReturnCallback(
+			static fn (string $installed, array $available, string $level): ?string => (new CandidateSelector())->select($installed, $available, $level)
+		);
 
 		return $mocks;
 	}

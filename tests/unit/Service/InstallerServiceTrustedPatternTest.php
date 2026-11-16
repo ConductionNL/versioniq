@@ -161,7 +161,7 @@ final class InstallerServiceTrustedPatternTest extends TestCase {
 		return [
 			'wildcard owner' => ['github', '*', null],
 			'empty owner' => ['github', '', null],
-			'unknown forge' => ['gitlab', 'acme', null],
+			'unknown forge' => ['bitbucket', 'acme', null],
 			'owner bad charset (slash)' => ['github', 'a/b', null],
 			'owner bad charset (star)' => ['github', 'ac*me', null],
 			'repo bad charset' => ['github', 'acme', 'wid*get'],
@@ -214,8 +214,8 @@ final class InstallerServiceTrustedPatternTest extends TestCase {
 		yield 'owner and repo are trimmed' => ['forgejo', ' acme ', ' tool ', 'forgejo:acme/tool'];
 		yield 'retired forge' => ['codeberg', 'acme', 'tool', 'REFUSED Forge "codeberg" is no longer offered for a new binding or trusted pattern. Use github, or a self-hosted forgejo host.'];
 		yield 'dots dashes underscores' => ['github', 'a.b-c_d', 'R.e-p_0', 'github:a.b-c_d/R.e-p_0'];
-		yield 'unknown forge' => ['gitlab', 'acme', 'tool', 'REFUSED Unknown forge: gitlab'];
-		yield 'unknown forge beats bad owner' => ['gitlab', '*', 'wid*get', 'REFUSED Unknown forge: gitlab'];
+		yield 'unknown forge' => ['bitbucket', 'acme', 'tool', 'REFUSED Unknown forge: bitbucket'];
+		yield 'unknown forge beats bad owner' => ['bitbucket', '*', 'wid*get', 'REFUSED Unknown forge: bitbucket'];
 		yield 'forge is case sensitive' => ['GitHub', 'acme', null, 'REFUSED Unknown forge: GitHub'];
 		yield 'empty owner' => ['github', '', null, 'REFUSED A concrete owner is required (wildcard-only owners are not allowed).'];
 		yield 'blank owner' => ['github', '  ', null, 'REFUSED A concrete owner is required (wildcard-only owners are not allowed).'];

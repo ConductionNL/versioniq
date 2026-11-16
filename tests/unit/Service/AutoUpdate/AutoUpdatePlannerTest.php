@@ -10,11 +10,13 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\Service\AutoUpdate;
 
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
+use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateMember;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSecurityStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
@@ -22,9 +24,11 @@ use OCA\Versioniq\Service\AutoUpdate\FirstSeenStore;
 use OCA\Versioniq\Service\AutoUpdate\MinAgeExceptionStore;
 use OCA\Versioniq\Service\AutoUpdate\MinimumAgePlanner;
 use OCA\Versioniq\Service\AutoUpdate\MinimumAgeRule;
+use OCA\Versioniq\Service\AutoUpdate\SecurityHoldStore;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Policy\PatchPolicyStore;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyStore;
 use OCP\App\IAppManager;
@@ -57,7 +61,18 @@ final class AutoUpdatePlannerTest extends TestCase {
 
 	private function planner(): AutoUpdatePlanner {
 		return new AutoUpdatePlanner(
-			new AutoUpdateStores($this->policies, $this->pins, $this->settings, $this->ledger),
+			new AutoUpdateStores(
+				$this->policies,
+				$this->pins,
+				$this->settings,
+				$this->ledger,
+				new AutoUpdateSecurityStores(
+					$this->createMock(AdvisoryResultStore::class),
+					$this->createMock(AdvisorySettingsStore::class),
+					$this->createMock(PatchPolicyStore::class),
+					$this->createMock(SecurityHoldStore::class),
+				),
+			),
 			new AutoUpdateInstall($this->installer, $this->apps, new CandidateSelector(), $this->minimumAgePlanner()),
 			$this->logger,
 		);
@@ -171,7 +186,7 @@ final class AutoUpdatePlannerTest extends TestCase {
 		]);
 		$this->ledger->method('hasAttempted')->willReturn(false);
 
-		$installable = $this->planner()->plan(new \DateTimeImmutable('2026-11-14T12:00:00+00:00'))->installable();
+		$installable = $this->planner()->plan(['rows' => [], 'fresh' => false], null, new \DateTimeImmutable('2026-11-14T12:00:00+00:00'))->installable();
 
 		$this->assertCount(1, $installable);
 		$this->assertSame('1.1.0', $installable[0]->candidate);

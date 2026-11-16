@@ -40,6 +40,16 @@ class ReleaseSweepRecorder {
 	}
 
 	/**
+	 * Says the sweep failed, so the check line does not read as checked; the
+	 * previous snapshot is kept.
+	 *
+	 * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+	 */
+	public function recordFailure(int $failedAt): void {
+		$this->store->saveFailure($failedAt);
+	}
+
+	/**
 	 * The stored snapshot, as AvailabilityResultStore::read() gives it.
 	 *
 	 * @return array{updates: array<string, mixed>, checkedAt: ?int}

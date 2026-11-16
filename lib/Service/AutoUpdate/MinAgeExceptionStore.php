@@ -33,6 +33,8 @@ class MinAgeExceptionStore {
 	 * The app's exception, or null when it has none or the stored value is unreadable.
 	 *
 	 * @return array{version: string, by: string, at: string}|null
+	 *
+	 * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
 	 */
 	public function get(string $appId): ?array {
 		$raw = $this->appConfig->getValueString(Application::APP_ID, self::KEY_PREFIX . $appId, '');
@@ -56,6 +58,11 @@ class MinAgeExceptionStore {
 		];
 	}
 
+	/**
+	 * Stores the app's one exception; a new one replaces the old (design D5).
+	 *
+	 * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+	 */
 	public function set(string $appId, string $version, string $by, \DateTimeImmutable $at): void {
 		$this->appConfig->setValueString(
 			Application::APP_ID,
@@ -64,6 +71,11 @@ class MinAgeExceptionStore {
 		);
 	}
 
+	/**
+	 * Removes the app's exception, if any.
+	 *
+	 * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+	 */
 	public function remove(string $appId): void {
 		$this->appConfig->deleteKey(Application::APP_ID, self::KEY_PREFIX . $appId);
 	}

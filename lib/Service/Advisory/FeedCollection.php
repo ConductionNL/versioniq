@@ -16,7 +16,7 @@ namespace OCA\Versioniq\Service\Advisory;
  * per target and the GHSA ids already taken, so a repeated id is skipped.
  */
 final class FeedCollection {
-	/** @var array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>}>> */
+	/** @var array<string, list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, patchedVersions: list<string>, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>> */
 	public array $byTarget = [];
 
 	/** @var array<string, true> */

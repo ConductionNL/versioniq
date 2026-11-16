@@ -29,7 +29,7 @@ use OCA\Versioniq\Service\Audit\AuditSubject;
  *
  * @psalm-type HeldVersion = array{version: string, releasedAt: string, eligibleAt: string, reason: string}
  * @psalm-type SecurityBypass = array{version: string, advisories: list<string>, reason: string}
- * @psalm-type Plan = array{next: ?string, heldBack: list<HeldVersion>, securityBypass: ?SecurityBypass, exception: ?string}
+ * @psalm-type Plan = array{next: ?string, heldBack: list<HeldVersion>, securityBypass: ?SecurityBypass, exception: ?string, eligible: list<string>, bypassed: ?string}
  *
  * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
  * @psalm-api
@@ -109,6 +109,8 @@ class MinimumAgePlanner {
 			'heldBack' => $heldBack,
 			'securityBypass' => $this->securityBypass($security, $bypassed, $next, $installedVersion, $byVersion, $level),
 			'exception' => $excepted,
+			'eligible' => $eligible,
+			'bypassed' => $bypassed,
 		];
 	}
 

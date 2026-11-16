@@ -87,4 +87,35 @@ final class PatDeeplinkBuilderTest extends TestCase {
 
 		$this->buildBuilder()->build(Pat::KIND_FORGE_TOKEN, ForgeRegistry::FORGE_FORGEJO);
 	}
+
+	/**
+	 * GitLab opens its token page with the name and read_api filled in, on gitlab.com by default.
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-3.1
+	 */
+	public function testGitlabDeeplinkPrefillsNameAndReadApi(): void {
+		$result = $this->buildBuilder()->build(Pat::KIND_FORGE_TOKEN, ForgeRegistry::FORGE_GITLAB);
+
+		$this->assertSame(Pat::KIND_FORGE_TOKEN, $result['kind']);
+		$this->assertSame('https://gitlab.com/-/user_settings/personal_access_tokens?name=Nextcloud%20Versioniq&scopes=read_api', $result['url']);
+		$this->assertStringContainsString('read_api', implode(' ', $result['instructions']));
+		$this->assertStringNotContainsString('Forgejo', implode(' ', $result['instructions']));
+	}
+
+	/**
+	 * A self-managed GitLab host gets its own token page.
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-3.1
+	 */
+	public function testGitlabDeeplinkPointsAtTheSelfManagedHost(): void {
+		$appConfig = $this->createMock(\OCP\IAppConfig::class);
+		$appConfig->method('getValueString')->willReturnCallback(
+			static fn (string $app, string $key, string $default = ''): string => $key === 'forge.gitlab.web_base' ? 'https://gitlab.example.org' : $default,
+		);
+		$builder = new PatDeeplinkBuilder($this->createMock(IRequest::class), new ForgeRegistry($appConfig));
+
+		$result = $builder->build(Pat::KIND_FORGE_TOKEN, ForgeRegistry::FORGE_GITLAB);
+
+		$this->assertStringStartsWith('https://gitlab.example.org/-/user_settings/personal_access_tokens?', $result['url']);
+	}
 }

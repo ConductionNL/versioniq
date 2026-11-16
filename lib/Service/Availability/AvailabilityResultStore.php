@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Availability;
 
 use OCA\Versioniq\Service\Settings\StoredSnapshot;
+use OCA\Versioniq\Service\Settings\SweepOutcome;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
 
@@ -43,7 +44,7 @@ class AvailabilityResultStore {
 	 */
 	public function save(array $updates, int $checkedAt): void {
 		try {
-			$this->snapshot()->write($updates, $checkedAt);
+			$this->snapshot()->writeSweep($updates, $checkedAt);
 		} catch (\JsonException $error) {
 			$this->logger->error('AvailabilityResultStore: could not encode the snapshot; keeping the previous one', [
 				'message' => $error->getMessage(),
@@ -52,8 +53,18 @@ class AvailabilityResultStore {
 	}
 
 	/**
+	 * Records a sweep that failed as a whole: the previous snapshot and its
+	 * `checkedAt` stay, the outcome says `failed` with the attempt's time as `failedAt`.
+	 *
+	 * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+	 */
+	public function saveFailure(int $failedAt): void {
+		$this->snapshot()->writeOutcome(SweepOutcome::FAILED, [], $failedAt);
+	}
+
+	/**
 	 * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
-	 * @return array{updates: array<string, mixed>, checkedAt: ?int}
+	 * @return array{updates: array<string, mixed>, checkedAt: ?int, failedAt: ?int, status: ?string, errors: list<string>}
 	 */
 	public function read(): array {
 		try {
@@ -63,15 +74,12 @@ class AvailabilityResultStore {
 				'message' => $error->getMessage(),
 			]);
 
-			return ['updates' => [], 'checkedAt' => null];
+			return ['updates' => [], 'checkedAt' => null, 'failedAt' => null, 'status' => null, 'errors' => []];
 		}
 
-		if ($updates === null) {
-			return ['updates' => [], 'checkedAt' => null];
-		}
-
-		return ['updates' => $updates, 'checkedAt' => $this->snapshot()->checkedAt()];
+		return ['updates' => $updates ?? []] + $this->snapshot()->outcome(map: $updates);
 	}
+
 
 	private function snapshot(): StoredSnapshot {
 		return new StoredSnapshot($this->config, self::KEY);
