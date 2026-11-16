@@ -114,7 +114,7 @@ class ApiController extends OCSController {
 	 * `triage` is the stored dismissals and owners, keyed `{appId}|{advisoryId}`,
 	 * applied by the page; the snapshot itself stays raw (advisories-triage D1).
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{advisories: array<string, mixed>, checkedAt: ?int, compliance: array<string, mixed>, triage: array<string, mixed>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{advisories: array<string, mixed>, checkedAt: ?int, status: ?string, errors: list<string>, compliance: array<string, mixed>, triage: array<string, mixed>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Stored advisory correlation returned
 	 * 403: Caller is not an administrator
@@ -136,7 +136,10 @@ class ApiController extends OCSController {
 
 		return new DataResponse([
 			'advisories' => $rows,
-			'checkedAt' => $snapshot['checkedAt'],
+			// The check line shows the status with this time: a failed sweep's is its attempt's.
+			'checkedAt' => $snapshot['failedAt'] ?? $snapshot['checkedAt'],
+			'status' => $snapshot['status'],
+			'errors' => $snapshot['errors'],
 			'compliance' => ComplianceStatus::from(
 				$rows,
 				$snapshot['checkedAt'],
@@ -156,7 +159,7 @@ class ApiController extends OCSController {
 	 * Like /api/advisories it reads what AvailabilityRefreshJob stored and
 	 * never calls a source (issue #160).
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{updates: array<string, mixed>, checkedAt: ?int, maxLinesBehind: ?int}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{updates: array<string, mixed>, checkedAt: ?int, status: ?string, errors: list<string>, maxLinesBehind: ?int}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Stored pending updates returned
 	 * 403: Caller is not an administrator
@@ -170,11 +173,14 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$snapshot = $this->reports->stores->availabilityResultStore?->read() ?? ['updates' => [], 'checkedAt' => null];
+		$snapshot = $this->reports->stores->availabilityResultStore?->read() ?? ['updates' => [], 'checkedAt' => null, 'failedAt' => null, 'status' => null, 'errors' => []];
 
 		return new DataResponse([
 			'updates' => $snapshot['updates'],
-			'checkedAt' => $snapshot['checkedAt'],
+			// The check line shows the status with this time: a failed sweep's is its attempt's.
+			'checkedAt' => $snapshot['failedAt'] ?? $snapshot['checkedAt'],
+			'status' => $snapshot['status'],
+			'errors' => $snapshot['errors'],
 			'maxLinesBehind' => $this->reports->stores->instanceSettings?->maxLinesBehind(),
 		]);
 	}

@@ -966,7 +966,7 @@ final class ApiTest extends TestCase {
 	public function testAdvisoriesCarriesTheTriageMap(): void {
 		$triage = ['notes|GHSA-1' => ['dismissal' => ['reason' => 'not_used', 'by' => 'alice', 'installedVersion' => '4.1.0']]];
 		$results = $this->createMock(AdvisoryResultStore::class);
-		$results->method('read')->willReturn(['advisories' => ['notes' => ['state' => 'advisory-available']], 'checkedAt' => 1_700_000_000]);
+		$results->method('read')->willReturn(['advisories' => ['notes' => ['state' => 'advisory-available']], 'checkedAt' => 1_700_000_000, 'status' => 'ok', 'errors' => []]);
 		$triageStore = $this->createMock(AdvisoryTriageStore::class);
 		$triageStore->expects($this->once())->method('read')->willReturn($triage);
 		$user = $this->createMock(IUser::class);
@@ -994,7 +994,9 @@ final class ApiTest extends TestCase {
 		$data = $response->getData();
 		$this->assertSame(['notes' => ['state' => 'advisory-available', 'heldByPin' => false]], $data['advisories']);
 		$this->assertSame(1_700_000_000, $data['checkedAt']);
-		$this->assertSame(['advisories', 'checkedAt', 'compliance', 'triage'], array_keys($data));
+		$this->assertSame(['advisories', 'checkedAt', 'status', 'errors', 'compliance', 'triage'], array_keys($data));
+		$this->assertSame('ok', $data['status']);
+		$this->assertSame([], $data['errors']);
 		$this->assertSame($triage, $data['triage']);
 	}
 }
