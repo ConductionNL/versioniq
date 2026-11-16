@@ -28,7 +28,7 @@ use Psr\Log\LoggerInterface;
  *
  * @psalm-api
  */
-class AuditLogger {
+class AuditLogger implements AdminChangeAuditInterface {
 	public const STATUS_SUCCESS = 'success';
 	public const STATUS_FAILURE = 'failure';
 
@@ -37,10 +37,8 @@ class AuditLogger {
 	public const OPERATION_PIN = 'pin';
 	public const OPERATION_UNPIN = 'unpin';
 	public const OPERATION_PIN_DRIFT = 'pin_drift';
-	/** An instance setting changed from the Settings tab (#438). */
-	public const OPERATION_SETTINGS = 'settings';
-	/** A connection to another Versioniq instance was added, changed or removed (install-multi-instance-promotion D1). */
-	public const OPERATION_INSTANCE_CONNECTION = 'instance_connection';
+	// OPERATION_SETTINGS, OPERATION_PATCH_POLICY and OPERATION_INSTANCE_CONNECTION
+	// are AdminChangeAuditInterface's, and read as AuditLogger::OPERATION_* as before.
 
 	/** An advisory dismissed with a reason (advisories-triage). */
 	public const OPERATION_ADVISORY_DISMISS = 'advisory_dismiss';
@@ -98,6 +96,21 @@ class AuditLogger {
 		}
 
 		$this->forward($entry);
+	}
+
+	/**
+	 * Records an administrator's change of the app's own configuration: the
+	 * app is versioniq, no versions, status success.
+	 *
+	 * @spec openspec/specs/audit-trail/spec.md
+	 */
+	public function recordAdminChange(string $actorUid, string $operation, string $message): void {
+		$this->record(
+			new AuditSubject($actorUid, 'versioniq', $operation),
+			new AuditedVersions(null, null, null),
+			self::STATUS_SUCCESS,
+			$message,
+		);
 	}
 
 	/**

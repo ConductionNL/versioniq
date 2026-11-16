@@ -16,9 +16,7 @@ use InvalidArgumentException;
 use OCA\Versioniq\Http\InstanceSettingsFields;
 use OCA\Versioniq\Http\RequestFieldsFrom;
 use OCA\Versioniq\Kernel\Contracts\InstanceSettingsInterface;
-use OCA\Versioniq\Service\Audit\AuditedVersions;
-use OCA\Versioniq\Service\Audit\AuditLogger;
-use OCA\Versioniq\Service\Audit\AuditSubject;
+use OCA\Versioniq\Service\Audit\AdminChangeAuditInterface;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
@@ -48,7 +46,7 @@ class SettingsController extends OCSController {
 		string $appName,
 		IRequest $request,
 		private InstanceSettingsInterface $settings,
-		private AuditLogger $auditLogger,
+		private AdminChangeAuditInterface $auditLogger,
 		private IGroupManager $groupManager,
 		private IUserSession $userSession,
 	) {
@@ -116,10 +114,9 @@ class SettingsController extends OCSController {
 
 		$after = $this->settings->read();
 		if ($applied !== []) {
-			$this->auditLogger->record(
-				new AuditSubject($this->userSession->getUser()?->getUID() ?? '', 'versioniq', AuditLogger::OPERATION_SETTINGS),
-				new AuditedVersions(null, null, null),
-				AuditLogger::STATUS_SUCCESS,
+			$this->auditLogger->recordAdminChange(
+				$this->userSession->getUser()?->getUID() ?? '',
+				AdminChangeAuditInterface::OPERATION_SETTINGS,
 				'Settings changed: ' . implode(', ', array_map(
 					static fn (string $field): string => $field . '=' . (string)$after[$field],
 					$applied,

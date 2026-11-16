@@ -14,9 +14,7 @@ namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
 use OCA\Versioniq\Kernel\Contracts\ManifestBuilderInterface;
-use OCA\Versioniq\Service\Audit\AuditedVersions;
-use OCA\Versioniq\Service\Audit\AuditLogger;
-use OCA\Versioniq\Service\Audit\AuditSubject;
+use OCA\Versioniq\Service\Audit\AdminChangeAuditInterface;
 use OCA\Versioniq\Service\Instance\InstanceConnection;
 use OCA\Versioniq\Service\Instance\InstanceConnectionStore;
 use OCP\AppFramework\Http;
@@ -44,7 +42,7 @@ class InstanceController extends OCSController {
 		string $appName,
 		IRequest $request,
 		private InstanceConnectionStore $store,
-		private AuditLogger $auditLogger,
+		private AdminChangeAuditInterface $auditLogger,
 		private IGroupManager $groupManager,
 		private IUserSession $userSession,
 		private ?ManifestBuilderInterface $manifest = null,
@@ -261,10 +259,9 @@ class InstanceController extends OCSController {
 	}
 
 	private function audit(InstanceConnection $connection, string $verb): void {
-		$this->auditLogger->record(
-			new AuditSubject($this->actorUid(), 'versioniq', AuditLogger::OPERATION_INSTANCE_CONNECTION),
-			new AuditedVersions(null, null, null),
-			AuditLogger::STATUS_SUCCESS,
+		$this->auditLogger->recordAdminChange(
+			$this->actorUid(),
+			AdminChangeAuditInterface::OPERATION_INSTANCE_CONNECTION,
 			sprintf('Connection %s %s: %s (%s), %s as %s', $connection->id, $verb, $connection->name, $connection->stage, $connection->baseUrl, $connection->username),
 		);
 	}

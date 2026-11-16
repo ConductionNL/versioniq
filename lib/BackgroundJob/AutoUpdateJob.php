@@ -21,10 +21,12 @@ use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\AutoUpdate\SecurityCandidate;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\PinChoice;
+use OCA\Versioniq\Service\Policy\PatchPolicy;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCP\AppFramework\Http;
 use OCP\BackgroundJob\TimedJob;
@@ -112,8 +114,38 @@ class AutoUpdateJob extends TimedJob {
 		}
 		$this->stores->settingsStore->markWindowSwept($openingKey);
 
-		// Plan first, then install (autoupdate-run-batching D1).
-		$this->installPlanned((new AutoUpdatePlanner($this->stores, $this->install, $this->logger))->plan());
+		// Plan first, then install (autoupdate-run-batching D1). The advisory
+		// snapshot and the patch policy are read once per run
+		// (autoupdate-security-first D2, D3); no stored policy reads as
+		// today's behaviour, and security fixes are planned first (D4).
+		$plan = (new AutoUpdatePlanner($this->stores, $this->install, $this->logger))->plan(
+			$this->advisorySnapshot(),
+			$this->stores->security->patchPolicyStore->read() ?? PatchPolicy::none()
+		);
+		$this->installPlanned($plan);
+		$this->stores->security->securityHolds->replace($plan->securityHolds);
+	}
+
+	/**
+	 * The last advisory snapshot, and whether it is fresh enough to decide
+	 * security installs (autoupdate-security-first D2).
+	 *
+	 * @return array{rows: array<string, mixed>, fresh: bool}
+	 *
+	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md
+	 */
+	private function advisorySnapshot(): array {
+		$snapshot = $this->stores->security->advisoryResults->read();
+		$checkedAt = $snapshot['checkedAt'] ?? null;
+
+		return [
+			'rows' => is_array($snapshot['advisories'] ?? null) ? $snapshot['advisories'] : [],
+			'fresh' => SecurityCandidate::isFresh(
+				is_int($checkedAt) ? $checkedAt : null,
+				$this->time->getTime(),
+				$this->stores->security->advisorySettings->getIntervalSeconds()
+			),
+		];
 	}
 
 	/**

@@ -31,6 +31,9 @@ final class AutoUpdateMember {
 	/** The candidate was attempted before and is never retried. */
 	public const REASON_BLOCKED = 'blocked';
 
+	/** The patch policy sets this security fix to by hand (autoupdate-security-first). */
+	public const REASON_HELD = 'held';
+
 	/** A run or weekly limit holds it back. */
 	public const REASON_LIMIT = 'limit';
 
