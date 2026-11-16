@@ -49,18 +49,8 @@ class SourceBindingStore {
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
 	public function get(string $appId): ?SourceBinding {
-		$raw = $this->config->getValueString(Application::APP_ID, $this->key($appId), '');
-		if ($raw === '') {
-			return null;
-		}
-
-		try {
-			$decoded = json_decode($raw, true, 16, JSON_THROW_ON_ERROR);
-		} catch (\JsonException) {
-			return null;
-		}
-
-		if (!is_array($decoded)) {
+		$decoded = $this->storedArray($appId);
+		if ($decoded === null) {
 			return null;
 		}
 
@@ -88,14 +78,7 @@ class SourceBindingStore {
 	 */
 	public function set(string $appId, SourceBinding $binding): void {
 		$previous = $this->get($appId);
-
-		if ($previous !== null && $previous->getId() === $binding->getId()) {
-			foreach ($previous->getRecordedShaMap() as $version => $sha) {
-				if ($binding->getRecordedSha($version) === null) {
-					$binding = $binding->withRecordedSha($version, $sha);
-				}
-			}
-		}
+		$binding = self::withPreviousDigests($previous, $binding);
 
 		$this->config->setValueString(
 			Application::APP_ID,
@@ -104,16 +87,42 @@ class SourceBindingStore {
 		);
 
 		$actorUid = $this->userSession->getUser()?->getUID() ?? 'system';
-		$message = ($previous !== null && $previous->getId() !== $binding->getId())
-			? sprintf('Rebound from %s', $previous->getId())
-			: null;
 
 		$this->auditLogger->record(
 			new AuditSubject($actorUid, $appId, AuditLogger::OPERATION_BIND_SOURCE),
 			new AuditedVersions(null, null, $binding->getId()),
 			AuditLogger::STATUS_SUCCESS,
-			$message,
+			self::rebindMessage($previous, $binding),
 		);
+	}
+
+	/**
+	 * The incoming binding plus every digest the previous binding recorded
+	 * that it does not carry, when both name the same source id; the incoming
+	 * binding unchanged otherwise.
+	 */
+	private static function withPreviousDigests(?SourceBinding $previous, SourceBinding $binding): SourceBinding {
+		if ($previous === null || $previous->getId() !== $binding->getId()) {
+			return $binding;
+		}
+
+		foreach ($previous->getRecordedShaMap() as $version => $sha) {
+			if ($binding->getRecordedSha($version) === null) {
+				$binding = $binding->withRecordedSha($version, $sha);
+			}
+		}
+
+		return $binding;
+	}
+
+	/**
+	 * The audit message of a bind: which source it replaced, or null when
+	 * there was none or it is the same source.
+	 */
+	private static function rebindMessage(?SourceBinding $previous, SourceBinding $binding): ?string {
+		return ($previous !== null && $previous->getId() !== $binding->getId())
+			? sprintf('Rebound from %s', $previous->getId())
+			: null;
 	}
 
 	/**
@@ -161,6 +170,28 @@ class SourceBindingStore {
 
 	private function key(string $appId): string {
 		return 'source.' . $appId;
+	}
+
+	/**
+	 * The app's stored binding JSON decoded to an array, or null when none
+	 * is stored or it is not a JSON object or list.
+	 *
+	 * @return array<array-key, mixed>|null
+	 */
+	private function storedArray(string $appId): ?array {
+		$raw = $this->config->getValueString(Application::APP_ID, $this->key($appId), '');
+		if ($raw === '') {
+			return null;
+		}
+
+		try {
+			/** @var mixed $decoded */
+			$decoded = json_decode($raw, true, 16, JSON_THROW_ON_ERROR);
+		} catch (\JsonException) {
+			return null;
+		}
+
+		return is_array($decoded) ? $decoded : null;
 	}
 
 	/**
