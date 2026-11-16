@@ -17,6 +17,8 @@ type OperationEntry = {
  * shows as `codeberg.org/zuiddrecht`.
  *
  * @param pattern the stored pattern
+ *
+ * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/audit-trail/spec.md
  */
 export function displayPattern (pattern: string): string {
 	return pattern.trim().replace(/\/\*$/, '').replace(/\/$/, '')
@@ -34,6 +36,8 @@ const OPERATION_LABELS = new Map<string, (pattern: string) => string>([
  * The text the History tab shows for an entry's operation.
  *
  * @param entry the audit entry
+ *
+ * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/audit-trail/spec.md
  */
 export function operationLabel (entry: OperationEntry): string {
 	const label = OPERATION_LABELS.get(entry.operation)
@@ -45,6 +49,8 @@ export function operationLabel (entry: OperationEntry): string {
  * the Status column does not repeat it.
  *
  * @param entry the audit entry
+ *
+ * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/audit-trail/spec.md
  */
 export function labelCarriesMessage (entry: OperationEntry): boolean {
 	return entry.operation === 'trust_source' || entry.operation === 'untrust_source'

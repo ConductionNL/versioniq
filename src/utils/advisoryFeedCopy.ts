@@ -21,6 +21,8 @@ export type FeedCopyState = { text: string, stale: boolean }
  * @param maxAgeDays the age past which the copy is stale
  * @param now the current time in milliseconds
  * @param locale the locale to write the date in; the browser's when omitted
+ *
+ * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/security-advisory-correlation/spec.md
  */
 export function feedCopyState (copiedAt: number | null, maxAgeDays: number, now: number, locale?: string): FeedCopyState | null {
 	if (copiedAt === null || copiedAt === undefined) {
@@ -38,6 +40,8 @@ export function feedCopyState (copiedAt: number | null, maxAgeDays: number, now:
  * Imports a feed file; answers the import time, or the reason it was refused.
  *
  * @param file the chosen feed file
+ *
+ * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/security-advisory-correlation/spec.md
  */
 export async function importFeedCopy (file: Blob): Promise<{ copiedAt: number } | { error: string }> {
 	try {

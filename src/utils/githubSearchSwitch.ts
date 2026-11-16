@@ -23,6 +23,8 @@ type Provider = { id: string, label: string, enabled: boolean }
  * answer; null while no answer named the provider.
  *
  * @param providers the providers of the last search answer
+ *
+ * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/app-discovery/spec.md
  */
 export function githubSearchState (providers: Provider[]): boolean | null {
 	const provider = providers.find((entry) => entry.id === GITHUB_SEARCH_PROVIDER)
@@ -34,6 +36,8 @@ export function githubSearchState (providers: Provider[]): boolean | null {
  *
  * @param providers the providers of the last search answer
  * @param enabled the new state
+ *
+ * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/app-discovery/spec.md
  */
 export function withGithubSearch (providers: Provider[], enabled: boolean): Provider[] {
 	return providers.map((entry) => entry.id === GITHUB_SEARCH_PROVIDER ? { ...entry, enabled } : entry)
@@ -43,6 +47,8 @@ export function withGithubSearch (providers: Provider[], enabled: boolean): Prov
  * The line that says whether public GitHub search is on.
  *
  * @param enabled the state
+ *
+ * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/app-discovery/spec.md
  */
 export function githubSearchStateText (enabled: boolean): string {
 	return enabled
@@ -54,6 +60,8 @@ export function githubSearchStateText (enabled: boolean): string {
  * Stores the switch; answers the stored state, or the reason it was not stored.
  *
  * @param enabled the requested state
+ *
+ * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/app-discovery/spec.md
  */
 export async function saveGithubSearch (enabled: boolean): Promise<{ enabled: boolean } | { error: string }> {
 	try {

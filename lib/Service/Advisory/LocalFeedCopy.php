@@ -121,6 +121,8 @@ class LocalFeedCopy {
 	 *
 	 * @return list<array<array-key, mixed>>
 	 * @throws InvalidArgumentException With the reason the file is refused.
+	 *
+	 * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/security-advisory-correlation/spec.md
 	 */
 	public static function validated(string $content): array {
 		try {
