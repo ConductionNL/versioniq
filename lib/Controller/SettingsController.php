@@ -15,9 +15,9 @@ namespace OCA\Versioniq\Controller;
 use InvalidArgumentException;
 use OCA\Versioniq\Http\InstanceSettingsFields;
 use OCA\Versioniq\Http\RequestFieldsFrom;
+use OCA\Versioniq\Kernel\Contracts\InstanceSettingsInterface;
 use OCA\Versioniq\Service\Advisory\LocalFeedCopy;
 use OCA\Versioniq\Service\Audit\AdminChangeAuditInterface;
-use OCA\Versioniq\Service\Settings\InstanceSettings;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
@@ -47,7 +47,7 @@ class SettingsController extends OCSController {
 	public function __construct(
 		string $appName,
 		IRequest $request,
-		private InstanceSettings $settings,
+		private InstanceSettingsInterface $settings,
 		private AdminChangeAuditInterface $auditLogger,
 		private IGroupManager $groupManager,
 		private IUserSession $userSession,

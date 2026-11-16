@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Advisory;
 
+use OCA\Versioniq\Kernel\Contracts\AdvisoryResultStoreInterface;
 use OCA\Versioniq\Service\Settings\StoredSnapshot;
 use OCA\Versioniq\Service\Settings\SweepOutcome;
 use OCP\IAppConfig;
@@ -36,7 +37,7 @@ use Psr\Log\LoggerInterface;
  *
  * @psalm-api
  */
-class AdvisoryResultStore {
+class AdvisoryResultStore implements AdvisoryResultStoreInterface {
 	/**
 	 * App config key holding the JSON-encoded correlation snapshot; the unix
 	 * time of the last completed sweep is held under `advisory.results.checkedAt`

@@ -18,6 +18,7 @@ use OCA\Versioniq\Middleware\ApiContractMiddleware;
 use OCA\Versioniq\Notification\Notifier;
 use OCA\Versioniq\Service\Audit\AdminChangeAuditInterface;
 use OCA\Versioniq\Service\Audit\AuditLogger;
+use OCA\Versioniq\Service\ContractBindings;
 use OCP\App\Events\AppUpdateEvent;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
@@ -50,6 +51,8 @@ class Application extends App implements IBootstrap {
 
 		// API-Version header and problem details on the JSON API (spec api-contract).
 		$context->registerMiddleware(ApiContractMiddleware::class);
+
+		(new ContractBindings())->register($context);
 
 		// Admin-change audit is reached through its role interface.
 		$context->registerServiceAlias(AdminChangeAuditInterface::class, AuditLogger::class);

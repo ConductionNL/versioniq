@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Advisory;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\AdvisoryNotifierInterface;
 use OCA\Versioniq\Service\AdminNotificationServices;
 use OCA\Versioniq\Service\ResolvesAdminUids;
 use OCP\IAppConfig;
@@ -31,7 +32,7 @@ use Psr\Log\LoggerInterface;
  *
  * @psalm-api
  */
-class AdvisoryNotifier {
+class AdvisoryNotifier implements AdvisoryNotifierInterface {
 	use ResolvesAdminUids;
 
 	private const CONFIG_KEY = 'advisory.notified';
