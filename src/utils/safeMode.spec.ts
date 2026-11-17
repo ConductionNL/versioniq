@@ -62,15 +62,15 @@ describe('isBlockedBySafeMode with the app release channel', () => {
 	const stableServer = { enabled: true, installedVersion: '2.4.0', updateChannel: 'stable' }
 
 	it('blocks a version that is not on the app channel, even a newer stable one', () => {
-		expect(isBlockedBySafeMode('2.5.0', stableServer, false)).toBe(true)
+		expect(isBlockedBySafeMode('2.5.0', { ...stableServer, onChannel: false })).toBe(true)
 	})
 
 	it('allows a pre-release on an app that follows beta, on a stable server', () => {
-		expect(isBlockedBySafeMode('2.5.0-rc.1', stableServer, true)).toBe(false)
+		expect(isBlockedBySafeMode('2.5.0-rc.1', { ...stableServer, onChannel: true })).toBe(false)
 	})
 
 	it('keeps blocking a downgrade that is on the channel', () => {
-		expect(isBlockedBySafeMode('2.3.9', stableServer, true)).toBe(true)
+		expect(isBlockedBySafeMode('2.3.9', { ...stableServer, onChannel: true })).toBe(true)
 	})
 
 	it('keeps the update-channel rule when the server did not stamp the version', () => {
@@ -78,6 +78,6 @@ describe('isBlockedBySafeMode with the app release channel', () => {
 	})
 
 	it('blocks nothing when safe mode is off', () => {
-		expect(isBlockedBySafeMode('2.5.0', { ...stableServer, enabled: false }, false)).toBe(false)
+		expect(isBlockedBySafeMode('2.5.0', { ...stableServer, enabled: false, onChannel: false })).toBe(false)
 	})
 })

@@ -1358,7 +1358,8 @@ function isBlockedBySafeModeRule (version: string): boolean {
 		enabled: isSafeMode.value,
 		installedVersion: installedVersion.value,
 		updateChannel: updateChannel.value,
-	}, versions.value.find((entry) => entry.version === version)?.onChannel)
+		onChannel: versions.value.find((entry) => entry.version === version)?.onChannel,
+	})
 }
 
 /**
@@ -1372,7 +1373,8 @@ function isHiddenBySafeMode (version: AppVersion): boolean {
 		enabled: isSafeMode.value,
 		installedVersion: installedVersion.value,
 		updateChannel: updateChannel.value,
-	}, showAllVersions.value && version.onChannel === false ? true : version.onChannel)
+		onChannel: showAllVersions.value && version.onChannel === false ? true : version.onChannel,
+	})
 }
 
 const versionChannelName = computed(() => (versionChannel.value ? channelLabel(versionChannel.value) : ''))
@@ -1412,11 +1414,12 @@ function normaliseChannelState (state: Partial<ChannelState> | null | undefined)
 /**
  * Send one password-confirmed channel change and keep the settings it answers.
  *
- * @param path the endpoint below /api
- * @param method PUT or DELETE
- * @param body the request body
+ * @param change the endpoint below /api (path), PUT or DELETE (method) and the request body (body)
+ * @param change.path the endpoint below /api
+ * @param change.method PUT or DELETE
+ * @param change.body the request body
  */
-async function sendChannelChange (path: string, method: 'PUT' | 'DELETE', body: Record<string, unknown>): Promise<void> {
+async function sendChannelChange ({ path, method, body }: { path: string, method: 'PUT' | 'DELETE', body: Record<string, unknown> }): Promise<void> {
 	if (isSavingChannel.value) {
 		return
 	}
@@ -1448,7 +1451,7 @@ async function sendChannelChange (path: string, method: 'PUT' | 'DELETE', body: 
  */
 async function onChannelChange (appId: string, channel: ReleaseChannel | null): Promise<void> {
 	const path = `app/${encodeURIComponent(appId)}/channel`
-	await sendChannelChange(path, channel === null ? 'DELETE' : 'PUT', channel === null ? {} : { channel })
+	await sendChannelChange({ path, method: channel === null ? 'DELETE' : 'PUT', body: channel === null ? {} : { channel } })
 }
 
 /**
@@ -1458,7 +1461,7 @@ async function onChannelChange (appId: string, channel: ReleaseChannel | null): 
  * @param lines the lines
  */
 async function onLtsLinesChange (appId: string, lines: string[]): Promise<void> {
-	await sendChannelChange(`app/${encodeURIComponent(appId)}/lts-lines`, 'PUT', { lines })
+	await sendChannelChange({ path: `app/${encodeURIComponent(appId)}/lts-lines`, method: 'PUT', body: { lines } })
 }
 
 /**
@@ -1469,7 +1472,7 @@ async function onLtsLinesChange (appId: string, lines: string[]): Promise<void> 
  */
 async function onDefaultChannelChange (_appId: string, channel: ReleaseChannel | null): Promise<void> {
 	if (channel !== null) {
-		await sendChannelChange('channel', 'PUT', { channel })
+		await sendChannelChange({ path: 'channel', method: 'PUT', body: { channel } })
 	}
 }
 

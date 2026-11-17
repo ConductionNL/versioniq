@@ -15,6 +15,8 @@ export type SafeModeContext = {
 	enabled: boolean
 	installedVersion: string
 	updateChannel: string
+	// What the server stamped on the version for the app's release channel; undefined when it said nothing.
+	onChannel?: boolean
 }
 
 // Channels on which Nextcloud serves only stable releases. An empty or
@@ -58,13 +60,13 @@ export function isStableOnlyChannel (channel: string): boolean {
  * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md
  *
  * @param version the version
- * @param context safe mode, the installed version and the server update channel
- * @param onChannel whether the version is on the app's release channel, when the server said
+ * @param context safe mode, the installed version, the server update channel and, when the server said, whether the version is on the app's release channel
  */
-export function isBlockedBySafeMode (version: string, context: SafeModeContext, onChannel?: boolean): boolean {
+export function isBlockedBySafeMode (version: string, context: SafeModeContext): boolean {
 	if (!context.enabled || !version) {
 		return false
 	}
+	const onChannel = context.onChannel
 	if (onChannel === false) {
 		return true
 	}
