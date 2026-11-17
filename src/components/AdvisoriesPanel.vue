@@ -9,6 +9,7 @@ import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwit
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import AdvisoryItem from './AdvisoryItem.vue'
 import DismissedAdvisories from './DismissedAdvisories.vue'
+import ServerEolDate from './ServerEolDate.vue'
 import { ocsGet, ocsWrite } from '../ocs.ts'
 import { advisoryAnchor, advisoryHistory, applyTriage, complianceSentence, fixSentence, isAssignedTo, RECENT_ADVISORIES, SERVER_ADVISORY_KEY, splitAdvisoryRows } from '../utils/advisories.ts'
 import { currentLoginName } from '../utils/enableApp.ts'
@@ -210,6 +211,7 @@ function showAll (key: string): void {
 
 		<div :class="$style.block" data-testid="advisories-server">
 			<h4>{{ t('versioniq', 'Nextcloud server') }}</h4>
+			<ServerEolDate />
 			<template v-if="server">
 				<p>
 					{{ t('versioniq', 'Installed version: {version}', { version: server.installedVersion ?? '' }) }}

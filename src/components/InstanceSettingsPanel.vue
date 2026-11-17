@@ -36,6 +36,7 @@ type Settings = {
 	maxLinesBehindMax: number
 	promotionMinDays?: number
 	promotionMinDaysMax?: number
+	reactivateAuto?: boolean
 	advisoryFeedSource?: string
 	advisoryFeedCopiedAt?: number | null
 	advisoryFeedCopyMaxAgeDays?: number
@@ -55,6 +56,7 @@ const form = ref({
 	ncscFeedUrl: '',
 	maxLinesBehind: '',
 	promotionMinDays: '',
+	reactivateAuto: false,
 	advisoryFeedSource: 'remote',
 	notifyUsersOnUpdate: true,
 })
@@ -78,6 +80,7 @@ function fill (settings: Settings): void {
 		ncscFeedUrl: settings.ncscFeedUrl ?? '',
 		maxLinesBehind: settings.maxLinesBehind === null || settings.maxLinesBehind === undefined ? '' : String(settings.maxLinesBehind),
 		promotionMinDays: String(settings.promotionMinDays ?? 0),
+		reactivateAuto: settings.reactivateAuto === true,
 		advisoryFeedSource: settings.advisoryFeedSource === 'local' ? 'local' : 'remote',
 		// On unless the admin switched it off (releases-notes-reach 1.2).
 		notifyUsersOnUpdate: settings.notifyUsersOnUpdate !== false,
@@ -240,6 +243,15 @@ onMounted(load)
 				<span :class="$style.hint">{{ t('versioniq', 'They get the same notice as after an update from the Apps page. A dry run never sends it.') }}</span>
 			</label>
 
+			<label :class="$style.checkboxField" for="setting-reactivate-auto">
+				<input
+					id="setting-reactivate-auto"
+					v-model="form.reactivateAuto"
+					type="checkbox"
+					data-testid="setting-reactivate-auto">
+				<span>{{ t('versioniq', 'Enable an app again when an update left it disabled and it runs on this server') }}</span>
+			</label>
+
 			<h4>{{ t('versioniq', 'Promotion') }}</h4>
 			<label :class="$style.field" for="setting-promotion-min-days">
 				<span>{{ t('versioniq', 'Days a version must run on the earlier stage before it may be promoted (0 to {max}, 0 turns the check off)', { max: loaded.promotionMinDaysMax ?? 90 }) }}</span>
@@ -371,6 +383,12 @@ onMounted(load)
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
+}
+
+.checkboxField {
+	display: flex;
+	gap: 8px;
+	align-items: center;
 }
 
 .hint {

@@ -29,6 +29,8 @@ When a version's release notes contain a section headed "Known issues" or "Known
 
 #### Scenario: A publisher adds a known issue after release
 
+@e2e tests/e2e/versions.spec.ts
+
 - **GIVEN** `hermiq` 1.4.0 was released on GitHub, and a week later its release body gained a "Known issues" section: "LDAP sync stops after 1000 users; set the page size to 500"
 - **WHEN** an admin opens the version list of `hermiq`
 - **THEN** 1.4.0 MUST show that section under "Known issues", above its release notes

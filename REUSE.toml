@@ -14,3 +14,17 @@ path = ["l10n/**.js", "l10n/**.json"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Conduction B.V. <info@conduction.nl>"
 SPDX-License-Identifier = "EUPL-1.2"
+
+# The published SBOM JSON schemas the SBOM writer is validated against
+# (tests/unit/Service/Inventory/SbomSchemaTest.php), copied unchanged.
+[[annotations]]
+path = ["tests/fixtures/sbom/cyclonedx-*.schema.json"]
+precedence = "override"
+SPDX-FileCopyrightText = "OWASP Foundation"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = ["tests/fixtures/sbom/spdx-2.3.schema.json"]
+precedence = "override"
+SPDX-FileCopyrightText = "The Linux Foundation and its Contributors"
+SPDX-License-Identifier = "CC-BY-3.0"

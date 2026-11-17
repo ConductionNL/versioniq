@@ -132,6 +132,7 @@ describe('InstanceSettingsPanel saving', () => {
 			ncscFeedUrl: 'https://csaf.example.org/v2',
 			maxLinesBehind: '',
 			promotionMinDays: '0',
+			reactivateAuto: 'false',
 			advisoryFeedSource: 'remote',
 			notifyUsersOnUpdate: 'true',
 		})
