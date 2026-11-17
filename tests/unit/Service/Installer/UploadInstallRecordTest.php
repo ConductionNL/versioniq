@@ -93,7 +93,7 @@ final class UploadInstallRecordTest extends TestCase {
 		$archive = $this->archive();
 		$binding = SourceBinding::github('acme', 'myapp');
 
-		$result = $this->quietly(fn (): array => $this->externalInstaller()->installLocalArchive('myapp', '2.0.0', new LocalArchive($archive, hash_file('sha256', $archive), false), $binding));
+		$result = $this->quietly(fn (): array => $this->externalInstaller()->installLocalArchive('myapp', '2.0.0', new LocalArchive($archive, hash_file('sha256', $archive)), $binding));
 
 		self::assertSame('installed', $result['status']);
 		self::assertSame($binding, $result['binding'], 'the binding records no digest of an upload');
@@ -120,7 +120,7 @@ final class UploadInstallRecordTest extends TestCase {
 		$archive = $this->archive();
 
 		try {
-			$this->quietly(fn (): array => $this->externalInstaller()->installLocalArchive('myapp', '2.0.0', new LocalArchive($archive, str_repeat('0', 64), false), SourceBinding::appStore()));
+			$this->quietly(fn (): array => $this->externalInstaller()->installLocalArchive('myapp', '2.0.0', new LocalArchive($archive, str_repeat('0', 64)), SourceBinding::appStore()));
 			self::fail('The install should have been refused.');
 		} catch (Exception $error) {
 			self::assertStringContainsString('SHA-256 mismatch', $error->getMessage());
@@ -154,7 +154,7 @@ final class UploadInstallRecordTest extends TestCase {
 			$this->createMock(MigrationDiffer::class),
 			$this->artifactCache(),
 		);
-		$local = new LocalArchive($this->root . '/tmp/signed.tar.gz', hash('sha256', $bytes), true);
+		$local = new LocalArchive($this->root . '/tmp/signed.tar.gz', hash('sha256', $bytes), ['version' => '2.0.0']);
 		(new ReflectionProperty($installer, 'localArchive'))->setValue($installer, $local);
 
 		$release = new SignedRelease('https://dl.example/myapp.tar.gz', base64_encode($signature), (string)$pem, '2.0.0');

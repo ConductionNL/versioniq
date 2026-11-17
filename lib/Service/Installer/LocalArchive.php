@@ -23,16 +23,20 @@ final class LocalArchive {
 	/** The source id an install from an uploaded archive is audited and cached under. */
 	public const SOURCE_ID = 'upload';
 
+	/** Whether the App Store's signature verifies the archive. */
+	public readonly bool $signed;
+
 	/**
 	 * @param string $path The archive file.
 	 * @param string $sha256 Its SHA-256, as shown to the admin before the install.
-	 * @param bool $signed Whether the App Store's signature verifies it.
+	 * @param array<string, mixed>|null $release The App Store release whose signature verifies it; null when unsigned.
 	 */
 	public function __construct(
 		public readonly string $path,
 		public readonly string $sha256,
-		public readonly bool $signed,
+		public readonly ?array $release = null,
 	) {
+		$this->signed = $release !== null;
 	}
 
 	/**

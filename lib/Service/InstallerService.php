@@ -26,11 +26,13 @@ use OCA\Versioniq\Service\Installer\InstallRun;
 use OCA\Versioniq\Service\Installer\InstallState;
 use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\LocalArchive;
+use OCA\Versioniq\Service\Installer\PendingUpload;
 use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Installer\ReleaseInstall;
 use OCA\Versioniq\Service\Installer\ReleaseInstallers;
 use OCA\Versioniq\Service\Installer\ServerAccess;
 use OCA\Versioniq\Service\Installer\ShaMismatchException;
+use OCA\Versioniq\Service\Installer\UploadInstallRequest;
 use OCA\Versioniq\Service\Installer\UploadSupport;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Release\ReleaseNotesReader;
@@ -691,17 +693,27 @@ class InstallerService implements InstallerServiceInterface {
 	 * @spec openspec/changes/install-manual-upload/tasks.md#task-2.1
 	 */
 	public function installUploadedArchive(string $token, ?string $expectedSha256, bool $acceptShown, bool $allowDowngrade = false, ?string $overridePin = null): array {
-		$upload = $this->upload;
-		$inspected = $upload?->archives->inspected($token);
-		if ($upload === null || $inspected === null) {
+		return $this->installUploadRequest(new UploadInstallRequest($token, $expectedSha256, $acceptShown, $allowDowngrade, $overridePin));
+	}
+
+	/**
+	 * Runs the install guards for an upload, then installs the archive.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}
+	 *
+	 * @spec openspec/changes/install-manual-upload/tasks.md#task-2.1
+	 */
+	private function installUploadRequest(UploadInstallRequest $ask): array {
+		$inspected = $this->upload?->archives->inspected($ask->token);
+		if ($inspected === null) {
 			return $this->installEnvelope(Http::STATUS_NOT_FOUND, ['message' => 'This upload is unknown or expired. Upload the archive again.']);
 		}
 
 		$appId = $inspected['appId'];
 		$request = new InstallRequest(
 			new InstallTarget($appId, $inspected['version'], null),
-			new InstallOptions(false, false, false, $allowDowngrade),
-			new PinChoice($overridePin, false),
+			new InstallOptions(false, false, false, $ask->allowDowngrade),
+			new PinChoice($ask->overridePin, false),
 		);
 		$refusal = $this->requestRefusal($request);
 		if ($refusal !== null) {
@@ -710,37 +722,65 @@ class InstallerService implements InstallerServiceInterface {
 		// The binding is read, never resolved against the allowlist or written:
 		// an upload is not the bound source (D3).
 		$run = new InstallRun($request, $this->sources->bindingStore->get($appId) ?? SourceBinding::appStore(), $this->freshInstalledVersion($appId));
-		$refusal = $this->installRunRefusal($run) ?? $this->expectedShaRefusal($run, $inspected['sha256'], $expectedSha256);
+		$pending = new PendingUpload($ask, $run, $inspected['sha256']);
+		$refusal = $this->installRunRefusal($run) ?? $this->expectedShaRefusal($pending);
 		if ($refusal !== null) {
 			return self::fromUpload($refusal);
 		}
 
+		return $this->installPendingUpload($pending);
+	}
+
+	/**
+	 * Copies the inspected upload to a temporary file, checks it is still the
+	 * archive the admin saw, and installs it; the upload is dropped once an
+	 * install ran.
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}
+	 *
+	 * @spec openspec/changes/install-manual-upload/tasks.md#task-2.1
+	 */
+	private function installPendingUpload(PendingUpload $pending): array {
+		/** @var UploadSupport $upload installUploadRequest() found the upload through it */
+		$upload = $this->upload;
 		$path = $upload->tempManager->getTemporaryFile('.tar.gz');
 		if (!is_string($path)) {
-			return $this->installEnvelope(Http::STATUS_INTERNAL_SERVER_ERROR, $this->briefPayload($run, 'Could not allocate a temporary file.'));
+			return $this->installEnvelope(Http::STATUS_INTERNAL_SERVER_ERROR, $this->briefPayload($pending->run, 'Could not allocate a temporary file.'));
 		}
 		try {
-			$upload->archives->copyTo($token, $path);
-			$actualSha = hash_file('sha256', $path);
-			if ($actualSha === false || !hash_equals($inspected['sha256'], strtolower($actualSha))) {
-				return $this->installEnvelope(Http::STATUS_CONFLICT, $this->briefPayload($run, 'The uploaded archive changed after it was inspected. Upload it again.'));
-			}
-			$release = $upload->signatures->storeRelease($appId, $inspected['version'], $path);
-			$archive = new LocalArchive($path, $inspected['sha256'], $release !== null);
-			$refusal = $release === null ? $this->unsignedUploadRefusal($run, $upload, $expectedSha256, $acceptShown) : null;
-			if ($refusal !== null) {
-				return self::fromUpload($refusal);
+			$upload->archives->copyTo($pending->ask->token, $path);
+			$outcome = $this->installCopiedUpload($pending, $path);
+			if ($outcome['installed']) {
+				$upload->archives->remove($pending->ask->token);
 			}
 
-			$outcome = $this->installUpload($run, $archive, $release);
-			$upload->archives->remove($token);
-
-			return $outcome;
+			return $outcome['outcome'];
 		} catch (InvalidArgumentException $error) {
-			return $this->installEnvelope(Http::STATUS_NOT_FOUND, $this->briefPayload($run, $error->getMessage()));
+			return $this->installEnvelope(Http::STATUS_NOT_FOUND, $this->briefPayload($pending->run, $error->getMessage()));
 		} finally {
 			@unlink($path);
 		}
+	}
+
+	/**
+	 * Installs the copy of an upload at `$path` when it is unchanged and its
+	 * signature, or the unsigned-upload rules, allow it.
+	 *
+	 * @return array{installed:bool, outcome:array{statusCode:int, payload:array<string, mixed>}}
+	 */
+	private function installCopiedUpload(PendingUpload $pending, string $path): array {
+		$actualSha = hash_file('sha256', $path);
+		if ($actualSha === false || !hash_equals($pending->sha256, strtolower($actualSha))) {
+			return ['installed' => false, 'outcome' => $this->installEnvelope(Http::STATUS_CONFLICT, $this->briefPayload($pending->run, 'The uploaded archive changed after it was inspected. Upload it again.'))];
+		}
+		$target = $pending->run->request->target;
+		$release = $this->upload?->signatures->storeRelease($target->appId, $target->version, $path);
+		$refusal = $release === null ? $this->unsignedUploadRefusal($pending) : null;
+		if ($refusal !== null) {
+			return ['installed' => false, 'outcome' => self::fromUpload($refusal)];
+		}
+
+		return ['installed' => true, 'outcome' => $this->installUpload($pending->run, new LocalArchive($path, $pending->sha256, $release))];
 	}
 
 	/**
@@ -748,18 +788,18 @@ class InstallerService implements InstallerServiceInterface {
 	 *
 	 * @return array{statusCode:int, payload:array<string, mixed>}|null
 	 */
-	private function expectedShaRefusal(InstallRun $run, string $actualSha, ?string $expectedSha256): ?array {
-		$expected = strtolower(trim($expectedSha256 ?? ''));
-		if ($expected === '' || hash_equals($actualSha, $expected)) {
+	private function expectedShaRefusal(PendingUpload $pending): ?array {
+		$expected = $pending->ask->expectedSha();
+		if ($expected === '' || hash_equals($pending->sha256, $expected)) {
 			return null;
 		}
 
-		return $this->installEnvelope(Http::STATUS_CONFLICT, $this->outcomePayload($run, [
+		return $this->installEnvelope(Http::STATUS_CONFLICT, $this->outcomePayload($pending->run, [
 			'message' => 'The archive\'s SHA-256 is not the one you expected. Nothing was installed.',
 			'category' => FailureClassifier::CATEGORY_SHA_MISMATCH,
 			'code' => 'sha_mismatch',
 			'installStatus' => 'failed',
-		]) + ['expectedSha' => $expected, 'actualSha' => $actualSha]);
+		]) + ['expectedSha' => $expected, 'actualSha' => $pending->sha256]);
 	}
 
 	/**
@@ -769,16 +809,16 @@ class InstallerService implements InstallerServiceInterface {
 	 *
 	 * @return array{statusCode:int, payload:array<string, mixed>}|null
 	 */
-	private function unsignedUploadRefusal(InstallRun $run, UploadSupport $upload, ?string $expectedSha256, bool $acceptShown): ?array {
-		if (!$upload->settings->allowsUnsignedUpload()) {
-			return $this->installEnvelope(Http::STATUS_FORBIDDEN, $this->outcomePayload($run, [
+	private function unsignedUploadRefusal(PendingUpload $pending): ?array {
+		if ($this->upload?->settings->allowsUnsignedUpload() !== true) {
+			return $this->installEnvelope(Http::STATUS_FORBIDDEN, $this->outcomePayload($pending->run, [
 				'message' => 'The App Store does not sign this archive, and unsigned uploads are off. Switch on "Allow unsigned uploads" in the Settings tab to install it.',
 				'category' => 'unsigned_upload',
 				'installStatus' => 'failed',
 			]));
 		}
-		if (trim($expectedSha256 ?? '') === '' && !$acceptShown) {
-			return $this->installEnvelope(Http::STATUS_BAD_REQUEST, $this->outcomePayload($run, [
+		if ($pending->ask->expectedSha() === '' && !$pending->ask->acceptShown) {
+			return $this->installEnvelope(Http::STATUS_BAD_REQUEST, $this->outcomePayload($pending->run, [
 				'message' => 'Paste the SHA-256 you expect, or accept the one shown, before installing an archive the App Store does not sign.',
 				'category' => 'unsigned_upload',
 				'installStatus' => 'failed',
@@ -793,10 +833,9 @@ class InstallerService implements InstallerServiceInterface {
 	 * (a store release verified it) or the external installer, and reports
 	 * the outcome as the normal install path does, with source `upload`.
 	 *
-	 * @param array<string, mixed>|null $release The store release that verified the archive.
 	 * @return array{statusCode:int, payload:array<string, mixed>}
 	 */
-	private function installUpload(InstallRun $run, LocalArchive $archive, ?array $release): array {
+	private function installUpload(InstallRun $run, LocalArchive $archive): array {
 		$target = $run->request->target;
 		$maintenanceWasSet = false;
 		try {
@@ -804,13 +843,13 @@ class InstallerService implements InstallerServiceInterface {
 				$maintenanceWasSet = true;
 				$this->server->configs->config->setSystemValue('maintenance', true);
 			}
-			$result = $release !== null
-				? $this->installers->signedInstaller->installLocalArchive($target->appId, $release, $archive)
+			$result = $archive->release !== null
+				? $this->installers->signedInstaller->installLocalArchive($target->appId, $archive->release, $archive)
 				: $this->installers->externalInstaller->installLocalArchive($target->appId, $target->version, $archive, $run->binding);
 
-			return $this->uploadSuccess($run, $archive, $result);
+			return $this->uploadOutcome($this->installEnvelope(Http::STATUS_OK, $this->uploadSuccessPayload($run, $result)), $archive);
 		} catch (InstallFailure $failure) {
-			return $this->uploadOutcome($this->installFailureOutcome($run, $this->uploadDebugLog($archive), $failure), $archive);
+			return $this->uploadOutcome(self::withDebugLog($this->installFailureOutcome($run, $failure), $run, $this->uploadDebugLog($archive)), $archive);
 		} catch (Exception $error) {
 			return $this->uploadOutcome($this->classifiedFailureOutcome($run, $this->uploadDebugLog($archive), $error), $archive);
 		} finally {
@@ -825,9 +864,9 @@ class InstallerService implements InstallerServiceInterface {
 	 * event, as the normal install path does; the binding stays as it was.
 	 *
 	 * @param array<string, mixed> $result
-	 * @return array{statusCode:int, payload:array<string, mixed>}
+	 * @return array<string, mixed>
 	 */
-	private function uploadSuccess(InstallRun $run, LocalArchive $archive, array $result): array {
+	private function uploadSuccessPayload(InstallRun $run, array $result): array {
 		$appId = $run->request->target->appId;
 		$this->server->appManager->clearAppsCache();
 		$appVersion = $this->versionAfterInstall($appId);
@@ -849,7 +888,7 @@ class InstallerService implements InstallerServiceInterface {
 		$this->settlePin($run, $appVersion);
 		$this->dispatchUpdateEvent($run, $appVersion);
 
-		return $this->uploadOutcome($this->installEnvelope(Http::STATUS_OK, $payload), $archive);
+		return $payload;
 	}
 
 	/**
@@ -1254,7 +1293,7 @@ class InstallerService implements InstallerServiceInterface {
 		} catch (ShaMismatchException $error) {
 			return $this->shaMismatchOutcome($install, $error);
 		} catch (InstallFailure $failure) {
-			return $this->installFailureOutcome($install->run, $this->installerDebugLog($install->source), $failure);
+			return self::withDebugLog($this->installFailureOutcome($install->run, $failure), $install->run, $this->installerDebugLog($install->source));
 		} catch (Exception $error) {
 			return $this->classifiedFailureOutcome($install->run, $this->installerDebugLog($install->source), $error);
 		} finally {
@@ -1420,7 +1459,7 @@ class InstallerService implements InstallerServiceInterface {
 	private function settlePin(InstallRun $run, string $appVersion): void {
 		$overridden = $run->pinBeingOverridden();
 		if ($overridden !== null) {
-			$this->applyPinOverride($run, $appVersion, $overridden);
+			$this->applyPinOverride($run, $appVersion);
 			return;
 		}
 		if ($run->pin === null && $run->request->pinChoice->pinRequested) {
@@ -1434,10 +1473,10 @@ class InstallerService implements InstallerServiceInterface {
 	 * An overridden pin moves to the installed version (`repin`) or is
 	 * cleared (`unpin`); the pin guard already refused a missing override.
 	 */
-	private function applyPinOverride(InstallRun $run, string $appVersion, Pin $pin): void {
+	private function applyPinOverride(InstallRun $run, string $appVersion): void {
 		$appId = $run->request->target->appId;
 		if ($run->request->pinChoice->overridePin === self::OVERRIDE_PIN_REPIN) {
-			$this->state->pinStore->set($appId, new Pin($appVersion, $this->currentActorUid(), $this->nowIso(), $pin->reason));
+			$this->state->pinStore->set($appId, new Pin($appVersion, $this->currentActorUid(), $this->nowIso(), $run->pinBeingOverridden()?->reason));
 			return;
 		}
 		$this->state->pinStore->clear($appId, $this->currentActorUid());
@@ -1473,10 +1512,9 @@ class InstallerService implements InstallerServiceInterface {
 	 * The installer already handled filesystem recovery; this reports the
 	 * honest outcome (reverted / installed-but-broken) instead of a 500.
 	 *
-	 * @param array<int, mixed> $debugLog The breadcrumb log of the installer that ran.
 	 * @return array{statusCode:int, payload:array<string, mixed>}
 	 */
-	private function installFailureOutcome(InstallRun $run, array $debugLog, InstallFailure $failure): array {
+	private function installFailureOutcome(InstallRun $run, InstallFailure $failure): array {
 		$isBroken = $failure->getOutcome() === InstallFailure::OUTCOME_INSTALLED_BUT_BROKEN;
 		$category = $isBroken
 			? FailureClassifier::CATEGORY_FINALIZE
@@ -1491,7 +1529,7 @@ class InstallerService implements InstallerServiceInterface {
 			'stage' => $failure->getStage(),
 			'hint' => $hint,
 			'installStatus' => $failure->getOutcome(),
-		]) + $run->debugSuffix($debugLog));
+		]));
 	}
 
 	/**
@@ -1512,6 +1550,19 @@ class InstallerService implements InstallerServiceInterface {
 			'hint' => $classification['hint'],
 			'installStatus' => 'failed',
 		]) + $run->debugSuffix($debugLog));
+	}
+
+	/**
+	 * An outcome with the installer's breadcrumb log attached when the request asked for debug output.
+	 *
+	 * @param array{statusCode:int, payload:array<string, mixed>} $outcome
+	 * @param array<int, mixed> $debugLog The breadcrumb log of the installer that ran.
+	 * @return array{statusCode:int, payload:array<string, mixed>}
+	 */
+	private static function withDebugLog(array $outcome, InstallRun $run, array $debugLog): array {
+		$outcome['payload'] += $run->debugSuffix($debugLog);
+
+		return $outcome;
 	}
 
 	/**
