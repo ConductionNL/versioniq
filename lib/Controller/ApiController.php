@@ -22,9 +22,11 @@ use OCA\Versioniq\Service\Advisory\FixStatus;
 use OCA\Versioniq\Service\Api\AccessCollaborators;
 use OCA\Versioniq\Service\Api\InstallCollaborators;
 use OCA\Versioniq\Service\Api\ReportCollaborators;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\AutoUpdate\SecurityCandidate;
+use OCA\Versioniq\Service\AutoUpdate\UpdateType;
 use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
@@ -666,11 +668,54 @@ class ApiController extends OCSController {
 		}
 
 		$request = $this->installRequest($fields, $target);
+		$this->startProgress($fields->progressToken);
 		$result = $this->install->installerService->installAppVersion($request);
+		$this->install->progress?->finish((int)($result['statusCode'] ?? 500) < 400 ? (string)($result['payload']['status'] ?? 'installed') : 'failed');
 		$echo = ['requestedVersion' => $target->version, 'routeVersion' => $version] + self::deprecationNotice($fields, $request);
 
 		/** @psalm-suppress InvalidReturnStatement Dynamic status passthrough — see the docblock. */
 		return $this->installResponse($result, $echo);
+	}
+
+	/**
+	 * Before an install: close the session, so the page's progress polls are not
+	 * blocked by its lock (the install writes nothing to it), and start the
+	 * progress record when the page sent a token.
+	 *
+	 * @spec openspec/changes/install-live-progress/specs/version-management/spec.md
+	 */
+	private function startProgress(?string $token): void {
+		$this->install->session?->close();
+		if ($token !== null && $token !== '') {
+			$this->install->progress?->start($token);
+		}
+	}
+
+	/**
+	 * The stages of a running or just finished install (admin-only); see
+	 * install-live-progress, "An admin sees each stage of an install while it runs".
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{stages: list<array<string, mixed>>, outcome: ?string}, array{}>|DataResponse<Http::STATUS_FORBIDDEN|Http::STATUS_NOT_FOUND, array{message: string}, array{}>
+	 *
+	 * 200: The progress record
+	 * 403: Caller is not an administrator
+	 * 404: The token is unknown or its record expired
+	 *
+	 * @spec openspec/changes/install-live-progress/specs/version-management/spec.md
+	 */
+	#[ApiRoute(verb: 'GET', url: '/api/install-progress/{token}')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/install-progress/{token}', postfix: 'v1')]
+	public function installProgress(string $token): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$record = $this->install->progress?->read($token);
+		if ($record === null) {
+			return new DataResponse(['message' => 'No install progress for this token.'], Http::STATUS_NOT_FOUND);
+		}
+
+		return new DataResponse($record);
 	}
 
 	/**
@@ -967,7 +1012,27 @@ class ApiController extends OCSController {
 			'securityHolds' => (object)$this->autoUpdate->security->securityHolds->read(),
 			'advisoriesFresh' => $this->advisoriesFresh(),
 			'manualKinds' => ($this->autoUpdate->security->patchPolicyStore->read() ?? PatchPolicy::none())->manualKinds(),
-		]);
+		] + $this->scheduleView());
+	}
+
+	/**
+	 * The schedule per kind and when each kind runs next, in the window's zone, so the
+	 * page never works out dates in the browser's zone (autoupdate-schedules, design D5).
+	 *
+	 * @return array{autoUpdateSchedule: array<string, array{days: list<int>, monthly: bool}>, nextRuns: array<string, ?string>}
+	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	 */
+	private function scheduleView(): array {
+		$settings = $this->autoUpdate->settingsStore;
+		$schedule = $settings->getSchedule();
+		$zoneName = $settings->getTimeZoneName();
+		$now = new \DateTimeImmutable('now', new \DateTimeZone($zoneName !== '' ? $zoneName : 'UTC'));
+		$nextRuns = [];
+		foreach (UpdateType::ALL as $kind) {
+			$nextRuns[$kind] = $schedule->nextRun($kind, $settings->getWindow(), $now)?->format(\DateTimeInterface::ATOM);
+		}
+
+		return ['autoUpdateSchedule' => $schedule->toArray(), 'nextRuns' => $nextRuns];
 	}
 
 	/**
@@ -1004,7 +1069,7 @@ class ApiController extends OCSController {
 			'securityHolds' => (object)$this->autoUpdate->security->securityHolds->read(),
 			'advisoriesFresh' => $this->advisoriesFresh(),
 			'manualKinds' => ($this->autoUpdate->security->patchPolicyStore->read() ?? PatchPolicy::none())->manualKinds(),
-		];
+	] + $this->scheduleView();
 	}
 
 	/**
@@ -1166,11 +1231,13 @@ class ApiController extends OCSController {
 		$enabledParam = ($enabled === '') ? '0' : $enabled;
 		$windowParam = $this->stringParam('window', '');
 
-		if ($windowParam !== '' && !AutoUpdateWindow::isValid($windowParam)) {
-			return new DataResponse(
-				['message' => 'window must be in HH:MM-HH:MM format.'],
-				Http::STATUS_BAD_REQUEST
-			);
+		// The window and the schedule are checked in full before anything is written, so a bad
+		// one leaves the switch and the window as they were (autoupdate-schedules, D6).
+		/** @var mixed $scheduleParam */
+		$scheduleParam = $this->request->getParam('schedule');
+		$problem = $this->autoUpdateSettingsProblem($windowParam, $scheduleParam);
+		if ($problem !== null) {
+			return $problem;
 		}
 
 		$defaultLevelParam = $this->stringParam('defaultLevel', '');
@@ -1190,13 +1257,46 @@ class ApiController extends OCSController {
 		if ($defaultLevelParam !== '') {
 			$this->autoUpdate->settingsStore->setDefaultLevel($defaultLevelParam);
 		}
+		$this->storeSchedule($scheduleParam);
 
 		return new DataResponse([
 			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
 			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
 			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
 			'autoUpdateDefaultLevel' => $this->autoUpdate->settingsStore->getDefaultLevel(),
-		]);
+		] + $this->scheduleView());
+	}
+
+	/**
+	 * The 400 answer for a malformed window or schedule, or null when both are fine or absent.
+	 *
+	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	 */
+	private function autoUpdateSettingsProblem(string $windowParam, mixed $scheduleParam): ?DataResponse {
+		if ($windowParam !== '' && !AutoUpdateWindow::isValid($windowParam)) {
+			return new DataResponse(
+				['message' => 'window must be in HH:MM-HH:MM format.'],
+				Http::STATUS_BAD_REQUEST
+			);
+		}
+
+		$scheduleProblem = ($scheduleParam === null) ? null : AutoUpdateSchedule::invalidReason($scheduleParam);
+		if ($scheduleProblem !== null) {
+			return new DataResponse(['message' => $scheduleProblem . '.'], Http::STATUS_BAD_REQUEST);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Store a schedule that was sent; one left out keeps the stored schedule.
+	 *
+	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	 */
+	private function storeSchedule(mixed $scheduleParam): void {
+		if (is_array($scheduleParam)) {
+			$this->autoUpdate->settingsStore->setSchedule(AutoUpdateSchedule::fromArray($scheduleParam));
+		}
 	}
 
 	/**

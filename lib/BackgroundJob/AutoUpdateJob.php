@@ -21,6 +21,7 @@ use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\AutoUpdate\PlanRun;
 use OCA\Versioniq\Service\AutoUpdate\SecurityCandidate;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
@@ -121,6 +122,24 @@ class AutoUpdateJob extends TimedJob {
 		}
 		$this->stores->settingsStore->markWindowSwept($openingKey);
 
+		// The weekday is the one the window opened on (autoupdate-schedules, D3);
+		// with no kind due tonight, no source is asked at all (D4).
+		$this->runDue($this->stores->settingsStore->getSchedule()->dueKinds(AutoUpdateWindow::openedOn($window, $now)), $file);
+	}
+
+	/**
+	 * Plan and install tonight's run for the kinds the schedule lets run; nothing when none is due.
+	 *
+	 * @param list<string> $dueKinds
+	 * @param PolicyFileContents|null $file The policy file in file mode, else null.
+	 *
+	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	 */
+	private function runDue(array $dueKinds, ?PolicyFileContents $file): void {
+		if ($dueKinds === []) {
+			return;
+		}
+
 		// Plan first, then install (autoupdate-run-batching D1). The advisory
 		// snapshot and the patch policy are read once per run
 		// (autoupdate-security-first D2, D3); no stored policy reads as
@@ -128,11 +147,9 @@ class AutoUpdateJob extends TimedJob {
 		// The levels come from the policy file in file mode, else the stores,
 		// with every other enabled app at the instance default
 		// (autoupdate-default-and-config-file).
-		$plan = (new AutoUpdatePlanner($this->stores, $this->install, $this->logger))->plan(
-			$this->advisorySnapshot(),
-			$this->stores->security->patchPolicyStore->read() ?? PatchPolicy::none(),
-			$this->levelsByApp($file)
-		);
+		$advisories = $this->advisorySnapshot();
+		$run = new PlanRun($advisories['rows'], $advisories['fresh'], $this->stores->security->patchPolicyStore->read() ?? PatchPolicy::none());
+		$plan = (new AutoUpdatePlanner($this->stores, $this->install, $this->logger))->planRun($run->withDueKinds($dueKinds), $this->levelsByApp($file));
 		$this->installPlanned($plan);
 		$this->stores->security->securityHolds->replace($plan->securityHolds);
 	}
