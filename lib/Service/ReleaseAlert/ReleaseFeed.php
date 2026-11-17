@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\ReleaseAlert;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\ReleaseFeedInterface;
 use OCP\IURLGenerator;
 use XMLWriter;
 
@@ -22,7 +23,7 @@ use XMLWriter;
  *
  * @psalm-import-type ReleaseEvent from ReleaseEventDetector
  */
-class ReleaseFeed {
+class ReleaseFeed implements ReleaseFeedInterface {
 	public function __construct(
 		private ReleaseEventLog $log,
 		private IURLGenerator $urlGenerator,

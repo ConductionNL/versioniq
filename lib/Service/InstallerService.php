@@ -15,6 +15,7 @@ namespace OCA\Versioniq\Service;
 use Exception;
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\InstallerServiceInterface;
 use OCA\Versioniq\Service\Discovery\PublisherTrust;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
@@ -53,9 +54,9 @@ use OCP\IUserSession;
  *
  * @psalm-api
  * @psalm-type AppLists = array{enabled: array<string>, versions: array<string, string>, core: array<string>, info: array<string, array<string, mixed>>}
- * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,publisher:?string,marks:list<string>,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string,previous?:array{version:string,recordedAt:string,sourceId:?string}}}
+ * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,publisher:?string,marks:list<string>,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string,previous?:array{version:string,recordedAt:string,sourceId:?string}},installedKnownIssues:list<array<string,mixed>>,provenance:?array{kind:'versioniq'|'outside',sourceId:?string,version:string}}
  */
-class InstallerService {
+class InstallerService implements InstallerServiceInterface {
 	/** Server-side changelog size cap; see "Version listings carry release notes". */
 	private const CHANGELOG_MAX_BYTES = 8192;
 	private const CHANGELOG_TRUNCATION_MARKER = ' …[truncated]';
@@ -214,19 +215,39 @@ class InstallerService {
 	 *
 	 * @param AppLists $lists
 	 * @param ?SourceBinding $binding The app's source binding, read once per card.
-	 * @return array{isCore: bool, isShipped: bool, boundSourceId: ?string, manageable: bool, warning: ?string, installedVersion: ?string, state: 'enabled'|'disabled'|'notInstalled', lkg: ?array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}}
+	 * @return array{isCore: bool, isShipped: bool, boundSourceId: ?string, manageable: bool, warning: ?string, installedVersion: ?string, state: 'enabled'|'disabled'|'notInstalled', lkg: ?array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}, installedKnownIssues: list<array<string, mixed>>, provenance: ?array{kind: 'versioniq'|'outside', sourceId: ?string, version: string}}
 	 */
 	private function appStatus(string $appId, array $lists, ?SourceBinding $binding): array {
 		$install = $this->appInstallStatus($appId, $lists);
 
-		return [
+		$card = [
 			'isCore' => in_array($appId, $lists['core'], true),
 			'isShipped' => $this->server->appManager->isShipped($appId),
 			'boundSourceId' => $binding?->getId(),
 			...$install,
 			'state' => self::appState($appId, $lists),
 			'lkg' => $this->state->lkgStore->get($appId)?->toArray(),
+			'installedKnownIssues' => $this->installedKnownIssues($appId, $install['installedVersion']),
 		];
+		$card['provenance'] = self::provenance($card['installedVersion'], $card['lkg']);
+
+		return $card;
+	}
+
+	/**
+	 * The known issues an admin recorded against the installed version, for
+	 * the card's "Known issue in the installed version" notice
+	 * (releases-version-facts D4). None when nothing is installed.
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+	 * @return list<array<string, mixed>>
+	 */
+	private function installedKnownIssues(string $appId, ?string $installedVersion): array {
+		if ($installedVersion === null || $this->state->knownIssues === null) {
+			return [];
+		}
+
+		return $this->state->knownIssues->forApp($appId)[$installedVersion] ?? [];
 	}
 
 	/**
@@ -244,6 +265,33 @@ class InstallerService {
 			'warning' => $env['warning'],
 			'installedVersion' => $installedVersion === '' ? null : $installedVersion,
 		];
+	}
+
+	/**
+	 * Where the installed version came from: the last install Versioniq
+	 * finalized when its record matches the installed version, else from
+	 * outside Versioniq; null when the app is not installed.
+	 *
+	 * @param array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}|null $lkg
+	 * @return array{kind: 'versioniq'|'outside', sourceId: ?string, version: string}|null
+	 * @spec openspec/specs/external-sources/spec.md#requirement-the-card-names-where-the-installed-version-came-from
+	 */
+	public static function provenance(?string $installedVersion, ?array $lkg): ?array {
+		return $installedVersion === null ? null : self::installedFrom($installedVersion, $lkg);
+	}
+
+	/**
+	 * Where an installed version came from; see {@see self::provenance()}.
+	 *
+	 * @param array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}|null $lkg
+	 * @return array{kind: 'versioniq'|'outside', sourceId: ?string, version: string}
+	 */
+	private static function installedFrom(string $installedVersion, ?array $lkg): array {
+		if ($lkg === null || $lkg['version'] !== $installedVersion) {
+			return ['kind' => 'outside', 'sourceId' => null, 'version' => $installedVersion];
+		}
+
+		return ['kind' => 'versioniq', 'sourceId' => $lkg['sourceId'], 'version' => $installedVersion];
 	}
 
 	/**
@@ -373,7 +421,7 @@ class InstallerService {
 	 */
 	private function listSourceVersions(string $appId, SourceBinding $binding): array {
 		$result = $this->sources->sourceRegistry->get($binding)->listVersions($appId, $binding);
-		if ($result['error'] === 'App is not available in the Nextcloud App Store.'
+		if ($result['error'] === AppStoreSource::NOT_IN_STORE
 			&& $this->server->appManager->isShipped($appId)
 		) {
 			$result['error'] = 'This app ships with Nextcloud itself: its version follows the server release and it is not distributed via the App Store. Bind a forge source to manage it from a repository instead.';
@@ -1330,13 +1378,7 @@ class InstallerService {
 		}
 		$pattern = self::forgePattern($forge, self::ownerRepoPath($owner, $repo));
 
-		$patterns = $this->state->trustedSources->getPatterns();
-		if (!in_array($pattern, $patterns, true)) {
-			$patterns[] = $pattern;
-			$this->state->trustedSources->setPatterns($patterns);
-		}
-
-		return $this->state->trustedSources->getPatterns();
+		return $this->state->trustedSources->trust($pattern);
 	}
 
 	/**
@@ -1346,13 +1388,7 @@ class InstallerService {
 	 * @return list<string> the updated pattern set
 	 */
 	public function removeTrustedPattern(string $pattern): array {
-		$patterns = array_values(array_filter(
-			$this->state->trustedSources->getPatterns(),
-			static fn (string $p): bool => $p !== $pattern,
-		));
-		$this->state->trustedSources->setPatterns($patterns);
-
-		return $this->state->trustedSources->getPatterns();
+		return $this->state->trustedSources->untrust($pattern);
 	}
 
 	/**

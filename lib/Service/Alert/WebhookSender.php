@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Alert;
 
+use OCA\Versioniq\Kernel\Contracts\WebhookSenderInterface;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Http\Client\IClientService;
 use OCP\IConfig;
@@ -26,7 +27,7 @@ use OCP\IConfig;
  *
  * @psalm-type Alert = array{kind: string, subject: string, parameters: array<string, mixed>, text: string}
  */
-class WebhookSender {
+class WebhookSender implements WebhookSenderInterface {
 	public const TIMEOUT_SECONDS = 10;
 
 	public function __construct(

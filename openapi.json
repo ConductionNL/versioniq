@@ -10100,13 +10100,13 @@
                 }
             }
         },
-        "/instances": {
+        "/forges/gitlab": {
             "get": {
-                "operationId": "instance-index-v1",
-                "summary": "Lists this instance's stage and the connections, without their passwords",
-                "description": "openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-connects-other-instances-that-run-versioniq\nThis endpoint requires admin access",
+                "operationId": "forge-gitlab-host-v1",
+                "summary": "Returns the GitLab host releases come from",
+                "description": "openspec/changes/sources-gitlab-forge/tasks.md#task-4.1\nThis endpoint requires admin access",
                 "tags": [
-                    "instance"
+                    "forge"
                 ],
                 "security": [
                     {
@@ -10130,7 +10130,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "This instance and the connections in chain order",
+                        "description": "The host: gitlab.com, or the self-managed host when one is set",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10152,102 +10152,15 @@
                                                 "data": {
                                                     "type": "object",
                                                     "required": [
-                                                        "self",
-                                                        "instances"
+                                                        "host",
+                                                        "selfManaged"
                                                     ],
                                                     "properties": {
-                                                        "self": {
-                                                            "type": "object",
-                                                            "required": [
-                                                                "name",
-                                                                "stage",
-                                                                "order"
-                                                            ],
-                                                            "properties": {
-                                                                "name": {
-                                                                    "type": "string"
-                                                                },
-                                                                "stage": {
-                                                                    "type": "string"
-                                                                },
-                                                                "order": {
-                                                                    "type": "integer",
-                                                                    "format": "int64"
-                                                                }
-                                                            }
+                                                        "host": {
+                                                            "type": "string"
                                                         },
-                                                        "instances": {
-                                                            "type": "array",
-                                                            "items": {
-                                                                "type": "object",
-                                                                "required": [
-                                                                    "id",
-                                                                    "name",
-                                                                    "stage",
-                                                                    "order",
-                                                                    "baseUrl",
-                                                                    "username",
-                                                                    "addedBy",
-                                                                    "addedAt"
-                                                                ],
-                                                                "properties": {
-                                                                    "id": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "name": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "stage": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "order": {
-                                                                        "type": "integer",
-                                                                        "format": "int64"
-                                                                    },
-                                                                    "baseUrl": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "username": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "addedBy": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "addedAt": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "remote": {
-                                                                        "type": "object",
-                                                                        "required": [
-                                                                            "manifest",
-                                                                            "fetchedAt",
-                                                                            "error",
-                                                                            "checkedAt"
-                                                                        ],
-                                                                        "properties": {
-                                                                            "manifest": {
-                                                                                "type": "object",
-                                                                                "nullable": true,
-                                                                                "additionalProperties": {
-                                                                                    "type": "object"
-                                                                                }
-                                                                            },
-                                                                            "fetchedAt": {
-                                                                                "type": "string",
-                                                                                "nullable": true
-                                                                            },
-                                                                            "error": {
-                                                                                "type": "string",
-                                                                                "nullable": true
-                                                                            },
-                                                                            "checkedAt": {
-                                                                                "type": "string",
-                                                                                "nullable": true
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
+                                                        "selfManaged": {
+                                                            "type": "boolean"
                                                         }
                                                     }
                                                 }
@@ -10356,12 +10269,12 @@
                     }
                 }
             },
-            "post": {
-                "operationId": "instance-create-v1",
-                "summary": "Adds a connection to another instance (password-confirmed)",
-                "description": "openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-connects-other-instances-that-run-versioniq\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
+            "put": {
+                "operationId": "forge-set-gitlab-host-v1",
+                "summary": "Points GitLab at a self-managed host, or back at gitlab.com",
+                "description": "openspec/changes/sources-gitlab-forge/tasks.md#task-4.1\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
-                    "instance"
+                    "forge"
                 ],
                 "security": [
                     {
@@ -10378,41 +10291,10 @@
                             "schema": {
                                 "type": "object",
                                 "properties": {
-                                    "id": {
+                                    "host": {
                                         "type": "string",
                                         "default": "",
-                                        "description": "The connection id, lowercase letters, digits and hyphens"
-                                    },
-                                    "name": {
-                                        "type": "string",
-                                        "default": "",
-                                        "description": "The name shown in the Instances tab"
-                                    },
-                                    "stage": {
-                                        "type": "string",
-                                        "default": "",
-                                        "description": "The stage label, such as test, acceptance or production"
-                                    },
-                                    "order": {
-                                        "type": "integer",
-                                        "format": "int64",
-                                        "default": 0,
-                                        "description": "The place in the chain, 0 to 99"
-                                    },
-                                    "baseUrl": {
-                                        "type": "string",
-                                        "default": "",
-                                        "description": "The https address of that instance"
-                                    },
-                                    "username": {
-                                        "type": "string",
-                                        "default": "",
-                                        "description": "An admin account on that instance"
-                                    },
-                                    "password": {
-                                        "type": "string",
-                                        "default": "",
-                                        "description": "That account's app password; stored encrypted, never returned"
+                                        "description": "An https address such as https://gitlab.example.org; empty means gitlab.com"
                                     }
                                 }
                             }
@@ -10432,8 +10314,8 @@
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "The connection, without its password",
+                    "200": {
+                        "description": "The host after the change",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10455,70 +10337,15 @@
                                                 "data": {
                                                     "type": "object",
                                                     "required": [
-                                                        "id",
-                                                        "name",
-                                                        "stage",
-                                                        "order",
-                                                        "baseUrl",
-                                                        "username",
-                                                        "addedBy",
-                                                        "addedAt"
+                                                        "host",
+                                                        "selfManaged"
                                                     ],
                                                     "properties": {
-                                                        "id": {
+                                                        "host": {
                                                             "type": "string"
                                                         },
-                                                        "name": {
-                                                            "type": "string"
-                                                        },
-                                                        "stage": {
-                                                            "type": "string"
-                                                        },
-                                                        "order": {
-                                                            "type": "integer",
-                                                            "format": "int64"
-                                                        },
-                                                        "baseUrl": {
-                                                            "type": "string"
-                                                        },
-                                                        "username": {
-                                                            "type": "string"
-                                                        },
-                                                        "addedBy": {
-                                                            "type": "string"
-                                                        },
-                                                        "addedAt": {
-                                                            "type": "string"
-                                                        },
-                                                        "remote": {
-                                                            "type": "object",
-                                                            "required": [
-                                                                "manifest",
-                                                                "fetchedAt",
-                                                                "error",
-                                                                "checkedAt"
-                                                            ],
-                                                            "properties": {
-                                                                "manifest": {
-                                                                    "type": "object",
-                                                                    "nullable": true,
-                                                                    "additionalProperties": {
-                                                                        "type": "object"
-                                                                    }
-                                                                },
-                                                                "fetchedAt": {
-                                                                    "type": "string",
-                                                                    "nullable": true
-                                                                },
-                                                                "error": {
-                                                                    "type": "string",
-                                                                    "nullable": true
-                                                                },
-                                                                "checkedAt": {
-                                                                    "type": "string",
-                                                                    "nullable": true
-                                                                }
-                                                            }
+                                                        "selfManaged": {
+                                                            "type": "boolean"
                                                         }
                                                     }
                                                 }
@@ -10535,7 +10362,7 @@
                         }
                     },
                     "400": {
-                        "description": "A field is not acceptable; nothing was saved",
+                        "description": "The host is not an acceptable https address",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10631,44 +10458,6 @@
                                             }
                                         }
                                     ]
-                                }
-                            }
-                        }
-                    },
-                    "409": {
-                        "description": "A connection with this id exists",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "required": [
-                                        "ocs"
-                                    ],
-                                    "properties": {
-                                        "ocs": {
-                                            "type": "object",
-                                            "required": [
-                                                "meta",
-                                                "data"
-                                            ],
-                                            "properties": {
-                                                "meta": {
-                                                    "$ref": "#/components/schemas/OcsMeta"
-                                                },
-                                                "data": {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "message"
-                                                    ],
-                                                    "properties": {
-                                                        "message": {
-                                                            "type": "string"
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
                                 }
                             }
                         }
@@ -10704,13 +10493,13 @@
                 }
             }
         },
-        "/instances/refresh": {
-            "post": {
-                "operationId": "instance-refresh-v1",
-                "summary": "Reads every connection's manifest once; one that fails keeps its last manifest and does not stop the others",
-                "description": "openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-the-instances-tab-shows-every-instances-versions-side-by-side\nThis endpoint requires admin access",
+        "/instance-settings": {
+            "get": {
+                "operationId": "settings-instance-settings-v1",
+                "summary": "Returns the instance settings with their defaults",
+                "description": "openspec/specs/audit-trail/spec.md\nopenspec/specs/external-sources/spec.md\nThis endpoint requires admin access",
                 "tags": [
-                    "instance"
+                    "settings"
                 ],
                 "security": [
                     {
@@ -10734,7 +10523,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "This instance and the connections, each with its manifest as read now",
+                        "description": "The settings, each override ('' when unset) next to its default",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10755,104 +10544,20 @@
                                                 },
                                                 "data": {
                                                     "type": "object",
-                                                    "required": [
-                                                        "self",
-                                                        "instances"
-                                                    ],
-                                                    "properties": {
-                                                        "self": {
-                                                            "type": "object",
-                                                            "required": [
-                                                                "name",
-                                                                "stage",
-                                                                "order"
-                                                            ],
-                                                            "properties": {
-                                                                "name": {
-                                                                    "type": "string"
-                                                                },
-                                                                "stage": {
-                                                                    "type": "string"
-                                                                },
-                                                                "order": {
-                                                                    "type": "integer",
-                                                                    "format": "int64"
-                                                                }
+                                                    "additionalProperties": {
+                                                        "nullable": true,
+                                                        "oneOf": [
+                                                            {
+                                                                "type": "boolean"
+                                                            },
+                                                            {
+                                                                "type": "integer",
+                                                                "format": "int64"
+                                                            },
+                                                            {
+                                                                "type": "string"
                                                             }
-                                                        },
-                                                        "instances": {
-                                                            "type": "array",
-                                                            "items": {
-                                                                "type": "object",
-                                                                "required": [
-                                                                    "id",
-                                                                    "name",
-                                                                    "stage",
-                                                                    "order",
-                                                                    "baseUrl",
-                                                                    "username",
-                                                                    "addedBy",
-                                                                    "addedAt"
-                                                                ],
-                                                                "properties": {
-                                                                    "id": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "name": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "stage": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "order": {
-                                                                        "type": "integer",
-                                                                        "format": "int64"
-                                                                    },
-                                                                    "baseUrl": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "username": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "addedBy": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "addedAt": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "remote": {
-                                                                        "type": "object",
-                                                                        "required": [
-                                                                            "manifest",
-                                                                            "fetchedAt",
-                                                                            "error",
-                                                                            "checkedAt"
-                                                                        ],
-                                                                        "properties": {
-                                                                            "manifest": {
-                                                                                "type": "object",
-                                                                                "nullable": true,
-                                                                                "additionalProperties": {
-                                                                                    "type": "object"
-                                                                                }
-                                                                            },
-                                                                            "fetchedAt": {
-                                                                                "type": "string",
-                                                                                "nullable": true
-                                                                            },
-                                                                            "error": {
-                                                                                "type": "string",
-                                                                                "nullable": true
-                                                                            },
-                                                                            "checkedAt": {
-                                                                                "type": "string",
-                                                                                "nullable": true
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
+                                                        ]
                                                     }
                                                 }
                                             }
@@ -10930,8 +10635,188 @@
                             }
                         }
                     },
-                    "503": {
-                        "description": "Remote reads are not available on this instance",
+                    "401": {
+                        "description": "Current user is not logged in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "operationId": "settings-update-instance-settings-v1",
+                "summary": "Updates the instance settings (password-confirmed); an omitted field is left alone",
+                "description": "openspec/specs/audit-trail/spec.md\nopenspec/specs/external-sources/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
+                "tags": [
+                    "settings"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "auditRetentionDays": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "Days of history to keep, 30 to 3650"
+                                    },
+                                    "artifactCacheKeep": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "Archives kept per app, 0 to 20 (0 turns the cache off)"
+                                    },
+                                    "appStoreApiBase": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "App Store API base URL; blank uses the public store"
+                                    },
+                                    "githubApiBase": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "GitHub API base URL (https); blank uses api.github.com"
+                                    },
+                                    "githubWebBase": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "GitHub web base URL (https); blank uses github.com"
+                                    },
+                                    "advisoryFeedUrl": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "Advisory feed URL; blank uses the published Nextcloud feed"
+                                    },
+                                    "ncscFeedUrl": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "NCSC-NL CSAF directory URL, https only; blank uses the one NCSC-NL publishes"
+                                    },
+                                    "maxLinesBehind": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "Release lines an app may fall behind, 0 to 10; blank turns the check off"
+                                    },
+                                    "githubSearchEnabled": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "Whether Discover also searches public GitHub: true or false"
+                                    },
+                                    "advisoryFeedSource": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "Where advisories are read from: remote (the feed address) or local (the imported copy)"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The settings after the change",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "additionalProperties": {
+                                                        "nullable": true,
+                                                        "oneOf": [
+                                                            {
+                                                                "type": "boolean"
+                                                            },
+                                                            {
+                                                                "type": "integer",
+                                                                "format": "int64"
+                                                            },
+                                                            {
+                                                                "type": "string"
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "A value is out of range or not an acceptable URL; nothing was changed",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -10964,6 +10849,69 @@
                                             }
                                         }
                                     }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Caller is not an administrator",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {
+                                                            "type": "object",
+                                                            "required": [
+                                                                "message"
+                                                            ],
+                                                            "properties": {
+                                                                "message": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {}
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -12026,6 +11974,905 @@
                 }
             }
         },
+        "/instances": {
+            "get": {
+                "operationId": "instance-index-v1",
+                "summary": "Lists this instance's stage and the connections, without their passwords",
+                "description": "openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-connects-other-instances-that-run-versioniq\nThis endpoint requires admin access",
+                "tags": [
+                    "instance"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "This instance and the connections in chain order",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "self",
+                                                        "instances"
+                                                    ],
+                                                    "properties": {
+                                                        "self": {
+                                                            "type": "object",
+                                                            "required": [
+                                                                "name",
+                                                                "stage",
+                                                                "order"
+                                                            ],
+                                                            "properties": {
+                                                                "name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "stage": {
+                                                                    "type": "string"
+                                                                },
+                                                                "order": {
+                                                                    "type": "integer",
+                                                                    "format": "int64"
+                                                                }
+                                                            }
+                                                        },
+                                                        "instances": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "required": [
+                                                                    "id",
+                                                                    "name",
+                                                                    "stage",
+                                                                    "order",
+                                                                    "baseUrl",
+                                                                    "username",
+                                                                    "addedBy",
+                                                                    "addedAt"
+                                                                ],
+                                                                "properties": {
+                                                                    "id": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "stage": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "order": {
+                                                                        "type": "integer",
+                                                                        "format": "int64"
+                                                                    },
+                                                                    "baseUrl": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "username": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "addedBy": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "addedAt": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "remote": {
+                                                                        "type": "object",
+                                                                        "required": [
+                                                                            "manifest",
+                                                                            "fetchedAt",
+                                                                            "error",
+                                                                            "checkedAt"
+                                                                        ],
+                                                                        "properties": {
+                                                                            "manifest": {
+                                                                                "type": "object",
+                                                                                "nullable": true,
+                                                                                "additionalProperties": {
+                                                                                    "type": "object"
+                                                                                }
+                                                                            },
+                                                                            "fetchedAt": {
+                                                                                "type": "string",
+                                                                                "nullable": true
+                                                                            },
+                                                                            "error": {
+                                                                                "type": "string",
+                                                                                "nullable": true
+                                                                            },
+                                                                            "checkedAt": {
+                                                                                "type": "string",
+                                                                                "nullable": true
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Caller is not an administrator",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {
+                                                            "type": "object",
+                                                            "required": [
+                                                                "message"
+                                                            ],
+                                                            "properties": {
+                                                                "message": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {}
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Current user is not logged in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "operationId": "instance-create-v1",
+                "summary": "Adds a connection to another instance (password-confirmed)",
+                "description": "openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-connects-other-instances-that-run-versioniq\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
+                "tags": [
+                    "instance"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "default": "",
+                                        "description": "The connection id, lowercase letters, digits and hyphens"
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "default": "",
+                                        "description": "The name shown in the Instances tab"
+                                    },
+                                    "stage": {
+                                        "type": "string",
+                                        "default": "",
+                                        "description": "The stage label, such as test, acceptance or production"
+                                    },
+                                    "order": {
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "default": 0,
+                                        "description": "The place in the chain, 0 to 99"
+                                    },
+                                    "baseUrl": {
+                                        "type": "string",
+                                        "default": "",
+                                        "description": "The https address of that instance"
+                                    },
+                                    "username": {
+                                        "type": "string",
+                                        "default": "",
+                                        "description": "An admin account on that instance"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "default": "",
+                                        "description": "That account's app password; stored encrypted, never returned"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "The connection, without its password",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "id",
+                                                        "name",
+                                                        "stage",
+                                                        "order",
+                                                        "baseUrl",
+                                                        "username",
+                                                        "addedBy",
+                                                        "addedAt"
+                                                    ],
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "stage": {
+                                                            "type": "string"
+                                                        },
+                                                        "order": {
+                                                            "type": "integer",
+                                                            "format": "int64"
+                                                        },
+                                                        "baseUrl": {
+                                                            "type": "string"
+                                                        },
+                                                        "username": {
+                                                            "type": "string"
+                                                        },
+                                                        "addedBy": {
+                                                            "type": "string"
+                                                        },
+                                                        "addedAt": {
+                                                            "type": "string"
+                                                        },
+                                                        "remote": {
+                                                            "type": "object",
+                                                            "required": [
+                                                                "manifest",
+                                                                "fetchedAt",
+                                                                "error",
+                                                                "checkedAt"
+                                                            ],
+                                                            "properties": {
+                                                                "manifest": {
+                                                                    "type": "object",
+                                                                    "nullable": true,
+                                                                    "additionalProperties": {
+                                                                        "type": "object"
+                                                                    }
+                                                                },
+                                                                "fetchedAt": {
+                                                                    "type": "string",
+                                                                    "nullable": true
+                                                                },
+                                                                "error": {
+                                                                    "type": "string",
+                                                                    "nullable": true
+                                                                },
+                                                                "checkedAt": {
+                                                                    "type": "string",
+                                                                    "nullable": true
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "A field is not acceptable; nothing was saved",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "message"
+                                                    ],
+                                                    "properties": {
+                                                        "message": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Caller is not an administrator",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {
+                                                            "type": "object",
+                                                            "required": [
+                                                                "message"
+                                                            ],
+                                                            "properties": {
+                                                                "message": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {}
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "A connection with this id exists",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "message"
+                                                    ],
+                                                    "properties": {
+                                                        "message": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Current user is not logged in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/instances/refresh": {
+            "post": {
+                "operationId": "instance-refresh-v1",
+                "summary": "Reads every connection's manifest once; one that fails keeps its last manifest and does not stop the others",
+                "description": "openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-the-instances-tab-shows-every-instances-versions-side-by-side\nThis endpoint requires admin access",
+                "tags": [
+                    "instance"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "This instance and the connections, each with its manifest as read now",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "self",
+                                                        "instances"
+                                                    ],
+                                                    "properties": {
+                                                        "self": {
+                                                            "type": "object",
+                                                            "required": [
+                                                                "name",
+                                                                "stage",
+                                                                "order"
+                                                            ],
+                                                            "properties": {
+                                                                "name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "stage": {
+                                                                    "type": "string"
+                                                                },
+                                                                "order": {
+                                                                    "type": "integer",
+                                                                    "format": "int64"
+                                                                }
+                                                            }
+                                                        },
+                                                        "instances": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "required": [
+                                                                    "id",
+                                                                    "name",
+                                                                    "stage",
+                                                                    "order",
+                                                                    "baseUrl",
+                                                                    "username",
+                                                                    "addedBy",
+                                                                    "addedAt"
+                                                                ],
+                                                                "properties": {
+                                                                    "id": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "stage": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "order": {
+                                                                        "type": "integer",
+                                                                        "format": "int64"
+                                                                    },
+                                                                    "baseUrl": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "username": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "addedBy": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "addedAt": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "remote": {
+                                                                        "type": "object",
+                                                                        "required": [
+                                                                            "manifest",
+                                                                            "fetchedAt",
+                                                                            "error",
+                                                                            "checkedAt"
+                                                                        ],
+                                                                        "properties": {
+                                                                            "manifest": {
+                                                                                "type": "object",
+                                                                                "nullable": true,
+                                                                                "additionalProperties": {
+                                                                                    "type": "object"
+                                                                                }
+                                                                            },
+                                                                            "fetchedAt": {
+                                                                                "type": "string",
+                                                                                "nullable": true
+                                                                            },
+                                                                            "error": {
+                                                                                "type": "string",
+                                                                                "nullable": true
+                                                                            },
+                                                                            "checkedAt": {
+                                                                                "type": "string",
+                                                                                "nullable": true
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Caller is not an administrator",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {
+                                                            "type": "object",
+                                                            "required": [
+                                                                "message"
+                                                            ],
+                                                            "properties": {
+                                                                "message": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {}
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Remote reads are not available on this instance",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "message"
+                                                    ],
+                                                    "properties": {
+                                                        "message": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Current user is not logged in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/instances/{id}": {
             "put": {
                 "operationId": "instance-update-v1",
@@ -12590,11 +13437,11 @@
                 }
             }
         },
-        "/instance-settings": {
-            "get": {
-                "operationId": "settings-instance-settings-v1",
-                "summary": "Returns the instance settings with their defaults",
-                "description": "openspec/specs/audit-trail/spec.md\nopenspec/specs/external-sources/spec.md\nThis endpoint requires admin access",
+        "/advisory/feed-copy": {
+            "post": {
+                "operationId": "settings-import-advisory-feed-copy-v1",
+                "summary": "Imports a local copy of the advisory feed (password-confirmed)",
+                "description": "The uploaded `file` must be a feed file in the format the feed address serves. A file that does not parse is refused and the previous copy stays in use. The import is audited as a settings change.\nopenspec/changes/sources-trust-audit-and-offline-feed/specs/security-advisory-correlation/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
                 "tags": [
                     "settings"
                 ],
@@ -12620,7 +13467,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "The settings, each override ('' when unset) next to its default",
+                        "description": "The copy was stored",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -12641,245 +13488,19 @@
                                                 },
                                                 "data": {
                                                     "type": "object",
-                                                    "additionalProperties": {
-                                                        "nullable": true,
-                                                        "oneOf": [
-                                                            {
-                                                                "type": "integer",
-                                                                "format": "int64"
-                                                            },
-                                                            {
-                                                                "type": "string"
-                                                            }
-                                                        ]
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        "headers": {
-                            "API-Version": {
-                                "$ref": "#/components/headers/API-Version"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Caller is not an administrator",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "anyOf": [
-                                        {
-                                            "type": "object",
-                                            "required": [
-                                                "ocs"
-                                            ],
-                                            "properties": {
-                                                "ocs": {
-                                                    "type": "object",
                                                     "required": [
-                                                        "meta",
-                                                        "data"
+                                                        "copiedAt",
+                                                        "records"
                                                     ],
                                                     "properties": {
-                                                        "meta": {
-                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        "copiedAt": {
+                                                            "type": "integer",
+                                                            "format": "int64"
                                                         },
-                                                        "data": {
-                                                            "type": "object",
-                                                            "required": [
-                                                                "message"
-                                                            ],
-                                                            "properties": {
-                                                                "message": {
-                                                                    "type": "string"
-                                                                }
-                                                            }
+                                                        "records": {
+                                                            "type": "integer",
+                                                            "format": "int64"
                                                         }
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        {
-                                            "type": "object",
-                                            "required": [
-                                                "ocs"
-                                            ],
-                                            "properties": {
-                                                "ocs": {
-                                                    "type": "object",
-                                                    "required": [
-                                                        "meta",
-                                                        "data"
-                                                    ],
-                                                    "properties": {
-                                                        "meta": {
-                                                            "$ref": "#/components/schemas/OcsMeta"
-                                                        },
-                                                        "data": {}
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Current user is not logged in",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "required": [
-                                        "ocs"
-                                    ],
-                                    "properties": {
-                                        "ocs": {
-                                            "type": "object",
-                                            "required": [
-                                                "meta",
-                                                "data"
-                                            ],
-                                            "properties": {
-                                                "meta": {
-                                                    "$ref": "#/components/schemas/OcsMeta"
-                                                },
-                                                "data": {}
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "put": {
-                "operationId": "settings-update-instance-settings-v1",
-                "summary": "Updates the instance settings (password-confirmed); an omitted field is left alone",
-                "description": "openspec/specs/audit-trail/spec.md\nopenspec/specs/external-sources/spec.md\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
-                "tags": [
-                    "settings"
-                ],
-                "security": [
-                    {
-                        "bearer_auth": []
-                    },
-                    {
-                        "basic_auth": []
-                    }
-                ],
-                "requestBody": {
-                    "required": false,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "auditRetentionDays": {
-                                        "type": "string",
-                                        "nullable": true,
-                                        "default": null,
-                                        "description": "Days of history to keep, 30 to 3650"
-                                    },
-                                    "artifactCacheKeep": {
-                                        "type": "string",
-                                        "nullable": true,
-                                        "default": null,
-                                        "description": "Archives kept per app, 0 to 20 (0 turns the cache off)"
-                                    },
-                                    "appStoreApiBase": {
-                                        "type": "string",
-                                        "nullable": true,
-                                        "default": null,
-                                        "description": "App Store API base URL; blank uses the public store"
-                                    },
-                                    "githubApiBase": {
-                                        "type": "string",
-                                        "nullable": true,
-                                        "default": null,
-                                        "description": "GitHub API base URL (https); blank uses api.github.com"
-                                    },
-                                    "githubWebBase": {
-                                        "type": "string",
-                                        "nullable": true,
-                                        "default": null,
-                                        "description": "GitHub web base URL (https); blank uses github.com"
-                                    },
-                                    "advisoryFeedUrl": {
-                                        "type": "string",
-                                        "nullable": true,
-                                        "default": null,
-                                        "description": "Advisory feed URL; blank uses the published Nextcloud feed"
-                                    },
-                                    "ncscFeedUrl": {
-                                        "type": "string",
-                                        "nullable": true,
-                                        "default": null,
-                                        "description": "NCSC-NL CSAF directory URL, https only; blank uses the one NCSC-NL publishes"
-                                    },
-                                    "maxLinesBehind": {
-                                        "type": "string",
-                                        "nullable": true,
-                                        "default": null,
-                                        "description": "Release lines an app may fall behind, 0 to 10; blank turns the check off"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "parameters": [
-                    {
-                        "name": "OCS-APIRequest",
-                        "in": "header",
-                        "description": "Required to be true for the API request to pass",
-                        "required": true,
-                        "schema": {
-                            "type": "boolean",
-                            "default": true
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The settings after the change",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "required": [
-                                        "ocs"
-                                    ],
-                                    "properties": {
-                                        "ocs": {
-                                            "type": "object",
-                                            "required": [
-                                                "meta",
-                                                "data"
-                                            ],
-                                            "properties": {
-                                                "meta": {
-                                                    "$ref": "#/components/schemas/OcsMeta"
-                                                },
-                                                "data": {
-                                                    "type": "object",
-                                                    "additionalProperties": {
-                                                        "nullable": true,
-                                                        "oneOf": [
-                                                            {
-                                                                "type": "integer",
-                                                                "format": "int64"
-                                                            },
-                                                            {
-                                                                "type": "string"
-                                                            }
-                                                        ]
                                                     }
                                                 }
                                             }
@@ -12895,7 +13516,7 @@
                         }
                     },
                     "400": {
-                        "description": "A value is out of range or not an acceptable URL; nothing was changed",
+                        "description": "No file was sent, or it is not a valid feed; the previous copy is kept",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -13073,6 +13694,407 @@
                     }
                 }
             }
+        },
+        "/patch-policy": {
+            "get": {
+                "operationId": "patch_policy-patch-policy-v1",
+                "summary": "Reads the patch policy, its statement lines and the allowed values",
+                "description": "openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-an-admin-records-a-patch-policy-and-security-fixes-go-first\nThis endpoint requires admin access",
+                "tags": [
+                    "patch_policy"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The patch policy",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "additionalProperties": {
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Caller is not an administrator",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {
+                                                            "type": "object",
+                                                            "required": [
+                                                                "message"
+                                                            ],
+                                                            "properties": {
+                                                                "message": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {}
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Current user is not logged in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "operationId": "patch_policy-update-patch-policy-v1",
+                "summary": "Records the patch policy (password-confirmed); validates every field before writing and writes nothing on 400",
+                "description": "openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-an-admin-records-a-patch-policy-and-security-fixes-go-first\nThis endpoint requires admin access\nThis endpoint requires password confirmation",
+                "tags": [
+                    "patch_policy"
+                ],
+                "security": [
+                    {
+                        "bearer_auth": []
+                    },
+                    {
+                        "basic_auth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "security": {
+                                        "type": "object",
+                                        "default": {},
+                                        "description": "Per advisory severity (critical, high, medium, low, unknown): a deadline of 1 to 365 days or null, and a handling (next_window, scheduled, manual); a left-out severity keeps the no-policy reading",
+                                        "additionalProperties": {
+                                            "type": "object",
+                                            "properties": {
+                                                "deadlineDays": {
+                                                    "type": "integer",
+                                                    "format": "int64",
+                                                    "nullable": true
+                                                },
+                                                "handling": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "regular": {
+                                        "type": "object",
+                                        "default": {},
+                                        "description": "Per regular kind (patch, minor, major): automatic or manual",
+                                        "additionalProperties": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "statement": {
+                                        "type": "string",
+                                        "default": "",
+                                        "description": "Free text, at most 4000 characters"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "OCS-APIRequest",
+                        "in": "header",
+                        "description": "Required to be true for the API request to pass",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean",
+                            "default": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The stored patch policy",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "additionalProperties": {
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "headers": {
+                            "API-Version": {
+                                "$ref": "#/components/headers/API-Version"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "A field is not valid",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "message"
+                                                    ],
+                                                    "properties": {
+                                                        "message": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Caller is not an administrator",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {
+                                                            "type": "object",
+                                                            "required": [
+                                                                "message"
+                                                            ],
+                                                            "properties": {
+                                                                "message": {
+                                                                    "type": "string"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "ocs"
+                                            ],
+                                            "properties": {
+                                                "ocs": {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "meta",
+                                                        "data"
+                                                    ],
+                                                    "properties": {
+                                                        "meta": {
+                                                            "$ref": "#/components/schemas/OcsMeta"
+                                                        },
+                                                        "data": {}
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Current user is not logged in",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": [
+                                        "ocs"
+                                    ],
+                                    "properties": {
+                                        "ocs": {
+                                            "type": "object",
+                                            "required": [
+                                                "meta",
+                                                "data"
+                                            ],
+                                            "properties": {
+                                                "meta": {
+                                                    "$ref": "#/components/schemas/OcsMeta"
+                                                },
+                                                "data": {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "tags": [
@@ -13093,16 +14115,20 @@
             "description": "The self-hosted Forgejo or Gitea host that app sources are read from"
         },
         {
-            "name": "instance",
-            "description": "Operations tagged instance"
-        },
-        {
             "name": "open_api",
             "description": "The OpenAPI document that describes this API"
         },
         {
+            "name": "patch_policy",
+            "description": "Operations tagged patch_policy"
+        },
+        {
             "name": "settings",
             "description": "Instance settings of Versioniq"
+        },
+        {
+            "name": "instance",
+            "description": "Connections to other Versioniq instances"
         }
     ],
     "servers": [

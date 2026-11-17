@@ -146,3 +146,23 @@ export async function ocsPost <T>(path: string, body: Record<string, unknown> = 
 	})
 	return unwrap<T>(response)
 }
+
+/**
+ * Send one file to an OCS endpoint as multipart `field`, after password
+ * confirmation. Returns the unwrapped payload (+ error).
+ *
+ * @param path the endpoint
+ * @param field the form field the endpoint reads the file from
+ * @param file the file
+ */
+export async function ocsUpload <T>(path: string, field: string, file: Blob): Promise<OcsResult<T>> {
+	await ensurePasswordConfirmation()
+	const form = new FormData()
+	form.append(field, file)
+	const response = await fetch(apiUrl(withOcsJson(path)), {
+		method: 'POST',
+		headers: { ...ocsHeaders, Accept: 'application/json' },
+		body: form,
+	})
+	return unwrap<T>(response)
+}

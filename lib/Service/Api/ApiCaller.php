@@ -29,4 +29,18 @@ final class ApiCaller {
 		public readonly ITimeFactory $timeFactory,
 	) {
 	}
+
+	/**
+	 * The signed-in administrator's uid, or null for anyone else.
+	 *
+	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-an-admin-records-a-patch-policy-and-security-fixes-go-first
+	 */
+	public function adminUid(): ?string {
+		$user = $this->userSession->getUser();
+		if ($user === null || !$this->groupManager->isAdmin($user->getUID())) {
+			return null;
+		}
+
+		return $user->getUID();
+	}
 }
