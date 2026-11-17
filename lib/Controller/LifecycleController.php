@@ -13,6 +13,8 @@ namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
 use OCA\Versioniq\Service\Api\ApiCaller;
+use OCA\Versioniq\Service\Audit\AuditSubject;
+use OCA\Versioniq\Service\Lifecycle\AppReplacer;
 use OCA\Versioniq\Service\Lifecycle\LifecycleServices;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
@@ -186,7 +188,7 @@ class LifecycleController extends OCSController {
 		if ($uid === null) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
-		$outcome = $this->lifecycle->replacer->replace($uid, $appId, $to);
+		$outcome = $this->lifecycle->replacer->replace(new AuditSubject($uid, $appId, AppReplacer::OPERATION_REPLACE), $to);
 
 		return new DataResponse(['statusCode' => $outcome['statusCode']] + $outcome['payload']);
 	}

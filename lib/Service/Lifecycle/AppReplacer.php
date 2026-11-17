@@ -50,13 +50,12 @@ class AppReplacer {
 	 * Replaces an app with the successor the list offers for it.
 	 *
 	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-an-admin-replaces-an-app-with-its-successor-in-one-action
-	 * @param string $actorUid The admin who asked.
-	 * @param string $appId The app to replace.
+	 * @param AuditSubject $subject The admin who asked (`actorUid`) and the app to replace (`appId`).
 	 * @param string $to The successor the admin confirmed; it must be the one offered.
 	 * @return array{statusCode: int, payload: array<string, mixed>}
 	 */
-	public function replace(string $actorUid, string $appId, string $to): array {
-		$offer = $this->successors->offerFor($appId);
+	public function replace(AuditSubject $subject, string $to): array {
+		$offer = $this->successors->offerFor($subject->appId);
 		if ($offer === null || $offer['to'] !== $to) {
 			return self::outcome(Http::STATUS_NOT_FOUND, ['replaced' => false, 'message' => 'No successor this server can run is listed for this app.']);
 		}
@@ -74,18 +73,22 @@ class AppReplacer {
 			]);
 		}
 
-		return $this->switchOver($actorUid, $appId, $offer, $install['payload']);
+		$outcome = $this->switchOver(new AuditSubject($subject->actorUid, $subject->appId, self::OPERATION_REPLACE), $offer);
+		$outcome['payload']['install'] = $install['payload'];
+
+		return $outcome;
 	}
 
 	/**
 	 * Enables the installed successor, then disables the old app, and audits the step.
+	 * The caller adds the install payload under `install`.
 	 *
+	 * @param AuditSubject $subject The `replace` audit subject of the old app.
 	 * @param array{from: string, to: string, source: string, custom: bool, version: string} $offer
-	 * @param array<string, mixed> $installPayload
 	 * @return array{statusCode: int, payload: array<string, mixed>}
 	 */
-	private function switchOver(string $actorUid, string $appId, array $offer, array $installPayload): array {
-		$subject = new AuditSubject($actorUid, $appId, self::OPERATION_REPLACE);
+	private function switchOver(AuditSubject $subject, array $offer): array {
+		$appId = $subject->appId;
 		$versions = new AuditedVersions($this->appManager->getAppVersion($appId), null, $offer['source']);
 		try {
 			$this->appManager->enableApp($offer['to']);
@@ -96,7 +99,6 @@ class AppReplacer {
 			return self::outcome(Http::STATUS_INTERNAL_SERVER_ERROR, [
 				'replaced' => false,
 				'message' => 'The successor was installed, but switching over failed: ' . $error->getMessage(),
-				'install' => $installPayload,
 			]);
 		}
 		$this->audit->record($subject, $versions, AuditLogger::STATUS_SUCCESS, 'Replaced with ' . $offer['to'] . ' ' . $offer['version'] . '; its data was kept.');
@@ -106,7 +108,6 @@ class AppReplacer {
 			'from' => $appId,
 			'to' => $offer['to'],
 			'version' => $offer['version'],
-			'install' => $installPayload,
 		]);
 	}
 

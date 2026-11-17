@@ -85,7 +85,7 @@ final class AppReplacerTest extends TestCase {
 			'Replaced with newname 1.0.0; its data was kept.',
 		);
 
-		$outcome = $this->replacer()->replace('admin', 'oldname', 'newname');
+		$outcome = $this->replacer()->replace(new AuditSubject('admin', 'oldname', AppReplacer::OPERATION_REPLACE), 'newname');
 
 		$this->assertSame(200, $outcome['statusCode']);
 		$this->assertTrue($outcome['payload']['replaced']);
@@ -100,7 +100,7 @@ final class AppReplacerTest extends TestCase {
 		$this->appManager->expects($this->never())->method('enableApp');
 		$this->audit->expects($this->never())->method('record');
 
-		$outcome = $this->replacer()->replace('admin', 'oldname', 'newname');
+		$outcome = $this->replacer()->replace(new AuditSubject('admin', 'oldname', AppReplacer::OPERATION_REPLACE), 'newname');
 
 		$this->assertSame(409, $outcome['statusCode']);
 		$this->assertFalse($outcome['payload']['replaced']);
@@ -111,8 +111,8 @@ final class AppReplacerTest extends TestCase {
 		$this->successors->method('offerFor')->willReturnOnConsecutiveCalls(null, self::OFFER);
 		$this->installer->expects($this->never())->method('installAppVersion');
 
-		$this->assertSame(404, $this->replacer()->replace('admin', 'oldname', 'newname')['statusCode']);
-		$this->assertSame(404, $this->replacer()->replace('admin', 'oldname', 'othername')['statusCode']);
+		$this->assertSame(404, $this->replacer()->replace(new AuditSubject('admin', 'oldname', AppReplacer::OPERATION_REPLACE), 'newname')['statusCode']);
+		$this->assertSame(404, $this->replacer()->replace(new AuditSubject('admin', 'oldname', AppReplacer::OPERATION_REPLACE), 'othername')['statusCode']);
 	}
 
 	public function testAFailingSwitchOverIsAuditedAsAFailure(): void {
@@ -128,7 +128,7 @@ final class AppReplacerTest extends TestCase {
 			'Replacing with newname failed: cannot enable',
 		);
 
-		$outcome = (new AppReplacer($this->successors, $this->installer, $appManager, $this->audit))->replace('admin', 'oldname', 'newname');
+		$outcome = (new AppReplacer($this->successors, $this->installer, $appManager, $this->audit))->replace(new AuditSubject('admin', 'oldname', AppReplacer::OPERATION_REPLACE), 'newname');
 
 		$this->assertSame(500, $outcome['statusCode']);
 		$this->assertFalse($outcome['payload']['replaced']);

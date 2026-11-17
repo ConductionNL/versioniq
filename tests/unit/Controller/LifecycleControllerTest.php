@@ -13,6 +13,7 @@ use InvalidArgumentException;
 use OCA\Versioniq\Controller\LifecycleController;
 use OCA\Versioniq\Service\Advisory\ServerVersionProvider;
 use OCA\Versioniq\Service\Api\ApiCaller;
+use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCA\Versioniq\Service\Lifecycle\AppReplacer;
 use OCA\Versioniq\Service\Lifecycle\LifecycleServices;
 use OCA\Versioniq\Service\Lifecycle\ServerEolFeed;
@@ -34,6 +35,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(LifecycleController::class)]
 #[UsesClass(LifecycleServices::class)]
 #[UsesClass(ApiCaller::class)]
+#[UsesClass(AuditSubject::class)]
 final class LifecycleControllerTest extends TestCase {
 	private ServerEolFeed&MockObject $feed;
 	private ServerVersionProvider&MockObject $version;
@@ -116,7 +118,8 @@ final class LifecycleControllerTest extends TestCase {
 	}
 
 	public function testReplaceRunsAsTheSignedInAdminAndSaysWhichStepFailed(): void {
-		$this->replacer->expects($this->once())->method('replace')->with('alice', 'oldname', 'newname')
+		$this->replacer->expects($this->once())->method('replace')
+			->with($this->callback(static fn (AuditSubject $subject): bool => $subject->actorUid === 'alice' && $subject->appId === 'oldname' && $subject->operation === AppReplacer::OPERATION_REPLACE), 'newname')
 			->willReturn(['statusCode' => 409, 'payload' => ['replaced' => false, 'message' => 'The successor could not be installed; the old app stays enabled.']]);
 
 		$response = $this->controller()->replace('oldname', 'newname');
