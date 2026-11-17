@@ -38,4 +38,10 @@ final class InstallVersionFields extends RequestFields {
 
 	/** @var string `1` to permit installing a version older than the installed one */
 	public string $allowDowngrade = '0';
+
+	/**
+	 * install-live-progress: a random token the page polls
+	 * GET /api/install-progress/{token} with while the install runs.
+	 */
+	public ?string $progressToken = null;
 }
