@@ -87,6 +87,7 @@ class PromoteVersion extends Command {
 	/**
 	 * The exit code of one promotion's outcome.
 	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/cli-commands/spec.md#requirement-compare-instances-and-promote-versions-from-the-cli
 	 * @param array<string, mixed> $payload
 	 */
 	public static function exitCodeFor(int $statusCode, array $payload): int {

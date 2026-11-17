@@ -251,6 +251,7 @@ function ownVersion (row: InstanceRow, columns: InstanceColumn[]): string | null
  *
  * @param iso The moment, ISO 8601.
  * @param now The present.
+ * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
  */
 export function daysSince (iso: string | null, now: Date = new Date()): number | null {
 	if (!iso) {

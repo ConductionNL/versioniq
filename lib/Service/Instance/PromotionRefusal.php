@@ -26,6 +26,9 @@ final class PromotionRefusal {
 	}
 
 	/**
+	 * The refusal as a promotion result: its status and its code and message.
+	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-promotes-the-exact-package-an-earlier-stage-runs
 	 * @return array{statusCode: int, payload: array<string, mixed>}
 	 */
 	public function toResult(): array {

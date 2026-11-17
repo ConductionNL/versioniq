@@ -228,6 +228,7 @@ class InstallVersion extends Command {
 	 * this command (see execute()), so a 403 reaching here can only be the
 	 * trusted-source allowlist guard — see "CLI trust context".
 	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/cli-commands/spec.md#requirement-compare-instances-and-promote-versions-from-the-cli
 	 * @param array<string, mixed> $payload
 	 */
 	public static function exitCodeFor(int $statusCode, array $payload): int {
