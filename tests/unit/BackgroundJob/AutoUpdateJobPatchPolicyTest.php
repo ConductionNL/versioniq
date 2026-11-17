@@ -19,6 +19,7 @@ use OCA\Versioniq\Service\Advisory\AdvisoryService;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
 use OCA\Versioniq\Service\AutoUpdate\SecurityHoldStore;
@@ -95,6 +96,7 @@ final class AutoUpdateJobPatchPolicyTest extends TestCase {
 		];
 		$this->mocks['settingsStore']->method('isEnabled')->willReturn(true);
 		$this->mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$this->mocks['settingsStore']->method('getSchedule')->willReturn(AutoUpdateSchedule::everyDay());
 		$this->mocks['advisorySettings']->method('getIntervalSeconds')->willReturn(6 * 3600);
 		$this->mocks['advisoryResults']->method('read')->willReturn(['advisories' => $rows, 'checkedAt' => self::NOW - 3600]);
 		$this->mocks['patchPolicyStore']->expects($this->once())->method('read')->willReturn($patchPolicy);
