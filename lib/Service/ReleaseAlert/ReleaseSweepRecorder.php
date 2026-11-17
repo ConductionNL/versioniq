@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\ReleaseAlert;
 
+use OCA\Versioniq\Kernel\Contracts\ReleaseSweepRecorderInterface;
 use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
 
 /**
@@ -21,7 +22,7 @@ use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
  *
  * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-a-new-release-is-detected-after-each-availability-sweep-and-logged
  */
-class ReleaseSweepRecorder {
+class ReleaseSweepRecorder implements ReleaseSweepRecorderInterface {
 	public function __construct(
 		private AvailabilityResultStore $store,
 		private ReleaseNotifier $notifier,
@@ -37,6 +38,16 @@ class ReleaseSweepRecorder {
 	 */
 	public function followed(): array {
 		return $this->follows?->all() ?? [];
+	}
+
+	/**
+	 * Says the sweep failed, so the check line does not read as checked; the
+	 * previous snapshot is kept.
+	 *
+	 * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+	 */
+	public function recordFailure(int $failedAt): void {
+		$this->store->saveFailure($failedAt);
 	}
 
 	/**

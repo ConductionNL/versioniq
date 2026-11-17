@@ -11,10 +11,10 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\BackgroundJob;
 
-use OCA\Versioniq\Service\Advisory\AdvisoryDigestNotifier;
-use OCA\Versioniq\Service\Advisory\AdvisoryNotifier;
-use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
-use OCA\Versioniq\Service\Advisory\AdvisoryService;
+use OCA\Versioniq\Kernel\Contracts\AdvisoryDigestNotifierInterface;
+use OCA\Versioniq\Kernel\Contracts\AdvisoryNotifierInterface;
+use OCA\Versioniq\Kernel\Contracts\AdvisoryResultStoreInterface;
+use OCA\Versioniq\Kernel\Contracts\AdvisoryServiceInterface;
 use OCA\Versioniq\Service\Advisory\AdvisoryTriageStore;
 
 /**
@@ -26,10 +26,10 @@ use OCA\Versioniq\Service\Advisory\AdvisoryTriageStore;
  */
 final class AdvisoryRefreshSteps {
 	public function __construct(
-		public readonly AdvisoryService $advisoryService,
-		public readonly AdvisoryResultStore $resultStore,
-		public readonly AdvisoryNotifier $advisoryNotifier,
-		public readonly AdvisoryDigestNotifier $digestNotifier,
+		public readonly AdvisoryServiceInterface $advisoryService,
+		public readonly AdvisoryResultStoreInterface $resultStore,
+		public readonly AdvisoryNotifierInterface $advisoryNotifier,
+		public readonly AdvisoryDigestNotifierInterface $digestNotifier,
 		// Optional: the advisory triage, stamped and pruned after each save (advisories-triage).
 		public readonly ?AdvisoryTriageStore $triageStore = null,
 	) {

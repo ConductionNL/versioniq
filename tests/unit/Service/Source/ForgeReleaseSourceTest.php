@@ -491,6 +491,41 @@ final class ForgeReleaseSourceTest extends TestCase {
 	}
 
 	/**
+	 * advisories-per-app-detail 1.1: a GHSA-shaped forge advisory keeps its
+	 * CVE ids, publication date and web link; one without them leaves them
+	 * empty.
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/tasks.md#1.1
+	 */
+	public function testAnAdvisoryKeepsItsCveIdsDateAndLink(): void {
+		$body = json_encode([
+			[
+				'ghsa_id' => 'GHSA-full',
+				'cve_id' => 'CVE-2026-1111',
+				'identifiers' => [['type' => 'GHSA', 'value' => 'GHSA-full'], ['type' => 'CVE', 'value' => 'CVE-2026-2222']],
+				'published_at' => '2026-08-01T10:00:00Z',
+				'html_url' => 'https://github.com/ConductionNL/openregister/security/advisories/GHSA-full',
+				'url' => 'https://api.github.com/repos/ConductionNL/openregister/security-advisories/GHSA-full',
+				'summary' => 'Full',
+			],
+			['ghsa_id' => 'GHSA-bare', 'summary' => 'Bare'],
+		], JSON_THROW_ON_ERROR);
+
+		$client = $this->createMock(IClient::class);
+		$client->method('get')->willReturn($this->mockResponse(200, $body));
+
+		$result = $this->buildSource($client)->listAdvisories('openregister', SourceBinding::github('ConductionNL', 'openregister'));
+
+		[$full, $bare] = $result['advisories'];
+		$this->assertSame(['CVE-2026-1111', 'CVE-2026-2222'], $full['cveIds']);
+		$this->assertSame('2026-08-01T10:00:00Z', $full['publishedAt']);
+		$this->assertSame('https://github.com/ConductionNL/openregister/security/advisories/GHSA-full', $full['url']);
+		$this->assertSame([], $bare['cveIds']);
+		$this->assertNull($bare['publishedAt']);
+		$this->assertNull($bare['url']);
+	}
+
+	/**
 	 * Scenario "A GitHub-bound app is checked against its repository's
 	 * advisories" (advisories-name-their-feeds): the source reads
 	 * `/repos/{owner}/{repo}/security-advisories` on the GitHub API and maps
@@ -532,6 +567,10 @@ final class ForgeReleaseSourceTest extends TestCase {
 					'summary' => 'Tool calls bypass the grant check',
 					'affected' => ['>= 1.0.0', '<= 1.4.0'],
 					'firstPatchedVersion' => '1.4.1',
+					// advisories-per-app-detail 1.1: every advisory carries these, empty when the feed has none.
+					'cveIds' => [],
+					'publishedAt' => null,
+					'url' => null,
 				],
 			],
 			$result['advisories']

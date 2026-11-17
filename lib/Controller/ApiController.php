@@ -16,12 +16,15 @@ use InvalidArgumentException;
 use OCA\Versioniq\Db\Pat;
 use OCA\Versioniq\Http\InstallVersionFields;
 use OCA\Versioniq\Http\RequestFieldsFrom;
-use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Kernel\Contracts\AdvisorySettingsStoreInterface;
+use OCA\Versioniq\Service\Advisory\ComplianceStatus;
+use OCA\Versioniq\Service\Advisory\FixStatus;
 use OCA\Versioniq\Service\Api\AccessCollaborators;
 use OCA\Versioniq\Service\Api\InstallCollaborators;
 use OCA\Versioniq\Service\Api\ReportCollaborators;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
+use OCA\Versioniq\Service\AutoUpdate\SecurityCandidate;
 use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
@@ -30,6 +33,7 @@ use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Pat\NewPat;
 use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Service\Pin\Pin;
+use OCA\Versioniq\Service\Policy\PatchPolicy;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
@@ -105,15 +109,20 @@ class ApiController extends OCSController {
 	 * six-hour-old one, or from an instance whose cron has never run — three
 	 * states that otherwise render as an identical empty map.
 	 *
+	 * `compliance` is the one patch compliance status of the server and all
+	 * apps (ComplianceStatus), and each row carries `heldByPin` when a pin
+	 * holds it below an installable fix (advisories-per-app-detail).
+	 *
 	 * `triage` is the stored dismissals and owners, keyed `{appId}|{advisoryId}`,
 	 * applied by the page; the snapshot itself stays raw (advisories-triage D1).
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{advisories: array<string, mixed>, checkedAt: ?int, triage: array<string, mixed>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{advisories: array<string, mixed>, checkedAt: ?int, status: ?string, errors: list<string>, compliance: array<string, mixed>, triage: array<string, mixed>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Stored advisory correlation returned
 	 * 403: Caller is not an administrator
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
+	 * @spec openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation/spec.md#requirement-the-instance-has-one-patch-compliance-status
 	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/advisories')]
@@ -124,10 +133,21 @@ class ApiController extends OCSController {
 		}
 
 		$snapshot = $this->reports->stores->advisoryResultStore->read();
+		// A pin is read now, not at sweep time: it can change between sweeps.
+		$rows = FixStatus::withPins($snapshot['advisories'], $this->autoUpdate->pinStore->all());
 
 		return new DataResponse([
-			'advisories' => $snapshot['advisories'],
-			'checkedAt' => $snapshot['checkedAt'],
+			'advisories' => $rows,
+			// The check line shows the status with this time: a failed sweep's is its attempt's.
+			'checkedAt' => $snapshot['failedAt'] ?? $snapshot['checkedAt'],
+			'status' => $snapshot['status'],
+			'errors' => $snapshot['errors'],
+			'compliance' => ComplianceStatus::from(
+				$rows,
+				$snapshot['checkedAt'],
+				$this->reports->stores->advisorySettingsStore->getIntervalHours(),
+				$this->access->caller->timeFactory->getDateTime('now')->getTimestamp(),
+			),
 			'triage' => $this->reports->stores->advisoryTriageStore?->read() ?? [],
 		]);
 	}
@@ -141,7 +161,7 @@ class ApiController extends OCSController {
 	 * Like /api/advisories it reads what AvailabilityRefreshJob stored and
 	 * never calls a source (issue #160).
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{updates: array<string, mixed>, checkedAt: ?int, maxLinesBehind: ?int}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{updates: array<string, mixed>, checkedAt: ?int, status: ?string, errors: list<string>, maxLinesBehind: ?int}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Stored pending updates returned
 	 * 403: Caller is not an administrator
@@ -155,11 +175,14 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		$snapshot = $this->reports->stores->availabilityResultStore?->read() ?? ['updates' => [], 'checkedAt' => null];
+		$snapshot = $this->reports->stores->availabilityResultStore?->read() ?? ['updates' => [], 'checkedAt' => null, 'failedAt' => null, 'status' => null, 'errors' => []];
 
 		return new DataResponse([
 			'updates' => $snapshot['updates'],
-			'checkedAt' => $snapshot['checkedAt'],
+			// The check line shows the status with this time: a failed sweep's is its attempt's.
+			'checkedAt' => $snapshot['failedAt'] ?? $snapshot['checkedAt'],
+			'status' => $snapshot['status'],
+			'errors' => $snapshot['errors'],
 			'maxLinesBehind' => $this->reports->stores->instanceSettings?->maxLinesBehind(),
 		]);
 	}
@@ -930,7 +953,29 @@ class ApiController extends OCSController {
 			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
 			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
 			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
+			// Why the last run held a security fix back, whether the advisory
+			// snapshot is fresh enough for security installs, and the kinds
+			// the patch policy sets to by hand (autoupdate-security-first).
+			'securityHolds' => (object)$this->autoUpdate->security->securityHolds->read(),
+			'advisoriesFresh' => $this->advisoriesFresh(),
+			'manualKinds' => ($this->autoUpdate->security->patchPolicyStore->read() ?? PatchPolicy::none())->manualKinds(),
 		]);
+	}
+
+	/**
+	 * Whether the last advisory check is recent enough for the `security`
+	 * level to act on it (autoupdate-security-first D2).
+	 *
+	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-the-security-level-installs-only-advisory-fixes-in-the-window
+	 */
+	private function advisoriesFresh(): bool {
+		$checkedAt = $this->autoUpdate->security->advisoryResults->read()['checkedAt'] ?? null;
+
+		return SecurityCandidate::isFresh(
+			is_int($checkedAt) ? $checkedAt : null,
+			$this->access->caller->timeFactory->getTime(),
+			$this->autoUpdate->security->advisorySettings->getIntervalSeconds(),
+		);
 	}
 
 	/**
@@ -1157,7 +1202,7 @@ class ApiController extends OCSController {
 			);
 		}
 		$hours = (int)$intervalHours;
-		if ($hours < AdvisorySettingsStore::MIN_INTERVAL_HOURS || $hours > AdvisorySettingsStore::MAX_INTERVAL_HOURS) {
+		if ($hours < AdvisorySettingsStoreInterface::MIN_INTERVAL_HOURS || $hours > AdvisorySettingsStoreInterface::MAX_INTERVAL_HOURS) {
 			return self::intervalOutOfRange();
 		}
 		$this->reports->stores->advisorySettingsStore->setIntervalHours($hours);
@@ -1174,8 +1219,8 @@ class ApiController extends OCSController {
 		return new DataResponse(
 			['message' => sprintf(
 				'intervalHours must be between %d and %d.',
-				AdvisorySettingsStore::MIN_INTERVAL_HOURS,
-				AdvisorySettingsStore::MAX_INTERVAL_HOURS,
+				AdvisorySettingsStoreInterface::MIN_INTERVAL_HOURS,
+				AdvisorySettingsStoreInterface::MAX_INTERVAL_HOURS,
 			)],
 			Http::STATUS_BAD_REQUEST
 		);
@@ -1189,8 +1234,8 @@ class ApiController extends OCSController {
 	private function advisorySettingsResponse(): DataResponse {
 		return new DataResponse([
 			'intervalHours' => $this->reports->stores->advisorySettingsStore->getIntervalHours(),
-			'minIntervalHours' => AdvisorySettingsStore::MIN_INTERVAL_HOURS,
-			'maxIntervalHours' => AdvisorySettingsStore::MAX_INTERVAL_HOURS,
+			'minIntervalHours' => AdvisorySettingsStoreInterface::MIN_INTERVAL_HOURS,
+			'maxIntervalHours' => AdvisorySettingsStoreInterface::MAX_INTERVAL_HOURS,
 			'digestEnabled' => $this->reports->stores->advisorySettingsStore->isDigestEnabled(),
 			// advisories-ncsc-feed: the NCSC-NL switch, and how far its read got.
 			'ncscEnabled' => $this->reports->stores->advisorySettingsStore->isNcscEnabled(),
