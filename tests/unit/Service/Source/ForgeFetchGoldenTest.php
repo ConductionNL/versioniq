@@ -13,6 +13,7 @@ require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
 
 use Exception;
 use OCA\Versioniq\Service\Connection\ConnectionReportService;
+use OCA\Versioniq\Service\Source\ForgeCall;
 use OCA\Versioniq\Service\Source\ForgeRegistry;
 use OCA\Versioniq\Service\Source\ForgeReleaseSource;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
@@ -171,7 +172,7 @@ final class ForgeFetchGoldenTest extends TestCase {
 
 		$source = $this->source($client, $allowLocal);
 		$forge = $this->registry()->get($forgeId);
-		$result = (new ReflectionMethod($source, 'performFetch'))->invoke($source, $forge, $forge->releasesEndpoint('owner/repo'), $token);
+		$result = (new ReflectionMethod($source, 'performFetch'))->invoke($source, new ForgeCall($forge, $forge->releasesEndpoint('owner/repo'), $token));
 
 		return ['result' => $result, 'calls' => $this->calls];
 	}
