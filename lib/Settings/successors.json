@@ -1,0 +1,10 @@
+{
+	"_note": "Apps that were renamed or replaced, as {from, to, source}: `source` is the successor's source id (`appstore`, or `github:<owner>/<repo>`). An entry is offered on the old app's card only when the successor's source lists a version this server can run. Admins add their own entries in the Settings tab (app config `successors.custom`).",
+	"successors": [
+		{
+			"from": "app_versions",
+			"to": "versioniq",
+			"source": "github:ConductionNL/versioniq"
+		}
+	]
+}

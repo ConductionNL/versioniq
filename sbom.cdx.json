@@ -10364,8 +10364,8 @@
     {
       "type": "library",
       "name": "nostics",
-      "version": "1.3.0",
-      "bom-ref": "versioniq@1.0.0|nostics@1.3.0",
+      "version": "1.4.0",
+      "bom-ref": "versioniq@1.0.0|nostics@1.4.0",
       "licenses": [
         {
           "license": {
@@ -10373,15 +10373,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/nostics@1.3.0",
+      "purl": "pkg:npm/nostics@1.4.0",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/nostics/-/nostics-1.3.0.tgz",
+          "url": "https://registry.npmjs.org/nostics/-/nostics-1.4.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "c3346cac9c0d9456ea21142df1a09e2f6584f144a2a7fbaebc648e655d43d360b15fc0014cc6f0f08cb02a31fbc961c44cc5db589238381a62860f6b9b3d95ca"
+              "content": "5a35c73ae36ecd8dcc3ca3a8093db32f549addc4b698e51ee28f05f7826f04e1f67067f2348b5b42609bda9347231a2875de4efafb66987abb3e84995468021c"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -12824,8 +12824,8 @@
         {
           "type": "library",
           "name": "minimatch",
-          "version": "11.0.8",
-          "bom-ref": "versioniq@1.0.0|webdav@5.11.0|minimatch@11.0.8",
+          "version": "11.0.9",
+          "bom-ref": "versioniq@1.0.0|webdav@5.11.0|minimatch@11.0.9",
           "scope": "optional",
           "licenses": [
             {
@@ -12834,15 +12834,15 @@
               }
             }
           ],
-          "purl": "pkg:npm/minimatch@11.0.8",
+          "purl": "pkg:npm/minimatch@11.0.9",
           "externalReferences": [
             {
-              "url": "https://registry.npmjs.org/minimatch/-/minimatch-11.0.8.tgz",
+              "url": "https://registry.npmjs.org/minimatch/-/minimatch-11.0.9.tgz",
               "type": "distribution",
               "hashes": [
                 {
                   "alg": "SHA-512",
-                  "content": "9c542e6124d5ac6bf2b15069b39221fb405d9d814dfc28f70bcd7aafafa9ef22be147ad52c61383b837d005c3292b94d96f3361d8b7e45a775522ae8ea1f3c22"
+                  "content": "2821647f28ea7ab3654acb6396120635720a64603fe8ee15e1196167e0ecafadb548f3f0d26ce5ca913d0fd64ea0f89579f1c80fe8fbfd7b8c325a9f0ff17ad1"
                 }
               ],
               "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""

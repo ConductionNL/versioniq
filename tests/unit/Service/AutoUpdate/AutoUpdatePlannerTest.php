@@ -9,16 +9,21 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\AutoUpdate;
 
+use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
+use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateMember;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSecurityStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\AutoUpdate\SecurityHoldStore;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Policy\PatchPolicyStore;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyStore;
 use OCP\App\IAppManager;
@@ -49,7 +54,18 @@ final class AutoUpdatePlannerTest extends TestCase {
 
 	private function planner(): AutoUpdatePlanner {
 		return new AutoUpdatePlanner(
-			new AutoUpdateStores($this->policies, $this->pins, $this->createMock(AutoUpdateSettingsStore::class), $this->ledger),
+			new AutoUpdateStores(
+				$this->policies,
+				$this->pins,
+				$this->createMock(AutoUpdateSettingsStore::class),
+				$this->ledger,
+				new AutoUpdateSecurityStores(
+					$this->createMock(AdvisoryResultStore::class),
+					$this->createMock(AdvisorySettingsStore::class),
+					$this->createMock(PatchPolicyStore::class),
+					$this->createMock(SecurityHoldStore::class),
+				),
+			),
 			new AutoUpdateInstall($this->installer, $this->apps, new CandidateSelector()),
 			$this->logger,
 		);

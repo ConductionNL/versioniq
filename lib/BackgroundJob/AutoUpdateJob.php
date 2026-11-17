@@ -12,19 +12,21 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\BackgroundJob;
 
+use OCA\Versioniq\Kernel\Contracts\AttemptLedgerInterface;
+use OCA\Versioniq\Kernel\Contracts\AutoUpdateNotifierInterface;
 use OCA\Versioniq\Service\Audit\AuditOrigin;
-use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall;
-use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlan;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\AutoUpdate\SecurityCandidate;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\PinChoice;
+use OCA\Versioniq\Service\Policy\PatchPolicy;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCP\AppFramework\Http;
 use OCP\BackgroundJob\TimedJob;
@@ -42,8 +44,8 @@ use Psr\Log\LoggerInterface;
  * through {@see \OCA\Versioniq\Service\InstallerService::installAppVersion()}, the same verified
  * path (signature/integrity checks, backup/restore, structured outcomes,
  * audit trail) as every other install in this app. Every attempt is recorded
- * in the {@see AttemptLedger} (never-retry) and reported via
- * {@see AutoUpdateNotifier} (success or failure — a no-op app is never
+ * in the {@see AttemptLedgerInterface} (never-retry) and reported via
+ * {@see AutoUpdateNotifierInterface} (success or failure — a no-op app is never
  * notified).
  *
  * No-ops entirely (no source queries, no installs) when the global kill
@@ -68,7 +70,7 @@ class AutoUpdateJob extends TimedJob {
 		JobRuntime $runtime,
 		private AutoUpdateStores $stores,
 		private AutoUpdateInstall $install,
-		private AutoUpdateNotifier $notifier,
+		private AutoUpdateNotifierInterface $notifier,
 	) {
 		parent::__construct($runtime->time);
 		$this->logger = $runtime->logger;
@@ -112,8 +114,38 @@ class AutoUpdateJob extends TimedJob {
 		}
 		$this->stores->settingsStore->markWindowSwept($openingKey);
 
-		// Plan first, then install (autoupdate-run-batching D1).
-		$this->installPlanned((new AutoUpdatePlanner($this->stores, $this->install, $this->logger))->plan());
+		// Plan first, then install (autoupdate-run-batching D1). The advisory
+		// snapshot and the patch policy are read once per run
+		// (autoupdate-security-first D2, D3); no stored policy reads as
+		// today's behaviour, and security fixes are planned first (D4).
+		$plan = (new AutoUpdatePlanner($this->stores, $this->install, $this->logger))->plan(
+			$this->advisorySnapshot(),
+			$this->stores->security->patchPolicyStore->read() ?? PatchPolicy::none()
+		);
+		$this->installPlanned($plan);
+		$this->stores->security->securityHolds->replace($plan->securityHolds);
+	}
+
+	/**
+	 * The last advisory snapshot, and whether it is fresh enough to decide
+	 * security installs (autoupdate-security-first D2).
+	 *
+	 * @return array{rows: array<string, mixed>, fresh: bool}
+	 *
+	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md
+	 */
+	private function advisorySnapshot(): array {
+		$snapshot = $this->stores->security->advisoryResults->read();
+		$checkedAt = $snapshot['checkedAt'] ?? null;
+
+		return [
+			'rows' => is_array($snapshot['advisories'] ?? null) ? $snapshot['advisories'] : [],
+			'fresh' => SecurityCandidate::isFresh(
+				is_int($checkedAt) ? $checkedAt : null,
+				$this->time->getTime(),
+				$this->stores->security->advisorySettings->getIntervalSeconds()
+			),
+		];
 	}
 
 	/**
@@ -149,16 +181,35 @@ class AutoUpdateJob extends TimedJob {
 		$payload = $installResult['payload'] ?? [];
 
 		if ($statusCode >= Http::STATUS_OK && $statusCode < Http::STATUS_MULTIPLE_CHOICES) {
-			$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedger::OUTCOME_SUCCESS, $at);
-			$toVersion = is_string($payload['installedVersion'] ?? null) && $payload['installedVersion'] !== ''
-				? $payload['installedVersion']
-				: $target->version;
-			$this->notifier->notifySuccess($target->appId, $installedVersion, $toVersion);
+			$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedgerInterface::OUTCOME_SUCCESS, $at);
+			$this->notifier->notifySuccess($target->appId, $installedVersion, self::versionInstalled($payload, $target));
 
 			return;
 		}
 
-		$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedger::OUTCOME_FAILURE, $at);
+		$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedgerInterface::OUTCOME_FAILURE, $at);
+		$this->notifyFailure($target, $payload);
+	}
+
+	/**
+	 * The version the installer reports it installed, else the target version.
+	 *
+	 * @param array<array-key, mixed> $payload The installer's outcome payload.
+	 */
+	private static function versionInstalled(array $payload, InstallTarget $target): string {
+		/** @var mixed $reported */
+		$reported = $payload['installedVersion'] ?? null;
+
+		return is_string($reported) && $reported !== '' ? $reported : $target->version;
+	}
+
+	/**
+	 * Tells the admins an automatic install failed, with the failure category
+	 * and hint the installer gave ('unknown' and '' when it gave none).
+	 *
+	 * @param array<array-key, mixed> $payload The installer's outcome payload.
+	 */
+	private function notifyFailure(InstallTarget $target, array $payload): void {
 		$category = is_string($payload['category'] ?? null) ? $payload['category'] : 'unknown';
 		$hint = is_string($payload['hint'] ?? null) ? $payload['hint'] : '';
 		$this->notifier->notifyFailure($target->appId, $target->version, $category, $hint);

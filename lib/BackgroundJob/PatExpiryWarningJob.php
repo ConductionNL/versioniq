@@ -14,7 +14,7 @@ namespace OCA\Versioniq\BackgroundJob;
 
 use OCA\Versioniq\Db\Pat;
 use OCA\Versioniq\Db\PatMapper;
-use OCA\Versioniq\Service\Pat\PatExpiryEvaluator;
+use OCA\Versioniq\Kernel\Contracts\PatExpiryEvaluatorInterface;
 use OCA\Versioniq\Service\Pat\PatExpiryNotifier;
 use OCP\BackgroundJob\TimedJob;
 use Psr\Log\LoggerInterface;
@@ -38,7 +38,7 @@ class PatExpiryWarningJob extends TimedJob {
 	public function __construct(
 		JobRuntime $runtime,
 		private PatMapper $patMapper,
-		private PatExpiryEvaluator $evaluator,
+		private PatExpiryEvaluatorInterface $evaluator,
 		private PatExpiryNotifier $notifier,
 	) {
 		parent::__construct($runtime->time);

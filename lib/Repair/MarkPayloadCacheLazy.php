@@ -21,7 +21,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Repair;
 
 use OCA\Versioniq\AppInfo\Application;
-use OCA\Versioniq\Service\Source\AppStoreSource;
+use OCA\Versioniq\Kernel\Contracts\AppStoreSourceInterface;
 use OCP\IAppConfig;
 use OCP\Migration\IOutput;
 use OCP\Migration\IRepairStep;
@@ -31,7 +31,7 @@ use Throwable;
 /**
  * Marks every existing `appstore.payload.*` / `appstore.payload_ts.*` row lazy.
  *
- * WHY. Until this release {@see AppStoreSource} wrote its payload cache as
+ * WHY. Until this release {@see \OCA\Versioniq\Service\Source\AppStoreSource} wrote its payload cache as
  * EAGER app config, and Nextcloud loads every eager row of every app on every
  * request. One payload per managed app, ~4 MB for mail alone: measured on a
  * dev instance 2026-10-06, 1,660 rows / 36 MB took ~300 ms of a ~450 ms
@@ -129,8 +129,8 @@ class MarkPayloadCacheLazy implements IRepairStep {
 	 * @return bool True for a payload cache key.
 	 */
 	private static function isPayloadCacheKey(string $key): bool {
-		return str_starts_with($key, AppStoreSource::PAYLOAD_CACHE_PREFIX) === true
-			|| str_starts_with($key, AppStoreSource::PAYLOAD_CACHE_TS_PREFIX) === true;
+		return str_starts_with($key, AppStoreSourceInterface::PAYLOAD_CACHE_PREFIX) === true
+			|| str_starts_with($key, AppStoreSourceInterface::PAYLOAD_CACHE_TS_PREFIX) === true;
 	}//end isPayloadCacheKey()
 
 	/**
