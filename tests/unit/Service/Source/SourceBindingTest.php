@@ -239,4 +239,49 @@ final class SourceBindingTest extends TestCase {
 		$this->assertSame('forgejo', $binding->getForge());
 		$this->assertSame('forgejo:acme/widget', $binding->getId());
 	}
+
+	/**
+	 * sources-gitlab-forge 1.2: a GitLab binding holds a nested project path.
+	 */
+	public function testAGitlabBindingKeepsItsNestedPath(): void {
+		$binding = SourceBinding::gitlab('group/sub/project');
+
+		$this->assertSame('gitlab', $binding->getForge());
+		$this->assertSame('gitlab:group/sub/project', $binding->getId());
+		$this->assertSame('group/sub/project', $binding->getOwnerRepo());
+		$this->assertSame('gitlab:group/sub/project', SourceBinding::fromArray($binding->toArray())->getId());
+	}
+
+	public function testReleaseForGitlabJoinsTheNamespaceAndTheProject(): void {
+		$this->assertSame('gitlab:group/sub/project', SourceBinding::release('gitlab', 'group/sub', 'project')->getId());
+	}
+
+	/**
+	 * @return array<string, array{string}>
+	 */
+	public static function unsafeGitlabPaths(): array {
+		return [
+			'a parent segment' => ['group/../x'],
+			'a current segment' => ['group/./x'],
+			'an empty segment' => ['group//x'],
+			'one segment' => ['project'],
+			'a bad character' => ['group/pro ject'],
+			'more than 20 segments' => [implode('/', array_fill(0, 21, 'g'))],
+		];
+	}
+
+	/**
+	 * @dataProvider unsafeGitlabPaths
+	 */
+	public function testAnUnsafeGitlabPathIsRefused(string $path): void {
+		$this->expectException(InvalidArgumentException::class);
+
+		SourceBinding::gitlab($path);
+	}
+
+	public function testTwentySegmentsAreAccepted(): void {
+		$path = implode('/', array_fill(0, 20, 'g'));
+
+		$this->assertSame('gitlab:' . $path, SourceBinding::gitlab($path)->getId());
+	}
 }

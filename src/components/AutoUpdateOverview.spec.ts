@@ -45,6 +45,86 @@ describe('AutoUpdateOverview', () => {
 
 		expect(wrapper.find('[data-testid="overview-disabled"]').exists()).toBe(true)
 	})
+
+	// @spec openspec/specs/auto-update-policies/spec.md#requirement-the-overview-lists-the-updates-that-are-pending-now
+	it('lists each pending version with its state, from the stored sweep and its time', () => {
+		const update = (installedVersion: string, newest: string, pinned = false) => ({ installedVersion, newestVersion: newest, newestCompatibleVersion: newest, linesBehind: 0, updateAvailable: true, pinned, sourceId: null, error: null })
+		const wrapper = mount(AutoUpdateOverview, {
+			props: {
+				policies: {
+					dossiq: { appId: 'dossiq', level: 'patch', blockedVersions: [] },
+					decidiq: { appId: 'decidiq', level: 'all', blockedVersions: [] },
+				},
+				labels: { dossiq: 'Dossiq', decidiq: 'Decidiq' },
+				autoUpdateEnabled: true,
+				window: '01:00-05:00',
+				timeZone: 'Europe/Amsterdam',
+				updates: { dossiq: update('0.4.49', '0.4.50'), decidiq: update('0.9.3', '0.10.1', true) },
+				updatesCheckedLabel: 'Updates checked today at 06:02',
+			},
+		})
+
+		const rows = wrapper.findAll('[data-testid="overview-pending-row"]').map((row) => row.text())
+		expect(rows).toEqual(['Decidiq0.10.1Held by the pin', 'Dossiq0.4.50Scheduled for the next window'])
+		expect(wrapper.find('[data-testid="overview-pending-checked"]').text()).toBe('Updates checked today at 06:02')
+	})
+
+	it('says when no app with a policy has a newer version', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies, labels: {}, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'UTC' },
+		})
+
+		expect(wrapper.find('[data-testid="overview-pending-none"]').exists()).toBe(true)
+	})
+})
+
+// @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md
+describe('AutoUpdateOverview security holds', () => {
+	const securityPolicies = {
+		deck: { appId: 'deck', level: 'security', setBy: 'admin', setAt: '', blockedVersions: [] },
+		calendar: { appId: 'calendar', level: 'security', setBy: 'admin', setAt: '', blockedVersions: [] },
+	}
+
+	it('says why a security fix was not installed', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies: securityPolicies, labels: { deck: 'Deck' }, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'UTC', securityHolds: { deck: 'needs_major', calendar: 'stale' }, advisoriesFresh: true },
+		})
+
+		const held = wrapper.findAll('[data-testid="overview-held-row"]').map((row) => row.text())
+		expect(held).toEqual([
+			'The security fix for calendar waits until advisories are checked again.',
+			'The security fix for Deck needs a major update, so it was not installed.',
+		])
+		expect(wrapper.find('[data-testid="overview-stale"]').exists()).toBe(false)
+	})
+
+	it('says advisories were not checked recently while an app is on security', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies: securityPolicies, labels: {}, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'UTC', advisoriesFresh: false },
+		})
+
+		expect(wrapper.find('[data-testid="overview-stale"]').text()).toBe('Advisories were not checked recently, so security fixes wait.')
+	})
+
+	it('says nothing about stale advisories when no app is on security', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies, labels: {}, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'UTC', advisoriesFresh: false },
+		})
+
+		expect(wrapper.find('[data-testid="overview-stale"]').exists()).toBe(false)
+		expect(wrapper.findAll('[data-testid="overview-held-row"]')).toHaveLength(0)
+	})
+
+	it('names every kind the patch policy sets to by hand', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies, labels: {}, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'UTC', manualKinds: ['patch'] },
+		})
+
+		expect(wrapper.findAll('[data-testid="overview-by-hand"]').map((row) => row.text())).toEqual([
+			'Patch updates are set to by hand in the patch policy, so no app gets them automatically.',
+		])
+	})
+
 	// autoupdate-schedules task 3.3: days and next run per kind.
 	// @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
 	it('shows the days and next run of each kind a policy reaches, and never for a kind with no days', () => {

@@ -58,6 +58,7 @@ use Psr\Container\ContainerInterface;
  * @uses \OCA\Versioniq\Service\Api\ReportCollaborators
  * @uses \OCA\Versioniq\Service\Api\ReportStores
  * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores
+ * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateSecurityStores
  * @uses \OCA\Versioniq\Service\Discovery\DiscoveryFilter
  * @uses \OCA\Versioniq\Service\Installer\AppAutoloader
  * @uses \OCA\Versioniq\Service\Pin\Pin
@@ -185,7 +186,7 @@ final class ApiReadEndpointsGoldenTest extends TestCase {
 		$installer->method('getInstalledApps')->willReturn([['id' => 'notes', 'version' => '4.1.0']]);
 
 		$advisoryResults = $this->createMock(AdvisoryResultStore::class);
-		$advisoryResults->method('read')->willReturn(['advisories' => ['notes' => ['state' => 'advisory-available']], 'checkedAt' => 1_700_000_000]);
+		$advisoryResults->method('read')->willReturn(['advisories' => ['notes' => ['state' => 'advisory-available']], 'checkedAt' => 1_700_000_000, 'status' => 'ok', 'errors' => []]);
 
 		$advisorySettings = $this->createMock(AdvisorySettingsStore::class);
 		$advisorySettings->method('setIntervalHours')->willReturnCallback(function (int $hours): void {

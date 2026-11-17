@@ -29,7 +29,7 @@ final class SourceBindingValidationGoldenTest extends TestCase {
 		$ok = ['owner' => 'ConductionNL', 'repo' => 'versioniq'];
 
 		yield 'appstore accepted' => ['appstore', [], null];
-		yield 'appstore ignores release config' => ['appstore', ['owner' => '../x', 'forge' => 'gitlab'], null];
+		yield 'appstore ignores release config' => ['appstore', ['owner' => '../x', 'forge' => 'bitbucket'], null];
 		yield 'unknown kind' => ['svn', $ok, 'Unknown source kind: svn'];
 		yield 'empty kind' => ['', [], 'Unknown source kind: '];
 		yield 'release accepted' => ['github-release', $ok, null];
@@ -52,8 +52,8 @@ final class SourceBindingValidationGoldenTest extends TestCase {
 		yield 'owner bad beats repo bad' => ['github-release', ['owner' => 'a b', 'repo' => 'c/d'], 'github-release owner contains invalid characters'];
 		yield 'repo path traversal' => ['github-release', ['owner' => 'x', 'repo' => '../../etc'], 'github-release repo contains invalid characters'];
 		yield 'repo with star' => ['github-release', ['owner' => 'x', 'repo' => 'a*'], 'github-release repo contains invalid characters'];
-		yield 'repo bad beats forge bad' => ['github-release', ['owner' => 'x', 'repo' => 'a*', 'forge' => 'gitlab'], 'github-release repo contains invalid characters'];
-		yield 'unknown forge' => ['github-release', $ok + ['forge' => 'gitlab'], 'github-release binding has an unknown forge'];
+		yield 'repo bad beats forge bad' => ['github-release', ['owner' => 'x', 'repo' => 'a*', 'forge' => 'bitbucket'], 'github-release repo contains invalid characters'];
+		yield 'unknown forge' => ['github-release', $ok + ['forge' => 'bitbucket'], 'github-release binding has an unknown forge'];
 		yield 'forge empty string' => ['github-release', $ok + ['forge' => ''], 'github-release binding has an unknown forge'];
 		yield 'forge not a string' => ['github-release', $ok + ['forge' => 1], 'github-release binding has an unknown forge'];
 		yield 'forge case sensitive' => ['github-release', $ok + ['forge' => 'GitHub'], 'github-release binding has an unknown forge'];

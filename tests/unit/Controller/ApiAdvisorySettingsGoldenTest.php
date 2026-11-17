@@ -38,6 +38,7 @@ use ReflectionClass;
  * @uses \OCA\Versioniq\Service\Api\ReportCollaborators
  * @uses \OCA\Versioniq\Service\Api\ReportStores
  * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores
+ * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateSecurityStores
  */
 final class ApiAdvisorySettingsGoldenTest extends TestCase {
 	use BuildsByParameterName;
