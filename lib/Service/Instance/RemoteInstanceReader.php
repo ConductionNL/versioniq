@@ -97,7 +97,7 @@ class RemoteInstanceReader {
 	 */
 	private function read(InstanceConnection $connection): array {
 		try {
-			$response = $this->store->withPassword($connection, fn (string $password): IResponse => $this->request($connection, $password));
+			$response = $this->store->withPassword($connection, fn (#[\SensitiveParameter] string $password): IResponse => $this->request($connection, $password));
 		} catch (Throwable $error) {
 			$this->logger->warning('RemoteInstanceReader: manifest read failed', [
 				'connection' => $connection->id,
@@ -114,7 +114,7 @@ class RemoteInstanceReader {
 	/**
 	 * The GET of the remote manifest endpoint with the connection's credential.
 	 */
-	private function request(InstanceConnection $connection, string $password): IResponse {
+	private function request(InstanceConnection $connection, #[\SensitiveParameter] string $password): IResponse {
 		return $this->clientService->newClient()->get(rtrim($connection->baseUrl, '/') . self::MANIFEST_PATH, [
 			'auth' => [$connection->username, $password],
 			'headers' => ['OCS-APIREQUEST' => 'true', 'Accept' => 'application/json'],
