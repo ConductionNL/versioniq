@@ -321,11 +321,8 @@ class MigrationAttributeReader {
 	 */
 	private static function closing(string $source, int $open): ?int {
 		$opening = $source[$open] ?? '';
-		if (!isset(self::DELIMITERS[$opening])) {
-			return null;
-		}
-
-		$pair = [$opening => self::DELIMITERS[$opening]];
+		// An unknown opening pairs with '', which no character equals: the loop then finds no close.
+		$pair = [$opening => self::DELIMITERS[$opening] ?? ''];
 		$depth = 0;
 		foreach (self::unquoted($source, $open) as $i => $char) {
 			$depth += self::depthChange($char, $pair);

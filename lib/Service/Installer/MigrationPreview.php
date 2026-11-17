@@ -48,9 +48,21 @@ class MigrationPreview {
 			return null;
 		}
 
-		$described = $this->describe($targetAppPath, $pending['steps']);
-		$sizes = $this->sizes($described);
+		return [
+			'steps' => $this->stepEntries($this->describe($targetAppPath, $pending['steps'])),
+			'repairSteps' => self::repairSteps($targetAppPath),
+			'estimated' => $pending['estimated'],
+		];
+	}
 
+	/**
+	 * One preview entry per described step, each table with its rows and size class.
+	 *
+	 * @param array<string, array{actions: list<array{attribute: string, table: string, name: string, description: string}>, tables: list<string>, dataStep: bool, describes: bool}> $described
+	 * @return list<array<string, mixed>>
+	 */
+	private function stepEntries(array $described): array {
+		$sizes = $this->sizes($described);
 		$steps = [];
 		foreach ($described as $name => $step) {
 			$steps[] = [
@@ -62,11 +74,7 @@ class MigrationPreview {
 			];
 		}
 
-		return [
-			'steps' => $steps,
-			'repairSteps' => self::repairSteps($targetAppPath),
-			'estimated' => $pending['estimated'],
-		];
+		return $steps;
 	}
 
 	/**
@@ -126,8 +134,18 @@ class MigrationPreview {
 			return [];
 		}
 
-		$nodes = $xml->xpath('/info/repair-steps/post-migration/step');
+		return self::stepNames($xml->xpath('/info/repair-steps/post-migration/step'));
+	}
+
+	/**
+	 * The non-empty, trimmed text of each step node, in order.
+	 *
+	 * @param mixed $nodes What the xpath query answered: a list of nodes, or false/null.
+	 * @return list<string>
+	 */
+	private static function stepNames(mixed $nodes): array {
 		$steps = [];
+		/** @var mixed $step */
 		foreach (is_array($nodes) ? $nodes : [] as $step) {
 			$name = trim((string)$step);
 			if ($name !== '') {

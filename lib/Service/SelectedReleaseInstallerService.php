@@ -574,7 +574,17 @@ class SelectedReleaseInstallerService {
 			'dryRun' => $installedApp === null,
 			'debug' => $this->debug,
 			'servedFromCache' => $this->servedFromCache,
-		] + ($this->isDowngradeInstall ? ['orphanedMigrations' => $this->orphanedMigrations] : [])
+		] + $this->migrationFields();
+	}
+
+	/**
+	 * The migration fields of the envelope: the orphaned migrations of a
+	 * downgrade, the migration preview of an upgrade dry run, else none.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function migrationFields(): array {
+		return ($this->isDowngradeInstall ? ['orphanedMigrations' => $this->orphanedMigrations] : [])
 			+ ($this->isUpgradePreview ? ['migrationPreview' => $this->migrationPreview] : []);
 	}
 
@@ -860,11 +870,7 @@ class SelectedReleaseInstallerService {
 		if (!$dryRun || $this->preview === null) {
 			return;
 		}
-		try {
-			$installedVersion = $this->getAppManager()->getAppVersion($run->appId);
-		} catch (Exception) {
-			$installedVersion = '';
-		}
+		$installedVersion = $this->installedVersionOf($run->appId);
 		if ($installedVersion === '' || !version_compare($run->release->version, $installedVersion, '>')) {
 			return;
 		}
@@ -872,6 +878,15 @@ class SelectedReleaseInstallerService {
 		$this->isUpgradePreview = true;
 		$this->migrationPreview = $this->preview->build($run->appId, $target->previousPath, $target->root);
 		$this->addDebug('migration-preview', ['steps' => count($this->migrationPreview['steps'] ?? [])]);
+	}
+
+	/** The installed version of an app, '' when it is not installed or cannot be read. */
+	private function installedVersionOf(string $appId): string {
+		try {
+			return $this->getAppManager()->getAppVersion($appId);
+		} catch (Exception) {
+			return '';
+		}
 	}
 
 	/**

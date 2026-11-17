@@ -58,7 +58,7 @@ class MigrationDiffer {
 	 * @return array{steps: list<string>, estimated: bool}|null
 	 */
 	public function pending(string $appId, ?string $targetAppPath, ?string $installedAppPath = null): ?array {
-		$target = ($targetAppPath === null || !is_dir($targetAppPath)) ? null : $this->migrationBasenames($targetAppPath);
+		$target = $this->targetSteps($targetAppPath);
 		if ($target === null) {
 			return null;
 		}
@@ -68,13 +68,37 @@ class MigrationDiffer {
 			return $this->estimatedPending($target, $installedAppPath);
 		}
 
+		return ['steps' => self::unrecorded($target, $recorded), 'estimated' => false];
+	}
+
+	/**
+	 * The migration step basenames of the target copy, or null when there is no target folder.
+	 *
+	 * @return list<string>|null
+	 */
+	private function targetSteps(?string $targetAppPath): ?array {
+		if ($targetAppPath === null || !is_dir($targetAppPath)) {
+			return null;
+		}
+
+		return $this->migrationBasenames($targetAppPath);
+	}
+
+	/**
+	 * The target steps whose version the migrations table does not record, sorted.
+	 *
+	 * @param list<string> $target
+	 * @param array<string, mixed> $recorded Recorded versions as keys.
+	 * @return list<string>
+	 */
+	private static function unrecorded(array $target, array $recorded): array {
 		$steps = array_values(array_filter(
 			$target,
 			static fn (string $step): bool => !isset($recorded[self::recordedVersion($step)])
 		));
 		sort($steps);
 
-		return ['steps' => $steps, 'estimated' => false];
+		return $steps;
 	}
 
 	/**

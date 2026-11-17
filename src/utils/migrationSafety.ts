@@ -156,6 +156,18 @@ export function sizeClassAdvice(sizeClass: string): string {
 	}
 }
 
+/** The text of each Nextcloud migration attribute, by short class name. */
+const MIGRATION_ACTION_TEXTS: Record<string, () => string> = {
+	CreateTable: () => t('versioniq', 'creates a table'),
+	DropTable: () => t('versioniq', 'drops a table'),
+	AddColumn: () => t('versioniq', 'adds a column'),
+	DropColumn: () => t('versioniq', 'drops a column'),
+	ModifyColumn: () => t('versioniq', 'changes a column'),
+	AddIndex: () => t('versioniq', 'adds an index'),
+	DropIndex: () => t('versioniq', 'drops an index'),
+	DataCleansing: () => t('versioniq', 'cleans data'),
+}
+
 /**
  * What a Nextcloud migration attribute does; an unknown attribute is shown by its name.
  *
@@ -163,26 +175,8 @@ export function sizeClassAdvice(sizeClass: string): string {
  * @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
  */
 export function migrationActionText(attribute: string): string {
-	switch (attribute) {
-	case 'CreateTable':
-		return t('versioniq', 'creates a table')
-	case 'DropTable':
-		return t('versioniq', 'drops a table')
-	case 'AddColumn':
-		return t('versioniq', 'adds a column')
-	case 'DropColumn':
-		return t('versioniq', 'drops a column')
-	case 'ModifyColumn':
-		return t('versioniq', 'changes a column')
-	case 'AddIndex':
-		return t('versioniq', 'adds an index')
-	case 'DropIndex':
-		return t('versioniq', 'drops an index')
-	case 'DataCleansing':
-		return t('versioniq', 'cleans data')
-	default:
-		return attribute
-	}
+	const text = Object.prototype.hasOwnProperty.call(MIGRATION_ACTION_TEXTS, attribute) ? MIGRATION_ACTION_TEXTS[attribute] : undefined
+	return text ? text() : attribute
 }
 
 /**
