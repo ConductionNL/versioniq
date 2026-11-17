@@ -290,4 +290,24 @@ final class NotifierTest extends TestCase {
 			'alice assigned advisory GHSA-1 for the Nextcloud server to you. Review it on the Versioniq Advisories tab.',
 		], $messages);
 	}
+
+	/**
+	 * The server end-of-life warning names the major, the date and the days
+	 * left (inventory-lifecycle-signals, design D3).
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-admins-are-warned-before-the-server-leaves-support
+	 */
+	public function testServerEolNamesTheMajorTheDateAndTheDaysLeft(): void {
+		$notifier = new Notifier($this->l10nFactory());
+		$notification = $this->createMock(INotification::class);
+		$notification->method('getApp')->willReturn(Application::APP_ID);
+		$notification->method('getSubject')->willReturn('server_eol');
+		$notification->method('getSubjectParameters')->willReturn(['major' => '31', 'date' => '2026-06-30', 'daysRemaining' => 90]);
+		$notification->expects($this->once())->method('setParsedSubject')->with('Nextcloud 31 reaches end of life soon')->willReturnSelf();
+		$notification->expects($this->once())->method('setParsedMessage')
+			->with('Nextcloud 31 stops receiving updates on 2026-06-30, in 90 days. Plan the upgrade to a maintained version.')
+			->willReturnSelf();
+
+		$this->assertSame($notification, $notifier->prepare($notification, 'en'));
+	}
 }

@@ -34,6 +34,7 @@ import InstallProgress from './components/InstallProgress.vue'
 import InstallResultNotices from './components/InstallResultNotices.vue'
 import InstanceSettingsPanel from './components/InstanceSettingsPanel.vue'
 import IntegrationsPanel from './components/IntegrationsPanel.vue'
+import LifecycleBadge from './components/LifecycleBadge.vue'
 import PatchPolicyPanel from './components/PatchPolicyPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
@@ -42,6 +43,7 @@ import ReleaseDate from './components/ReleaseDate.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
 import SourceOverrideField from './components/SourceOverrideField.vue'
 import SourcesPanel from './components/SourcesPanel.vue'
+import SuccessorsPanel from './components/SuccessorsPanel.vue'
 import TokensPanel from './components/TokensPanel.vue'
 import TrustedSourcesPanel from './components/TrustedSourcesPanel.vue'
 import UpdateGroupsPanel from './components/UpdateGroupsPanel.vue'
@@ -53,6 +55,7 @@ import KnownIssueDialog from './dialogs/KnownIssueDialog.vue'
 import PinDialog from './dialogs/PinDialog.vue'
 import PinOverrideDialog from './dialogs/PinOverrideDialog.vue'
 import QuickUpdateDialog from './dialogs/QuickUpdateDialog.vue'
+import ReplaceAppDialog from './dialogs/ReplaceAppDialog.vue'
 import ShaMismatchDialog from './dialogs/ShaMismatchDialog.vue'
 import UpdateAllDialog from './dialogs/UpdateAllDialog.vue'
 import { ocsWrite } from './ocs.ts'
@@ -113,6 +116,9 @@ type AppVersion = {
 
 const isLoading = ref(true)
 const apps = ref<AppOption[]>([])
+// The app the replace dialog is open for; its successor offer comes from the
+// pending-updates snapshot (inventory-lifecycle-signals, design D4).
+const replaceTarget = ref<string | null>(null)
 const advisories = ref<Record<string, AdvisoryCorrelation>>({})
 // Dismissals and owners per `{appId}|{advisoryId}`, applied when read (advisories-triage).
 const advisoryTriage = ref<AdvisoryTriageMap>({})
@@ -647,6 +653,14 @@ async function loadApps (): Promise<void> {
 	} catch (error) {
 		errorMessage.value = error instanceof Error ? error.message : 'Could not fetch app list.'
 	}
+}
+
+/**
+ * Re-reads the app list after an app was replaced by its successor.
+ */
+async function onReplaced (): Promise<void> {
+	replaceTarget.value = null
+	await loadApps()
 }
 
 // Advisory correlation is fetched separately from the app list so a slow or
@@ -2684,6 +2698,12 @@ watch(dryRunEnabled, () => {
 				:busy="isInstallingVersion"
 				@update:open="isDowngradeConfirmOpen = $event"
 				@resolve="onDowngradeResolved" />
+			<ReplaceAppDialog v-if="replaceTarget && pendingUpdates[replaceTarget]?.successor"
+				:open="true"
+				:appId="replaceTarget"
+				:offer="pendingUpdates[replaceTarget].successor"
+				@update:open="(value: boolean) => { if (!value) { replaceTarget = null } }"
+				@replaced="onReplaced" />
 			<KnownIssueDialog
 				:open="isKnownIssueDialogOpen"
 				:appId="selectedApp"
@@ -3062,6 +3082,7 @@ watch(dryRunEnabled, () => {
 																{{ outsidePolicyLabel(pendingUpdates[app.id]?.linesBehind ?? 0) }}
 															</span>
 														</p>
+														<LifecycleBadge :lifecycle="pendingUpdates[app.id]?.lifecycle ?? null" />
 														<AppSourceBadges
 															:isShipped="app.isShipped === true"
 															:isCore="app.isCore"
@@ -3083,6 +3104,15 @@ watch(dryRunEnabled, () => {
 															data-testid="safe-version-button"
 															@click.stop="openQuickUpdate(app.id, safeVersionFor(app) ?? '', advisoryFor(app.id)?.advisories?.[0]?.id ?? null)">
 															{{ t('versioniq', 'Update to safe version {version}', { version: safeVersionFor(app) ?? '' }) }}
+														</button>
+														<button
+															v-if="pendingUpdates[app.id]?.successor"
+															type="button"
+															:class="$style.appCardButton"
+															:disabled="isCheckingVersions || isInstallingVersion"
+															data-testid="replace-successor-button"
+															@click.stop="replaceTarget = app.id">
+															{{ t('versioniq', 'Replace with {successor}', { successor: pendingUpdates[app.id]?.successor?.to ?? '' }) }}
 														</button>
 													</div>
 													<div :class="$style.appCardMedia">
@@ -3519,6 +3549,7 @@ watch(dryRunEnabled, () => {
 					aria-labelledby="settings-tab">
 					<InstanceSettingsPanel />
 					<PatchPolicyPanel />
+					<SuccessorsPanel />
 				</div>
 				<IntegrationsPanel v-if="integriqInstalled && currentTab === 'integrations'"
 					id="integrations-panel"

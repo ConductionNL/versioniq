@@ -15,6 +15,8 @@ namespace OCA\Versioniq\Service\Lifecycle;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Source\AppStoreSource;
 use OCA\Versioniq\Service\Source\ForgeReleaseSource;
+use OCA\Versioniq\Service\Source\SourceBinding;
+use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\SourceLookup;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IAppConfig;
@@ -22,8 +24,10 @@ use OCP\IAppConfig;
 /**
  * The life cycle signals of one app, read from the version listing the
  * availability sweep already fetched: removed from the App Store, and no
- * release for a year; and whether the forge repository is archived, which
- * takes one request per forge app.
+ * release for a year; whether the forge repository is archived, which
+ * takes one request per forge app; and whether any listed release still
+ * supports a maintained server major, read from the end-of-life feed and the
+ * cached App Store catalogue.
  *
  * A signal that cannot be told is null, never false: an app without release
  * dates is "unknown", not "maintained".
@@ -36,11 +40,48 @@ class LifecycleSignals {
 
 	public const DEFAULT_STALE_MONTHS = 12;
 
+	/** Majors above the newest one the feed lists that are tested too: a release for them is for a server still maintained. */
+	private const MAJORS_AHEAD = 3;
+
 	public function __construct(
 		private IAppConfig $config,
 		private ITimeFactory $timeFactory,
 		private ?SourceLookup $sources = null,
+		private ?ServerEolFeed $eolFeed = null,
 	) {
+	}
+
+	/**
+	 * Whether the app is out of support: no listed release supports a server
+	 * major that is still maintained (design D2). Null when that cannot be
+	 * told: the feed is off or unreadable, the app is not bound to the App
+	 * Store, or its releases name no server range. A forge release publishes
+	 * no range, so a forge app reads unknown, never "out of support".
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 */
+	public function endOfSupport(string $appId): ?bool {
+		$known = array_keys($this->eolFeed?->majors() ?? []);
+		if ($known === []) {
+			return null;
+		}
+
+		$source = $this->boundSource($appId)['source'] ?? null;
+		if (!$source instanceof AppStoreSource) {
+			return null;
+		}
+
+		$newest = max($known);
+		$supported = $source->supportedMajors($appId, array_merge($known, range($newest + 1, $newest + self::MAJORS_AHEAD)));
+		if ($supported === null) {
+			return null;
+		}
+		if ($supported !== [] && max($supported) > $newest) {
+			// A release for a major newer than any the feed lists is for a maintained server.
+			return false;
+		}
+
+		return $this->eolFeed?->endOfSupport($supported);
 	}
 
 	/**
@@ -50,6 +91,22 @@ class LifecycleSignals {
 	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
 	 */
 	public function archived(string $appId): ?bool {
+		$bound = $this->boundSource($appId);
+		if ($bound === null) {
+			return null;
+		}
+
+		return $bound['source'] instanceof ForgeReleaseSource ? $bound['source']->isArchived($bound['binding']) : null;
+	}
+
+	/**
+	 * The app's source binding and the source it resolves to; null when the
+	 * app is not bound or the registry cannot resolve the binding.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 * @return array{binding: SourceBinding, source: SourceInterface}|null
+	 */
+	private function boundSource(string $appId): ?array {
 		$binding = $this->sources?->bindingStore->get($appId);
 		if ($binding === null) {
 			return null;
@@ -60,7 +117,7 @@ class LifecycleSignals {
 			return null;
 		}
 
-		return $source instanceof ForgeReleaseSource ? $source->isArchived($binding) : null;
+		return ['binding' => $binding, 'source' => $source];
 	}
 
 	/**
