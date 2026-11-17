@@ -28,7 +28,7 @@ use RuntimeException;
  * @spec openspec/changes/install-live-progress/specs/version-management/spec.md#requirement-an-admin-sees-each-stage-of-an-install-while-it-runs
  */
 final class InstallProgressTest extends TestCase {
-	private const TOKEN = 'k3Jw9-q2Lx_7Hn4Pz8Rt';
+	private const TOKEN = 'progress-token-for-tests-0001';
 
 	/** @var array<string, array{string, int}> What the cache holds, with each entry's lifetime. */
 	private array $store = [];

@@ -34,7 +34,7 @@ use ReflectionProperty;
  * @spec openspec/changes/install-live-progress/specs/version-management/spec.md
  */
 final class InstallerProgressFeedTest extends TestCase {
-	private const TOKEN = 'k3Jw9-q2Lx_7Hn4Pz8Rt';
+	private const TOKEN = 'progress-token-for-tests-0001';
 
 	/** @var array<string, mixed> */
 	private array $store = [];

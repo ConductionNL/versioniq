@@ -93,7 +93,7 @@ final class ApiNonAdminRefusalTest extends TestCase {
 			'auditLog' => ['auditLog', []],
 			'cacheSummary' => ['cacheSummary', []],
 			'clearCache' => ['clearCache', []],
-			'installProgress' => ['installProgress', ['k3Jw9-q2Lx_7Hn4Pz8Rt']],
+			'installProgress' => ['installProgress', ['progress-token-for-tests-0001']],
 		];
 	}
 

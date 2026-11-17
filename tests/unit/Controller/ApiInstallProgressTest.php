@@ -39,7 +39,7 @@ use ReflectionClass;
 final class ApiInstallProgressTest extends TestCase {
 	use BuildsByParameterName;
 
-	private const TOKEN = 'k3Jw9-q2Lx_7Hn4Pz8Rt';
+	private const TOKEN = 'progress-token-for-tests-0001';
 
 	/** @var list<string> */
 	private array $calls = [];
