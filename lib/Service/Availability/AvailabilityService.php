@@ -72,7 +72,7 @@ class AvailabilityService implements AvailabilityServiceInterface {
 			$boundSourceId = is_string($app['boundSourceId'] ?? null) ? $app['boundSourceId'] : null;
 			$check = new AppVersionCheck($installedVersion, $this->pinStore->get($appId) !== null, $boundSourceId);
 			$results[$appId] = microtime(true) >= $deadline
-				? $this->entry($check, [], 'The update check ran out of time before it reached this app.')
+				? $this->entry($check, ['error' => 'The update check ran out of time before it reached this app.'])
 				: $this->listedEntry($appId, $check);
 		}
 
@@ -175,7 +175,7 @@ class AvailabilityService implements AvailabilityServiceInterface {
 		} catch (\Throwable $error) {
 			$this->logger->warning('AvailabilityService: listing versions failed', ['app' => $appId, 'message' => $error->getMessage()]);
 
-			return $this->entry($check, [], $error->getMessage());
+			return $this->entry($check, ['error' => $error->getMessage()]);
 		}
 
 		$error = self::listingError($listing);
@@ -183,7 +183,7 @@ class AvailabilityService implements AvailabilityServiceInterface {
 		$sourceId = is_string($listing['sourceId'] ?? null) ? $listing['sourceId'] : $check->sourceId;
 		$judged = $this->recordWithdrawals($appId, $error === null ? $versions : []);
 
-		$entry = $this->entry($check->withSource($sourceId), $versions, $error);
+		$entry = $this->entry($check->withSource($sourceId), ['versions' => $versions, 'error' => $error]);
 		if (!$judged) {
 			$entry['installedWithdrawn'] = null;
 		}
@@ -264,10 +264,12 @@ class AvailabilityService implements AvailabilityServiceInterface {
 	}
 
 	/**
-	 * @param list<array<string, mixed>> $versions
+	 * @param array{versions?: list<array<string, mixed>>, error?: ?string} $listing The listed versions (none when absent) and the listing's error (none when absent).
 	 * @return array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, installedWithdrawn: ?bool, lifecycle?: array<string, mixed>}
 	 */
-	private function entry(AppVersionCheck $check, array $versions, ?string $error): array {
+	private function entry(AppVersionCheck $check, array $listing): array {
+		$versions = $listing['versions'] ?? [];
+		$error = $listing['error'] ?? null;
 		$installedParts = $this->parse($check->installedVersion);
 		[$newest, $newestCompatible, $linesBehind] = $this->scanVersions($versions, $installedParts);
 
