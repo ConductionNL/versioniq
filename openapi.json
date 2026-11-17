@@ -2,7 +2,7 @@
     "openapi": "3.0.3",
     "info": {
         "title": "versioniq",
-        "version": "0.0.1",
+        "version": "1.6.8-unstable.20261117134237",
         "description": "Install any earlier or newer version of already installed Nextcloud apps\n\nEvery path is served under `/api/v1/`, the version this document describes. The unversioned `/api/` paths keep working, are deprecated, and name their `/api/v1/` successor in a `Link` header next to a `Deprecation` header.",
         "license": {
             "name": "EUPL-1.2"
