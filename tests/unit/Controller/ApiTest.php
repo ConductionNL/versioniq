@@ -820,7 +820,7 @@ final class ApiTest extends TestCase {
 		$installer = $this->createMock(InstallerService::class);
 		$installer->method('isManageableApp')->willReturnCallback(static fn (string $appId): bool => $appId !== 'notmanaged');
 
-		return $this->buildAdminController($installer, $request, null, null, null, 'admin', null, null, null, null, null, $groupStore);
+		return $this->buildAdminController($installer, $request, groupStore: $groupStore);
 	}
 
 	public function testUpdateAutoUpdateGroupsIsForbiddenForANonAdmin(): void {
@@ -910,7 +910,7 @@ final class ApiTest extends TestCase {
 		]);
 
 		$installer = $this->createMock(InstallerService::class);
-		$response = $this->buildAdminController($installer, $this->paramsRequest([]), null, null, null, 'admin', null, $settingsStore, null, null, null, $groupStore)->policies();
+		$response = $this->buildAdminController($installer, $this->paramsRequest([]), autoUpdateSettingsStore: $settingsStore, groupStore: $groupStore)->policies();
 
 		$this->assertSame(200, $response->getStatus());
 		$this->assertSame([[
