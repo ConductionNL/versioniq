@@ -364,4 +364,20 @@ final class InstanceSettingsTest extends TestCase {
 		self::assertSame(\OCA\Versioniq\Service\InstallerService::KEY_NOTIFY_USERS_ON_UPDATE, InstanceSettings::KEY_NOTIFY_USERS_ON_UPDATE);
 		self::assertSame('notify_users_on_update', InstanceSettings::KEY_NOTIFY_USERS_ON_UPDATE);
 	}
+
+	/**
+	 * @spec openspec/changes/advisories-bundled-libraries
+	 */
+	public function testTheOsvBaseDefaultsToThePublicApiAndMustBeHttps(): void {
+		$settings = $this->store()->read();
+		self::assertSame('', $settings['osvApiBase']);
+		self::assertSame('https://api.osv.dev', $settings['osvApiDefault']);
+
+		$store = $this->store();
+		self::assertSame(['osvApiBase'], $store->update(['osvApiBase' => 'https://osv.mirror.example/']));
+		self::assertSame('https://osv.mirror.example', $store->read()['osvApiBase']);
+
+		$this->expectException(InvalidArgumentException::class);
+		$this->store()->update(['osvApiBase' => 'http://osv.mirror.example']);
+	}
 }

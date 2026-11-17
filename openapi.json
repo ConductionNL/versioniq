@@ -2284,7 +2284,9 @@
                                                     "required": [
                                                         "advisories",
                                                         "checkedAt",
-                                                        "triage"
+                                                        "triage",
+                                                        "libraries",
+                                                        "librariesCheckedAt"
                                                     ],
                                                     "properties": {
                                                         "advisories": {
@@ -2303,6 +2305,17 @@
                                                             "additionalProperties": {
                                                                 "type": "object"
                                                             }
+                                                        },
+                                                        "libraries": {
+                                                            "type": "object",
+                                                            "additionalProperties": {
+                                                                "type": "object"
+                                                            }
+                                                        },
+                                                        "librariesCheckedAt": {
+                                                            "type": "integer",
+                                                            "format": "int64",
+                                                            "nullable": true
                                                         }
                                                     }
                                                 }
@@ -6800,7 +6813,8 @@
                                                         "maxIntervalHours",
                                                         "digestEnabled",
                                                         "ncscEnabled",
-                                                        "ncscStatus"
+                                                        "ncscStatus",
+                                                        "librariesEnabled"
                                                     ],
                                                     "properties": {
                                                         "intervalHours": {
@@ -6836,6 +6850,9 @@
                                                                     "type": "boolean"
                                                                 }
                                                             }
+                                                        },
+                                                        "librariesEnabled": {
+                                                            "type": "boolean"
                                                         }
                                                     }
                                                 }
@@ -6983,6 +7000,12 @@
                                         "nullable": true,
                                         "default": null,
                                         "description": "Whether the sweep also reads NCSC-NL's advisories ('1'/'0'). Omitted leaves it unchanged."
+                                    },
+                                    "librariesEnabled": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "Whether bundled libraries are checked against OSV ('1'/'0'). Omitted leaves it unchanged."
                                     }
                                 }
                             }
@@ -7030,7 +7053,8 @@
                                                         "maxIntervalHours",
                                                         "digestEnabled",
                                                         "ncscEnabled",
-                                                        "ncscStatus"
+                                                        "ncscStatus",
+                                                        "librariesEnabled"
                                                     ],
                                                     "properties": {
                                                         "intervalHours": {
@@ -7066,6 +7090,9 @@
                                                                     "type": "boolean"
                                                                 }
                                                             }
+                                                        },
+                                                        "librariesEnabled": {
+                                                            "type": "boolean"
                                                         }
                                                     }
                                                 }
@@ -10776,6 +10803,12 @@
                                         "nullable": true,
                                         "default": null,
                                         "description": "Where advisories are read from: remote (the feed address) or local (the imported copy)"
+                                    },
+                                    "osvApiBase": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "default": null,
+                                        "description": "OSV API base URL (https); blank uses api.osv.dev"
                                     }
                                 }
                             }
