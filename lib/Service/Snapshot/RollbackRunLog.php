@@ -41,17 +41,18 @@ class RollbackRunLog {
 	/**
 	 * The row at the end of a run; a failure status when any step failed.
 	 *
+	 * @param array{succeeded: int, failed: int, skipped: int} $counts The steps per outcome, as {@see RollbackRunner::counts()} gives them.
 	 * @throws \InvalidArgumentException on a negative count
 	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
 	 */
-	public function finished(string $actorUid, string $snapshotId, int $succeeded, int $failed, int $skipped): void {
-		if ($succeeded < 0 || $failed < 0 || $skipped < 0) {
+	public function finished(string $actorUid, string $snapshotId, array $counts): void {
+		if (min($counts['succeeded'], $counts['failed'], $counts['skipped']) < 0) {
 			throw new \InvalidArgumentException('Step counts cannot be negative');
 		}
 		$this->write(
 			$actorUid,
-			$failed > 0 ? AuditLogger::STATUS_FAILURE : AuditLogger::STATUS_SUCCESS,
-			sprintf('Rollback to snapshot %s finished: %d succeeded, %d failed, %d skipped', $snapshotId, $succeeded, $failed, $skipped),
+			$counts['failed'] > 0 ? AuditLogger::STATUS_FAILURE : AuditLogger::STATUS_SUCCESS,
+			sprintf('Rollback to snapshot %s finished: %d succeeded, %d failed, %d skipped', $snapshotId, $counts['succeeded'], $counts['failed'], $counts['skipped']),
 		);
 	}
 

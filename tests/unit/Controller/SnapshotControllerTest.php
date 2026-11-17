@@ -16,6 +16,7 @@ use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Snapshot\InstanceSnapshot;
 use OCA\Versioniq\Service\Snapshot\RollbackRunLog;
 use OCA\Versioniq\Service\Snapshot\SnapshotPlans;
+use OCA\Versioniq\Service\Snapshot\SnapshotInstaller;
 use OCA\Versioniq\Service\Snapshot\SnapshotStore;
 use OCA\Versioniq\Service\Snapshot\SnapshotTaker;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -35,6 +36,7 @@ use Psr\Log\LoggerInterface;
  * @covers \OCA\Versioniq\Controller\SnapshotController
  * @uses \OCA\Versioniq\Service\Snapshot\SnapshotStore
  * @uses \OCA\Versioniq\Service\Snapshot\SnapshotTaker
+ * @uses \OCA\Versioniq\Service\Snapshot\SnapshotInstaller
  * @uses \OCA\Versioniq\Service\Snapshot\RollbackRunLog
  * @uses \OCA\Versioniq\Service\Snapshot\InstanceSnapshot
  * @uses \OCA\Versioniq\Service\Audit\AuditSubject
@@ -96,7 +98,7 @@ final class SnapshotControllerTest extends TestCase {
 			'versioniq',
 			$this->createMock(IRequest::class),
 			$this->store,
-			new SnapshotTaker($installer, $this->store, $audit, $time),
+			new SnapshotTaker(new SnapshotInstaller($installer), $this->store, $audit, $time),
 			$plans,
 			new RollbackRunLog($audit),
 			$groups,

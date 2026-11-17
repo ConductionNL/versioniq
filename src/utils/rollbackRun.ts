@@ -120,6 +120,8 @@ export type RunOptions = {
 	shouldStop?: () => boolean
 	/** Called after each step. */
 	onStep?: (index: number, outcome: StepOutcome) => void
+	/** The install of one step; injectable for tests. Defaults to installStep. */
+	install?: InstallStep
 }
 
 export type RunResult = {
@@ -135,11 +137,11 @@ export type RunResult = {
  * only the downgrade steps; a run stops at the first failure.
  *
  * @param steps The plan.
- * @param options What to run and how.
- * @param install The install of one step; injectable for tests.
+ * @param options What to run and how, and the install of one step.
  * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
  */
-export async function runRollback (steps: RollbackStep[], options: RunOptions, install: InstallStep = installStep): Promise<RunResult> {
+export async function runRollback (steps: RollbackStep[], options: RunOptions): Promise<RunResult> {
+	const install = options.install ?? installStep
 	const outcomes = new Map<number, StepOutcome>()
 	for (let index = options.startAt ?? 0; index < steps.length; index++) {
 		const step = steps[index]
@@ -164,11 +166,12 @@ export async function runRollback (steps: RollbackStep[], options: RunOptions, i
  * every other step that would have moved as skipped.
  *
  * @param steps The plan.
- * @param outcomes The outcome of each step that ran, by index.
- * @param movePins Whether pinned steps were included.
+ * @param run The outcome of each step that ran, by index, and whether pinned steps were included.
+ * @param run.outcomes The outcome of each step that ran, by index.
+ * @param run.movePins Whether pinned steps were included.
  * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
  */
-export function runCounts (steps: RollbackStep[], outcomes: Map<number, StepOutcome>, movePins: boolean): { succeeded: number, failed: number, skipped: number } {
+export function runCounts (steps: RollbackStep[], { outcomes, movePins }: { outcomes: Map<number, StepOutcome>, movePins: boolean }): { succeeded: number, failed: number, skipped: number } {
 	const counts = { succeeded: 0, failed: 0, skipped: 0 }
 	steps.forEach((step, index) => {
 		const outcome = outcomes.get(index)

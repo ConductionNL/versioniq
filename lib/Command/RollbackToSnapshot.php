@@ -13,6 +13,7 @@ namespace OCA\Versioniq\Command;
 use OCA\Versioniq\Service\Snapshot\InstanceSnapshot;
 use OCA\Versioniq\Service\Snapshot\RollbackRunLog;
 use OCA\Versioniq\Service\Snapshot\RollbackRunner;
+use OCA\Versioniq\Service\Snapshot\RunMode;
 use OCA\Versioniq\Service\Snapshot\SnapshotPlans;
 use OCA\Versioniq\Service\Snapshot\SnapshotStore;
 use OCA\Versioniq\Service\Snapshot\SnapshotTaker;
@@ -78,38 +79,42 @@ class RollbackToSnapshot extends Command {
 		$steps = $this->plans->planFor($snapshot);
 		$output->writeln(sprintf('Plan to roll back to snapshot %s (%s, %s):', $snapshot->id, $snapshot->takenAt, $snapshot->reason));
 		$this->printPlan($output, $steps);
-		$runnable = count(array_filter($steps, static fn (array $step): bool => RollbackRunner::isRunnable($step, $movePins)));
+		$runnable = self::runnable($steps, $movePins);
 
 		if ((bool)$input->getOption('dry-run')) {
-			$outcomes = $this->runner->run($steps, true, $movePins, true, fn (array $outcome) => $this->printCheck($output, $outcome));
-
-			return $this->exitCode($outcomes);
+			return $this->exitCode($this->runner->run($steps, new RunMode(true, $movePins, true, fn (array $outcome) => $this->printCheck($output, $outcome))));
 		}
-		if ($runnable === 0) {
-			$output->writeln('<info>Nothing to roll back.</info>');
-
-			return InstallExitCode::OK;
-		}
-		if (!(bool)$input->getOption('yes') && !$this->confirmed($input, $output, $runnable)) {
-			$output->writeln('Cancelled; nothing changed.');
-
-			return InstallExitCode::BAD_ARGUMENTS;
+		$refused = $this->refusal($input, $output, $runnable);
+		if ($refused !== null) {
+			return $refused;
 		}
 
-		return $this->runPlan($output, $snapshot, $steps, $movePins, (bool)$input->getOption('continue'), $runnable);
+		$mode = new RunMode(false, $movePins, (bool)$input->getOption('continue'), fn (array $outcome) => $this->printOutcome($output, $outcome));
+
+		return $this->runPlan($output, $snapshot, $steps, $mode);
+	}
+
+	/**
+	 * The number of steps that install anything.
+	 *
+	 * @param list<array<string, mixed>> $steps
+	 */
+	private static function runnable(array $steps, bool $movePins): int {
+		/** @psalm-suppress ArgumentTypeCoercion The steps come from the planner. */
+		return count(array_filter($steps, static fn (array $step): bool => RollbackRunner::isRunnable($step, $movePins)));
 	}
 
 	/**
 	 * @param list<array<string, mixed>> $steps
 	 */
-	private function runPlan(OutputInterface $output, InstanceSnapshot $snapshot, array $steps, bool $movePins, bool $continue, int $runnable): int {
+	private function runPlan(OutputInterface $output, InstanceSnapshot $snapshot, array $steps, RunMode $mode): int {
 		$before = $this->taker->take('before_rollback', 'system');
 		$output->writeln(sprintf('Snapshot %s taken before the run.', $before->id));
-		$this->runLog->started('system', $snapshot->id, $runnable);
+		$this->runLog->started('system', $snapshot->id, self::runnable($steps, $mode->movePins));
 		/** @psalm-suppress ArgumentTypeCoercion The steps come from the planner. */
-		$outcomes = $this->runner->run($steps, false, $movePins, $continue, fn (array $outcome) => $this->printOutcome($output, $outcome));
+		$outcomes = $this->runner->run($steps, $mode);
 		$counts = RollbackRunner::counts($outcomes);
-		$this->runLog->finished('system', $snapshot->id, $counts['succeeded'], $counts['failed'], $counts['skipped']);
+		$this->runLog->finished('system', $snapshot->id, $counts);
 		$output->writeln(sprintf('%d succeeded, %d failed, %d skipped.', $counts['succeeded'], $counts['failed'], $counts['skipped']));
 
 		return $this->exitCode($outcomes);
@@ -127,15 +132,19 @@ class RollbackToSnapshot extends Command {
 
 			return null;
 		}
-		if ($id !== '') {
-			$snapshot = $this->store->get($id);
-			if ($snapshot === null) {
-				$output->writeln(sprintf('<error>Snapshot %s not found.</error>', $id));
-			}
+		return $id !== '' ? $this->snapshotById($id, $output) : $this->snapshotByDate($to, $output);
+	}
 
-			return $snapshot;
+	private function snapshotById(string $id, OutputInterface $output): ?InstanceSnapshot {
+		$snapshot = $this->store->get($id);
+		if ($snapshot === null) {
+			$output->writeln(sprintf('<error>Snapshot %s not found.</error>', $id));
 		}
 
+		return $snapshot;
+	}
+
+	private function snapshotByDate(string $to, OutputInterface $output): ?InstanceSnapshot {
 		$moment = SnapshotStore::endOfDay($to);
 		if ($moment === null) {
 			$output->writeln('<error>--to must be a date, YYYY-MM-DD.</error>');
@@ -151,6 +160,25 @@ class RollbackToSnapshot extends Command {
 		$output->writeln(sprintf('Using snapshot %s, the newest taken on or before %s.', $snapshot->id, $to));
 
 		return $snapshot;
+	}
+
+	/**
+	 * The exit code when the run does not go ahead (nothing to do, or not
+	 * confirmed), else null.
+	 */
+	private function refusal(InputInterface $input, OutputInterface $output, int $runnable): ?int {
+		if ($runnable === 0) {
+			$output->writeln('<info>Nothing to roll back.</info>');
+
+			return InstallExitCode::OK;
+		}
+		if (!(bool)$input->getOption('yes') && !$this->confirmed($input, $output, $runnable)) {
+			$output->writeln('Cancelled; nothing changed.');
+
+			return InstallExitCode::BAD_ARGUMENTS;
+		}
+
+		return null;
 	}
 
 	private function confirmed(InputInterface $input, OutputInterface $output, int $runnable): bool {
@@ -186,15 +214,19 @@ class RollbackToSnapshot extends Command {
 
 			return;
 		}
+		$output->writeln(sprintf('%s %s -> %s: %s', (string)$outcome['appId'], (string)$outcome['from'], (string)$outcome['to'], self::orphanedLine($outcome)));
+	}
+
+	/**
+	 * What a checked downgrade would orphan, as one phrase.
+	 *
+	 * @param array<string, mixed> $outcome
+	 */
+	private static function orphanedLine(array $outcome): string {
 		$payload = is_array($outcome['payload']) ? $outcome['payload'] : [];
 		$migrations = is_array($payload['orphanedMigrations'] ?? null) ? $payload['orphanedMigrations'] : [];
-		$output->writeln(sprintf(
-			'%s %s -> %s: %s',
-			(string)$outcome['appId'],
-			(string)$outcome['from'],
-			(string)$outcome['to'],
-			$migrations === [] ? 'no migrations orphaned' : 'would orphan ' . implode(', ', array_map('strval', $migrations)),
-		));
+
+		return $migrations === [] ? 'no migrations orphaned' : 'would orphan ' . implode(', ', array_map('strval', $migrations));
 	}
 
 	/**

@@ -11,7 +11,6 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Snapshot;
 
 use OCA\Versioniq\Db\AuditEntryMapper;
-use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pin\PinStore;
 
 /**
@@ -25,7 +24,7 @@ use OCA\Versioniq\Service\Pin\PinStore;
  */
 class SnapshotPlans {
 	public function __construct(
-		private InstallerService $installerService,
+		private SnapshotInstaller $installer,
 		private PinStore $pinStore,
 		private AuditEntryMapper $auditMapper,
 		private RollbackPlanner $planner,
@@ -39,25 +38,33 @@ class SnapshotPlans {
 	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
 	 */
 	public function planFor(InstanceSnapshot $snapshot): array {
-		$installed = $this->installerService->getInstalledApps();
+		$installed = $this->installer->installedApps();
 		$pins = [];
 		foreach ($this->pinStore->all() as $appId => $pin) {
 			$pins[(string)$appId] = $pin->version;
 		}
 		$draft = $this->planner->plan($snapshot, $installed, $pins);
+		$lastChangedAt = $this->lastChanges($draft, $snapshot->takenAt);
 
+		return $lastChangedAt === [] ? $draft : $this->planner->plan($snapshot, $installed, $pins, $lastChangedAt);
+	}
+
+	/**
+	 * Per moving app of the plan, the time of its newest audit row after the snapshot.
+	 *
+	 * @param list<RollbackStep> $steps
+	 * @return array<string, string>
+	 */
+	private function lastChanges(array $steps, string $takenAt): array {
 		$lastChangedAt = [];
-		foreach ($draft as $step) {
-			if ($step['kind'] !== 'downgrade' && $step['kind'] !== 'upgrade') {
-				continue;
-			}
-			$changedAt = $this->newestChangeAfter($step['appId'], $snapshot->takenAt);
+		foreach ($steps as $step) {
+			$changedAt = in_array($step['kind'], ['downgrade', 'upgrade'], true) ? $this->newestChangeAfter($step['appId'], $takenAt) : null;
 			if ($changedAt !== null) {
 				$lastChangedAt[$step['appId']] = $changedAt;
 			}
 		}
 
-		return $lastChangedAt === [] ? $draft : $this->planner->plan($snapshot, $installed, $pins, $lastChangedAt);
+		return $lastChangedAt;
 	}
 
 	/**

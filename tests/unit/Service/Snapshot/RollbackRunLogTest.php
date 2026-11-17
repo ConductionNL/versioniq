@@ -47,8 +47,8 @@ final class RollbackRunLogTest extends TestCase {
 
 	public function testTheEndRowCountsTheStepsAndFailsWhenOneFailed(): void {
 		$log = $this->log();
-		$log->finished('alice', 's1', 2, 0, 0);
-		$log->finished('', 's1', 1, 1, 1);
+		$log->finished('alice', 's1', ['succeeded' => 2, 'failed' => 0, 'skipped' => 0]);
+		$log->finished('', 's1', ['succeeded' => 1, 'failed' => 1, 'skipped' => 1]);
 
 		$this->assertSame(AuditLogger::STATUS_SUCCESS, $this->rows[0][1]);
 		$this->assertSame('Rollback to snapshot s1 finished: 2 succeeded, 0 failed, 0 skipped', $this->rows[0][2]);
@@ -60,7 +60,7 @@ final class RollbackRunLogTest extends TestCase {
 	public function testANegativeCountIsRefused(): void {
 		$this->expectException(\InvalidArgumentException::class);
 		try {
-			$this->log()->finished('alice', 's1', 1, -1, 0);
+			$this->log()->finished('alice', 's1', ['succeeded' => 1, 'failed' => -1, 'skipped' => 0]);
 		} finally {
 			$this->assertSame([], $this->rows);
 		}

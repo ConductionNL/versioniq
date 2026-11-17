@@ -14,7 +14,6 @@ use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Audit\AuditSubject;
-use OCA\Versioniq\Service\InstallerService;
 use OCP\AppFramework\Utility\ITimeFactory;
 
 /**
@@ -28,7 +27,7 @@ use OCP\AppFramework\Utility\ITimeFactory;
  */
 class SnapshotTaker {
 	public function __construct(
-		private InstallerService $installerService,
+		private SnapshotInstaller $installer,
 		private SnapshotStore $store,
 		private AuditLogger $auditLogger,
 		private ITimeFactory $time,
@@ -46,28 +45,42 @@ class SnapshotTaker {
 	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
 	 */
 	public function take(string $reason, string $takenBy, ?string $name = null): InstanceSnapshot {
-		$now = $this->time->getDateTime('now', new \DateTimeZone('UTC'));
-		$name = $name !== null && trim($name) !== '' ? trim($name) : null;
-		$snapshot = InstanceSnapshot::fromInstalledApps(
-			[
-				'id' => $this->newId($now),
-				'takenAt' => $now->format(DATE_ATOM),
-				'takenBy' => $takenBy !== '' ? $takenBy : 'system',
-				'reason' => $reason,
-				'name' => $name,
-			],
-			$this->installerService->getInstalledApps(),
-		);
+		$snapshot = $this->snapshotNow([
+			'takenBy' => $takenBy !== '' ? $takenBy : 'system',
+			'reason' => $reason,
+			'name' => $name !== null && trim($name) !== '' ? trim($name) : null,
+		]);
 		$this->store->save($snapshot);
+		$this->audit($snapshot);
 
+		return $snapshot;
+	}
+
+	/**
+	 * The snapshot of the apps installed now, with a new id and the time.
+	 *
+	 * @param array{takenBy: string, reason: string, name: ?string} $meta
+	 * @throws \InvalidArgumentException on an unknown reason
+	 */
+	private function snapshotNow(array $meta): InstanceSnapshot {
+		$now = $this->time->getDateTime('now', new \DateTimeZone('UTC'));
+
+		return InstanceSnapshot::fromInstalledApps(
+			['id' => $this->newId($now), 'takenAt' => $now->format(DATE_ATOM)] + $meta,
+			$this->installer->installedApps(),
+		);
+	}
+
+	/**
+	 * The `snapshot` audit row.
+	 */
+	private function audit(InstanceSnapshot $snapshot): void {
 		$this->auditLogger->record(
 			new AuditSubject($snapshot->takenBy, Application::APP_ID, AuditLogger::OPERATION_SNAPSHOT),
 			new AuditedVersions(null, null, null),
 			AuditLogger::STATUS_SUCCESS,
 			sprintf('Snapshot %s (%s) of %d apps', $snapshot->id, $snapshot->reason, count($snapshot->apps)),
 		);
-
-		return $snapshot;
 	}
 
 	/**

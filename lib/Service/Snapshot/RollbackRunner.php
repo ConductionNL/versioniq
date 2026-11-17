@@ -10,11 +10,6 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Snapshot;
 
-use OCA\Versioniq\Service\Installer\InstallOptions;
-use OCA\Versioniq\Service\Installer\InstallRequest;
-use OCA\Versioniq\Service\Installer\InstallTarget;
-use OCA\Versioniq\Service\Installer\PinChoice;
-use OCA\Versioniq\Service\InstallerService;
 use OCP\AppFramework\Http;
 
 /**
@@ -35,7 +30,7 @@ use OCP\AppFramework\Http;
  */
 class RollbackRunner {
 	public function __construct(
-		private InstallerService $installerService,
+		private SnapshotInstaller $installer,
 	) {
 	}
 
@@ -52,31 +47,42 @@ class RollbackRunner {
 	}
 
 	/**
+	 * Whether a step moves an app to a lower version.
+	 *
+	 * @param RollbackStep $step
+	 * @spec openspec/changes/install-bulk-rollback/specs/cli-commands/spec.md
+	 */
+	public static function isDowngrade(array $step): bool {
+		return $step['from'] !== null && $step['to'] !== null && version_compare($step['to'], $step['from'], '<');
+	}
+
+	/**
+	 * Whether a run reports a step: every move, and every pinned step.
+	 *
+	 * @param RollbackStep $step
+	 */
+	private static function isReported(array $step, RunMode $mode): bool {
+		return $step['kind'] === 'pinned' || self::isRunnable($step, $mode->movePins);
+	}
+
+	/**
 	 * Run (or check) the steps of a plan.
 	 *
 	 * @param list<RollbackStep> $steps
-	 * @param callable(array<string, mixed>): void|null $onStep Called after each step with its outcome.
 	 * @return list<StepOutcome> One outcome per move and per pinned step, in order.
 	 * @spec openspec/changes/install-bulk-rollback/specs/cli-commands/spec.md
 	 */
-	public function run(array $steps, bool $dryRun, bool $movePins, bool $continue, ?callable $onStep = null): array {
+	public function run(array $steps, RunMode $mode): array {
 		$outcomes = [];
 		$stopped = false;
 		foreach ($steps as $step) {
-			if (!self::isRunnable($step, $movePins) && $step['kind'] !== 'pinned') {
+			if (!self::isReported($step, $mode)) {
 				continue;
 			}
-			$isDowngrade = $step['from'] !== null && $step['to'] !== null && version_compare($step['to'], $step['from'], '<');
-			if ($stopped || !self::isRunnable($step, $movePins) || ($dryRun && !$isDowngrade)) {
-				$outcome = self::outcome($step, 'skipped', null, []);
-			} else {
-				$outcome = $this->install($step, $dryRun, $isDowngrade);
-				$stopped = $outcome['outcome'] === 'failed' && !$continue;
-			}
+			$outcome = $stopped ? self::outcome($step, ['outcome' => 'skipped']) : $this->runStep($step, $mode);
+			$stopped = $stopped || ($outcome['outcome'] === 'failed' && !$mode->continue);
 			$outcomes[] = $outcome;
-			if ($onStep !== null) {
-				$onStep($outcome);
-			}
+			$mode->notify($outcome);
 		}
 
 		return $outcomes;
@@ -101,38 +107,52 @@ class RollbackRunner {
 	}
 
 	/**
+	 * One step of a run that has not stopped: skipped when it does not run
+	 * (a pinned step whose pin stays, or anything but a downgrade on a dry run),
+	 * else installed or checked.
+	 *
 	 * @param RollbackStep $step
 	 * @return StepOutcome
 	 */
-	private function install(array $step, bool $dryRun, bool $isDowngrade): array {
-		$result = $this->installerService->installAppVersion(new InstallRequest(
-			new InstallTarget($step['appId'], (string)$step['to'], $step['sourceId']),
-			new InstallOptions(false, $dryRun, false, $isDowngrade),
-			new PinChoice($step['kind'] === 'pinned' ? InstallerService::OVERRIDE_PIN_REPIN : null, false),
-		));
+	private function runStep(array $step, RunMode $mode): array {
+		if (!self::isRunnable($step, $mode->movePins) || ($mode->dryRun && !self::isDowngrade($step))) {
+			return self::outcome($step, ['outcome' => 'skipped']);
+		}
+		$result = $this->installer->install($step, $mode->dryRun);
 		$statusCode = (int)($result['statusCode'] ?? Http::STATUS_INTERNAL_SERVER_ERROR);
 		/** @var array<array-key, mixed> $payload */
 		$payload = is_array($result['payload'] ?? null) ? $result['payload'] : [];
-		$ok = $statusCode >= Http::STATUS_OK && $statusCode < Http::STATUS_MULTIPLE_CHOICES;
 
-		return self::outcome($step, $ok ? ($dryRun ? 'checked' : 'succeeded') : 'failed', $statusCode, $payload);
+		return self::outcome($step, ['outcome' => self::verdict($statusCode, $mode), 'statusCode' => $statusCode, 'payload' => $payload]);
+	}
+
+	/**
+	 * `failed` outside 2xx, else `checked` on a dry run and `succeeded` on a real one.
+	 *
+	 * @return 'succeeded'|'failed'|'checked'
+	 */
+	private static function verdict(int $statusCode, RunMode $mode): string {
+		if ($statusCode < Http::STATUS_OK || $statusCode >= Http::STATUS_MULTIPLE_CHOICES) {
+			return 'failed';
+		}
+
+		return $mode->dryRun ? 'checked' : 'succeeded';
 	}
 
 	/**
 	 * @param RollbackStep $step
-	 * @param 'succeeded'|'failed'|'skipped'|'checked' $outcome
-	 * @param array<array-key, mixed> $payload
+	 * @param array{outcome: 'succeeded'|'failed'|'skipped'|'checked', statusCode?: ?int, payload?: array<array-key, mixed>} $result
 	 * @return StepOutcome
 	 */
-	private static function outcome(array $step, string $outcome, ?int $statusCode, array $payload): array {
+	private static function outcome(array $step, array $result): array {
 		return [
 			'appId' => $step['appId'],
 			'kind' => $step['kind'],
 			'from' => $step['from'],
 			'to' => $step['to'],
-			'outcome' => $outcome,
-			'statusCode' => $statusCode,
-			'payload' => $payload,
+			'outcome' => $result['outcome'],
+			'statusCode' => $result['statusCode'] ?? null,
+			'payload' => $result['payload'] ?? [],
 		];
 	}
 }

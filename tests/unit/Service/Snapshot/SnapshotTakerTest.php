@@ -13,6 +13,7 @@ use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Snapshot\InstanceSnapshot;
+use OCA\Versioniq\Service\Snapshot\SnapshotInstaller;
 use OCA\Versioniq\Service\Snapshot\SnapshotStore;
 use OCA\Versioniq\Service\Snapshot\SnapshotTaker;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -23,6 +24,7 @@ use PHPUnit\Framework\TestCase;
  * now, stored, and one `snapshot` audit row with the id and the reason.
  *
  * @covers \OCA\Versioniq\Service\Snapshot\SnapshotTaker
+ * @uses \OCA\Versioniq\Service\Snapshot\SnapshotInstaller
  * @uses \OCA\Versioniq\Service\Snapshot\InstanceSnapshot
  * @uses \OCA\Versioniq\Service\Audit\AuditSubject
  * @uses \OCA\Versioniq\Service\Audit\AuditedVersions
@@ -56,7 +58,7 @@ final class SnapshotTakerTest extends TestCase {
 		$time = $this->createMock(ITimeFactory::class);
 		$time->method('getDateTime')->willReturn(new \DateTime('2026-09-26T01:00:00.123456', new \DateTimeZone('UTC')));
 
-		return new SnapshotTaker($installer, $store, $audit, $time);
+		return new SnapshotTaker(new SnapshotInstaller($installer), $store, $audit, $time);
 	}
 
 	public function testItStoresTheInstalledAppsAndAuditsTheSnapshot(): void {

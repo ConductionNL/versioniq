@@ -118,7 +118,7 @@ async function check (): Promise<void> {
 	error.value = ''
 	try {
 		await ensurePasswordConfirmation()
-		await runRollback(props.steps, { movePins: movePins.value, dryRun: true, onStep: record }, props.install)
+		await runRollback(props.steps, { movePins: movePins.value, dryRun: true, onStep: record, install: props.install })
 	} catch (e) {
 		error.value = errorMessage(e, t('versioniq', 'The rollback could not be completed.'))
 	} finally {
@@ -164,7 +164,7 @@ async function run (startAt = 0): Promise<void> {
 			await snapshotBeforeRun()
 			await runLog({ phase: 'start', steps: runnableCount.value })
 		}
-		const result = await runRollback(props.steps, { movePins: movePins.value, dryRun: false, startAt, shouldStop: () => stopRequested, onStep: record }, props.install)
+		const result = await runRollback(props.steps, { movePins: movePins.value, dryRun: false, startAt, shouldStop: () => stopRequested, onStep: record, install: props.install })
 		failedAt.value = result.failedAt
 		if (result.failedAt === null) {
 			await finish()
@@ -180,7 +180,7 @@ async function run (startAt = 0): Promise<void> {
  * Records the end of the run with its counts.
  */
 async function finish (): Promise<void> {
-	const counts = runCounts(props.steps, outcomes.value, movePins.value)
+	const counts = runCounts(props.steps, { outcomes: outcomes.value, movePins: movePins.value })
 	await runLog({ phase: 'end', ...counts })
 	summary.value = t('versioniq', '{succeeded} succeeded, {failed} failed, {skipped} skipped', counts)
 	emit('finished')

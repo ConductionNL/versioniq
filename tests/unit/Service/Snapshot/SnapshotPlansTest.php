@@ -15,6 +15,7 @@ use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Snapshot\InstanceSnapshot;
 use OCA\Versioniq\Service\Snapshot\RollbackPlanner;
+use OCA\Versioniq\Service\Snapshot\SnapshotInstaller;
 use OCA\Versioniq\Service\Snapshot\SnapshotPlans;
 use PHPUnit\Framework\TestCase;
 
@@ -24,6 +25,7 @@ use PHPUnit\Framework\TestCase;
  * row after the snapshot.
  *
  * @covers \OCA\Versioniq\Service\Snapshot\SnapshotPlans
+ * @uses \OCA\Versioniq\Service\Snapshot\SnapshotInstaller
  * @uses \OCA\Versioniq\Service\Snapshot\RollbackPlanner
  * @uses \OCA\Versioniq\Service\Snapshot\InstanceSnapshot
  * @uses \OCA\Versioniq\Service\Pin\Pin
@@ -68,7 +70,7 @@ final class SnapshotPlansTest extends TestCase {
 			'openregister' => ['version' => '2.3.0', 'sourceId' => 'github:c/or', 'enabled' => true],
 		]);
 
-		$steps = (new SnapshotPlans($installer, $pins, $mapper, new RollbackPlanner()))->planFor($snapshot);
+		$steps = (new SnapshotPlans(new SnapshotInstaller($installer), $pins, $mapper, new RollbackPlanner()))->planFor($snapshot);
 
 		$this->assertSame(
 			[['opencatalogi', 'downgrade'], ['openregister', 'downgrade'], ['mail', 'downgrade'], ['calendar', 'pinned']],
@@ -95,7 +97,7 @@ final class SnapshotPlansTest extends TestCase {
 			'alpha' => ['version' => '1.0.0', 'sourceId' => null, 'enabled' => true],
 		]);
 
-		$steps = (new SnapshotPlans($installer, $pins, $mapper, new RollbackPlanner()))->planFor($snapshot);
+		$steps = (new SnapshotPlans(new SnapshotInstaller($installer), $pins, $mapper, new RollbackPlanner()))->planFor($snapshot);
 
 		$this->assertSame(['alpha', 'zeta'], array_column($steps, 'appId'));
 	}

@@ -53,24 +53,34 @@ final class InstallExitCode {
 
 		/** @var mixed $category */
 		$category = $payload['category'] ?? null;
-		if (is_string($category)) {
-			$mapped = match ($category) {
-				FailureClassifier::CATEGORY_DOWNGRADE_GUARD => self::DOWNGRADE_REFUSED,
-				FailureClassifier::CATEGORY_PREFLIGHT_PERMISSION => self::PREFLIGHT_PERMISSION,
-				FailureClassifier::CATEGORY_DOWNLOAD => self::DOWNLOAD,
-				FailureClassifier::CATEGORY_CHECKSUM_MISMATCH,
-				FailureClassifier::CATEGORY_SHA_MISMATCH,
-				FailureClassifier::CATEGORY_APPID_MISMATCH,
-				FailureClassifier::CATEGORY_VERSION_MISMATCH => self::INTEGRITY,
-				FailureClassifier::CATEGORY_INCOMPATIBLE => self::INCOMPATIBLE,
-				FailureClassifier::CATEGORY_FINALIZE => self::FINALIZE,
-				default => null,
-			};
-			if ($mapped !== null) {
-				return $mapped;
-			}
-		}
+		$mapped = is_string($category) ? self::forCategory($category) : null;
 
+		return $mapped ?? self::forStatus($statusCode);
+	}
+
+	/**
+	 * The documented exit code of a failure category, or null for a category
+	 * without one of its own.
+	 */
+	private static function forCategory(string $category): ?int {
+		return match ($category) {
+			FailureClassifier::CATEGORY_DOWNGRADE_GUARD => self::DOWNGRADE_REFUSED,
+			FailureClassifier::CATEGORY_PREFLIGHT_PERMISSION => self::PREFLIGHT_PERMISSION,
+			FailureClassifier::CATEGORY_DOWNLOAD => self::DOWNLOAD,
+			FailureClassifier::CATEGORY_CHECKSUM_MISMATCH,
+			FailureClassifier::CATEGORY_SHA_MISMATCH,
+			FailureClassifier::CATEGORY_APPID_MISMATCH,
+			FailureClassifier::CATEGORY_VERSION_MISMATCH => self::INTEGRITY,
+			FailureClassifier::CATEGORY_INCOMPATIBLE => self::INCOMPATIBLE,
+			FailureClassifier::CATEGORY_FINALIZE => self::FINALIZE,
+			default => null,
+		};
+	}
+
+	/**
+	 * The exit code an HTTP status maps to when its category named none.
+	 */
+	private static function forStatus(int $statusCode): int {
 		if ($statusCode === Http::STATUS_FORBIDDEN) {
 			return self::UNTRUSTED_SOURCE;
 		}

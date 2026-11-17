@@ -32,6 +32,8 @@ use OCP\IUserSession;
  * @psalm-suppress UnusedClass
  */
 class SnapshotController extends OCSController {
+	use ChecksAdmin;
+
 	/** The reasons a caller of the API may give; the jobs set the others. */
 	private const API_REASONS = ['manual', 'before_rollback'];
 
@@ -205,7 +207,7 @@ class SnapshotController extends OCSController {
 		if ($phase === 'start') {
 			$this->runLog->started($this->uid(), $id, $steps);
 		} elseif ($phase === 'end') {
-			$this->runLog->finished($this->uid(), $id, $succeeded, $failed, $skipped);
+			$this->runLog->finished($this->uid(), $id, ['succeeded' => $succeeded, 'failed' => $failed, 'skipped' => $skipped]);
 		} else {
 			return new DataResponse(['message' => 'The phase must be start or end'], Http::STATUS_BAD_REQUEST);
 		}
@@ -222,14 +224,5 @@ class SnapshotController extends OCSController {
 
 	private function uid(): string {
 		return $this->userSession->getUser()?->getUID() ?? '';
-	}
-
-	private function isAdmin(): bool {
-		$user = $this->userSession->getUser();
-		if ($user === null) {
-			return false;
-		}
-
-		return $this->groupManager->isAdmin($user->getUID());
 	}
 }

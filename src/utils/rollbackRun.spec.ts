@@ -51,36 +51,36 @@ describe('rollbackRun', () => {
 
 	it('installs every move in plan order and leaves pinned, unchanged and removed apps alone', async () => {
 		const install = fakeInstall()
-		const result = await runRollback(plan, { movePins: false, dryRun: false }, install)
+		const result = await runRollback(plan, { movePins: false, dryRun: false, install })
 
 		expect(install.mock.calls.map(([s]) => s.appId)).toEqual(['opencatalogi', 'openregister', 'mail'])
 		expect(result.failedAt).toBeNull()
-		expect(runCounts(plan, result.outcomes, false)).toEqual({ succeeded: 3, failed: 0, skipped: 1 })
+		expect(runCounts(plan, { outcomes: result.outcomes, movePins: false })).toEqual({ succeeded: 3, failed: 0, skipped: 1 })
 	})
 
 	it('moves pinned apps only when the pins move', async () => {
 		const install = fakeInstall()
-		await runRollback(plan, { movePins: true, dryRun: false }, install)
+		await runRollback(plan, { movePins: true, dryRun: false, install })
 
 		expect(install.mock.calls.map(([s]) => s.appId)).toContain('calendar')
 	})
 
 	it('stops at the first failure, and continuing runs the rest', async () => {
 		const install = fakeInstall(['openregister'])
-		const first = await runRollback(plan, { movePins: false, dryRun: false }, install)
+		const first = await runRollback(plan, { movePins: false, dryRun: false, install })
 
 		expect(first.failedAt).toBe(1)
 		expect(install.mock.calls.map(([s]) => s.appId)).toEqual(['opencatalogi', 'openregister'])
 
-		const rest = await runRollback(plan, { movePins: false, dryRun: false, startAt: 2 }, install)
+		const rest = await runRollback(plan, { movePins: false, dryRun: false, startAt: 2, install })
 		expect(install.mock.calls.map(([s]) => s.appId)).toEqual(['opencatalogi', 'openregister', 'mail'])
 		const all = new Map([...first.outcomes, ...rest.outcomes])
-		expect(runCounts(plan, all, false)).toEqual({ succeeded: 2, failed: 1, skipped: 1 })
+		expect(runCounts(plan, { outcomes: all, movePins: false })).toEqual({ succeeded: 2, failed: 1, skipped: 1 })
 	})
 
 	it('checks only the downgrades and never stops a check', async () => {
 		const install = fakeInstall(['opencatalogi'])
-		const result = await runRollback(plan, { movePins: false, dryRun: true }, install)
+		const result = await runRollback(plan, { movePins: false, dryRun: true, install })
 
 		expect(install.mock.calls.map(([s, dryRun]) => [s.appId, dryRun])).toEqual([['opencatalogi', true], ['openregister', true]])
 		expect(result.outcomes.get(1)?.orphanedMigrations).toEqual(['Version2003Date'])
@@ -89,7 +89,7 @@ describe('rollbackRun', () => {
 	it('stops after the current install when asked', async () => {
 		const install = fakeInstall()
 		let stop = false
-		const result = await runRollback(plan, { movePins: false, dryRun: false, shouldStop: () => stop, onStep: () => { stop = true } }, install)
+		const result = await runRollback(plan, { movePins: false, dryRun: false, shouldStop: () => stop, onStep: () => { stop = true }, install })
 
 		expect(install).toHaveBeenCalledTimes(1)
 		expect(result.interrupted).toBe(true)

@@ -46,15 +46,25 @@ final class RollbackPlanner {
 		$current = self::currentVersions($installedApps);
 		$steps = [];
 		foreach ($snapshot->apps as $appId => $app) {
-			$steps[] = self::step((string)$appId, $current[$appId] ?? null, $app, $pins[$appId] ?? null);
-		}
-		foreach ($current as $appId => $version) {
-			if (!isset($snapshot->apps[$appId])) {
-				$steps[] = ['appId' => $appId, 'kind' => 'added', 'from' => $version, 'to' => null, 'sourceId' => null, 'pinnedTo' => null];
-			}
+			$steps[] = self::step(['appId' => (string)$appId, 'pinnedTo' => $pins[$appId] ?? null] + $app, $current[$appId] ?? null);
 		}
 
-		return self::ordered($steps, $lastChangedAt);
+		return self::ordered(array_merge($steps, self::added($snapshot, $current)), $lastChangedAt);
+	}
+
+	/**
+	 * An `added` step for every app installed now that the snapshot does not hold.
+	 *
+	 * @param array<string, string> $current Installed version by app id.
+	 * @return list<RollbackStep>
+	 */
+	private static function added(InstanceSnapshot $snapshot, array $current): array {
+		$steps = [];
+		foreach (array_diff_key($current, $snapshot->apps) as $appId => $version) {
+			$steps[] = ['appId' => (string)$appId, 'kind' => 'added', 'from' => $version, 'to' => null, 'sourceId' => null, 'pinnedTo' => null];
+		}
+
+		return $steps;
 	}
 
 	/**
@@ -74,11 +84,12 @@ final class RollbackPlanner {
 	}
 
 	/**
-	 * @param array{version: string, sourceId: ?string, enabled: bool} $target
+	 * @param array{appId: string, pinnedTo: ?string, version: string, sourceId: ?string, enabled: bool} $target
 	 * @return RollbackStep
 	 */
-	private static function step(string $appId, ?string $from, array $target, ?string $pinnedTo): array {
+	private static function step(array $target, ?string $from): array {
 		$to = $target['version'];
+		$pinnedTo = $target['pinnedTo'];
 		$kind = match (true) {
 			$from === null => 'removed',
 			version_compare($to, $from, '==') => 'unchanged',
@@ -87,7 +98,7 @@ final class RollbackPlanner {
 			default => 'upgrade',
 		};
 
-		return ['appId' => $appId, 'kind' => $kind, 'from' => $from, 'to' => $to, 'sourceId' => $target['sourceId'], 'pinnedTo' => $pinnedTo];
+		return ['appId' => $target['appId'], 'kind' => $kind, 'from' => $from, 'to' => $to, 'sourceId' => $target['sourceId'], 'pinnedTo' => $pinnedTo];
 	}
 
 	/**

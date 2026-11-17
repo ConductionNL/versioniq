@@ -18,6 +18,7 @@ use OCA\Versioniq\Service\Snapshot\InstanceSnapshot;
 use OCA\Versioniq\Service\Snapshot\RollbackRunLog;
 use OCA\Versioniq\Service\Snapshot\RollbackRunner;
 use OCA\Versioniq\Service\Snapshot\SnapshotPlans;
+use OCA\Versioniq\Service\Snapshot\SnapshotInstaller;
 use OCA\Versioniq\Service\Snapshot\SnapshotStore;
 use OCA\Versioniq\Service\Snapshot\SnapshotTaker;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -36,6 +37,8 @@ use Symfony\Component\Console\Tester\CommandTester;
  * @uses \OCA\Versioniq\Command\InstallExitCode
  * @uses \OCA\Versioniq\Service\Snapshot\SnapshotStore
  * @uses \OCA\Versioniq\Service\Snapshot\SnapshotTaker
+ * @uses \OCA\Versioniq\Service\Snapshot\SnapshotInstaller
+ * @uses \OCA\Versioniq\Service\Snapshot\RunMode
  * @uses \OCA\Versioniq\Service\Snapshot\RollbackRunner
  * @uses \OCA\Versioniq\Service\Snapshot\RollbackRunLog
  * @uses \OCA\Versioniq\Service\Snapshot\InstanceSnapshot
@@ -102,9 +105,9 @@ final class RollbackToSnapshotTest extends TestCase {
 
 		return new CommandTester(new RollbackToSnapshot(
 			$this->store,
-			new SnapshotTaker($installer, $this->store, $audit, $time),
+			new SnapshotTaker(new SnapshotInstaller($installer), $this->store, $audit, $time),
 			$plans,
-			new RollbackRunner($installer),
+			new RollbackRunner(new SnapshotInstaller($installer)),
 			new RollbackRunLog($audit),
 		));
 	}

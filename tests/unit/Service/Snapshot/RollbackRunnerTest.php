@@ -11,6 +11,8 @@ namespace OCA\Versioniq\Tests\Unit\Service\Snapshot;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Snapshot\RollbackRunner;
+use OCA\Versioniq\Service\Snapshot\RunMode;
+use OCA\Versioniq\Service\Snapshot\SnapshotInstaller;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -20,6 +22,8 @@ use PHPUnit\Framework\TestCase;
  * run that only checks downgrades.
  *
  * @covers \OCA\Versioniq\Service\Snapshot\RollbackRunner
+ * @uses \OCA\Versioniq\Service\Snapshot\SnapshotInstaller
+ * @uses \OCA\Versioniq\Service\Snapshot\RunMode
  * @uses \OCA\Versioniq\Service\Installer\InstallRequest
  * @uses \OCA\Versioniq\Service\Installer\InstallTarget
  * @uses \OCA\Versioniq\Service\Installer\InstallOptions
@@ -44,7 +48,7 @@ final class RollbackRunnerTest extends TestCase {
 				: ['category' => 'checksum_mismatch', 'message' => 'The checksum does not match']];
 		});
 
-		return new RollbackRunner($installer);
+		return new RollbackRunner(new SnapshotInstaller($installer));
 	}
 
 	/**
@@ -70,7 +74,7 @@ final class RollbackRunnerTest extends TestCase {
 	}
 
 	public function testEveryMoveIsInstalledInOrderFromTheSnapshotSource(): void {
-		$outcomes = $this->runner()->run(self::plan(), false, false, false);
+		$outcomes = $this->runner()->run(self::plan(), new RunMode(false, false, false));
 
 		$this->assertSame(['opencatalogi', 'openregister', 'mail'], array_map(static fn (InstallRequest $r): string => $r->target->appId, $this->requests));
 		$this->assertSame('1.8.0', $this->requests[0]->target->version);
@@ -85,7 +89,7 @@ final class RollbackRunnerTest extends TestCase {
 	}
 
 	public function testPinnedStepsRunOnlyWhenThePinsMove(): void {
-		$this->runner()->run(self::plan(), false, true, false);
+		$this->runner()->run(self::plan(), new RunMode(false, true, false));
 
 		$pinned = $this->requests[3];
 		$this->assertSame('calendar', $pinned->target->appId);
@@ -95,9 +99,9 @@ final class RollbackRunnerTest extends TestCase {
 
 	public function testTheFirstFailureStopsTheRunAndTheRestAreSkipped(): void {
 		$seen = [];
-		$outcomes = $this->runner(['openregister' => 502])->run(self::plan(), false, false, false, function (array $outcome) use (&$seen): void {
+		$outcomes = $this->runner(['openregister' => 502])->run(self::plan(), new RunMode(false, false, false, function (array $outcome) use (&$seen): void {
 			$seen[] = $outcome['appId'] . ':' . $outcome['outcome'];
-		});
+		}));
 
 		$this->assertCount(2, $this->requests, 'the third app is not touched');
 		$this->assertSame(['opencatalogi:succeeded', 'openregister:failed', 'mail:skipped', 'calendar:skipped'], $seen);
@@ -107,14 +111,14 @@ final class RollbackRunnerTest extends TestCase {
 	}
 
 	public function testContinueGoesOnAfterAFailure(): void {
-		$outcomes = $this->runner(['opencatalogi' => 502])->run(self::plan(), false, false, true);
+		$outcomes = $this->runner(['opencatalogi' => 502])->run(self::plan(), new RunMode(false, false, true));
 
 		$this->assertCount(3, $this->requests);
 		$this->assertSame(['failed', 'succeeded', 'succeeded', 'skipped'], array_column($outcomes, 'outcome'));
 	}
 
 	public function testADryRunChecksOnlyTheDowngrades(): void {
-		$outcomes = $this->runner()->run(self::plan(), true, false, false);
+		$outcomes = $this->runner()->run(self::plan(), new RunMode(true, false, false));
 
 		$this->assertSame(['opencatalogi', 'openregister'], array_map(static fn (InstallRequest $r): string => $r->target->appId, $this->requests));
 		$this->assertTrue($this->requests[0]->options->dryRun);
