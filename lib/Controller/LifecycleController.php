@@ -12,18 +12,14 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
-use OCA\Versioniq\Service\Advisory\ServerVersionProvider;
-use OCA\Versioniq\Service\Lifecycle\AppReplacer;
-use OCA\Versioniq\Service\Lifecycle\ServerEolFeed;
-use OCA\Versioniq\Service\Lifecycle\SuccessorList;
+use OCA\Versioniq\Service\Api\ApiCaller;
+use OCA\Versioniq\Service\Lifecycle\LifecycleServices;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\OCSController;
-use OCP\IGroupManager;
 use OCP\IRequest;
-use OCP\IUserSession;
 
 /**
  * The life cycle of what is installed: the running server's end-of-life date,
@@ -37,19 +33,22 @@ use OCP\IUserSession;
  * @psalm-suppress UnusedClass
  */
 class LifecycleController extends OCSController {
-	use ChecksAdmin;
-
 	public function __construct(
 		string $appName,
 		IRequest $request,
-		private ServerEolFeed $eolFeed,
-		private ServerVersionProvider $serverVersion,
-		private SuccessorList $successors,
-		private AppReplacer $replacer,
-		private IGroupManager $groupManager,
-		private IUserSession $userSession,
+		private LifecycleServices $lifecycle,
+		private ApiCaller $caller,
 	) {
 		parent::__construct($appName, $request);
+	}
+
+	/**
+	 * Whether the caller is a signed-in administrator.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-an-admin-replaces-an-app-with-its-successor-in-one-action
+	 */
+	private function isAdmin(): bool {
+		return $this->caller->adminUid() !== null;
 	}
 
 	/**
@@ -68,9 +67,9 @@ class LifecycleController extends OCSController {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
-		$major = (int)$this->serverVersion->current();
+		$major = (int)$this->lifecycle->serverVersion->current();
 
-		return new DataResponse(['major' => $major, 'eolDate' => $major > 0 ? $this->eolFeed->eolDate($major) : null]);
+		return new DataResponse(['major' => $major, 'eolDate' => $major > 0 ? $this->lifecycle->eolFeed->eolDate($major) : null]);
 	}
 
 	/**
@@ -90,7 +89,7 @@ class LifecycleController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		return new DataResponse(['successors' => $this->successors->entries()]);
+		return new DataResponse(['successors' => $this->lifecycle->successors->entries()]);
 	}
 
 	/**
@@ -115,7 +114,7 @@ class LifecycleController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 		try {
-			return new DataResponse(['successor' => $this->successors->add($from, $to, $source)]);
+			return new DataResponse(['successor' => $this->lifecycle->successors->add($from, $to, $source)]);
 		} catch (InvalidArgumentException $error) {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
@@ -141,7 +140,7 @@ class LifecycleController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		return new DataResponse(['removed' => $this->successors->remove($from, $to)]);
+		return new DataResponse(['removed' => $this->lifecycle->successors->remove($from, $to)]);
 	}
 
 	/**
@@ -163,7 +162,7 @@ class LifecycleController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		return new DataResponse(['offer' => $this->successors->offerFor($appId)]);
+		return new DataResponse(['offer' => $this->lifecycle->successors->offerFor($appId)]);
 	}
 
 	/**
@@ -183,11 +182,11 @@ class LifecycleController extends OCSController {
 	#[ApiRoute(verb: 'POST', url: '/api/app/{appId}/replace')]
 	#[ApiRoute(verb: 'POST', url: '/api/v1/app/{appId}/replace', postfix: 'v1')]
 	public function replace(string $appId, string $to = ''): DataResponse {
-		$user = $this->userSession->getUser();
-		if ($user === null || !$this->isAdmin()) {
+		$uid = $this->caller->adminUid();
+		if ($uid === null) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
-		$outcome = $this->replacer->replace($user->getUID(), $appId, $to);
+		$outcome = $this->lifecycle->replacer->replace($uid, $appId, $to);
 
 		return new DataResponse(['statusCode' => $outcome['statusCode']] + $outcome['payload']);
 	}

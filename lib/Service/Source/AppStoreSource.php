@@ -141,6 +141,22 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 			return null;
 		}
 
+		$specs = self::platformSpecs($releases);
+		if ($specs === []) {
+			return null;
+		}
+
+		return array_values(array_filter($majors, static fn (int $major): bool => self::majorSatisfiesAny($major, $specs)));
+	}
+
+	/**
+	 * The distinct, non-empty `platformVersionSpec` ranges of the releases.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 * @param array<array-key, mixed> $releases The cached releases.
+	 * @return list<string>
+	 */
+	private static function platformSpecs(array $releases): array {
 		$specs = [];
 		foreach ($releases as $release) {
 			$spec = is_array($release) ? ($release['platformVersionSpec'] ?? null) : null;
@@ -148,22 +164,26 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 				$specs[trim($spec)] = true;
 			}
 		}
-		if ($specs === []) {
-			return null;
-		}
 
-		$supported = [];
-		foreach ($majors as $major) {
-			foreach (array_keys($specs) as $spec) {
-				if (self::satisfiesPlatformSpec($major . '.0.0', (string)$spec) === true
-					|| self::satisfiesPlatformSpec($major . '.99.99', (string)$spec) === true) {
-					$supported[] = $major;
-					break;
-				}
+		return array_map('strval', array_keys($specs));
+	}
+
+	/**
+	 * Whether the major's first or last release (`<major>.0.0`,
+	 * `<major>.99.99`) satisfies at least one of the ranges.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 * @param list<string> $specs The ranges.
+	 */
+	private static function majorSatisfiesAny(int $major, array $specs): bool {
+		foreach ($specs as $spec) {
+			if (self::satisfiesPlatformSpec($major . '.0.0', $spec) === true
+				|| self::satisfiesPlatformSpec($major . '.99.99', $spec) === true) {
+				return true;
 			}
 		}
 
-		return $supported;
+		return false;
 	}
 
 	/**

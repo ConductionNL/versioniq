@@ -12,6 +12,7 @@ namespace OCA\Versioniq\Tests\Unit\Service\Lifecycle;
 use OCA\Versioniq\Service\Availability\AppVersionCheck;
 use OCA\Versioniq\Service\Availability\AvailabilityService;
 use OCA\Versioniq\Service\InstallerService;
+use OCA\Versioniq\Service\Lifecycle\LifecycleCard;
 use OCA\Versioniq\Service\Lifecycle\LifecycleSignals;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Source\AppStoreSource;
@@ -27,6 +28,7 @@ use Psr\Log\NullLogger;
  */
 #[CoversClass(AvailabilityService::class)]
 #[UsesClass(AppVersionCheck::class)]
+#[UsesClass(LifecycleCard::class)]
 final class AvailabilityLifecycleTest extends TestCase {
 	public function testTheSweepCarriesEachAppsSignals(): void {
 		$installer = $this->createMock(InstallerService::class);
@@ -50,7 +52,7 @@ final class AvailabilityLifecycleTest extends TestCase {
 		$signals->expects($this->once())->method('archived')->with('calendar')->willReturn(true);
 		$signals->expects($this->once())->method('endOfSupport')->with('calendar')->willReturn(false);
 
-		$result = (new AvailabilityService($installer, $this->createMock(PinStore::class), new NullLogger(), lifecycle: $signals))->sweep(60.0);
+		$result = (new AvailabilityService($installer, $this->createMock(PinStore::class), new NullLogger(), lifecycle: new LifecycleCard($signals)))->sweep(60.0);
 
 		$this->assertSame([[AppStoreSource::NOT_IN_STORE, []], [null, $calendarVersions]], $asked);
 		$this->assertTrue($result['oldmaps']['lifecycle']['removedFromStore']);

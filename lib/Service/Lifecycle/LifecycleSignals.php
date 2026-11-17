@@ -15,6 +15,8 @@ namespace OCA\Versioniq\Service\Lifecycle;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Source\AppStoreSource;
 use OCA\Versioniq\Service\Source\ForgeReleaseSource;
+use OCA\Versioniq\Service\Source\SourceBinding;
+use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\SourceLookup;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IAppConfig;
@@ -64,15 +66,7 @@ class LifecycleSignals {
 			return null;
 		}
 
-		$binding = $this->sources?->bindingStore->get($appId);
-		if ($binding === null) {
-			return null;
-		}
-		try {
-			$source = $this->sources?->sourceRegistry->get($binding);
-		} catch (\Throwable) {
-			return null;
-		}
+		$source = $this->boundSource($appId)['source'] ?? null;
 		if (!$source instanceof AppStoreSource) {
 			return null;
 		}
@@ -97,6 +91,22 @@ class LifecycleSignals {
 	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
 	 */
 	public function archived(string $appId): ?bool {
+		$bound = $this->boundSource($appId);
+		if ($bound === null) {
+			return null;
+		}
+
+		return $bound['source'] instanceof ForgeReleaseSource ? $bound['source']->isArchived($bound['binding']) : null;
+	}
+
+	/**
+	 * The app's source binding and the source it resolves to; null when the
+	 * app is not bound or the registry cannot resolve the binding.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 * @return array{binding: SourceBinding, source: SourceInterface}|null
+	 */
+	private function boundSource(string $appId): ?array {
 		$binding = $this->sources?->bindingStore->get($appId);
 		if ($binding === null) {
 			return null;
@@ -107,7 +117,7 @@ class LifecycleSignals {
 			return null;
 		}
 
-		return $source instanceof ForgeReleaseSource ? $source->isArchived($binding) : null;
+		return ['binding' => $binding, 'source' => $source];
 	}
 
 	/**

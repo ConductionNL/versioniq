@@ -12,6 +12,8 @@ namespace OCA\Versioniq\Tests\Unit\Service\Lifecycle;
 use OCA\Versioniq\Service\Availability\AppVersionCheck;
 use OCA\Versioniq\Service\Availability\AvailabilityService;
 use OCA\Versioniq\Service\InstallerService;
+use OCA\Versioniq\Service\Lifecycle\LifecycleCard;
+use OCA\Versioniq\Service\Lifecycle\LifecycleSignals;
 use OCA\Versioniq\Service\Lifecycle\SuccessorList;
 use OCA\Versioniq\Service\Pin\PinStore;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -26,6 +28,7 @@ use Psr\Log\NullLogger;
  */
 #[CoversClass(AvailabilityService::class)]
 #[UsesClass(AppVersionCheck::class)]
+#[UsesClass(LifecycleCard::class)]
 final class AvailabilitySuccessorTest extends TestCase {
 	private function installer(): InstallerService {
 		$installer = $this->createMock(InstallerService::class);
@@ -45,7 +48,7 @@ final class AvailabilitySuccessorTest extends TestCase {
 		$successors->expects($this->exactly(2))->method('offerFor')
 			->willReturnCallback(static fn (string $appId): ?array => $appId === 'oldname' ? $offer : null);
 
-		$result = (new AvailabilityService($this->installer(), $this->createMock(PinStore::class), new NullLogger(), successors: $successors))->sweep(60.0);
+		$result = (new AvailabilityService($this->installer(), $this->createMock(PinStore::class), new NullLogger(), lifecycle: new LifecycleCard($this->createMock(LifecycleSignals::class), $successors)))->sweep(60.0);
 
 		$this->assertSame($offer, $result['oldname']['successor']);
 		$this->assertArrayNotHasKey('successor', $result['calendar']);

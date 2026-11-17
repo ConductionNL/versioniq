@@ -13,8 +13,7 @@ namespace OCA\Versioniq\Service\Availability;
 
 use OCA\Versioniq\Kernel\Contracts\AvailabilityServiceInterface;
 use OCA\Versioniq\Service\InstallerService;
-use OCA\Versioniq\Service\Lifecycle\LifecycleSignals;
-use OCA\Versioniq\Service\Lifecycle\SuccessorList;
+use OCA\Versioniq\Service\Lifecycle\LifecycleCard;
 use OCA\Versioniq\Service\Pin\PinStore;
 use Psr\Log\LoggerInterface;
 
@@ -45,8 +44,7 @@ class AvailabilityService implements AvailabilityServiceInterface {
 		private PinStore $pinStore,
 		private LoggerInterface $logger,
 		private ?WithdrawnVersionStore $withdrawnVersions = null,
-		private ?LifecycleSignals $lifecycle = null,
-		private ?SuccessorList $successors = null,
+		private ?LifecycleCard $lifecycle = null,
 	) {
 	}
 
@@ -237,7 +235,7 @@ class AvailabilityService implements AvailabilityServiceInterface {
 	 * @return array<string, mixed>
 	 */
 	private function withSuccessor(string $appId, array $entry): array {
-		$offer = $this->successors?->offerFor($appId);
+		$offer = $this->lifecycle?->successors?->offerFor($appId);
 		if ($offer !== null) {
 			$entry['successor'] = $offer;
 		}
@@ -258,8 +256,8 @@ class AvailabilityService implements AvailabilityServiceInterface {
 	 */
 	private function withArchived(string $appId, array $entry): array {
 		if (isset($entry['lifecycle']) && $this->lifecycle !== null) {
-			$entry['lifecycle']['archived'] = $entry['error'] === null ? $this->lifecycle->archived($appId) : null;
-			$entry['lifecycle']['endOfSupport'] = $entry['error'] === null ? $this->lifecycle->endOfSupport($appId) : null;
+			$entry['lifecycle']['archived'] = $entry['error'] === null ? $this->lifecycle->signals->archived($appId) : null;
+			$entry['lifecycle']['endOfSupport'] = $entry['error'] === null ? $this->lifecycle->signals->endOfSupport($appId) : null;
 		}
 
 		return $entry;
@@ -294,7 +292,7 @@ class AvailabilityService implements AvailabilityServiceInterface {
 	 * @return array{lifecycle?: array{removedFromStore: bool, noReleaseFor12Months: ?bool, lastReleasedAt: ?string}}
 	 */
 	private function lifecycleOf(?string $error, array $versions): array {
-		return $this->lifecycle === null ? [] : ['lifecycle' => $this->lifecycle->signals($error, $versions)];
+		return $this->lifecycle === null ? [] : ['lifecycle' => $this->lifecycle->signals->signals($error, $versions)];
 	}
 
 	/**

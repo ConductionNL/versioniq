@@ -12,14 +12,18 @@ namespace OCA\Versioniq\Tests\Unit\Controller;
 use InvalidArgumentException;
 use OCA\Versioniq\Controller\LifecycleController;
 use OCA\Versioniq\Service\Advisory\ServerVersionProvider;
+use OCA\Versioniq\Service\Api\ApiCaller;
 use OCA\Versioniq\Service\Lifecycle\AppReplacer;
+use OCA\Versioniq\Service\Lifecycle\LifecycleServices;
 use OCA\Versioniq\Service\Lifecycle\ServerEolFeed;
 use OCA\Versioniq\Service\Lifecycle\SuccessorList;
+use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IGroupManager;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
@@ -28,6 +32,8 @@ use PHPUnit\Framework\TestCase;
  * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-admins-are-warned-before-the-server-leaves-support
  */
 #[CoversClass(LifecycleController::class)]
+#[UsesClass(LifecycleServices::class)]
+#[UsesClass(ApiCaller::class)]
 final class LifecycleControllerTest extends TestCase {
 	private ServerEolFeed&MockObject $feed;
 	private ServerVersionProvider&MockObject $version;
@@ -49,7 +55,12 @@ final class LifecycleControllerTest extends TestCase {
 		$groups = $this->createMock(IGroupManager::class);
 		$groups->method('isAdmin')->with('alice')->willReturn($admin);
 
-		return new LifecycleController('versioniq', $this->createMock(IRequest::class), $this->feed, $this->version, $this->successors, $this->replacer, $groups, $session);
+		return new LifecycleController(
+			'versioniq',
+			$this->createMock(IRequest::class),
+			new LifecycleServices($this->feed, $this->version, $this->successors, $this->replacer),
+			new ApiCaller($session, $groups, $this->createMock(ITimeFactory::class)),
+		);
 	}
 
 	public function testANonAdminIsRefusedEverywhereAndNothingChanges(): void {
