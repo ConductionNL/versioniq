@@ -48,13 +48,17 @@ class Notifier implements INotifier {
 	 * "PAT expiry warnings" for the `pat_expiring` / `pat_expired` subjects,
 	 * "Drift response — notify and offer re-pin" for `pin_drift`, and
 	 * "Every auto-update outcome is reported" for `auto_update_success` /
-	 * `auto_update_failure`, and the weekly `advisory_digest`.
+	 * `auto_update_failure`, the weekly `advisory_digest`, `advisory_assigned`
+	 * when an admin hands an advisory to an owner, and `server_eol` before the
+	 * running server major leaves support.
 	 *
 	 * @spec openspec/specs/pat-management/spec.md
 	 * @spec openspec/specs/version-pinning/spec.md
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
 	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+	 * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-admins-are-notified-of-new-releases-in-the-scope-they-choose
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-assigns-an-advisory-to-an-owner
 	 */
 	public function prepare(INotification $notification, string $languageCode): INotification {
 		if ($notification->getApp() !== Application::APP_ID) {
@@ -74,6 +78,9 @@ class Notifier implements INotifier {
 			// digest was stored but skipped by the bell every time (#428).
 			'advisory_digest' => $this->renderAdvisoryDigest(...),
 			'force_lifted' => $this->renderForceLifted(...),
+			'server_eol' => $this->renderServerEol(...),
+			'new_release' => $this->renderNewRelease(...),
+			'advisory_assigned' => $this->renderAdvisoryAssigned(...),
 			default => throw new UnknownNotificationException(),
 		};
 		$render($notification, $l);
@@ -97,6 +104,21 @@ class Notifier implements INotifier {
 		$notification
 			->setParsedSubject($l->t('Compatibility override lifted for %s', [$app]))
 			->setParsedMessage($message);
+	}
+
+	/**
+	 * "New version of {app}: {version}", and a note when it does not run here.
+	 *
+	 * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-admins-are-notified-of-new-releases-in-the-scope-they-choose
+	 */
+	private function renderNewRelease(INotification $notification, IL10N $l): void {
+		$app = $this->stringParameter($notification, 'app');
+		$version = $this->stringParameter($notification, 'version');
+
+		$notification->setParsedSubject($l->t('New version of %1$s: %2$s', [$app, $version]));
+		if ($this->stringParameter($notification, 'compatible') !== '1') {
+			$notification->setParsedMessage($l->t('It does not run on this server version.'));
+		}
 	}
 
 	private function renderPinnedToVulnerable(INotification $notification, IL10N $l): void {
@@ -204,6 +226,52 @@ class Notifier implements INotifier {
 					$apps,
 					[$apps, $advisories]
 				)
+			);
+	}
+
+	/**
+	 * The running server major reaches end of life within 90 or 30 days.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-admins-are-warned-before-the-server-leaves-support
+	 */
+	private function renderServerEol(INotification $notification, IL10N $l): void {
+		$major = $this->stringParameter($notification, 'major');
+		$date = $this->stringParameter($notification, 'date');
+		$days = $this->intParameter($notification, 'daysRemaining');
+
+		$notification
+			->setParsedSubject(
+				$l->t('Nextcloud %1$s reaches end of life soon', [$major])
+			)
+			->setParsedMessage(
+				$l->n(
+					'Nextcloud %1$s stops receiving updates on %2$s, in %3$d day. Plan the upgrade to a maintained version.',
+					'Nextcloud %1$s stops receiving updates on %2$s, in %3$d days. Plan the upgrade to a maintained version.',
+					$days,
+					[$major, $date, $days]
+				)
+			);
+	}
+
+	/**
+	 * An advisory assigned to the recipient: names the app (or the server),
+	 * the advisory and the admin who assigned it.
+	 *
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-assigns-an-advisory-to-an-owner
+	 */
+	private function renderAdvisoryAssigned(INotification $notification, IL10N $l): void {
+		$app = $this->stringParameter($notification, 'app');
+		$advisory = $this->stringParameter($notification, 'advisory');
+		$by = $this->stringParameter($notification, 'by');
+
+		$notification
+			->setParsedSubject(
+				$l->t('A security advisory was assigned to you')
+			)
+			->setParsedMessage(
+				$app === ':server'
+					? $l->t('%1$s assigned advisory %2$s for the Nextcloud server to you. Review it on the Versioniq Advisories tab.', [$by, $advisory])
+					: $l->t('%1$s assigned advisory %2$s for %3$s to you. Review it on the Versioniq Advisories tab.', [$by, $advisory, $app])
 			);
 	}
 

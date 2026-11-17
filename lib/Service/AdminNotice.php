@@ -104,6 +104,22 @@ final class AdminNotice {
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 * @spec openspec/specs/version-pinning/spec.md
 	 */
+	/**
+	 * The notification subject, for the webhook dispatch (releases-new-release-alerts D6).
+	 */
+	public function subject(): string {
+		return $this->subject;
+	}
+
+	/**
+	 * The subject parameters, for the webhook dispatch (releases-new-release-alerts D6).
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function subjectParameters(): array {
+		return $this->subjectParameters;
+	}
+
 	public function logMessage(): string {
 		return $this->logMessage;
 	}

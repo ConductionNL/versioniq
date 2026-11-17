@@ -34,6 +34,9 @@ final class AdvisorySeverity {
 
 	private const LEVELS = [self::LOW, self::MEDIUM, self::HIGH, self::CRITICAL];
 
+	/** Every value, highest first: the order a worst advisory is picked in and counts are listed in. */
+	public const ORDER = [self::CRITICAL, self::HIGH, self::MEDIUM, self::LOW, self::UNKNOWN];
+
 	/** Other spellings of a level, as sources send them. */
 	private const ALIASES = ['moderate' => self::MEDIUM];
 
@@ -50,5 +53,23 @@ final class AdvisorySeverity {
 		$value = self::ALIASES[$value] ?? $value;
 
 		return in_array($value, self::LEVELS, true) ? $value : self::UNKNOWN;
+	}
+
+	/**
+	 * The highest of these normalized severities in ORDER; `unknown` when
+	 * there are none.
+	 *
+	 * @param list<string> $found Normalized severities.
+	 *
+	 * @spec openspec/specs/security-advisory-correlation/spec.md
+	 */
+	public static function highestOf(array $found): string {
+		foreach (self::ORDER as $severity) {
+			if (in_array($severity, $found, true)) {
+				return $severity;
+			}
+		}
+
+		return self::UNKNOWN;
 	}
 }

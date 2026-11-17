@@ -9,7 +9,6 @@ declare(strict_types=1);
  * SPDX-License-Identifier: EUPL-1.2
  */
 
-
 namespace OCA\Versioniq\Service\Pat;
 
 use Exception;
@@ -39,6 +38,11 @@ class PatValidator {
 
 	/** @var list<string> */
 	public const ALLOWED_CLASSIC_SCOPES = ['repo', 'public_repo'];
+
+	/**
+	 * The GitLab token scopes that only read (sources-gitlab-forge D5).
+	 */
+	public const ALLOWED_GITLAB_SCOPES = ['read_api', 'read_repository'];
 
 	public function __construct(
 		private IClientService $clientService,
@@ -81,16 +85,34 @@ class PatValidator {
 			return ValidationResult::rejected(sprintf('Unknown forge "%s".', $forge));
 		}
 		$f = $this->forgeRegistry->get($forge);
-		$kind = $this->detectKind($token);
 
-		$response = $this->probe($f, $token);
+		// GitLab describes the token itself: probe that, so its scopes and
+		// expiry are read rather than guessed (sources-gitlab-forge D5).
+		$tokenInfo = $f->tokenInfoEndpoint();
+		$response = $this->probe($f, $token, $tokenInfo ?? $f->userEndpoint());
 		if ($response instanceof ValidationResult) {
 			return $response;
 		}
 
+		return $this->probeResult($f, $response) ?? $this->scopeResult($this->detectKind($token), $response->getHeaders());
+	}
+
+	/**
+	 * What the forge's answer to the probe says about the token: refused on a
+	 * failing status, read from the token description when the forge has one,
+	 * accepted with a warning when the forge shows no scopes; null when the
+	 * scope header must be read.
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-3.1
+	 */
+	private function probeResult(Forge $f, IResponse $response): ?ValidationResult {
 		$rejection = $this->statusRejection($f, $response->getStatusCode());
 		if ($rejection !== null) {
 			return $rejection;
+		}
+
+		if ($f->tokenInfoEndpoint() !== null) {
+			return $this->tokenInfoResult((string)$response->getBody());
 		}
 
 		// Forges that do not expose token scopes to the holder (e.g.
@@ -104,17 +126,17 @@ class PatValidator {
 			);
 		}
 
-		return $this->scopeResult($kind, $response->getHeaders());
+		return null;
 	}
 
 	/**
 	 * Calls the forge's user endpoint with the token; a rejection when the forge cannot be reached.
 	 */
-	private function probe(Forge $f, string $token): IResponse|ValidationResult {
+	private function probe(Forge $f, string $token, string $endpoint): IResponse|ValidationResult {
 		$client = $this->clientService->newClient();
 
 		try {
-			return $client->get($f->userEndpoint(), [
+			return $client->get($endpoint, [
 				'headers' => $this->probeHeaders($f, $token),
 				'timeout' => 30,
 				// IClient (Guzzle) throws on 4xx by default; we want to inspect
@@ -144,6 +166,69 @@ class PatValidator {
 		}
 
 		return $headers;
+	}
+
+	/**
+	 * GitLab's own description of the token: accepted only when every scope
+	 * is read-only (`read_api`, `read_repository`), refused when it can write
+	 * or impersonate, with its expiry captured (design D5).
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-3.1
+	 */
+	private function tokenInfoResult(string $body): ValidationResult {
+		$info = self::decodeTokenInfo($body);
+		if ($info === null) {
+			return ValidationResult::rejected('GitLab did not describe the token.');
+		}
+
+		$scopes = self::tokenInfoScopes($info);
+		if ($scopes === []) {
+			return ValidationResult::rejected('GitLab reports no scopes for this token; create one with read_api.');
+		}
+
+		$disallowed = array_values(array_diff($scopes, self::ALLOWED_GITLAB_SCOPES));
+		if ($disallowed !== []) {
+			return ValidationResult::rejected(sprintf('The token has write or admin scopes (%s); create one with only read_api.', implode(', ', $disallowed)));
+		}
+
+		/** @var mixed $rawExpires */
+		$rawExpires = $info['expires_at'] ?? null;
+
+		return ValidationResult::accepted($scopes, [], $this->parseExpires(is_string($rawExpires) ? $rawExpires : null));
+	}
+
+	/**
+	 * GitLab's token description as an array, an empty one for JSON that is no
+	 * object, or null when the body is no JSON at all.
+	 *
+	 * @return array<mixed>|null
+	 */
+	private static function decodeTokenInfo(string $body): ?array {
+		try {
+			/** @var mixed $decoded */
+			$decoded = json_decode($body, true, 16, JSON_THROW_ON_ERROR);
+		} catch (\JsonException) {
+			return null;
+		}
+
+		return is_array($decoded) ? $decoded : [];
+	}
+
+	/**
+	 * The string scopes of a token description.
+	 *
+	 * @param array<mixed> $info The token description.
+	 *
+	 * @return list<string>
+	 */
+	private static function tokenInfoScopes(array $info): array {
+		/** @var mixed $rawScopes */
+		$rawScopes = $info['scopes'] ?? null;
+		if (!is_array($rawScopes)) {
+			return [];
+		}
+
+		return array_values(array_filter($rawScopes, static fn (mixed $scope): bool => is_string($scope)));
 	}
 
 	private function hostLabel(Forge $f): string {
