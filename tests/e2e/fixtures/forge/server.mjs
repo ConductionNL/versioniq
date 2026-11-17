@@ -1,6 +1,3 @@
-// SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
-// SPDX-License-Identifier: EUPL-1.2
-import { readdir, readFile } from "node:fs/promises";
 // Fixture forge — a Forgejo/Gitea-shaped HTTP double for Versioniq e2e tests.
 //
 // It answers the three endpoints ForgeReleaseSource / PatValidator hit
@@ -12,13 +9,21 @@ import { readdir, readFile } from "node:fs/promises";
 //
 // The app is pointed here by setting `forge.forgejo.api_base` /
 // `forge.forgejo.web_base` app config to this server's URL (see docs/e2e.md).
+import { existsSync, readFileSync } from "node:fs";
+// SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+// SPDX-License-Identifier: EUPL-1.2
+import { readdir, readFile } from "node:fs/promises";
 import { createServer } from "node:http";
+import { createServer as createTlsServer } from "node:https";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ARTIFACTS = join(HERE, "artifacts");
 const PORT = Number(process.env.PORT || 9099);
+// The https listener for the OSV double: `advisory.osv_api_base` is https only.
+const TLS_PORT = Number(process.env.TLS_PORT || 9443);
+const TLS_DIR = join(ARTIFACTS, "tls");
 // Advertised base the app downloads from — must match how the app reaches us.
 const PUBLIC_BASE = process.env.PUBLIC_BASE || `http://forge-fixture:${PORT}`;
 
@@ -326,6 +331,87 @@ function gitlabApi(res, path) {
 	return true;
 }
 
+// --- OSV double (advisories-bundled-libraries) -----------------------------
+//
+// Answers the two OSV endpoints OsvClient calls: `/v1/querybatch` (one result
+// per query, in order) and `/v1/vulns/{id}`. It knows one advisory, for the
+// `vendor/library` 2.4.3 that build-artifacts.sh bundles in the fixture app,
+// fixed in 2.4.5; every other library — including whatever the server's own
+// apps bundle — has none, so the finding the spec asserts is the only one.
+const OSV_RECORDS = {
+	"GHSA-fx00-0000-0001": {
+		id: "GHSA-fx00-0000-0001",
+		aliases: ["CVE-2099-0001"],
+		summary: "Fixture advisory for the bundled-library e2e spec",
+		database_specific: { severity: "HIGH" },
+		affected: [
+			{
+				package: { ecosystem: "Packagist", name: "vendor/library" },
+				ranges: [
+					{
+						type: "ECOSYSTEM",
+						events: [{ introduced: "0" }, { fixed: "2.4.5" }],
+					},
+				],
+			},
+		],
+	},
+};
+
+/** The record ids that affect one library version. */
+function osvIdsFor(name, version) {
+	return Object.values(OSV_RECORDS)
+		.filter((record) =>
+			record.affected.some(
+				(affected) =>
+					affected.package.ecosystem === "Packagist" &&
+					affected.package.name === String(name).toLowerCase() &&
+					affected.ranges.some((range) =>
+						range.events.some(
+							(event) =>
+								event.fixed !== undefined &&
+								compareVersions(version, event.fixed) < 0,
+						),
+					),
+			),
+		)
+		.map((record) => record.id);
+}
+
+/** Numeric dotted-version comparison; enough for the fixture's versions. */
+function compareVersions(a, b) {
+	const left = String(a).replace(/^v/, "").split(".").map(Number);
+	const right = String(b).replace(/^v/, "").split(".").map(Number);
+	for (let i = 0; i < Math.max(left.length, right.length); i++) {
+		const diff = (left[i] || 0) - (right[i] || 0);
+		if (diff !== 0) return diff;
+	}
+	return 0;
+}
+
+async function osvApi(req, res, path) {
+	if (path === "/v1/querybatch" && req.method === "POST") {
+		const body = await readBody(req);
+		const queries = Array.isArray(body.queries) ? body.queries : [];
+		const results = queries.map((query) => {
+			const ids = osvIdsFor(query?.package?.name ?? "", query?.version ?? "");
+			return ids.length
+				? { vulns: ids.map((id) => ({ id, modified: "2026-01-01T00:00:00Z" })) }
+				: {};
+		});
+		json(res, 200, { results });
+		return true;
+	}
+	const vuln = path.match(/^\/v1\/vulns\/([^/]+)$/);
+	if (vuln) {
+		const record = OSV_RECORDS[decodeURIComponent(vuln[1])];
+		if (record) json(res, 200, record);
+		else json(res, 404, { code: 5, message: "Bug not found." });
+		return true;
+	}
+	return false;
+}
+
 // --- Artifact download -----------------------------------------------------
 async function download(res, requested) {
 	const forced = state.assetStatus[requested];
@@ -377,6 +463,7 @@ async function route(req, res) {
 	const control = CONTROL_ROUTES[path];
 	if (control && req.method === "POST") return control(req, res);
 
+	if (await osvApi(req, res, path)) return;
 	if (gitlabApi(res, path)) return;
 	if (forgeApi(req, res, path)) return;
 
@@ -392,14 +479,29 @@ async function route(req, res) {
 	res.end("not found");
 }
 
-const server = createServer(async (req, res) => {
+async function handle(req, res) {
 	try {
 		await route(req, res);
 	} catch (err) {
 		res.writeHead(500);
 		res.end(String(err));
 	}
-});
+}
+
+const server = createServer(handle);
+
+// The same routes over TLS, when build-artifacts.sh generated a certificate.
+if (existsSync(join(TLS_DIR, "fixture.crt"))) {
+	createTlsServer(
+		{
+			cert: readFileSync(join(TLS_DIR, "fixture.crt")),
+			key: readFileSync(join(TLS_DIR, "fixture.key")),
+		},
+		handle,
+	).listen(TLS_PORT, () => {
+		console.log(`forge-fixture https listening on :${TLS_PORT}`);
+	});
+}
 
 server.listen(PORT, async () => {
 	const names = await readdir(ARTIFACTS).catch(() => []);
