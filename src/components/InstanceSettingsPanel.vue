@@ -41,6 +41,7 @@ type Settings = {
 	advisoryFeedSource?: string
 	advisoryFeedCopiedAt?: number | null
 	advisoryFeedCopyMaxAgeDays?: number
+	notifyUsersOnUpdate?: boolean
 }
 
 const ENDPOINT = '/ocs/v2.php/apps/versioniq/api/instance-settings'
@@ -56,6 +57,7 @@ const form = ref({
 	ncscFeedUrl: '',
 	maxLinesBehind: '',
 	advisoryFeedSource: 'remote',
+	notifyUsersOnUpdate: true,
 })
 const saving = ref(false)
 const error = ref('')
@@ -78,6 +80,8 @@ function fill (settings: Settings): void {
 		ncscFeedUrl: settings.ncscFeedUrl ?? '',
 		maxLinesBehind: settings.maxLinesBehind === null || settings.maxLinesBehind === undefined ? '' : String(settings.maxLinesBehind),
 		advisoryFeedSource: settings.advisoryFeedSource === 'local' ? 'local' : 'remote',
+		// On unless the admin switched it off (releases-notes-reach 1.2).
+		notifyUsersOnUpdate: settings.notifyUsersOnUpdate !== false,
 	}
 }
 
@@ -204,6 +208,17 @@ onMounted(load)
 					:max="loaded.maxLinesBehindMax"
 					data-testid="setting-max-lines-behind">
 				<span :class="$style.hint">{{ t('versioniq', 'An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.') }}</span>
+			</label>
+			<label :class="$style.field" for="setting-notify-users-on-update">
+				<span>
+					<input
+						id="setting-notify-users-on-update"
+						v-model="form.notifyUsersOnUpdate"
+						type="checkbox"
+						data-testid="setting-notify-users-on-update">
+					{{ t('versioniq', 'Tell an app\'s users what changed after Versioniq updates it') }}
+				</span>
+				<span :class="$style.hint">{{ t('versioniq', 'They get the same notice as after an update from the Apps page. A dry run never sends it.') }}</span>
 			</label>
 
 			<h4>{{ t('versioniq', 'Sources and mirrors') }}</h4>
