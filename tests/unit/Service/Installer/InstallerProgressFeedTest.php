@@ -84,7 +84,7 @@ final class InstallerProgressFeedTest extends TestCase {
 			$this->createMock(IUserSession::class),
 			$this->createMock(MigrationDiffer::class),
 			$this->createMock(ArtifactCache::class),
-			$progress,
+			progress: $progress,
 		);
 		$stages = ['requested-install', 'release-metadata', 'downloaded', 'archive-extracted', 'info-xml', 'signature-verified', 'migration-diff', 'installed'];
 
