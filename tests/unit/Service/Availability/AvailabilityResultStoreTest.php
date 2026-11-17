@@ -42,7 +42,7 @@ final class AvailabilityResultStoreTest extends TestCase {
 	}
 
 	public function testNeverSweptReadsAsCheckedAtNull(): void {
-		self::assertSame(['updates' => [], 'checkedAt' => null], $this->store()->read());
+		self::assertSame(['updates' => [], 'checkedAt' => null, 'failedAt' => null, 'status' => null, 'errors' => []], $this->store()->read());
 	}
 
 	public function testASavedSnapshotReadsBackWithItsTime(): void {
@@ -50,7 +50,7 @@ final class AvailabilityResultStoreTest extends TestCase {
 		$store->save(['deck' => ['installedVersion' => '1.0.0', 'newestCompatibleVersion' => '1.1.0']], 1_790_000_000);
 
 		self::assertSame(
-			['updates' => ['deck' => ['installedVersion' => '1.0.0', 'newestCompatibleVersion' => '1.1.0']], 'checkedAt' => 1_790_000_000],
+			['updates' => ['deck' => ['installedVersion' => '1.0.0', 'newestCompatibleVersion' => '1.1.0']], 'checkedAt' => 1_790_000_000, 'failedAt' => null, 'status' => 'ok', 'errors' => []],
 			$store->read(),
 		);
 	}
@@ -60,6 +60,57 @@ final class AvailabilityResultStoreTest extends TestCase {
 		$store->save(['deck' => ['installedVersion' => '1.0.0']], 1_790_000_000);
 		$store->save(['deck' => ['installedVersion' => "\xB1\x31"]], 1_790_000_600);
 
-		self::assertSame(['updates' => ['deck' => ['installedVersion' => '1.0.0']], 'checkedAt' => 1_790_000_000], $store->read());
+		self::assertSame(['updates' => ['deck' => ['installedVersion' => '1.0.0']], 'checkedAt' => 1_790_000_000, 'failedAt' => null, 'status' => 'ok', 'errors' => []], $store->read());
+	}
+
+	/**
+	 * A sweep that could not reach some sources is partial and names them; one
+	 * that reached none is failed.
+	 *
+	 * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+	 */
+	public function testAPartialAndAFailedSweepSaySo(): void {
+		$store = $this->store();
+		$store->save(['deck' => ['error' => null], 'pipelinq' => ['error' => 'source did not answer']], 1_790_000_000);
+		$read = $store->read();
+		self::assertSame('partial', $read['status']);
+		self::assertSame(['pipelinq'], $read['errors']);
+
+		$store->save(['pipelinq' => ['error' => 'source did not answer']], 1_790_000_100);
+		self::assertSame('failed', $store->read()['status']);
+	}
+
+	/**
+	 * A sweep that failed as a whole keeps the previous snapshot and its
+	 * `checkedAt` (the last sweep that succeeded, which occ and MCP show without
+	 * the status) and says failed with the attempt's time as `failedAt`; with
+	 * no snapshot at all it is still reported, not "never checked". The next
+	 * successful sweep clears `failedAt`.
+	 *
+	 * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+	 */
+	public function testAWholeFailureKeepsTheSnapshotAndSaysFailed(): void {
+		$store = $this->store();
+		$store->saveFailure(1_790_000_000);
+		self::assertSame(['updates' => [], 'checkedAt' => null, 'failedAt' => 1_790_000_000, 'status' => 'failed', 'errors' => []], $store->read());
+
+		$store->save(['deck' => ['installedVersion' => '1.0.0']], 1_790_000_100);
+		$store->saveFailure(1_790_000_200);
+		self::assertSame(['updates' => ['deck' => ['installedVersion' => '1.0.0']], 'checkedAt' => 1_790_000_100, 'failedAt' => 1_790_000_200, 'status' => 'failed', 'errors' => []], $store->read());
+
+		$store->save(['deck' => ['installedVersion' => '1.0.1']], 1_790_000_300);
+		self::assertSame(['updates' => ['deck' => ['installedVersion' => '1.0.1']], 'checkedAt' => 1_790_000_300, 'failedAt' => null, 'status' => 'ok', 'errors' => []], $store->read());
+	}
+
+	/**
+	 * A snapshot stored before outcomes were recorded gets the outcome its entries give.
+	 */
+	public function testALegacySnapshotDerivesItsOutcome(): void {
+		$this->values['availability.results'] = '{"deck":{"error":"timeout"},"notes":{"error":null}}';
+		$this->values['availability.results.checkedAt'] = 1_790_000_000;
+
+		$read = $this->store()->read();
+		self::assertSame('partial', $read['status']);
+		self::assertSame(['deck'], $read['errors']);
 	}
 }

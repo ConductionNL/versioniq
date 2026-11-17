@@ -23,6 +23,8 @@ use OCP\App\IAppManager;
  * The aggregator is intentionally simple: synchronous PHP iteration over
  * providers. If a provider becomes too slow we swap in `IClient::getMulti`
  * later — for now total wall time is acceptable for an admin-facing search.
+ *
+ * @psalm-import-type Group from DiscoveryMerge
  */
 class DiscoveryAggregator {
 	/** @var list<DiscoveryProviderInterface> */
@@ -33,11 +35,10 @@ class DiscoveryAggregator {
 	 */
 	public function __construct(
 		private IAppManager $appManager,
-		AppStoreDiscovery $appStore,
-		GithubPrivateDiscovery $githubPrivate,
-		GithubSearchDiscovery $githubSearch,
+		DiscoveryProviders $providers,
+		private ?PublisherTrust $trust = null,
 	) {
-		$this->providers = [$appStore, $githubPrivate, $githubSearch];
+		$this->providers = $providers->all();
 	}
 
 	/**
@@ -73,10 +74,87 @@ class DiscoveryAggregator {
 		}
 
 		return [
-			'results' => $merge->results($filter->installedOnly),
+			'results' => self::withSimilarNames($this->markedResults($merge->results($filter->installedOnly))),
 			'providers' => $this->listProviders(),
 			'errors' => $merge->errors(),
 		];
+	}
+
+	/**
+	 * The results with every trust mark a named source backs; see "Hits and
+	 * cards name the publisher".
+	 *
+	 * @spec openspec/changes/inventory-verified-publisher/specs/app-discovery/spec.md#requirement-hits-and-cards-name-the-publisher-and-the-trust-marks-the-data-backs
+	 * @param list<Group> $results
+	 * @return list<Group>
+	 */
+	private function markedResults(array $results): array {
+		if ($this->trust === null) {
+			return $results;
+		}
+
+		foreach ($results as $index => $result) {
+			$featured = in_array(PublisherTrust::MARK_FEATURED, $result['marks'], true);
+			$marks = $result['marks'];
+			foreach ($result['sourceCandidates'] as $candidate) {
+				$marks = [...$marks, ...$this->trust->marksFor($result['appId'], $candidate['sourceBinding'], $featured)];
+			}
+			$results[$index]['marks'] = array_values(array_intersect(PublisherTrust::MARKS, $marks));
+		}
+
+		return array_values($results);
+	}
+
+	/**
+	 * Gives every result whose normalised name it shares with a result from
+	 * another publisher a `similarTo` list naming those results; see "Hits
+	 * and cards name the publisher". The name is lower-cased, spaces, dashes
+	 * and underscores are removed, and a trailing "app" is dropped.
+	 *
+	 * @spec openspec/changes/inventory-verified-publisher/specs/app-discovery/spec.md#requirement-hits-and-cards-name-the-publisher-and-the-trust-marks-the-data-backs
+	 * @param list<Group> $results
+	 * @return list<Group>
+	 */
+	public static function withSimilarNames(array $results): array {
+		$byName = [];
+		foreach ($results as $index => $result) {
+			$byName[self::normalisedName($result['name'])][] = $index;
+		}
+
+		foreach ($results as $index => $result) {
+			$similar = [];
+			foreach ($byName[self::normalisedName($result['name'])] as $other) {
+				$candidate = $results[$other];
+				if ($other === $index || self::samePublisher($result['publisher'], $candidate['publisher'])) {
+					continue;
+				}
+				$similar[] = ['appId' => $candidate['appId'], 'name' => $candidate['name'], 'publisher' => $candidate['publisher']];
+			}
+			$results[$index]['similarTo'] = $similar;
+		}
+
+		return array_values($results);
+	}
+
+	/**
+	 * The comparable form of an app name.
+	 *
+	 * @spec openspec/changes/inventory-verified-publisher/specs/app-discovery/spec.md#requirement-hits-and-cards-name-the-publisher-and-the-trust-marks-the-data-backs
+	 */
+	public static function normalisedName(string $name): string {
+		$plain = (string)preg_replace('/[\s_-]+/u', '', mb_strtolower($name));
+		if (strlen($plain) > 3 && str_ends_with($plain, 'app')) {
+			$plain = substr($plain, 0, -3);
+		}
+
+		return $plain;
+	}
+
+	/**
+	 * Two publishers are the same only when both are known and equal, ignoring case.
+	 */
+	private static function samePublisher(?string $left, ?string $right): bool {
+		return $left !== null && $right !== null && mb_strtolower(trim($left)) === mb_strtolower(trim($right));
 	}
 
 	/**
