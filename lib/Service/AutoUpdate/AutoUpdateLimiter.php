@@ -161,28 +161,33 @@ final class AutoUpdateLimiter {
 	 * @return array<string, list<AutoUpdateMember>>
 	 */
 	private function runOrder(array $units, array $deferred): array {
-		uksort($units, static fn (string $a, string $b): int => self::compareUnits($a, $b, $deferred));
+		uksort($units, self::byRunOrder($deferred));
 
 		return $units;
 	}
 
 	/**
-	 * Run order of two unit keys: the longer held first, held before not held, then by name.
+	 * Compares two unit keys in run order: the longer held first, held before
+	 * not held, then by name.
 	 *
 	 * @param array<string, string> $deferred
+	 *
+	 * @return \Closure(string, string): int
 	 */
-	private static function compareUnits(string $a, string $b, array $deferred): int {
-		$heldA = $deferred[$a] ?? null;
-		$heldB = $deferred[$b] ?? null;
-		if (($heldA === null) !== ($heldB === null)) {
-			return ($heldA === null) ? 1 : -1;
-		}
+	private static function byRunOrder(array $deferred): \Closure {
+		return static function (string $a, string $b) use ($deferred): int {
+			$heldA = $deferred[$a] ?? null;
+			$heldB = $deferred[$b] ?? null;
+			if (($heldA === null) !== ($heldB === null)) {
+				return ($heldA === null) ? 1 : -1;
+			}
 
-		if ($heldA !== $heldB) {
-			return strcmp((string)$heldA, (string)$heldB);
-		}
+			if ($heldA !== $heldB) {
+				return strcmp((string)$heldA, (string)$heldB);
+			}
 
-		return strcmp(self::sortName($a), self::sortName($b));
+			return strcmp(self::sortName($a), self::sortName($b));
+		};
 	}
 
 	/**

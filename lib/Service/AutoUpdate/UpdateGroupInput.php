@@ -48,7 +48,15 @@ final class UpdateGroupInput {
 		foreach ($raw as $entry) {
 			$group = self::group($entry, $saved);
 			self::claimName($group, $names);
-			self::claimApps($group, $owner, $isManageable);
+			foreach ($group->apps as $appId) {
+				if (isset($owner[$appId])) {
+					throw new InvalidArgumentException(sprintf('%s is in two groups: "%s" and "%s".', $appId, $owner[$appId], $group->name));
+				}
+				if (!$isManageable($appId)) {
+					throw new InvalidArgumentException(sprintf('%s cannot be updated automatically on this instance.', $appId));
+				}
+				$owner[$appId] = $group->name;
+			}
 			$groups[] = $group;
 		}
 
@@ -69,27 +77,6 @@ final class UpdateGroupInput {
 			throw new InvalidArgumentException(sprintf('The group name "%s" is used twice.', $group->name));
 		}
 		$names[$key] = true;
-	}
-
-	/**
-	 * Refuse an app already in another group or not manageable here; record the rest.
-	 *
-	 * @param UpdateGroup            $group        The group.
-	 * @param array<string, string>  $owner        The group name holding each app so far.
-	 * @param callable(string): bool $isManageable Whether this instance can manage the app.
-	 *
-	 * @throws InvalidArgumentException when an app cannot join this group
-	 */
-	private static function claimApps(UpdateGroup $group, array &$owner, callable $isManageable): void {
-		foreach ($group->apps as $appId) {
-			if (isset($owner[$appId])) {
-				throw new InvalidArgumentException(sprintf('%s is in two groups: "%s" and "%s".', $appId, $owner[$appId], $group->name));
-			}
-			if (!$isManageable($appId)) {
-				throw new InvalidArgumentException(sprintf('%s cannot be updated automatically on this instance.', $appId));
-			}
-			$owner[$appId] = $group->name;
-		}
 	}
 
 	/**

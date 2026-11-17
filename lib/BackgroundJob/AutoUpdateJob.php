@@ -224,6 +224,23 @@ class AutoUpdateJob extends TimedJob {
 	 * member is reported in its group's notification.
 	 */
 	private function attemptInstall(InstallTarget $target, string $installedVersion, bool $notify = true): bool {
+		[$installed, $payload] = $this->installAndRecord($target);
+		if ($notify && $installed) {
+			$this->notifier->notifySuccess($target->appId, $installedVersion, self::versionInstalled($payload, $target));
+		}
+		if ($notify && !$installed) {
+			$this->notifyFailure($target, $payload);
+		}
+
+		return $installed;
+	}
+
+	/**
+	 * Installs the target and records the attempt in the ledger.
+	 *
+	 * @return array{0: bool, 1: array<array-key, mixed>} Whether it installed, and the installer's payload.
+	 */
+	private function installAndRecord(InstallTarget $target): array {
 		$installResult = $this->install->installerService->installAppVersion(new InstallRequest(
 			$target,
 			new InstallOptions(false, false, false, false),
@@ -233,22 +250,11 @@ class AutoUpdateJob extends TimedJob {
 		$at = $this->time->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM);
 		$statusCode = $installResult['statusCode'] ?? Http::STATUS_INTERNAL_SERVER_ERROR;
 		$payload = $installResult['payload'] ?? [];
+		$installed = $statusCode >= Http::STATUS_OK && $statusCode < Http::STATUS_MULTIPLE_CHOICES;
+		$outcome = $installed ? AttemptLedgerInterface::OUTCOME_SUCCESS : AttemptLedgerInterface::OUTCOME_FAILURE;
+		$this->stores->attemptLedger->record($target->appId, $target->version, $outcome, $at);
 
-		if ($statusCode >= Http::STATUS_OK && $statusCode < Http::STATUS_MULTIPLE_CHOICES) {
-			$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedgerInterface::OUTCOME_SUCCESS, $at);
-			if ($notify) {
-				$this->notifier->notifySuccess($target->appId, $installedVersion, self::versionInstalled($payload, $target));
-			}
-
-			return true;
-		}
-
-		$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedgerInterface::OUTCOME_FAILURE, $at);
-		if ($notify) {
-			$this->notifyFailure($target, $payload);
-		}
-
-		return false;
+		return [$installed, $payload];
 	}
 
 	/**
