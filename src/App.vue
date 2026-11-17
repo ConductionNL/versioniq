@@ -8,9 +8,10 @@ import type { UpdateGroupView } from './components/UpdateGroupsPanel.vue'
 import type { PinRecord } from './dialogs/PinDialog.vue'
 import type {AdvisoryCorrelation, AdvisoryTriageMap, Compliance, NcscStatus} from './utils/advisories.ts';
 import type { AutoUpdateSchedule as AutoUpdateScheduleValue, UpdateKind } from './utils/autoUpdateSchedule.ts'
+import type { ReleaseChannel } from './utils/channelFilter.ts'
 import type { LeftDisabled } from './utils/externalChanges.ts'
 import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
-import type {LkgRecord} from './utils/migrationSafety.ts';
+import type {LkgRecord, MigrationPreview} from './utils/migrationSafety.ts';
 import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
 import type { SweepStatus } from './utils/sweepOutcome.ts'
 import type {BatchCandidate, BatchRow} from './utils/updateBatch.ts';
@@ -29,6 +30,7 @@ import AutoUpdateOverview from './components/AutoUpdateOverview.vue'
 import AutoUpdateSchedule from './components/AutoUpdateSchedule.vue'
 import CachePanel from './components/CachePanel.vue'
 import ChangelogRangePanel from './components/ChangelogRangePanel.vue'
+import ChannelSelector from './components/ChannelSelector.vue'
 import DiscoverPanel from './components/DiscoverPanel.vue'
 import HistoryPanel from './components/HistoryPanel.vue'
 import InstallProgress from './components/InstallProgress.vue'
@@ -36,11 +38,13 @@ import InstallResultNotices from './components/InstallResultNotices.vue'
 import InstanceSettingsPanel from './components/InstanceSettingsPanel.vue'
 import IntegrationsPanel from './components/IntegrationsPanel.vue'
 import LifecycleBadge from './components/LifecycleBadge.vue'
+import MigrationPreviewPanel from './components/MigrationPreviewPanel.vue'
 import PatchPolicyPanel from './components/PatchPolicyPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
 import PublisherMark from './components/PublisherMark.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
+import SbomExportMenu from './components/SbomExportMenu.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
 import SourceOverrideField from './components/SourceOverrideField.vue'
 import SourcesPanel from './components/SourcesPanel.vue'
@@ -65,6 +69,7 @@ import { advisoryFreshnessLabel as advisoryFreshnessLabelFor } from './utils/adv
 import { defaultSchedule, scheduleFrom } from './utils/autoUpdateSchedule.ts'
 import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow.ts'
 import { buildChangelogRange } from './utils/changelog.ts'
+import { channelLabel, noLtsLinesMarked, offChannelTags, pickerVersions } from './utils/channelFilter.ts'
 import { tabForHash } from './utils/connectionRegistry.ts'
 import { currentLoginName, enableApp } from './utils/enableApp.ts'
 import { leftDisabledMarks, leftDisabledNotice } from './utils/externalChanges.ts'
@@ -109,6 +114,9 @@ type AppVersion = {
 	cachedOffline?: boolean
 	serverCompatible?: boolean | null
 	releasedAt?: string | null
+	preRelease?: boolean
+	lts?: boolean
+	onChannel?: boolean
 	downloads?: number | null
 	outcomes?: VersionOutcomes | null
 	breaking?: boolean
@@ -134,6 +142,13 @@ const pinnedOnly = ref(false)
 const updateChannel = ref('')
 const selectedApp = ref('')
 const versions = ref<AppVersion[]>([])
+// releases-channel-and-prereleases: the effective channel the versions answer
+// names, the picker's "Show all versions" switch, and the channel settings.
+const versionChannel = ref('')
+const showAllVersions = ref(false)
+type ChannelState = { channels: string[], default: string, apps: Record<string, string>, ltsLines: Record<string, string[]> }
+const channelState = ref<ChannelState>({ channels: [], default: 'server', apps: {}, ltsLines: {} })
+const isSavingChannel = ref(false)
 const versionFilter = ref('')
 const hasCheckedVersions = ref(false)
 const isCheckingVersions = ref(false)
@@ -164,6 +179,14 @@ let downgradeResolve: ((value: boolean) => void) | null = null
 // Migration diff for the downgrade dialog — fetched via a dry-run preview
 // before the dialog opens; see "Migration diff on downgrade".
 const downgradeOrphanedMigrations = ref<string[] | null>(null)
+// The database changes of the selected upgrade: undefined until "Preview
+// database changes" is picked, null when the target could not be read.
+// @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
+const migrationPreview = ref<MigrationPreview | null | undefined>(undefined)
+const isPreviewingMigrations = ref(false)
+watch([() => selectedApp.value, () => selectedVersion.value], () => {
+	migrationPreview.value = undefined
+})
 // Suppresses the safe-mode auto-clear watcher while "Roll back to last
 // known good" programmatically selects a (necessarily older) version.
 const suppressSafeModeAutoClear = ref(false)
@@ -1243,6 +1266,8 @@ function resetSelectedAppState (): void {
 	selectedVersion.value = ''
 	versionFilter.value = ''
 	hasCheckedVersions.value = false
+	versionChannel.value = ''
+	showAllVersions.value = false
 	installedVersion.value = ''
 	availableSource.value = ''
 	sourceOverride.value = ''
@@ -1287,6 +1312,7 @@ type VersionsPayload = {
 	source?: string
 	sourceId?: string
 	error?: string
+	channel?: string
 }
 
 /**
@@ -1324,6 +1350,7 @@ async function fetchVersionsPayload (appId: string): Promise<VersionsPayload> {
  */
 function applyVersionsPayload (payload: VersionsPayload): void {
 	versions.value = payload.availableVersions || payload.versions || []
+	versionChannel.value = payload.channel || ''
 	installedVersion.value = payload.installedVersion || ''
 	availableSource.value = payload.sourceId || payload.source || ''
 	errorMessage.value = payload.error ?? ''
@@ -1341,7 +1368,122 @@ function isBlockedBySafeModeRule (version: string): boolean {
 		enabled: isSafeMode.value,
 		installedVersion: installedVersion.value,
 		updateChannel: updateChannel.value,
+		onChannel: versions.value.find((entry) => entry.version === version)?.onChannel,
 	})
+}
+
+/**
+ * Safe mode's listing rule: with "Show all versions" on, an off-channel
+ * version stays listed and tagged, and selecting it is refused.
+ *
+ * @param version the listed version
+ */
+function isHiddenBySafeMode (version: AppVersion): boolean {
+	return isBlockedBySafeMode(version.version, {
+		enabled: isSafeMode.value,
+		installedVersion: installedVersion.value,
+		updateChannel: updateChannel.value,
+		onChannel: showAllVersions.value && version.onChannel === false ? true : version.onChannel,
+	})
+}
+
+const versionChannelName = computed(() => (versionChannel.value ? channelLabel(versionChannel.value) : ''))
+
+const ltsLinesMissing = computed(() => noLtsLinesMarked(
+	versionChannel.value,
+	channelState.value.ltsLines[selectedApp.value] ?? [],
+	versions.value,
+))
+
+/**
+ * Read the release channel settings (admin only; a refusal leaves the defaults).
+ */
+async function loadChannels (): Promise<void> {
+	try {
+		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/channels')), { headers: { ...ocsHeaders, Accept: 'application/json' } })
+		channelState.value = normaliseChannelState(await unwrapOcsResponse<Partial<ChannelState>>(response))
+	} catch {
+		// Not an admin, or an older server: the selectors keep their defaults.
+	}
+}
+
+/**
+ * The channel settings with every part present, whatever the server left out.
+ *
+ * @param state the answer
+ */
+function normaliseChannelState (state: Partial<ChannelState> | null | undefined): ChannelState {
+	return {
+		channels: Array.isArray(state?.channels) ? state.channels : [],
+		default: typeof state?.default === 'string' && state.default !== '' ? state.default : 'server',
+		apps: state?.apps && typeof state.apps === 'object' ? state.apps : {},
+		ltsLines: state?.ltsLines && typeof state.ltsLines === 'object' ? state.ltsLines : {},
+	}
+}
+
+/**
+ * Send one password-confirmed channel change and keep the settings it answers.
+ *
+ * @param change the endpoint below /api (path), PUT or DELETE (method) and the request body (body)
+ * @param change.path the endpoint below /api
+ * @param change.method PUT or DELETE
+ * @param change.body the request body
+ */
+async function sendChannelChange ({ path, method, body }: { path: string, method: 'PUT' | 'DELETE', body: Record<string, unknown> }): Promise<void> {
+	if (isSavingChannel.value) {
+		return
+	}
+	isSavingChannel.value = true
+	errorMessage.value = ''
+	try {
+		await ensurePasswordConfirmation()
+		const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/${path}`)), {
+			method,
+			headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
+			body: JSON.stringify(body),
+		})
+		channelState.value = normaliseChannelState(await unwrapOcsResponse<Partial<ChannelState>>(response))
+		if (selectedApp.value !== '') {
+			applyVersionsPayload(await fetchVersionsPayload(selectedApp.value))
+		}
+	} catch (e) {
+		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not change the release channel.')
+	} finally {
+		isSavingChannel.value = false
+	}
+}
+
+/**
+ * An app's channel was chosen; null means it follows the default again.
+ *
+ * @param appId the app
+ * @param channel the channel, or null
+ */
+async function onChannelChange (appId: string, channel: ReleaseChannel | null): Promise<void> {
+	const path = `app/${encodeURIComponent(appId)}/channel`
+	await sendChannelChange({ path, method: channel === null ? 'DELETE' : 'PUT', body: channel === null ? {} : { channel } })
+}
+
+/**
+ * An app's long-term support lines were saved.
+ *
+ * @param appId the app
+ * @param lines the lines
+ */
+async function onLtsLinesChange (appId: string, lines: string[]): Promise<void> {
+	await sendChannelChange({ path: `app/${encodeURIComponent(appId)}/lts-lines`, method: 'PUT', body: { lines } })
+}
+
+/**
+ * The instance default channel was chosen on the Settings tab.
+ *
+ * @param _appId always '' for the default
+ * @param channel the channel
+ */
+async function onDefaultChannelChange (_appId: string, channel: ReleaseChannel | null): Promise<void> {
+	if (channel !== null) {
+		await sendChannelChange({ path: 'channel', method: 'PUT', body: { channel } })
+	}
 }
 
 /**
@@ -1512,9 +1654,10 @@ function appCardFallback (app: AppOption): string {
 
 const filteredVersions = computed(() => {
 	const filter = versionFilter.value.trim().toLowerCase()
+	const onChannel = pickerVersions(versions.value, showAllVersions.value)
 	const list = isSafeMode.value
-		? versions.value.filter((version) => !isBlockedBySafeModeRule(version.version))
-		: versions.value
+		? onChannel.filter((version) => !isHiddenBySafeMode(version))
+		: onChannel
 
 	if (filter === '') {
 		return list
@@ -1824,6 +1967,31 @@ function versionRangeText (summary: VersionRangeInfo | null): string {
 	return `${summary.direction === 'upgrade' ? 'Upgrade' : 'Downgrade'} crosses ${summary.major} major and ${summary.minor} minor version step${summary.minor === 1 ? '' : 's'}.`
 }
 
+/**
+ * Runs an upgrade dry run and keeps its database changes for the panel;
+ * nothing is installed (safety-upgrade-migration-preview, design D5).
+ *
+ * @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
+ */
+async function previewMigrations (): Promise<void> {
+	const appId = selectedApp.value
+	const version = selectedVersion.value
+	if (!appId || !version || isPreviewingMigrations.value) {
+		return
+	}
+	isPreviewingMigrations.value = true
+	try {
+		const { payload } = await requestInstall({ appId, version, forceDryRun: true })
+		if (selectedApp.value === appId && selectedVersion.value === version) {
+			migrationPreview.value = payload.migrationPreview ?? null
+		}
+	} catch {
+		migrationPreview.value = null
+	} finally {
+		isPreviewingMigrations.value = false
+	}
+}
+
 // Previews the migration diff for a downgrade via a dry-run install request
 // before the confirmation dialog opens, so the dialog can name the exact
 // migrations the target lacks instead of only warning generically; see
@@ -1913,6 +2081,7 @@ type InstallApiPayload = {
 	actualSha?: string
 	recordedShaMatched?: boolean
 	orphanedMigrations?: string[] | null
+	migrationPreview?: MigrationPreview | null
 	integrityWarning?: string | null
 	space?: { appsFree: number | null, tempFree: number | null } | null
 	servedFromCache?: boolean
@@ -2647,6 +2816,7 @@ onMounted(async () => {
 	void loadPolicies().catch(() => undefined)
 	void loadAdvisorySettings().catch(() => undefined)
 	void loadUpdates().catch(() => undefined)
+	void loadChannels().catch(() => undefined)
 })
 
 watch([safeModeEnabled, installedVersion, selectedVersion], () => {
@@ -3166,6 +3336,15 @@ watch(dryRunEnabled, () => {
 													:blockedVersions="blockedVersionsFor(app.id)"
 													@change="onPolicyChange"
 													@retry="onRetryAttempt" />
+												<ChannelSelector
+													v-if="!app.isCore"
+													:appId="app.id"
+													:channel="channelState.apps[app.id] ?? null"
+													:defaultChannel="channelState.default"
+													:ltsLines="channelState.ltsLines[app.id] ?? []"
+													:disabled="isSavingChannel"
+													@change="onChannelChange"
+													@ltsLines="onLtsLinesChange" />
 											</div>
 											<button
 												v-if="!app.isCore"
@@ -3301,6 +3480,17 @@ watch(dryRunEnabled, () => {
 											{{ t('versioniq', 'Downgrade path detected.') }}
 										</p>
 										<ChangelogRangePanel :entries="changelogRange" />
+										<NcButton
+											v-if="selectedVersionRange?.direction === 'upgrade'"
+											variant="secondary"
+											data-testid="preview-migrations"
+											:disabled="isPreviewingMigrations || isInstallingVersion"
+											@click="previewMigrations">
+											{{ isPreviewingMigrations ? t('versioniq', 'Previewing database changes…') : t('versioniq', 'Preview database changes') }}
+										</NcButton>
+										<MigrationPreviewPanel
+											v-if="selectedVersionRange?.direction === 'upgrade' && migrationPreview !== undefined"
+											:preview="migrationPreview" />
 										<AppAboutCard v-if="selectedAppOption" :app="selectedAppOption" />
 									</div>
 									<template v-if="appDetailTab === 'versions'">
@@ -3310,6 +3500,23 @@ watch(dryRunEnabled, () => {
 											:boundSourceId="selectedAppOption?.boundSourceId ?? null"
 											:disabled="isCheckingVersions || isInstallingVersion"
 											@apply="onApplySourceOverride" />
+										<div v-if="versions.length > 0" :class="$style.versionChannelBar" data-testid="version-channel-bar">
+											<span v-if="versionChannelName" data-testid="version-channel-name">
+												{{ t('versioniq', 'Release channel: {channel}', { channel: versionChannelName }) }}
+											</span>
+											<label :class="$style.safeMode">
+												<input
+													v-model="showAllVersions"
+													type="checkbox"
+													data-testid="show-all-versions"
+													:class="$style.safeModeCheckbox"
+													:disabled="isInstallingVersion">
+												<span>{{ t('versioniq', 'Show all versions') }}</span>
+											</label>
+											<p v-if="ltsLinesMissing && !showAllVersions" :class="$style.versionChannelNotice" data-testid="no-lts-lines">
+												{{ t('versioniq', 'No long-term support lines are marked for this app') }}
+											</p>
+										</div>
 										<div v-if="versions.length > 0" :class="$style.versionListContainer">
 											<!-- aria-label, not a placeholder. A placeholder is not an
 											     accessible name: it is announced inconsistently and
@@ -3335,6 +3542,13 @@ watch(dryRunEnabled, () => {
 															<span>{{ version.version }}</span>
 															<ReleaseDate :releasedAt="version.releasedAt ?? null" />
 															<ServerCompatBadge :serverCompatible="version.serverCompatible ?? null" />
+															<span
+																v-for="tag in offChannelTags(version, versionChannel)"
+																:key="tag"
+																:class="$style.versionChannelTag"
+																data-testid="version-channel-tag">
+																{{ tag }}
+															</span>
 															<span
 																v-if="version.cachedOffline"
 																:class="$style.cachedOfflineBadge"
@@ -3537,10 +3751,13 @@ watch(dryRunEnabled, () => {
 					id="alerts-panel"
 					role="tabpanel"
 					aria-labelledby="alerts-tab" />
-				<HistoryPanel v-if="currentTab === 'history'"
+				<div v-if="currentTab === 'history'"
 					id="history-panel"
 					role="tabpanel"
-					aria-labelledby="history-tab" />
+					aria-labelledby="history-tab">
+					<SbomExportMenu />
+					<HistoryPanel />
+				</div>
 				<SourcesPanel v-show="currentTab === 'sources'"
 					id="sources-panel"
 					role="tabpanel"
@@ -3571,6 +3788,12 @@ watch(dryRunEnabled, () => {
 					id="settings-panel"
 					role="tabpanel"
 					aria-labelledby="settings-tab">
+					<div :class="$style.defaultChannel" data-testid="default-channel">
+						<ChannelSelector
+							:channel="channelState.default"
+							:disabled="isSavingChannel"
+							@change="onDefaultChannelChange" />
+					</div>
 					<InstanceSettingsPanel />
 					<PatchPolicyPanel />
 					<SuccessorsPanel />
@@ -3657,6 +3880,32 @@ watch(dryRunEnabled, () => {
 
 .layout {
 	width: 100%;
+}
+
+.versionChannelBar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 8px;
+}
+
+.versionChannelNotice {
+	width: 100%;
+	color: var(--color-warning-text);
+}
+
+.versionChannelTag {
+	font-size: 12px;
+	padding: 0 6px;
+	border-radius: var(--border-radius-pill);
+	background-color: var(--color-warning-hover, var(--color-background-dark));
+	color: var(--color-main-text);
+}
+
+.defaultChannel {
+	max-width: 400px;
+	padding: 16px;
 }
 
 .updateChannel {

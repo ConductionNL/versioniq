@@ -178,6 +178,9 @@ class InstallVersion extends Command {
 		}
 		if ($exitCode === self::EXIT_OK) {
 			self::renderInstalled($output, $payload);
+			if (array_key_exists('migrationPreview', $payload)) {
+				MigrationPreviewOutput::render($output, is_array($payload['migrationPreview']) ? $payload['migrationPreview'] : null);
+			}
 
 			return;
 		}

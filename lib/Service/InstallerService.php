@@ -16,6 +16,7 @@ use Exception;
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Kernel\Contracts\InstallerServiceInterface;
+use OCA\Versioniq\Service\Channel\VersionChannels;
 use OCA\Versioniq\Service\Discovery\PublisherTrust;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
@@ -28,6 +29,7 @@ use OCA\Versioniq\Service\Installer\ReleaseInstall;
 use OCA\Versioniq\Service\Installer\ReleaseInstallers;
 use OCA\Versioniq\Service\Installer\ServerAccess;
 use OCA\Versioniq\Service\Installer\ShaMismatchException;
+use OCA\Versioniq\Service\Inventory\SbomArchive;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Release\ReleaseNotesReader;
 use OCA\Versioniq\Service\Source\AppStoreSource;
@@ -79,6 +81,9 @@ class InstallerService implements InstallerServiceInterface {
 		private InstallState $state,
 		private IUserSession $userSession,
 		private ITimeFactory $timeFactory,
+		// Optional: keeps an SBOM of the state each real install produced (inventory-export-sbom-metrics D4).
+		private ?SbomArchive $sbomArchive = null,
+		private ?VersionChannels $channels = null,
 	) {
 	}
 
@@ -458,13 +463,15 @@ class InstallerService implements InstallerServiceInterface {
 
 	/**
 	 * Resolves the active source and lists versions for an app; see "Fetch Available Versions", "Explicit source
-	 * override" and "Version listings carry release notes".
+	 * override" and "Version listings carry release notes". With release channels wired, every entry carries
+	 * `preRelease`, `lts` and `onChannel`, and the envelope names the effective `channel`.
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @spec openspec/specs/changelog-visibility/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
 	 * @spec openspec/specs/artifact-cache/spec.md
-	 * @return array{installedVersion: ?string, availableVersions: list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool}>, versions: list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool}>, source: string, sourceId: string, statusCode: int, hasError: bool, error?: string}
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-an-admin-sets-a-release-channel-for-the-instance-and-per-app
+	 * @return array{installedVersion: ?string, availableVersions: list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool, preRelease?: bool, lts?: bool, onChannel?: bool}>, versions: list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool, preRelease?: bool, lts?: bool, onChannel?: bool}>, source: string, sourceId: string, statusCode: int, channel?: string, hasError: bool, error?: string}
 	 */
 	public function getAppVersions(string $appId, ?string $sourceOverride = null): array {
 		$appId = trim($appId);
@@ -495,6 +502,14 @@ class InstallerService implements InstallerServiceInterface {
 		$versions = $this->applyCachedOffline($versions, $appId);
 		/** @var list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool}> $versions */
 		$versions = $this->applyCachedServerCompatibility($versions, $appId);
+		$channel = [];
+		if ($this->channels !== null) {
+			// Stamped, not filtered: the picker reveals the rest and the CLI lists every version.
+			$stamped = $this->channels->stamp($appId, $versions);
+			/** @var list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool, preRelease?: bool, lts?: bool, onChannel?: bool}> $versions */
+			$versions = $stamped['versions'];
+			$channel = ['channel' => $stamped['channel']];
+		}
 
 		return [
 			'installedVersion' => $installedVersion,
@@ -503,7 +518,7 @@ class InstallerService implements InstallerServiceInterface {
 			'source' => $binding->kind,
 			'sourceId' => $binding->getId(),
 			'statusCode' => Http::STATUS_OK,
-		] + self::listingErrorFields($result);
+		] + $channel + self::listingErrorFields($result);
 	}
 
 	/**
@@ -533,7 +548,7 @@ class InstallerService implements InstallerServiceInterface {
 	 * server release) are never published to the App Store, so a store miss
 	 * for one is explained instead of surfacing a generic "not available".
 	 *
-	 * @return array{versions: list<array{version: string, changelog?: ?string, serverCompatible?: ?bool, releasedAt?: ?string}>, error: ?string}
+	 * @return array{versions: list<array{version: string, changelog?: ?string, serverCompatible?: ?bool, releasedAt?: ?string, sourcePreRelease?: true, sourceLts?: true}>, error: ?string}
 	 */
 	private function listSourceVersions(string $appId, SourceBinding $binding): array {
 		$result = $this->sources->sourceRegistry->get($binding)->listVersions($appId, $binding);
@@ -622,8 +637,8 @@ class InstallerService implements InstallerServiceInterface {
 	 * through, so truncation behaviour is identical regardless of origin.
 	 *
 	 * @spec openspec/specs/changelog-visibility/spec.md
-	 * @param list<array{version:string, changelog?:?string, serverCompatible?:?bool, releasedAt?:?string}> $versions
-	 * @return list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string}>
+	 * @param list<array{version:string, changelog?:?string, serverCompatible?:?bool, releasedAt?:?string, sourcePreRelease?:true, sourceLts?:true}> $versions
+	 * @return list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string, sourcePreRelease?:true, sourceLts?:true}>
 	 */
 	private function applyChangelogTruncation(array $versions): array {
 		return array_map(
@@ -652,8 +667,8 @@ class InstallerService implements InstallerServiceInterface {
 	 * record; see "Recorded digests are binding-scoped and surfaced".
 	 *
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @param list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string}> $versions
-	 * @return list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string, recordedSha:?string}>
+	 * @param list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string, sourcePreRelease?:true, sourceLts?:true}> $versions
+	 * @return list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string, sourcePreRelease?:true, sourceLts?:true, recordedSha:?string}>
 	 */
 	private function applyRecordedSha(array $versions, SourceBinding $binding): array {
 		return array_map(
@@ -1180,9 +1195,25 @@ class InstallerService implements InstallerServiceInterface {
 			// After the pin is settled, so our own listener does not read a
 			// re-pinned install as drift.
 			$this->dispatchUpdateEvent($install);
+			$this->archiveSbom($appId);
 		}
 
 		return $this->installEnvelope(Http::STATUS_OK, $payload);
+	}
+
+	/**
+	 * Keeps an SBOM of the state the install produced. Never reaches the
+	 * install: the archive logs its own failures, and anything it still throws
+	 * stops here.
+	 *
+	 * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-every-update-leaves-an-sbom-of-the-state-it-produced
+	 */
+	private function archiveSbom(string $appId): void {
+		try {
+			$this->sbomArchive?->writeFor($appId);
+		} catch (\Throwable) {
+			// The archive already logged it; the install result stands.
+		}
 	}
 
 	/**
@@ -1302,6 +1333,11 @@ class InstallerService implements InstallerServiceInterface {
 		}
 		if (isset($result['checks']) && is_array($result['checks'])) {
 			$fields['checks'] = array_values($result['checks']);
+		}
+		if (array_key_exists('migrationPreview', $result)) {
+			/** @var array<string, mixed>|null $migrationPreview */
+			$migrationPreview = $result['migrationPreview'];
+			$fields['migrationPreview'] = $migrationPreview;
 		}
 
 		return $fields;

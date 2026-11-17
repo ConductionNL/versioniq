@@ -12,13 +12,14 @@ vi.mock('@nextcloud/l10n', () => ({
 		(count === 1 ? one : many).replace('%n', String(count)).replace(/\{(\w+)\}/g, (_match: string, key: string) => String(vars[key] ?? '')),
 }))
 // The dialog renders its buttons and a dismiss control, so a spec can drive
-// every callback and the close (Escape / backdrop) path.
+// every callback and the close (Escape / backdrop) path. Like NcDialog, a
+// button whose callback does not return false closes the dialog.
 vi.mock('@nextcloud/vue/components/NcDialog', () => ({
 	default: {
 		name: 'NcDialog',
 		props: ['open', 'name', 'buttons'],
 		emits: ['update:open'],
-		template: '<div v-if="open" :data-name="name"><slot /><button v-for="b in buttons" :key="b.label" :data-label="b.label" :disabled="b.disabled" @click="b.callback()">{{ b.label }}</button><button data-label="dismiss" @click="$emit(\'update:open\', false)">x</button></div>',
+		template: '<div v-if="open" :data-name="name"><slot /><button v-for="b in buttons" :key="b.label" :data-label="b.label" :disabled="b.disabled" @click="b.callback() !== false && $emit(\'update:open\', false)">{{ b.label }}</button><button data-label="dismiss" @click="$emit(\'update:open\', false)">x</button></div>',
 	},
 }))
 import type { BatchRow } from '../utils/updateBatch.ts'
@@ -50,6 +51,17 @@ describe('UpdateAllDialog', () => {
 		await wrapper.find('[data-label="Update 1 app"]').trigger('click')
 
 		expect(wrapper.emitted('start')).toEqual([[[{ ...candidates[2], selected: true }]]])
+	})
+
+	it('starting the run keeps the dialog open and never asks the run to stop', async () => {
+		const wrapper = mount(UpdateAllDialog, { props })
+
+		await wrapper.find('[data-label="Update 2 apps"]').trigger('click')
+		await wrapper.setProps({ running: true })
+
+		expect(wrapper.emitted('start')).toHaveLength(1)
+		expect(wrapper.emitted('update:open')).toBeUndefined()
+		expect(wrapper.emitted('stop')).toBeUndefined()
 	})
 
 	it('shows each outcome as it lands', () => {

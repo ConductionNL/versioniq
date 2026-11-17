@@ -26,6 +26,7 @@ final class InstallSteps {
 		public readonly MigrationDiffer $migrationDiffer,
 		public readonly InstallFinalizer $finalizer,
 		public readonly AuditLogger $auditLogger,
+		public readonly ?MigrationPreview $migrationPreview = null,
 	) {
 	}
 }

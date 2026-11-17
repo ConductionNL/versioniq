@@ -11,7 +11,9 @@ status: implemented
 ## Purpose
 
 External sources allow Versioniq to install Nextcloud apps from origins outside the Nextcloud App Store — most importantly GitHub releases — while keeping the App Store install path with its full code-signing chain unchanged. The trade-off (no Nextcloud-issued certificate) is made visible through a trusted-source allowlist, archive-content integrity checks, and clear UI labelling.
+
 ## Requirements
+
 ### Requirement: Source abstraction [MVP]
 
 The system MUST expose every install origin (App Store, GitHub releases, future others) through a single `SourceInterface` so the version picker and installer are not hard-coded to one source.
@@ -67,13 +69,13 @@ The system MUST support querying public releases from any registered forge throu
 
 ### Requirement: Trusted-source allowlist [MVP]
 
-The system MUST reject external installs from sources not in the configured allowlist. Allowlist patterns are **forge-qualified** globs of the form `{forge}:owner/repo` (e.g. `github:ConductionNL/*`, `codeberg:Conduction/*`), stored in `versioniq.trusted_sources` as a JSON array. Matching is performed against the binding's `{forge}:owner/repo` id. A stored pattern with **no** forge prefix (legacy bare `owner/repo`) MUST be treated as `github:owner/repo`. When unset, the default is `["github:ConductionNL/*", "codeberg:Conduction/*"]`. The existing fnmatch and owner/repo path-traversal protections MUST be preserved.
+The system MUST reject external installs from sources not in the configured allowlist. Allowlist patterns are **forge-qualified** globs of the form `{forge}:owner/repo` (e.g. `github:ConductionNL/*`), stored in `versioniq.trusted_sources` as a JSON array. Matching is performed against the binding's `{forge}:owner/repo` id. A stored pattern with **no** forge prefix (legacy bare `owner/repo`) MUST be treated as `github:owner/repo`. When unset, the default is `["github:ConductionNL/*"]`; the default trusts nothing on a retired forge, and a stored pattern of a retired forge stays trusted. The existing fnmatch and owner/repo path-traversal protections MUST be preserved.
 
 #### Scenario: Forge-qualified source in allowlist
 
 @e2e exclude TrustedSourceList glob matching is unit-tested.
 
-- **GIVEN** trusted_sources is `["github:ConductionNL/*", "codeberg:Conduction/*"]`
+- **GIVEN** trusted_sources is `["github:ConductionNL/*", "codeberg:Conduction/*"]`, the Codeberg pattern stored before Codeberg was retired
 - **WHEN** an admin tries to install from `github:ConductionNL/openregister`
 - **THEN** `TrustedSourceList::assertAllowed` MUST succeed
 - **WHEN** an admin tries to install from `codeberg:Conduction/openregister`
@@ -112,7 +114,8 @@ The system MUST reject external installs from sources not in the configured allo
 
 - **GIVEN** `versioniq.trusted_sources` has never been set
 - **WHEN** the system reads the allowlist
-- **THEN** the default `["github:ConductionNL/*", "codeberg:Conduction/*"]` MUST be used
+- **THEN** the default `["github:ConductionNL/*"]` MUST be used
+- **AND** `codeberg:Conduction/openregister` MUST NOT be allowed
 
 ### Requirement: External install integrity checks [MVP]
 
@@ -292,69 +295,38 @@ The system MUST provide HTTP endpoints for listing registered sources and the tr
 
 ### Requirement: Forge abstraction [MVP]
 
-The system MUST model each supported release forge as a `Forge` configuration entry carrying `id`, `apiBaseUrl`, `webBaseUrl`, `authScheme` (`Bearer` or `token`), `exposesScopeHeader` (bool), and `tokenCreateUrl`, exposed through a `ForgeRegistry`. The generic release driver and the token validator MUST read forge behaviour from this configuration rather than hard-coding GitHub.
+The system MUST model each supported release forge as a `Forge` configuration entry carrying `id`, `dialect` (`github` or `gitlab`), `apiBaseUrl`, `webBaseUrl`, `authScheme` (`Bearer` or `token`), `exposesScopeHeader` (bool), and `tokenCreateUrl`, exposed through a `ForgeRegistry`. The generic release driver and the token validator MUST read forge behaviour from this configuration, and MUST build every endpoint from the forge's dialect, rather than hard-coding GitHub.
 
 #### Scenario: Known forges registered
 
 @e2e exclude ForgeRegistry contents are unit-tested.
 
 - **GIVEN** the `ForgeRegistry`
-- **WHEN** `get('github')` and `get('codeberg')` are called
-- **THEN** `github` MUST resolve to apiBaseUrl `https://api.github.com`, authScheme `Bearer`, exposesScopeHeader `true`, tokenCreateUrl `https://github.com/settings/tokens`
-- **AND** `codeberg` MUST resolve to apiBaseUrl `https://codeberg.org/api/v1`, authScheme `token`, exposesScopeHeader `false`, tokenCreateUrl `https://codeberg.org/user/settings/applications`
+- **WHEN** `get('github')` and `get('gitlab')` are called
+- **THEN** `github` MUST resolve to dialect `github`, apiBaseUrl `https://api.github.com`, authScheme `Bearer`, exposesScopeHeader `true`, tokenCreateUrl `https://github.com/settings/tokens`
+- **AND** `gitlab` MUST resolve to dialect `gitlab`, apiBaseUrl `https://gitlab.com/api/v4`, authScheme `Bearer`, unless the admin set a self-managed GitLab host
+- **AND** `selectableIds()` MUST NOT contain `codeberg`, a retired forge kept only so what was stored under it resolves (see "A retired forge keeps what was stored under it")
 
 #### Scenario: Unknown forge rejected
 
-@e2e exclude ForgeRegistry rejects unknown forges — unit-tested.
+@e2e exclude ForgeRegistry rejects unknown forges, unit-tested.
 
 - **GIVEN** the `ForgeRegistry`
-- **WHEN** `get('gitlab')` is called
+- **WHEN** `get('bitbucket')` is called
 - **THEN** the registry MUST throw, so unknown forges cannot reach an outbound call
-
-### Requirement: Codeberg releases as a source [MVP]
-
-The system MUST support querying public Codeberg (Forgejo) releases as a source. For a source id of the form `codeberg:{owner}/{repo}`, the system queries `GET https://codeberg.org/api/v1/repos/{owner}/{repo}/releases` and normalizes the Forgejo response (`tag_name`, `assets[].name`, `assets[].browser_download_url`) into the same shape as GitHub and App Store responses.
-
-#### Scenario: Public Codeberg releases listed via Forgejo API
-
-@e2e tests/e2e/external-sources.spec.ts
-
-- **GIVEN** an admin has bound app `openregister` to source `codeberg:Conduction/openregister`
-- **WHEN** the version picker loads
-- **THEN** the system MUST fetch releases from `https://codeberg.org/api/v1/repos/Conduction/openregister/releases`
-- **AND** version strings MUST be derived from the release `tag_name` (stripping a leading `v` if present)
-- **AND** the response MUST be sorted newest-first
-- **AND** for a public repo the request MUST succeed unauthenticated
-
-#### Scenario: Codeberg release resolved to a download asset
-
-@e2e tests/e2e/external-sources.spec.ts
-
-- **GIVEN** a Codeberg release `v2.5.0` with a single `*.tar.gz` asset
-- **WHEN** the install resolves the release
-- **THEN** the system MUST return the asset's `browser_download_url`, asset name, optional `.sha256` sibling URL, and normalized version
-- **AND** asset selection MUST enforce the same unambiguous-match rule as GitHub (fail on multiple matches with "set explicit assetPattern")
-
-#### Scenario: Codeberg auth header uses token scheme
-
-@e2e exclude the token-vs-bearer auth scheme needs a PAT; unit-tested in ForgeReleaseSource/PatValidator.
-
-- **GIVEN** a matching access token resolves for `codeberg:Conduction/private-build`
-- **WHEN** the release listing runs
-- **THEN** the request MUST carry `Authorization: token <token>` (not `Bearer`)
 
 ### Requirement: Trusted-allowlist management API [MVP]
 
-The system MUST provide admin-only, password-confirmed endpoints to curate the trusted-source allowlist by adding and removing forge-qualified patterns, delegating persistence to `TrustedSourceList::setPatterns()`. The system MUST reject over-broad patterns that would trust an entire forge or everything.
+The system MUST provide admin-only, password-confirmed endpoints to curate the trusted-source allowlist by adding and removing forge-qualified patterns, delegating persistence to `TrustedSourceList::setPatterns()`. The system MUST reject over-broad patterns that would trust an entire forge or everything, and MUST refuse a new pattern for a retired forge (`codeberg`). A stored pattern of a retired forge MUST stay listed and removable.
 
 #### Scenario: Curated add persists
 
 @e2e tests/e2e/external-sources.spec.ts
 
-- **GIVEN** an admin calls `POST /api/trusted-sources` with `{forge: "codeberg", owner: "Conduction", repo: "openregister"}` and a confirmed password
-- **THEN** the system MUST construct the pattern `codeberg:Conduction/openregister`
+- **GIVEN** an admin calls `POST /api/trusted-sources` with `{forge: "github", owner: "ConductionNL", repo: "openregister"}` and a confirmed password
+- **THEN** the system MUST construct the pattern `github:ConductionNL/openregister`
 - **AND** persist it into the allowlist via `TrustedSourceList::setPatterns()`
-- **AND** a subsequent `GET /api/sources` MUST return `codeberg:Conduction/openregister` in `trustedPatterns`
+- **AND** a subsequent `GET /api/sources` MUST return `github:ConductionNL/openregister` in `trustedPatterns`
 
 #### Scenario: Curated add of an owner wildcard
 
@@ -397,18 +369,35 @@ The system MUST provide admin-only, password-confirmed endpoints to curate the t
 - **THEN** the system MUST return HTTP 403 Forbidden
 - **AND** the allowlist MUST remain unchanged
 
+#### Scenario: A pattern for a retired forge is refused
+
+@e2e exclude retired-forge refusal is unit-tested in tests/unit/Service/Source/ForgeRegistryTest.php (selectableIds).
+
+- **GIVEN** an admin calls `POST /api/trusted-sources` with `{forge: "codeberg", owner: "Conduction"}` and a confirmed password
+- **THEN** the system MUST NOT modify the allowlist
+- **AND** the system MUST return HTTP 400 naming `codeberg` as a forge that is no longer offered
+
 ### Requirement: Source binding UI surfacing [MVP]
 
-The admin UI MUST surface source binding so an admin can view an app's current binding and bind a forge repository to it, for both github and codeberg forges, using the existing `GET /api/source/{appId}/binding` and `POST /api/source/{appId}/bind` endpoints.
+The admin UI MUST surface source binding so an admin can view an app's current binding and bind a forge repository to it, for every forge that is not retired (github, and the self-hosted forges an admin set), using the existing `GET /api/source/{appId}/binding` and `POST /api/source/{appId}/bind` endpoints.
 
 #### Scenario: Bind a Codeberg repo via the UI
 
 @e2e tests/e2e/panels.spec.ts
 
 - **GIVEN** an admin opens the Sources tab and selects an installed app
-- **WHEN** the admin chooses forge `codeberg`, enters owner `Conduction` and repo `openregister`, and submits
+- **WHEN** the admin opens the forge choice
+- **THEN** `codeberg` MUST NOT be offered for a new binding
+- **AND** an app that was bound to a `codeberg:` source before MUST still show that binding and load its versions from codeberg.org
+
+#### Scenario: Bind a GitHub repo via the UI
+
+@e2e tests/e2e/panels.spec.ts
+
+- **GIVEN** an admin opens the Sources tab and selects an installed app
+- **WHEN** the admin chooses forge `github`, enters owner `ConductionNL` and repo `openregister`, and submits
 - **THEN** the UI MUST call `POST /api/source/{appId}/bind` with the forge-qualified binding
-- **AND** on success the version list for that app MUST load from the bound Codeberg source
+- **AND** on success the version list for that app MUST load from the bound GitHub source
 
 #### Scenario: Current binding displayed
 
@@ -431,7 +420,7 @@ The admin UI MUST surface source binding so an admin can view an app's current b
 
 @e2e tests/e2e/panels.spec.ts
 
-- **GIVEN** the allowlist contains `github:ConductionNL/*` and `codeberg:Conduction/*`
+- **GIVEN** the allowlist contains `github:ConductionNL/*` and a stored `codeberg:Conduction/*`
 - **WHEN** the admin opens the Trusted sources tab
 - **THEN** the UI MUST list both forge-qualified patterns
 
@@ -475,6 +464,72 @@ Every app card MUST name the source of its installed version, apart from the bou
 - **GIVEN** an admin installed Pipelinq 1.12.0 once from GitHub with a one-off source, and the app stays bound to the App Store
 - **WHEN** the admin opens the Apps tab
 - **THEN** the card MUST name GitHub as the source of 1.12.0 and the App Store as the binding
+
+### Requirement: A self-hosted Forgejo or Gitea host is a release source
+
+An admin MUST be able to set one self-hosted Forgejo or Gitea host on the Sources tab through `PUT /api/forges/forgejo`, admin only and password confirmed, and read it back through `GET /api/forges/forgejo`. The host MUST be an https address with no username, password, query or fragment, because tokens are sent to it; any other value MUST be refused with 400 and leave the stored host unchanged. An empty value MUST clear the host. Once a host is set, an admin MUST be able to bind an app to `forgejo:{owner}/{repo}` and list and install its releases through the Forgejo release API at `{host}/api/v1`, with the same allowlist, checksum and recorded-digest rules as a GitHub release. Bindings, tokens and trusted patterns stored under `codeberg` MUST keep resolving to codeberg.org.
+
+#### Scenario: An admin binds an app to a self-hosted Forgejo host
+
+@e2e exclude the host form and the forge registry are unit-tested in tests/unit/Controller/ForgeControllerTest.php and tests/unit/Service/Source/ForgeRegistryTest.php; an e2e run needs a reachable Forgejo fixture.
+
+- **GIVEN** the admin set `https://git.example.org` as the Forgejo host and trusted `forgejo:gemeente/*`
+- **WHEN** the admin binds `zaakapp` to `forgejo:gemeente/zaakapp` and opens its versions
+- **THEN** the versions MUST come from `https://git.example.org/api/v1/repos/gemeente/zaakapp/releases`
+- **AND** installing one MUST go through the standard installer with the recorded-digest check
+
+#### Scenario: A host that is not plain https is refused
+
+- **WHEN** an admin sets `http://git.example.org` or `https://user:secret@git.example.org` as the Forgejo host
+- **THEN** the response MUST be 400 and the stored host MUST stay as it was
+
+### Requirement: GitLab releases as a source
+
+An admin MUST be able to bind an app to `gitlab:{path}`, where the path is a GitLab project path with one or more groups, on gitlab.com or on a self-managed GitLab host set on the Sources tab. Every path segment MUST pass the existing character check, and `.` and `..` segments MUST be refused. Versions MUST come from the project's releases, release notes from their descriptions, and the archive from the release asset link that matches the asset pattern, with the same allowlist, checksum, recorded-digest and cache rules as a GitHub release. A GitLab-bound app MUST read "no advisory source" in the advisory check. For every forge, a stored token MUST be sent only to the forge's own host, never to an asset link on another host.
+
+#### Scenario: An admin installs an app released on self-managed GitLab
+
+@e2e tests/e2e/gitlab.spec.ts
+
+- **GIVEN** the admin set `https://gitlab.example.nl` as GitLab host and trusted `gitlab:gemeente/*`
+- **WHEN** the admin binds `zaakapp` to `gitlab:gemeente/team/zaakapp` and opens its versions
+- **THEN** the versions MUST be the project's release tags, newest first, with their descriptions as release notes
+- **AND** installing one MUST download the release asset link that matches the pattern
+
+#### Scenario: A traversal path is refused
+
+- **WHEN** an admin tries to bind an app to `gitlab:group/../other`
+- **THEN** the binding MUST be refused with 400 and nothing MUST be stored
+
+#### Scenario: A token never leaves the forge's host
+
+- **GIVEN** a GitLab release whose asset link points at `https://downloads.example.org`, and a stored GitLab token
+- **WHEN** an admin installs that release
+- **THEN** the download request to `downloads.example.org` MUST carry no `Authorization` header
+
+#### Scenario: A token only travels over https to the forge's own port
+
+- **GIVEN** a release whose asset link is `http://github.com/...` or `https://github.com:8443/...`, and a stored GitHub token
+- **WHEN** an admin installs that release
+- **THEN** the download request MUST carry no `Authorization` header
+
+### Requirement: A retired forge keeps what was stored under it
+
+The system MUST NOT offer a retired forge (`codeberg`) for a new binding, a new token or a new trusted pattern. A binding, token or trusted pattern already stored under a retired forge MUST keep working: its versions MUST still be listed and installed from that forge's API with the same allowlist, checksum and recorded-digest rules, and it MUST stay removable.
+
+#### Scenario: An app bound to Codeberg before keeps updating
+
+@e2e exclude retired-forge resolution is unit-tested in tests/unit/Service/Source/ForgeRegistryTest.php.
+
+- **GIVEN** app `openregister` was bound to `codeberg:Conduction/openregister` before Codeberg was retired
+- **WHEN** an admin opens its versions
+- **THEN** the versions MUST come from `https://codeberg.org/api/v1/repos/Conduction/openregister/releases`
+- **AND** installing one MUST go through the standard installer with the recorded-digest check
+
+#### Scenario: No new Codeberg binding
+
+- **WHEN** an admin calls `POST /api/source/{appId}/bind` with forge `codeberg`
+- **THEN** the binding MUST be refused with 400 and nothing MUST be stored
 
 ## User Stories
 

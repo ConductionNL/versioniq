@@ -27,6 +27,7 @@ use OCA\Versioniq\Service\Installer\InstalledFolder;
 use OCA\Versioniq\Service\Installer\InstallFailure;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
 use OCA\Versioniq\Service\Installer\MigrationDiffer;
+use OCA\Versioniq\Service\Installer\MigrationPreview;
 use OCA\Versioniq\Service\Installer\ReleaseTarget;
 use OCA\Versioniq\Service\Installer\ReplacesAppFolder;
 use OCA\Versioniq\Service\Installer\SignedInstall;
@@ -63,6 +64,12 @@ class SelectedReleaseInstallerService {
 	/** Whether the last {@see replaceWithSelectedRelease()} call was a downgrade. */
 	private bool $isDowngradeInstall = false;
 
+	/** Whether the last {@see replaceWithSelectedRelease()} call was an upgrade dry run that built a preview. */
+	private bool $isUpgradePreview = false;
+
+	/** @var array<string, mixed>|null The database changes of that upgrade, null when the target could not be read. */
+	private ?array $migrationPreview = null;
+
 	/** Temp path of the archive verified by the last {@see replaceWithSelectedRelease()} call; see "Persist verified artifacts on successful install". */
 	private ?string $lastArchivePath = null;
 
@@ -84,6 +91,7 @@ class SelectedReleaseInstallerService {
 		private IUserSession $userSession,
 		private MigrationDiffer $migrationDiffer,
 		private ArtifactCache $artifactCache,
+		private ?MigrationPreview $preview = null,
 		private ?InstallProgress $progress = null,
 		private ?CheckRunner $checkRunner = null,
 	) {
@@ -117,6 +125,8 @@ class SelectedReleaseInstallerService {
 		$this->debug = [];
 		$this->orphanedMigrations = null;
 		$this->isDowngradeInstall = false;
+		$this->isUpgradePreview = false;
+		$this->migrationPreview = null;
 		$this->lastArchivePath = null;
 		$this->lastArchiveMeta = null;
 		$this->servedFromCache = false;
@@ -618,7 +628,18 @@ class SelectedReleaseInstallerService {
 			'dryRun' => $installedApp === null,
 			'debug' => $this->debug,
 			'servedFromCache' => $this->servedFromCache,
-		] + ($this->isDowngradeInstall ? ['orphanedMigrations' => $this->orphanedMigrations] : []);
+		] + $this->migrationFields();
+	}
+
+	/**
+	 * The migration fields of the envelope: the orphaned migrations of a
+	 * downgrade, the migration preview of an upgrade dry run, else none.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function migrationFields(): array {
+		return ($this->isDowngradeInstall ? ['orphanedMigrations' => $this->orphanedMigrations] : [])
+			+ ($this->isUpgradePreview ? ['migrationPreview' => $this->migrationPreview] : []);
 	}
 
 	/**
@@ -669,6 +690,7 @@ class SelectedReleaseInstallerService {
 		$this->downloadRelease($run);
 		$target = $this->resolveTarget($run, $this->extractRelease($run));
 		$this->diffDowngrade($run, $target);
+		$this->previewUpgrade($run, $target, $dryRun);
 
 		$backupDestination = $this->backupExistingFolder($target->destination, $dryRun, $target->previousPath !== null);
 		if ($dryRun) {
@@ -903,6 +925,36 @@ class SelectedReleaseInstallerService {
 			$this->isDowngradeInstall = true;
 			$this->orphanedMigrations = $this->migrationDiffer->diff($target->previousPath, $target->root);
 			$this->addDebug('migration-diff', ['orphanedMigrations' => $this->orphanedMigrations]);
+		}
+	}
+
+	/**
+	 * Migration preview (upgrade dry run only): the database changes the
+	 * just-extracted target will make, read before any file swap and without
+	 * loading its classes. A real install never builds it.
+	 *
+	 * @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
+	 */
+	private function previewUpgrade(SignedReleaseRun $run, ReleaseTarget $target, bool $dryRun): void {
+		if (!$dryRun || $this->preview === null) {
+			return;
+		}
+		$installedVersion = $this->installedVersionOf($run->appId);
+		if ($installedVersion === '' || !version_compare($run->release->version, $installedVersion, '>')) {
+			return;
+		}
+
+		$this->isUpgradePreview = true;
+		$this->migrationPreview = $this->preview->build($run->appId, $target->previousPath, $target->root);
+		$this->addDebug('migration-preview', ['steps' => count($this->migrationPreview['steps'] ?? [])]);
+	}
+
+	/** The installed version of an app, '' when it is not installed or cannot be read. */
+	private function installedVersionOf(string $appId): string {
+		try {
+			return $this->getAppManager()->getAppVersion($appId);
+		} catch (Exception) {
+			return '';
 		}
 	}
 

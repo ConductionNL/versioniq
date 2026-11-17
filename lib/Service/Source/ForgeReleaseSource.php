@@ -171,7 +171,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 *
 	 * @param array<array-key, mixed> $releases
 	 * @param string $assetPattern The binding's asset pattern, for the download count.
-	 * @return list<array{version: string, changelog: ?string, changelogLanguage: null, releasedAt: ?string, downloads: ?int}>
+	 * @return list<array{version: string, changelog: ?string, changelogLanguage: null, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true}>
 	 */
 	private function versionEntries(array $releases, string $assetPattern): array {
 		$versions = [];
@@ -190,10 +190,31 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 				// A draft carries no published_at and stays null.
 				'releasedAt' => ReleaseDate::normalize($release['published_at'] ?? null),
 				'downloads' => self::assetDownloads($release['assets'] ?? null, $assetPattern),
-			];
+			] + self::publisherMarks($release, $tag);
 		}
 
 		return $versions;
+	}
+
+	/**
+	 * What the publisher said about the release itself: `sourcePreRelease` when
+	 * it is marked pre-release, `sourceLts` when its name or tag carries the
+	 * word LTS; absent otherwise (releases-channel-and-prereleases D1, D4).
+	 *
+	 * @param array<array-key, mixed> $release
+	 * @return array{sourcePreRelease?: true, sourceLts?: true}
+	 */
+	private static function publisherMarks(array $release, string $tag): array {
+		$marks = [];
+		if (($release['prerelease'] ?? false) === true) {
+			$marks['sourcePreRelease'] = true;
+		}
+		$name = isset($release['name']) && is_string($release['name']) ? $release['name'] : '';
+		if (preg_match('/\bLTS\b/i', $name . ' ' . $tag) === 1) {
+			$marks['sourceLts'] = true;
+		}
+
+		return $marks;
 	}
 
 	/**
@@ -766,12 +787,12 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	}
 
 	/**
-	 * @param list<array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int}> $versions
-	 * @return list<array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int}>
+	 * @param list<array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true}> $versions
+	 * @return list<array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true}>
 	 */
 	private function dedupeAndSort(array $versions): array {
 		$seenAt = [];
-		/** @var list<array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int}> $unique */
+		/** @var list<array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true}> $unique */
 		$unique = [];
 		foreach ($versions as $entry) {
 			$index = $seenAt[$entry['version']] ?? null;
@@ -788,8 +809,8 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		usort(
 			$unique,
 			/**
-			 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int} $a
-			 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int} $b
+			 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true} $a
+			 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true} $b
 			 */
 			static fn (array $a, array $b): int => version_compare($b['version'], $a['version'])
 		);
@@ -801,9 +822,9 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * The kept entry with its empty changelog and release date taken from a
 	 * duplicate.
 	 *
-	 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int} $kept
-	 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int} $entry
-	 * @return array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int}
+	 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true} $kept
+	 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true} $entry
+	 * @return array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true}
 	 */
 	private static function backfill(array $kept, array $entry): array {
 		$kept['changelog'] ??= $entry['changelog'];

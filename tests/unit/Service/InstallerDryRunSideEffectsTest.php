@@ -21,10 +21,23 @@ use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Checks\CheckRunner;
 use OCA\Versioniq\Service\ExternalReleaseInstallerService;
+use OCA\Versioniq\Service\Installer\ArchiveCheck;
 use OCA\Versioniq\Service\Installer\EnvironmentCheck;
+use OCA\Versioniq\Service\Installer\ExternalInstall;
+use OCA\Versioniq\Service\Installer\ExternalInstallOptions;
+use OCA\Versioniq\Service\Installer\ExternalInstallRequest;
+use OCA\Versioniq\Service\Installer\ExternalInstallRun;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
+use OCA\Versioniq\Service\Installer\InstallSteps;
 use OCA\Versioniq\Service\Installer\MigrationDiffer;
+use OCA\Versioniq\Service\Installer\MigrationPreview;
+use OCA\Versioniq\Service\Installer\ReleaseTarget;
+use OCA\Versioniq\Service\Installer\SignedInstall;
+use OCA\Versioniq\Service\Installer\SignedRelease;
+use OCA\Versioniq\Service\Installer\SignedReleaseRun;
+use OCA\Versioniq\Service\Installer\StagedRelease;
+use OCA\Versioniq\Service\Installer\TempArchive;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Lkg\LkgStore;
 use OCA\Versioniq\Service\Pin\PinStore;
@@ -56,6 +69,11 @@ use ReflectionMethod;
  * A dry run must change nothing (#427). It used to switch the whole instance
  * into maintenance mode while the package downloaded, and, for App Store apps,
  * to rename the live app folder aside and back.
+ *
+ * An upgrade dry run carries the database changes the target will make; a
+ * real install and a downgrade do not, and building it writes nothing.
+ *
+ * @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
  */
 final class InstallerDryRunSideEffectsTest extends TestCase {
 	use BuildsByParameterName;
@@ -377,5 +395,142 @@ final class InstallerDryRunSideEffectsTest extends TestCase {
 			ITempManager::class => $temp,
 			IClientService::class => $clients,
 		];
+	}
+
+	private const PREVIEW = ['steps' => [], 'repairSteps' => ['OCA\\SomeApp\\Repair\\Seed'], 'estimated' => false];
+
+	/**
+	 * A preview that answers only for the expected target and records each call.
+	 *
+	 * @param list<array{0: string, 1: ?string, 2: ?string}> $calls
+	 */
+	private function preview(array &$calls): MigrationPreview {
+		$preview = $this->createMock(MigrationPreview::class);
+		$preview->method('build')->willReturnCallback(static function (string $appId, ?string $installed, ?string $target) use (&$calls): array {
+			$calls[] = [$appId, $installed, $target];
+			return self::PREVIEW;
+		});
+
+		return $preview;
+	}
+
+	/**
+	 * The signed installer's dry-run envelope for a release over installed 2.0.0.
+	 *
+	 * @param list<array{0: string, 1: ?string, 2: ?string}> $calls
+	 * @return array<string, mixed>
+	 */
+	private function signedEnvelope(string $version, bool $dryRun, array &$calls): array {
+		$appManager = $this->createMock(IAppManager::class);
+		$appManager->method('getAppVersion')->willReturn('2.0.0');
+		InstallerGoldenSupport::useServices([IAppManager::class => $appManager]);
+		$differ = $this->createMock(MigrationDiffer::class);
+		$differ->method('diff')->willReturn([]);
+		$installer = new SelectedReleaseInstallerService(
+			$this->createMock(InstallFinalizer::class),
+			$this->createMock(AuditLogger::class),
+			$this->createMock(IUserSession::class),
+			$differ,
+			$this->createMock(ArtifactCache::class),
+			$this->preview($calls),
+		);
+		$run = new SignedReleaseRun('someapp', new SignedRelease('https://example/app.tar.gz', 'sig', 'cert', $version), new TempArchive('/tmp/a', '/tmp/f'));
+		$target = new ReleaseTarget('/staged/someapp', '/apps/someapp', '/apps/someapp');
+
+		try {
+			(new ReflectionMethod($installer, 'diffDowngrade'))->invoke($installer, $run, $target);
+			(new ReflectionMethod($installer, 'previewUpgrade'))->invoke($installer, $run, $target, $dryRun);
+		} finally {
+			InstallerGoldenSupport::resetServices();
+		}
+		$install = new SignedInstall('someapp', ['version' => $version], '2.0.0', 'yes');
+
+		return (new ReflectionMethod($installer, 'resultEnvelope'))->invoke($installer, $install, null);
+	}
+
+	public function testASignedUpgradeDryRunCarriesTheMigrationPreview(): void {
+		$calls = [];
+		$envelope = $this->signedEnvelope('3.0.0', true, $calls);
+
+		self::assertSame(self::PREVIEW, $envelope['migrationPreview']);
+		self::assertSame([['someapp', '/apps/someapp', '/staged/someapp']], $calls);
+		self::assertArrayNotHasKey('orphanedMigrations', $envelope);
+	}
+
+	public function testASignedRealInstallBuildsNoPreview(): void {
+		$calls = [];
+		$envelope = $this->signedEnvelope('3.0.0', false, $calls);
+
+		self::assertArrayNotHasKey('migrationPreview', $envelope);
+		self::assertSame([], $calls);
+	}
+
+	public function testASignedDowngradeDryRunBuildsNoPreview(): void {
+		$calls = [];
+		$envelope = $this->signedEnvelope('1.0.0', true, $calls);
+
+		self::assertArrayNotHasKey('migrationPreview', $envelope);
+		self::assertSame([], $envelope['orphanedMigrations']);
+		self::assertSame([], $calls);
+	}
+
+	/**
+	 * The external installer's envelope for a release over installed 2.0.0.
+	 *
+	 * @param list<array{0: string, 1: ?string, 2: ?string}> $calls
+	 * @return array<string, mixed>
+	 */
+	private function externalEnvelope(string $version, bool $dryRun, array &$calls): array {
+		$differ = $this->createMock(MigrationDiffer::class);
+		$differ->method('diff')->willReturn(['Version3000Date20260101000000']);
+		$steps = new InstallSteps(
+			$this->createMock(TrustedSourceList::class),
+			$differ,
+			$this->createMock(InstallFinalizer::class),
+			$this->createMock(AuditLogger::class),
+			$this->preview($calls),
+		);
+		$installer = $this->buildByName(ExternalReleaseInstallerService::class, ['steps' => $steps]);
+		$binding = \OCA\Versioniq\Service\Source\SourceBinding::github('owner', 'someapp');
+		$run = new ExternalInstallRun(new ExternalInstallRequest('someapp', $version, [], new ExternalInstallOptions($dryRun, false)), $binding, '2.0.0');
+		$staged = new StagedRelease('/staged/someapp', [], '/apps/someapp', '/apps/someapp');
+		$orphaned = (new ReflectionMethod($installer, 'orphanedMigrations'))->invoke($installer, $run, $staged);
+		$preview = (new ReflectionMethod($installer, 'migrationPreview'))->invoke($installer, $run, $staged);
+		$install = new ExternalInstall($run, new ArchiveCheck('sha', true, null), $staged, $orphaned, $preview);
+
+		return (new ReflectionMethod($installer, 'resultEnvelope'))->invoke($installer, $install, ['binding' => $binding]);
+	}
+
+	public function testAnExternalUpgradeDryRunCarriesTheMigrationPreview(): void {
+		$calls = [];
+		$envelope = $this->externalEnvelope('3.0.0', true, $calls);
+
+		self::assertSame(self::PREVIEW, $envelope['migrationPreview']);
+		self::assertSame([['someapp', '/apps/someapp', '/staged/someapp']], $calls);
+		self::assertArrayNotHasKey('orphanedMigrations', $envelope);
+	}
+
+	public function testAnExternalRealInstallBuildsNoPreview(): void {
+		$calls = [];
+		$envelope = $this->externalEnvelope('3.0.0', false, $calls);
+
+		self::assertArrayNotHasKey('migrationPreview', $envelope);
+		self::assertSame([], $calls);
+	}
+
+	public function testAnExternalDowngradeDryRunBuildsNoPreview(): void {
+		$calls = [];
+		$envelope = $this->externalEnvelope('1.0.0', true, $calls);
+
+		self::assertArrayNotHasKey('migrationPreview', $envelope);
+		self::assertSame(['Version3000Date20260101000000'], $envelope['orphanedMigrations']);
+		self::assertSame([], $calls);
+	}
+
+	public function testTheInstallerServicePassesThePreviewOn(): void {
+		$service = $this->service();
+		$fields = (new ReflectionMethod($service, 'optionalResultFields'))->invoke($service, ['migrationPreview' => self::PREVIEW]);
+
+		self::assertSame(['migrationPreview' => self::PREVIEW], $fields);
 	}
 }
