@@ -218,7 +218,12 @@ test.describe("faults, diffs and cache integrity", () => {
 		page,
 	}) => {
 		// Point the App Store base at a dead endpoint and clear its payload cache,
-		// then query a store-bound app: the listing must report an error.
+		// then query a store-bound app: the listing must report an error. The
+		// bootstrap's base is put back afterwards: deleting it sends every later
+		// spec to the real App Store.
+		const previousBase = (
+			await occ("config:app:get", "versioniq", "appstore.api_base")
+		).trim();
 		await occ(
 			"config:app:set",
 			"versioniq",
@@ -226,6 +231,7 @@ test.describe("faults, diffs and cache integrity", () => {
 			"--value",
 			"http://forge-fixture:9099/no-such-appstore",
 		);
+		try {
 		await occ(
 			"config:app:delete",
 			"versioniq",
@@ -245,6 +251,18 @@ test.describe("faults, diffs and cache integrity", () => {
 		const data = (await res.json())?.ocs?.data;
 		expect(data.error ?? "", "an error is surfaced").not.toBe("");
 		expect(data.availableVersions ?? []).toHaveLength(0);
-		await occ("config:app:delete", "versioniq", "appstore.api_base");
+		} finally {
+			if (previousBase === "") {
+				await occ("config:app:delete", "versioniq", "appstore.api_base");
+			} else {
+				await occ(
+					"config:app:set",
+					"versioniq",
+					"appstore.api_base",
+					"--value",
+					previousBase,
+				);
+			}
+		}
 	});
 });
