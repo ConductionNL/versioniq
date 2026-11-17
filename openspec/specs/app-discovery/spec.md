@@ -244,6 +244,35 @@ From a hit, the admin MUST be able to: (a) for an installed app, jump to the App
 - WHEN it renders
 - THEN the card MUST state the source is not trusted and link to the Trusted sources tab
 
+### Requirement: Public GitHub search is switched on and off on the page
+
+The Discover tab MUST say whether search in public GitHub repositories is on and MUST offer a switch for it. The switch MUST write the existing `discovery.github_search_enabled` key through the instance settings, MUST require password confirmation, and MUST be recorded in the audit trail as a settings change. Private repositories MUST stay searched with the admin's visible tokens whatever the switch says.
+
+#### Scenario: An admin switches public GitHub search on
+
+- **GIVEN** public GitHub search is off
+- **WHEN** an admin turns the switch on and confirms their password
+- **THEN** the next search MUST include public GitHub hits
+- **AND** the tab MUST say search in public GitHub repositories is on
+
+### Requirement: Hits and cards name the publisher and the trust marks the data backs
+
+Every Discover hit and every app card MUST name the app's publisher: the App Store authors, or the forge owner. They MUST show a trust mark only when a named source backs it: `Ships with Nextcloud` (the server ships the app), `Featured in the App Store` (the store's featured flag), `Verified organisation` (the GitHub organisation has a verified domain), and `On your trusted list` (the admin's allowlist). Each mark MUST say in its tooltip who made the claim. Hits whose names differ only in case, spaces, dashes, underscores or a trailing "app" MUST each show a similar-name hint that names the other publisher.
+
+#### Scenario: An admin tells two whiteboard apps apart
+
+- **GIVEN** the App Store lists `whiteboard` by Nextcloud GmbH, marked featured, and `white-board` by another author
+- **WHEN** an admin searches Discover for "whiteboard"
+- **THEN** the `whiteboard` hit MUST show "Nextcloud GmbH" and "Featured in the App Store"
+- **AND** both hits MUST show a similar-name hint naming the other publisher
+
+#### Scenario: A GitHub hit from a verified organisation
+
+- **GIVEN** public GitHub search is on and a hit comes from an organisation whose domain GitHub verified
+- **WHEN** an admin searches Discover
+- **THEN** that hit MUST show the organisation as publisher and "Verified organisation"
+- **AND** a hit from a personal account MUST show the account name and no verified mark
+
 ## User Stories
 
 1. As an admin, I want to search across the App Store and my private repos in one go so I don't have to remember where each app lives.

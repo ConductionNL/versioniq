@@ -14,6 +14,7 @@ require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 use OCA\Versioniq\BackgroundJob\AutoUpdateJob;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
 use OCA\Versioniq\Service\AutoUpdate\ProposalStore;
@@ -52,6 +53,7 @@ final class AutoUpdateJobProposalsTest extends TestCase {
 
 		$this->settingsStore->method('isEnabled')->willReturn(true);
 		$this->settingsStore->method('getWindow')->willReturn('01:00-05:00');
+		$this->settingsStore->method('getSchedule')->willReturn(AutoUpdateSchedule::everyDay());
 		$this->installerService->method('isManageableApp')->willReturn(true);
 		$this->installerService->method('getAppVersions')->willReturn([
 			'availableVersions' => [['version' => '2.3.4'], ['version' => '2.3.5']],
@@ -124,9 +126,9 @@ final class AutoUpdateJobProposalsTest extends TestCase {
 	}
 
 	private function givenPolicy(bool $requireApproval, string $candidate): void {
-		$this->policyStore->method('all')->willReturn([
-			'openregister' => new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00', $requireApproval),
-		]);
+		$policy = new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00', $requireApproval);
+		$this->policyStore->method('all')->willReturn(['openregister' => $policy]);
+		$this->policyStore->method('get')->willReturn($policy);
 		$this->candidateSelector->method('select')->willReturn($candidate);
 	}
 

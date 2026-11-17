@@ -28,19 +28,39 @@ use Psr\Log\LoggerInterface;
  *
  * @psalm-api
  */
-class AuditLogger {
+class AuditLogger implements AdminChangeAuditInterface {
 	public const STATUS_SUCCESS = 'success';
 	public const STATUS_FAILURE = 'failure';
 
 	public const OPERATION_INSTALL = 'install';
 	public const OPERATION_BIND_SOURCE = 'bind_source';
+	/** An app's source binding removed; the app falls back to the App Store (sources-trust-audit-and-offline-feed). */
+	public const OPERATION_UNBIND_SOURCE = 'unbind_source';
+	/** A trusted-source pattern added (sources-trust-audit-and-offline-feed). */
+	public const OPERATION_TRUST_SOURCE = 'trust_source';
+	/** A trusted-source pattern removed (sources-trust-audit-and-offline-feed). */
+	public const OPERATION_UNTRUST_SOURCE = 'untrust_source';
 	public const OPERATION_PIN = 'pin';
 	public const OPERATION_UNPIN = 'unpin';
 	public const OPERATION_PIN_DRIFT = 'pin_drift';
-	/** An instance setting changed from the Settings tab (#438). */
-	public const OPERATION_SETTINGS = 'settings';
-	/** A connection to another Versioniq instance was added, changed or removed (install-multi-instance-promotion D1). */
-	public const OPERATION_INSTANCE_CONNECTION = 'instance_connection';
+	// OPERATION_SETTINGS, OPERATION_PATCH_POLICY and OPERATION_INSTANCE_CONNECTION
+	// are AdminChangeAuditInterface's, and read as AuditLogger::OPERATION_* as before.
+
+	/** An advisory dismissed with a reason (advisories-triage). */
+	public const OPERATION_ADVISORY_DISMISS = 'advisory_dismiss';
+
+	/** A dismissed advisory reopened (advisories-triage). */
+	public const OPERATION_ADVISORY_REOPEN = 'advisory_reopen';
+
+	/** An advisory assigned to an owner, or unassigned (advisories-triage). */
+	public const OPERATION_ADVISORY_ASSIGN = 'advisory_assign';
+
+	/** A version change Versioniq did not make (audit-external-changes). */
+	public const OPERATION_EXTERNAL_UPDATE = 'external_update';
+	/** An app switched off without a version change (audit-external-changes). */
+	public const OPERATION_EXTERNAL_DISABLE = 'external_disable';
+	/** An app Versioniq enabled again after an update left it off (audit-external-changes). */
+	public const OPERATION_REACTIVATE = 'reactivate';
 
 	private const OPERATION_PATTERN = '/^[a-z_]{1,32}$/';
 	private const MESSAGE_MAX_LENGTH = 4000;
@@ -74,7 +94,7 @@ class AuditLogger {
 		try {
 			$entry = $this->entryFor($subject, $versions);
 			$entry->setStatus($status);
-			$entry->setMessage($this->sanitizeMessage($message));
+			$entry->setMessage($this->sanitizeMessage($subject->operation === self::OPERATION_INSTALL ? AuditNote::applyTo($message) : $message));
 			$entry->setCreatedAt($this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'));
 			$entry->setOrigin($subject->origin ?? AuditOrigin::current());
 
@@ -89,6 +109,21 @@ class AuditLogger {
 		}
 
 		$this->forward($entry);
+	}
+
+	/**
+	 * Records an administrator's change of the app's own configuration: the
+	 * app is versioniq, no versions, status success.
+	 *
+	 * @spec openspec/specs/audit-trail/spec.md
+	 */
+	public function recordAdminChange(string $actorUid, string $operation, string $message): void {
+		$this->record(
+			new AuditSubject($actorUid, 'versioniq', $operation),
+			new AuditedVersions(null, null, null),
+			self::STATUS_SUCCESS,
+			$message,
+		);
 	}
 
 	/**

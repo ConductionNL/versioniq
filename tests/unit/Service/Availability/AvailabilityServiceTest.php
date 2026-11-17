@@ -32,8 +32,8 @@ final class AvailabilityServiceTest extends TestCase {
 		$installer = $this->createMock(InstallerService::class);
 		$installer->method('getInstalledApps')->willReturn($apps);
 		$installer->method('isManageableApp')->willReturnCallback(static fn (string $id): bool => !in_array($id, $unmanageable, true));
-		$installer->method('getAppVersions')->willReturnCallback(static function (string $id) use ($versionsByApp): array {
-			$answer = $versionsByApp[$id] ?? null;
+		$installer->method('getAppVersions')->willReturnCallback(static function (string $id, ?string $source = null) use ($versionsByApp): array {
+			$answer = $versionsByApp[$id . '@' . $source] ?? $versionsByApp[$id] ?? null;
 			if ($answer instanceof \Throwable) {
 				throw $answer;
 			}
@@ -115,6 +115,47 @@ final class AvailabilityServiceTest extends TestCase {
 		self::assertSame('5.0.0', $entry['newestCompatibleVersion']);
 		self::assertSame(0, $entry['linesBehind']);
 		self::assertFalse($entry['updateAvailable']);
+	}
+
+	/**
+	 * releases-channel-and-prereleases task 4.2: the sweep counts the versions on the app's channel.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-the-nightly-job-takes-only-versions-on-the-apps-channel
+	 */
+	public function testABetaChannelAppCountsItsNewestPreRelease(): void {
+		$listing = self::envelope([['3.0.0-beta.2', true], ['2.4.0', true], ['2.3.0', true]]);
+		foreach ($listing['availableVersions'] as $i => $version) {
+			$listing['availableVersions'][$i]['onChannel'] = true;
+		}
+		$service = $this->service([self::app('hermiq', '2.3.0')], ['hermiq' => $listing]);
+
+		$entry = $service->sweep(60.0)['hermiq'];
+
+		self::assertSame('3.0.0-beta.2', $entry['newestVersion']);
+		self::assertSame('3.0.0-beta.2', $entry['newestCompatibleVersion']);
+		self::assertSame(2, $entry['linesBehind']);
+		self::assertTrue($entry['updateAvailable']);
+	}
+
+	/**
+	 * A version the listing marks off the app's channel is not counted, though it looks like a plain release.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-the-nightly-job-takes-only-versions-on-the-apps-channel
+	 */
+	public function testAVersionOffTheChannelIsNotCounted(): void {
+		$listing = self::envelope([['3.0.0', true], ['2.3.5', true], ['2.3.0', true], ['2.4.0-rc1', true]]);
+		$onChannel = [false, true, true, false];
+		foreach ($onChannel as $i => $on) {
+			$listing['availableVersions'][$i]['onChannel'] = $on;
+		}
+		$service = $this->service([self::app('deck', '2.3.0')], ['deck' => $listing]);
+
+		$entry = $service->sweep(60.0)['deck'];
+
+		self::assertSame('2.3.5', $entry['newestVersion']);
+		self::assertSame('2.3.5', $entry['newestCompatibleVersion']);
+		self::assertSame(0, $entry['linesBehind']);
+		self::assertTrue($entry['updateAvailable']);
 	}
 
 	public function testAPinnedAppIsSweptAndMarkedPinned(): void {
@@ -203,5 +244,50 @@ final class AvailabilityServiceTest extends TestCase {
 		self::assertSame(['2.3.4', '2.4.0'], array_column($listings['openregister']['versions'] ?? [], 'version'));
 		self::assertSame(['installedVersion' => '1.0.0', 'versions' => null], $listings['hermiq']);
 		self::assertSame(['installedVersion' => '1.0.0', 'versions' => null], $listings['deck']);
+	}
+
+	/**
+	 * releases-new-release-alerts D3: a followed app that is not installed joins the sweep with its
+	 * newest versions from the followed source and no installed version; an installed followed app
+	 * keeps its normal entry, and a followed app whose source fails carries the error.
+	 *
+	 * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-an-admin-follows-the-releases-of-an-app-that-is-not-installed
+	 */
+	public function testAFollowedAppThatIsNotInstalledJoinsTheSweep(): void {
+		$followed = [
+			['appId' => 'forms', 'sourceId' => 'appstore'],
+			['appId' => 'calendar', 'sourceId' => 'appstore'],
+			['appId' => 'broken', 'sourceId' => 'github:Owner/broken'],
+		];
+		$service = $this->service(
+			[self::app('calendar', '5.1.0')],
+			[
+				'forms@appstore' => self::envelope([['4.1.0', true], ['5.0.0', false]]),
+				'calendar' => self::envelope([['5.2.0', true]]),
+				'broken@github:Owner/broken' => new \RuntimeException('The forge did not answer.'),
+			],
+		);
+
+		$results = $service->sweep(60.0, $followed);
+
+		self::assertSame(
+			[
+				'installedVersion' => null,
+				'newestVersion' => '5.0.0',
+				'newestCompatibleVersion' => '4.1.0',
+				'linesBehind' => 0,
+				'updateAvailable' => false,
+				'pinned' => false,
+				'sourceId' => 'appstore',
+				'error' => null,
+				'installedWithdrawn' => null,
+				'followed' => true,
+			],
+			$results['forms']
+		);
+		self::assertSame('5.1.0', $results['calendar']['installedVersion']);
+		self::assertArrayNotHasKey('followed', $results['calendar']);
+		self::assertSame('The forge did not answer.', $results['broken']['error']);
+		self::assertNull($results['broken']['newestVersion']);
 	}
 }

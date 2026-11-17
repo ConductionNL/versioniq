@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+
 /**
  * @license EUPL-1.2
  * @copyright Copyright (c) 2026, Conduction B.V. <info@conduction.nl>
@@ -11,129 +12,278 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\AutoUpdate;
 
+use OCA\Versioniq\Service\Policy\PatchPolicy;
 use OCA\Versioniq\Service\Policy\Policy;
+use Psr\Log\LoggerInterface;
 
 /**
- * The plan of an automatic update run, live against the bound sources, for
- * `occ versioniq:auto-update --dry-run` (autoupdate-proposed-updates D3).
+ * Plans an automatic-update run before anything installs
+ * (autoupdate-run-batching D1): for every app with a policy it does what the
+ * job used to do up to the candidate, and records why an app will not
+ * install. It makes the same source calls the job made, and no others: a
+ * pinned or unmanageable app is not looked up, and an app that is not
+ * installed is not asked for releases.
  *
- * It applies the nightly job's rules in the job's order: pinned and
- * unmanaged apps are skipped before any source query; the highest version
- * within the level is the candidate; a version already attempted, declined,
- * still in its notice period or awaiting approval is held back with that
- * reason. It only reads: it installs nothing, writes no ledger entry and
- * sends no notification.
- *
- * @spec openspec/changes/autoupdate-proposed-updates/specs/cli-commands/spec.md#requirement-dry-run-the-automatic-update-policy-from-the-cli
+ * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
  */
-class AutoUpdatePlanner {
-	public const ACTION_INSTALL = 'install';
-	public const ACTION_SKIP = 'skip';
-
-	public const REASON_PINNED = 'pinned';
-	public const REASON_NOT_MANAGED = 'not_managed';
-	public const REASON_NOT_INSTALLED = 'not_installed';
-	public const REASON_SOURCE_ERROR = 'source_error';
-	public const REASON_NO_CANDIDATE = 'no_candidate';
-	public const REASON_BLOCKED = 'blocked';
-	public const REASON_DECLINED = 'declined';
-	public const REASON_IN_NOTICE = 'in_notice';
-	public const REASON_AWAITING_APPROVAL = 'awaiting_approval';
-
+final class AutoUpdatePlanner {
 	public function __construct(
 		private AutoUpdateStores $stores,
 		private AutoUpdateInstall $install,
+		private LoggerInterface $logger,
 	) {
 	}
 
 	/**
-	 * One row per app with a policy other than `none`, in stored order.
+	 * The plan for a run: one member per app with a policy other than `none`.
+	 * Security fixes the patch policy handles at the next window run first
+	 * (autoupdate-security-first D4), then every other member in policy
+	 * order. An app that fails to plan is logged and left out, so one broken
+	 * app never blocks the rest. Members of an update group then move
+	 * together, in the group's order, or wait together (D3), and the per-run
+	 * and weekly caps and the waiting list decide the run order and what
+	 * waits (D4, D5).
 	 *
-	 * @param \DateTimeInterface $at The opening the plan is for.
-	 * @return list<array{appId: string, level: string, fromVersion: ?string, toVersion: ?string, action: string, reason: ?string}>
+	 * @param array{rows: array<string, mixed>, fresh: bool} $advisories The run's advisory snapshot.
+	 * @param PatchPolicy|null $patchPolicy The patch policy; null reads as none.
+	 * @param \DateTimeImmutable|null $now The run's time; now when null.
 	 *
-	 * @spec openspec/changes/autoupdate-proposed-updates/specs/cli-commands/spec.md#requirement-dry-run-the-automatic-update-policy-from-the-cli
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-an-admin-records-a-patch-policy-and-security-fixes-go-first
 	 */
-	public function plan(\DateTimeInterface $at): array {
-		$rows = [];
+	public function plan(array $advisories = ['rows' => [], 'fresh' => false], ?PatchPolicy $patchPolicy = null, ?\DateTimeImmutable $now = null): AutoUpdatePlan {
+		return $this->planRun(new PlanRun($advisories['rows'], $advisories['fresh'], $patchPolicy ?? PatchPolicy::none()), $now);
+	}
+
+	/**
+	 * The plan of one run: its advisory snapshot, patch policy and the kinds the schedule lets run tonight.
+	 *
+	 * @param PlanRun $run The run.
+	 * @param \DateTimeImmutable|null $now The run's time; now when null.
+	 *
+	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	public function planRun(PlanRun $run, ?\DateTimeImmutable $now = null): AutoUpdatePlan {
+		$planned = [];
 		foreach ($this->stores->policyStore->all() as $appId => $policy) {
-			if ($policy->level === Policy::LEVEL_NONE) {
-				continue;
+			if ($policy->level !== Policy::LEVEL_NONE) {
+				$planned[] = $this->planIsolated(new PlanTarget($appId, $policy->level), $run);
 			}
-			$rows[] = $this->rowFor($appId, $policy, $at);
 		}
 
-		return $rows;
+		$limiter = new AutoUpdateLimiter($this->stores->settingsStore, $this->stores->attemptLedger);
+		$grouped = AutoUpdateGroups::apply(array_values(array_filter($planned)), $this->stores->groupStore->all());
+		$members = self::firstThenLater($grouped);
+
+		return new AutoUpdatePlan($limiter->apply($members, $now ?? new \DateTimeImmutable()), $run->holds());
 	}
 
 	/**
-	 * @return array{appId: string, level: string, fromVersion: ?string, toVersion: ?string, action: string, reason: ?string}
+	 * The members, those that run first ahead of the rest, each group in policy order.
+	 *
+	 * @param list<array{member: AutoUpdateMember, first: bool}> $planned
+	 * @return list<AutoUpdateMember>
 	 */
-	private function rowFor(string $appId, Policy $policy, \DateTimeInterface $at): array {
-		$row = ['appId' => $appId, 'level' => $policy->level, 'fromVersion' => null, 'toVersion' => null, 'action' => self::ACTION_SKIP, 'reason' => null];
-		if ($this->stores->pinStore->get($appId) !== null) {
-			return ['reason' => self::REASON_PINNED] + $row;
-		}
-		if (!$this->install->installerService->isManageableApp($appId)) {
-			return ['reason' => self::REASON_NOT_MANAGED] + $row;
-		}
+	private static function firstThenLater(array $planned): array {
+		$first = array_filter($planned, static fn (array $place): bool => $place['first']);
+		$later = array_filter($planned, static fn (array $place): bool => !$place['first']);
 
-		$installed = $this->installedVersionOf($appId);
-		if ($installed === null) {
-			return ['reason' => self::REASON_NOT_INSTALLED] + $row;
-		}
-		$row['fromVersion'] = $installed;
+		return array_merge(array_column($first, 'member'), array_column($later, 'member'));
+	}
 
+	/**
+	 * Plan one app; a failure is logged and leaves the app out of the plan.
+	 *
+	 * @return array{member: AutoUpdateMember, first: bool}|null
+	 */
+	private function planIsolated(PlanTarget $target, PlanRun $run): ?array {
 		try {
-			$available = $this->availableVersions($appId);
-		} catch (\Throwable) {
-			$available = null;
-		}
-		if ($available === null) {
-			return ['reason' => self::REASON_SOURCE_ERROR] + $row;
-		}
+			return $this->planApp($target, $run);
+		} catch (\Throwable $error) {
+			// Per-app isolation — see "the job MUST proceed to the next app
+			// after any failure".
+			$this->logger->warning('AutoUpdateJob: failed to process an app', [
+				'appId' => $target->appId,
+				'message' => $error->getMessage(),
+			]);
 
-		$candidate = $this->install->candidateSelector->select($installed, $available, $policy->level);
-		if ($candidate === null) {
-			return ['reason' => self::REASON_NO_CANDIDATE] + $row;
-		}
-		$row['toVersion'] = $candidate;
-
-		$held = $this->heldBackBecause($appId, $candidate, $policy, $at);
-
-		return $held === null ? ['action' => self::ACTION_INSTALL] + $row : ['reason' => $held] + $row;
-	}
-
-	/**
-	 * Why the job would hold this version back, in the job's order, or null.
-	 */
-	private function heldBackBecause(string $appId, string $candidate, Policy $policy, \DateTimeInterface $at): ?string {
-		if ($this->stores->attemptLedger->hasAttempted($appId, $candidate)) {
-			return self::REASON_BLOCKED;
-		}
-
-		$proposals = $this->stores->proposalStore;
-		if ($proposals === null) {
 			return null;
 		}
-		if ($proposals->declineOf($appId, $candidate) !== null) {
-			return self::REASON_DECLINED;
-		}
-		if ($this->stores->settingsStore->getNoticeDays() > 0 && !self::noticeHasPassed($proposals->proposalFor($appId), $candidate, $at)) {
-			return self::REASON_IN_NOTICE;
-		}
-
-		return $policy->requireApproval && !$proposals->isApproved($appId, $candidate) ? self::REASON_AWAITING_APPROVAL : null;
 	}
 
-	private static function noticeHasPassed(?ProposedUpdate $proposal, string $candidate, \DateTimeInterface $at): bool {
-		if ($proposal === null || $proposal->toVersion !== $candidate || $proposal->plannedFor === null) {
-			return false;
+	/**
+	 * One app's place in the plan, or null when it has no place: it is not
+	 * manageable here, or not installed.
+	 *
+	 * @return array{member: AutoUpdateMember, first: bool}|null
+	 */
+	private function planApp(PlanTarget $target, PlanRun $run): ?array {
+		$subject = $this->subjectOf($target);
+		if ($subject instanceof PlanSubject) {
+			return $this->planSecurityFirst($subject, $run);
 		}
 
-		return new \DateTimeImmutable($proposal->plannedFor) <= $at;
+		return $subject === null ? null : ['member' => $subject, 'first' => false];
 	}
 
+	/**
+	 * The app as the planner sees it, a member when its place is already
+	 * decided (pinned, or its source failed), or null when it has no place.
+	 */
+	private function subjectOf(PlanTarget $target): PlanSubject|AutoUpdateMember|null {
+		if ($this->stores->pinStore->get($target->appId) !== null) {
+			return new AutoUpdateMember($target->appId, null, null, AutoUpdateMember::REASON_PINNED);
+		}
+
+		$installedVersion = $this->install->installerService->isManageableApp($target->appId) ? $this->installedVersionOf($target->appId) : null;
+		if ($installedVersion === null) {
+			return null;
+		}
+
+		$available = $this->availableVersions($target->appId);
+		if ($available === null) {
+			return new AutoUpdateMember($target->appId, $installedVersion, null, AutoUpdateMember::REASON_SOURCE_ERROR);
+		}
+
+		return new PlanSubject($target->appId, $target->level, $installedVersion, $available);
+	}
+
+	/**
+	 * The member for a managed, unpinned, installed app: a security fix the
+	 * patch policy handles at the next window runs first, one it sets to by
+	 * hand is held, a scheduled one installs with the other updates, and
+	 * every other app takes the highest version within its level among the
+	 * kinds the patch policy does not set to by hand.
+	 *
+	 * @return array{member: AutoUpdateMember, first: bool}
+	 *
+	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-an-admin-records-a-patch-policy-and-security-fixes-go-first
+	 */
+	private function planSecurityFirst(PlanSubject $app, PlanRun $run): array {
+		$fix = $this->securityFix($app, $run);
+		if ($fix === null) {
+			// Nothing a security fix can do: a `security` app is done, any
+			// other level updates as usual.
+			return ['member' => $this->withoutFix($app, $run), 'first' => false];
+		}
+
+		$handling = $run->patchPolicy->securityHandling(PatchPolicy::highestSeverity(self::advisoriesOf($run->rowOf($app->appId))));
+		if ($handling === PatchPolicy::HANDLING_MANUAL) {
+			$run->hold($app->appId, SecurityHoldStore::REASON_MANUAL);
+
+			return ['member' => new AutoUpdateMember($app->appId, $app->installedVersion, $fix, AutoUpdateMember::REASON_HELD), 'first' => false];
+		}
+
+		if ($handling === PatchPolicy::HANDLING_NEXT_WINDOW) {
+			return ['member' => $this->memberFor($app, $fix), 'first' => true];
+		}
+
+		// `scheduled`: the fix installs with the other updates; any other
+		// level takes its usual update, which the fix is within.
+		$member = $app->level === Policy::LEVEL_SECURITY ? $this->memberFor($app, $fix) : $this->regularMember($app, $run);
+
+		return ['member' => $member, 'first' => false];
+	}
+
+	/**
+	 * The advisories listed on a snapshot row.
+	 *
+	 * @param array<string, mixed>|null $row
+	 * @return list<mixed>
+	 */
+	private static function advisoriesOf(?array $row): array {
+		/** @var mixed $listed */
+		$listed = $row['advisories'] ?? null;
+
+		return is_array($listed) ? array_values($listed) : [];
+	}
+
+	/**
+	 * The member when no security fix applies: a `security` app has no
+	 * candidate, any other level updates as usual.
+	 */
+	private function withoutFix(PlanSubject $app, PlanRun $run): AutoUpdateMember {
+		if ($app->level === Policy::LEVEL_SECURITY) {
+			return new AutoUpdateMember($app->appId, $app->installedVersion, null, AutoUpdateMember::REASON_NO_CANDIDATE);
+		}
+
+		return $this->regularMember($app, $run);
+	}
+
+	/**
+	 * The highest version within the app's level among the kinds the patch
+	 * policy does not set to by hand and the schedule lets run tonight, or why
+	 * there is none.
+	 */
+	private function regularMember(PlanSubject $app, PlanRun $run): AutoUpdateMember {
+		$patchPolicy = $run->patchPolicy;
+		$installedVersion = $app->installedVersion;
+		$allowed = array_values(array_filter(
+			$app->available,
+			static fn (string $version): bool => $patchPolicy->regularHandling(PatchPolicy::kindOf($installedVersion, $version)) !== PatchPolicy::HANDLING_MANUAL
+				&& $run->isDue($installedVersion, $version),
+		));
+		$candidate = $this->install->candidateSelector->select($installedVersion, $allowed, $app->level);
+		if ($candidate === null) {
+			return new AutoUpdateMember($app->appId, $installedVersion, null, AutoUpdateMember::REASON_NO_CANDIDATE);
+		}
+
+		return $this->memberFor($app, $candidate);
+	}
+
+	/**
+	 * A member that installs the version, unless that exact version was
+	 * attempted before (never-retry — see "Failed attempt is not retried").
+	 */
+	private function memberFor(PlanSubject $app, string $version): AutoUpdateMember {
+		if ($this->stores->attemptLedger->hasAttempted($app->appId, $version)) {
+			return new AutoUpdateMember($app->appId, $app->installedVersion, $version, AutoUpdateMember::REASON_BLOCKED);
+		}
+
+		return new AutoUpdateMember($app->appId, $app->installedVersion, $version, null);
+	}
+
+	/**
+	 * The security fix this app's level can install now: for the `security`
+	 * level the fix the advisory check recommends (see SecurityCandidate),
+	 * for any other level that same fix when the level's own selection
+	 * includes it. Null when the app is not affected or the fix is out of
+	 * reach; a `security` app records why.
+	 *
+	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md
+	 */
+	private function securityFix(PlanSubject $app, PlanRun $run): ?string {
+		if ($app->level !== Policy::LEVEL_SECURITY) {
+			return $this->fixWithinLevel($app, $run);
+		}
+
+		$decision = SecurityCandidate::decide($app, $run);
+		if ($decision['version'] === null && $decision['reason'] !== SecurityCandidate::REASON_NOT_AFFECTED) {
+			$this->logger->info('AutoUpdateJob: no security fix installed', ['appId' => $app->appId, 'reason' => $decision['reason']]);
+			$run->hold($app->appId, (string)$decision['reason']);
+		}
+
+		return $decision['version'];
+	}
+
+	/**
+	 * For a level other than `security`: the recommended fix when the
+	 * snapshot is fresh, the app is affected, its source lists the fix and
+	 * the level's own selection includes it; else null.
+	 */
+	private function fixWithinLevel(PlanSubject $app, PlanRun $run): ?string {
+		$recommended = SecurityCandidate::listedFix($app, $run);
+		if ($recommended === null) {
+			return null;
+		}
+
+		return $this->install->candidateSelector->select($app->installedVersion, [$recommended], $app->level) === $recommended ? $recommended : null;
+	}
+
+	/**
+	 * The installed version, or null when the app is not installed.
+	 */
 	private function installedVersionOf(string $appId): ?string {
 		try {
 			$installed = $this->install->appManager->getAppVersion($appId, false);
@@ -145,7 +295,11 @@ class AutoUpdatePlanner {
 	}
 
 	/**
-	 * @return list<string>|null Null when the source reported an error.
+	 * The versions the app's source lists on its release channel, or null when the source failed.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-the-nightly-job-takes-only-versions-on-the-apps-channel
+	 *
+	 * @return list<string>|null
 	 */
 	private function availableVersions(string $appId): ?array {
 		$result = $this->install->installerService->getAppVersions($appId);
@@ -153,9 +307,16 @@ class AutoUpdatePlanner {
 			return null;
 		}
 
-		return array_map(
-			static fn (array $entry): string => $entry['version'],
+		// Only versions on the app's release channel are candidates; an entry
+		// without the stamp predates channels and stays one.
+		$onChannel = array_filter(
 			$result['availableVersions'] ?? [],
+			static fn (array $entry): bool => ($entry['onChannel'] ?? true) !== false
 		);
+
+		return array_values(array_map(
+			static fn (array $entry): string => (string)$entry['version'],
+			$onChannel
+		));
 	}
 }

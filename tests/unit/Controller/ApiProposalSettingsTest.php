@@ -38,6 +38,8 @@ final class ApiProposalSettingsTest extends TestCase {
 
 	protected function setUp(): void {
 		$this->settings = $this->createMock(AutoUpdateSettingsStore::class);
+		$this->settings->method('getSchedule')->willReturn(\OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule::everyDay());
+		$this->settings->method('getWindow')->willReturn('01:00-05:00');
 		$this->policies = $this->createMock(PolicyStore::class);
 		$this->groupManager = $this->createMock(IGroupManager::class);
 		$this->groupManager->method('isAdmin')->willReturn(true);

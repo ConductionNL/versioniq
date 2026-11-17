@@ -130,3 +130,40 @@ export async function ocsWrite <T>(method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
 	})
 	return unwrap<T>(response)
 }
+
+/**
+ * POST to an OCS endpoint that needs no password confirmation, with a JSON
+ * body. Returns the unwrapped payload (+ error). The OCS-APIRequest header is
+ * the request's CSRF proof, as for every OCS call.
+ *
+ * @param path
+ * @param body
+ */
+export async function ocsPost <T>(path: string, body: Record<string, unknown> = {}): Promise<OcsResult<T>> {
+	const response = await fetch(apiUrl(withOcsJson(path)), {
+		method: 'POST',
+		headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
+		body: JSON.stringify(body),
+	})
+	return unwrap<T>(response)
+}
+
+/**
+ * Send one file to an OCS endpoint as multipart `field`, after password
+ * confirmation. Returns the unwrapped payload (+ error).
+ *
+ * @param path the endpoint
+ * @param field the form field the endpoint reads the file from
+ * @param file the file
+ */
+export async function ocsUpload <T>(path: string, field: string, file: Blob): Promise<OcsResult<T>> {
+	await ensurePasswordConfirmation()
+	const form = new FormData()
+	form.append(field, file)
+	const response = await fetch(apiUrl(withOcsJson(path)), {
+		method: 'POST',
+		headers: { ...ocsHeaders, Accept: 'application/json' },
+		body: form,
+	})
+	return unwrap<T>(response)
+}

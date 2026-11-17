@@ -60,7 +60,7 @@ final class ProposalServiceTest extends TestCase {
 
 		$this->proposals = new ProposalStore((new InMemoryAppConfig())->mock($this, $this->createMock(...)), $this->createMock(LoggerInterface::class));
 		$this->service = new ProposalService(
-			new AutoUpdateStores($this->policyStore, $this->pinStore, $this->settings, $this->ledger, $this->proposals),
+			new AutoUpdateStores($this->policyStore, $this->pinStore, $this->settings, $this->ledger, new \OCA\Versioniq\Service\AutoUpdate\AutoUpdateSecurityStores($this->createMock(\OCA\Versioniq\Service\Advisory\AdvisoryResultStore::class), $this->createMock(\OCA\Versioniq\Service\Advisory\AdvisorySettingsStore::class), $this->createMock(\OCA\Versioniq\Service\Policy\PatchPolicyStore::class), $this->createMock(\OCA\Versioniq\Service\AutoUpdate\SecurityHoldStore::class)), $this->createMock(\OCA\Versioniq\Service\AutoUpdate\UpdateGroupStore::class), $this->proposals),
 			$this->proposals,
 			new CandidateSelector(),
 			$this->notifier,

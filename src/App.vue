@@ -1,56 +1,87 @@
 <!-- SPDX-FileCopyrightText: 2024 Conduction B.V. <info@conduction.nl> -->
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
+import type {Provenance} from './components/AppSourceBadges.vue';
 import type {PrefillBindPayload} from './components/DiscoverPanel.vue';
 import type {BlockedVersion, PolicyLevel} from './components/PolicySelector.vue';
+import type { UpdateGroupView } from './components/UpdateGroupsPanel.vue'
 import type { PinRecord } from './dialogs/PinDialog.vue'
-import type {AdvisoryCorrelation} from './utils/advisories.ts';
+import type {AdvisoryCorrelation, AdvisoryTriageMap, Compliance, NcscStatus} from './utils/advisories.ts';
+import type { AutoUpdateSchedule as AutoUpdateScheduleValue, UpdateKind } from './utils/autoUpdateSchedule.ts'
+import type { ReleaseChannel } from './utils/channelFilter.ts'
+import type { LeftDisabled } from './utils/externalChanges.ts'
 import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
-import type {LkgRecord} from './utils/migrationSafety.ts';
+import type {LkgRecord, MigrationPreview} from './utils/migrationSafety.ts';
 import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
+import type { SweepStatus } from './utils/sweepOutcome.ts'
+import type {BatchCandidate, BatchRow} from './utils/updateBatch.ts';
+import type {AdminKnownIssue, VersionOutcomes} from './utils/versionFacts.ts';
 
 import { loadState } from '@nextcloud/initial-state'
-import { t } from '@nextcloud/l10n'
+import { n, t } from '@nextcloud/l10n'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import AdvisoriesPanel from './components/AdvisoriesPanel.vue'
+import AlertsPanel from './components/AlertsPanel.vue'
+import AppAboutCard from './components/AppAboutCard.vue'
 import AppSourceBadges from './components/AppSourceBadges.vue'
 import AutoUpdateOverview from './components/AutoUpdateOverview.vue'
+import AutoUpdateSchedule from './components/AutoUpdateSchedule.vue'
 import CachePanel from './components/CachePanel.vue'
 import ChangelogRangePanel from './components/ChangelogRangePanel.vue'
+import ChannelSelector from './components/ChannelSelector.vue'
 import DiscoverPanel from './components/DiscoverPanel.vue'
 import HistoryPanel from './components/HistoryPanel.vue'
+import InstallProgress from './components/InstallProgress.vue'
 import InstallResultNotices from './components/InstallResultNotices.vue'
 import InstanceSettingsPanel from './components/InstanceSettingsPanel.vue'
 import IntegrationsPanel from './components/IntegrationsPanel.vue'
+import LifecycleBadge from './components/LifecycleBadge.vue'
+import MigrationPreviewPanel from './components/MigrationPreviewPanel.vue'
+import PatchPolicyPanel from './components/PatchPolicyPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
 import ProposedUpdatesPanel from './components/ProposedUpdatesPanel.vue'
+import PublisherMark from './components/PublisherMark.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
 import SourceOverrideField from './components/SourceOverrideField.vue'
 import SourcesPanel from './components/SourcesPanel.vue'
+import SuccessorsPanel from './components/SuccessorsPanel.vue'
 import TokensPanel from './components/TokensPanel.vue'
 import TrustedSourcesPanel from './components/TrustedSourcesPanel.vue'
+import UpdateGroupsPanel from './components/UpdateGroupsPanel.vue'
 import VersionChangelog from './components/VersionChangelog.vue'
+import VersionFacts from './components/VersionFacts.vue'
 import DowngradeConfirmDialog from './dialogs/DowngradeConfirmDialog.vue'
 import EnableAppDialog from './dialogs/EnableAppDialog.vue'
+import KnownIssueDialog from './dialogs/KnownIssueDialog.vue'
 import PinDialog from './dialogs/PinDialog.vue'
 import PinOverrideDialog from './dialogs/PinOverrideDialog.vue'
+import QuickUpdateDialog from './dialogs/QuickUpdateDialog.vue'
+import ReplaceAppDialog from './dialogs/ReplaceAppDialog.vue'
 import ShaMismatchDialog from './dialogs/ShaMismatchDialog.vue'
-import { advisoryBadgeText } from './utils/advisories.ts'
+import UpdateAllDialog from './dialogs/UpdateAllDialog.vue'
+import { ocsWrite } from './ocs.ts'
+import { advisoryAnchor, advisoryBadgeText, applyTriage, complianceSentence } from './utils/advisories.ts'
 import { advisoryFreshnessLabel as advisoryFreshnessLabelFor } from './utils/advisoryFreshness.ts'
+import { defaultSchedule, scheduleFrom } from './utils/autoUpdateSchedule.ts'
 import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow.ts'
 import { buildChangelogRange } from './utils/changelog.ts'
+import { channelLabel, noLtsLinesMarked, offChannelTags, pickerVersions } from './utils/channelFilter.ts'
 import { tabForHash } from './utils/connectionRegistry.ts'
 import { currentLoginName, enableApp } from './utils/enableApp.ts'
+import { leftDisabledMarks, leftDisabledNotice } from './utils/externalChanges.ts'
 import { normalizeInstallResult, withSourceOverride } from './utils/installResult.ts'
-import { shouldOfferLkgRollback } from './utils/migrationSafety.ts'
+import { lkgRollbackTargets } from './utils/migrationSafety.ts'
 import { filterByUpdates, isOutsidePolicy, outsidePolicyLabel, updateBadge, updatesFreshnessLabel as updatesFreshnessLabelFor } from './utils/pendingUpdates.ts'
 import { repinApp } from './utils/repin.ts'
 import { isBlockedBySafeMode } from './utils/safeMode.ts'
+import { sweepStateOf } from './utils/sweepOutcome.ts'
+import { batchOutcome, quickUpdateTarget, runUpdateBatch, updateAllCandidates } from './utils/updateBatch.ts'
 import { compareVersions, parseVersionCore } from './utils/versionCompare.ts'
+import { breakingBetween, breakingSentence } from './utils/versionFacts.ts'
 
 type AppOption = {
 	id: string
@@ -58,6 +89,9 @@ type AppOption = {
 	description: string
 	summary: string
 	preview: string
+	author?: string
+	licence?: string
+	links?: { website: string | null, repository: string | null, bugs: string | null }
 	isCore: boolean
 	isShipped?: boolean
 	boundSourceId?: string | null
@@ -66,32 +100,61 @@ type AppOption = {
 	installedVersion?: string | null
 	state?: 'enabled' | 'disabled' | 'notInstalled'
 	lkg?: LkgRecord | null
+	installedKnownIssues?: AdminKnownIssue[]
+	provenance?: Provenance | null
+	publisher?: string | null
+	marks?: string[]
 }
 
 type AppVersion = {
 	version: string
 	changelog?: string | null
+	changelogLanguage?: string | null
 	recordedSha?: string | null
 	cachedOffline?: boolean
 	serverCompatible?: boolean | null
 	releasedAt?: string | null
+	preRelease?: boolean
+	lts?: boolean
+	onChannel?: boolean
+	downloads?: number | null
+	outcomes?: VersionOutcomes | null
+	breaking?: boolean
+	knownIssues?: string | null
+	adminKnownIssues?: AdminKnownIssue[]
 }
 
 const isLoading = ref(true)
 const apps = ref<AppOption[]>([])
+// The app the replace dialog is open for; its successor offer comes from the
+// pending-updates snapshot (inventory-lifecycle-signals, design D4).
+const replaceTarget = ref<string | null>(null)
 const advisories = ref<Record<string, AdvisoryCorrelation>>({})
+// Dismissals and owners per `{appId}|{advisoryId}`, applied when read (advisories-triage).
+const advisoryTriage = ref<AdvisoryTriageMap>({})
 const appFilter = ref('')
 const showFilters = ref(false)
 const coreAppsVisibility = ref<'show' | 'hide'>('show')
 // inventory-pending-updates: narrows the list to apps with an update, or past the lag limit.
 const updatesFilter = ref<UpdatesFilter>('all')
+// The pinned filter of the status bar (pin-list): only the pinned apps.
+const pinnedOnly = ref(false)
 const updateChannel = ref('')
 const selectedApp = ref('')
 const versions = ref<AppVersion[]>([])
+// releases-channel-and-prereleases: the effective channel the versions answer
+// names, the picker's "Show all versions" switch, and the channel settings.
+const versionChannel = ref('')
+const showAllVersions = ref(false)
+type ChannelState = { channels: string[], default: string, apps: Record<string, string>, ltsLines: Record<string, string[]> }
+const channelState = ref<ChannelState>({ channels: [], default: 'server', apps: {}, ltsLines: {} })
+const isSavingChannel = ref(false)
 const versionFilter = ref('')
 const hasCheckedVersions = ref(false)
 const isCheckingVersions = ref(false)
 const isInstallingVersion = ref(false)
+// install-live-progress: the token the running install reports its stages under.
+const installProgressToken = ref('')
 const installedVersion = ref('')
 const availableSource = ref('')
 // One-off source for the selected app's version list and next install; the
@@ -105,6 +168,10 @@ const debugModeEnabled = ref(false)
 // its own explicit request parameter, decoupled from debug/verbosity.
 const dryRunEnabled = ref(false)
 const isDowngradeConfirmOpen = ref(false)
+// releases-version-facts: the known-issue dialog and a removal in flight.
+const isKnownIssueDialogOpen = ref(false)
+const knownIssueDialogVersion = ref('')
+const isRemovingKnownIssue = ref(false)
 const downgradeConfirmFromVersion = ref('')
 const downgradeConfirmToVersion = ref('')
 const downgradeConfirmApp = ref('')
@@ -112,6 +179,14 @@ let downgradeResolve: ((value: boolean) => void) | null = null
 // Migration diff for the downgrade dialog — fetched via a dry-run preview
 // before the dialog opens; see "Migration diff on downgrade".
 const downgradeOrphanedMigrations = ref<string[] | null>(null)
+// The database changes of the selected upgrade: undefined until "Preview
+// database changes" is picked, null when the target could not be read.
+// @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
+const migrationPreview = ref<MigrationPreview | null | undefined>(undefined)
+const isPreviewingMigrations = ref(false)
+watch([() => selectedApp.value, () => selectedVersion.value], () => {
+	migrationPreview.value = undefined
+})
 // Suppresses the safe-mode auto-clear watcher while "Roll back to last
 // known good" programmatically selects a (necessarily older) version.
 const suppressSafeModeAutoClear = ref(false)
@@ -218,6 +293,21 @@ const autoUpdateWindowInput = ref(AUTO_UPDATE_WINDOW_DEFAULT)
 const savedAutoUpdateWindow = ref(AUTO_UPDATE_WINDOW_DEFAULT)
 // The zone the server reads the window in (Nextcloud's default_timezone, else UTC).
 const autoUpdateTimeZone = ref('UTC')
+// Which days each kind of update may install (autoupdate-schedules), and the next run per kind as the server computed it.
+const autoUpdateSchedule = ref<AutoUpdateScheduleValue>(defaultSchedule())
+const savedAutoUpdateSchedule = ref<AutoUpdateScheduleValue>(defaultSchedule())
+const autoUpdateNextRuns = ref<Partial<Record<UpdateKind, string | null>>>({})
+// Why the last run held a security fix back, whether the advisory check is
+// recent enough to act on, and the kinds the patch policy sets to by hand
+// (autoupdate-security-first).
+const securityHolds = ref<Record<string, string>>({})
+const advisoriesFresh = ref(true)
+const manualKinds = ref<string[]>([])
+// Update groups and the units a limit held back (autoupdate-run-batching).
+const updateGroups = ref<UpdateGroupView[]>([])
+const waitingUnits = ref<Record<string, string>>({})
+const maxPerRun = ref<number | null>(null)
+const maxPerWeek = ref<number | null>(null)
 const isSavingAutoUpdateSettings = ref(false)
 const autoUpdateSettingsError = ref('')
 const autoUpdateSettingsNotice = ref('')
@@ -234,6 +324,7 @@ const integriqInstalled = loadState<boolean>('versioniq', 'integriq-installed', 
 const tabs = [
 	{ id: 'apps' },
 	{ id: 'advisories' },
+	{ id: 'alerts' },
 	{ id: 'history' },
 	{ id: 'sources' },
 	{ id: 'tokens' },
@@ -255,6 +346,7 @@ function tabLabel (id: string): string {
   return {
 	apps: t('versioniq', 'Apps'),
 	advisories: t('versioniq', 'Advisories'),
+	alerts: t('versioniq', 'Alerts'),
 	history: t('versioniq', 'History'),
 	sources: t('versioniq', 'Sources'),
 	tokens: t('versioniq', 'Tokens'),
@@ -388,8 +480,17 @@ const changeActionLabel = computed(() => {
 	return ''
 })
 
+// The action label above is also compared against, so it stays the English
+// action name; what the admin reads is its translation.
+const CHANGE_ACTION_TEXTS = new Map<string, string>([
+	['Install', t('versioniq', 'Install')],
+	['Update', t('versioniq', 'Update')],
+	['Degrade', t('versioniq', 'Degrade')],
+])
+const changeActionText = computed(() => CHANGE_ACTION_TEXTS.get(changeActionLabel.value) ?? changeActionLabel.value)
+
 const hasSidebarSelect = computed(() => !isLoading.value)
-const sidebarLabel = computed(() => hasSidebarSelect.value ? 'Select an app from store' : 'Loading…')
+const sidebarLabel = computed(() => hasSidebarSelect.value ? t('versioniq', 'Select an app from store') : t('versioniq', 'Loading…'))
 const hasInfoPanel = computed(() => selectedApp.value || installedVersion.value || versions.value.length > 0 || availableSource.value || errorMessage.value || hasCheckedVersions.value)
 const hasSplitLayout = computed(() => Boolean(selectedApp.value || installedVersion.value || hasInstallResult.value))
 const isSafeMode = computed(() => safeModeEnabled.value)
@@ -500,18 +601,18 @@ const installStatusTone = computed<'success' | 'warning' | 'error' | 'info'>(() 
 })
 
 const INSTALL_STATUS_LABELS = new Map<string | undefined, string>([
-	['dry-run', 'Dry run'],
-	['reverted', 'Reverted'],
-	['installed-but-broken', 'Installed but broken'],
+	['dry-run', t('versioniq', 'Dry run')],
+	['reverted', t('versioniq', 'Reverted')],
+	['installed-but-broken', t('versioniq', 'Installed but broken')],
 ])
 const INSTALL_TONE_LABELS = new Map<string, string>([
-	['warning', 'Dry run'],
-	['error', 'Failed'],
+	['warning', t('versioniq', 'Dry run')],
+	['error', t('versioniq', 'Failed')],
 ])
 
 const installStatusLabel = computed(() => INSTALL_STATUS_LABELS.get(lastInstallResult.value?.installStatus)
 	?? INSTALL_TONE_LABELS.get(installStatusTone.value)
-	?? 'Done')
+	?? t('versioniq', 'Done'))
 
 /**
  *
@@ -566,17 +667,40 @@ async function onEnableConfirmed (password: string): Promise<void> {
 	}
 }
 
+// Apps an update left disabled, by app id (audit-external-changes).
+const leftDisabled = ref<Record<string, LeftDisabled>>({})
+
+/**
+ * Whether the Enable action fits: the app is disabled and, when an update
+ * left it so, the installed version runs on this server.
+ *
+ * @param app The card's app.
+ * @spec openspec/changes/audit-external-changes
+ */
+function offersEnable (app: AppOption): boolean {
+	return app.state === 'disabled' && leftDisabled.value[app.id]?.compatible !== false
+}
+
 /**
  *
  */
 async function loadApps (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/apps')), { headers: { ...ocsHeaders, Accept: 'application/json' } })
-		const payload = await unwrapOcsResponse<{ apps: AppOption[] }>(response)
+		const payload = await unwrapOcsResponse<{ apps: AppOption[], disabledByUpdate?: unknown }>(response)
 		apps.value = payload.apps || []
+		leftDisabled.value = leftDisabledMarks(payload.disabledByUpdate)
 	} catch (error) {
 		errorMessage.value = error instanceof Error ? error.message : 'Could not fetch app list.'
 	}
+}
+
+/**
+ * Re-reads the app list after an app was replaced by its successor.
+ */
+async function onReplaced (): Promise<void> {
+	replaceTarget.value = null
+	await loadApps()
 }
 
 // Advisory correlation is fetched separately from the app list so a slow or
@@ -594,6 +718,10 @@ async function loadApps (): Promise<void> {
  */
 // Unix seconds of the last completed sweep; null means none has completed.
 const advisoriesCheckedAt = ref<number | null>(null)
+const advisoriesStatus = ref<SweepStatus | null>(null)
+const advisoriesErrors = ref<string[]>([])
+// The instance's one patch compliance status (advisories-per-app-detail D4).
+const advisoryCompliance = ref<Compliance | null>(null)
 // True only when the fetch itself failed — never merely because the map is empty.
 const advisoriesUnavailable = ref(false)
 
@@ -603,15 +731,22 @@ const advisoriesUnavailable = ref(false)
 async function loadAdvisories (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/advisories')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ advisories: Record<string, AdvisoryCorrelation>, checkedAt: number | null }>(response)
+		const payload = await unwrapOcsResponse<{ advisories: Record<string, AdvisoryCorrelation>, checkedAt: number | null, status?: SweepStatus | null, errors?: string[], compliance?: Compliance, triage?: AdvisoryTriageMap }>(response)
 		advisories.value = payload.advisories || {}
+		advisoryTriage.value = payload.triage && !Array.isArray(payload.triage) ? payload.triage : {}
 		advisoriesCheckedAt.value = payload.checkedAt ?? null
+		const sweep = sweepStateOf(payload)
+		advisoriesStatus.value = sweep.status
+		advisoriesErrors.value = sweep.errors
+		advisoryCompliance.value = payload.compliance ?? null
 		advisoriesUnavailable.value = false
 	} catch {
 		// Non-fatal: the app list stays usable without advisory badges. The
 		// flag keeps "we could not ask" distinct from "nothing to report".
 		advisories.value = {}
+		advisoryTriage.value = {}
 		advisoriesCheckedAt.value = null
+		advisoryCompliance.value = null
 		advisoriesUnavailable.value = true
 	}
 }
@@ -622,6 +757,8 @@ async function loadAdvisories (): Promise<void> {
 // out in issue #160.
 const pendingUpdates = ref<Record<string, PendingUpdate>>({})
 const updatesCheckedAt = ref<number | null>(null)
+const updatesStatus = ref<SweepStatus | null>(null)
+const updatesErrors = ref<string[]>([])
 const updatesUnavailable = ref(false)
 const maxLinesBehind = ref<number | null>(null)
 
@@ -631,9 +768,12 @@ const maxLinesBehind = ref<number | null>(null)
 async function loadUpdates (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/updates')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ updates: Record<string, PendingUpdate>, checkedAt: number | null, maxLinesBehind: number | null }>(response)
+		const payload = await unwrapOcsResponse<{ updates: Record<string, PendingUpdate>, checkedAt: number | null, status?: SweepStatus | null, errors?: string[], maxLinesBehind: number | null }>(response)
 		pendingUpdates.value = payload.updates || {}
 		updatesCheckedAt.value = payload.checkedAt ?? null
+		const sweep = sweepStateOf(payload)
+		updatesStatus.value = sweep.status
+		updatesErrors.value = sweep.errors
 		maxLinesBehind.value = payload.maxLinesBehind ?? null
 		updatesUnavailable.value = false
 	} catch {
@@ -647,6 +787,8 @@ const updatesFreshnessLabel = computed((): string => updatesFreshnessLabelFor({
 	unavailable: updatesUnavailable.value,
 	checkedAt: updatesCheckedAt.value,
 	nowSeconds: Date.now() / 1000,
+	status: updatesStatus.value,
+	errors: updatesErrors.value.map((appId) => apps.value.find((app) => app.id === appId)?.label ?? appId),
 }))
 
 const updateBadgeFor = (appId: string) => updateBadge(pendingUpdates.value[appId])
@@ -662,6 +804,11 @@ const advisoryMinInterval = ref(1)
 const advisoryMaxInterval = ref(24)
 const advisorySavedInterval = ref('6')
 const advisorySavedDigest = ref(true)
+// advisories-ncsc-feed: whether the sweep also reads NCSC-NL, and how far it got.
+const advisoryNcscEnabled = ref(false)
+const advisorySavedNcsc = ref(false)
+const advisoryNcscStatus = ref<{ readUpTo: string | null, caughtUp: boolean }>({ readUpTo: null, caughtUp: false })
+const ncscPanelStatus = computed((): NcscStatus => ({ enabled: advisorySavedNcsc.value, ...advisoryNcscStatus.value }))
 const isSavingAdvisorySettings = ref(false)
 const advisorySettingsError = ref('')
 const advisorySettingsNotice = ref('')
@@ -677,7 +824,26 @@ const isAdvisoryIntervalValid = computed((): boolean => {
 
 const isAdvisorySettingsDirty = computed((): boolean =>
 	advisoryIntervalInput.value.trim() !== advisorySavedInterval.value
-	|| advisoryDigestEnabled.value !== advisorySavedDigest.value)
+	|| advisoryDigestEnabled.value !== advisorySavedDigest.value
+	|| advisoryNcscEnabled.value !== advisorySavedNcsc.value)
+
+/**
+ * Take the NCSC-NL switch and read status from an advisory settings answer.
+ *
+ * @param payload The answer.
+ * @param payload.ncscEnabled Whether NCSC-NL checks are on.
+ * @param payload.ncscStatus How far the NCSC-NL read got.
+ * @param payload.ncscStatus.readUpTo The newest change read, or null.
+ * @param payload.ncscStatus.caughtUp Whether the last sweep reached the present.
+ * @spec openspec/changes/advisories-ncsc-feed/specs/security-advisory-correlation/spec.md#requirement-ncsc-nl-advisories-are-matched-to-the-installed-server-and-apps
+ */
+function applyNcscSettings (payload: { ncscEnabled?: boolean, ncscStatus?: { readUpTo: string | null, caughtUp: boolean } }): void {
+	advisoryNcscEnabled.value = payload.ncscEnabled === true
+	advisorySavedNcsc.value = payload.ncscEnabled === true
+	if (payload.ncscStatus) {
+		advisoryNcscStatus.value = payload.ncscStatus
+	}
+}
 
 /**
  *
@@ -685,7 +851,8 @@ const isAdvisorySettingsDirty = computed((): boolean =>
 async function loadAdvisorySettings (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/advisory/settings')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ intervalHours: number, minIntervalHours: number, maxIntervalHours: number, digestEnabled: boolean }>(response)
+		const payload = await unwrapOcsResponse<{ intervalHours: number, minIntervalHours: number, maxIntervalHours: number, digestEnabled: boolean, ncscEnabled?: boolean, ncscStatus?: { readUpTo: string | null, caughtUp: boolean } }>(response)
+		applyNcscSettings(payload)
 		advisoryMinInterval.value = payload.minIntervalHours
 		advisoryMaxInterval.value = payload.maxIntervalHours
 		advisoryIntervalInput.value = String(payload.intervalHours)
@@ -713,9 +880,11 @@ async function saveAdvisorySettings (): Promise<void> {
 				// '1'/'0' rather than a JSON boolean: PHP casts a JSON `false`
 				// to '' and the server would read that as "unspecified".
 				digestEnabled: advisoryDigestEnabled.value ? '1' : '0',
+				ncscEnabled: advisoryNcscEnabled.value ? '1' : '0',
 			}),
 		})
-		const payload = await unwrapOcsResponse<{ intervalHours: number, digestEnabled: boolean }>(response)
+		const payload = await unwrapOcsResponse<{ intervalHours: number, digestEnabled: boolean, ncscEnabled?: boolean, ncscStatus?: { readUpTo: string | null, caughtUp: boolean } }>(response)
+		applyNcscSettings(payload)
 		advisoryIntervalInput.value = String(payload.intervalHours)
 		advisorySavedInterval.value = String(payload.intervalHours)
 		advisoryDigestEnabled.value = payload.digestEnabled
@@ -730,14 +899,29 @@ async function saveAdvisorySettings (): Promise<void> {
 
 // See utils/advisoryFreshness.ts; the interval is the saved one, so the
 // label names what the background job actually uses (issue #436).
+// One line for the instance, above the freshness line (advisories-per-app-detail D4).
+const complianceLine = computed((): string => complianceSentence(advisoryCompliance.value))
+
 const advisoryFreshnessLabel = computed((): string => advisoryFreshnessLabelFor({
 	unavailable: advisoriesUnavailable.value,
 	checkedAt: advisoriesCheckedAt.value,
 	intervalHours: Number(advisorySavedInterval.value) || 6,
 	nowSeconds: Date.now() / 1000,
+	status: advisoriesStatus.value,
+	errors: advisoriesErrors.value.map((appId) => apps.value.find((app) => app.id === appId)?.label ?? appId),
 }))
 
-const advisoryFor = (appId: string): AdvisoryCorrelation | null => advisories.value[appId] ?? null
+/**
+ * An app's advisory row with the triage applied: the card badge and its
+ * severity count active advisories only (advisories-triage, design D2).
+ *
+ * @param appId The app the card is for.
+ * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+ */
+function advisoryFor (appId: string): AdvisoryCorrelation | null {
+	const row = advisories.value[appId]
+	return row ? applyTriage({ ...row, appId: row.appId || appId }, advisoryTriage.value) : null
+}
 
 // Badge shown next to a version with a recorded SHA-256 on the binding — see
 // "Recorded digests are binding-scoped and surfaced". After a reinstall that
@@ -818,7 +1002,7 @@ function pinTooltip (pin: PinRecord | null): string {
 async function loadPolicies (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/policies')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string }>(response)
+		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string, autoUpdateSchedule?: unknown, nextRuns?: Partial<Record<UpdateKind, string | null>>, securityHolds?: Record<string, string>, advisoriesFresh?: boolean, manualKinds?: string[], groups?: UpdateGroupView[], waiting?: Record<string, string>, maxPerRun?: number | null, maxPerWeek?: number | null }>(response)
 		const map: Record<string, PolicyRecord> = {}
 		for (const policy of payload.policies || []) {
 			map[policy.appId] = policy
@@ -828,14 +1012,41 @@ async function loadPolicies (): Promise<void> {
 		savedAutoUpdateEnabled.value = autoUpdateEnabled.value
 		autoUpdateWindowInput.value = payload.autoUpdateWindow || AUTO_UPDATE_WINDOW_DEFAULT
 		autoUpdateTimeZone.value = payload.autoUpdateTimeZone || 'UTC'
+		securityHolds.value = payload.securityHolds ?? {}
+		advisoriesFresh.value = payload.advisoriesFresh !== false
+		manualKinds.value = payload.manualKinds ?? []
+		applyRunBatching(payload)
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
+		autoUpdateSchedule.value = scheduleFrom(payload.autoUpdateSchedule)
+		savedAutoUpdateSchedule.value = scheduleFrom(payload.autoUpdateSchedule)
+		autoUpdateNextRuns.value = payload.nextRuns ?? {}
 	} catch {
 		// Non-fatal: the app list stays usable without policy badges.
 		policies.value = {}
 	}
 }
 
+/**
+ * Stores the update groups, the units a cap holds back and both caps from a
+ * policies payload; absent fields read as none.
+ *
+ * @param payload The policies payload.
+ * @param payload.groups The update groups, in their stored order.
+ * @param payload.waiting The held units, by key, with the time each was first held.
+ * @param payload.maxPerRun The per-run cap, or null for no limit.
+ * @param payload.maxPerWeek The weekly cap, or null for no limit.
+ * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+ */
+function applyRunBatching (payload: { groups?: UpdateGroupView[], waiting?: Record<string, string>, maxPerRun?: number | null, maxPerWeek?: number | null }): void {
+	updateGroups.value = payload.groups ?? []
+	waitingUnits.value = payload.waiting ?? {}
+	maxPerRun.value = payload.maxPerRun ?? null
+	maxPerWeek.value = payload.maxPerWeek ?? null
+}
+
 const policyLevelFor = (appId: string): PolicyLevel => policies.value[appId]?.level ?? 'none'
+// A group only plans apps with a policy, so those are the ones it can hold.
+const groupableApps = computed(() => Object.values(policies.value).filter((policy) => policy.level !== 'none').map((policy) => policy.appId))
 const blockedVersionsFor = (appId: string): BlockedVersion[] => policies.value[appId]?.blockedVersions ?? []
 const requireApprovalFor = (appId: string): boolean => policies.value[appId]?.requireApproval === true
 
@@ -957,9 +1168,11 @@ async function onApprovalChange (appId: string, requireApproval: boolean): Promi
 }
 
 const isAutoUpdateWindowValid = computed(() => isValidAutoUpdateWindow(autoUpdateWindowInput.value))
+const isScheduleDirty = computed(() => JSON.stringify(autoUpdateSchedule.value) !== JSON.stringify(savedAutoUpdateSchedule.value))
 const isAutoUpdateSettingsDirty = computed(() => (
 	autoUpdateEnabled.value !== savedAutoUpdateEnabled.value
 	|| autoUpdateWindowInput.value.trim() !== savedAutoUpdateWindow.value
+	|| isScheduleDirty.value
 ))
 
 /**
@@ -995,13 +1208,20 @@ async function saveAutoUpdateSettings (): Promise<void> {
 			//
 			// The query string above already sends '1'/'0'; this makes the body
 			// agree with it so the value cannot depend on which one wins.
-			body: JSON.stringify({ enabled: autoUpdateEnabled.value ? '1' : '0', window }),
+			// The schedule travels in the body only (an object, which a query string cannot
+			// carry), and only when it changed, so a save that leaves it alone stores nothing.
+			body: JSON.stringify({ enabled: autoUpdateEnabled.value ? '1' : '0', window, ...(isScheduleDirty.value ? { schedule: autoUpdateSchedule.value } : {}) }),
 		})
-		const payload = await unwrapOcsResponse<{ autoUpdateEnabled?: boolean, autoUpdateWindow?: string }>(response)
+		const payload = await unwrapOcsResponse<{ autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateSchedule?: unknown, nextRuns?: Partial<Record<UpdateKind, string | null>> }>(response)
 		autoUpdateEnabled.value = Boolean(payload.autoUpdateEnabled)
 		autoUpdateWindowInput.value = payload.autoUpdateWindow || window
 		savedAutoUpdateEnabled.value = autoUpdateEnabled.value
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
+		if (payload.autoUpdateSchedule !== undefined) {
+			autoUpdateSchedule.value = scheduleFrom(payload.autoUpdateSchedule)
+		}
+		savedAutoUpdateSchedule.value = scheduleFrom(autoUpdateSchedule.value)
+		autoUpdateNextRuns.value = payload.nextRuns ?? autoUpdateNextRuns.value
 		autoUpdateSettingsNotice.value = t('versioniq', 'Automatic update settings saved.')
 	} catch (e) {
 		autoUpdateSettingsError.value = e instanceof Error ? e.message : t('versioniq', 'Could not save automatic update settings.')
@@ -1072,6 +1292,8 @@ function resetSelectedAppState (): void {
 	selectedVersion.value = ''
 	versionFilter.value = ''
 	hasCheckedVersions.value = false
+	versionChannel.value = ''
+	showAllVersions.value = false
 	installedVersion.value = ''
 	availableSource.value = ''
 	sourceOverride.value = ''
@@ -1116,6 +1338,7 @@ type VersionsPayload = {
 	source?: string
 	sourceId?: string
 	error?: string
+	channel?: string
 }
 
 /**
@@ -1153,6 +1376,7 @@ async function fetchVersionsPayload (appId: string): Promise<VersionsPayload> {
  */
 function applyVersionsPayload (payload: VersionsPayload): void {
 	versions.value = payload.availableVersions || payload.versions || []
+	versionChannel.value = payload.channel || ''
 	installedVersion.value = payload.installedVersion || ''
 	availableSource.value = payload.sourceId || payload.source || ''
 	errorMessage.value = payload.error ?? ''
@@ -1170,7 +1394,122 @@ function isBlockedBySafeModeRule (version: string): boolean {
 		enabled: isSafeMode.value,
 		installedVersion: installedVersion.value,
 		updateChannel: updateChannel.value,
+		onChannel: versions.value.find((entry) => entry.version === version)?.onChannel,
 	})
+}
+
+/**
+ * Safe mode's listing rule: with "Show all versions" on, an off-channel
+ * version stays listed and tagged, and selecting it is refused.
+ *
+ * @param version the listed version
+ */
+function isHiddenBySafeMode (version: AppVersion): boolean {
+	return isBlockedBySafeMode(version.version, {
+		enabled: isSafeMode.value,
+		installedVersion: installedVersion.value,
+		updateChannel: updateChannel.value,
+		onChannel: showAllVersions.value && version.onChannel === false ? true : version.onChannel,
+	})
+}
+
+const versionChannelName = computed(() => (versionChannel.value ? channelLabel(versionChannel.value) : ''))
+
+const ltsLinesMissing = computed(() => noLtsLinesMarked(
+	versionChannel.value,
+	channelState.value.ltsLines[selectedApp.value] ?? [],
+	versions.value,
+))
+
+/**
+ * Read the release channel settings (admin only; a refusal leaves the defaults).
+ */
+async function loadChannels (): Promise<void> {
+	try {
+		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/channels')), { headers: { ...ocsHeaders, Accept: 'application/json' } })
+		channelState.value = normaliseChannelState(await unwrapOcsResponse<Partial<ChannelState>>(response))
+	} catch {
+		// Not an admin, or an older server: the selectors keep their defaults.
+	}
+}
+
+/**
+ * The channel settings with every part present, whatever the server left out.
+ *
+ * @param state the answer
+ */
+function normaliseChannelState (state: Partial<ChannelState> | null | undefined): ChannelState {
+	return {
+		channels: Array.isArray(state?.channels) ? state.channels : [],
+		default: typeof state?.default === 'string' && state.default !== '' ? state.default : 'server',
+		apps: state?.apps && typeof state.apps === 'object' ? state.apps : {},
+		ltsLines: state?.ltsLines && typeof state.ltsLines === 'object' ? state.ltsLines : {},
+	}
+}
+
+/**
+ * Send one password-confirmed channel change and keep the settings it answers.
+ *
+ * @param change the endpoint below /api (path), PUT or DELETE (method) and the request body (body)
+ * @param change.path the endpoint below /api
+ * @param change.method PUT or DELETE
+ * @param change.body the request body
+ */
+async function sendChannelChange ({ path, method, body }: { path: string, method: 'PUT' | 'DELETE', body: Record<string, unknown> }): Promise<void> {
+	if (isSavingChannel.value) {
+		return
+	}
+	isSavingChannel.value = true
+	errorMessage.value = ''
+	try {
+		await ensurePasswordConfirmation()
+		const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/${path}`)), {
+			method,
+			headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
+			body: JSON.stringify(body),
+		})
+		channelState.value = normaliseChannelState(await unwrapOcsResponse<Partial<ChannelState>>(response))
+		if (selectedApp.value !== '') {
+			applyVersionsPayload(await fetchVersionsPayload(selectedApp.value))
+		}
+	} catch (e) {
+		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not change the release channel.')
+	} finally {
+		isSavingChannel.value = false
+	}
+}
+
+/**
+ * An app's channel was chosen; null means it follows the default again.
+ *
+ * @param appId the app
+ * @param channel the channel, or null
+ */
+async function onChannelChange (appId: string, channel: ReleaseChannel | null): Promise<void> {
+	const path = `app/${encodeURIComponent(appId)}/channel`
+	await sendChannelChange({ path, method: channel === null ? 'DELETE' : 'PUT', body: channel === null ? {} : { channel } })
+}
+
+/**
+ * An app's long-term support lines were saved.
+ *
+ * @param appId the app
+ * @param lines the lines
+ */
+async function onLtsLinesChange (appId: string, lines: string[]): Promise<void> {
+	await sendChannelChange({ path: `app/${encodeURIComponent(appId)}/lts-lines`, method: 'PUT', body: { lines } })
+}
+
+/**
+ * The instance default channel was chosen on the Settings tab.
+ *
+ * @param _appId always '' for the default
+ * @param channel the channel
+ */
+async function onDefaultChannelChange (_appId: string, channel: ReleaseChannel | null): Promise<void> {
+	if (channel !== null) {
+		await sendChannelChange({ path: 'channel', method: 'PUT', body: { channel } })
+	}
 }
 
 /**
@@ -1261,14 +1600,20 @@ function clearSelectedApp () {
 	resetSelectedAppState()
 }
 
+// How many listed apps are pinned, for the status bar's Pinned filter.
+const pinnedCount = computed((): number => apps.value.filter((app) => pins.value[app.id] !== undefined).length)
+
 const filteredApps = computed(() => {
 	const filter = appFilter.value.trim().toLowerCase()
-	const visibleApps = filterByUpdates(
+	const filteredByUpdates = filterByUpdates(
 		coreAppsVisibility.value === 'hide' ? apps.value.filter((app) => !app.isCore) : apps.value,
 		pendingUpdates.value,
 		updatesFilter.value,
 		maxLinesBehind.value,
 	)
+	const visibleApps = pinnedOnly.value
+		? filteredByUpdates.filter((app) => pins.value[app.id] !== undefined)
+		: filteredByUpdates
 
 	if (filter === '') {
 		return visibleApps
@@ -1335,9 +1680,10 @@ function appCardFallback (app: AppOption): string {
 
 const filteredVersions = computed(() => {
 	const filter = versionFilter.value.trim().toLowerCase()
+	const onChannel = pickerVersions(versions.value, showAllVersions.value)
 	const list = isSafeMode.value
-		? versions.value.filter((version) => !isBlockedBySafeModeRule(version.version))
-		: versions.value
+		? onChannel.filter((version) => !isHiddenBySafeMode(version))
+		: onChannel
 
 	if (filter === '') {
 		return list
@@ -1557,6 +1903,75 @@ const selectedVersionRange = computed(() => {
 
 const downgradeVersionRange = computed(() => getVersionRangeSummary(downgradeConfirmFromVersion.value, downgradeConfirmToVersion.value))
 
+// releases-version-facts D3: the releases marked as breaking in the range.
+const selectedBreakingText = computed(() => breakingSentence(breakingBetween(versions.value, installedVersion.value, selectedVersion.value)))
+const downgradeBreakingText = computed(() => breakingSentence(breakingBetween(versions.value, downgradeConfirmFromVersion.value, downgradeConfirmToVersion.value)))
+
+/**
+ * Open the dialog that records a known issue against a version.
+ *
+ * @param version The version.
+ * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+ */
+function openKnownIssueDialog (version: string): void {
+	knownIssueDialogVersion.value = version
+	isKnownIssueDialogOpen.value = true
+}
+
+/**
+ * Store a version's admin notes after a change, on its entry and, for the
+ * installed version, on the app card.
+ *
+ * @param version The version.
+ * @param issues The version's notes after the change.
+ * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+ */
+function onKnownIssuesChanged (version: string, issues: AdminKnownIssue[]): void {
+	versions.value = versions.value.map((entry) => (entry.version === version ? { ...entry, adminKnownIssues: issues } : entry))
+	if (version === installedVersion.value) {
+		apps.value = apps.value.map((app) => (app.id === selectedApp.value ? { ...app, installedKnownIssues: issues } : app))
+	}
+}
+
+/**
+ * Remove one admin note from a version.
+ *
+ * @param version The version.
+ * @param index The note's position.
+ * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+ */
+async function removeKnownIssue (version: string, index: number): Promise<void> {
+	isRemovingKnownIssue.value = true
+	errorMessage.value = ''
+	try {
+		const { payload, error } = await ocsWrite<{ knownIssues: AdminKnownIssue[] }>(
+			'DELETE',
+			`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(selectedApp.value)}/versions/${encodeURIComponent(version)}/known-issues/${index}`,
+		)
+		if (error) {
+			errorMessage.value = error
+			return
+		}
+		onKnownIssuesChanged(version, Array.isArray(payload.knownIssues) ? payload.knownIssues : [])
+	} catch (e) {
+		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not remove the known issue.')
+	} finally {
+		isRemovingKnownIssue.value = false
+	}
+}
+
+/**
+ * The card's tooltip for known issues in the installed version: each workaround.
+ *
+ * @param issues The installed version's admin notes.
+ * @return The tooltip.
+ */
+function installedIssuesTitle (issues: AdminKnownIssue[]): string {
+	return issues
+		.map((issue) => issue.workaround ? t('versioniq', '{issue} Workaround: {workaround}', { issue: issue.text, workaround: issue.workaround }) : issue.text)
+		.join('\n')
+}
+
 // Aggregate "changes between installed → target" panel — reuses the
 // already-fetched `versions` array, zero extra requests; see "Aggregate
 // range changelog on target selection".
@@ -1576,6 +1991,31 @@ function versionRangeText (summary: VersionRangeInfo | null): string {
 	}
 
 	return `${summary.direction === 'upgrade' ? 'Upgrade' : 'Downgrade'} crosses ${summary.major} major and ${summary.minor} minor version step${summary.minor === 1 ? '' : 's'}.`
+}
+
+/**
+ * Runs an upgrade dry run and keeps its database changes for the panel;
+ * nothing is installed (safety-upgrade-migration-preview, design D5).
+ *
+ * @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
+ */
+async function previewMigrations (): Promise<void> {
+	const appId = selectedApp.value
+	const version = selectedVersion.value
+	if (!appId || !version || isPreviewingMigrations.value) {
+		return
+	}
+	isPreviewingMigrations.value = true
+	try {
+		const { payload } = await requestInstall({ appId, version, forceDryRun: true })
+		if (selectedApp.value === appId && selectedVersion.value === version) {
+			migrationPreview.value = payload.migrationPreview ?? null
+		}
+	} catch {
+		migrationPreview.value = null
+	} finally {
+		isPreviewingMigrations.value = false
+	}
 }
 
 // Previews the migration diff for a downgrade via a dry-run install request
@@ -1667,7 +2107,9 @@ type InstallApiPayload = {
 	actualSha?: string
 	recordedShaMatched?: boolean
 	orphanedMigrations?: string[] | null
+	migrationPreview?: MigrationPreview | null
 	integrityWarning?: string | null
+	space?: { appsFree: number | null, tempFree: number | null } | null
 	servedFromCache?: boolean
 }
 
@@ -1701,7 +2143,20 @@ function installQuery (request: InstallRequest): Record<string, string> {
 		dryRun: (request.forceDryRun || dryRunRequested.value) ? '1' : '0',
 		targetVersion: request.version,
 	}, sourceOverride.value)
+	const progressToken = installProgressTokenFor(request)
+	if (progressToken !== '') {
+		query.progressToken = progressToken
+	}
 	return addInstallFlags(query, request)
+}
+
+/**
+ * The progress token to send with an install, '' for none: a dry run reports no progress.
+ *
+ * @param request The install request.
+ */
+function installProgressTokenFor (request: InstallRequest): string {
+	return request.forceDryRun ? '' : installProgressToken.value
 }
 
 /**
@@ -1886,12 +2341,24 @@ function selectedInstallTarget (): InstallTarget {
 }
 
 /**
+ * A random token for one install's progress record (install-live-progress).
+ *
+ * @spec openspec/changes/install-live-progress/specs/version-management/spec.md
+ */
+function newProgressToken (): string {
+	const bytes = new Uint8Array(16)
+	globalThis.crypto.getRandomValues(bytes)
+	return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+/**
  * Marks an install as running and clears the previous result.
  *
  * @param target The install about to run.
  */
 function startInstall (target: InstallTarget): void {
 	isInstallingVersion.value = true
+	installProgressToken.value = newProgressToken()
 	errorMessage.value = ''
 	hasInstallResult.value = false
 	lastInstallResult.value = null
@@ -2083,6 +2550,7 @@ async function runInstall (target: InstallTarget): Promise<void> {
 		showInstallError(error, target)
 	} finally {
 		isInstallingVersion.value = false
+		installProgressToken.value = ''
 	}
 }
 
@@ -2131,6 +2599,169 @@ async function rollbackToLastKnownGood (appId: string, version: string): Promise
 	} finally {
 		suppressSafeModeAutoClear.value = false
 	}
+}
+
+// One-click updates (install-one-click-updates). Every action goes through
+// runInstall() / requestInstallWithRetries(), the same guarded path as the
+// picker: no override flags are sent, so a pinned app answers 409 and the
+// PinOverrideDialog takes over, and the server-side guards stay in place.
+const isQuickUpdateOpen = ref(false)
+const isQuickUpdateLoading = ref(false)
+const quickUpdate = ref<{ appId: string, fromVersion: string, toVersion: string, advisoryId: string | null } | null>(null)
+
+const quickUpdateTargetFor = (appId: string): string | null => quickUpdateTarget(pendingUpdates.value[appId])
+
+/**
+ * The safe version the advisory line offers, when it is newer than the installed one.
+ *
+ * @param app The card's app.
+ * @param app.id The app id.
+ * @param app.installedVersion The installed version, if any.
+ * @spec openspec/changes/install-one-click-updates/specs/security-advisory-correlation/spec.md#requirement-an-admin-updates-to-the-safe-version-straight-from-the-advisory
+ */
+function safeVersionFor (app: { id: string, installedVersion?: string | null }): string | null {
+	const recommended = advisoryRecommendation(app.id)
+	if (!recommended || !app.installedVersion) {
+		return null
+	}
+	return compareVersions(recommended, app.installedVersion) > 0 ? recommended : null
+}
+
+/**
+ * The version an app's open advisory recommends, or null when there is none.
+ *
+ * @param appId The app id.
+ * @spec openspec/changes/install-one-click-updates/specs/security-advisory-correlation/spec.md#requirement-an-admin-updates-to-the-safe-version-straight-from-the-advisory
+ */
+function advisoryRecommendation (appId: string): string | null {
+	const advisory = advisoryFor(appId)
+	if (!advisory || advisory.state === 'none') {
+		return null
+	}
+	return advisory.recommendedVersion ?? null
+}
+
+/**
+ * Opens the one-app confirmation: selects the app, loads its releases for
+ * the release notes in between, and preselects the target version.
+ *
+ * @param appId The app to update.
+ * @param toVersion The version to install.
+ * @param advisoryId The advisory the version resolves, for the safe-version button.
+ * @spec openspec/changes/install-one-click-updates/specs/version-management/spec.md#requirement-an-admin-updates-one-app-or-all-apps-in-one-action
+ */
+async function openQuickUpdate (appId: string, toVersion: string, advisoryId: string | null = null): Promise<void> {
+	if (isVersionWorkRunning()) {
+		return
+	}
+	onSelectApp(appId)
+	quickUpdate.value = { appId, fromVersion: pendingUpdates.value[appId]?.installedVersion ?? '', toVersion, advisoryId }
+	isQuickUpdateLoading.value = true
+	isQuickUpdateOpen.value = true
+	try {
+		await loadQuickUpdateVersions(toVersion)
+	} finally {
+		isQuickUpdateLoading.value = false
+	}
+}
+
+/**
+ * Whether an install or a version check is already running.
+ */
+function isVersionWorkRunning (): boolean {
+	return isInstallingVersion.value || isCheckingVersions.value
+}
+
+/**
+ * Loads the selected app's releases for the one-app confirmation, takes the
+ * installed version they report, and preselects the target version.
+ *
+ * @param toVersion The version to install.
+ * @spec openspec/changes/install-one-click-updates/specs/version-management/spec.md#requirement-an-admin-updates-one-app-or-all-apps-in-one-action
+ */
+async function loadQuickUpdateVersions (toVersion: string): Promise<void> {
+	await checkVersions()
+	const current = quickUpdate.value
+	if (current !== null && installedVersion.value !== '') {
+		quickUpdate.value = { ...current, fromVersion: installedVersion.value }
+	}
+	selectedVersion.value = toVersion
+}
+
+/**
+ * Installs the confirmed version through the normal install path.
+ *
+ * @spec openspec/changes/install-one-click-updates/specs/version-management/spec.md#requirement-an-admin-updates-one-app-or-all-apps-in-one-action
+ */
+async function confirmQuickUpdate (): Promise<void> {
+	const target = quickUpdate.value
+	if (!target) {
+		return
+	}
+	await runInstall({ appId: target.appId, fromVersion: target.fromVersion, toVersion: target.toVersion, allowDowngrade: false })
+	await loadUpdates()
+}
+
+const isUpdateAllOpen = ref(false)
+const isUpdateAllRunning = ref(false)
+const updateAllRows = ref<Record<string, BatchRow>>({})
+let updateAllStopRequested = false
+
+const updateAllList = computed((): BatchCandidate[] => updateAllCandidates(pendingUpdates.value)
+	.map((candidate) => ({ ...candidate, pinnedVersion: pinFor(candidate.appId)?.version })))
+
+/**
+ * Opens the Update all dialog with a fresh list.
+ */
+function openUpdateAll (): void {
+	updateAllRows.value = {}
+	updateAllStopRequested = false
+	isUpdateAllOpen.value = true
+}
+
+/**
+ * Runs the ticked installs one after the other, asking for the password at
+ * most once up front; a failure never stops the run.
+ *
+ * @param selected The ticked apps.
+ * @spec openspec/changes/install-one-click-updates/specs/version-management/spec.md#requirement-an-admin-updates-one-app-or-all-apps-in-one-action
+ */
+async function startUpdateAll (selected: BatchCandidate[]): Promise<void> {
+	if (isUpdateAllRunning.value || isInstallingVersion.value || selected.length === 0) {
+		return
+	}
+	try {
+		await ensurePasswordConfirmation()
+	} catch {
+		return
+	}
+	isUpdateAllRunning.value = true
+	isInstallingVersion.value = true
+	try {
+		await runUpdateBatch(selected, {
+			// Asks again only when the platform's confirmation window has run out,
+			// so a long run waits for the prompt instead of failing.
+			install: async (candidate) => {
+				await ensurePasswordConfirmation()
+				return batchOutcome(await requestInstallWithRetries({ appId: candidate.appId, version: candidate.toVersion }))
+			},
+			onRow: (row) => { updateAllRows.value = { ...updateAllRows.value, [row.appId]: row } },
+			shouldStop: () => updateAllStopRequested,
+		})
+	} finally {
+		isUpdateAllRunning.value = false
+		isInstallingVersion.value = false
+		await loadUpdates()
+		await loadPins()
+		await loadApps()
+	}
+}
+
+/**
+ * Lets the current install finish, then stops the run.
+ */
+function stopUpdateAll (): void {
+	updateAllStopRequested = true
 }
 
 onBeforeUnmount(() => {
@@ -2211,6 +2842,7 @@ onMounted(async () => {
 	void loadPolicies().catch(() => undefined)
 	void loadAdvisorySettings().catch(() => undefined)
 	void loadUpdates().catch(() => undefined)
+	void loadChannels().catch(() => undefined)
 })
 
 watch([safeModeEnabled, installedVersion, selectedVersion], () => {
@@ -2274,10 +2906,23 @@ watch(dryRunEnabled, () => {
 				:fromVersion="downgradeConfirmFromVersion"
 				:toVersion="downgradeConfirmToVersion"
 				:rangeText="downgradeVersionRange ? versionRangeText(downgradeVersionRange) : ''"
+				:breakingText="downgradeBreakingText"
 				:orphanedMigrations="downgradeOrphanedMigrations"
 				:busy="isInstallingVersion"
 				@update:open="isDowngradeConfirmOpen = $event"
 				@resolve="onDowngradeResolved" />
+			<ReplaceAppDialog v-if="replaceTarget && pendingUpdates[replaceTarget]?.successor"
+				:open="true"
+				:appId="replaceTarget"
+				:offer="pendingUpdates[replaceTarget].successor"
+				@update:open="(value: boolean) => { if (!value) { replaceTarget = null } }"
+				@replaced="onReplaced" />
+			<KnownIssueDialog
+				:open="isKnownIssueDialogOpen"
+				:appId="selectedApp"
+				:version="knownIssueDialogVersion"
+				@update:open="isKnownIssueDialogOpen = $event"
+				@saved="onKnownIssuesChanged" />
 			<PinDialog
 				:open="isPinDialogOpen"
 				:appId="pinDialogAppId"
@@ -2291,6 +2936,24 @@ watch(dryRunEnabled, () => {
 				:targetVersion="pinOverrideTargetVersion"
 				@update:open="isPinOverrideDialogOpen = $event"
 				@resolve="onPinOverrideResolve" />
+			<QuickUpdateDialog
+				:open="isQuickUpdateOpen"
+				:appId="quickUpdate?.appId ?? ''"
+				:fromVersion="quickUpdate?.fromVersion ?? ''"
+				:toVersion="quickUpdate?.toVersion ?? ''"
+				:advisoryId="quickUpdate?.advisoryId ?? null"
+				:entries="changelogRange"
+				:loading="isQuickUpdateLoading"
+				@update:open="isQuickUpdateOpen = $event"
+				@confirm="confirmQuickUpdate" />
+			<UpdateAllDialog
+				:open="isUpdateAllOpen"
+				:candidates="updateAllList"
+				:rows="updateAllRows"
+				:running="isUpdateAllRunning"
+				@update:open="isUpdateAllOpen = $event"
+				@start="startUpdateAll"
+				@stop="stopUpdateAll" />
 			<EnableAppDialog
 				:open="isEnableDialogOpen"
 				:appId="enableDialogAppId"
@@ -2325,6 +2988,11 @@ watch(dryRunEnabled, () => {
 						{{ tabLabel(tab.id) }}
 					</NcButton>
 				</div>
+				<p v-show="currentTab === 'apps' && complianceLine"
+					:class="[$style.advisoryFreshness, $style.complianceLine]"
+					data-testid="advisory-compliance">
+					{{ complianceLine }}
+				</p>
 				<p v-show="currentTab === 'apps'"
 					:class="$style.advisoryFreshness"
 					data-testid="advisory-freshness">
@@ -2334,6 +3002,16 @@ watch(dryRunEnabled, () => {
 					:class="$style.advisoryFreshness"
 					data-testid="updates-freshness">
 					{{ updatesFreshnessLabel }}
+				</p>
+				<p v-show="currentTab === 'apps' && updateAllList.length > 0">
+					<button
+						type="button"
+						:class="$style.appCardButton"
+						:disabled="isCheckingVersions || isInstallingVersion"
+						data-testid="update-all-button"
+						@click="openUpdateAll">
+						{{ t('versioniq', 'Update all ({count})', { count: updateAllList.length }) }}
+					</button>
 				</p>
 				<div v-show="currentTab === 'apps'"
 					id="apps-panel"
@@ -2360,7 +3038,7 @@ watch(dryRunEnabled, () => {
 										type="checkbox"
 										:class="$style.safeModeCheckbox"
 										:disabled="isInstallingVersion">
-									<span>Dry run (evaluate the install, apply no changes)</span>
+									<span>{{ t('versioniq', 'Dry run (evaluate the install, apply no changes)') }}</span>
 								</label>
 								<label :class="$style.safeMode">
 									<input
@@ -2368,7 +3046,7 @@ watch(dryRunEnabled, () => {
 										type="checkbox"
 										:class="$style.safeModeCheckbox"
 										:disabled="isInstallingVersion">
-									<span>Show install debug output</span>
+									<span>{{ t('versioniq', 'Show install debug output') }}</span>
 								</label>
 							</div>
 							<div :class="$style.autoUpdateSettings" data-testid="auto-update-settings">
@@ -2396,6 +3074,9 @@ watch(dryRunEnabled, () => {
 										:class="$style.appFilterInput"
 										:disabled="isSavingAutoUpdateSettings">
 								</label>
+								<AutoUpdateSchedule
+									v-model="autoUpdateSchedule"
+									:disabled="isSavingAutoUpdateSettings" />
 								<p v-if="autoUpdateWindowInput.trim() !== '' && !isAutoUpdateWindowValid" :class="$style.autoUpdateWindowError" data-testid="auto-update-window-error">
 									{{ t('versioniq', 'Use the HH:MM-HH:MM format, e.g. 01:00-05:00.') }}
 								</p>
@@ -2418,8 +3099,24 @@ watch(dryRunEnabled, () => {
 									:autoUpdateEnabled="autoUpdateEnabled"
 									:window="savedAutoUpdateWindow"
 									:timeZone="autoUpdateTimeZone"
+									:schedule="savedAutoUpdateSchedule"
+									:nextRuns="autoUpdateNextRuns"
+									:securityHolds="securityHolds"
+									:advisoriesFresh="advisoriesFresh"
+									:manualKinds="manualKinds"
 									:disabled="isSavingPolicy"
+									:updates="pendingUpdates"
+									:updatesCheckedLabel="updatesFreshnessLabel"
+									:groups="updateGroups"
+									:waiting="waitingUnits"
 									@retry="onRetryAttempt" />
+								<UpdateGroupsPanel
+									:apps="groupableApps"
+									:labels="appLabels"
+									:groups="updateGroups"
+									:maxPerRun="maxPerRun"
+									:maxPerWeek="maxPerWeek"
+									@saved="loadPolicies" />
 								<ProposedUpdatesPanel :labels="appLabels" />
 
 								<h3 id="section-advisories" :class="$style.advisorySettingsHeading">{{ t('versioniq', 'Security advisory checks') }}</h3>
@@ -2451,6 +3148,14 @@ watch(dryRunEnabled, () => {
 										:disabled="isSavingAdvisorySettings">
 									<span>{{ t('versioniq', 'Send a weekly digest of non-urgent advisories') }}</span>
 								</label>
+								<label :class="$style.safeMode">
+									<input
+										v-model="advisoryNcscEnabled"
+										type="checkbox"
+										data-testid="advisory-ncsc-enabled"
+										:disabled="isSavingAdvisorySettings">
+									<span>{{ t('versioniq', 'Also check the advisories of the Dutch NCSC (NCSC-NL) about Nextcloud products') }}</span>
+								</label>
 								<p v-if="advisorySettingsError" :class="$style.autoUpdateWindowError" data-testid="advisory-settings-error">
 									{{ advisorySettingsError }}
 								</p>
@@ -2469,21 +3174,30 @@ watch(dryRunEnabled, () => {
 						<div :class="[$style.contentRow, { [$style.contentRowSplit]: hasSplitLayout }]">
 							<div :class="[$style.leftColumn, { [$style.leftColumnFull]: !hasSplitLayout }]">
 								<div :class="$style.selectSection">
-									<label :class="$style.label" for="app-filter">Pick an installed App</label>
+									<label :class="$style.label" for="app-filter">{{ t('versioniq', 'Pick an installed App') }}</label>
 									<div :class="$style.filterToolbar">
 										<button
 											type="button"
 											:class="$style.filterToggleButton"
 											@click="showFilters = !showFilters">
-											{{ showFilters ? 'Hide filters' : 'Show filters' }}
+											{{ showFilters ? t('versioniq', 'Hide filters') : t('versioniq', 'Show filters') }}
+										</button>
+										<button
+											type="button"
+											:class="[$style.filterToggleButton, { [$style.filterToggleActive]: pinnedOnly }]"
+											:aria-pressed="pinnedOnly ? 'true' : 'false'"
+											:disabled="pinnedCount === 0 && !pinnedOnly"
+											data-testid="pinned-filter"
+											@click="pinnedOnly = !pinnedOnly">
+											{{ t('versioniq', 'Pinned {count}', { count: pinnedCount }) }}
 										</button>
 									</div>
 									<div v-if="showFilters" :class="$style.filterPanel">
 										<label :class="$style.filterField">
-											<span :class="$style.filterFieldLabel">Core apps</span>
+											<span :class="$style.filterFieldLabel">{{ t('versioniq', 'Core apps') }}</span>
 											<select v-model="coreAppsVisibility" :class="$style.filterSelect">
-												<option value="show">Show core apps</option>
-												<option value="hide">Hide core apps</option>
+												<option value="show">{{ t('versioniq', 'Show core apps') }}</option>
+												<option value="hide">{{ t('versioniq', 'Hide core apps') }}</option>
 											</select>
 										</label>
 										<label :class="$style.filterField">
@@ -2499,7 +3213,7 @@ watch(dryRunEnabled, () => {
 										id="app-filter"
 										v-model="appFilter"
 										type="text"
-										placeholder="Search apps"
+										:placeholder="t('versioniq', 'Search apps')"
 										:class="$style.appFilterInput"
 										:disabled="!hasSidebarSelect || isLoading || apps.length === 0 || isCheckingVersions || isInstallingVersion"
 										:aria-label="sidebarLabel">
@@ -2518,12 +3232,18 @@ watch(dryRunEnabled, () => {
 															<p :class="$style.appCardTitle">
 																{{ app.label }}
 															</p>
-															<span v-if="app.isCore" :class="$style.appCardCoreFlag">CORE</span>
+															<span v-if="app.isCore" :class="$style.appCardCoreFlag">{{ t('versioniq', 'Core') }}</span>
 															<span
 																v-if="app.state === 'disabled' || app.state === 'notInstalled'"
 																:class="$style.appCardStateFlag"
 																data-testid="app-state-badge">
 																{{ appStateLabel(app.state) }}
+															</span>
+															<span
+																v-if="app.state === 'disabled' && leftDisabled[app.id]"
+																:class="$style.appCardStateFlag"
+																data-testid="app-left-disabled">
+																{{ leftDisabledNotice(leftDisabled[app.id]) }}
 															</span>
 															<span
 																v-if="pinFor(app.id)"
@@ -2532,12 +3252,14 @@ watch(dryRunEnabled, () => {
 																:title="pinTooltip(pinFor(app.id))">
 																📌 {{ t('versioniq', 'Pinned {version}', { version: pinFor(app.id)?.version ?? '' }) }}
 															</span>
-															<span
+															<a
 																v-if="advisoryFor(app.id)?.state && advisoryFor(app.id)?.state !== 'none'"
+																:href="'#' + advisoryAnchor(app.id)"
 																:class="[$style.advisoryBadge, { [$style.advisoryBadgeVulnerable]: advisoryFor(app.id)?.state === 'pinned-to-vulnerable' }]"
-																:title="advisoryFor(app.id)?.advisories?.[0]?.summary ?? ''">
+																data-testid="advisory-badge"
+																:title="t('versioniq', 'Show the advisories for this app')">
 																⚠ {{ advisoryBadgeLabel(app.id) }}
-															</span>
+															</a>
 															<span
 																v-if="advisoryFor(app.id)?.state === 'none' && advisoryFor(app.id)?.error"
 																:class="$style.advisoryBadge"
@@ -2549,11 +3271,19 @@ watch(dryRunEnabled, () => {
 														<p :class="$style.appCardMeta">
 															{{ app.id }}
 														</p>
+														<PublisherMark :publisher="app.publisher ?? null" :marks="app.marks ?? []" />
 														<p
 															v-if="app.installedVersion"
 															:class="$style.appCardMeta"
 															data-testid="app-installed-version">
 															{{ t('versioniq', 'Installed {version}', { version: app.installedVersion }) }}
+														</p>
+														<p
+															v-if="(app.installedKnownIssues ?? []).length > 0"
+															:class="$style.appCardMeta"
+															data-testid="app-known-issue"
+															:title="installedIssuesTitle(app.installedKnownIssues ?? [])">
+															{{ t('versioniq', 'Known issue in the installed version') }}
 														</p>
 														<p
 															v-if="updateBadgeFor(app.id) || outsidePolicyFor(app.id)"
@@ -2572,10 +3302,12 @@ watch(dryRunEnabled, () => {
 																{{ outsidePolicyLabel(pendingUpdates[app.id]?.linesBehind ?? 0) }}
 															</span>
 														</p>
+														<LifecycleBadge :lifecycle="pendingUpdates[app.id]?.lifecycle ?? null" />
 														<AppSourceBadges
 															:isShipped="app.isShipped === true"
 															:isCore="app.isCore"
-															:boundSourceId="app.boundSourceId ?? null" />
+															:boundSourceId="app.boundSourceId ?? null"
+															:provenance="app.provenance ?? null" />
 														<p
 															v-if="advisoryFor(app.id)?.state === 'pinned-to-vulnerable'"
 															:class="$style.advisoryDetail">
@@ -2584,6 +3316,24 @@ watch(dryRunEnabled, () => {
 																· {{ t('versioniq', 'safe version: {version}', { version: advisoryFor(app.id)?.recommendedVersion ?? '' }) }}
 															</template>
 														</p>
+														<button
+															v-if="safeVersionFor(app)"
+															type="button"
+															:class="$style.appCardButton"
+															:disabled="isCheckingVersions || isInstallingVersion"
+															data-testid="safe-version-button"
+															@click.stop="openQuickUpdate(app.id, safeVersionFor(app) ?? '', advisoryFor(app.id)?.advisories?.[0]?.id ?? null)">
+															{{ t('versioniq', 'Update to safe version {version}', { version: safeVersionFor(app) ?? '' }) }}
+														</button>
+														<button
+															v-if="pendingUpdates[app.id]?.successor"
+															type="button"
+															:class="$style.appCardButton"
+															:disabled="isCheckingVersions || isInstallingVersion"
+															data-testid="replace-successor-button"
+															@click.stop="replaceTarget = app.id">
+															{{ t('versioniq', 'Replace with {successor}', { successor: pendingUpdates[app.id]?.successor?.to ?? '' }) }}
+														</button>
 													</div>
 													<div :class="$style.appCardMedia">
 														<img
@@ -2615,6 +3365,15 @@ watch(dryRunEnabled, () => {
 													@change="onPolicyChange"
 													@approval="onApprovalChange"
 													@retry="onRetryAttempt" />
+												<ChannelSelector
+													v-if="!app.isCore"
+													:appId="app.id"
+													:channel="channelState.apps[app.id] ?? null"
+													:defaultChannel="channelState.default"
+													:ltsLines="channelState.ltsLines[app.id] ?? []"
+													:disabled="isSavingChannel"
+													@change="onChannelChange"
+													@ltsLines="onLtsLinesChange" />
 											</div>
 											<button
 												v-if="!app.isCore"
@@ -2622,10 +3381,19 @@ watch(dryRunEnabled, () => {
 												:class="$style.appCardButton"
 												:disabled="isCheckingVersions || isInstallingVersion"
 												@click="onPickApp(app.id)">
-												{{ selectedApp === app.id && isCheckingVersions ? 'Loading…' : 'Choose app' }}
+												{{ selectedApp === app.id && isCheckingVersions ? t('versioniq', 'Loading…') : t('versioniq', 'Choose app') }}
 											</button>
 											<button
-												v-if="app.state === 'disabled'"
+												v-if="!app.isCore && quickUpdateTargetFor(app.id)"
+												type="button"
+												:class="$style.appCardButton"
+												:disabled="isCheckingVersions || isInstallingVersion"
+												data-testid="quick-update-button"
+												@click="openQuickUpdate(app.id, quickUpdateTargetFor(app.id) ?? '')">
+												{{ t('versioniq', 'Update to {version}', { version: quickUpdateTargetFor(app.id) ?? '' }) }}
+											</button>
+											<button
+												v-if="offersEnable(app)"
 												type="button"
 												:class="$style.appCardButton"
 												data-testid="app-enable-button"
@@ -2633,26 +3401,30 @@ watch(dryRunEnabled, () => {
 												@click="openEnableDialog(app.id)">
 												{{ t('versioniq', 'Enable') }}
 											</button>
-											<button
-												v-if="!app.isCore && app.lkg && shouldOfferLkgRollback(app)"
-												type="button"
-												:class="$style.appCardButton"
-												:disabled="isCheckingVersions || isInstallingVersion"
-												:title="t('versioniq', 'Roll back to the last version that finalized cleanly through Versioniq')"
-												@click="rollbackToLastKnownGood(app.id, app.lkg.version)">
-												{{ t('versioniq', 'Roll back to {version}', { version: app.lkg.version }) }}
-											</button>
+											<template v-if="!app.isCore">
+												<button
+													v-for="target in lkgRollbackTargets(app)"
+													:key="target.version"
+													type="button"
+													:class="$style.appCardButton"
+													data-testid="app-rollback-button"
+													:disabled="isCheckingVersions || isInstallingVersion"
+													:title="t('versioniq', 'Roll back to the last version that finalized cleanly through Versioniq')"
+													@click="rollbackToLastKnownGood(app.id, target.version)">
+													{{ target.label }}
+												</button>
+											</template>
 										</article>
 									</div>
 									<p v-if="!selectedApp && filteredApps.length === 0" :class="$style.noFilterResult">
-										No apps match your filter.
+										{{ t('versioniq', 'No apps match your filter.') }}
 									</p>
 								</div>
 								<div
 									:class="[$style.infoPanel, { [$style.infoPanelOpen]: hasInfoPanel }]">
 									<div v-if="selectedApp || installedVersion" :class="$style.installed">
 										<div v-if="selectedApp" :class="$style.selectedApp">
-											<span :class="$style.installedLabel">Selected app</span>
+											<span :class="$style.installedLabel">{{ t('versioniq', 'Selected app') }}</span>
 											<span :class="$style.installedValue">{{ selectedAppOption?.label || selectedApp }}</span>
 											<span v-if="selectedAppOption?.label && selectedAppOption.id !== selectedAppOption.label" :class="$style.installedSubvalue">{{ selectedApp }}</span>
 											<button
@@ -2660,7 +3432,7 @@ watch(dryRunEnabled, () => {
 												:class="$style.changeAppButton"
 												:disabled="isCheckingVersions || isInstallingVersion"
 												@click="clearSelectedApp">
-												Choose another app
+												{{ t('versioniq', 'Choose another app') }}
 											</button>
 											<div :class="$style.appDetailTabs" role="tablist" :aria-label="t('versioniq', 'App detail sections')">
 												<button
@@ -2682,7 +3454,7 @@ watch(dryRunEnabled, () => {
 											</div>
 										</div>
 										<div v-if="installedVersion" :class="$style.installedCurrent">
-											<span :class="$style.installedLabel">Current installed</span>
+											<span :class="$style.installedLabel">{{ t('versioniq', 'Current installed') }}</span>
 											<span :class="$style.installedValue">{{ installedVersion }}</span>
 											<span
 												v-if="pinFor(selectedApp)"
@@ -2713,7 +3485,7 @@ watch(dryRunEnabled, () => {
 											@update:pin="onPinDriftUpdated"
 											@repinRequested="onRepinRequested" />
 										<div v-if="selectedVersion" :class="$style.selectedVersion">
-											<span :class="$style.installedLabel">Selected version</span>
+											<span :class="$style.installedLabel">{{ t('versioniq', 'Selected version') }}</span>
 											<span :class="$style.versionTransition">
 												<span :class="$style.versionChip">{{ installedVersion || '—' }}</span>
 												<span :class="$style.versionArrow">→</span>
@@ -2726,11 +3498,29 @@ watch(dryRunEnabled, () => {
 											{{ versionRangeText(selectedVersionRange) }}
 										</p>
 										<p
+											v-if="selectedBreakingText"
+											:class="$style.versionSummary"
+											data-testid="range-breaking">
+											{{ selectedBreakingText }}
+										</p>
+										<p
 											v-if="selectedVersionRange?.direction === 'degrade'"
 											:class="$style.versionDegradeSummary">
-											Downgrade path detected.
+											{{ t('versioniq', 'Downgrade path detected.') }}
 										</p>
 										<ChangelogRangePanel :entries="changelogRange" />
+										<NcButton
+											v-if="selectedVersionRange?.direction === 'upgrade'"
+											variant="secondary"
+											data-testid="preview-migrations"
+											:disabled="isPreviewingMigrations || isInstallingVersion"
+											@click="previewMigrations">
+											{{ isPreviewingMigrations ? t('versioniq', 'Previewing database changes…') : t('versioniq', 'Preview database changes') }}
+										</NcButton>
+										<MigrationPreviewPanel
+											v-if="selectedVersionRange?.direction === 'upgrade' && migrationPreview !== undefined"
+											:preview="migrationPreview" />
+										<AppAboutCard v-if="selectedAppOption" :app="selectedAppOption" />
 									</div>
 									<template v-if="appDetailTab === 'versions'">
 										<SourceOverrideField
@@ -2739,6 +3529,23 @@ watch(dryRunEnabled, () => {
 											:boundSourceId="selectedAppOption?.boundSourceId ?? null"
 											:disabled="isCheckingVersions || isInstallingVersion"
 											@apply="onApplySourceOverride" />
+										<div v-if="versions.length > 0" :class="$style.versionChannelBar" data-testid="version-channel-bar">
+											<span v-if="versionChannelName" data-testid="version-channel-name">
+												{{ t('versioniq', 'Release channel: {channel}', { channel: versionChannelName }) }}
+											</span>
+											<label :class="$style.safeMode">
+												<input
+													v-model="showAllVersions"
+													type="checkbox"
+													data-testid="show-all-versions"
+													:class="$style.safeModeCheckbox"
+													:disabled="isInstallingVersion">
+												<span>{{ t('versioniq', 'Show all versions') }}</span>
+											</label>
+											<p v-if="ltsLinesMissing && !showAllVersions" :class="$style.versionChannelNotice" data-testid="no-lts-lines">
+												{{ t('versioniq', 'No long-term support lines are marked for this app') }}
+											</p>
+										</div>
 										<div v-if="versions.length > 0" :class="$style.versionListContainer">
 											<!-- aria-label, not a placeholder. A placeholder is not an
 											     accessible name: it is announced inconsistently and
@@ -2751,7 +3558,7 @@ watch(dryRunEnabled, () => {
 												v-model="versionFilter"
 												type="text"
 												:aria-label="t('versioniq', 'Filter versions')"
-												placeholder="Filter versions"
+												:placeholder="t('versioniq', 'Filter versions')"
 												:class="$style.versionFilterInput"
 												:disabled="isInstallingVersion">
 											<div :class="$style.versionListWrapper">
@@ -2764,6 +3571,13 @@ watch(dryRunEnabled, () => {
 															<span>{{ version.version }}</span>
 															<ReleaseDate :releasedAt="version.releasedAt ?? null" />
 															<ServerCompatBadge :serverCompatible="version.serverCompatible ?? null" />
+															<span
+																v-for="tag in offChannelTags(version, versionChannel)"
+																:key="tag"
+																:class="$style.versionChannelTag"
+																data-testid="version-channel-tag">
+																{{ tag }}
+															</span>
 															<span
 																v-if="version.cachedOffline"
 																:class="$style.cachedOfflineBadge"
@@ -2783,22 +3597,33 @@ watch(dryRunEnabled, () => {
 																:class="$style.versionSelectButton"
 																:disabled="isInstallingVersion"
 																@click="onSelectVersion(version.version)">
-																Select
+																{{ t('versioniq', 'Select') }}
 															</button>
 															<span
 																v-else
 																:class="$style.selectedVersionFlag">
-																Selected
+																{{ t('versioniq', 'Selected') }}
 															</span>
 														</div>
-														<VersionChangelog :version="version.version" :changelog="version.changelog ?? null" />
+														<VersionFacts
+															:entry="version"
+															:installedVersion="installedVersion"
+															:busy="isRemovingKnownIssue || isInstallingVersion"
+															@add="openKnownIssueDialog"
+															@remove="removeKnownIssue" />
+														<VersionChangelog
+															:version="version.version"
+															:changelog="version.changelog ?? null"
+															:changelogLanguage="version.changelogLanguage ?? null"
+															:appId="selectedApp.trim()"
+															:source="sourceOverride" />
 														<div
 															v-if="selectedVersion === version.version && selectedVersion !== ''"
 															:class="$style.versionActionGroup">
 															<p
 																v-if="changeActionLabel === 'Degrade'"
 																:class="$style.versionDegradeWarning">
-																Warning! Downgrading can result in breaking the database if earlier updates or migrations added database columns. Only do this when u can fix the database or are sure no migrations have been executed since the version u downgrade to!
+																{{ t('versioniq', 'Warning! Downgrading can break the database if earlier updates or migrations added database columns. Only do this when you can fix the database, or are sure no migrations have run since the version you downgrade to.') }}
 															</p>
 															<div :class="$style.versionItemActions">
 																<button
@@ -2809,21 +3634,21 @@ watch(dryRunEnabled, () => {
 																	:disabled="isInstallingVersion"
 																	@click="performInstall">
 																	<span v-if="isInstallingVersion" :class="$style.spinner" aria-hidden="true" />
-																	{{ isInstallingVersion ? 'Installing…' : changeActionLabel }}
+																	{{ isInstallingVersion ? t('versioniq', 'Installing…') : changeActionText }}
 																</button>
 																<button
 																	type="button"
 																	:class="$style.versionDeselectButton"
 																	:disabled="isInstallingVersion"
 																	@click="selectedVersion = ''">
-																	Pick other
+																	{{ t('versioniq', 'Pick other') }}
 																</button>
 															</div>
 														</div>
 													</li>
 												</transition-group>
 												<p v-if="filteredVersions.length === 0" :class="$style.noFilterResult">
-													No versions match your filter.
+													{{ t('versioniq', 'No versions match your filter.') }}
 												</p>
 											</div>
 										</div>
@@ -2835,10 +3660,10 @@ watch(dryRunEnabled, () => {
 											<span>{{ t('versioniq', 'Fetching available versions from the source — this can take a few seconds…') }}</span>
 										</p>
 										<p v-if="availableSource" :class="$style.note">
-											Versions source: {{ availableSource }}
+											{{ t('versioniq', 'Versions source: {source}', { source: availableSource }) }}
 										</p>
 										<p v-else-if="hasCheckedVersions" :class="$style.note">
-											No versions available for this app.
+											{{ t('versioniq', 'No versions available for this app.') }}
 										</p>
 										<p v-if="errorMessage" :class="$style.error">
 											{{ errorMessage }}
@@ -2848,9 +3673,10 @@ watch(dryRunEnabled, () => {
 								</div>
 							</div>
 							<div v-if="hasSplitLayout && appDetailTab === 'versions'" :class="$style.rightColumn">
+								<InstallProgress v-if="isInstallingVersion && installProgressToken" :token="installProgressToken" />
 								<div v-if="hasInstallResult && lastInstallResult" :class="$style.resultPanel">
 									<p :class="$style.versionSummary">
-										Install result
+										{{ t('versioniq', 'Install result') }}
 									</p>
 									<p :class="[$style.resultStatus, $style[`resultStatus${installStatusTone.charAt(0).toUpperCase() + installStatusTone.slice(1)}`]]">
 										{{ installStatusLabel }}
@@ -2863,7 +3689,8 @@ watch(dryRunEnabled, () => {
 									</p>
 									<InstallResultNotices
 										:integrityWarning="lastInstallResult.integrityWarning ?? null"
-										:servedFromCache="lastInstallResult.servedFromCache === true" />
+										:servedFromCache="lastInstallResult.servedFromCache === true"
+										:space="lastInstallResult.space ?? null" />
 									<p v-if="installedAppNeedsEnabling" :class="$style.resultHint" data-testid="install-enable-hint">
 										{{ t('versioniq', 'This app is installed but not enabled.') }}
 										<NcButton
@@ -2875,27 +3702,27 @@ watch(dryRunEnabled, () => {
 									</p>
 									<div :class="$style.resultGrid">
 										<div>
-											<span>App</span>
+											<span>{{ t('versioniq', 'App') }}</span>
 											<strong>{{ lastInstallResult.appId || '-' }}</strong>
 										</div>
 										<div>
-											<span>Transition</span>
-											<strong>{{ lastInstallResult.fromVersion || 'N/A' }} → {{ lastInstallResult.toVersion }}</strong>
+											<span>{{ t('versioniq', 'Transition') }}</span>
+											<strong>{{ lastInstallResult.fromVersion || t('versioniq', 'N/A') }} → {{ lastInstallResult.toVersion }}</strong>
 										</div>
 										<div>
-											<span>Mode</span>
-											<strong>{{ lastInstallResult.installStatus === 'dry-run' ? 'Dry-run (no write)' : (lastInstallResult.dryRun ? 'Dry-run' : 'Live install') }}</strong>
+											<span>{{ t('versioniq', 'Mode') }}</span>
+											<strong>{{ lastInstallResult.installStatus === 'dry-run' ? t('versioniq', 'Dry run (no write)') : (lastInstallResult.dryRun ? t('versioniq', 'Dry run') : t('versioniq', 'Live install')) }}</strong>
 										</div>
 										<div>
-											<span>Result</span>
+											<span>{{ t('versioniq', 'Result') }}</span>
 											<strong>{{ lastInstallResult.installedVersion || lastInstallResult.toVersion }}</strong>
 										</div>
 										<div v-if="lastInstallResult.category">
-											<span>Failure category</span>
+											<span>{{ t('versioniq', 'Failure category') }}</span>
 											<strong>{{ lastInstallResult.category }}</strong>
 										</div>
 										<div v-if="lastInstallResult.stage">
-											<span>Failed at stage</span>
+											<span>{{ t('versioniq', 'Failed at stage') }}</span>
 											<strong>{{ lastInstallResult.stage }}</strong>
 										</div>
 									</div>
@@ -2903,7 +3730,7 @@ watch(dryRunEnabled, () => {
 										v-if="debugModeEnabled && lastInstallDebug.length > 0"
 										:class="$style.debugPanel">
 										<p :class="$style.debugSubtitle">
-											Install debug ({{ lastInstallDebug.length }} step(s))
+											{{ n('versioniq', 'Install debug (%n step)', 'Install debug (%n steps)', lastInstallDebug.length) }}
 										</p>
 										<div :class="$style.debugTimeline">
 											<article
@@ -2915,11 +3742,11 @@ watch(dryRunEnabled, () => {
 													<span :class="$style.debugStepStage">{{ entry.stage }}</span>
 												</p>
 												<p v-if="!debugHasData(entry.data)" :class="$style.debugNoData">
-													No details
+													{{ t('versioniq', 'No details') }}
 												</p>
 												<details v-else :class="$style.debugStepDetails" :open="entryIndex === 0">
 													<summary :class="$style.debugStepSummary">
-														View details
+														{{ t('versioniq', 'View details') }}
 													</summary>
 													<ul :class="$style.debugOutput">
 														<li
@@ -2943,7 +3770,15 @@ watch(dryRunEnabled, () => {
 					role="tabpanel"
 					aria-labelledby="advisories-tab"
 					:advisories="advisories"
-					:freshnessLabel="advisoryFreshnessLabel" />
+					:compliance="advisoryCompliance"
+					:triage="advisoryTriage"
+					:freshnessLabel="advisoryFreshnessLabel"
+					:ncscStatus="ncscPanelStatus"
+					@update:triage="(triage: AdvisoryTriageMap) => (advisoryTriage = triage)" />
+				<AlertsPanel v-if="currentTab === 'alerts'"
+					id="alerts-panel"
+					role="tabpanel"
+					aria-labelledby="alerts-tab" />
 				<HistoryPanel v-if="currentTab === 'history'"
 					id="history-panel"
 					role="tabpanel"
@@ -2974,10 +3809,20 @@ watch(dryRunEnabled, () => {
 					id="cache-panel"
 					role="tabpanel"
 					aria-labelledby="cache-tab" />
-				<InstanceSettingsPanel v-if="currentTab === 'settings'"
+				<div v-if="currentTab === 'settings'"
 					id="settings-panel"
 					role="tabpanel"
-					aria-labelledby="settings-tab" />
+					aria-labelledby="settings-tab">
+					<div :class="$style.defaultChannel" data-testid="default-channel">
+						<ChannelSelector
+							:channel="channelState.default"
+							:disabled="isSavingChannel"
+							@change="onDefaultChannelChange" />
+					</div>
+					<InstanceSettingsPanel />
+					<PatchPolicyPanel />
+					<SuccessorsPanel />
+				</div>
 				<IntegrationsPanel v-if="integriqInstalled && currentTab === 'integrations'"
 					id="integrations-panel"
 					role="tabpanel"
@@ -3039,6 +3884,10 @@ watch(dryRunEnabled, () => {
 /* Freshness line for the advisory snapshot. Muted, because it is context for
    the badges rather than a finding of its own — but always present, since the
    age of a security answer is part of the answer. */
+.complianceLine {
+	font-weight: bold;
+}
+
 .advisoryFreshness {
 	margin: 0 0 12px;
 	color: var(--color-text-maxcontrast);
@@ -3056,6 +3905,32 @@ watch(dryRunEnabled, () => {
 
 .layout {
 	width: 100%;
+}
+
+.versionChannelBar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 8px;
+}
+
+.versionChannelNotice {
+	width: 100%;
+	color: var(--color-warning-text);
+}
+
+.versionChannelTag {
+	font-size: 12px;
+	padding: 0 6px;
+	border-radius: var(--border-radius-pill);
+	background-color: var(--color-warning-hover, var(--color-background-dark));
+	color: var(--color-main-text);
+}
+
+.defaultChannel {
+	max-width: 400px;
+	padding: 16px;
 }
 
 .updateChannel {
@@ -3129,6 +4004,11 @@ watch(dryRunEnabled, () => {
 
 .filterToggleButton {
 	align-self: flex-start;
+}
+
+.filterToggleActive {
+	font-weight: bold;
+	border-color: var(--color-primary-element);
 }
 
 .filterPanel {
@@ -3306,6 +4186,7 @@ watch(dryRunEnabled, () => {
 }
 
 .appCardCoreFlag {
+	text-transform: uppercase;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;

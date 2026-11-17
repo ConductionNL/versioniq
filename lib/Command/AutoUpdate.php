@@ -11,7 +11,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Command;
 
-use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateDryRunPlanner;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -32,7 +32,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class AutoUpdate extends Command {
 	public function __construct(
-		private AutoUpdatePlanner $planner,
+		private AutoUpdateDryRunPlanner $planner,
 		private AutoUpdateSettingsStore $settings,
 		private ITimeFactory $time,
 	) {
@@ -114,8 +114,8 @@ class AutoUpdate extends Command {
 				$row['appId'],
 				$row['level'],
 				$row['fromVersion'] ?? '-',
-				$row['action'] === AutoUpdatePlanner::ACTION_INSTALL ? (string)$row['toVersion'] : '-',
-				$row['reason'] === null ? '' : $row['reason'] . ($row['toVersion'] !== null && $row['action'] !== AutoUpdatePlanner::ACTION_INSTALL ? ' (' . $row['toVersion'] . ')' : ''),
+				$row['action'] === AutoUpdateDryRunPlanner::ACTION_INSTALL ? (string)$row['toVersion'] : '-',
+				$row['reason'] === null ? '' : $row['reason'] . ($row['toVersion'] !== null && $row['action'] !== AutoUpdateDryRunPlanner::ACTION_INSTALL ? ' (' . $row['toVersion'] . ')' : ''),
 			]);
 		}
 		$table->render();

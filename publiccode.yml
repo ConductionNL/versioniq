@@ -2,16 +2,32 @@ publiccodeYmlVersion: "0.4"
 
 name: Versioniq
 url: "https://github.com/ConductionNL/versioniq"
-softwareVersion: "1.6.6"
-releaseDate: "2026-09-16"
+landingURL: "https://versioniq.conduction.nl"
+roadmap: "https://conduction.nl/apps"
+softwareVersion: "1.6.7"
+releaseDate: "2026-11-12"
+logo: img/app-store.svg
 developmentStatus: stable
 softwareType: addon
 
 platforms:
-  - nextcloud
+  - web
 
 categories:
   - it-management
+
+dependsOn:
+  open:
+    - name: Nextcloud
+      versionMin: "32"
+      versionMax: "35"
+
+intendedAudience:
+  countries:
+    - nl
+  scope:
+    - government
+    - local-authorities
 
 description:
   nl:
@@ -21,10 +37,18 @@ description:
       naar een eerdere versie, of juist een specifieke nieuwere versie
       installeren. Dat helpt bij het opsporen van fouten, het testen van
       compatibiliteit en het herstellen van een update die iets heeft stukgemaakt.
+      Conduction onderhoudt dit component binnen het Nextcloud ISV-programma.
+      Versioniq staat in de Nextcloud App Store: https://apps.nextcloud.com/apps/versioniq
     features:
       - Apps terugzetten naar een eerdere versie
       - Een specifieke nieuwere versie installeren
       - Herstellen na een mislukte update
+      - Apps vastzetten op een versie
+      - Beleid voor automatische updates per app
+      - Openstaande updates en wijzigingslogboeken bekijken
+      - Apps vinden in de App Store en in private GitHub-repositories
+      - Een audittrail van elke versiewijziging
+      - Beheer via de beheer-API en occ-commando's
   en:
     shortDescription: "Install an earlier or newer version of Nextcloud apps"
     longDescription: |
@@ -32,13 +56,22 @@ description:
       earlier version, or install a specific newer version. That helps with
       debugging, testing compatibility and recovering from an update that broke
       something.
+      Conduction maintains this component within the Nextcloud ISV programme.
+      Versioniq is available in the Nextcloud App Store: https://apps.nextcloud.com/apps/versioniq
     features:
       - Roll apps back to an earlier version
       - Install a specific newer version
       - Recover from a broken update
+      - Pin apps to a version
+      - Per-app auto-update policies
+      - View pending updates and changelogs
+      - Find apps in the App Store and in private GitHub repositories
+      - An audit trail of every version operation
+      - Manage it through the admin API and occ commands
 
 legal:
   license: EUPL-1.2
+  mainCopyrightOwner: Conduction B.V.
 
 localisation:
   localisationReady: true
@@ -47,7 +80,12 @@ localisation:
     - en
 
 maintenance:
-  type: internal
+  type: contract
+  contractors:
+    - name: Conduction B.V.
+      until: "2028-12-31"
+      email: info@conduction.nl
+      website: https://conduction.nl
   contacts:
     - name: Conduction Development Team
       email: info@conduction.nl

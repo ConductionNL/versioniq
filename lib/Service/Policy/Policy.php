@@ -22,17 +22,21 @@ use InvalidArgumentException;
  *
  * `level` bounds the blast radius of {@see \OCA\Versioniq\BackgroundJob\AutoUpdateJob}:
  * `none` (the default when no policy is stored), `patch` (same major.minor),
- * `minor` (same major), or `all` (any newer version). `requireApproval` holds
- * every automatic update of the app until an admin approves that version.
+ * `minor` (same major), `all` (any newer version), or `security` (only the
+ * fix the advisory check recommends for an affected installed version, see
+ * {@see \OCA\Versioniq\Service\AutoUpdate\SecurityCandidate}).
+ * `requireApproval` holds every automatic update of the app until an admin
+ * approves that version.
  */
 final class Policy {
 	public const LEVEL_NONE = 'none';
 	public const LEVEL_PATCH = 'patch';
 	public const LEVEL_MINOR = 'minor';
 	public const LEVEL_ALL = 'all';
+	public const LEVEL_SECURITY = 'security';
 
 	/** @var list<string> */
-	public const VALID_LEVELS = [self::LEVEL_NONE, self::LEVEL_PATCH, self::LEVEL_MINOR, self::LEVEL_ALL];
+	public const VALID_LEVELS = [self::LEVEL_NONE, self::LEVEL_PATCH, self::LEVEL_MINOR, self::LEVEL_ALL, self::LEVEL_SECURITY];
 
 	public function __construct(
 		public readonly string $level,
@@ -54,7 +58,7 @@ final class Policy {
 	}
 
 	/**
-	 * Whether `$level` is one of the four accepted policy levels; see "Per-app
+	 * Whether `$level` is one of the accepted policy levels; see "Per-app
 	 * update policy" ("Invalid level rejected").
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md

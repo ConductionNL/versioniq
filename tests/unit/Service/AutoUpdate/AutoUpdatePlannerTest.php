@@ -9,46 +9,42 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service\AutoUpdate;
 
+use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
+use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateMember;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSecurityStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
-use OCA\Versioniq\Service\AutoUpdate\ProposalStore;
-use OCA\Versioniq\Service\AutoUpdate\ProposedUpdate;
+use OCA\Versioniq\Service\AutoUpdate\SecurityHoldStore;
+use OCA\Versioniq\Service\AutoUpdate\UpdateGroup;
+use OCA\Versioniq\Service\AutoUpdate\UpdateGroupStore;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Policy\PatchPolicyStore;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyStore;
 use OCP\App\IAppManager;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 
 /**
- * The live plan behind `occ versioniq:auto-update --dry-run`
- * (autoupdate-proposed-updates D3, D6).
- *
- * @covers \OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner
- * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores
- * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall
- * @uses \OCA\Versioniq\Service\AutoUpdate\CandidateSelector
- * @uses \OCA\Versioniq\Service\AutoUpdate\ProposedUpdate
- * @uses \OCA\Versioniq\Service\Policy\Policy
- * @uses \OCA\Versioniq\Service\Pin\Pin
- * @spec openspec/changes/autoupdate-proposed-updates/specs/cli-commands/spec.md#requirement-dry-run-the-automatic-update-policy-from-the-cli
+ * The plan of an automatic-update run (autoupdate-run-batching D1): one member
+ * per app with a policy, each saying what would install or why it will not.
  */
 final class AutoUpdatePlannerTest extends TestCase {
-	private const AT = '2026-07-24T01:00:00+00:00';
-
 	private PolicyStore&MockObject $policies;
 	private PinStore&MockObject $pins;
 	private InstallerService&MockObject $installer;
 	private IAppManager&MockObject $apps;
 	private AttemptLedger&MockObject $ledger;
-	private AutoUpdateSettingsStore&MockObject $settings;
-	private ProposalStore&MockObject $proposals;
+	private LoggerInterface&MockObject $logger;
+	private UpdateGroupStore&MockObject $groups;
 
 	protected function setUp(): void {
 		$this->policies = $this->createMock(PolicyStore::class);
@@ -56,108 +52,299 @@ final class AutoUpdatePlannerTest extends TestCase {
 		$this->installer = $this->createMock(InstallerService::class);
 		$this->apps = $this->createMock(IAppManager::class);
 		$this->ledger = $this->createMock(AttemptLedger::class);
-		$this->settings = $this->createMock(AutoUpdateSettingsStore::class);
-		$this->proposals = $this->createMock(ProposalStore::class);
-		$this->installer->method('isManageableApp')->willReturnCallback(static fn (string $appId): bool => $appId !== 'unmanaged');
-		$this->apps->method('getAppVersion')->willReturnCallback(static fn (string $appId): string => $appId === 'gone' ? '' : '2.3.0');
-		$this->installer->method('getAppVersions')->willReturnCallback(static fn (string $appId): array => $appId === 'broken'
-			? ['hasError' => true, 'availableVersions' => []]
-			: ['hasError' => false, 'availableVersions' => [['version' => '2.3.4'], ['version' => '2.4.0'], ['version' => '3.0.0']]]);
+		$this->logger = $this->createMock(LoggerInterface::class);
+		$this->groups = $this->createMock(UpdateGroupStore::class);
 	}
 
-	/** @param array<string, Policy> $policies */
-	private function plan(array $policies, bool $withProposals = true): array {
-		$this->policies->method('all')->willReturn($policies);
-		$stores = new AutoUpdateStores($this->policies, $this->pins, $this->settings, $this->ledger, $withProposals ? $this->proposals : null);
-		$planner = new AutoUpdatePlanner($stores, new AutoUpdateInstall($this->installer, $this->apps, new CandidateSelector()));
-
-		return $planner->plan(new \DateTimeImmutable(self::AT));
+	private function planner(?AutoUpdateSettingsStore $settings = null): AutoUpdatePlanner {
+		return new AutoUpdatePlanner(
+			new AutoUpdateStores(
+				$this->policies,
+				$this->pins,
+				$settings ?? $this->createMock(AutoUpdateSettingsStore::class),
+				$this->ledger,
+				new AutoUpdateSecurityStores(
+					$this->createMock(AdvisoryResultStore::class),
+					$this->createMock(AdvisorySettingsStore::class),
+					$this->createMock(PatchPolicyStore::class),
+					$this->createMock(SecurityHoldStore::class),
+				),
+				$this->groups,
+			),
+			new AutoUpdateInstall($this->installer, $this->apps, new CandidateSelector()),
+			$this->logger,
+		);
 	}
 
-	private static function policy(string $level, bool $requireApproval = false): Policy {
-		return new Policy($level, 'admin', '2026-07-01T00:00:00+00:00', $requireApproval);
+	private static function policy(string $level): Policy {
+		return new Policy($level, 'admin', '2026-11-01T00:00:00+00:00');
 	}
 
-	public function testTheHighestVersionWithinTheLevelWouldInstall(): void {
-		$this->proposals->method('declineOf')->willReturn(null);
-		$this->installer->expects(self::never())->method('installAppVersion');
-		$this->ledger->expects(self::never())->method('record');
-
-		self::assertSame([
-			['action' => 'install', 'appId' => 'openregister', 'level' => 'patch', 'fromVersion' => '2.3.0', 'toVersion' => '2.3.4', 'reason' => null],
-			['action' => 'install', 'appId' => 'deck', 'level' => 'minor', 'fromVersion' => '2.3.0', 'toVersion' => '2.4.0', 'reason' => null],
-		], $this->plan(['openregister' => self::policy('patch'), 'mail' => self::policy('none'), 'deck' => self::policy('minor')]));
+	/**
+	 * @param array<string, array<string, mixed>> $sources Per app: the getAppVersions answer.
+	 */
+	private function withSources(array $sources): void {
+		$this->installer->method('isManageableApp')->willReturn(true);
+		$this->apps->method('getAppVersion')->willReturn('1.0.0');
+		$this->installer->method('getAppVersions')->willReturnCallback(static fn (string $appId): array => $sources[$appId]);
 	}
 
-	public function testEverySkipSaysWhy(): void {
-		$this->pins->method('get')->willReturnCallback(static fn (string $appId): ?Pin => $appId === 'pinned' ? new Pin('2.3.0', 'admin', '2026-07-01T00:00:00+00:00') : null);
-		$this->installer->expects(self::never())->method('installAppVersion');
+	/**
+	 * @return array<string, array{0: ?string, 1: ?string, 2: ?string}> Per app: installed, candidate, reason.
+	 */
+	private function planned(): array {
+		$out = [];
+		foreach ($this->planner()->plan()->members as $member) {
+			$out[$member->appId] = [$member->installedVersion, $member->candidate, $member->reason];
+		}
 
-		$reasons = array_column($this->plan([
-			'pinned' => self::policy('all'),
-			'unmanaged' => self::policy('all'),
-			'gone' => self::policy('all'),
-			'broken' => self::policy('all'),
-		], false), 'reason', 'appId');
-
-		self::assertSame(['pinned' => 'pinned', 'unmanaged' => 'not_managed', 'gone' => 'not_installed', 'broken' => 'source_error'], $reasons);
+		return $out;
 	}
 
-	public function testAPinnedAppIsSkippedBeforeAnySourceQuery(): void {
-		$this->pins->method('get')->willReturn(new Pin('2.3.0', 'admin', '2026-07-01T00:00:00+00:00'));
-		$this->installer->expects(self::never())->method('getAppVersions');
+	public function testEveryReasonAndAnInstallableApp(): void {
+		$this->policies->method('all')->willReturn([
+			'ready' => self::policy(Policy::LEVEL_PATCH),
+			'pinned' => self::policy(Policy::LEVEL_PATCH),
+			'current' => self::policy(Policy::LEVEL_PATCH),
+			'offline' => self::policy(Policy::LEVEL_PATCH),
+			'failedbefore' => self::policy(Policy::LEVEL_PATCH),
+			'off' => self::policy(Policy::LEVEL_NONE),
+		]);
+		$this->pins->method('get')->willReturnCallback(static fn (string $appId) => $appId === 'pinned' ? new Pin('1.0.0', 'admin', '2026-11-01T00:00:00+00:00') : null);
+		$this->withSources([
+			'ready' => ['availableVersions' => [['version' => '1.0.1'], ['version' => '2.0.0']], 'hasError' => false],
+			'current' => ['availableVersions' => [['version' => '1.0.0']], 'hasError' => false],
+			'offline' => ['availableVersions' => [], 'hasError' => true],
+			'failedbefore' => ['availableVersions' => [['version' => '1.0.2']], 'hasError' => false],
+		]);
+		$this->ledger->method('hasAttempted')->willReturnCallback(static fn (string $appId, string $version): bool => $appId === 'failedbefore' && $version === '1.0.2');
 
-		self::assertSame('pinned', $this->plan(['openregister' => self::policy('patch')])[0]['reason']);
+		$this->assertSame(
+			[
+				'ready' => ['1.0.0', '1.0.1', null],
+				'pinned' => [null, null, AutoUpdateMember::REASON_PINNED],
+				'current' => ['1.0.0', null, AutoUpdateMember::REASON_NO_CANDIDATE],
+				'offline' => ['1.0.0', null, AutoUpdateMember::REASON_SOURCE_ERROR],
+				'failedbefore' => ['1.0.0', '1.0.2', AutoUpdateMember::REASON_BLOCKED],
+			],
+			$this->planned()
+		);
 	}
 
-	public function testAnAttemptedVersionIsBlocked(): void {
-		$this->ledger->method('hasAttempted')->with('openregister', '2.3.4')->willReturn(true);
+	public function testOnlyTheReadyAppIsInstallable(): void {
+		$this->policies->method('all')->willReturn(['ready' => self::policy(Policy::LEVEL_MINOR), 'current' => self::policy(Policy::LEVEL_MINOR)]);
+		$this->pins->method('get')->willReturn(null);
+		$this->withSources([
+			'ready' => ['availableVersions' => [['version' => '1.1.0']], 'hasError' => false],
+			'current' => ['availableVersions' => [], 'hasError' => false],
+		]);
+		$this->ledger->method('hasAttempted')->willReturn(false);
 
-		$row = $this->plan(['openregister' => self::policy('patch')])[0];
+		$installable = $this->planner()->plan()->installable();
 
-		self::assertSame(['skip', 'blocked', '2.3.4'], [$row['action'], $row['reason'], $row['toVersion']]);
+		$this->assertCount(1, $installable);
+		$this->assertSame(['ready', '1.0.0', '1.1.0'], [$installable[0]->appId, $installable[0]->installedVersion, $installable[0]->candidate]);
+		$this->assertTrue($installable[0]->willInstall());
 	}
 
-	public function testADeclinedVersionIsHeldBack(): void {
-		$this->proposals->method('declineOf')->with('openregister', '2.3.4')->willReturn(['by' => 'admin']);
+	public function testAPinnedOrUnmanageableAppIsNeverLookedUp(): void {
+		$this->policies->method('all')->willReturn(['pinned' => self::policy(Policy::LEVEL_PATCH), 'foreign' => self::policy(Policy::LEVEL_PATCH)]);
+		$this->pins->method('get')->willReturnCallback(static fn (string $appId) => $appId === 'pinned' ? new Pin('1.0.0', 'admin', '2026-11-01T00:00:00+00:00') : null);
+		$this->installer->method('isManageableApp')->willReturnCallback(static fn (string $appId): bool => $appId !== 'foreign');
+		$this->apps->expects($this->never())->method('getAppVersion');
+		$this->installer->expects($this->never())->method('getAppVersions');
 
-		self::assertSame('declined', $this->plan(['openregister' => self::policy('patch')])[0]['reason']);
+		$this->assertSame(['pinned' => [null, null, AutoUpdateMember::REASON_PINNED]], $this->planned());
 	}
 
-	/** @return array<string, array{?string, string}> */
-	public static function notice(): array {
-		return [
-			'planned for a later opening' => ['2026-07-25T01:00:00+00:00', 'in_notice'],
-			'planned for this opening' => [self::AT, 'install'],
-			'never announced' => [null, 'in_notice'],
-		];
+	public function testAnAppThatIsNotInstalledIsLeftOutWithoutAskingItsSource(): void {
+		$this->policies->method('all')->willReturn(['gone' => self::policy(Policy::LEVEL_PATCH), 'throws' => self::policy(Policy::LEVEL_PATCH)]);
+		$this->pins->method('get')->willReturn(null);
+		$this->installer->method('isManageableApp')->willReturn(true);
+		$this->apps->method('getAppVersion')->willReturnCallback(static function (string $appId): string {
+			if ($appId === 'throws') {
+				throw new \RuntimeException('no such app');
+			}
+
+			return '';
+		});
+		$this->installer->expects($this->never())->method('getAppVersions');
+
+		$this->assertSame([], $this->planned());
 	}
 
-	/** @dataProvider notice */
-	public function testANoticePeriodHoldsUntilThePlannedOpening(?string $plannedFor, string $outcome): void {
-		$this->settings->method('getNoticeDays')->willReturn(14);
-		$this->proposals->method('proposalFor')->willReturn($plannedFor === null ? null : new ProposedUpdate('openregister', '2.3.0', '2.3.4', 'patch', ProposedUpdate::STATUS_IN_NOTICE, '2026-07-01T00:00:00+00:00', $plannedFor));
+	public function testAFailureWhilePlanningOneAppIsLoggedAndTheRestIsPlanned(): void {
+		$this->policies->method('all')->willReturn(['broken' => self::policy(Policy::LEVEL_PATCH), 'ready' => self::policy(Policy::LEVEL_PATCH)]);
+		$this->pins->method('get')->willReturnCallback(static function (string $appId) {
+			if ($appId === 'broken') {
+				throw new \RuntimeException('boom');
+			}
 
-		$row = $this->plan(['openregister' => self::policy('patch')])[0];
+			return null;
+		});
+		$this->withSources(['ready' => ['availableVersions' => [['version' => '1.0.1']], 'hasError' => false]]);
+		$this->ledger->method('hasAttempted')->willReturn(false);
+		$this->logger->expects($this->once())->method('warning')->with('AutoUpdateJob: failed to process an app', ['appId' => 'broken', 'message' => 'boom']);
 
-		self::assertSame($outcome, $row['action'] === 'install' ? 'install' : $row['reason']);
+		$this->assertSame(['ready' => ['1.0.0', '1.0.1', null]], $this->planned());
 	}
 
-	public function testApprovalIsForTheExactVersion(): void {
-		$this->proposals->method('isApproved')->willReturnCallback(static fn (string $appId, string $version): bool => $version === '2.3.4');
+	public function testACapOfTwoWithThreeReadyAppsHoldsTheThird(): void {
+		$this->policies->method('all')->willReturn([
+			'gamma' => self::policy(Policy::LEVEL_PATCH),
+			'alpha' => self::policy(Policy::LEVEL_PATCH),
+			'beta' => self::policy(Policy::LEVEL_PATCH),
+		]);
+		$this->pins->method('get')->willReturn(null);
+		$this->withSources(array_fill_keys(['alpha', 'beta', 'gamma'], ['availableVersions' => [['version' => '1.0.1']], 'hasError' => false]));
+		$this->ledger->method('hasAttempted')->willReturn(false);
+		$settings = $this->createMock(AutoUpdateSettingsStore::class);
+		$settings->method('getMaxPerRun')->willReturn(2);
+		$settings->method('getDeferred')->willReturn([]);
+		$settings->expects($this->once())->method('setDeferred')->with(['app:gamma' => '2026-11-15T02:00:00+00:00']);
+		$planner = $this->planner($settings);
 
-		$rows = array_column($this->plan(['openregister' => self::policy('patch', true), 'deck' => self::policy('minor', true)]), null, 'appId');
+		$plan = $planner->plan(now: new \DateTimeImmutable('2026-11-15T02:00:00+00:00'));
 
-		self::assertSame('install', $rows['openregister']['action']);
-		self::assertSame(['skip', 'awaiting_approval', '2.4.0'], [$rows['deck']['action'], $rows['deck']['reason'], $rows['deck']['toVersion']]);
+		$this->assertSame(['alpha', 'beta'], array_map(static fn (AutoUpdateMember $member): string => $member->appId, $plan->installable()));
+		$this->assertSame(AutoUpdateMember::REASON_LIMIT, $plan->members[2]->reason);
+		$this->assertSame('gamma', $plan->members[2]->appId);
 	}
 
-	public function testNoVersionWithinTheLevelIsNoCandidate(): void {
-		$this->apps = $this->createMock(IAppManager::class);
-		$this->apps->method('getAppVersion')->willReturn('3.0.0');
+	private static function group(string $name, string ...$apps): UpdateGroup {
+		return new UpdateGroup(strtolower($name), $name, array_values($apps), ['by' => 'admin', 'at' => '2026-11-01T00:00:00+00:00']);
+	}
 
-		$row = $this->plan(['openregister' => self::policy('all')])[0];
+	/**
+	 * @return list<array{0: string, 1: ?string, 2: ?string}> In run order: app, reason, group.
+	 */
+	private static function runOrder(\OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlan $plan): array {
+		return array_map(static fn (AutoUpdateMember $member): array => [$member->appId, $member->reason, $member->group], $plan->members);
+	}
 
-		self::assertSame(['skip', 'no_candidate', null], [$row['action'], $row['reason'], $row['toVersion']]);
+	public function testAGroupInstallsInItsStoredOrderAndCarriesItsName(): void {
+		$this->policies->method('all')->willReturn([
+			'alpha' => self::policy(Policy::LEVEL_PATCH),
+			'opencatalogi' => self::policy(Policy::LEVEL_PATCH),
+			'openregister' => self::policy(Policy::LEVEL_PATCH),
+		]);
+		$this->pins->method('get')->willReturn(null);
+		$this->withSources(array_fill_keys(['alpha', 'opencatalogi', 'openregister'], ['availableVersions' => [['version' => '1.0.1']], 'hasError' => false]));
+		$this->ledger->method('hasAttempted')->willReturn(false);
+		$this->groups->method('all')->willReturn([self::group('Registers', 'openregister', 'opencatalogi')]);
+
+		$this->assertSame([
+			['alpha', null, null],
+			['openregister', null, 'Registers'],
+			['opencatalogi', null, 'Registers'],
+		], self::runOrder($this->planner()->plan()));
+	}
+
+	public function testAPinnedMemberHoldsTheWholeGroup(): void {
+		$this->policies->method('all')->willReturn([
+			'openregister' => self::policy(Policy::LEVEL_PATCH),
+			'opencatalogi' => self::policy(Policy::LEVEL_PATCH),
+		]);
+		$this->pins->method('get')->willReturnCallback(static fn (string $appId): ?Pin => $appId === 'opencatalogi' ? new Pin('1.0.0', 'alice', '2026-11-01T00:00:00+00:00') : null);
+		$this->withSources(['openregister' => ['availableVersions' => [['version' => '1.0.1']], 'hasError' => false]]);
+		$this->ledger->method('hasAttempted')->willReturn(false);
+		$this->groups->method('all')->willReturn([self::group('Registers', 'openregister', 'opencatalogi')]);
+
+		$plan = $this->planner()->plan();
+
+		$this->assertSame([
+			['openregister', AutoUpdateMember::REASON_PINNED, 'Registers'],
+			['opencatalogi', AutoUpdateMember::REASON_PINNED, 'Registers'],
+		], self::runOrder($plan));
+		$this->assertSame([], $plan->installable());
+	}
+
+	public function testAFailedVersionOfOneMemberHoldsTheGroupAsBlocked(): void {
+		$this->policies->method('all')->willReturn([
+			'openregister' => self::policy(Policy::LEVEL_PATCH),
+			'opencatalogi' => self::policy(Policy::LEVEL_PATCH),
+			'third' => self::policy(Policy::LEVEL_PATCH),
+		]);
+		$this->pins->method('get')->willReturn(null);
+		$this->withSources([
+			'openregister' => ['availableVersions' => [['version' => '1.0.1']], 'hasError' => false],
+			'opencatalogi' => ['availableVersions' => [['version' => '1.0.1']], 'hasError' => false],
+			'third' => ['availableVersions' => [], 'hasError' => false],
+		]);
+		$this->ledger->method('hasAttempted')->willReturnCallback(static fn (string $appId): bool => $appId === 'openregister');
+		$this->groups->method('all')->willReturn([self::group('Registers', 'openregister', 'opencatalogi', 'third')]);
+
+		$this->assertSame([
+			['openregister', AutoUpdateMember::REASON_BLOCKED, 'Registers'],
+			['opencatalogi', AutoUpdateMember::REASON_BLOCKED, 'Registers'],
+			['third', AutoUpdateMember::REASON_BLOCKED, 'Registers'],
+		], self::runOrder($this->planner()->plan()));
+	}
+
+	public function testAMemberWithNoCandidateDoesNotHoldItsGroup(): void {
+		$this->policies->method('all')->willReturn([
+			'openregister' => self::policy(Policy::LEVEL_PATCH),
+			'opencatalogi' => self::policy(Policy::LEVEL_PATCH),
+		]);
+		$this->pins->method('get')->willReturn(null);
+		$this->withSources([
+			'openregister' => ['availableVersions' => [], 'hasError' => false],
+			'opencatalogi' => ['availableVersions' => [['version' => '1.0.1']], 'hasError' => false],
+		]);
+		$this->ledger->method('hasAttempted')->willReturn(false);
+		$this->groups->method('all')->willReturn([self::group('Registers', 'openregister', 'opencatalogi')]);
+
+		$this->assertSame([
+			['openregister', AutoUpdateMember::REASON_NO_CANDIDATE, 'Registers'],
+			['opencatalogi', null, 'Registers'],
+		], self::runOrder($this->planner()->plan()));
+	}
+
+	public function testAGroupOfThreeWaitsWholeForARemainingBudgetOfTwo(): void {
+		$this->policies->method('all')->willReturn([
+			'a1' => self::policy(Policy::LEVEL_PATCH),
+			'a2' => self::policy(Policy::LEVEL_PATCH),
+			'a3' => self::policy(Policy::LEVEL_PATCH),
+			'solo' => self::policy(Policy::LEVEL_PATCH),
+		]);
+		$this->pins->method('get')->willReturn(null);
+		$this->withSources(array_fill_keys(['a1', 'a2', 'a3', 'solo'], ['availableVersions' => [['version' => '1.0.1']], 'hasError' => false]));
+		$this->ledger->method('hasAttempted')->willReturn(false);
+		$this->groups->method('all')->willReturn([self::group('Batch', 'a1', 'a2', 'a3')]);
+		$settings = $this->createMock(AutoUpdateSettingsStore::class);
+		$settings->method('getMaxPerRun')->willReturn(2);
+		$settings->method('getDeferred')->willReturn([]);
+		$settings->expects($this->once())->method('setDeferred')->with(['group:Batch' => '2026-11-15T02:00:00+00:00']);
+
+		$plan = $this->planner($settings)->plan(now: new \DateTimeImmutable('2026-11-15T02:00:00+00:00'));
+
+		$this->assertSame(['solo'], array_map(static fn (AutoUpdateMember $member): string => $member->appId, $plan->installable()));
+		$this->assertSame([
+			['a1', AutoUpdateMember::REASON_LIMIT, 'Batch'],
+			['a2', AutoUpdateMember::REASON_LIMIT, 'Batch'],
+			['a3', AutoUpdateMember::REASON_LIMIT, 'Batch'],
+			['solo', null, null],
+		], self::runOrder($plan));
+	}
+
+	public function testAHeldGroupGoesFirstInTheNextRun(): void {
+		$this->policies->method('all')->willReturn([
+			'a1' => self::policy(Policy::LEVEL_PATCH),
+			'a2' => self::policy(Policy::LEVEL_PATCH),
+			'solo' => self::policy(Policy::LEVEL_PATCH),
+		]);
+		$this->pins->method('get')->willReturn(null);
+		$this->withSources(array_fill_keys(['a1', 'a2', 'solo'], ['availableVersions' => [['version' => '1.0.1']], 'hasError' => false]));
+		$this->ledger->method('hasAttempted')->willReturn(false);
+		$this->groups->method('all')->willReturn([self::group('Zeta', 'a1', 'a2')]);
+		$settings = $this->createMock(AutoUpdateSettingsStore::class);
+		$settings->method('getMaxPerRun')->willReturn(2);
+		$settings->method('getDeferred')->willReturn(['group:Zeta' => '2026-11-14T02:00:00+00:00']);
+		$settings->expects($this->once())->method('setDeferred')->with(['app:solo' => '2026-11-15T02:00:00+00:00']);
+
+		$plan = $this->planner($settings)->plan(now: new \DateTimeImmutable('2026-11-15T02:00:00+00:00'));
+
+		$this->assertSame(['a1', 'a2'], array_map(static fn (AutoUpdateMember $member): string => $member->appId, $plan->installable()));
+		$this->assertSame(AutoUpdateMember::REASON_LIMIT, $plan->members[2]->reason);
 	}
 }

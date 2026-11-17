@@ -13,7 +13,7 @@ use OCA\Versioniq\Command\AutoUpdate;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
-use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateDryRunPlanner;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
@@ -31,7 +31,8 @@ use Symfony\Component\Console\Tester\CommandTester;
  * `occ versioniq:auto-update --dry-run [--json]` (autoupdate-proposed-updates D3).
  *
  * @covers \OCA\Versioniq\Command\AutoUpdate
- * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner
+ * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateSecurityStores
+ * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateDryRunPlanner
  * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores
  * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall
  * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow
@@ -59,8 +60,8 @@ final class AutoUpdateTest extends TestCase {
 		$time = $this->createMock(ITimeFactory::class);
 		$time->method('getDateTime')->willReturn(new \DateTime($now));
 
-		$planner = new AutoUpdatePlanner(
-			new AutoUpdateStores($policies, $this->createMock(PinStore::class), $settings, $this->ledger, null),
+		$planner = new AutoUpdateDryRunPlanner(
+			new AutoUpdateStores($policies, $this->createMock(PinStore::class), $settings, $this->ledger, new \OCA\Versioniq\Service\AutoUpdate\AutoUpdateSecurityStores($this->createMock(\OCA\Versioniq\Service\Advisory\AdvisoryResultStore::class), $this->createMock(\OCA\Versioniq\Service\Advisory\AdvisorySettingsStore::class), $this->createMock(\OCA\Versioniq\Service\Policy\PatchPolicyStore::class), $this->createMock(\OCA\Versioniq\Service\AutoUpdate\SecurityHoldStore::class)), $this->createMock(\OCA\Versioniq\Service\AutoUpdate\UpdateGroupStore::class), null),
 			new AutoUpdateInstall($this->installer, $apps, new CandidateSelector()),
 		);
 
