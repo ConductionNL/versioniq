@@ -133,6 +133,7 @@ describe('InstanceSettingsPanel saving', () => {
 			maxLinesBehind: '',
 			promotionMinDays: '0',
 			advisoryFeedSource: 'remote',
+			notifyUsersOnUpdate: 'true',
 		})
 		expect(wrapper.find('[data-testid="instance-settings-notice"]').text()).toBe('Settings saved.')
 	})

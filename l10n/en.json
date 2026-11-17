@@ -476,9 +476,6 @@
         "Security fixes of unknown severity": "Security fixes of unknown severity",
         "installed at the next update window.": "installed at the next update window.",
         "installed with the regular automatic updates.": "installed with the regular automatic updates.",
-        "Major updates": "Major updates",
-        "Minor updates": "Minor updates",
-        "Patch updates": "Patch updates",
         "_Deadline: %n day._::_Deadline: %n days._": [
             "Deadline: %n day.",
             "Deadline: %n days."
@@ -699,6 +696,13 @@
         "_Read {count} day ago_::_Read {count} days ago_": ["Read {count} day ago", "Read {count} days ago"],
         "_It is not known since when {name} runs {version}, so the waiting period of {count} day is not met._::_It is not known since when {name} runs {version}, so the waiting period of {count} days is not met._": ["It is not known since when {name} runs {version}, so the waiting period of {count} day is not met.", "It is not known since when {name} runs {version}, so the waiting period of {count} days is not met."],
         "_{version} has not run on {name} long enough: {count} day of the waiting period is left._::_{version} has not run on {name} long enough: {count} days of the waiting period are left._": ["{version} has not run on {name} long enough: {count} day of the waiting period is left.", "{version} has not run on {name} long enough: {count} days of the waiting period are left."],
+        "Tell an app's users what changed after Versioniq updates it": "Tell an app's users what changed after Versioniq updates it",
+        "They get the same notice as after an update from the Apps page. A dry run never sends it.": "They get the same notice as after an update from the Apps page. A dry run never sends it.",
+        "Translate to {language}": "Translate to {language}",
+        "Machine translation": "Machine translation",
+        "Show original": "Show original",
+        "Translating…": "Translating…",
+        "The release notes could not be translated.": "The release notes could not be translated.",
         "Checking access to the source": "Checking access to the source",
         "Checking the certificate": "Checking the certificate",
         "Checking the checksum": "Checking the checksum",

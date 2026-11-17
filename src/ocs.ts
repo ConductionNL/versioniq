@@ -132,8 +132,10 @@ export async function ocsWrite <T>(method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
 }
 
 /**
- * POST to an OCS endpoint that needs no password confirmation (a read the
- * server performs on request, such as refreshing remote manifests).
+ * POST to an OCS endpoint that needs no password confirmation, with a JSON
+ * body (a read the server performs on request, such as refreshing remote
+ * manifests). Returns the unwrapped payload (+ error). The OCS-APIRequest
+ * header is the request's CSRF proof, as for every OCS call.
  *
  * @param path The OCS path.
  * @param body The JSON body.

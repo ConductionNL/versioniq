@@ -56,6 +56,9 @@ final class InstanceSettingsFields extends RequestFields {
 	/** @var string|null Days a version runs on the earlier stage before it may be promoted, 0 to 90; 0 turns the check off */
 	public ?string $promotionMinDays = null;
 
+	/** @var string|null Whether an update through Versioniq tells the app's users: true or false */
+	public ?string $notifyUsersOnUpdate = null;
+
 	/**
 	 * The fields that were sent, by name, in declaration order.
 	 *
