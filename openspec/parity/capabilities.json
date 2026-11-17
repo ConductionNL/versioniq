@@ -6586,7 +6586,7 @@
 			"easy-updates-manager": "yes",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/Audit/AuditLogger.php:82 (origin on every row), lib/Db/AuditEntryMapper.php (GET /api/audit?origin=), src/components/HistoryPanel.vue:232 (Origin column and filter)",
+				"evidence": "lib/Service/Audit/AuditLogger.php:104 (origin on every row), lib/Db/AuditEntryMapper.php (GET /api/audit?origin=), src/components/HistoryPanel.vue:235 (Origin column and filter)",
 				"reachedOn": "History tab, Origin column and filter",
 				"owner": "ConductionNL/versioniq",
 				"change": "audit-attribution-and-forwarding",
@@ -6622,7 +6622,7 @@
 			"easy-updates-manager": "yes",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/Audit/AuditLogger.php:120 (CriticalActionPerformedEvent after each insert, sanitised message)",
+				"evidence": "lib/Service/Audit/AuditLogger.php:163 (CriticalActionPerformedEvent after each insert, sanitised message)",
 				"reachedOn": "the platform audit log (admin_audit) and its configured target",
 				"owner": "ConductionNL/versioniq",
 				"change": "audit-attribution-and-forwarding",
@@ -7919,7 +7919,7 @@
 			"easy-updates-manager": "no",
 			"built": {
 				"state": "built",
-				"evidence": "lib/Service/Audit/RuleChangeAuditor.php:41-95 (policy_set, policy_clear, auto_update_settings, advisory_settings with before and after), lib/Controller/ApiController.php (setPolicy, clearPolicy, updateAutoUpdateSettings, updateAdvisorySettings), src/components/PolicySelector.vue:57 (Set by {user} on {date})",
+				"evidence": "lib/Service/Audit/RuleChangeAuditor.php:41-95 (policy_set, policy_clear, auto_update_settings, advisory_settings with before and after), lib/Controller/ApiController.php (setPolicy, clearPolicy, updateAutoUpdateSettings, updateAdvisorySettings), src/components/PolicySelector.vue:67 (Set by {user} on {date})",
 				"reachedOn": "History tab rows; Apps tab policy selector",
 				"owner": "ConductionNL/versioniq",
 				"change": "audit-attribution-and-forwarding",

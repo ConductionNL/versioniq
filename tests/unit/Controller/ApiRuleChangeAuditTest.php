@@ -19,6 +19,7 @@ use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCA\Versioniq\Service\Audit\RuleChangeAuditor;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyStore;
@@ -65,6 +66,7 @@ final class ApiRuleChangeAuditTest extends TestCase {
 
 	private bool $enabled = false;
 	private string $window = '01:00-05:00';
+	private ?int $maxPerRun = null;
 	private int $hours = 6;
 	private bool $digest = true;
 
@@ -121,11 +123,16 @@ final class ApiRuleChangeAuditTest extends TestCase {
 		$store = $this->createMock(AutoUpdateSettingsStore::class);
 		$store->method('isEnabled')->willReturnCallback(fn (): bool => $this->enabled);
 		$store->method('getWindow')->willReturnCallback(fn (): string => $this->window);
+		$store->method('getSchedule')->willReturn(AutoUpdateSchedule::everyDay());
 		$store->method('setEnabled')->willReturnCallback(function (bool $enabled): void {
 			$this->enabled = $enabled;
 		});
 		$store->method('setWindow')->willReturnCallback(function (string $window): void {
 			$this->window = $window;
+		});
+		$store->method('getMaxPerRun')->willReturnCallback(fn (): ?int => $this->maxPerRun);
+		$store->method('setMaxPerRun')->willReturnCallback(function (?int $cap): void {
+			$this->maxPerRun = $cap;
 		});
 
 		return $store;
@@ -181,6 +188,15 @@ final class ApiRuleChangeAuditTest extends TestCase {
 
 		self::assertSame(
 			[['actor' => 'alice', 'app' => 'versioniq', 'operation' => 'auto_update_settings', 'message' => 'enabled: false -> true, window: 01:00-05:00 -> 02:00-04:00']],
+			$this->rows
+		);
+	}
+
+	public function testCappingARunWritesTheCapBeforeAndAfter(): void {
+		$this->controller(params: ['maxPerRun' => '3'])->updateAutoUpdateSettings(null);
+
+		self::assertSame(
+			[['actor' => 'alice', 'app' => 'versioniq', 'operation' => 'auto_update_settings', 'message' => 'maxPerRun: none -> 3']],
 			$this->rows
 		);
 	}
