@@ -27,5 +27,5 @@
 
 ## 4. Close
 
-- [ ] 4.1 Set the matrix rows `aud-log-source`, `src-discover-github` and `adv-offline-db` to `built` with evidence lines, then archive this change.
+- [x] 4.1 Set the matrix rows `aud-log-source`, `src-discover-github` and `adv-offline-db` to `built` with evidence lines, then archive this change.
   - The three rows are `built` with evidence lines. Archiving is left for after the change is verified and merged.
