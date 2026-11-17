@@ -16,6 +16,7 @@ use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Db\PatMapper;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
+use OCA\Versioniq\Service\Installer\InstallProgress;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pat\PatDeeplinkBuilder;
 use OCA\Versioniq\Service\Pat\PatManager;
@@ -27,6 +28,7 @@ use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\IGroupManager;
 use OCP\IRequest;
+use OCP\ISession;
 use OCP\IUser;
 use OCP\IUserSession;
 use OCP\ServerVersion;
@@ -91,6 +93,7 @@ final class ApiNonAdminRefusalTest extends TestCase {
 			'auditLog' => ['auditLog', []],
 			'cacheSummary' => ['cacheSummary', []],
 			'clearCache' => ['clearCache', []],
+			'installProgress' => ['installProgress', ['progress-token-for-tests-0001']],
 		];
 	}
 
@@ -145,6 +148,8 @@ final class ApiNonAdminRefusalTest extends TestCase {
 			'appManager' => $this->untouched(IAppManager::class),
 			'auditEntryMapper' => $this->untouched(AuditEntryMapper::class),
 			'connectionReports' => null,
+			'progress' => $this->untouched(InstallProgress::class),
+			'session' => $this->untouched(ISession::class),
 		]);
 	}
 

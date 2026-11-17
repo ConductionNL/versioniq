@@ -30,6 +30,7 @@ use OCA\Versioniq\Service\Installer\ExternalInstallRun;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFailure;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
+use OCA\Versioniq\Service\Installer\InstallProgress;
 use OCA\Versioniq\Service\Installer\InstallSteps;
 use OCA\Versioniq\Service\Installer\LocalArchive;
 use OCA\Versioniq\Service\Installer\ReleaseDownload;
@@ -94,6 +95,7 @@ class ExternalReleaseInstallerService {
 		private InstallSteps $steps,
 		private PatAccess $pats,
 		private LoggerInterface $logger,
+		private ?InstallProgress $progress = null,
 	) {
 	}
 
@@ -702,6 +704,9 @@ class ExternalReleaseInstallerService {
 			// Mirrors PatValidator. See OWASP A10:2021.
 			'nextcloud' => ['allow_local_address' => $this->configs->config->getSystemValueBool('allow_local_remote_servers', false)],
 		];
+		if ($this->progress !== null) {
+			$options['progress'] = $this->progress->downloadProgress();
+		}
 
 		if ($pat === null) {
 			$this->download->clientService->newClient()->get($url, $options);
@@ -957,5 +962,7 @@ class ExternalReleaseInstallerService {
 
 	private function addDebug(string $stage, mixed $data = null): void {
 		$this->debug[] = ['stage' => $stage, 'data' => $data];
+		// install-live-progress: the same stage names, live; no detail, which holds paths and URLs.
+		$this->progress?->stage(name: $stage);
 	}
 }

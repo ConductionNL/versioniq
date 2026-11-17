@@ -136,6 +136,7 @@ foreach ($document->paths as $item) {
 
 $descriptions = [
 	'api' => 'Installed apps, their versions, pins, advisories, updates and the audit log',
+	'changelog' => "Release notes in the admin's language",
 	'forge' => 'The self-hosted Forgejo or Gitea host that app sources are read from',
 	'open_api' => 'The OpenAPI document that describes this API',
 	'settings' => 'Instance settings of Versioniq',

@@ -346,4 +346,47 @@ final class InstanceSettingsTest extends TestCase {
 			yield "$field unparseable" => [$field, 'https://', $refusal];
 		}
 	}
+
+	/**
+	 * releases-notes-reach 1.2: telling users about Versioniq's updates is on
+	 * until the admin switches it off; anything but on or off is refused and
+	 * writes nothing.
+	 *
+	 * @spec openspec/changes/releases-notes-reach/tasks.md#task-1.2
+	 */
+	public function testTheUserNoticeSwitchIsOnByDefaultAndCanBeTurnedOff(): void {
+		$store = $this->store();
+		self::assertTrue($store->read()['notifyUsersOnUpdate']);
+
+		self::assertSame(['notifyUsersOnUpdate'], $store->update(['notifyUsersOnUpdate' => 'false']));
+		self::assertFalse($store->read()['notifyUsersOnUpdate']);
+		self::assertFalse($this->config[InstanceSettings::KEY_NOTIFY_USERS_ON_UPDATE]);
+
+		$store->update(['notifyUsersOnUpdate' => 'true']);
+		self::assertTrue($store->read()['notifyUsersOnUpdate']);
+	}
+
+	/**
+	 * @spec openspec/changes/releases-notes-reach/tasks.md#task-1.2
+	 */
+	public function testAnUnclearUserNoticeValueIsRefusedAndNothingIsWritten(): void {
+		try {
+			$this->store()->update(['artifactCacheKeep' => '5', 'notifyUsersOnUpdate' => 'maybe']);
+			self::fail('An unclear value must be refused.');
+		} catch (InvalidArgumentException $error) {
+			self::assertSame('Telling users about updates must be on or off.', $error->getMessage());
+		}
+
+		self::assertSame([], $this->config);
+	}
+
+	/**
+	 * The installer reads the same key the page writes.
+	 *
+	 * @spec openspec/changes/releases-notes-reach/tasks.md#task-1.2
+	 */
+	public function testThePageAndTheInstallerShareTheKey(): void {
+		self::assertSame(\OCA\Versioniq\Service\InstallerService::KEY_NOTIFY_USERS_ON_UPDATE, InstanceSettings::KEY_NOTIFY_USERS_ON_UPDATE);
+		self::assertSame('notify_users_on_update', InstanceSettings::KEY_NOTIFY_USERS_ON_UPDATE);
+	}
 }
