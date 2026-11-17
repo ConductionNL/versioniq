@@ -59,6 +59,8 @@ class InstallFinalizer {
 		 * that build this class by hand: finalize() then stays in-process.
 		 */
 		private ?ChildProcessFinalizer $childFinalizer = null,
+		/** install-live-progress: reports migrations and repair steps; null in hand-built tests. */
+		private ?InstallProgress $progress = null,
 	) {
 	}
 
@@ -81,6 +83,7 @@ class InstallFinalizer {
 	 * @throws Exception
 	 */
 	public function finalize(string $appPath, array $info, string $enabled, ?IOutput $output = null, string $sourceId = 'appstore'): string {
+		$this->progress?->stage(name: 'finalize');
 		$childAppId = $this->finalizeInChild($appPath, $info, $enabled, $sourceId);
 		if ($childAppId !== null) {
 			return $childAppId;
@@ -99,6 +102,7 @@ class InstallFinalizer {
 		$this->runMigrations($info, $output);
 		$this->addBackgroundJobs($info);
 		$this->runInstallScript($appPath, $appId);
+		$this->progress?->stage(name: 'install-repair-steps');
 		self::executeRepairSteps($appId, self::repairStepsOf($info, 'install'));
 
 		$installedVersion = $this->installedVersionOf($info);
@@ -190,10 +194,13 @@ class InstallFinalizer {
 
 		$upgrade = $previousVersion !== '';
 		if ($upgrade) {
+			$this->progress?->stage(name: 'pre-migration-repair-steps');
 			self::executeRepairSteps($appId, self::repairStepsOf($info, 'pre-migration'));
 		}
+		$this->progress?->stage(name: 'migrations');
 		$migrationService->migrate('latest', !$upgrade);
 		if ($upgrade) {
+			$this->progress?->stage(name: 'post-migration-repair-steps');
 			self::executeRepairSteps($appId, self::repairStepsOf($info, 'post-migration'));
 		}
 	}

@@ -13,10 +13,15 @@ require_once __DIR__ . '/../Support/InstallArgs.php';
 
 use OCA\Versioniq\Command\InstallVersion;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
+use OCA\Versioniq\Service\Installer\InstallProgress;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\AppFramework\Http;
+use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\ICache;
+use OCP\ICacheFactory;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Tester\CommandTester;
 
 final class InstallVersionTest extends TestCase {
@@ -344,5 +349,66 @@ final class InstallVersionTest extends TestCase {
 		$exitCode = $tester->execute(['appId' => 'someapp', 'version' => '1.0.0']);
 
 		self::assertSame($expectedExitCode, $exitCode);
+	}
+
+	/**
+	 * A real reporter fed by the installer the way both installers feed it.
+	 */
+	private function reporter(): InstallProgress {
+		$factory = $this->createMock(ICacheFactory::class);
+		$factory->method('createDistributed')->willReturn($this->createMock(ICache::class));
+
+		return new InstallProgress($factory, $this->createMock(ITimeFactory::class), $this->createMock(LoggerInterface::class));
+	}
+
+	/**
+	 * @spec openspec/changes/install-live-progress/specs/cli-commands/spec.md
+	 */
+	public function testEachStageIsPrintedInOrderBeforeTheOutcome(): void {
+		$progress = $this->reporter();
+		$installer = $this->createMock(InstallerService::class);
+		$installer->method('isManageableApp')->willReturn(true);
+		$installer->method('installAppVersion')->willReturnCallback(static function () use ($progress): array {
+			foreach (['downloading', 'downloading', 'downloaded', 'signature-verified', 'archive-extracted', 'migrations', 'finalize'] as $stage) {
+				$progress->stage($stage);
+			}
+
+			return ['statusCode' => Http::STATUS_OK, 'payload' => ['status' => 'installed', 'message' => 'App installed.']];
+		});
+
+		$tester = new CommandTester(new InstallVersion($installer, $progress));
+		self::assertSame(0, $tester->execute(['appId' => 'openregister', 'version' => '2.4.1'], ['capture_stderr_separately' => true]));
+
+		self::assertSame(
+			['downloading', 'downloaded', 'signature-verified', 'archive-extracted', 'migrations', 'finalize', 'App installed.'],
+			array_slice(array_values(array_filter(explode("\n", $tester->getDisplay()))), 0, 7)
+		);
+	}
+
+	/**
+	 * @spec openspec/changes/install-live-progress/specs/cli-commands/spec.md
+	 */
+	public function testWithJsonNoStageIsPrintedAndTheListenerIsRemoved(): void {
+		$progress = $this->reporter();
+		$installer = $this->createMock(InstallerService::class);
+		$installer->method('isManageableApp')->willReturn(true);
+		$installer->method('installAppVersion')->willReturnCallback(static function () use ($progress): array {
+			$progress->stage('downloaded');
+
+			return ['statusCode' => Http::STATUS_OK, 'payload' => ['status' => 'installed']];
+		});
+
+		$tester = new CommandTester(new InstallVersion($installer, $progress));
+		$tester->execute(['appId' => 'openregister', 'version' => '2.4.1', '--json' => true]);
+
+		self::assertSame(1, substr_count(trim($tester->getDisplay()), "\n") + 1, 'only the single JSON document');
+		self::assertJson(trim($tester->getDisplay()));
+
+		$heard = [];
+		$progress->listen(static function (string $stage) use (&$heard): void {
+			$heard[] = $stage;
+		});
+		$progress->stage('after');
+		self::assertSame(['after'], $heard, 'the command removed its listener, so a new one hears only what follows');
 	}
 }
