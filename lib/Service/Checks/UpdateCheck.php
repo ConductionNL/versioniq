@@ -77,6 +77,11 @@ final class UpdateCheck {
 		return $this->apps === [] || in_array($appId, $this->apps, true);
 	}
 
+	/**
+	 * Whether a token is stored for the check.
+	 *
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
+	 */
 	public function hasToken(): bool {
 		return $this->encryptedToken !== null && $this->encryptedToken !== '';
 	}

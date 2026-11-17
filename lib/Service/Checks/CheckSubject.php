@@ -32,6 +32,7 @@ final class CheckSubject {
 	 *
 	 * @param callable(string): string $encode
 	 * @return array<string, string>
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
 	 */
 	public function placeholders(callable $encode, bool $withPath): array {
 		$values = [

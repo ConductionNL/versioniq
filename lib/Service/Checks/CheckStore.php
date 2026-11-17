@@ -89,6 +89,7 @@ class CheckStore {
 	 * The stored verdict checks; a malformed value or entry is skipped with a log line.
 	 *
 	 * @return list<UpdateCheck>
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
 	 */
 	public function verdictChecks(): array {
 		$raw = $this->appConfig->getValueString(Application::APP_ID, self::KEY, '');

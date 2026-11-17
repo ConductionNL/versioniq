@@ -101,6 +101,8 @@ class FailureClassifier implements FailureClassifierInterface {
 	/**
 	 * Maps a category to its HTTP status. Classified failures never collapse to
 	 * a blanket 500; 500 is reserved for `extract`/`finalize`/`unknown`.
+	 *
+	 * @spec openspec/changes/safety-update-checks/specs/auto-update-policies/spec.md#requirement-the-nightly-job-installs-only-after-the-attached-checks-pass
 	 */
 	public function httpStatusFor(string $category): int {
 		return match ($category) {
@@ -142,6 +144,8 @@ class FailureClassifier implements FailureClassifierInterface {
 
 	/**
 	 * An actionable, translatable remediation hint for a category.
+	 *
+	 * @spec openspec/changes/safety-update-checks/specs/auto-update-policies/spec.md#requirement-the-nightly-job-installs-only-after-the-attached-checks-pass
 	 */
 	public function hintFor(string $category): string {
 		$l = $this->l10n();
