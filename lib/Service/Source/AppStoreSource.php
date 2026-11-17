@@ -121,6 +121,52 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 	}
 
 	/**
+	 * The server majors among `$majors` that at least one listed release of
+	 * the app supports, read from each release's `platformVersionSpec` in the
+	 * cached catalogue entry; null when the app is not cached or no release
+	 * names a range. Reads the cache only: the availability sweep has just
+	 * listed the app's versions, so this costs no request.
+	 *
+	 * A major counts as supported when its first or its last release
+	 * (`<major>.0.0`, `<major>.99.99`) satisfies the range, so a range that
+	 * starts or ends inside a major still covers it.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 * @param list<int> $majors The majors to test.
+	 * @return list<int>|null
+	 */
+	public function supportedMajors(string $appId, array $majors): ?array {
+		$releases = $this->readCachedPayload($appId, true)['releases'] ?? null;
+		if (!is_array($releases)) {
+			return null;
+		}
+
+		$specs = [];
+		foreach ($releases as $release) {
+			$spec = is_array($release) ? ($release['platformVersionSpec'] ?? null) : null;
+			if (is_string($spec) && trim($spec) !== '') {
+				$specs[trim($spec)] = true;
+			}
+		}
+		if ($specs === []) {
+			return null;
+		}
+
+		$supported = [];
+		foreach ($majors as $major) {
+			foreach (array_keys($specs) as $spec) {
+				if (self::satisfiesPlatformSpec($major . '.0.0', (string)$spec) === true
+					|| self::satisfiesPlatformSpec($major . '.99.99', (string)$spec) === true) {
+					$supported[] = $major;
+					break;
+				}
+			}
+		}
+
+		return $supported;
+	}
+
+	/**
 	 * Resolves a single App Store release (with certificate) for install; see "Install Specific Version".
 	 *
 	 * @spec openspec/specs/version-management/spec.md

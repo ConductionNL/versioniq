@@ -22,8 +22,10 @@ use OCP\IAppConfig;
 /**
  * The life cycle signals of one app, read from the version listing the
  * availability sweep already fetched: removed from the App Store, and no
- * release for a year; and whether the forge repository is archived, which
- * takes one request per forge app.
+ * release for a year; whether the forge repository is archived, which
+ * takes one request per forge app; and whether any listed release still
+ * supports a maintained server major, read from the end-of-life feed and the
+ * cached App Store catalogue.
  *
  * A signal that cannot be told is null, never false: an app without release
  * dates is "unknown", not "maintained".
@@ -36,11 +38,56 @@ class LifecycleSignals {
 
 	public const DEFAULT_STALE_MONTHS = 12;
 
+	/** Majors above the newest one the feed lists that are tested too: a release for them is for a server still maintained. */
+	private const MAJORS_AHEAD = 3;
+
 	public function __construct(
 		private IAppConfig $config,
 		private ITimeFactory $timeFactory,
 		private ?SourceLookup $sources = null,
+		private ?ServerEolFeed $eolFeed = null,
 	) {
+	}
+
+	/**
+	 * Whether the app is out of support: no listed release supports a server
+	 * major that is still maintained (design D2). Null when that cannot be
+	 * told: the feed is off or unreadable, the app is not bound to the App
+	 * Store, or its releases name no server range. A forge release publishes
+	 * no range, so a forge app reads unknown, never "out of support".
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 */
+	public function endOfSupport(string $appId): ?bool {
+		$known = array_keys($this->eolFeed?->majors() ?? []);
+		if ($known === []) {
+			return null;
+		}
+
+		$binding = $this->sources?->bindingStore->get($appId);
+		if ($binding === null) {
+			return null;
+		}
+		try {
+			$source = $this->sources?->sourceRegistry->get($binding);
+		} catch (\Throwable) {
+			return null;
+		}
+		if (!$source instanceof AppStoreSource) {
+			return null;
+		}
+
+		$newest = max($known);
+		$supported = $source->supportedMajors($appId, array_merge($known, range($newest + 1, $newest + self::MAJORS_AHEAD)));
+		if ($supported === null) {
+			return null;
+		}
+		if ($supported !== [] && max($supported) > $newest) {
+			// A release for a major newer than any the feed lists is for a maintained server.
+			return false;
+		}
+
+		return $this->eolFeed?->endOfSupport($supported);
 	}
 
 	/**

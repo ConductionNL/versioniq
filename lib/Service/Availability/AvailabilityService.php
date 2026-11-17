@@ -246,9 +246,12 @@ class AvailabilityService implements AvailabilityServiceInterface {
 	}
 
 	/**
-	 * Stamps whether the app's repository is archived on an entry that carries life cycle signals.
+	 * Stamps whether the app's repository is archived, and whether the app is
+	 * out of support, on an entry that carries life cycle signals.
 	 *
-	 * A failed listing leaves it unknown.
+	 * A failed listing leaves both unknown.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
 	 *
 	 * @param array<string, mixed> $entry
 	 * @return array<string, mixed>
@@ -256,6 +259,7 @@ class AvailabilityService implements AvailabilityServiceInterface {
 	private function withArchived(string $appId, array $entry): array {
 		if (isset($entry['lifecycle']) && $this->lifecycle !== null) {
 			$entry['lifecycle']['archived'] = $entry['error'] === null ? $this->lifecycle->archived($appId) : null;
+			$entry['lifecycle']['endOfSupport'] = $entry['error'] === null ? $this->lifecycle->endOfSupport($appId) : null;
 		}
 
 		return $entry;
