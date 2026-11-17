@@ -33,6 +33,7 @@ type Settings = {
 	ncscFeedDefault: string
 	maxLinesBehind: number | null
 	maxLinesBehindMax: number
+	reactivateAuto?: boolean
 	advisoryFeedSource?: string
 	advisoryFeedCopiedAt?: number | null
 	advisoryFeedCopyMaxAgeDays?: number
@@ -51,6 +52,7 @@ const form = ref({
 	advisoryFeedUrl: '',
 	ncscFeedUrl: '',
 	maxLinesBehind: '',
+	reactivateAuto: false,
 	advisoryFeedSource: 'remote',
 	notifyUsersOnUpdate: true,
 })
@@ -73,6 +75,7 @@ function fill (settings: Settings): void {
 		advisoryFeedUrl: settings.advisoryFeedUrl,
 		ncscFeedUrl: settings.ncscFeedUrl ?? '',
 		maxLinesBehind: settings.maxLinesBehind === null || settings.maxLinesBehind === undefined ? '' : String(settings.maxLinesBehind),
+		reactivateAuto: settings.reactivateAuto === true,
 		advisoryFeedSource: settings.advisoryFeedSource === 'local' ? 'local' : 'remote',
 		// On unless the admin switched it off (releases-notes-reach 1.2).
 		notifyUsersOnUpdate: settings.notifyUsersOnUpdate !== false,
@@ -215,6 +218,15 @@ onMounted(load)
 				<span :class="$style.hint">{{ t('versioniq', 'They get the same notice as after an update from the Apps page. A dry run never sends it.') }}</span>
 			</label>
 
+			<label :class="$style.checkboxField" for="setting-reactivate-auto">
+				<input
+					id="setting-reactivate-auto"
+					v-model="form.reactivateAuto"
+					type="checkbox"
+					data-testid="setting-reactivate-auto">
+				<span>{{ t('versioniq', 'Enable an app again when an update left it disabled and it runs on this server') }}</span>
+			</label>
+
 			<h4>{{ t('versioniq', 'Sources and mirrors') }}</h4>
 			<p :class="$style.hint">
 				{{ t('versioniq', 'Leave a field empty to use the default shown under it.') }}
@@ -333,6 +345,12 @@ onMounted(load)
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
+}
+
+.checkboxField {
+	display: flex;
+	gap: 8px;
+	align-items: center;
 }
 
 .hint {
