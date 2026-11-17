@@ -93,6 +93,7 @@ type AppOption = {
 type AppVersion = {
 	version: string
 	changelog?: string | null
+	changelogLanguage?: string | null
 	recordedSha?: string | null
 	cachedOffline?: boolean
 	serverCompatible?: boolean | null
@@ -3272,7 +3273,12 @@ watch(dryRunEnabled, () => {
 															:busy="isRemovingKnownIssue || isInstallingVersion"
 															@add="openKnownIssueDialog"
 															@remove="removeKnownIssue" />
-														<VersionChangelog :version="version.version" :changelog="version.changelog ?? null" />
+														<VersionChangelog
+															:version="version.version"
+															:changelog="version.changelog ?? null"
+															:changelogLanguage="version.changelogLanguage ?? null"
+															:appId="selectedApp.trim()"
+															:source="sourceOverride" />
 														<div
 															v-if="selectedVersion === version.version && selectedVersion !== ''"
 															:class="$style.versionActionGroup">

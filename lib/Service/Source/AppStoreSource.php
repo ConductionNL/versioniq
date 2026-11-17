@@ -36,7 +36,7 @@ use UnexpectedValueException;
  * to `SelectedReleaseInstallerService`, not the external installer.
  *
  * @psalm-api
- * @psalm-type VersionEntry = array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string, downloads: null}
+ * @psalm-type VersionEntry = array{version: string, changelog: ?string, changelogLanguage: ?string, serverCompatible: ?bool, releasedAt: ?string, downloads: null}
  */
 class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppStoreSourceInterface {
 	public const DEFAULT_API_BASE = 'https://garm3.nextcloud.com/api/v1';
@@ -665,7 +665,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 	 */
 	private function releaseEntry(mixed $release, string $serverVersion): ?array {
 		if (is_string($release)) {
-			return ['version' => $release, 'changelog' => null, 'serverCompatible' => null, 'releasedAt' => null, 'downloads' => null];
+			return ['version' => $release, 'changelog' => null, 'changelogLanguage' => null, 'serverCompatible' => null, 'releasedAt' => null, 'downloads' => null];
 		}
 
 		return is_array($release) ? $this->arrayReleaseEntry($release, $serverVersion) : null;
@@ -682,10 +682,12 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 		}
 		/** @var mixed $spec */
 		$spec = $release['platformVersionSpec'] ?? null;
+		$changelog = $this->extractChangelog($release);
 
 		return [
 			'version' => $version,
-			'changelog' => $this->extractChangelog($release),
+			'changelog' => $changelog,
+			'changelogLanguage' => $this->languageOfNotes($release, $changelog),
 			'serverCompatible' => is_string($spec) ? self::satisfiesPlatformSpec($serverVersion, $spec) : null,
 			'releasedAt' => ReleaseDate::normalize($release['created'] ?? null),
 			// The catalogue publishes no per-release download count (design D2).
@@ -712,6 +714,10 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 	private static function mergeEntry(?array $known, array $entry): array {
 		if ($known === null) {
 			return $entry;
+		}
+		// The language belongs to the notes: it follows the entry whose notes win.
+		if ($known['changelog'] === null) {
+			$known['changelogLanguage'] = $entry['changelogLanguage'];
 		}
 		$known['changelog'] ??= $entry['changelog'];
 		$known['serverCompatible'] ??= $entry['serverCompatible'];
@@ -805,6 +811,31 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 		} catch (Throwable) {
 			return null;
 		}
+	}
+
+	/**
+	 * The language of a release's notes, or null when it has none.
+	 *
+	 * @param array<array-key, mixed> $release
+	 */
+	private function languageOfNotes(array $release, ?string $changelog): ?string {
+		return $changelog === null ? null : $this->changelogLanguageOf($release);
+	}
+
+	/**
+	 * The language the release's notes were taken from: the admin's language
+	 * when the release has a translation in it, else `en`, the same choice
+	 * rawChangelogFrom() makes (releases-notes-reach D2).
+	 *
+	 * @spec openspec/changes/releases-notes-reach/specs/changelog-visibility/spec.md
+	 * @param array<array-key, mixed> $release
+	 */
+	private function changelogLanguageOf(array $release): string {
+		/** @var mixed $translations */
+		$translations = $release['translations'] ?? null;
+		$lang = $this->l10nFactory->findLanguage();
+
+		return is_array($translations) && isset($translations[$lang]) ? $lang : 'en';
 	}
 
 	/**
