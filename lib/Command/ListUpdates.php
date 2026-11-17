@@ -11,9 +11,9 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Command;
 
-use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
-use OCA\Versioniq\Service\Availability\AvailabilityService;
-use OCA\Versioniq\Service\Settings\InstanceSettings;
+use OCA\Versioniq\Kernel\Contracts\AvailabilityServiceInterface;
+use OCA\Versioniq\Kernel\Contracts\InstanceSettingsInterface;
+use OCA\Versioniq\Kernel\Contracts\ReleaseSweepRecorderInterface;
 use OCP\AppFramework\Utility\ITimeFactory;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\Table;
@@ -35,9 +35,9 @@ class ListUpdates extends Command {
 	private const REFRESH_BUDGET_SECONDS = 600.0;
 
 	public function __construct(
-		private AvailabilityService $availabilityService,
-		private AvailabilityResultStore $resultStore,
-		private InstanceSettings $instanceSettings,
+		private AvailabilityServiceInterface $availabilityService,
+		private ReleaseSweepRecorderInterface $recorder,
+		private InstanceSettingsInterface $instanceSettings,
 		private ITimeFactory $time,
 	) {
 		parent::__construct();
@@ -60,7 +60,7 @@ class ListUpdates extends Command {
 	 */
 	protected function execute(InputInterface $input, OutputInterface $output): int {
 		$this->refreshIfAsked($input);
-		$snapshot = $this->resultStore->read();
+		$snapshot = $this->recorder->read();
 		if ($snapshot['checkedAt'] === null) {
 			return $this->neverChecked($output);
 		}
@@ -80,7 +80,7 @@ class ListUpdates extends Command {
 	 */
 	private function refreshIfAsked(InputInterface $input): void {
 		if ((bool)$input->getOption('refresh')) {
-			$this->resultStore->save($this->availabilityService->sweep(self::REFRESH_BUDGET_SECONDS), $this->time->getTime());
+			$this->recorder->record($this->availabilityService->sweep(self::REFRESH_BUDGET_SECONDS, $this->recorder->followed()), $this->time->getTime());
 		}
 	}
 

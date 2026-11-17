@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Advisory;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\AdvisoryNotifierInterface;
 use OCA\Versioniq\Service\AdminNotificationServices;
 use OCA\Versioniq\Service\ResolvesAdminUids;
 use OCP\IAppConfig;
@@ -31,7 +32,7 @@ use Psr\Log\LoggerInterface;
  *
  * @psalm-api
  */
-class AdvisoryNotifier {
+class AdvisoryNotifier implements AdvisoryNotifierInterface {
 	use ResolvesAdminUids;
 
 	private const CONFIG_KEY = 'advisory.notified';
@@ -48,29 +49,25 @@ class AdvisoryNotifier {
 	 * version since the last run. Returns the number of notifications fired.
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
-	 * @param array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}> $correlations
+	 * @param array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, recommendedVersion: ?string, error: ?string, history?: list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool}>, fixStatus?: ?string}> $correlations
 	 */
 	public function notifyNewAdvisories(array $correlations): int {
 		$alreadyNotified = $this->loadNotified();
+		$triage = $this->triage();
 		$currentKeys = [];
 		$newKeys = [];
-		$admins = $this->adminUids();
 
 		foreach ($correlations as $appId => $correlation) {
 			if ($correlation['state'] !== AdvisoryService::STATE_VULNERABLE) {
 				continue;
 			}
-			$installedVersion = $correlation['installedVersion'] ?? '';
+			$dismissed = AdvisoryTriage::dismissedIds(row: $triage->apply(row: $correlation));
 			foreach ($correlation['advisories'] as $advisory) {
 				$key = $appId . ':' . $advisory['id'];
 				$currentKeys[$key] = true;
-				if (isset($alreadyNotified[$key])) {
-					continue;
-				}
-				$newKeys[$key] = true;
-				$subject = ['app' => $appId, 'version' => (string)$installedVersion, 'advisory' => $advisory['id']];
-				foreach ($admins as $uid) {
-					$this->fire($uid, $subject);
+				if (isset($alreadyNotified[$key]) === false && isset($dismissed[$advisory['id']]) === false) {
+					$newKeys[$key] = true;
+					$this->fireToAdmins(['app' => $appId, 'version' => $correlation['installedVersion'] ?? '', 'advisory' => $advisory['id']]);
 				}
 			}
 		}
@@ -78,11 +75,34 @@ class AdvisoryNotifier {
 		// Persist the set of currently-active vulnerable keys (union with the
 		// ones we just fired). Keys that dropped out — advisory resolved or app
 		// upgraded — are forgotten, so if the same advisory ever re-appears it
-		// is treated as newly-published and re-notifies.
+		// is treated as newly-published and re-notifies. An actively dismissed
+		// pair counts as notified, so a reopen does not fire a late notification.
 		$persist = $currentKeys + $newKeys;
 		$this->storeNotified(array_keys($persist));
 
 		return count($newKeys);
+	}
+
+	/**
+	 * The stored triage, judged at the current time (advisories-triage, design D2).
+	 *
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+	 */
+	private function triage(): AdvisoryTriage {
+		$store = new AdvisoryTriageStore($this->appConfig, $this->logger);
+
+		return new AdvisoryTriage($store->read(), $this->admin->timeFactory->getDateTime()->format(DATE_ATOM));
+	}
+
+	/**
+	 * Tells every admin about one affected app and advisory.
+	 *
+	 * @param array{app: string, version: string, advisory: string} $subject
+	 */
+	private function fireToAdmins(array $subject): void {
+		foreach ($this->adminUids() as $uid) {
+			$this->fire($uid, $subject);
+		}
 	}
 
 	/**
@@ -113,26 +133,35 @@ class AdvisoryNotifier {
 	 * @return array<string, true>
 	 */
 	private function loadNotified(): array {
-		$raw = $this->appConfig->getValueString(Application::APP_ID, self::CONFIG_KEY, '');
-		if ($raw === '') {
-			return [];
-		}
-		try {
-			$decoded = json_decode($raw, true, 8, JSON_THROW_ON_ERROR);
-		} catch (\JsonException) {
-			return [];
-		}
-		if (!is_array($decoded)) {
-			return [];
-		}
 		$set = [];
-		foreach ($decoded as $key) {
+		foreach ($this->storedNotified() as $key) {
 			if (is_string($key) && $key !== '') {
 				$set[$key] = true;
 			}
 		}
 
 		return $set;
+	}
+
+	/**
+	 * The stored list of notified keys as decoded, unchecked; empty when none
+	 * is stored or it is not valid JSON.
+	 *
+	 * @return array<array-key, mixed>
+	 */
+	private function storedNotified(): array {
+		$raw = $this->appConfig->getValueString(Application::APP_ID, self::CONFIG_KEY, '');
+		if ($raw === '') {
+			return [];
+		}
+		try {
+			/** @var mixed $decoded */
+			$decoded = json_decode($raw, true, 8, JSON_THROW_ON_ERROR);
+		} catch (\JsonException) {
+			return [];
+		}
+
+		return is_array($decoded) ? $decoded : [];
 	}
 
 	/**

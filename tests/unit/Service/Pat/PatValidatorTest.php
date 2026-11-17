@@ -88,7 +88,7 @@ final class PatValidatorTest extends TestCase {
 		// not throw InvalidArgumentException (which would surface as HTTP 500).
 		$validator = $this->buildValidator(200);
 
-		$result = $validator->validate('ghp_anyclassic1234567890abcdef1234567890abcdef', 'gitlab');
+		$result = $validator->validate('ghp_anyclassic1234567890abcdef1234567890abcdef', 'bitbucket');
 
 		$this->assertFalse($result->ok);
 		$this->assertNotNull($result->error);
@@ -185,5 +185,37 @@ final class PatValidatorTest extends TestCase {
 
 		$this->assertSame('token', $token->getName());
 		$this->assertCount(1, $token->getAttributes(\SensitiveParameter::class));
+	}
+
+	/**
+	 * GitLab: a read_api token is accepted with its scopes and expiry, read
+	 * from personal_access_tokens/self.
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-3.1
+	 */
+	public function testGitlabReadApiTokenIsAcceptedWithItsExpiry(): void {
+		$result = $this->buildValidator(200, [], '{"id":7,"scopes":["read_api","read_repository"],"expires_at":"2027-01-31","active":true}')->validate('glpat-abc', 'gitlab');
+
+		$this->assertTrue($result->ok);
+		$this->assertSame(['read_api', 'read_repository'], $result->scopes);
+		$this->assertSame('2027-01-31 00:00:00', $result->expiresAt);
+		$this->assertSame([], $result->warnings);
+	}
+
+	/**
+	 * GitLab: a token that can write or impersonate is refused, naming the scopes.
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-3.1
+	 */
+	public function testGitlabTokenWithWriteScopesIsRejected(): void {
+		foreach ([['api'], ['read_api', 'write_repository'], ['read_api', 'sudo']] as $scopes) {
+			$result = $this->buildValidator(200, [], json_encode(['scopes' => $scopes, 'expires_at' => null]))->validate('glpat-abc', 'gitlab');
+			$this->assertFalse($result->ok, implode(',', $scopes));
+			$this->assertStringContainsString('write or admin scopes', (string)$result->error);
+		}
+
+		$this->assertFalse($this->buildValidator(200, [], '{"scopes":[]}')->validate('glpat-abc', 'gitlab')->ok);
+		$this->assertFalse($this->buildValidator(200, [], 'not json')->validate('glpat-abc', 'gitlab')->ok);
+		$this->assertSame('Token is invalid or revoked.', $this->buildValidator(401)->validate('glpat-abc', 'gitlab')->error);
 	}
 }

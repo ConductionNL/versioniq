@@ -20,6 +20,7 @@ use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Lkg\Lkg;
 use OCA\Versioniq\Service\Lkg\LkgStore;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Service\SelectedReleaseInstallerService;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
@@ -80,6 +81,7 @@ final class InstallerServiceAppListGoldenTest extends TestCase {
 		'shipped' => ['qfcore', 'qfgamma'],
 		'bindings' => ['qfdelta' => 'github', 'qfalpha' => 'appstore'],
 		'lkg' => ['qfalpha' => ['1.0.0', '2026-01-01T00:00:00+00:00', 'appstore'], 'qfgamma' => ['2.9.0', '2026-02-02T00:00:00+00:00', null]],
+		'knownIssues' => [],
 	];
 
 	/** @var list<array<string, mixed>> */
@@ -108,6 +110,7 @@ final class InstallerServiceAppListGoldenTest extends TestCase {
 			'path read throws an error' => [['paths' => ['qfalpha' => 'fatal']], false],
 			'installed version listed under numeric-looking id' => [['enabled' => ['123'], 'installed' => ['123' => '1.0.0'], 'bound' => []], false],
 			'numeric-looking ids compare as text' => [['enabled' => ['1e1'], 'installed' => ['10' => '1.0.0', '1e1' => '2.0.0'], 'bound' => []], false],
+			'a known issue in the installed version only' => [['knownIssues' => ['qfalpha' => ['1.0.1' => [['text' => 'Export times out', 'workaround' => 'Export per schema']], '1.0.0' => [['text' => 'Older note']]], 'qfgamma' => ['3.0.0' => [['text' => 'Not installed here']]]]], false],
 			'metadata' => [['allApps' => $meta], true],
 			'metadata, nothing enabled' => [['allApps' => $meta, 'enabled' => []], true],
 			'metadata, numeric app id' => [['allApps' => $meta, 'enabled' => ['42']], true],
@@ -189,6 +192,7 @@ final class InstallerServiceAppListGoldenTest extends TestCase {
 			'userSession' => $this->createMock(IUserSession::class),
 			'timeFactory' => $this->createMock(ITimeFactory::class),
 			'lkgStore' => $this->lkgStore($case),
+			'knownIssues' => $this->knownIssueStore($case),
 			'artifactCache' => $this->createMock(ArtifactCache::class),
 			'eventDispatcher' => $this->createMock(IEventDispatcher::class),
 		]);
@@ -289,6 +293,19 @@ final class InstallerServiceAppListGoldenTest extends TestCase {
 			$this->calls[] = ['lkg', $appId];
 			$record = $case['lkg'][$appId] ?? null;
 			return $record === null ? null : new Lkg(...$record);
+		});
+
+		return $store;
+	}
+
+	/**
+	 * @param array<string, mixed> $case
+	 */
+	private function knownIssueStore(array $case): KnownIssueStore {
+		$store = $this->createMock(KnownIssueStore::class);
+		$store->method('forApp')->willReturnCallback(function (string $appId) use ($case): array {
+			$this->calls[] = ['knownIssues', $appId];
+			return $case['knownIssues'][$appId] ?? [];
 		});
 
 		return $store;

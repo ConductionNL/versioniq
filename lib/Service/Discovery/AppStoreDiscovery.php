@@ -48,7 +48,7 @@ class AppStoreDiscovery implements DiscoveryProviderInterface {
 	 * scoring and hit construction). Everything else — chiefly the per-release
 	 * metadata that dominates the payload — is dropped before caching.
 	 */
-	private const CACHED_FIELDS = ['id', 'name', 'summary', 'description', 'categories', 'preview', 'website'];
+	private const CACHED_FIELDS = ['id', 'name', 'summary', 'description', 'categories', 'preview', 'website', 'authors', 'isFeatured'];
 
 	/**
 	 * Upper bound for the cached catalogue projection.
@@ -172,6 +172,10 @@ class AppStoreDiscovery implements DiscoveryProviderInterface {
 				installable: true,
 				installableReason: null,
 			),
+			publisher: new DiscoveryPublisher(
+				name: PublisherTrust::publisherFromAuthors($app['authors'] ?? null),
+				featured: ($app['isFeatured'] ?? false) === true,
+			),
 		);
 	}
 
@@ -281,6 +285,11 @@ class AppStoreDiscovery implements DiscoveryProviderInterface {
 				$value = $app[$field];
 				$projected[$field] = $value;
 			}
+		}
+		// Author names only: the catalogue also carries e-mail addresses and
+		// home pages, which discovery never shows and the cache must not keep.
+		if (array_key_exists('authors', $projected)) {
+			$projected['authors'] = PublisherTrust::authorNames($projected['authors']);
 		}
 
 		return $projected;
