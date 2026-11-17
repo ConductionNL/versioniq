@@ -521,7 +521,7 @@ final class AutoUpdateJobTest extends TestCase {
 		$mocks['installerService']->expects($this->never())->method('installAppVersion');
 		$mocks['logger']->expects($this->once())->method('error')->with(
 			$this->stringContains('policy file'),
-			$this->callback(static fn (array $context): bool => in_array('$.policies.openregister: must be one of none, patch, minor, all', $context['errors'], true)),
+			$this->callback(static fn (array $context): bool => in_array('$.policies.openregister: must be one of none, patch, minor, all, security', $context['errors'], true)),
 		);
 		$source = $this->fileSource(
 			'{"schemaVersion":1,"autoUpdate":{"enabled":true},"policies":{"openregister":"weekly"}}',

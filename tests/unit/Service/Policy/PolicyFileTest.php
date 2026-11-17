@@ -66,8 +66,8 @@ final class PolicyFileTest extends TestCase {
 			'unknown autoUpdate key' => ['{"schemaVersion":1,"autoUpdate":{"interval":3},"policies":{}}', '$.autoUpdate.interval: is not a known key'],
 			'enabled not a boolean' => ['{"schemaVersion":1,"autoUpdate":{"enabled":"yes"},"policies":{}}', '$.autoUpdate.enabled: must be true or false'],
 			'bad window' => ['{"schemaVersion":1,"autoUpdate":{"window":"night"},"policies":{}}', '$.autoUpdate.window: must be HH:MM-HH:MM'],
-			'bad default level' => ['{"schemaVersion":1,"autoUpdate":{"defaultLevel":"weekly"},"policies":{}}', '$.autoUpdate.defaultLevel: must be one of none, patch, minor, all'],
-			'bad app level' => ['{"schemaVersion":1,"policies":{"openregister":"weekly"}}', '$.policies.openregister: must be one of none, patch, minor, all'],
+			'bad default level' => ['{"schemaVersion":1,"autoUpdate":{"defaultLevel":"weekly"},"policies":{}}', '$.autoUpdate.defaultLevel: must be one of none, patch, minor, all, security'],
+			'bad app level' => ['{"schemaVersion":1,"policies":{"openregister":"weekly"}}', '$.policies.openregister: must be one of none, patch, minor, all, security'],
 			'bad app id' => ['{"schemaVersion":1,"policies":{"Open Register":"minor"}}', '$.policies.Open Register: is not a valid app id'],
 		];
 	}
@@ -91,8 +91,8 @@ final class PolicyFileTest extends TestCase {
 		]);
 
 		$this->assertSame([
-			'$.autoUpdate.defaultLevel: must be one of none, patch, minor, all',
-			'$.policies.openregister: must be one of none, patch, minor, all',
+			'$.autoUpdate.defaultLevel: must be one of none, patch, minor, all, security',
+			'$.policies.openregister: must be one of none, patch, minor, all, security',
 		], $errors);
 	}
 

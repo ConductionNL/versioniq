@@ -224,7 +224,7 @@ describe('App advisory settings', () => {
 		await vm.saveAdvisorySettings()
 		await flushPromises()
 
-		expect(calls).toEqual([{ method: 'PUT', path: '/api/advisory/settings', body: { intervalHours: '12', digestEnabled: '0' } }])
+		expect(calls).toEqual([{ method: 'PUT', path: '/api/advisory/settings', body: { intervalHours: '12', digestEnabled: '0', ncscEnabled: '0' } }])
 		expect([vm.advisoryIntervalInput, vm.advisorySavedInterval]).toEqual(['12', '12'])
 		expect([vm.advisoryDigestEnabled, vm.advisorySavedDigest]).toEqual([false, false])
 		expect(vm.advisorySettingsNotice).toBe('Advisory settings saved.')
@@ -239,8 +239,24 @@ describe('App advisory settings', () => {
 		await vm.saveAdvisorySettings()
 		await flushPromises()
 
-		expect(calls[0].body).toEqual({ intervalHours: '24', digestEnabled: '1' })
+		expect(calls[0].body).toEqual({ intervalHours: '24', digestEnabled: '1', ncscEnabled: '0' })
 		expect(vm.advisorySavedDigest).toBe(true)
+	})
+
+	it('sends the NCSC-NL switch as 1 and keeps the read status from the answer', async () => {
+		// @spec openspec/changes/advisories-ncsc-feed/specs/security-advisory-correlation/spec.md#requirement-ncsc-nl-advisories-are-matched-to-the-installed-server-and-apps
+		const status = { readUpTo: '2026-03-02T08:00:00+00:00', caughtUp: false }
+		const { vm, calls } = await mountPage({ '/api/advisory/settings': { data: { intervalHours: 6, digestEnabled: true, ncscEnabled: true, ncscStatus: status } } })
+		vm.advisoryIntervalInput = '6'
+		vm.advisoryDigestEnabled = true
+		vm.advisoryNcscEnabled = true
+
+		await vm.saveAdvisorySettings()
+		await flushPromises()
+
+		expect(calls[0].body).toEqual({ intervalHours: '6', digestEnabled: '1', ncscEnabled: '1' })
+		expect(vm.advisorySavedNcsc).toBe(true)
+		expect(vm.ncscPanelStatus).toEqual({ enabled: true, ...status })
 	})
 
 	it('shows the refusal and does not mark anything saved', async () => {

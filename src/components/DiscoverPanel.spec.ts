@@ -5,7 +5,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 // @spec openspec/specs/app-discovery/spec.md
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import DiscoverPanel from './DiscoverPanel.vue'
-import { ocsGet } from '../ocs.ts'
+import { ocsGet, ocsWrite } from '../ocs.ts'
 
 vi.mock('@nextcloud/l10n', () => ({
 	t: (_app: string, text: string, vars: Record<string, unknown> = {}) =>
@@ -47,9 +47,11 @@ vi.mock('@nextcloud/vue/components/NcTextField', () => ({
 
 vi.mock('../ocs', () => ({
 	ocsGet: vi.fn(),
+	ocsWrite: vi.fn(),
 }))
 
 const mockedOcsGet = vi.mocked(ocsGet)
+const mockedOcsWrite = vi.mocked(ocsWrite)
 
 async function typeQuery (wrapper: ReturnType<typeof mount>, value: string) {
 	await wrapper.get('[data-testid="discover-search-input"]').setValue(value)
@@ -305,5 +307,114 @@ describe('DiscoverPanel', () => {
 
 		await wrapper.get('[data-testid="discover-open-trusted"]').trigger('click')
 		expect(wrapper.emitted('openTrusted')).toEqual([[]])
+	})
+
+	it('shows the publisher, its marks and a similar-name hint on each hit', async () => {
+		mockedOcsGet.mockResolvedValue({
+			payload: {
+				results: [
+					{
+						appId: 'whiteboard',
+						name: 'Whiteboard',
+						summary: '',
+						iconUrl: null,
+						homepageUrl: null,
+						installedVersion: null,
+						publisher: 'Nextcloud GmbH',
+						marks: ['featured'],
+						similarTo: [{ appId: 'white-board', name: 'White-board', publisher: 'Someone Else' }],
+						sourceCandidates: [{ providerId: 'appstore', sourceBinding: { kind: 'appstore' }, installable: true, installableReason: null }],
+					},
+					{
+						appId: 'white-board',
+						name: 'White-board',
+						summary: '',
+						iconUrl: null,
+						homepageUrl: null,
+						installedVersion: null,
+						publisher: 'Someone Else',
+						marks: [],
+						similarTo: [{ appId: 'whiteboard', name: 'Whiteboard', publisher: 'Nextcloud GmbH' }],
+						sourceCandidates: [{ providerId: 'appstore', sourceBinding: { kind: 'appstore' }, installable: true, installableReason: null }],
+					},
+				],
+				providers: [{ id: 'appstore', label: 'Nextcloud App Store', enabled: true }],
+				errors: [],
+			},
+		})
+
+		const wrapper = mount(DiscoverPanel)
+		await typeQuery(wrapper, 'whiteboard')
+		await vi.advanceTimersByTimeAsync(400)
+		await flushPromises()
+
+		const [first, second] = wrapper.findAll('[data-testid="discover-hit"]')
+		expect(first.get('[data-testid="publisher-name"]').text()).toBe('By Nextcloud GmbH')
+		expect(first.get('[data-testid="publisher-trust-mark"]').text()).toContain('Featured in the App Store')
+		expect(first.get('[data-testid="publisher-similar-name"]').text()).toBe('Similar name: White-board by Someone Else')
+		expect(second.get('[data-testid="publisher-name"]').text()).toBe('By Someone Else')
+		expect(second.find('[data-testid="publisher-trust-mark"]').exists()).toBe(false)
+		expect(second.get('[data-testid="publisher-similar-name"]').text()).toBe('Similar name: Whiteboard by Nextcloud GmbH')
+	})
+
+	it('says the publisher is unknown for a hit from a server that sends none', async () => {
+		mockedOcsGet.mockResolvedValue({
+			payload: {
+				results: [{
+					appId: 'legacy',
+					name: 'Legacy',
+					summary: '',
+					iconUrl: null,
+					homepageUrl: null,
+					installedVersion: null,
+					sourceCandidates: [{ providerId: 'appstore', sourceBinding: { kind: 'appstore' }, installable: true, installableReason: null }],
+				}],
+				providers: [{ id: 'appstore', label: 'Nextcloud App Store', enabled: true }],
+				errors: [],
+			},
+		})
+
+		const wrapper = mount(DiscoverPanel)
+		await typeQuery(wrapper, 'legacy')
+		await vi.advanceTimersByTimeAsync(400)
+		await flushPromises()
+
+		expect(wrapper.get('[data-testid="publisher-name"]').text()).toBe('Publisher unknown')
+		expect(wrapper.find('[data-testid="publisher-similar-name"]').exists()).toBe(false)
+	})
+	// releases-new-release-alerts D3: "Follow releases" on a hit that is not installed.
+	// @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-an-admin-follows-the-releases-of-an-app-that-is-not-installed
+	it('follows a not-installed hit with its forge source, and offers no follow on an installed one', async () => {
+		mockedOcsWrite.mockReset()
+		mockedOcsWrite.mockResolvedValueOnce({ payload: {} }).mockResolvedValueOnce({ payload: {} })
+		mockedOcsGet.mockResolvedValue({
+			payload: {
+				results: [
+					{ appId: 'hermiq', name: 'Hermiq', summary: '', iconUrl: null, homepageUrl: null, installedVersion: null, sourceCandidates: [{ providerId: 'github', sourceBinding: { kind: 'github-release', owner: 'ConductionNL', repo: 'hermiq', forge: 'github' }, installable: true, installableReason: null }] },
+					{ appId: 'forms', name: 'Forms', summary: '', iconUrl: null, homepageUrl: null, installedVersion: null, sourceCandidates: [{ providerId: 'appstore', sourceBinding: { kind: 'appstore' }, installable: true, installableReason: null }] },
+					{ appId: 'deck', name: 'Deck', summary: '', iconUrl: null, homepageUrl: null, installedVersion: '1.0.0', sourceCandidates: [] },
+				],
+				providers: [],
+				errors: [],
+			},
+		})
+
+		const wrapper = mount(DiscoverPanel)
+		await typeQuery(wrapper, 'apps')
+		await vi.advanceTimersByTimeAsync(400)
+		await flushPromises()
+
+		const buttons = wrapper.findAll('[data-testid="discover-follow"]')
+		expect(buttons).toHaveLength(2)
+		await buttons[0].trigger('click')
+		await flushPromises()
+		await buttons[1].trigger('click')
+		await flushPromises()
+
+		expect(mockedOcsWrite.mock.calls).toEqual([
+			['POST', '/ocs/v2.php/apps/versioniq/api/follow', { appId: 'hermiq', sourceId: 'github:ConductionNL/hermiq' }],
+			['POST', '/ocs/v2.php/apps/versioniq/api/follow', { appId: 'forms', sourceId: '' }],
+		])
+		expect(wrapper.findAll('[data-testid="discover-follow"]').map((button) => button.text())).toEqual(['Following releases', 'Following releases'])
 	})
 })

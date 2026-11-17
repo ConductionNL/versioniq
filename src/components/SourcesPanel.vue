@@ -9,7 +9,7 @@ import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { ocsGet, ocsWrite } from '../ocs.ts'
 import { errorMessage } from '../utils/errorMessage.ts'
-import { FORGE_FORGEJO, forgeOf, isRetiredForge, forgeOptions as offeredForges } from '../utils/forges.ts'
+import { FORGE_FORGEJO, FORGE_GITLAB, forgeOf, isRetiredForge, forgeOptions as offeredForges } from '../utils/forges.ts'
 
 type AppOption = { id: string, label: string }
 type SelectOption = { id: string, label: string }
@@ -126,7 +126,61 @@ async function saveForgejoHost (): Promise<void> {
 	}
 }
 
+const GITLAB_HOST = '/ocs/v2.php/apps/versioniq/api/forges/gitlab'
+const gitlabHost = ref('')
+const gitlabNotice = ref('')
+const gitlabError = ref('')
+
+/**
+ * Loads the GitLab host: gitlab.com, or the self-managed host. The field
+ * shows only a self-managed host, so empty means gitlab.com.
+ *
+ * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-4.1
+ */
+async function loadGitlabHost (): Promise<void> {
+	try {
+		const { payload } = await ocsGet<{ host?: string, selfManaged?: boolean }>(GITLAB_HOST)
+		gitlabHost.value = payload.selfManaged === true ? (payload.host ?? '') : ''
+	} catch (e) {
+		gitlabError.value = errorMessage(e, t('versioniq', 'Could not load the GitLab host.'))
+	}
+}
+
+/**
+ * Saves the self-managed GitLab host, or with an empty field returns to gitlab.com.
+ *
+ * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-4.1
+ */
+async function saveGitlabHost (): Promise<void> {
+	gitlabError.value = ''
+	gitlabNotice.value = ''
+	loading.value = true
+	try {
+		const { payload, error: apiError } = await ocsWrite<{ host?: string, selfManaged?: boolean }>(
+			'PUT',
+			GITLAB_HOST,
+			{ host: gitlabHost.value.trim() },
+		)
+		if (apiError) {
+			gitlabError.value = apiError
+			return
+		}
+		gitlabHost.value = payload.selfManaged === true ? (payload.host ?? '') : ''
+		gitlabNotice.value = payload.selfManaged === true
+			? t('versioniq', 'GitLab host saved.')
+			: t('versioniq', 'GitLab reads from gitlab.com again.')
+	} catch (e) {
+		gitlabError.value = errorMessage(e, t('versioniq', 'Could not save the GitLab host.'))
+	} finally {
+		loading.value = false
+	}
+}
+
+/** GitLab names a project by its group path and project name, not an owner and a repository. */
+const isGitlab = computed(() => forge.value === FORGE_GITLAB)
+
 onMounted(loadForgejoHost)
+onMounted(loadGitlabHost)
 
 /**
  *
@@ -248,7 +302,7 @@ async function bind (): Promise<void> {
 	<div :class="$style.panel">
 		<h3 id="section-sources">{{ t('versioniq', 'App sources') }}</h3>
 		<p :class="$style.hint">
-			{{ t('versioniq', 'Bind an installed app to a GitHub repository, or to one on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.') }}
+			{{ t('versioniq', 'Bind an installed app to a GitHub repository, a GitLab project, or a repository on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.') }}
 		</p>
 
 		<NcNoteCard v-if="error" type="error">
@@ -289,8 +343,10 @@ async function bind (): Promise<void> {
 				:reduce="(option) => option.id"
 				:clearable="false"
 				label="label" />
-			<NcTextField v-model="owner" :label="t('versioniq', 'Owner')" placeholder="ConductionNL" />
-			<NcTextField v-model="repo" :label="t('versioniq', 'Repository')" placeholder="openregister" />
+			<NcTextField v-if="isGitlab" v-model="owner" :label="t('versioniq', 'Group or namespace')" placeholder="group/subgroup" />
+			<NcTextField v-else v-model="owner" :label="t('versioniq', 'Owner')" placeholder="ConductionNL" />
+			<NcTextField v-if="isGitlab" v-model="repo" :label="t('versioniq', 'Project')" placeholder="openregister" />
+			<NcTextField v-else v-model="repo" :label="t('versioniq', 'Repository')" placeholder="openregister" />
 			<NcTextField v-model="assetPattern" :label="t('versioniq', 'Asset pattern')" placeholder="*.tar.gz" />
 			<NcButton variant="primary" type="submit" :disabled="loading">
 				{{ t('versioniq', 'Bind source') }}
@@ -311,6 +367,23 @@ async function bind (): Promise<void> {
 			<NcTextField v-model="forgejoHost" :label="t('versioniq', 'Self-hosted Forgejo or Gitea host')" placeholder="https://git.example.org" />
 			<NcButton variant="secondary" type="submit" :disabled="loading">
 				{{ t('versioniq', 'Save host') }}
+			</NcButton>
+		</form>
+
+		<h3 id="section-gitlab-host">{{ t('versioniq', 'GitLab') }}</h3>
+		<p :class="$style.hint">
+			{{ t('versioniq', 'GitLab projects are read from gitlab.com. Set the address of your own GitLab host to read them from there instead; leave it empty for gitlab.com.') }}
+		</p>
+		<NcNoteCard v-if="gitlabError" type="error">
+			{{ gitlabError }}
+		</NcNoteCard>
+		<NcNoteCard v-if="gitlabNotice" type="success">
+			{{ gitlabNotice }}
+		</NcNoteCard>
+		<form :class="$style.form" data-testid="gitlab-host-form" @submit.prevent="saveGitlabHost">
+			<NcTextField v-model="gitlabHost" :label="t('versioniq', 'Self-managed GitLab host')" placeholder="https://gitlab.example.org" />
+			<NcButton variant="secondary" type="submit" :disabled="loading">
+				{{ t('versioniq', 'Save GitLab host') }}
 			</NcButton>
 		</form>
 	</div>

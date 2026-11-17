@@ -35,7 +35,43 @@ class TrustedSourceList {
 
 	public function __construct(
 		private IAppConfig $config,
+		// Audits trust changes (sources-trust-audit-and-offline-feed).
+		private ?SourceBindingStore $sourceAudit = null,
 	) {
+	}
+
+	/**
+	 * Add a pattern, and audit it when it was not trusted yet.
+	 *
+	 * @return list<string> The patterns after the change.
+	 * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/audit-trail/spec.md
+	 */
+	public function trust(string $pattern): array {
+		$patterns = $this->getPatterns();
+		if (!in_array($pattern, $patterns, true)) {
+			$patterns[] = $pattern;
+			$this->setPatterns($patterns);
+			$this->sourceAudit?->recordTrustChange($pattern, true);
+		}
+
+		return $this->getPatterns();
+	}
+
+	/**
+	 * Remove a pattern, and audit it when it was trusted.
+	 *
+	 * @return list<string> The patterns after the change.
+	 * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/audit-trail/spec.md
+	 */
+	public function untrust(string $pattern): array {
+		$patterns = $this->getPatterns();
+		$kept = array_values(array_filter($patterns, static fn (string $p): bool => $p !== $pattern));
+		$this->setPatterns($kept);
+		if (count($kept) !== count($patterns)) {
+			$this->sourceAudit?->recordTrustChange($pattern, false);
+		}
+
+		return $this->getPatterns();
 	}
 
 	/**

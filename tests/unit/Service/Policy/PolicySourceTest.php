@@ -80,7 +80,7 @@ final class PolicySourceTest extends TestCase {
 		$policies->expects($this->never())->method('all');
 		try {
 			$this->expectException(PolicyFileException::class);
-			$this->expectExceptionMessage('$.policies.openregister: must be one of none, patch, minor, all');
+			$this->expectExceptionMessage('$.policies.openregister: must be one of none, patch, minor, all, security');
 			$this->source($path, $policies)->current();
 		} finally {
 			unlink($path);

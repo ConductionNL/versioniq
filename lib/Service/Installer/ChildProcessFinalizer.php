@@ -129,15 +129,7 @@ class ChildProcessFinalizer {
 			return null;
 		}
 
-		$configBefore = self::readConfigFile();
-		$probe = $this->startChild($appId, $php, [self::PROBE_ARG]);
-		$outcome = $this->probeSucceeded($appId, $probe)
-			? $this->startChild($appId, $php, [$appId, $appPath, $enabled, $sourceId])
-			: null;
-		if ($probe !== null) {
-			// After whichever child ran last, also when only the probe ran.
-			$this->syncSystemConfig($appId, $configBefore, self::readConfigFile());
-		}
+		$outcome = $this->probeThenFinalize($php, [$appId, $appPath, $enabled, $sourceId]);
 		if ($outcome === null) {
 			return null;
 		}
@@ -149,6 +141,29 @@ class ChildProcessFinalizer {
 		$this->server->appManager->clearAppsCache();
 
 		return $appId;
+	}
+
+	/**
+	 * Starts the probe child and, when it booted Nextcloud, the finalize
+	 * child; then applies the system config keys whichever child ran last
+	 * changed. Null when the finalize child did not run.
+	 *
+	 * @param list<string> $finalizeArgs appId, appPath, enabled, sourceId.
+	 * @return ?array{exitCode: int, stdout: string, stderr: string}
+	 */
+	private function probeThenFinalize(string $php, array $finalizeArgs): ?array {
+		$appId = $finalizeArgs[0];
+		$configBefore = self::readConfigFile();
+		$probe = $this->startChild($appId, $php, [self::PROBE_ARG]);
+		$outcome = $this->probeSucceeded($appId, $probe)
+			? $this->startChild($appId, $php, $finalizeArgs)
+			: null;
+		if ($probe !== null) {
+			// After whichever child ran last, also when only the probe ran.
+			$this->syncSystemConfig($appId, $configBefore, self::readConfigFile());
+		}
+
+		return $outcome;
 	}
 
 	/**
@@ -167,17 +182,14 @@ class ChildProcessFinalizer {
 			return self::probe();
 		}
 		[$appId, $appPath, $enabled, $sourceId] = array_pad($args, 4, '');
-		if ($appId === '' || $appPath === '' || !is_file($appPath . '/appinfo/info.xml')) {
+		if (!self::namesAnApp($appId, $appPath)) {
 			echo self::RESULT_PREFIX . json_encode(['ok' => false, 'message' => 'Bad arguments for the finalize child process.']) . "\n";
 
 			return 2;
 		}
 
 		try {
-			$info = Server::get(IAppManager::class)->getAppInfoByPath($appPath . '/appinfo/info.xml');
-			if (!is_array($info) || ($info['id'] ?? null) !== $appId) {
-				throw new Exception('appinfo/info.xml of ' . $appId . ' could not be read in the child process.');
-			}
+			$info = self::appInfoOf($appId, $appPath);
 			Server::get(InstallFinalizer::class)->finalize($appPath, $info, $enabled, null, $sourceId !== '' ? $sourceId : 'appstore');
 		} catch (\Throwable $e) {
 			echo self::RESULT_PREFIX . json_encode(['ok' => false, 'class' => get_class($e), 'message' => $e->getMessage()], JSON_UNESCAPED_SLASHES) . "\n";
@@ -188,6 +200,30 @@ class ChildProcessFinalizer {
 		echo self::RESULT_PREFIX . json_encode(['ok' => true, 'appId' => $appId]) . "\n";
 
 		return 0;
+	}
+
+	/**
+	 * Whether the child's arguments name an app id and a folder holding an
+	 * `appinfo/info.xml`.
+	 */
+	private static function namesAnApp(string $appId, string $appPath): bool {
+		return $appId !== '' && $appPath !== '' && is_file($appPath . '/appinfo/info.xml');
+	}
+
+	/**
+	 * The parsed `appinfo/info.xml` in the app folder, read in the child.
+	 *
+	 * @return array<string, mixed>
+	 * @throws Exception When it cannot be read or names another app.
+	 */
+	private static function appInfoOf(string $appId, string $appPath): array {
+		$info = Server::get(IAppManager::class)->getAppInfoByPath($appPath . '/appinfo/info.xml');
+		if (!is_array($info) || ($info['id'] ?? null) !== $appId) {
+			throw new Exception('appinfo/info.xml of ' . $appId . ' could not be read in the child process.');
+		}
+
+		/** @var array<string, mixed> $info */
+		return $info;
 	}
 
 	/**
@@ -370,10 +406,18 @@ class ChildProcessFinalizer {
 		}
 
 		$changes = self::configChanges($before, $after);
-		if ($changes === []) {
-			return;
+		if ($changes !== []) {
+			$this->applySystemConfigChanges($appId, $changes);
 		}
+	}
 
+	/**
+	 * Writes the keys a finalize child changed to this process's system
+	 * config, logging their names only.
+	 *
+	 * @param array<array-key, mixed> $changes
+	 */
+	private function applySystemConfigChanges(string $appId, array $changes): void {
 		$keys = implode(', ', array_map(static fn (int|string $key): string => (string)$key, array_keys($changes)));
 		$this->logger->info('versioniq: the finalize child of {app} changed the system config keys {keys}; applying them to this process so its next config write keeps them (#611).', ['app' => $appId, 'keys' => $keys]);
 		try {
@@ -420,11 +464,7 @@ class ChildProcessFinalizer {
 			return null;
 		}
 		$file = $configDir . 'config.php';
-		clearstatcache(true, $file);
-		if (function_exists('opcache_invalidate')) {
-			@opcache_invalidate($file, false);
-		}
-		$handle = is_file($file) ? @fopen($file, 'r') : false;
+		$handle = self::openFresh($file);
 		if ($handle === false) {
 			return null;
 		}
@@ -437,6 +477,21 @@ class ChildProcessFinalizer {
 			flock($handle, LOCK_UN);
 			fclose($handle);
 		}
+	}
+
+	/**
+	 * Opens a file for reading after dropping its cached stat and opcache
+	 * entry; false when it is missing or cannot be opened.
+	 *
+	 * @return resource|false
+	 */
+	private static function openFresh(string $file) {
+		clearstatcache(true, $file);
+		if (function_exists('opcache_invalidate')) {
+			@opcache_invalidate($file, false);
+		}
+
+		return is_file($file) ? @fopen($file, 'r') : false;
 	}
 
 	/**
@@ -476,19 +531,27 @@ class ChildProcessFinalizer {
 	 */
 	private static function parseResult(string $stdout): array {
 		foreach (array_reverse(explode("\n", $stdout)) as $line) {
-			if (!str_starts_with($line, self::RESULT_PREFIX)) {
-				continue;
+			if (str_starts_with($line, self::RESULT_PREFIX)) {
+				return self::decodeResultLine($line);
 			}
-			$decoded = (array)json_decode(substr($line, strlen(self::RESULT_PREFIX)), true);
-
-			return [
-				'ok' => ($decoded['ok'] ?? null) === true,
-				'message' => isset($decoded['message']) && is_string($decoded['message']) ? $decoded['message'] : '',
-				'class' => isset($decoded['class']) && is_string($decoded['class']) ? $decoded['class'] : null,
-			];
 		}
 
 		return ['ok' => false, 'message' => '', 'class' => null];
+	}
+
+	/**
+	 * One result line of the child, decoded.
+	 *
+	 * @return array{ok: bool, message: string, class: ?string}
+	 */
+	private static function decodeResultLine(string $line): array {
+		$decoded = (array)json_decode(substr($line, strlen(self::RESULT_PREFIX)), true);
+
+		return [
+			'ok' => ($decoded['ok'] ?? null) === true,
+			'message' => isset($decoded['message']) && is_string($decoded['message']) ? $decoded['message'] : '',
+			'class' => isset($decoded['class']) && is_string($decoded['class']) ? $decoded['class'] : null,
+		];
 	}
 
 	private static function tail(string $text): string {
