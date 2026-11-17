@@ -12,10 +12,10 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Mcp;
 
 use OCA\OpenRegister\Mcp\IMcpToolProvider;
-use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
-use OCA\Versioniq\Service\Advisory\AdvisoryService;
-use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
-use OCA\Versioniq\Service\InstallerService;
+use OCA\Versioniq\Kernel\Contracts\AdvisoryResultStoreInterface;
+use OCA\Versioniq\Kernel\Contracts\AdvisoryServiceInterface;
+use OCA\Versioniq\Kernel\Contracts\AvailabilityResultStoreInterface;
+use OCA\Versioniq\Kernel\Contracts\InstallerServiceInterface;
 use OCP\IGroupManager;
 use OCP\IUserSession;
 
@@ -48,16 +48,16 @@ class VersioniqToolProvider implements IMcpToolProvider {
 	/**
 	 * Constructor.
 	 *
-	 * @param InstallerService $installer The installed apps and an app's versions.
-	 * @param AdvisoryResultStore $advisories The stored advisory results.
-	 * @param AvailabilityResultStore $availability The stored pending-updates snapshot.
+	 * @param InstallerServiceInterface $installer The installed apps and an app's versions.
+	 * @param AdvisoryResultStoreInterface $advisories The stored advisory results.
+	 * @param AvailabilityResultStoreInterface $availability The stored pending-updates snapshot.
 	 * @param IUserSession $userSession The caller.
 	 * @param IGroupManager $groupManager Whether the caller is an admin.
 	 */
 	public function __construct(
-		private InstallerService $installer,
-		private AdvisoryResultStore $advisories,
-		private AvailabilityResultStore $availability,
+		private InstallerServiceInterface $installer,
+		private AdvisoryResultStoreInterface $advisories,
+		private AvailabilityResultStoreInterface $availability,
 		private IUserSession $userSession,
 		private IGroupManager $groupManager,
 	) {
@@ -237,8 +237,8 @@ class VersioniqToolProvider implements IMcpToolProvider {
 		}
 
 		return match ($result['state'] ?? null) {
-			AdvisoryService::STATE_NONE => 'No published advisory concerns this app.',
-			AdvisoryService::STATE_AVAILABLE => 'The installed version is not affected by the published advisories, so there is nothing to move to.',
+			AdvisoryServiceInterface::STATE_NONE => 'No published advisory concerns this app.',
+			AdvisoryServiceInterface::STATE_AVAILABLE => 'The installed version is not affected by the published advisories, so there is nothing to move to.',
 			default => 'No available version resolves these advisories yet.',
 		};
 	}

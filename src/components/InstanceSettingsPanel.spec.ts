@@ -32,6 +32,8 @@ const settings = {
 	githubWebDefault: 'https://github.com',
 	advisoryFeedUrl: '',
 	advisoryFeedDefault: 'https://api.github.com/repos/nextcloud/security-advisories/security-advisories',
+	ncscFeedUrl: '',
+	ncscFeedDefault: 'https://advisories.ncsc.nl/csaf/v2/',
 	maxLinesBehind: null,
 	maxLinesBehindMax: 10,
 	notifyUsersOnUpdate: true,

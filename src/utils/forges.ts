@@ -3,7 +3,8 @@
 // forge of its own: it is never offered for a new binding, token or trusted
 // pattern, but anything still stored under it keeps working and is labelled
 // retired. Another Forgejo or Gitea host, Codeberg included, is the
-// self-hosted `forgejo` forge, whose host is set on the Sources tab.
+// self-hosted `forgejo` forge, whose host is set on the Sources tab. GitLab
+// is gitlab.com unless a self-managed GitLab host is set there.
 
 // @spec openspec/specs/external-sources/spec.md
 import { t } from '@nextcloud/l10n'
@@ -11,16 +12,21 @@ import { t } from '@nextcloud/l10n'
 export type ForgeOption = { id: string, label: string }
 
 export const FORGE_GITHUB = 'github'
+export const FORGE_GITLAB = 'gitlab'
 export const FORGE_FORGEJO = 'forgejo'
 
 const RETIRED_FORGES = ['codeberg']
 
 /**
  * The forges an admin may pick for something new.
+ *
+ * @spec openspec/changes/sources-gitlab-forge/specs/external-sources/spec.md
  */
 export function forgeOptions (): ForgeOption[] {
 	return [
 		{ id: FORGE_GITHUB, label: 'GitHub' },
+		// gitlab.com, or the self-managed GitLab host set on the Sources tab (sources-gitlab-forge).
+		{ id: FORGE_GITLAB, label: 'GitLab' },
 		{ id: FORGE_FORGEJO, label: t('versioniq', 'Self-hosted Forgejo or Gitea') },
 	]
 }

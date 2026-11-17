@@ -21,6 +21,7 @@ description:
       naar een eerdere versie, of juist een specifieke nieuwere versie
       installeren. Dat helpt bij het opsporen van fouten, het testen van
       compatibiliteit en het herstellen van een update die iets heeft stukgemaakt.
+      Conduction onderhoudt dit component binnen het Nextcloud ISV-programma.
     features:
       - Apps terugzetten naar een eerdere versie
       - Een specifieke nieuwere versie installeren
@@ -32,6 +33,7 @@ description:
       earlier version, or install a specific newer version. That helps with
       debugging, testing compatibility and recovering from an update that broke
       something.
+      Conduction maintains this component within the Nextcloud ISV programme.
     features:
       - Roll apps back to an earlier version
       - Install a specific newer version
@@ -47,7 +49,12 @@ localisation:
     - en
 
 maintenance:
-  type: internal
+  type: contract
+  contractors:
+    - name: Conduction B.V.
+      until: "2028-12-31"
+      email: info@conduction.nl
+      website: https://conduction.nl
   contacts:
     - name: Conduction Development Team
       email: info@conduction.nl

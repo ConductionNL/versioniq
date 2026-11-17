@@ -121,7 +121,7 @@ final class SettingsUpdateGoldenTest extends TestCase {
 			return array_keys(array_filter($fields, static fn (string $value): bool => $value !== 'none'));
 		});
 
-		$audit = $this->createMock(AuditLogger::class);
+		$audit = $this->getMockBuilder(AuditLogger::class)->disableOriginalConstructor()->onlyMethods(['record'])->getMock();
 		$audit->method('record')->willReturnCallback(function (mixed ...$args): void {
 			// The message is the last argument of record(), whatever shape the leading ones take.
 			$this->audits[] = end($args);
