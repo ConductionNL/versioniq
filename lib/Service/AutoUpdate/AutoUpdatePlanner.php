@@ -48,7 +48,15 @@ final class AutoUpdatePlanner {
 	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-an-admin-records-a-patch-policy-and-security-fixes-go-first
 	 */
 	public function plan(array $advisories = ['rows' => [], 'fresh' => false], ?PatchPolicy $patchPolicy = null): AutoUpdatePlan {
-		$run = new PlanRun($advisories['rows'], $advisories['fresh'], $patchPolicy ?? PatchPolicy::none());
+		return $this->planRun(new PlanRun($advisories['rows'], $advisories['fresh'], $patchPolicy ?? PatchPolicy::none()));
+	}
+
+	/**
+	 * The plan of one run: its advisory snapshot, patch policy and the kinds the schedule lets run tonight.
+	 *
+	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	 */
+	public function planRun(PlanRun $run): AutoUpdatePlan {
 		$planned = [];
 		foreach ($this->stores->policyStore->all() as $appId => $policy) {
 			if ($policy->level !== Policy::LEVEL_NONE) {
@@ -145,7 +153,7 @@ final class AutoUpdatePlanner {
 		if ($fix === null) {
 			// Nothing a security fix can do: a `security` app is done, any
 			// other level updates as usual.
-			return ['member' => $this->withoutFix($app, $run->patchPolicy), 'first' => false];
+			return ['member' => $this->withoutFix($app, $run), 'first' => false];
 		}
 
 		$handling = $run->patchPolicy->securityHandling(PatchPolicy::highestSeverity(self::advisoriesOf($run->rowOf($app->appId))));
@@ -161,7 +169,7 @@ final class AutoUpdatePlanner {
 
 		// `scheduled`: the fix installs with the other updates; any other
 		// level takes its usual update, which the fix is within.
-		$member = $app->level === Policy::LEVEL_SECURITY ? $this->memberFor($app, $fix) : $this->regularMember($app, $run->patchPolicy);
+		$member = $app->level === Policy::LEVEL_SECURITY ? $this->memberFor($app, $fix) : $this->regularMember($app, $run);
 
 		return ['member' => $member, 'first' => false];
 	}
@@ -183,23 +191,26 @@ final class AutoUpdatePlanner {
 	 * The member when no security fix applies: a `security` app has no
 	 * candidate, any other level updates as usual.
 	 */
-	private function withoutFix(PlanSubject $app, PatchPolicy $patchPolicy): AutoUpdateMember {
+	private function withoutFix(PlanSubject $app, PlanRun $run): AutoUpdateMember {
 		if ($app->level === Policy::LEVEL_SECURITY) {
 			return new AutoUpdateMember($app->appId, $app->installedVersion, null, AutoUpdateMember::REASON_NO_CANDIDATE);
 		}
 
-		return $this->regularMember($app, $patchPolicy);
+		return $this->regularMember($app, $run);
 	}
 
 	/**
 	 * The highest version within the app's level among the kinds the patch
-	 * policy does not set to by hand, or why there is none.
+	 * policy does not set to by hand and the schedule lets run tonight, or why
+	 * there is none.
 	 */
-	private function regularMember(PlanSubject $app, PatchPolicy $patchPolicy): AutoUpdateMember {
+	private function regularMember(PlanSubject $app, PlanRun $run): AutoUpdateMember {
+		$patchPolicy = $run->patchPolicy;
 		$installedVersion = $app->installedVersion;
 		$allowed = array_values(array_filter(
 			$app->available,
-			static fn (string $version): bool => $patchPolicy->regularHandling(PatchPolicy::kindOf($installedVersion, $version)) !== PatchPolicy::HANDLING_MANUAL,
+			static fn (string $version): bool => $patchPolicy->regularHandling(PatchPolicy::kindOf($installedVersion, $version)) !== PatchPolicy::HANDLING_MANUAL
+				&& $run->isDue($installedVersion, $version),
 		));
 		$candidate = $this->install->candidateSelector->select($installedVersion, $allowed, $app->level, $this->skippedOf($app->appId));
 		if ($candidate === null) {
