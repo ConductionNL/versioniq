@@ -55,3 +55,29 @@ describe('isPreRelease', () => {
 		expect(isPreRelease('v1.0.0')).toBe(false)
 	})
 })
+
+// releases-channel-and-prereleases: the version's own onChannel replaces the update-channel rule.
+// @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md
+describe('isBlockedBySafeMode with the app release channel', () => {
+	const stableServer = { enabled: true, installedVersion: '2.4.0', updateChannel: 'stable' }
+
+	it('blocks a version that is not on the app channel, even a newer stable one', () => {
+		expect(isBlockedBySafeMode('2.5.0', { ...stableServer, onChannel: false })).toBe(true)
+	})
+
+	it('allows a pre-release on an app that follows beta, on a stable server', () => {
+		expect(isBlockedBySafeMode('2.5.0-rc.1', { ...stableServer, onChannel: true })).toBe(false)
+	})
+
+	it('keeps blocking a downgrade that is on the channel', () => {
+		expect(isBlockedBySafeMode('2.3.9', { ...stableServer, onChannel: true })).toBe(true)
+	})
+
+	it('keeps the update-channel rule when the server did not stamp the version', () => {
+		expect(isBlockedBySafeMode('2.5.0-rc.1', stableServer)).toBe(true)
+	})
+
+	it('blocks nothing when safe mode is off', () => {
+		expect(isBlockedBySafeMode('2.5.0', { ...stableServer, enabled: false, onChannel: false })).toBe(false)
+	})
+})

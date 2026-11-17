@@ -33,6 +33,13 @@ class AutoUpdateNotifier implements AutoUpdateNotifierInterface {
 	use NotifiesAdmins;
 	use ResolvesAdminUids;
 
+	/** A group member that installed. */
+	public const OUTCOME_INSTALLED = 'installed';
+	/** A group member whose install failed; the group stopped there. */
+	public const OUTCOME_FAILED = 'failed';
+	/** A group member after a failure, left for the next run. */
+	public const OUTCOME_NOT_ATTEMPTED = 'not_attempted';
+
 	public function __construct(
 		private AdminNotificationServices $admin,
 		private LoggerInterface $logger,
@@ -67,6 +74,24 @@ class AutoUpdateNotifier implements AutoUpdateNotifierInterface {
 			'category' => $category,
 			'hint' => $hint,
 		])->withObject('auto_update', $appId . ':' . $targetVersion));
+	}
+
+	/**
+	 * Notifies admins once for a group run, listing every member with its
+	 * outcome; group members get no per-app notification (D3).
+	 *
+	 * @param list<array{appId: string, version: string, outcome: string}> $outcomes In install order.
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	public function notifyGroup(string $group, array $outcomes): void {
+		$this->notifyAdmins((new AdminNotice())
+			->withSubject('auto_update_group', ['group' => $group, 'members' => $outcomes])
+			->loggedAs('AutoUpdateNotifier: failed to raise notification', [
+				'group' => $group,
+				'subject' => 'auto_update_group',
+			])
+			->withObject('auto_update_group', $group));
 	}
 
 	/**
