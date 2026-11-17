@@ -204,22 +204,30 @@ class Notifier implements INotifier {
 		$members = $notification->getSubjectParameters()['members'] ?? [];
 		$lines = [];
 		foreach (is_array($members) ? $members : [] as $member) {
-			if (!is_array($member)) {
-				continue;
+			if (is_array($member)) {
+				$lines[] = self::groupMemberLine($member, $l);
 			}
-
-			$app = is_string($member['appId'] ?? null) ? $member['appId'] : '';
-			$version = is_string($member['version'] ?? null) ? $member['version'] : '';
-			$lines[] = match ($member['outcome'] ?? null) {
-				'installed' => $l->t('%1$s: updated to %2$s', [$app, $version]),
-				'failed' => $l->t('%1$s: update to %2$s failed', [$app, $version]),
-				default => $l->t('%1$s: not attempted', [$app]),
-			};
 		}
 
 		$notification
 			->setParsedSubject($l->t('Update group %1$s', [$this->stringParameter($notification, 'group')]))
 			->setParsedMessage(implode("\n", $lines));
+	}
+
+	/**
+	 * The line of one member of an update group's notification.
+	 *
+	 * @param array<array-key, mixed> $member
+	 */
+	private static function groupMemberLine(array $member, IL10N $l): string {
+		$app = is_string($member['appId'] ?? null) ? $member['appId'] : '';
+		$version = is_string($member['version'] ?? null) ? $member['version'] : '';
+
+		return match ($member['outcome'] ?? null) {
+			'installed' => $l->t('%1$s: updated to %2$s', [$app, $version]),
+			'failed' => $l->t('%1$s: update to %2$s failed', [$app, $version]),
+			default => $l->t('%1$s: not attempted', [$app]),
+		};
 	}
 
 	private function renderAdvisoryDigest(INotification $notification, IL10N $l): void {

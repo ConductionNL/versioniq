@@ -173,15 +173,12 @@ class AutoUpdateSettingsStore {
 			return [];
 		}
 
-		$deferred = [];
-		/** @var mixed $heldAt */
-		foreach ($decoded as $key => $heldAt) {
-			if (is_string($key) && is_string($heldAt) && $heldAt !== '') {
-				$deferred[$key] = $heldAt;
-			}
-		}
-
-		return $deferred;
+		/** @var array<string, string> */
+		return array_filter(
+			$decoded,
+			static fn (mixed $heldAt, int|string $key): bool => is_string($key) && is_string($heldAt) && $heldAt !== '',
+			ARRAY_FILTER_USE_BOTH
+		);
 	}
 
 	/**

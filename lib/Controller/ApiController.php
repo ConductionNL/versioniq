@@ -1762,6 +1762,13 @@ class ApiController extends OCSController {
 			return null;
 		}
 
+		return self::capWithin($text, $limit);
+	}
+
+	/**
+	 * The cap the text names, or false when it is not a whole number from 1 to $limit.
+	 */
+	private static function capWithin(string $text, int $limit): int|false {
 		if (preg_match('/^\d+$/', $text) !== 1 || (int)$text < 1 || (int)$text > $limit) {
 			return false;
 		}

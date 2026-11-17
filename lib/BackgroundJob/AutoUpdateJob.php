@@ -167,32 +167,51 @@ class AutoUpdateJob extends TimedJob {
 		/** @var array<string, true> $stopped */
 		$stopped = [];
 		foreach ($plan->installable() as $member) {
-			$group = $member->group;
-			if ($group !== null && isset($stopped[$group])) {
-				$groupOutcomes[$group][] = ['appId' => $member->appId, 'version' => (string)$member->candidate, 'outcome' => AutoUpdateNotifier::OUTCOME_NOT_ATTEMPTED];
-				continue;
-			}
-
-			$installed = $group === null
-				? $this->installMember($member)
-				: AuditNote::during('Update group ' . $group, fn (): bool => $this->installMember($member));
-			if ($group === null) {
-				continue;
-			}
-
-			$groupOutcomes[$group][] = [
-				'appId' => $member->appId,
-				'version' => (string)$member->candidate,
-				'outcome' => $installed ? AutoUpdateNotifier::OUTCOME_INSTALLED : AutoUpdateNotifier::OUTCOME_FAILED,
-			];
-			if (!$installed) {
-				$stopped[$group] = true;
+			$outcome = $this->runMember($member, $stopped);
+			if ($outcome !== null) {
+				$groupOutcomes[(string)$member->group][] = $outcome;
 			}
 		}
 
 		foreach ($groupOutcomes as $group => $outcomes) {
 			$this->notifier->notifyGroup($group, $outcomes);
 		}
+	}
+
+	/**
+	 * Installs one member; for a group member, the outcome its group reports.
+	 * A group stops at its first failure: the members after it are not attempted.
+	 *
+	 * @param array<string, true> $stopped The groups that stopped, updated here.
+	 *
+	 * @return array{appId: string, version: string, outcome: string}|null Null for an app in no group.
+	 */
+	private function runMember(AutoUpdateMember $member, array &$stopped): ?array {
+		$group = $member->group;
+		if ($group === null) {
+			$this->installMember($member);
+			return null;
+		}
+
+		if (isset($stopped[$group])) {
+			return self::groupOutcome($member, AutoUpdateNotifier::OUTCOME_NOT_ATTEMPTED);
+		}
+
+		$installed = AuditNote::during('Update group ' . $group, fn (): bool => $this->installMember($member));
+		if (!$installed) {
+			$stopped[$group] = true;
+		}
+
+		return self::groupOutcome($member, $installed ? AutoUpdateNotifier::OUTCOME_INSTALLED : AutoUpdateNotifier::OUTCOME_FAILED);
+	}
+
+	/**
+	 * One line of a group's outcome.
+	 *
+	 * @return array{appId: string, version: string, outcome: string}
+	 */
+	private static function groupOutcome(AutoUpdateMember $member, string $outcome): array {
+		return ['appId' => $member->appId, 'version' => (string)$member->candidate, 'outcome' => $outcome];
 	}
 
 	/**
