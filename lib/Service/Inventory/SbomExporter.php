@@ -63,6 +63,8 @@ class SbomExporter {
 	 * The download name, e.g. `nextcloud-sbom-20261114-100000.cdx.json`.
 	 *
 	 * @param string $format cyclonedx or spdx.
+	 *
+	 * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-an-admin-exports-the-inventory-as-an-sbom
 	 */
 	public function fileName(string $format): string {
 		$stamp = $this->time->getDateTime('now', new \DateTimeZone('UTC'))->format('Ymd-His');

@@ -109,6 +109,11 @@ class SbomArchive {
 		return $ids;
 	}
 
+	/**
+	 * How many SBOM copies the archive keeps, at least one.
+	 *
+	 * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-every-update-leaves-an-sbom-of-the-state-it-produced
+	 */
 	public function keep(): int {
 		return max(1, $this->appConfig->getValueInt(Application::APP_ID, self::CONFIG_KEEP, self::DEFAULT_KEEP));
 	}

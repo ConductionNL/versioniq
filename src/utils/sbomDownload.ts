@@ -15,6 +15,7 @@ export const SBOM_PATH = '/ocs/v2.php/apps/versioniq/api/sbom'
  *
  * @param disposition the Content-Disposition header, or null
  * @param fallback the name to use when it names none
+ * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-an-admin-exports-the-inventory-as-an-sbom
  */
 export function fileNameOf (disposition: string | null, fallback: string): string {
 	const match = /filename="?([^";]+)"?/i.exec(disposition ?? '')
@@ -26,6 +27,7 @@ export function fileNameOf (disposition: string | null, fallback: string): strin
  *
  * @param path the route below the webroot: the current inventory or one install's copy
  * @param fallbackName the file name when the server names none
+ * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-an-admin-exports-the-inventory-as-an-sbom
  */
 export async function downloadSbom (path: string, fallbackName: string): Promise<void> {
 	const response = await fetch(apiUrl(path), { headers: { ...ocsHeaders } })
@@ -47,6 +49,7 @@ export async function downloadSbom (path: string, fallbackName: string): Promise
  * The route of the current inventory in one format.
  *
  * @param format cyclonedx or spdx
+ * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-an-admin-exports-the-inventory-as-an-sbom
  */
 export function currentSbomPath (format: SbomFormat): string {
 	return `${SBOM_PATH}?format=${format}`

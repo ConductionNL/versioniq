@@ -36,18 +36,38 @@ class AppVersionMetricFamily implements IMetricFamily {
 	) {
 	}
 
+	/**
+	 * The metric family name.
+	 *
+	 * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-installed-app-versions-are-exposed-as-openmetrics
+	 */
 	public function name(): string {
 		return self::NAME;
 	}
 
+	/**
+	 * A gauge: one value per app.
+	 *
+	 * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-installed-app-versions-are-exposed-as-openmetrics
+	 */
 	public function type(): MetricType {
 		return MetricType::gauge;
 	}
 
+	/**
+	 * No unit: the samples are versions.
+	 *
+	 * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-installed-app-versions-are-exposed-as-openmetrics
+	 */
 	public function unit(): string {
 		return '';
 	}
 
+	/**
+	 * The help text of the metric family.
+	 *
+	 * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-installed-app-versions-are-exposed-as-openmetrics
+	 */
 	public function help(): string {
 		return 'Installed app versions, one sample per app';
 	}
