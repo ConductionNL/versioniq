@@ -13,7 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
-use OCA\Versioniq\Service\Source\ForgeRegistry;
+use OCA\Versioniq\Kernel\Contracts\ForgeRegistryInterface;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
@@ -24,7 +24,8 @@ use OCP\IRequest;
 use OCP\IUserSession;
 
 /**
- * Reads and sets the self-hosted Forgejo or Gitea host (issue #437). Before
+ * Reads and sets the self-hosted Forgejo or Gitea host (issue #437), and the
+ * GitLab host (gitlab.com or a self-managed one, sources-gitlab-forge D2). Before
  * this, another Forgejo or Gitea host was reachable only by overriding
  * `forge.codeberg.api_base` with occ, which replaced Codeberg; Codeberg is now
  * retired as a forge of its own and this host is the generic route.
@@ -41,7 +42,7 @@ class ForgeController extends OCSController {
 	public function __construct(
 		string $appName,
 		IRequest $request,
-		private ForgeRegistry $forgeRegistry,
+		private ForgeRegistryInterface $forgeRegistry,
 		private IGroupManager $groupManager,
 		private IUserSession $userSession,
 	) {
@@ -96,6 +97,65 @@ class ForgeController extends OCSController {
 		}
 
 		return new DataResponse($this->hostPayload());
+	}
+
+	/**
+	 * Returns the GitLab host releases come from
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{host: string, selfManaged: bool}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 *
+	 * 200: The host: gitlab.com, or the self-managed host when one is set
+	 * 403: Caller is not an administrator
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-4.1
+	 */
+	#[ApiRoute(verb: 'GET', url: '/api/forges/gitlab')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/forges/gitlab', postfix: 'v1')]
+	public function gitlabHost(): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		return new DataResponse($this->gitlabPayload());
+	}
+
+	/**
+	 * Points GitLab at a self-managed host, or back at gitlab.com
+	 *
+	 * @param string $host An https address such as https://gitlab.example.org; empty means gitlab.com
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{host: string, selfManaged: bool}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 *
+	 * 200: The host after the change
+	 * 400: The host is not an acceptable https address
+	 * 403: Caller is not an administrator
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-4.1
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'PUT', url: '/api/forges/gitlab')]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/forges/gitlab', postfix: 'v1')]
+	public function setGitlabHost(string $host = ''): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		try {
+			$this->forgeRegistry->setGitlabHost($host);
+		} catch (InvalidArgumentException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
+
+		return new DataResponse($this->gitlabPayload());
+	}
+
+	/**
+	 * @return array{host: string, selfManaged: bool}
+	 */
+	private function gitlabPayload(): array {
+		$host = $this->forgeRegistry->gitlabHost();
+
+		return ['host' => $host, 'selfManaged' => $host !== ForgeRegistryInterface::GITLAB_WEB_DEFAULT];
 	}
 
 	/**

@@ -12,11 +12,11 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Command;
 
+use OCA\Versioniq\Kernel\Contracts\InstallerServiceInterface;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\PinChoice;
-use OCA\Versioniq\Service\InstallerService;
 use OCP\AppFramework\Http;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -52,7 +52,7 @@ class InstallVersion extends Command {
 	private const EXIT_FINALIZE = InstallExitCode::FINALIZE;
 
 	public function __construct(
-		private InstallerService $installerService,
+		private InstallerServiceInterface $installerService,
 	) {
 		parent::__construct();
 	}
@@ -135,17 +135,33 @@ class InstallVersion extends Command {
 
 	private function renderHuman(OutputInterface $output, int $exitCode, array $payload): void {
 		if ($exitCode === self::EXIT_OK) {
-			$output->writeln(sprintf('<info>%s</info>', $payload['message'] ?? 'App installed.'));
-			if (isset($payload['toVersion'])) {
-				$output->writeln(sprintf('Version: %s', $payload['toVersion']));
-			}
-			if (isset($payload['updateType'])) {
-				$output->writeln(sprintf('Update type: %s', $payload['updateType']));
-			}
+			self::renderInstalled($output, $payload);
 
 			return;
 		}
 
+		$this->renderFailure($output, $exitCode, $payload);
+	}
+
+	/**
+	 * The success lines: the message, then the version and update type when
+	 * the outcome names them.
+	 */
+	private static function renderInstalled(OutputInterface $output, array $payload): void {
+		$output->writeln(sprintf('<info>%s</info>', $payload['message'] ?? 'App installed.'));
+		if (isset($payload['toVersion'])) {
+			$output->writeln(sprintf('Version: %s', $payload['toVersion']));
+		}
+		if (isset($payload['updateType'])) {
+			$output->writeln(sprintf('Update type: %s', $payload['updateType']));
+		}
+	}
+
+	/**
+	 * The failure lines on the error output: the message, the hint, and the
+	 * install status after a failed finalize.
+	 */
+	private function renderFailure(OutputInterface $output, int $exitCode, array $payload): void {
 		$error = $this->errorOutput($output);
 		$error->writeln(sprintf('<error>%s</error>', $payload['message'] ?? 'Install failed.'));
 		if (isset($payload['hint']) && is_string($payload['hint']) && $payload['hint'] !== '') {
