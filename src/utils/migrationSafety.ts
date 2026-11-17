@@ -175,7 +175,7 @@ const MIGRATION_ACTION_TEXTS: Record<string, () => string> = {
  * @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
  */
 export function migrationActionText(attribute: string): string {
-	const text = Object.prototype.hasOwnProperty.call(MIGRATION_ACTION_TEXTS, attribute) ? MIGRATION_ACTION_TEXTS[attribute] : undefined
+	const text = Object.hasOwn(MIGRATION_ACTION_TEXTS, attribute) ? MIGRATION_ACTION_TEXTS[attribute] : undefined
 	return text ? text() : attribute
 }
 
