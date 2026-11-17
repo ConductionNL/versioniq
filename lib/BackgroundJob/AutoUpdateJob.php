@@ -151,13 +151,16 @@ class AutoUpdateJob extends TimedJob {
 	 * Whether an admin's decision or the notice period holds this version
 	 * back, checked in the order of design D6: a declined version is skipped;
 	 * with a notice period the version must be the stored proposal and its
-	 * planned time must have come; an app that requires approval installs
-	 * only the exact version an admin approved. Without notice, approval or
+	 * planned time must have come, unless it is a `next_window` security fix;
+	 * an app that requires approval installs only the exact version an admin
+	 * approved. Without notice, approval or
 	 * declines nothing is held back.
 	 *
 	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
 	 */
-	private function isHeldBack(string $appId, string $candidate, \DateTimeInterface $now): bool {
+	private function isHeldBack(AutoUpdateMember $member, \DateTimeInterface $now): bool {
+		$appId = $member->appId;
+		$candidate = (string)$member->candidate;
 		$proposals = $this->stores->proposalStore;
 		if ($proposals === null) {
 			return false;
@@ -166,7 +169,9 @@ class AutoUpdateJob extends TimedJob {
 		if ($proposals->declineOf($appId, $candidate) !== null) {
 			return true;
 		}
-		if ($this->stores->settingsStore->getNoticeDays() > 0 && !$this->noticeHasPassed($proposals->proposalFor($appId), $candidate, $now)) {
+		// A security fix the patch policy installs at the next window skips the
+		// notice period; a decline and approval still apply (D5).
+		if (!$member->nextWindowFix && $this->stores->settingsStore->getNoticeDays() > 0 && !$this->noticeHasPassed($proposals->proposalFor($appId), $candidate, $now)) {
 			return true;
 		}
 
@@ -244,7 +249,7 @@ class AutoUpdateJob extends TimedJob {
 	 */
 	private function runMember(AutoUpdateMember $member, array &$stopped, \DateTimeInterface $now): ?array {
 		$group = $member->group;
-		$heldBack = $this->isHeldBack($member->appId, (string)$member->candidate, $now);
+		$heldBack = $this->isHeldBack($member, $now);
 		if ($group === null) {
 			if (!$heldBack) {
 				$this->installMember($member);
