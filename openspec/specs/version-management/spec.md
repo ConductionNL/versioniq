@@ -586,6 +586,80 @@ Versioniq MUST refuse to list versions of, install or update a core app that Nex
 - **WHEN** an admin runs `occ versioniq:install versioniq 1.0.0`
 - **THEN** the command MUST exit with code 2 and change nothing
 
+### Requirement: The version view shows an About card with publisher, licence and links
+
+When an admin opens an app's versions, the page MUST show an "About <app>" card beside the version list, as drawn on the VqAppVersies board. The card MUST show the publisher (the author in the app's `appinfo/info.xml`), the licence, the installed version with its enabled or disabled state, and the app's description. It MUST link to the website, the source repository and the issue tracker the app declares, each opening in a new tab. A link the app does not declare MUST be left out, not shown empty. The list payload of `GET /api/apps` MUST carry `author`, `licence` and `links` (`website`, `repository`, `bugs`) for every installed app.
+
+#### Scenario: An admin reads who publishes an app and under which licence
+
+@e2e tests/e2e/version-management.spec.ts
+
+- **GIVEN** Dossiq 0.4.48 is installed and enabled, and its `info.xml` names author "Conduction", licence `EUPL-1.2`, a website, a repository and a bug tracker
+- **WHEN** the admin opens the versions of Dossiq
+- **THEN** the About card MUST show "Conduction", "EUPL-1.2" and "0.4.48, enabled"
+- **AND** it MUST link to the website, the source and the issue tracker
+
+#### Scenario: An app without a bug tracker
+
+- **GIVEN** an installed app whose `info.xml` declares a website but no `bugs` element
+- **WHEN** the admin opens its versions
+- **THEN** the card MUST show the website link
+- **AND** it MUST NOT show a "Report a problem" link
+
+#### Scenario: The list payload carries the metadata
+
+- **WHEN** an admin calls `GET /api/apps`
+- **THEN** every installed app MUST carry `author`, `licence` and `links`
+- **AND** a value the app does not declare MUST be `null`
+
+### Requirement: An admin updates one app or all apps in one action
+
+A card whose app has a newer version this server can run MUST offer "Update to {version}", which MUST show the move and the release notes in between and install that version through the normal install endpoint after one confirmation. The Apps tab MUST offer "Update all" when any app has such a version: it MUST list those apps, leave pinned apps unticked with the reason, ask for the password at most once for the run, install the ticked apps one after the other through the same endpoint, show each outcome as it lands, and continue after a failure. No action here MAY bypass a guard of the install endpoint.
+
+#### Scenario: An admin updates one app from its card
+
+- **GIVEN** `openregister` 2.3.0 is installed and the last sweep recorded 2.4.1 as the newest version this server can run
+- **WHEN** an admin clicks "Update to 2.4.1" on the card and confirms
+- **THEN** `openregister` 2.4.1 MUST be installed through the install endpoint
+- **AND** the History tab MUST show the install row
+
+#### Scenario: An admin updates all apps and one fails
+
+- **GIVEN** `openregister`, `calendar` and `hermiq` have newer versions, `hermiq` is pinned, and the `calendar` download fails its checksum
+- **WHEN** an admin clicks "Update all", keeps the default ticks, and confirms their password once
+- **THEN** `hermiq` MUST be listed unticked as pinned and MUST NOT be installed
+- **AND** `openregister` MUST read updated and `calendar` MUST read failed with its category and hint
+- **AND** the admin MUST NOT be asked for the password a second time within the platform's confirmation window
+
+### Requirement: An app left disabled by an update is reported and, when it can run, re-enabled
+
+When an app that was enabled is found disabled while its own version or the server version changed since Versioniq last saw it, the system MUST treat it as disabled by an update. When the installed version declares support for the running server and the admin switched on automatic re-enabling, the system MUST enable it and record a `reactivate` audit entry with the outcome. Otherwise it MUST notify every admin, naming the app and the change, and saying whether the installed version runs on this server, with the newest version that does when one is known. The app card MUST say "Disabled by the update to {version}" and MUST offer Enable when the version runs. A disable without a version change of the app or the server MUST be recorded as `external_disable` with its actor and MUST NOT be re-enabled. Automatic re-enabling MUST be off by default, and switching it MUST require password confirmation and be recorded in the audit trail.
+
+#### Scenario: A server upgrade leaves an app off, and it runs
+
+- **GIVEN** `forms` 4.3.0 was enabled and declares support for Nextcloud 32 to 34, the server was upgraded from 33 to 34, and `forms` is disabled afterwards
+- **WHEN** the hourly check runs with automatic re-enabling off
+- **THEN** admins MUST be notified that `forms` was left disabled and runs on this server
+- **AND** its card MUST read "Disabled by the update to Nextcloud 34" with Enable
+
+#### Scenario: With the switch on, Versioniq enables it
+
+- **GIVEN** the same situation and automatic re-enabling is on
+- **WHEN** the hourly check runs
+- **THEN** `forms` MUST be enabled and the audit trail MUST hold a `reactivate` entry with status success
+
+#### Scenario: An app that does not run stays off
+
+- **GIVEN** `hermiq` 1.4.0 declares at most Nextcloud 33, the server moved to 34, and `hermiq` was disabled by the upgrade
+- **WHEN** the hourly check runs, with the switch on or off
+- **THEN** `hermiq` MUST stay disabled, and the notification MUST say it does not run on Nextcloud 34
+
+#### Scenario: A deliberate disable is left alone
+
+- **GIVEN** admin `bob` disables `calendar` on the Apps page, with no version change
+- **WHEN** the hourly check runs with the switch on
+- **THEN** `calendar` MUST stay disabled, and the History tab MUST show an `external_disable` entry by bob
+
 ## User Stories
 
 1. As a Nextcloud admin, I want to roll back an app to a previous version so that I can recover from a broken update.

@@ -50,6 +50,15 @@ final class ExternalInstallRun {
 	}
 
 	/**
+	 * Whether the requested version is newer than the installed one.
+	 *
+	 * @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
+	 */
+	public function isUpgrade(): bool {
+		return $this->installedVersion !== '' && version_compare($this->request->version, $this->installedVersion, '>');
+	}
+
+	/**
 	 * The enabled value the finalizer writes: "no" for a fresh install, else the value before the run.
 	 *
 	 * @spec openspec/specs/external-sources/spec.md
