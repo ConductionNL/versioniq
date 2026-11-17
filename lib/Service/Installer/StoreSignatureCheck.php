@@ -40,6 +40,22 @@ class StoreSignatureCheck {
 	 * @spec openspec/changes/install-manual-upload/tasks.md#task-1.2
 	 */
 	public function storeRelease(string $appId, string $version, string $archivePath): ?array {
+		$release = $this->signedRelease($appId, $version);
+		if ($release === null || !self::verifiesArchive($release, $archivePath)) {
+			return null;
+		}
+
+		return $this->signedInstaller->trustsCertificate($appId, $release['certificate']) ? $release : null;
+	}
+
+	/**
+	 * The App Store release of this version when it carries a signature and a certificate, or null.
+	 *
+	 * @return array<string, mixed>|null
+	 *
+	 * @spec openspec/changes/install-manual-upload/tasks.md#task-1.2
+	 */
+	private function signedRelease(string $appId, string $version): ?array {
 		try {
 			$release = $this->appStore->resolveRelease($appId, $version, SourceBinding::appStore());
 		} catch (\Throwable) {
@@ -51,15 +67,20 @@ class StoreSignatureCheck {
 
 		$signature = $release['signature'] ?? null;
 		$certificate = $release['certificate'] ?? null;
-		if (!is_string($signature) || !is_string($certificate) || $signature === '' || $certificate === '') {
-			return null;
-		}
 
+		return is_string($signature) && is_string($certificate) && $signature !== '' && $certificate !== '' ? $release : null;
+	}
+
+	/**
+	 * Whether the release's signature verifies the archive at `$archivePath`.
+	 *
+	 * @param array<string, mixed> $release A release with a string signature and certificate.
+	 *
+	 * @spec openspec/changes/install-manual-upload/tasks.md#task-1.2
+	 */
+	private static function verifiesArchive(array $release, string $archivePath): bool {
 		$bytes = @file_get_contents($archivePath);
-		if (!is_string($bytes) || !ArchiveSignature::verifies($bytes, $signature, $certificate)) {
-			return null;
-		}
 
-		return $this->signedInstaller->trustsCertificate($appId, $certificate) ? $release : null;
+		return is_string($bytes) && ArchiveSignature::verifies($bytes, $release['signature'], $release['certificate']);
 	}
 }

@@ -26,6 +26,19 @@ export type UploadInstallOutcome = {
 	payload: Record<string, unknown>
 }
 
+/** The credentials strict password confirmation requires. */
+export type UploadCredentials = {
+	user: string
+	password: string
+}
+
+/** What the admin chose when installing an inspected upload. */
+export type UploadInstallChoices = {
+	token: string
+	expectedSha256: string
+	acceptShown: boolean
+}
+
 type OcsBody<T> = { ocs?: { meta?: { status?: string, statuscode?: number, message?: string }, data?: T } }
 
 /**
@@ -50,16 +63,15 @@ async function readOcs <T>(response: Response): Promise<{ data: T | undefined, m
  * Uploads an archive and returns what it is; installs nothing.
  *
  * @param file The `.tar.gz` the admin picked.
- * @param user The login name.
- * @param password The password strict confirmation requires.
+ * @param credentials The login name and the password strict confirmation requires.
  * @spec openspec/changes/install-manual-upload/tasks.md#task-3.1
  */
-export async function inspectArchive (file: File, user: string, password: string): Promise<InspectedUpload> {
+export async function inspectArchive (file: File, credentials: UploadCredentials): Promise<InspectedUpload> {
 	const form = new FormData()
 	form.append('archive', file)
 	const response = await fetch(apiUrl(withOcsJson(`${BASE}/inspect`)), {
 		method: 'POST',
-		headers: { ...(ocsHeaders as Record<string, string>), Accept: 'application/json', Authorization: basicAuthHeader(user, password) },
+		headers: { ...(ocsHeaders as Record<string, string>), Accept: 'application/json', Authorization: basicAuthHeader(credentials.user, credentials.password) },
 		body: form,
 	})
 	const { data, message } = await readOcs<InspectedUpload>(response)
@@ -73,22 +85,18 @@ export async function inspectArchive (file: File, user: string, password: string
  * Installs an inspected upload. A refusal is an outcome, not an exception, so
  * the dialog can show its message in place.
  *
- * @param token The token inspectArchive() returned.
- * @param choices The SHA-256 the admin expects (blank for none) and whether they accept the shown one.
- * @param choices.expectedSha256 The SHA-256 the admin pasted.
- * @param choices.acceptShown Whether the admin accepted the shown SHA-256.
- * @param user The login name.
- * @param password The password strict confirmation requires.
+ * @param choices The token inspectArchive() returned, the SHA-256 the admin expects (blank for none) and whether they accept the shown one.
+ * @param credentials The login name and the password strict confirmation requires.
  * @spec openspec/changes/install-manual-upload/tasks.md#task-3.1
  */
-export async function installUpload (token: string, choices: { expectedSha256: string, acceptShown: boolean }, user: string, password: string): Promise<UploadInstallOutcome> {
-	const response = await fetch(apiUrl(withOcsJson(`${BASE}/${encodeURIComponent(token)}/install`)), {
+export async function installUpload (choices: UploadInstallChoices, credentials: UploadCredentials): Promise<UploadInstallOutcome> {
+	const response = await fetch(apiUrl(withOcsJson(`${BASE}/${encodeURIComponent(choices.token)}/install`)), {
 		method: 'POST',
 		headers: {
 			...(ocsHeaders as Record<string, string>),
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
-			Authorization: basicAuthHeader(user, password),
+			Authorization: basicAuthHeader(credentials.user, credentials.password),
 		},
 		body: JSON.stringify({ expectedSha256: choices.expectedSha256.trim(), acceptShown: choices.acceptShown }),
 	})

@@ -26,7 +26,7 @@ describe('inspectArchive', () => {
 		vi.stubGlobal('OC', { webroot: '' })
 		const file = new File(['bytes'], 'hermiq.tar.gz')
 
-		expect(await inspectArchive(file, 'admin', 'secret')).toEqual(read)
+		expect(await inspectArchive(file, { user: 'admin', password: 'secret' })).toEqual(read)
 
 		const [url, init] = fetchMock.mock.calls[0]
 		expect(String(url)).toContain('/ocs/v2.php/apps/versioniq/api/v1/upload/inspect?format=json')
@@ -39,7 +39,7 @@ describe('inspectArchive', () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ocs({ message: 'The archive has no appinfo/info.xml.' }, 422)))
 		vi.stubGlobal('OC', { webroot: '' })
 
-		await expect(inspectArchive(new File(['x'], 'x.tar.gz'), 'admin', 'secret')).rejects.toThrow('The archive has no appinfo/info.xml.')
+		await expect(inspectArchive(new File(['x'], 'x.tar.gz'), { user: 'admin', password: 'secret' })).rejects.toThrow('The archive has no appinfo/info.xml.')
 	})
 })
 
@@ -49,7 +49,7 @@ describe('installUpload', () => {
 		vi.stubGlobal('fetch', fetchMock)
 		vi.stubGlobal('OC', { webroot: '' })
 
-		const outcome = await installUpload('tok', { expectedSha256: ' abc ', acceptShown: false }, 'admin', 'secret')
+		const outcome = await installUpload({ token: 'tok', expectedSha256: ' abc ', acceptShown: false }, { user: 'admin', password: 'secret' })
 
 		expect(outcome).toEqual({ ok: true, message: '', payload: { sourceId: 'upload', installStatus: 'installed' } })
 		const [url, init] = fetchMock.mock.calls[0]
@@ -62,7 +62,7 @@ describe('installUpload', () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ocs({ message: 'Unsigned uploads are off.' }, 403)))
 		vi.stubGlobal('OC', { webroot: '' })
 
-		const outcome = await installUpload('tok', { expectedSha256: '', acceptShown: true }, 'admin', 'secret')
+		const outcome = await installUpload({ token: 'tok', expectedSha256: '', acceptShown: true }, { user: 'admin', password: 'secret' })
 
 		expect(outcome.ok).toBe(false)
 		expect(outcome.message).toBe('Unsigned uploads are off.')

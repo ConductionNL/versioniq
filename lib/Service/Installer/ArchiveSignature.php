@@ -28,16 +28,20 @@ final class ArchiveSignature {
 	 * @spec openspec/changes/install-manual-upload/tasks.md#task-1.2
 	 */
 	public static function verifies(string $bytes, string $signature, string $certificate): bool {
+		$decoded = self::decoded($signature);
+		$publicKey = $decoded === null ? false : @openssl_pkey_get_public($certificate);
+
+		return $publicKey !== false && openssl_verify($bytes, (string)$decoded, $publicKey, OPENSSL_ALGO_SHA512) === 1;
+	}
+
+	/**
+	 * The raw signature bytes of a base64 signature, or null when it is not valid base64 or empty.
+	 *
+	 * @spec openspec/changes/install-manual-upload/tasks.md#task-1.2
+	 */
+	private static function decoded(string $signature): ?string {
 		$decoded = base64_decode($signature, true);
-		if ($decoded === false || $decoded === '') {
-			return false;
-		}
 
-		$publicKey = @openssl_pkey_get_public($certificate);
-		if ($publicKey === false) {
-			return false;
-		}
-
-		return openssl_verify($bytes, $decoded, $publicKey, OPENSSL_ALGO_SHA512) === 1;
+		return $decoded === false || $decoded === '' ? null : $decoded;
 	}
 }

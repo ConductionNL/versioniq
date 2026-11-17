@@ -69,7 +69,7 @@ describe('UploadInstallDialog', () => {
 		await button(ready, 'Read archive').trigger('click')
 		await flushPromises()
 
-		expect(inspectArchive).toHaveBeenCalledWith(expect.any(File), 'admin', 'secret')
+		expect(inspectArchive).toHaveBeenCalledWith(expect.any(File), { user: 'admin', password: 'secret' })
 		expect(ready.find('[data-testid="upload-facts"]').text()).toContain('hermiq')
 		expect(ready.find('[data-testid="upload-facts"]').text()).toContain('1.4.1')
 		expect(ready.find('[data-testid="upload-facts"]').text()).toContain(SHA)
@@ -87,7 +87,7 @@ describe('UploadInstallDialog', () => {
 		await button(wrapper, 'Install hermiq 1.4.1').trigger('click')
 		await flushPromises()
 
-		expect(installUpload).toHaveBeenCalledWith('tok', { expectedSha256: '', acceptShown: false }, 'admin', 'secret')
+		expect(installUpload).toHaveBeenCalledWith({ token: 'tok', expectedSha256: '', acceptShown: false }, { user: 'admin', password: 'secret' })
 		expect(wrapper.emitted('installed')).toEqual([[{ sourceId: 'upload' }]])
 		expect(wrapper.emitted('update:open')).toEqual([[false]])
 	})
@@ -108,7 +108,7 @@ describe('UploadInstallDialog', () => {
 		await button(wrapper, 'Install hermiq 1.4.1').trigger('click')
 		await flushPromises()
 
-		expect(installUpload).toHaveBeenCalledWith('tok', { expectedSha256: SHA, acceptShown: false }, 'admin', 'secret')
+		expect(installUpload).toHaveBeenCalledWith({ token: 'tok', expectedSha256: SHA, acceptShown: false }, { user: 'admin', password: 'secret' })
 	})
 
 	it('enables Install for an unsigned archive when the shown checksum is accepted', async () => {

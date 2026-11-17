@@ -81,7 +81,7 @@ async function readArchive (): Promise<void> {
 	busy.value = true
 	error.value = ''
 	try {
-		inspected.value = await inspectArchive(file.value, currentLoginName(), password.value)
+		inspected.value = await inspectArchive(file.value, { user: currentLoginName(), password: password.value })
 	} catch (failure) {
 		error.value = failure instanceof Error ? failure.message : t('versioniq', 'Could not read the archive.')
 	} finally {
@@ -97,7 +97,7 @@ async function install (): Promise<void> {
 	busy.value = true
 	error.value = ''
 	try {
-		const outcome = await installUpload(inspected.value.token, { expectedSha256: expectedSha.value, acceptShown: acceptShown.value }, currentLoginName(), password.value)
+		const outcome = await installUpload({ token: inspected.value.token, expectedSha256: expectedSha.value, acceptShown: acceptShown.value }, { user: currentLoginName(), password: password.value })
 		if (!outcome.ok) {
 			error.value = outcome.message
 			return

@@ -844,7 +844,7 @@ class InstallerService implements InstallerServiceInterface {
 				$this->server->configs->config->setSystemValue('maintenance', true);
 			}
 			$result = $archive->release !== null
-				? $this->installers->signedInstaller->installLocalArchive($target->appId, $archive->release, $archive)
+				? $this->installers->signedInstaller->installLocalArchive($target->appId, $archive)
 				: $this->installers->externalInstaller->installLocalArchive($target->appId, $target->version, $archive, $run->binding);
 
 			return $this->uploadOutcome($this->installEnvelope(Http::STATUS_OK, $this->uploadSuccessPayload($run, $result)), $archive);

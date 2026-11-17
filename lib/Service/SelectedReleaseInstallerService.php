@@ -393,16 +393,16 @@ class SelectedReleaseInstallerService {
 	 * version, migration diff, backup and restore, finalize. The install is
 	 * audited and cached under source id `upload`.
 	 *
-	 * @param array<string, mixed> $release The store release whose signature verified the archive.
+	 * @param LocalArchive $archive The upload, carrying the store release whose signature verified it.
 	 * @return array<string, mixed>
 	 * @throws Exception
 	 *
 	 * @spec openspec/changes/install-manual-upload/tasks.md#task-2.1
 	 */
-	public function installLocalArchive(string $appId, array $release, LocalArchive $archive): array {
+	public function installLocalArchive(string $appId, LocalArchive $archive): array {
 		$this->localArchive = $archive;
 		try {
-			return $this->installFromSelectedRelease($appId, $release);
+			return $this->installFromSelectedRelease($appId, $archive->release ?? []);
 		} finally {
 			$this->localArchive = null;
 		}

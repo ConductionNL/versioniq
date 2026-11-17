@@ -128,7 +128,7 @@ final class InstallerServiceUploadTest extends TestCase {
 		$release = ['version' => '2.0.0', 'signature' => 's', 'certificate' => 'c'];
 		$this->signatures->method('storeRelease')->willReturn($release);
 		$this->signedInstaller->expects($this->once())->method('installLocalArchive')
-			->with('myapp', $release, $this->callback(fn (LocalArchive $a): bool => $a->signed && $a->sha256 === hash('sha256', self::BYTES) && is_file($a->path)))
+			->with('myapp', $this->callback(fn (LocalArchive $a): bool => $a->signed && $a->release === $release && $a->sha256 === hash('sha256', self::BYTES) && is_file($a->path)))
 			->willReturn(['status' => 'installed']);
 		$this->externalInstaller->expects($this->never())->method('installLocalArchive');
 		$this->bindingStore->expects($this->never())->method('set');
