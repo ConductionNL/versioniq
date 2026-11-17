@@ -65,15 +65,29 @@ function label (stage: ProgressStage): string {
 	return typeof percent === 'number' && stage.endedAt === null ? `${text} (${percent} %)` : text
 }
 
+/**
+ * Whether a stage failed, is running or is done; only the last stage can be anything but done.
+ *
+ * @param stage The stage.
+ * @param last Whether it is the last stage.
+ */
+function stateOf (stage: ProgressStage, last: boolean): 'failed' | 'running' | 'done' {
+	if (!last) {
+		return 'done'
+	}
+	if (outcome.value === 'failed') {
+		return 'failed'
+	}
+	return stage.endedAt === null && outcome.value === null ? 'running' : 'done'
+}
+
 const rows = computed(() => stages.value.map((stage, index) => {
-	const last = index === stages.value.length - 1
-	const failed = last && outcome.value === 'failed'
-	const running = last && stage.endedAt === null && outcome.value === null
+	const state = stateOf(stage, index === stages.value.length - 1)
 	return {
 		key: `${index}-${stage.name}`,
 		label: label(stage),
-		state: failed ? 'failed' : (running ? 'running' : 'done'),
-		elapsed: running ? Math.max(0, now.value - stage.startedAt) : null,
+		state,
+		elapsed: state === 'running' ? Math.max(0, now.value - stage.startedAt) : null,
 	}
 }))
 

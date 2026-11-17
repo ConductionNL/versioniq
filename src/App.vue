@@ -1865,10 +1865,20 @@ function installQuery (request: InstallRequest): Record<string, string> {
 		dryRun: (request.forceDryRun || dryRunRequested.value) ? '1' : '0',
 		targetVersion: request.version,
 	}, sourceOverride.value)
-	if (installProgressToken.value !== '' && !request.forceDryRun) {
-		query.progressToken = installProgressToken.value
+	const progressToken = installProgressTokenFor(request)
+	if (progressToken !== '') {
+		query.progressToken = progressToken
 	}
 	return addInstallFlags(query, request)
+}
+
+/**
+ * The progress token to send with an install, '' for none: a dry run reports no progress.
+ *
+ * @param request The install request.
+ */
+function installProgressTokenFor (request: InstallRequest): string {
+	return request.forceDryRun ? '' : installProgressToken.value
 }
 
 /**

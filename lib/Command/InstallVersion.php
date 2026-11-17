@@ -122,20 +122,11 @@ class InstallVersion extends Command {
 		$allowDowngrade = (bool)$input->getOption('allow-downgrade');
 		$acceptNewSha = (bool)$input->getOption('accept-new-sha');
 
-		if (!$json) {
-			$this->progress?->listen(static function (string $stage) use ($output): void {
-				$output->writeln(sprintf('<comment>%s</comment>', $stage));
-			});
-		}
-		try {
-			$result = $this->installerService->installAppVersion(new InstallRequest(
-				new InstallTarget($appId, $version, $sourceOverride),
-				new InstallOptions(false, $dryRun, $acceptNewSha, $allowDowngrade),
-				new PinChoice(null, false),
-			));
-		} finally {
-			$this->progress?->listen(null);
-		}
+		$result = $this->installWithProgress(new InstallRequest(
+			new InstallTarget($appId, $version, $sourceOverride),
+			new InstallOptions(false, $dryRun, $acceptNewSha, $allowDowngrade),
+			new PinChoice(null, false),
+		), $output, $json);
 
 		$statusCode = $result['statusCode'] ?? Http::STATUS_INTERNAL_SERVER_ERROR;
 		/** @var array<string, mixed> $payload */
@@ -151,6 +142,27 @@ class InstallVersion extends Command {
 		$this->renderHuman($output, $exitCode, $payload);
 
 		return $exitCode;
+	}
+
+	/**
+	 * Run the install, printing each stage as it starts unless the output is
+	 * JSON (install-live-progress).
+	 *
+	 * @return array<string, mixed> The installer's result.
+	 *
+	 * @spec openspec/changes/install-live-progress/specs/cli-commands/spec.md
+	 */
+	private function installWithProgress(InstallRequest $request, OutputInterface $output, bool $json): array {
+		if (!$json) {
+			$this->progress?->listen(static function (string $stage) use ($output): void {
+				$output->writeln(sprintf('<comment>%s</comment>', $stage));
+			});
+		}
+		try {
+			return $this->installerService->installAppVersion($request);
+		} finally {
+			$this->progress?->listen(null);
+		}
 	}
 
 	private function renderHuman(OutputInterface $output, int $exitCode, array $payload): void {

@@ -180,16 +180,44 @@ class InstallProgress {
 			return null;
 		}
 
+		return self::decode($stored);
+	}
+
+	/**
+	 * A stored record as read() returns it, or null when it is not a record.
+	 *
+	 * @return array{stages: list<array<string, mixed>>, outcome: ?string}|null
+	 *
+	 * @spec openspec/changes/install-live-progress/specs/version-management/spec.md#requirement-an-admin-sees-each-stage-of-an-install-while-it-runs
+	 */
+	private static function decode(mixed $stored): ?array {
 		if (is_string($stored) === false) {
 			return null;
 		}
 
 		$record = json_decode($stored, true);
-		if (is_array($record) === false || is_array($record['stages'] ?? null) === false) {
+
+		return is_array($record) ? self::shape($record) : null;
+	}
+
+	/**
+	 * A decoded record in read()'s shape, or null without a stage list.
+	 *
+	 * @param array<mixed> $record The decoded record.
+	 *
+	 * @return array{stages: list<array<string, mixed>>, outcome: ?string}|null
+	 *
+	 * @spec openspec/changes/install-live-progress/specs/version-management/spec.md#requirement-an-admin-sees-each-stage-of-an-install-while-it-runs
+	 */
+	private static function shape(array $record): ?array {
+		$stages = $record['stages'] ?? null;
+		if (is_array($stages) === false) {
 			return null;
 		}
 
-		return ['stages' => array_values($record['stages']), 'outcome' => is_string($record['outcome'] ?? null) ? $record['outcome'] : null];
+		$outcome = $record['outcome'] ?? null;
+
+		return ['stages' => array_values($stages), 'outcome' => is_string($outcome) ? $outcome : null];
 	}
 
 	/**
