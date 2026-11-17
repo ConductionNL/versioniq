@@ -45,17 +45,12 @@ final class AutoUpdateGroups {
 	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
 	 */
 	public static function apply(array $planned, array $groups): array {
-		$byApp = [];
-		foreach ($planned as $place) {
-			$byApp[$place['member']->appId] = $place;
-		}
-
-		$groupOf = [];
-		foreach ($groups as $group) {
-			foreach ($group->apps as $appId) {
-				$groupOf[$appId] ??= $group;
-			}
-		}
+		$byApp = array_column(
+			array_map(static fn (array $place): array => ['key' => $place['member']->appId, 'place' => $place], $planned),
+			'place',
+			'key'
+		);
+		$groupOf = self::groupOf($groups);
 
 		$result = [];
 		$placed = [];
@@ -63,18 +58,31 @@ final class AutoUpdateGroups {
 			$group = $groupOf[$place['member']->appId] ?? null;
 			if ($group === null) {
 				$result[] = $place;
-				continue;
+			} elseif (!isset($placed[$group->name])) {
+				$placed[$group->name] = true;
+				array_push($result, ...self::groupPlaces($group, $byApp));
 			}
-
-			if (isset($placed[$group->name])) {
-				continue;
-			}
-
-			$placed[$group->name] = true;
-			array_push($result, ...self::groupPlaces($group, $byApp));
 		}
 
 		return $result;
+	}
+
+	/**
+	 * The group each app is in; an app listed twice stays with the first.
+	 *
+	 * @param list<UpdateGroup> $groups
+	 *
+	 * @return array<string, UpdateGroup>
+	 */
+	private static function groupOf(array $groups): array {
+		$groupOf = [];
+		foreach ($groups as $group) {
+			foreach ($group->apps as $appId) {
+				$groupOf[$appId] ??= $group;
+			}
+		}
+
+		return $groupOf;
 	}
 
 	/**

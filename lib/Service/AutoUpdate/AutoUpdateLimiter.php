@@ -59,8 +59,8 @@ final class AutoUpdateLimiter {
 		$ordered = [];
 		foreach ($this->runOrder($installable, $deferred) as $key => $unit) {
 			$cost = self::cost($unit);
-			if ($budget === null || $budget >= $cost) {
-				$budget = ($budget === null) ? null : $budget - $cost;
+			if (self::fits($budget, $cost)) {
+				$budget = self::spend($budget, $cost);
 				unset($deferred[$key]);
 				array_push($ordered, ...$unit);
 				continue;
@@ -68,14 +68,40 @@ final class AutoUpdateLimiter {
 
 			// The unit does not fit what is left: it waits whole (D4).
 			$deferred[$key] ??= $now->format(\DateTimeInterface::ATOM);
-			foreach ($unit as $member) {
-				$ordered[] = $member->willInstall() ? $member->withReason(AutoUpdateMember::REASON_LIMIT) : $member;
-			}
+			array_push($ordered, ...self::heldBack($unit));
 		}
 
 		$this->settings->setDeferred($deferred);
 
 		return array_merge($ordered, $others);
+	}
+
+	/**
+	 * Whether a unit of this cost fits what is left; everything fits without a cap.
+	 */
+	private static function fits(?int $budget, int $cost): bool {
+		return $budget === null || $budget >= $cost;
+	}
+
+	/**
+	 * What is left after a unit of this cost; no cap stays no cap.
+	 */
+	private static function spend(?int $budget, int $cost): ?int {
+		return ($budget === null) ? null : $budget - $cost;
+	}
+
+	/**
+	 * The unit's members, those that would install marked `limit`.
+	 *
+	 * @param list<AutoUpdateMember> $unit
+	 *
+	 * @return list<AutoUpdateMember>
+	 */
+	private static function heldBack(array $unit): array {
+		return array_map(
+			static fn (AutoUpdateMember $member): AutoUpdateMember => $member->willInstall() ? $member->withReason(AutoUpdateMember::REASON_LIMIT) : $member,
+			$unit
+		);
 	}
 
 	/**
@@ -135,21 +161,28 @@ final class AutoUpdateLimiter {
 	 * @return array<string, list<AutoUpdateMember>>
 	 */
 	private function runOrder(array $units, array $deferred): array {
-		uksort($units, static function (string $a, string $b) use ($deferred): int {
-			$heldA = $deferred[$a] ?? null;
-			$heldB = $deferred[$b] ?? null;
-			if ($heldA !== null && $heldB !== null && $heldA !== $heldB) {
-				return strcmp($heldA, $heldB);
-			}
-
-			if (($heldA === null) !== ($heldB === null)) {
-				return ($heldA === null) ? 1 : -1;
-			}
-
-			return strcmp(self::sortName($a), self::sortName($b));
-		});
+		uksort($units, static fn (string $a, string $b): int => self::compareUnits($a, $b, $deferred));
 
 		return $units;
+	}
+
+	/**
+	 * Run order of two unit keys: the longer held first, held before not held, then by name.
+	 *
+	 * @param array<string, string> $deferred
+	 */
+	private static function compareUnits(string $a, string $b, array $deferred): int {
+		$heldA = $deferred[$a] ?? null;
+		$heldB = $deferred[$b] ?? null;
+		if (($heldA === null) !== ($heldB === null)) {
+			return ($heldA === null) ? 1 : -1;
+		}
+
+		if ($heldA !== $heldB) {
+			return strcmp((string)$heldA, (string)$heldB);
+		}
+
+		return strcmp(self::sortName($a), self::sortName($b));
 	}
 
 	/**
