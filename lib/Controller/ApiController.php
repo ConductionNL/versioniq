@@ -22,9 +22,11 @@ use OCA\Versioniq\Service\Advisory\FixStatus;
 use OCA\Versioniq\Service\Api\AccessCollaborators;
 use OCA\Versioniq\Service\Api\InstallCollaborators;
 use OCA\Versioniq\Service\Api\ReportCollaborators;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\AutoUpdate\SecurityCandidate;
+use OCA\Versioniq\Service\AutoUpdate\UpdateType;
 use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
@@ -1002,7 +1004,27 @@ class ApiController extends OCSController {
 			'securityHolds' => (object)$this->autoUpdate->security->securityHolds->read(),
 			'advisoriesFresh' => $this->advisoriesFresh(),
 			'manualKinds' => ($this->autoUpdate->security->patchPolicyStore->read() ?? PatchPolicy::none())->manualKinds(),
-		]);
+		] + $this->scheduleView());
+	}
+
+	/**
+	 * The schedule per kind and when each kind runs next, in the window's zone, so the
+	 * page never works out dates in the browser's zone (autoupdate-schedules, design D5).
+	 *
+	 * @return array{autoUpdateSchedule: array<string, array{days: list<int>, monthly: bool}>, nextRuns: array<string, ?string>}
+	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	 */
+	private function scheduleView(): array {
+		$settings = $this->autoUpdate->settingsStore;
+		$schedule = $settings->getSchedule();
+		$zoneName = $settings->getTimeZoneName();
+		$now = new \DateTimeImmutable('now', new \DateTimeZone($zoneName !== '' ? $zoneName : 'UTC'));
+		$nextRuns = [];
+		foreach (UpdateType::ALL as $kind) {
+			$nextRuns[$kind] = $schedule->nextRun($kind, $settings->getWindow(), $now)?->format(\DateTimeInterface::ATOM);
+		}
+
+		return ['autoUpdateSchedule' => $schedule->toArray(), 'nextRuns' => $nextRuns];
 	}
 
 	/**
@@ -1126,11 +1148,13 @@ class ApiController extends OCSController {
 		$enabledParam = ($enabled === '') ? '0' : $enabled;
 		$windowParam = $this->stringParam('window', '');
 
-		if ($windowParam !== '' && !AutoUpdateWindow::isValid($windowParam)) {
-			return new DataResponse(
-				['message' => 'window must be in HH:MM-HH:MM format.'],
-				Http::STATUS_BAD_REQUEST
-			);
+		// The window and the schedule are checked in full before anything is written, so a bad
+		// one leaves the switch and the window as they were (autoupdate-schedules, D6).
+		/** @var mixed $scheduleParam */
+		$scheduleParam = $this->request->getParam('schedule');
+		$problem = $this->autoUpdateSettingsProblem($windowParam, $scheduleParam);
+		if ($problem !== null) {
+			return $problem;
 		}
 
 		if ($enabledParam !== null) {
@@ -1139,12 +1163,45 @@ class ApiController extends OCSController {
 		if ($windowParam !== '') {
 			$this->autoUpdate->settingsStore->setWindow($windowParam);
 		}
+		$this->storeSchedule($scheduleParam);
 
 		return new DataResponse([
 			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
 			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
 			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
-		]);
+		] + $this->scheduleView());
+	}
+
+	/**
+	 * The 400 answer for a malformed window or schedule, or null when both are fine or absent.
+	 *
+	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	 */
+	private function autoUpdateSettingsProblem(string $windowParam, mixed $scheduleParam): ?DataResponse {
+		if ($windowParam !== '' && !AutoUpdateWindow::isValid($windowParam)) {
+			return new DataResponse(
+				['message' => 'window must be in HH:MM-HH:MM format.'],
+				Http::STATUS_BAD_REQUEST
+			);
+		}
+
+		$scheduleProblem = ($scheduleParam === null) ? null : AutoUpdateSchedule::invalidReason($scheduleParam);
+		if ($scheduleProblem !== null) {
+			return new DataResponse(['message' => $scheduleProblem . '.'], Http::STATUS_BAD_REQUEST);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Store a schedule that was sent; one left out keeps the stored schedule.
+	 *
+	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	 */
+	private function storeSchedule(mixed $scheduleParam): void {
+		if (is_array($scheduleParam)) {
+			$this->autoUpdate->settingsStore->setSchedule(AutoUpdateSchedule::fromArray($scheduleParam));
+		}
 	}
 
 	/**
