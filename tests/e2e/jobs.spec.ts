@@ -475,3 +475,72 @@ test.describe("background jobs", () => {
 		).toBeFalsy();
 	});
 });
+
+/**
+ * The hourly reconcile job records version changes and disables that no
+ * Versioniq event reported.
+ *
+ * @spec openspec/changes/audit-external-changes/specs/audit-trail/spec.md
+ */
+test.describe("external changes", () => {
+	const HOURLY_TRIGGER =
+		"found by the hourly check: no update event was seen";
+
+	test.beforeEach(async ({ page }) => {
+		test.skip(!(await fixtureAvailable(page)), "forge fixture not running");
+		await resetFixtureApp(page);
+	});
+
+	test.afterEach(async ({ page }) => {
+		await occ("app:enable", FIXTURE_APP);
+		await resetFixtureApp(page);
+	});
+
+	async function auditRows(after: number, operation: string): Promise<string[]> {
+		return (
+			await sql(
+				`SELECT from_version, to_version, message FROM oc_app_versions_audit WHERE id > ${after} AND app_id = '${FIXTURE_APP}' AND operation = '${operation}' ORDER BY id`,
+			)
+		)
+			.split("\n")
+			.filter((line) => line.trim() !== "");
+	}
+
+	test("an unreported update and a disable are recorded, and the app stays disabled", async ({
+		page,
+	}) => {
+		await installFixture(page, "1.0.1");
+		// A baseline first, then a stale record for the fixture app: as if it
+		// was at 1.0.0 when last seen and something outside Versioniq moved it.
+		await runJob("ExternalChangeReconcileJob");
+		const seen = JSON.parse(
+			(await occ("config:app:get", "versioniq", "external.seen")) || "{}",
+		);
+		expect(seen.apps?.[FIXTURE_APP]?.version, "baseline").toBe("1.0.1");
+		seen.apps[FIXTURE_APP].version = "1.0.0";
+		await occ(
+			"config:app:set",
+			"versioniq",
+			"external.seen",
+			"--value",
+			JSON.stringify(seen),
+		);
+		const start = Number(
+			(await sql("SELECT COALESCE(MAX(id), 0) FROM oc_app_versions_audit")) ||
+				"0",
+		);
+
+		await runJob("ExternalChangeReconcileJob");
+		expect(await auditRows(start, "external_update")).toEqual([
+			`1.0.0\t1.0.1\t${HOURLY_TRIGGER}`,
+		]);
+
+		await occ("app:disable", FIXTURE_APP);
+		await runJob("ExternalChangeReconcileJob");
+		expect(await auditRows(start, "external_disable")).toHaveLength(1);
+		expect(
+			(await occ("config:app:get", FIXTURE_APP, "enabled")).trim(),
+			"the job leaves a deliberately disabled app off",
+		).toBe("no");
+	});
+});
