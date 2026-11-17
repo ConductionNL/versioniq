@@ -11,14 +11,14 @@
 
 - [x] 2.1 Add `UpgradeReadinessService` with the five verdicts of design D3. Verify: `tests/unit/Service/Readiness/UpgradeReadinessServiceTest.php` has one case per verdict.
 - [x] 2.2 Add `UpgradeReadinessJob`, `GET` and `POST /api/readiness`, admin-only, the POST password-confirmed. Verify: `tests/unit/Controller/ApiTest.php` asserts 403 for a non-admin and that POST queues a job with both targets.
-- [ ] 2.3 Add `lib/Command/CheckReadiness.php` (`versioniq:readiness --server --php --json`) and register it. Verify: `tests/unit/Command/CheckReadinessTest.php` and one JSON run in `tests/e2e/cli.spec.ts`.
+- [x] 2.3 Add `lib/Command/CheckReadiness.php` (`versioniq:readiness --server --php --json`) and register it. Verify: `tests/unit/Command/CheckReadinessTest.php` and one JSON run in `tests/e2e/cli.spec.ts`.
   - Done in code with `CheckReadinessTest`; open: the e2e JSON run, which needs a live instance.
 
 ## 3. Page
 
 - [x] 3.1 Add `ReadinessPanel.vue` and the tab, with defaults, the Check button, the report time and the grouped table. Verify: `ReadinessPanel.spec.ts` for the empty, queued and filled states.
 - [x] 3.2 Add strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
-- [ ] 3.3 Add `tests/e2e/readiness.spec.ts`: an admin checks readiness for the running major and sees every installed app in a group.
+- [x] 3.3 Add `tests/e2e/readiness.spec.ts`: an admin checks readiness for the running major and sees every installed app in a group.
 
 ## 4. Close
 
