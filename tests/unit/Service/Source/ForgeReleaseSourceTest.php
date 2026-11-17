@@ -86,6 +86,55 @@ final class ForgeReleaseSourceTest extends TestCase {
 		$this->assertSame('2.4.0', $result['versions'][2]['version']);
 	}
 
+	/**
+	 * The download count of the one asset matching the binding's pattern;
+	 * none when no asset matches, when two do, or when the count is not a
+	 * non-negative integer (releases-version-facts design D2).
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md
+	 */
+	public function testListVersionsReadsTheMatchingAssetsDownloadCount(): void {
+		$asset = static fn (string $name, mixed $count): array => ['name' => $name, 'browser_download_url' => 'https://example.org/' . $name, 'download_count' => $count];
+		$body = json_encode([
+			['tag_name' => 'v1.4.0', 'assets' => [$asset('hermiq-1.4.0.tar.gz', 312), $asset('hermiq-1.4.0.tar.gz.sha256', 40)]],
+			['tag_name' => 'v1.3.0', 'assets' => [$asset('hermiq-1.3.0.zip', 9)]],
+			['tag_name' => 'v1.2.0', 'assets' => [$asset('a.tar.gz', 5), $asset('b.tar.gz', 6)]],
+			['tag_name' => 'v1.1.0', 'assets' => [$asset('hermiq-1.1.0.tar.gz', -1)]],
+			['tag_name' => 'v1.0.0'],
+		], JSON_THROW_ON_ERROR);
+
+		$client = $this->createMock(IClient::class);
+		$client->method('get')->willReturn($this->mockResponse(200, $body));
+
+		$result = $this->buildSource($client)->listVersions('hermiq', SourceBinding::github('ConductionNL', 'hermiq'));
+
+		$this->assertSame(
+			['1.4.0' => 312, '1.3.0' => null, '1.2.0' => null, '1.1.0' => null, '1.0.0' => null],
+			array_column($result['versions'], 'downloads', 'version')
+		);
+	}
+
+	/**
+	 * The binding's own asset pattern decides which asset counts.
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md
+	 */
+	public function testListVersionsCountsDownloadsWithTheBindingsPattern(): void {
+		$body = json_encode([
+			['tag_name' => 'v2.0.0', 'assets' => [
+				['name' => 'tool-2.0.0.tar.gz', 'browser_download_url' => 'https://example.org/t', 'download_count' => 7],
+				['name' => 'tool-2.0.0.zip', 'browser_download_url' => 'https://example.org/z', 'download_count' => 70],
+			]],
+		], JSON_THROW_ON_ERROR);
+
+		$client = $this->createMock(IClient::class);
+		$client->method('get')->willReturn($this->mockResponse(200, $body));
+
+		$result = $this->buildSource($client)->listVersions('tool', SourceBinding::github('acme', 'tool', '*.zip'));
+
+		$this->assertSame(70, $result['versions'][0]['downloads']);
+	}
+
 	public function testListVersionsHandles404Gracefully(): void {
 		$client = $this->createMock(IClient::class);
 		$client->method('get')->willReturn($this->mockResponse(404, ''));
@@ -312,6 +361,43 @@ final class ForgeReleaseSourceTest extends TestCase {
 		], $byVersion);
 	}
 
+	/**
+	 * The publisher's own pre-release mark and an LTS name or tag are copied
+	 * onto the entry; an unmarked release carries neither.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-every-listed-version-says-whether-it-is-a-pre-release
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-the-long-term-support-channel-offers-only-marked-release-lines
+	 */
+	public function testListVersionsCarriesThePublishersMarks(): void {
+		$body = json_encode([
+			['tag_name' => 'v2.5.0', 'prerelease' => true, 'name' => 'Release 2.5.0'],
+			['tag_name' => 'v2.4.3', 'prerelease' => false, 'name' => 'Release 2.4.3'],
+			['tag_name' => 'v2.3.9', 'name' => '2.3.9 (lts)'],
+			['tag_name' => 'v2.3.8-LTS'],
+			['tag_name' => 'v2.2.0', 'name' => 'Pilots and saltshakers'],
+		], JSON_THROW_ON_ERROR);
+
+		$client = $this->createMock(IClient::class);
+		$client->method('get')->willReturn($this->mockResponse(200, $body));
+
+		$result = $this->buildSource($client)->listVersions(
+			'hermiq',
+			SourceBinding::github('ConductionNL', 'hermiq')
+		);
+
+		$marks = [];
+		foreach ($result['versions'] as $entry) {
+			$marks[$entry['version']] = [$entry['sourcePreRelease'] ?? false, $entry['sourceLts'] ?? false];
+		}
+		$this->assertSame([
+			'2.5.0' => [true, false],
+			'2.4.3' => [false, false],
+			'2.3.9' => [false, true],
+			'2.3.8-LTS' => [false, true],
+			'2.2.0' => [false, false],
+		], $marks);
+	}
+
 	public function testListVersionsMapsReleaseBodyAsChangelog(): void {
 		$body = json_encode([
 			['tag_name' => 'v2.3.0', 'body' => 'Fixes LDAP sync'],
@@ -326,6 +412,10 @@ final class ForgeReleaseSourceTest extends TestCase {
 		);
 
 		$this->assertSame('Fixes LDAP sync', $result['versions'][0]['changelog']);
+		// A release body names no language, so the page offers to translate it
+		// (releases-notes-reach D2).
+		$this->assertArrayHasKey('changelogLanguage', $result['versions'][0]);
+		$this->assertNull($result['versions'][0]['changelogLanguage']);
 	}
 
 	public function testListVersionsMissingBodyYieldsNullChangelog(): void {
@@ -405,6 +495,41 @@ final class ForgeReleaseSourceTest extends TestCase {
 	}
 
 	/**
+	 * advisories-per-app-detail 1.1: a GHSA-shaped forge advisory keeps its
+	 * CVE ids, publication date and web link; one without them leaves them
+	 * empty.
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/tasks.md#1.1
+	 */
+	public function testAnAdvisoryKeepsItsCveIdsDateAndLink(): void {
+		$body = json_encode([
+			[
+				'ghsa_id' => 'GHSA-full',
+				'cve_id' => 'CVE-2026-1111',
+				'identifiers' => [['type' => 'GHSA', 'value' => 'GHSA-full'], ['type' => 'CVE', 'value' => 'CVE-2026-2222']],
+				'published_at' => '2026-08-01T10:00:00Z',
+				'html_url' => 'https://github.com/ConductionNL/openregister/security/advisories/GHSA-full',
+				'url' => 'https://api.github.com/repos/ConductionNL/openregister/security-advisories/GHSA-full',
+				'summary' => 'Full',
+			],
+			['ghsa_id' => 'GHSA-bare', 'summary' => 'Bare'],
+		], JSON_THROW_ON_ERROR);
+
+		$client = $this->createMock(IClient::class);
+		$client->method('get')->willReturn($this->mockResponse(200, $body));
+
+		$result = $this->buildSource($client)->listAdvisories('openregister', SourceBinding::github('ConductionNL', 'openregister'));
+
+		[$full, $bare] = $result['advisories'];
+		$this->assertSame(['CVE-2026-1111', 'CVE-2026-2222'], $full['cveIds']);
+		$this->assertSame('2026-08-01T10:00:00Z', $full['publishedAt']);
+		$this->assertSame('https://github.com/ConductionNL/openregister/security/advisories/GHSA-full', $full['url']);
+		$this->assertSame([], $bare['cveIds']);
+		$this->assertNull($bare['publishedAt']);
+		$this->assertNull($bare['url']);
+	}
+
+	/**
 	 * Scenario "A GitHub-bound app is checked against its repository's
 	 * advisories" (advisories-name-their-feeds): the source reads
 	 * `/repos/{owner}/{repo}/security-advisories` on the GitHub API and maps
@@ -446,6 +571,10 @@ final class ForgeReleaseSourceTest extends TestCase {
 					'summary' => 'Tool calls bypass the grant check',
 					'affected' => ['>= 1.0.0', '<= 1.4.0'],
 					'firstPatchedVersion' => '1.4.1',
+					// advisories-per-app-detail 1.1: every advisory carries these, empty when the feed has none.
+					'cveIds' => [],
+					'publishedAt' => null,
+					'url' => null,
 				],
 			],
 			$result['advisories']

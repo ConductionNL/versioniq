@@ -13,7 +13,9 @@ status: implemented
 Version management is the core capability of Versioniq. It allows Nextcloud administrators to view all available versions of any installed app, select a specific version (older or newer), and install it — replacing the currently installed version. This enables rollback after broken updates, testing compatibility with specific versions, and controlled upgrades.
 
 Each app may be bound to a single source (App Store or external such as GitHub releases) that is authoritative for its version listings. See the companion [external-sources spec](../external-sources/spec.md) for how external sources are validated and installed.
+
 ## Requirements
+
 ### Requirement: List Installed Apps [MVP]
 
 The system MUST display all currently installed Nextcloud apps with their name, current version, description, and icon. Core/always-enabled apps SHOULD be visually distinguished but still listed. Installed apps that are disabled, and apps bound to a source but not installed yet, MUST be listed too, each marked with its state (`disabled`, `notInstalled`), so their versions can be listed and installed from the page.
@@ -171,7 +173,7 @@ The version-list and install endpoints MUST accept an optional `source` paramete
 
 ### Requirement: Install Specific Version [MVP]
 
-The system MUST allow an admin to install any available version of an app, replacing the currently installed version. This operation MUST require password confirmation for security. Every install failure MUST return a structured payload — independent of the debug toggle — carrying `stage` (the last installer stage reached, e.g. `backup`, `download`, `checksum`, `archive-extracted`, `info-validated`, `finalize`), `category` (one of `preflight_permission | download | checksum_mismatch | extract | appid_mismatch | version_mismatch | incompatible | finalize | unknown`), and a `hint` (a human, actionable, translatable remediation string). The HTTP status MUST reflect the category and MUST NOT be a blanket 500 for classified failures; 500 is reserved for `unknown`/unexpected errors.
+The system MUST allow an admin to install any available version of an app, replacing the currently installed version. This operation MUST require password confirmation for security. Every install failure MUST return a structured payload — independent of the debug toggle — carrying `stage` (the last installer stage reached, e.g. `backup`, `download`, `checksum`, `archive-extracted`, `info-validated`, `finalize`), `category` (one of `preflight_permission | download | checksum_mismatch | extract | appid_mismatch | version_mismatch | incompatible | finalize | unknown`), and a `hint` (a human, actionable, translatable remediation string). The HTTP status MUST reflect the category and MUST NOT be a blanket 500 for classified failures; 500 is reserved for `unknown`/unexpected errors. A version change MUST keep the app's enabled or disabled state: an app that was enabled, for all users or for some groups, MUST be enabled the same way afterwards, and an app that was disabled MUST stay disabled. A first install of an app that was not installed MUST leave it disabled.
 
 #### Scenario: Install an older version (rollback)
 
@@ -232,6 +234,23 @@ The system MUST allow an admin to install any available version of an app, repla
 - WHEN the install action is triggered
 - THEN the system MUST require password re-confirmation before proceeding
 - AND the install MUST NOT proceed without valid password confirmation
+
+#### Scenario: A disabled app stays disabled across a version change
+
+@e2e exclude a real UI-triggered install resets opcache and 503s the mod_php test image; the carried flag is covered by the installer unit tests.
+
+- GIVEN OpenRegister is installed at version 2.5.0 and disabled
+- WHEN the admin installs version 2.3.0
+- THEN OpenRegister MUST be at version 2.3.0
+- AND OpenRegister MUST still be disabled
+
+#### Scenario: An app enabled for some groups keeps its groups
+
+@e2e exclude a real UI-triggered install resets opcache and 503s the mod_php test image; the carried flag is covered by the installer unit tests.
+
+- GIVEN an app is enabled only for the group `finance`
+- WHEN the admin installs another version of it
+- THEN the app MUST be enabled only for the group `finance` afterwards
 
 ### Requirement: Debug Mode [MVP]
 
@@ -526,6 +545,120 @@ accessible name, and every data table MUST mark its column headers with `scope="
 - **WHEN** they press Tab once and then Enter
 - **THEN** the "Skip to main content" link MUST have been visible
 - **AND** focus MUST move to the page content
+
+### Requirement: Every write action asks for the admin password
+
+Every route that changes state MUST ask the admin to confirm their password first. This covers binding and clearing a source, trusting and untrusting a source, installing a version, pinning and unpinning, retrying an attempt, setting and clearing an update policy, the update and advisory settings, the instance settings, the Forgejo host, tokens and the cache. Read routes MUST NOT ask for it. occ commands run as the server user and MUST NOT ask for it, as "CLI trust context" says.
+
+#### Scenario: An install waits for the password
+
+@e2e exclude the password dialog belongs to Nextcloud core; the route attribute is covered by tests/unit/Controller/PasswordConfirmationTest.php.
+
+- **GIVEN** an admin who has not confirmed their password in this session
+- **WHEN** the admin installs a version, pins an app or saves a token
+- **THEN** Nextcloud MUST ask for the password before the request runs
+- **AND** without the password the request MUST be refused and nothing MUST change
+
+#### Scenario: Reading needs no password
+
+@e2e exclude covered by tests/unit/Controller/PasswordConfirmationTest.php.
+
+- **WHEN** the admin opens the Apps tab or lists the versions of an app
+- **THEN** no password MUST be asked
+
+### Requirement: Core apps and Versioniq itself are never changed
+
+Versioniq MUST refuse to list versions of, install or update a core app that Nextcloud always enables, and Versioniq itself. The refusal MUST hold on every path: the API, the occ commands and the automatic update job. The API MUST answer HTTP 403 with a message that names the reason. Core apps stay visible in the app list, marked as core, as "List Installed Apps" says.
+
+#### Scenario: An install of a core app is refused
+
+@e2e exclude a core app cannot be offered from the page; covered by tests/unit/Service/InstallerServiceTest.php.
+
+- **GIVEN** `files` is a core app that Nextcloud always enables
+- **WHEN** a request installs a version of `files`
+- **THEN** the answer MUST be HTTP 403 with "This core app cannot be installed or updated from Versioniq."
+- **AND** no file MUST change
+
+#### Scenario: Versioniq does not replace itself
+
+@e2e exclude Versioniq is left out of its own app list; covered by tests/unit/Service/InstallerServiceTest.php.
+
+- **WHEN** an admin runs `occ versioniq:install versioniq 1.0.0`
+- **THEN** the command MUST exit with code 2 and change nothing
+
+### Requirement: The version view shows an About card with publisher, licence and links
+
+When an admin opens an app's versions, the page MUST show an "About <app>" card beside the version list, as drawn on the VqAppVersies board. The card MUST show the publisher (the author in the app's `appinfo/info.xml`), the licence, the installed version with its enabled or disabled state, and the app's description. It MUST link to the website, the source repository and the issue tracker the app declares, each opening in a new tab. A link the app does not declare MUST be left out, not shown empty. The list payload of `GET /api/apps` MUST carry `author`, `licence` and `links` (`website`, `repository`, `bugs`) for every installed app.
+
+#### Scenario: An admin reads who publishes an app and under which licence
+
+@e2e tests/e2e/version-management.spec.ts
+
+- **GIVEN** Dossiq 0.4.48 is installed and enabled, and its `info.xml` names author "Conduction", licence `EUPL-1.2`, a website, a repository and a bug tracker
+- **WHEN** the admin opens the versions of Dossiq
+- **THEN** the About card MUST show "Conduction", "EUPL-1.2" and "0.4.48, enabled"
+- **AND** it MUST link to the website, the source and the issue tracker
+
+#### Scenario: An app without a bug tracker
+
+- **GIVEN** an installed app whose `info.xml` declares a website but no `bugs` element
+- **WHEN** the admin opens its versions
+- **THEN** the card MUST show the website link
+- **AND** it MUST NOT show a "Report a problem" link
+
+#### Scenario: The list payload carries the metadata
+
+- **WHEN** an admin calls `GET /api/apps`
+- **THEN** every installed app MUST carry `author`, `licence` and `links`
+- **AND** a value the app does not declare MUST be `null`
+
+### Requirement: An admin updates one app or all apps in one action
+
+A card whose app has a newer version this server can run MUST offer "Update to {version}", which MUST show the move and the release notes in between and install that version through the normal install endpoint after one confirmation. The Apps tab MUST offer "Update all" when any app has such a version: it MUST list those apps, leave pinned apps unticked with the reason, ask for the password at most once for the run, install the ticked apps one after the other through the same endpoint, show each outcome as it lands, and continue after a failure. No action here MAY bypass a guard of the install endpoint.
+
+#### Scenario: An admin updates one app from its card
+
+- **GIVEN** `openregister` 2.3.0 is installed and the last sweep recorded 2.4.1 as the newest version this server can run
+- **WHEN** an admin clicks "Update to 2.4.1" on the card and confirms
+- **THEN** `openregister` 2.4.1 MUST be installed through the install endpoint
+- **AND** the History tab MUST show the install row
+
+#### Scenario: An admin updates all apps and one fails
+
+- **GIVEN** `openregister`, `calendar` and `hermiq` have newer versions, `hermiq` is pinned, and the `calendar` download fails its checksum
+- **WHEN** an admin clicks "Update all", keeps the default ticks, and confirms their password once
+- **THEN** `hermiq` MUST be listed unticked as pinned and MUST NOT be installed
+- **AND** `openregister` MUST read updated and `calendar` MUST read failed with its category and hint
+- **AND** the admin MUST NOT be asked for the password a second time within the platform's confirmation window
+
+### Requirement: An app left disabled by an update is reported and, when it can run, re-enabled
+
+When an app that was enabled is found disabled while its own version or the server version changed since Versioniq last saw it, the system MUST treat it as disabled by an update. When the installed version declares support for the running server and the admin switched on automatic re-enabling, the system MUST enable it and record a `reactivate` audit entry with the outcome. Otherwise it MUST notify every admin, naming the app and the change, and saying whether the installed version runs on this server, with the newest version that does when one is known. The app card MUST say "Disabled by the update to {version}" and MUST offer Enable when the version runs. A disable without a version change of the app or the server MUST be recorded as `external_disable` with its actor and MUST NOT be re-enabled. Automatic re-enabling MUST be off by default, and switching it MUST require password confirmation and be recorded in the audit trail.
+
+#### Scenario: A server upgrade leaves an app off, and it runs
+
+- **GIVEN** `forms` 4.3.0 was enabled and declares support for Nextcloud 32 to 34, the server was upgraded from 33 to 34, and `forms` is disabled afterwards
+- **WHEN** the hourly check runs with automatic re-enabling off
+- **THEN** admins MUST be notified that `forms` was left disabled and runs on this server
+- **AND** its card MUST read "Disabled by the update to Nextcloud 34" with Enable
+
+#### Scenario: With the switch on, Versioniq enables it
+
+- **GIVEN** the same situation and automatic re-enabling is on
+- **WHEN** the hourly check runs
+- **THEN** `forms` MUST be enabled and the audit trail MUST hold a `reactivate` entry with status success
+
+#### Scenario: An app that does not run stays off
+
+- **GIVEN** `hermiq` 1.4.0 declares at most Nextcloud 33, the server moved to 34, and `hermiq` was disabled by the upgrade
+- **WHEN** the hourly check runs, with the switch on or off
+- **THEN** `hermiq` MUST stay disabled, and the notification MUST say it does not run on Nextcloud 34
+
+#### Scenario: A deliberate disable is left alone
+
+- **GIVEN** admin `bob` disables `calendar` on the Apps page, with no version change
+- **WHEN** the hourly check runs with the switch on
+- **THEN** `calendar` MUST stay disabled, and the History tab MUST show an `external_disable` entry by bob
 
 ## User Stories
 

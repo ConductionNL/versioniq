@@ -36,6 +36,11 @@ class AuditEntryMapper extends QBMapper {
 	 */
 	public const TABLE_NAME = 'app_versions_audit';
 
+	/**
+	 * The audit operation of an install, as AuditLogger writes it.
+	 */
+	private const OPERATION_INSTALL = 'install';
+
 	public function __construct(IDBConnection $db) {
 		parent::__construct($db, self::TABLE_NAME, AuditEntry::class);
 	}
@@ -79,6 +84,71 @@ class AuditEntryMapper extends QBMapper {
 		}
 
 		return $this->findEntities($qb);
+	}
+
+	/**
+	 * How the app's installs went, per target version: the `install` rows
+	 * grouped by `to_version` and `status`; see "Every version shows how
+	 * widely it runs and how installs of it went". Other operations, and
+	 * install rows without a target version, are not counted.
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md
+	 * @return array<string, array{succeeded: int, failed: int}> Version => counts.
+	 */
+	public function countOutcomesByVersion(string $appId): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('to_version', 'status')
+			->selectAlias($qb->func()->count('*'), 'outcome_count')
+			->from($this->tableName)
+			->where($qb->expr()->eq('app_id', $qb->createNamedParameter($appId, IQueryBuilder::PARAM_STR)))
+			->andWhere($qb->expr()->eq('operation', $qb->createNamedParameter(self::OPERATION_INSTALL, IQueryBuilder::PARAM_STR)))
+			->groupBy('to_version')
+			->addGroupBy('status');
+
+		$counts = [];
+		$result = $qb->executeQuery();
+		while (($row = $result->fetchAssociative()) !== false) {
+			$version = $row['to_version'] ?? null;
+			if (!is_string($version) || $version === '') {
+				continue;
+			}
+			$key = match ($row['status'] ?? null) {
+				AuditEntry::STATUS_SUCCESS => 'succeeded',
+				AuditEntry::STATUS_FAILURE => 'failed',
+				default => null,
+			};
+			if ($key === null) {
+				continue;
+			}
+			$counts[$version] ??= ['succeeded' => 0, 'failed' => 0];
+			$counts[$version][$key] += (int)$row['outcome_count'];
+		}
+		$result->closeCursor();
+
+		return $counts;
+	}
+
+	/**
+	 * The newest successful entry for an app that brought it to the given
+	 * version, or null; the manifest's `runningSince` fallback
+	 * (install-multi-instance-promotion design D3).
+	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/design.md
+	 */
+	public function findNewestSuccessTo(string $appId, string $toVersion): ?AuditEntry {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')
+			->from($this->tableName)
+			->where($qb->expr()->eq('app_id', $qb->createNamedParameter($appId, IQueryBuilder::PARAM_STR)))
+			->andWhere($qb->expr()->eq('to_version', $qb->createNamedParameter($toVersion, IQueryBuilder::PARAM_STR)))
+			->andWhere($qb->expr()->eq('status', $qb->createNamedParameter('success', IQueryBuilder::PARAM_STR)))
+			->orderBy('created_at', 'DESC')
+			->addOrderBy('id', 'DESC')
+			->setMaxResults(1);
+
+		$entries = $this->findEntities($qb);
+
+		return $entries[0] ?? null;
 	}
 
 	/**

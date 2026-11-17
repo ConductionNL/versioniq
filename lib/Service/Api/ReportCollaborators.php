@@ -14,6 +14,7 @@ namespace OCA\Versioniq\Service\Api;
 use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Service\Audit\RuleChangeAuditor;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
+use OCA\Versioniq\Service\Release\KnownIssueStore;
 
 /**
  * What the read-only report endpoints draw on: the stored reports, the
@@ -26,6 +27,7 @@ final class ReportCollaborators {
 		public readonly ReportStores $stores,
 		public readonly DiscoveryAggregator $discoveryAggregator,
 		public readonly AuditEntryMapper $auditEntryMapper,
+		public readonly ?KnownIssueStore $knownIssues = null,
 		// Optional: audits changes to the update rules (audit-attribution-and-forwarding D2).
 		public readonly ?RuleChangeAuditor $ruleAudit = null,
 	) {

@@ -48,6 +48,7 @@ use ReflectionClass;
  * @uses \OCA\Versioniq\Service\Api\ReportCollaborators
  * @uses \OCA\Versioniq\Service\Api\ReportStores
  * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores
+ * @uses \OCA\Versioniq\Service\AutoUpdate\AutoUpdateSecurityStores
  * @uses \OCA\Versioniq\Service\Installer\InstallOptions
  * @uses \OCA\Versioniq\Service\Installer\InstallRequest
  * @uses \OCA\Versioniq\Service\Installer\InstallTarget

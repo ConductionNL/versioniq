@@ -151,6 +151,67 @@ final class InstallerServiceTest extends TestCase {
 		self::assertNotSame('', $result['payload']['hint']);
 	}
 
+	/**
+	 * safety-rollback-backup-and-preflight 2.1: an install that does not fit
+	 * on disk is refused with 409 before any release is resolved or downloaded,
+	 * and the result names the free and needed space.
+	 */
+	public function testSpacePreflightAbortsBeforeDownloadWhenTheInstallDoesNotFit(): void {
+		$this->appManager->method('getAppPath')->willReturn('/var/www/html/apps-extra/procest');
+		$this->environmentCheck->method('isDestinationWritable')->willReturn(true);
+		$space = ['fits' => false, 'appsFree' => 1000, 'appsNeeded' => 157286400, 'tempFree' => null, 'tempNeeded' => 104857600];
+		$this->environmentCheck->expects(self::once())->method('hasSpaceFor')
+			->with('/var/www/html/apps-extra/procest')
+			->willReturn($space);
+		$this->sourceRegistry->expects(self::never())->method('get');
+
+		$result = InstallArgs::call($this->service(), 'procest', '2.0.0', false);
+
+		self::assertSame(Http::STATUS_CONFLICT, $result['statusCode']);
+		self::assertSame(FailureClassifier::CATEGORY_PREFLIGHT_SPACE, $result['payload']['category']);
+		self::assertSame(FailureClassifier::STAGE_REQUESTED, $result['payload']['stage']);
+		self::assertSame($space, $result['payload']['space']);
+		self::assertSame('failed', $result['payload']['installStatus']);
+	}
+
+	/**
+	 * safety-rollback-backup-and-preflight 2.2: an install that fits reports
+	 * the free space the pre-flight found, for the progress step.
+	 */
+	public function testTheOutcomeCarriesTheFreeSpaceThePreflightFound(): void {
+		$space = ['fits' => true, 'appsFree' => 9000000000, 'appsNeeded' => 157286400, 'tempFree' => 5000000000, 'tempNeeded' => 104857600];
+		$this->environmentCheck->method('hasSpaceFor')->willReturn($space);
+		$this->stubSuccessfulSignedInstall('2.0.0');
+
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
+
+		self::assertSame(Http::STATUS_OK, $result['statusCode']);
+		self::assertSame($space, $result['payload']['space']);
+	}
+
+	public function testAnOutcomeWithoutAMeasurementCarriesNoSpace(): void {
+		$this->environmentCheck->method('hasSpaceFor')->willReturn([]);
+		$this->stubSuccessfulSignedInstall('2.0.0');
+
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
+
+		self::assertSame(Http::STATUS_OK, $result['statusCode']);
+		self::assertArrayNotHasKey('space', $result['payload']);
+	}
+
+	/**
+	 * A non-writable folder is reported as such; the space check does not run on top of it.
+	 */
+	public function testThePermissionRefusalComesBeforeTheSpaceCheck(): void {
+		$this->appManager->method('getAppPath')->willReturn('/var/www/html/apps-extra/procest');
+		$this->environmentCheck->method('isDestinationWritable')->willReturn(false);
+		$this->environmentCheck->expects(self::never())->method('hasSpaceFor');
+
+		$result = InstallArgs::call($this->service(), 'procest', '2.0.0', false);
+
+		self::assertSame(FailureClassifier::CATEGORY_PREFLIGHT_PERMISSION, $result['payload']['category']);
+	}
+
 	public function testStructuredFailureFieldsPresentWithDebugOff(): void {
 		$this->appManager->method('getAppPath')->willReturn('/writable/app');
 		$this->environmentCheck->method('isDestinationWritable')->willReturn(true);
@@ -479,6 +540,65 @@ final class InstallerServiceTest extends TestCase {
 		self::assertSame(Http::STATUS_FORBIDDEN, $result['statusCode']);
 		self::assertTrue($result['hasError']);
 		self::assertStringContainsString('cannot be managed', $result['error']);
+	}
+
+	/**
+	 * With channels wired, an app with its own channel and an app on the
+	 * default are both stamped, unfiltered, and the envelope names the channel.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-an-admin-sets-a-release-channel-for-the-instance-and-per-app
+	 */
+	public function testGetAppVersionsStampsEachAppsEffectiveChannel(): void {
+		$source = $this->createMock(SourceInterface::class);
+		$source->method('listVersions')->willReturn(['versions' => [
+			['version' => '2.6.0-beta.1', 'changelog' => null],
+			['version' => '2.5.2', 'changelog' => null],
+		], 'error' => null]);
+		$this->sourceRegistry->method('get')->willReturn($source);
+
+		$store = $this->createMock(\OCA\Versioniq\Service\Channel\ChannelStore::class);
+		$store->method('effectiveChannel')->willReturnMap([['hermiq', 'beta'], ['openregister', 'server']]);
+		$store->method('ltsLines')->willReturn([]);
+		$server = $this->createMock(\OCA\Versioniq\Service\Advisory\ServerVersionProvider::class);
+		$server->method('channel')->willReturn('stable');
+		$channels = new \OCA\Versioniq\Service\Channel\VersionChannels($store, $server);
+
+		$service = $this->buildByName(InstallerService::class, [
+			'appManager' => $this->appManager,
+			'config' => $this->config,
+			'appConfig' => $this->appConfig,
+			'sourceRegistry' => $this->sourceRegistry,
+			'bindingStore' => $this->bindingStore,
+			'trustedSources' => $this->trustedSources,
+			'pinStore' => $this->pinStore,
+			'userSession' => $this->userSession,
+			'timeFactory' => $this->timeFactory,
+			'lkgStore' => $this->lkgStore,
+			'artifactCache' => $this->artifactCache,
+			'channels' => $channels,
+		]);
+
+		$beta = $service->getAppVersions('hermiq');
+		$default = $service->getAppVersions('openregister');
+
+		self::assertSame('beta', $beta['channel']);
+		self::assertSame([true, true], array_column($beta['availableVersions'], 'onChannel'));
+		self::assertSame('server', $default['channel']);
+		self::assertSame(['2.6.0-beta.1', '2.5.2'], array_column($default['availableVersions'], 'version'));
+		self::assertSame([true, false], array_column($default['availableVersions'], 'preRelease'));
+		self::assertSame([false, true], array_column($default['availableVersions'], 'onChannel'));
+		self::assertSame($default['availableVersions'], $default['versions']);
+	}
+
+	public function testGetAppVersionsWithoutChannelsCarriesNoChannel(): void {
+		$source = $this->createMock(SourceInterface::class);
+		$source->method('listVersions')->willReturn(['versions' => [['version' => '2.5.2', 'changelog' => null]], 'error' => null]);
+		$this->sourceRegistry->method('get')->willReturn($source);
+
+		$result = $this->service()->getAppVersions('openregister');
+
+		self::assertArrayNotHasKey('channel', $result);
+		self::assertArrayNotHasKey('onChannel', $result['availableVersions'][0]);
 	}
 
 	public function testGetAppVersionsRefusesACoreProtectedAppWithADistinctMessage(): void {

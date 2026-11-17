@@ -7,6 +7,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": false,
                 "boundSourceId": "appstore",
@@ -18,7 +25,15 @@
                     "version": "1.0.0",
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
-                }
+                },
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "1.0.1"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfbeta",
@@ -26,6 +41,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -33,7 +55,15 @@
                 "warning": null,
                 "installedVersion": "2.0.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "2.0.0"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfcore",
@@ -41,6 +71,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -48,7 +85,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfdelta",
@@ -56,6 +97,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": "github:ConductionNL/qfdelta",
@@ -63,7 +111,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfepsilon",
@@ -71,6 +123,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -78,7 +137,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfgamma",
@@ -86,6 +149,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -97,7 +167,15 @@
                     "version": "2.9.0",
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
-                }
+                },
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "3.0.0"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfzeta",
@@ -105,6 +183,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -112,7 +197,15 @@
                 "warning": "default for /apps/qfzeta",
                 "installedVersion": "0.1.0",
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "0.1.0"
+                },
+                "publisher": null,
+                "marks": []
             }
         ],
         "calls": [
@@ -155,6 +248,10 @@
                 "qfalpha"
             ],
             [
+                "knownIssues",
+                "qfalpha"
+            ],
+            [
                 "binding",
                 "qfbeta"
             ],
@@ -177,6 +274,10 @@
             ],
             [
                 "lkg",
+                "qfbeta"
+            ],
+            [
+                "knownIssues",
                 "qfbeta"
             ],
             [
@@ -258,6 +359,10 @@
                 "qfgamma"
             ],
             [
+                "knownIssues",
+                "qfgamma"
+            ],
+            [
                 "binding",
                 "qfzeta"
             ],
@@ -280,6 +385,10 @@
             ],
             [
                 "lkg",
+                "qfzeta"
+            ],
+            [
+                "knownIssues",
                 "qfzeta"
             ]
         ]
@@ -328,6 +437,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": false,
                 "boundSourceId": "appstore",
@@ -339,7 +455,15 @@
                     "version": "1.0.0",
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
-                }
+                },
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "versioniq",
+                    "sourceId": "appstore",
+                    "version": "1.0.0"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfbeta",
@@ -347,6 +471,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -354,7 +485,15 @@
                 "warning": null,
                 "installedVersion": "2.0.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "2.0.0"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfcore",
@@ -362,6 +501,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -369,7 +515,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfdelta",
@@ -377,6 +527,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": "github:ConductionNL/qfdelta",
@@ -384,7 +541,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfepsilon",
@@ -392,6 +553,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -399,7 +567,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfgamma",
@@ -407,6 +579,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -418,7 +597,15 @@
                     "version": "2.9.0",
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
-                }
+                },
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "3.0.0"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfzeta",
@@ -426,6 +613,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -433,7 +627,15 @@
                 "warning": null,
                 "installedVersion": "0.1.0",
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "0.1.0"
+                },
+                "publisher": null,
+                "marks": []
             }
         ],
         "calls": [
@@ -472,6 +674,10 @@
                 "qfalpha"
             ],
             [
+                "knownIssues",
+                "qfalpha"
+            ],
+            [
                 "binding",
                 "qfbeta"
             ],
@@ -490,6 +696,10 @@
             ],
             [
                 "lkg",
+                "qfbeta"
+            ],
+            [
+                "knownIssues",
                 "qfbeta"
             ],
             [
@@ -567,6 +777,10 @@
                 "qfgamma"
             ],
             [
+                "knownIssues",
+                "qfgamma"
+            ],
+            [
                 "binding",
                 "qfzeta"
             ],
@@ -585,6 +799,10 @@
             ],
             [
                 "lkg",
+                "qfzeta"
+            ],
+            [
+                "knownIssues",
                 "qfzeta"
             ]
         ]
@@ -597,6 +815,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": false,
                 "boundSourceId": "appstore",
@@ -608,7 +833,15 @@
                     "version": "1.0.0",
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
-                }
+                },
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "1.0.1"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfbeta",
@@ -616,6 +849,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -623,7 +863,15 @@
                 "warning": null,
                 "installedVersion": "2.0.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "2.0.0"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfcore",
@@ -631,6 +879,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -638,7 +893,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfdelta",
@@ -646,6 +905,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": "github:ConductionNL/qfdelta",
@@ -653,7 +919,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfepsilon",
@@ -661,6 +931,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -668,7 +945,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfgamma",
@@ -676,6 +957,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -687,7 +975,15 @@
                     "version": "2.9.0",
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
-                }
+                },
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "3.0.0"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfzeta",
@@ -695,6 +991,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -702,7 +1005,15 @@
                 "warning": null,
                 "installedVersion": "0.1.0",
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "0.1.0"
+                },
+                "publisher": null,
+                "marks": []
             }
         ],
         "calls": [
@@ -745,6 +1056,10 @@
                 "qfalpha"
             ],
             [
+                "knownIssues",
+                "qfalpha"
+            ],
+            [
                 "binding",
                 "qfbeta"
             ],
@@ -767,6 +1082,10 @@
             ],
             [
                 "lkg",
+                "qfbeta"
+            ],
+            [
+                "knownIssues",
                 "qfbeta"
             ],
             [
@@ -860,6 +1179,10 @@
                 "qfgamma"
             ],
             [
+                "knownIssues",
+                "qfgamma"
+            ],
+            [
                 "binding",
                 "qfzeta"
             ],
@@ -882,6 +1205,10 @@
             ],
             [
                 "lkg",
+                "qfzeta"
+            ],
+            [
+                "knownIssues",
                 "qfzeta"
             ]
         ]
@@ -930,6 +1257,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": false,
                 "boundSourceId": "appstore",
@@ -941,7 +1275,15 @@
                     "version": "1.0.0",
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
-                }
+                },
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "1.0.1"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfbeta",
@@ -949,6 +1291,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -956,7 +1305,15 @@
                 "warning": null,
                 "installedVersion": "2.0.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "2.0.0"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfcore",
@@ -964,6 +1321,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -971,7 +1335,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfdelta",
@@ -979,6 +1347,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": "github:ConductionNL/qfdelta",
@@ -986,7 +1361,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfepsilon",
@@ -994,6 +1373,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1001,7 +1387,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfgamma",
@@ -1009,6 +1399,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -1020,7 +1417,15 @@
                     "version": "2.9.0",
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
-                }
+                },
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "3.0.0"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfzeta",
@@ -1028,6 +1433,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1035,7 +1447,15 @@
                 "warning": null,
                 "installedVersion": "0.1.0",
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "0.1.0"
+                },
+                "publisher": null,
+                "marks": []
             }
         ],
         "calls": [
@@ -1074,6 +1494,10 @@
                 "qfalpha"
             ],
             [
+                "knownIssues",
+                "qfalpha"
+            ],
+            [
                 "binding",
                 "qfbeta"
             ],
@@ -1092,6 +1516,10 @@
             ],
             [
                 "lkg",
+                "qfbeta"
+            ],
+            [
+                "knownIssues",
                 "qfbeta"
             ],
             [
@@ -1169,6 +1597,10 @@
                 "qfgamma"
             ],
             [
+                "knownIssues",
+                "qfgamma"
+            ],
+            [
                 "binding",
                 "qfzeta"
             ],
@@ -1188,6 +1620,10 @@
             [
                 "lkg",
                 "qfzeta"
+            ],
+            [
+                "knownIssues",
+                "qfzeta"
             ]
         ]
     },
@@ -1199,6 +1635,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1206,7 +1649,15 @@
                 "warning": null,
                 "installedVersion": "1.0.0",
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "1.0.0"
+                },
+                "publisher": null,
+                "marks": []
             }
         ],
         "calls": [
@@ -1243,6 +1694,10 @@
             [
                 "lkg",
                 "123"
+            ],
+            [
+                "knownIssues",
+                "123"
             ]
         ]
     },
@@ -1254,6 +1709,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1261,7 +1723,15 @@
                 "warning": null,
                 "installedVersion": "2.0.0",
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "2.0.0"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "10",
@@ -1269,6 +1739,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1276,7 +1753,15 @@
                 "warning": null,
                 "installedVersion": "1.0.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "1.0.0"
+                },
+                "publisher": null,
+                "marks": []
             }
         ],
         "calls": [
@@ -1315,6 +1800,10 @@
                 "1e1"
             ],
             [
+                "knownIssues",
+                "1e1"
+            ],
+            [
                 "binding",
                 "10"
             ],
@@ -1334,17 +1823,28 @@
             [
                 "lkg",
                 "10"
+            ],
+            [
+                "knownIssues",
+                "10"
             ]
         ]
     },
-    "metadata": {
+    "a known issue in the installed version only": {
         "apps": [
             {
                 "id": "qfalpha",
-                "label": "Alpha",
-                "description": "Long text",
-                "summary": "Short",
-                "preview": "https://example.test/a.png",
+                "label": "qfalpha",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": false,
                 "boundSourceId": "appstore",
@@ -1356,7 +1856,20 @@
                     "version": "1.0.0",
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
-                }
+                },
+                "installedKnownIssues": [
+                    {
+                        "text": "Export times out",
+                        "workaround": "Export per schema"
+                    }
+                ],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "1.0.1"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfbeta",
@@ -1364,6 +1877,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1371,7 +1891,15 @@
                 "warning": null,
                 "installedVersion": "2.0.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "2.0.0"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfcore",
@@ -1379,6 +1907,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -1386,7 +1921,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfdelta",
@@ -1394,6 +1933,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": "github:ConductionNL/qfdelta",
@@ -1401,7 +1947,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfepsilon",
@@ -1409,6 +1959,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1416,7 +1973,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfgamma",
@@ -1424,6 +1985,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -1435,14 +2003,33 @@
                     "version": "2.9.0",
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
-                }
+                },
+                "installedKnownIssues": [
+                    {
+                        "text": "Not installed here"
+                    }
+                ],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "3.0.0"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfzeta",
-                "label": "Zeta",
+                "label": "qfzeta",
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1450,7 +2037,15 @@
                 "warning": "default for /apps/qfzeta",
                 "installedVersion": "0.1.0",
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "0.1.0"
+                },
+                "publisher": null,
+                "marks": []
             }
         ],
         "calls": [
@@ -1493,6 +2088,10 @@
                 "qfalpha"
             ],
             [
+                "knownIssues",
+                "qfalpha"
+            ],
+            [
                 "binding",
                 "qfbeta"
             ],
@@ -1515,6 +2114,10 @@
             ],
             [
                 "lkg",
+                "qfbeta"
+            ],
+            [
+                "knownIssues",
                 "qfbeta"
             ],
             [
@@ -1596,6 +2199,10 @@
                 "qfgamma"
             ],
             [
+                "knownIssues",
+                "qfgamma"
+            ],
+            [
                 "binding",
                 "qfzeta"
             ],
@@ -1619,10 +2226,14 @@
             [
                 "lkg",
                 "qfzeta"
+            ],
+            [
+                "knownIssues",
+                "qfzeta"
             ]
         ]
     },
-    "metadata, nothing enabled": {
+    "metadata": {
         "apps": [
             {
                 "id": "qfalpha",
@@ -1630,18 +2241,33 @@
                 "description": "Long text",
                 "summary": "Short",
                 "preview": "https://example.test/a.png",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": false,
                 "boundSourceId": "appstore",
                 "manageable": false,
                 "warning": "Not writable.",
                 "installedVersion": "1.0.1",
-                "state": "disabled",
+                "state": "enabled",
                 "lkg": {
                     "version": "1.0.0",
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
-                }
+                },
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "1.0.1"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfbeta",
@@ -1649,6 +2275,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1656,7 +2289,41 @@
                 "warning": null,
                 "installedVersion": "2.0.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "2.0.0"
+                },
+                "publisher": null,
+                "marks": []
+            },
+            {
+                "id": "qfcore",
+                "label": "qfcore",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
+                "isCore": true,
+                "isShipped": true,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "enabled",
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfdelta",
@@ -1664,6 +2331,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": "github:ConductionNL/qfdelta",
@@ -1671,7 +2345,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfepsilon",
@@ -1679,6 +2357,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1686,7 +2371,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfgamma",
@@ -1694,6 +2383,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -1705,7 +2401,15 @@
                     "version": "2.9.0",
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
-                }
+                },
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "3.0.0"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfzeta",
@@ -1713,14 +2417,29 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
                 "manageable": true,
                 "warning": "default for /apps/qfzeta",
                 "installedVersion": "0.1.0",
-                "state": "disabled",
-                "lkg": null
+                "state": "enabled",
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "0.1.0"
+                },
+                "publisher": null,
+                "marks": []
             }
         ],
         "calls": [
@@ -1763,6 +2482,10 @@
                 "qfalpha"
             ],
             [
+                "knownIssues",
+                "qfalpha"
+            ],
+            [
                 "binding",
                 "qfbeta"
             ],
@@ -1785,6 +2508,378 @@
             ],
             [
                 "lkg",
+                "qfbeta"
+            ],
+            [
+                "knownIssues",
+                "qfbeta"
+            ],
+            [
+                "binding",
+                "qfcore"
+            ],
+            [
+                "getAppPath",
+                "qfcore"
+            ],
+            [
+                "getAppVersion",
+                "qfcore",
+                false
+            ],
+            [
+                "isShipped",
+                "qfcore"
+            ],
+            [
+                "lkg",
+                "qfcore"
+            ],
+            [
+                "binding",
+                "qfdelta"
+            ],
+            [
+                "getAppPath",
+                "qfdelta"
+            ],
+            [
+                "isShipped",
+                "qfdelta"
+            ],
+            [
+                "lkg",
+                "qfdelta"
+            ],
+            [
+                "binding",
+                "qfepsilon"
+            ],
+            [
+                "getAppPath",
+                "qfepsilon"
+            ],
+            [
+                "isShipped",
+                "qfepsilon"
+            ],
+            [
+                "lkg",
+                "qfepsilon"
+            ],
+            [
+                "binding",
+                "qfgamma"
+            ],
+            [
+                "getAppPath",
+                "qfgamma"
+            ],
+            [
+                "inspect",
+                "/apps/qfgamma"
+            ],
+            [
+                "getAppVersion",
+                "qfgamma",
+                false
+            ],
+            [
+                "isShipped",
+                "qfgamma"
+            ],
+            [
+                "lkg",
+                "qfgamma"
+            ],
+            [
+                "knownIssues",
+                "qfgamma"
+            ],
+            [
+                "binding",
+                "qfzeta"
+            ],
+            [
+                "getAppPath",
+                "qfzeta"
+            ],
+            [
+                "inspect",
+                "/apps/qfzeta"
+            ],
+            [
+                "getAppVersion",
+                "qfzeta",
+                false
+            ],
+            [
+                "isShipped",
+                "qfzeta"
+            ],
+            [
+                "lkg",
+                "qfzeta"
+            ],
+            [
+                "knownIssues",
+                "qfzeta"
+            ]
+        ]
+    },
+    "metadata, nothing enabled": {
+        "apps": [
+            {
+                "id": "qfalpha",
+                "label": "Alpha",
+                "description": "Long text",
+                "summary": "Short",
+                "preview": "https://example.test/a.png",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
+                "isCore": true,
+                "isShipped": false,
+                "boundSourceId": "appstore",
+                "manageable": false,
+                "warning": "Not writable.",
+                "installedVersion": "1.0.1",
+                "state": "disabled",
+                "lkg": {
+                    "version": "1.0.0",
+                    "recordedAt": "2026-01-01T00:00:00+00:00",
+                    "sourceId": "appstore"
+                },
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "1.0.1"
+                },
+                "publisher": null,
+                "marks": []
+            },
+            {
+                "id": "qfbeta",
+                "label": "qfbeta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": "2.0.0",
+                "state": "disabled",
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "2.0.0"
+                },
+                "publisher": null,
+                "marks": []
+            },
+            {
+                "id": "qfdelta",
+                "label": "qfdelta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": "github:ConductionNL/qfdelta",
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "notInstalled",
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
+            },
+            {
+                "id": "qfepsilon",
+                "label": "qfepsilon",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": null,
+                "installedVersion": null,
+                "state": "notInstalled",
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
+            },
+            {
+                "id": "qfgamma",
+                "label": "qfgamma",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
+                "isCore": false,
+                "isShipped": true,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": "Mounted.",
+                "installedVersion": "3.0.0",
+                "state": "disabled",
+                "lkg": {
+                    "version": "2.9.0",
+                    "recordedAt": "2026-02-02T00:00:00+00:00",
+                    "sourceId": null
+                },
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "3.0.0"
+                },
+                "publisher": null,
+                "marks": []
+            },
+            {
+                "id": "qfzeta",
+                "label": "Zeta",
+                "description": "",
+                "summary": "",
+                "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
+                "isCore": false,
+                "isShipped": false,
+                "boundSourceId": null,
+                "manageable": true,
+                "warning": "default for /apps/qfzeta",
+                "installedVersion": "0.1.0",
+                "state": "disabled",
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "0.1.0"
+                },
+                "publisher": null,
+                "marks": []
+            }
+        ],
+        "calls": [
+            [
+                "getEnabledApps"
+            ],
+            [
+                "getAppInstalledVersions",
+                false
+            ],
+            [
+                "listBoundAppIds"
+            ],
+            [
+                "getAlwaysEnabledApps"
+            ],
+            [
+                "binding",
+                "qfalpha"
+            ],
+            [
+                "getAppPath",
+                "qfalpha"
+            ],
+            [
+                "inspect",
+                "/apps/qfalpha"
+            ],
+            [
+                "getAppVersion",
+                "qfalpha",
+                false
+            ],
+            [
+                "isShipped",
+                "qfalpha"
+            ],
+            [
+                "lkg",
+                "qfalpha"
+            ],
+            [
+                "knownIssues",
+                "qfalpha"
+            ],
+            [
+                "binding",
+                "qfbeta"
+            ],
+            [
+                "getAppPath",
+                "qfbeta"
+            ],
+            [
+                "inspect",
+                "/apps/qfbeta"
+            ],
+            [
+                "getAppVersion",
+                "qfbeta",
+                false
+            ],
+            [
+                "isShipped",
+                "qfbeta"
+            ],
+            [
+                "lkg",
+                "qfbeta"
+            ],
+            [
+                "knownIssues",
                 "qfbeta"
             ],
             [
@@ -1845,6 +2940,10 @@
                 "qfgamma"
             ],
             [
+                "knownIssues",
+                "qfgamma"
+            ],
+            [
                 "binding",
                 "qfzeta"
             ],
@@ -1868,6 +2967,10 @@
             [
                 "lkg",
                 "qfzeta"
+            ],
+            [
+                "knownIssues",
+                "qfzeta"
             ]
         ]
     },
@@ -1879,6 +2982,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1886,7 +2996,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfalpha",
@@ -1894,6 +3008,13 @@
                 "description": "Long text",
                 "summary": "Short",
                 "preview": "https://example.test/a.png",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": false,
                 "boundSourceId": "appstore",
@@ -1905,7 +3026,15 @@
                     "version": "1.0.0",
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
-                }
+                },
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "1.0.1"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfbeta",
@@ -1913,6 +3042,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1920,7 +3056,15 @@
                 "warning": null,
                 "installedVersion": "2.0.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "2.0.0"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfdelta",
@@ -1928,6 +3072,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": "github:ConductionNL/qfdelta",
@@ -1935,7 +3086,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfepsilon",
@@ -1943,6 +3098,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1950,7 +3112,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfgamma",
@@ -1958,6 +3124,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -1969,7 +3142,15 @@
                     "version": "2.9.0",
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
-                }
+                },
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "3.0.0"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfzeta",
@@ -1977,6 +3158,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1984,7 +3172,15 @@
                 "warning": "default for /apps/qfzeta",
                 "installedVersion": "0.1.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "0.1.0"
+                },
+                "publisher": null,
+                "marks": []
             }
         ],
         "calls": [
@@ -2048,6 +3244,10 @@
                 "qfalpha"
             ],
             [
+                "knownIssues",
+                "qfalpha"
+            ],
+            [
                 "binding",
                 "qfbeta"
             ],
@@ -2070,6 +3270,10 @@
             ],
             [
                 "lkg",
+                "qfbeta"
+            ],
+            [
+                "knownIssues",
                 "qfbeta"
             ],
             [
@@ -2130,6 +3334,10 @@
                 "qfgamma"
             ],
             [
+                "knownIssues",
+                "qfgamma"
+            ],
+            [
                 "binding",
                 "qfzeta"
             ],
@@ -2153,6 +3361,10 @@
             [
                 "lkg",
                 "qfzeta"
+            ],
+            [
+                "knownIssues",
+                "qfzeta"
             ]
         ]
     },
@@ -2164,6 +3376,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": false,
                 "boundSourceId": "appstore",
@@ -2175,7 +3394,15 @@
                     "version": "1.0.0",
                     "recordedAt": "2026-01-01T00:00:00+00:00",
                     "sourceId": "appstore"
-                }
+                },
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "1.0.1"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfbeta",
@@ -2183,6 +3410,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -2190,7 +3424,15 @@
                 "warning": null,
                 "installedVersion": "2.0.0",
                 "state": "disabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "2.0.0"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfcore",
@@ -2198,6 +3440,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -2205,7 +3454,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfdelta",
@@ -2213,6 +3466,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": "github:ConductionNL/qfdelta",
@@ -2220,7 +3480,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfepsilon",
@@ -2228,6 +3492,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -2235,7 +3506,11 @@
                 "warning": null,
                 "installedVersion": null,
                 "state": "notInstalled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": null,
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfgamma",
@@ -2243,6 +3518,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -2254,7 +3536,15 @@
                     "version": "2.9.0",
                     "recordedAt": "2026-02-02T00:00:00+00:00",
                     "sourceId": null
-                }
+                },
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "3.0.0"
+                },
+                "publisher": null,
+                "marks": []
             },
             {
                 "id": "qfzeta",
@@ -2262,6 +3552,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -2269,7 +3566,15 @@
                 "warning": "default for /apps/qfzeta",
                 "installedVersion": "0.1.0",
                 "state": "enabled",
-                "lkg": null
+                "lkg": null,
+                "installedKnownIssues": [],
+                "provenance": {
+                    "kind": "outside",
+                    "sourceId": null,
+                    "version": "0.1.0"
+                },
+                "publisher": null,
+                "marks": []
             }
         ],
         "calls": [
@@ -2312,6 +3617,10 @@
                 "qfalpha"
             ],
             [
+                "knownIssues",
+                "qfalpha"
+            ],
+            [
                 "binding",
                 "qfbeta"
             ],
@@ -2334,6 +3643,10 @@
             ],
             [
                 "lkg",
+                "qfbeta"
+            ],
+            [
+                "knownIssues",
                 "qfbeta"
             ],
             [
@@ -2415,6 +3728,10 @@
                 "qfgamma"
             ],
             [
+                "knownIssues",
+                "qfgamma"
+            ],
+            [
                 "binding",
                 "qfzeta"
             ],
@@ -2437,6 +3754,10 @@
             ],
             [
                 "lkg",
+                "qfzeta"
+            ],
+            [
+                "knownIssues",
                 "qfzeta"
             ]
         ]

@@ -84,4 +84,11 @@ final class AutoUpdateWindowTest extends TestCase {
 		$this->assertSame('23:00-03:00@2026-07-22', AutoUpdateWindow::openingKey($window, new \DateTimeImmutable('2026-07-22T23:30:00')));
 		$this->assertSame('23:00-03:00@2026-07-22', AutoUpdateWindow::openingKey($window, new \DateTimeImmutable('2026-07-23T01:00:00')));
 	}
+
+	public function testOpenedOnIsTheEveningBeforeAfterMidnightInACrossingWindow(): void {
+		$now = new \DateTimeImmutable('2026-11-14 00:30', new \DateTimeZone('UTC'));
+
+		$this->assertSame('2026-11-13', AutoUpdateWindow::openedOn('23:00-03:00', $now)->format('Y-m-d'));
+		$this->assertSame('2026-11-14', AutoUpdateWindow::openedOn('00:00-03:00', $now)->format('Y-m-d'));
+	}
 }

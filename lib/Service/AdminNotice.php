@@ -23,7 +23,7 @@ final class AdminNotice {
 	private string $objectType = '';
 	private string $objectId = '';
 	private string $subject = '';
-	/** @var array<string, string> */
+	/** @var array<string, mixed> */
 	private array $subjectParameters = [];
 	private string $link = '';
 	private string $logMessage = '';
@@ -45,7 +45,7 @@ final class AdminNotice {
 	}
 
 	/**
-	 * @param array<string, string> $parameters
+	 * @param array<string, mixed> $parameters
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 * @spec openspec/specs/version-pinning/spec.md
 	 */
@@ -104,6 +104,22 @@ final class AdminNotice {
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 * @spec openspec/specs/version-pinning/spec.md
 	 */
+	/**
+	 * The notification subject, for the webhook dispatch (releases-new-release-alerts D6).
+	 */
+	public function subject(): string {
+		return $this->subject;
+	}
+
+	/**
+	 * The subject parameters, for the webhook dispatch (releases-new-release-alerts D6).
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function subjectParameters(): array {
+		return $this->subjectParameters;
+	}
+
 	public function logMessage(): string {
 		return $this->logMessage;
 	}

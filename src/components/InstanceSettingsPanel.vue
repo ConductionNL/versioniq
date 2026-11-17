@@ -1,10 +1,11 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
 import { t } from '@nextcloud/l10n'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import { ocsGet, ocsWrite } from '../ocs.ts'
+import { feedCopyState, importFeedCopy } from '../utils/advisoryFeedCopy.ts'
 
 /**
  * The instance settings that were reachable only through `occ config:app:set`
@@ -28,8 +29,15 @@ type Settings = {
 	githubWebDefault: string
 	advisoryFeedUrl: string
 	advisoryFeedDefault: string
+	ncscFeedUrl: string
+	ncscFeedDefault: string
 	maxLinesBehind: number | null
 	maxLinesBehindMax: number
+	reactivateAuto?: boolean
+	advisoryFeedSource?: string
+	advisoryFeedCopiedAt?: number | null
+	advisoryFeedCopyMaxAgeDays?: number
+	notifyUsersOnUpdate?: boolean
 }
 
 const ENDPOINT = '/ocs/v2.php/apps/versioniq/api/instance-settings'
@@ -42,7 +50,11 @@ const form = ref({
 	githubApiBase: '',
 	githubWebBase: '',
 	advisoryFeedUrl: '',
+	ncscFeedUrl: '',
 	maxLinesBehind: '',
+	reactivateAuto: false,
+	advisoryFeedSource: 'remote',
+	notifyUsersOnUpdate: true,
 })
 const saving = ref(false)
 const error = ref('')
@@ -61,8 +73,52 @@ function fill (settings: Settings): void {
 		githubApiBase: settings.githubApiBase,
 		githubWebBase: settings.githubWebBase,
 		advisoryFeedUrl: settings.advisoryFeedUrl,
+		ncscFeedUrl: settings.ncscFeedUrl ?? '',
 		maxLinesBehind: settings.maxLinesBehind === null || settings.maxLinesBehind === undefined ? '' : String(settings.maxLinesBehind),
+		reactivateAuto: settings.reactivateAuto === true,
+		advisoryFeedSource: settings.advisoryFeedSource === 'local' ? 'local' : 'remote',
+		// On unless the admin switched it off (releases-notes-reach 1.2).
+		notifyUsersOnUpdate: settings.notifyUsersOnUpdate !== false,
 	}
+}
+
+const importing = ref(false)
+const copyError = ref('')
+
+/**
+ * The line naming the imported copy's date, with its 30-day warning.
+ *
+ * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/security-advisory-correlation/spec.md
+ */
+const copyState = computed(() => feedCopyState(loaded.value?.advisoryFeedCopiedAt ?? null, loaded.value?.advisoryFeedCopyMaxAgeDays ?? 30, Date.now()))
+
+/**
+ * Imports the chosen feed file as the local copy; a refused file leaves the
+ * previous copy in use and says why.
+ *
+ * @param event the file input's change
+ * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/security-advisory-correlation/spec.md
+ */
+async function importCopy (event: Event): Promise<void> {
+	const input = event.target as HTMLInputElement | null
+	const file = input?.files?.[0]
+	if (!file || !loaded.value) {
+		return
+	}
+	importing.value = true
+	copyError.value = ''
+	notice.value = ''
+	const result = await importFeedCopy(file)
+	importing.value = false
+	if (input) {
+		input.value = ''
+	}
+	if ('error' in result) {
+		copyError.value = result.error
+		return
+	}
+	loaded.value = { ...loaded.value, advisoryFeedCopiedAt: result.copiedAt }
+	notice.value = t('versioniq', 'Advisory feed copy imported.')
 }
 
 /**
@@ -150,6 +206,26 @@ onMounted(load)
 					data-testid="setting-max-lines-behind">
 				<span :class="$style.hint">{{ t('versioniq', 'An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.') }}</span>
 			</label>
+			<label :class="$style.field" for="setting-notify-users-on-update">
+				<span>
+					<input
+						id="setting-notify-users-on-update"
+						v-model="form.notifyUsersOnUpdate"
+						type="checkbox"
+						data-testid="setting-notify-users-on-update">
+					{{ t('versioniq', 'Tell an app\'s users what changed after Versioniq updates it') }}
+				</span>
+				<span :class="$style.hint">{{ t('versioniq', 'They get the same notice as after an update from the Apps page. A dry run never sends it.') }}</span>
+			</label>
+
+			<label :class="$style.checkboxField" for="setting-reactivate-auto">
+				<input
+					id="setting-reactivate-auto"
+					v-model="form.reactivateAuto"
+					type="checkbox"
+					data-testid="setting-reactivate-auto">
+				<span>{{ t('versioniq', 'Enable an app again when an update left it disabled and it runs on this server') }}</span>
+			</label>
 
 			<h4>{{ t('versioniq', 'Sources and mirrors') }}</h4>
 			<p :class="$style.hint">
@@ -195,6 +271,52 @@ onMounted(load)
 					data-testid="setting-advisory-feed">
 				<span :class="$style.hint">{{ t('versioniq', 'Default: {url}', { url: loaded.advisoryFeedDefault }) }}</span>
 			</label>
+			<label :class="$style.field" for="setting-ncsc-feed">
+				<span>{{ t('versioniq', 'NCSC-NL advisory directory (https, an internal mirror)') }}</span>
+				<input
+					id="setting-ncsc-feed"
+					v-model="form.ncscFeedUrl"
+					type="url"
+					:placeholder="loaded.ncscFeedDefault"
+					data-testid="setting-ncsc-feed">
+				<span :class="$style.hint">{{ t('versioniq', 'Default: {url}', { url: loaded.ncscFeedDefault }) }}</span>
+			</label>
+
+			<label :class="$style.field" for="setting-advisory-feed-source">
+				<span>{{ t('versioniq', 'Read advisories from') }}</span>
+				<select
+					id="setting-advisory-feed-source"
+					v-model="form.advisoryFeedSource"
+					data-testid="setting-advisory-feed-source">
+					<option value="remote">
+						{{ t('versioniq', 'The advisory feed address') }}
+					</option>
+					<option value="local">
+						{{ t('versioniq', 'The local copy (no internet needed)') }}
+					</option>
+				</select>
+			</label>
+			<div :class="$style.field" data-testid="setting-advisory-feed-copy">
+				<span v-if="copyState" data-testid="setting-advisory-feed-copy-state">{{ copyState.text }}</span>
+				<span v-else :class="$style.hint">{{ t('versioniq', 'No local copy has been imported.') }}</span>
+				<NcNoteCard v-if="copyState?.stale" type="warning">
+					<span data-testid="setting-advisory-feed-copy-stale">{{ t('versioniq', 'The local copy is older than {days} days. Import a newer one.', { days: loaded.advisoryFeedCopyMaxAgeDays ?? 30 }) }}</span>
+				</NcNoteCard>
+				<label for="setting-advisory-feed-copy-file">
+					{{ t('versioniq', 'Import a local copy of the advisory feed') }}
+				</label>
+				<input
+					id="setting-advisory-feed-copy-file"
+					type="file"
+					accept="application/json,.json"
+					:disabled="importing"
+					data-testid="setting-advisory-feed-copy-file"
+					@change="importCopy">
+				<span :class="$style.hint">{{ t('versioniq', 'A file downloaded from the feed address, for an instance without internet access.') }}</span>
+				<NcNoteCard v-if="copyError" type="error">
+					<span data-testid="setting-advisory-feed-copy-error">{{ copyError }}</span>
+				</NcNoteCard>
+			</div>
 
 			<p v-if="notice" :class="$style.notice" data-testid="instance-settings-notice">
 				{{ notice }}
@@ -223,6 +345,12 @@ onMounted(load)
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
+}
+
+.checkboxField {
+	display: flex;
+	gap: 8px;
+	align-items: center;
 }
 
 .hint {

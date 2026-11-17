@@ -15,7 +15,9 @@ use OCA\Versioniq\Db\AuditEntryMapper;
 use OCP\DB\IResult;
 use OCP\DB\QueryBuilder\ICompositeExpression;
 use OCP\DB\QueryBuilder\IExpressionBuilder;
+use OCP\DB\QueryBuilder\IFunctionBuilder;
 use OCP\DB\QueryBuilder\IQueryBuilder;
+use OCP\DB\QueryBuilder\IQueryFunction;
 use OCP\IDBConnection;
 use PHPUnit\Framework\TestCase;
 
@@ -41,7 +43,7 @@ final class AuditEntryMapperTest extends TestCase {
 	 */
 	private function queryBuilder(array $rows = [], array $ones = [], int $affected = 0): IQueryBuilder {
 		$qb = $this->createMock(IQueryBuilder::class);
-		foreach (['select', 'from', 'where', 'andWhere', 'orderBy', 'addOrderBy', 'setMaxResults', 'setFirstResult', 'delete'] as $method) {
+		foreach (['select', 'selectAlias', 'from', 'where', 'andWhere', 'groupBy', 'addGroupBy', 'orderBy', 'addOrderBy', 'setMaxResults', 'setFirstResult', 'delete'] as $method) {
 			$qb->method($method)->willReturnCallback(function (mixed ...$args) use ($method, $qb): IQueryBuilder {
 				// The double receives defaulted arguments as null; record what was passed.
 				while ($args !== [] && end($args) === null) {
@@ -71,6 +73,13 @@ final class AuditEntryMapperTest extends TestCase {
 			return $this->createMock(ICompositeExpression::class);
 		});
 		$qb->method('expr')->willReturn($expr);
+		$func = $this->createMock(IFunctionBuilder::class);
+		$func->method('count')->willReturnCallback(function (mixed $column = null): IQueryFunction {
+			$this->log[] = ['count', $column];
+
+			return $this->createMock(IQueryFunction::class);
+		});
+		$qb->method('func')->willReturn($func);
 
 		$result = $this->createMock(IResult::class);
 		$result->method('fetchAssociative')->willReturnOnConsecutiveCalls(...array_merge($rows, [false]));
@@ -123,6 +132,38 @@ final class AuditEntryMapperTest extends TestCase {
 		$this->assertContainsOnlyInstancesOf(AuditEntry::class, $entries);
 		$this->assertSame([9, 8], array_map(static fn (AuditEntry $e): int => $e->getId(), $entries));
 		$this->assertSame(['mail', 'deck'], array_map(static fn (AuditEntry $e): string => $e->getAppId(), $entries));
+	}
+
+	/**
+	 * The install rows of one app grouped by target version and status;
+	 * other statuses and rows without a version are not counted.
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+	 */
+	public function testOutcomesAreCountedPerVersionFromTheInstallRows(): void {
+		$qb = $this->queryBuilder([
+			['to_version' => '1.4.0', 'status' => 'success', 'outcome_count' => '3'],
+			['to_version' => '1.4.0', 'status' => 'failure', 'outcome_count' => 1],
+			['to_version' => '1.3.0', 'status' => 'success', 'outcome_count' => '2'],
+			['to_version' => '1.2.0', 'status' => 'skipped', 'outcome_count' => '9'],
+			['to_version' => null, 'status' => 'failure', 'outcome_count' => '4'],
+			['to_version' => '', 'status' => 'success', 'outcome_count' => '5'],
+		]);
+		$mapper = new AuditEntryMapper($this->connection($qb));
+
+		$this->assertSame(
+			['1.4.0' => ['succeeded' => 3, 'failed' => 1], '1.3.0' => ['succeeded' => 2, 'failed' => 0]],
+			$mapper->countOutcomesByVersion('hermiq')
+		);
+		$this->assertSame([
+			['select', 'to_version', 'status'],
+			['count', '*'],
+			['param', ':p0', 'hermiq', IQueryBuilder::PARAM_STR],
+			['param', ':p1', 'install', IQueryBuilder::PARAM_STR],
+		], array_values(array_filter($this->log, static fn (array $entry): bool => in_array($entry[0], ['select', 'count', 'param'], true))));
+		$this->assertContains(['groupBy', 'to_version'], $this->log);
+		$this->assertContains(['addGroupBy', 'status'], $this->log);
+		$this->assertContains(['closeCursor'], $this->log);
 	}
 
 	public function testAnAppIdFiltersThePage(): void {

@@ -11,7 +11,9 @@ import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import { ocsGet } from '../ocs.ts'
 import { originFilterOptions, originLabel } from '../utils/auditOrigin.ts'
+import { labelCarriesMessage, operationLabel } from '../utils/auditOperations.ts'
 import { errorMessage } from '../utils/errorMessage.ts'
+import { historyMessage } from '../utils/externalChanges.ts'
 
 type AuditEntry = {
 	id: number
@@ -235,7 +237,9 @@ const isEmpty = computed(() => hasLoadedOnce.value && !isLoading.value && entrie
 						<td v-if="!appId">
 							{{ entry.appId }}
 						</td>
-						<td>{{ entry.operation }}</td>
+						<td data-testid="history-operation">
+							{{ operationLabel(entry) }}
+						</td>
 						<td :class="$style.versions">
 							{{ versionTransition(entry) }}
 						</td>
@@ -244,8 +248,8 @@ const isEmpty = computed(() => hasLoadedOnce.value && !isLoading.value && entrie
 							<span :class="[$style.statusBadge, { [$style.statusBadgeFailure]: isFailure(entry) }]">
 								{{ entry.status }}
 							</span>
-							<p v-if="entry.message" :class="$style.message">
-								{{ entry.message }}
+							<p v-if="entry.message && !labelCarriesMessage(entry)" :class="$style.message" data-testid="history-message">
+								{{ historyMessage(entry.operation, entry.message) }}
 							</p>
 						</td>
 					</tr>
