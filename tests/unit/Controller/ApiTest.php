@@ -801,7 +801,7 @@ final class ApiTest extends TestCase {
 			}
 		);
 
-		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore = $this->settingsStoreMock();
 		$settingsStore->expects($this->once())->method('setDefaultLevel')->with('patch');
 		$settingsStore->expects($this->never())->method('setEnabled');
 		$settingsStore->expects($this->never())->method('setWindow');
@@ -824,7 +824,7 @@ final class ApiTest extends TestCase {
 			}
 		);
 
-		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore = $this->settingsStoreMock();
 		$settingsStore->expects($this->never())->method('setDefaultLevel');
 		$settingsStore->expects($this->never())->method('setWindow');
 		$settingsStore->expects($this->never())->method('setEnabled');
@@ -846,7 +846,7 @@ final class ApiTest extends TestCase {
 		$config = $this->createMock(IConfig::class);
 		$config->method('getSystemValueString')->willReturn($path);
 
-		return new PolicySource($config, $this->createMock(PolicyStore::class), $this->createMock(AutoUpdateSettingsStore::class));
+		return new PolicySource($config, $this->createMock(PolicyStore::class), $this->settingsStoreMock());
 	}
 
 	/**
@@ -894,7 +894,7 @@ final class ApiTest extends TestCase {
 		$policyStore = $this->createMock(PolicyStore::class);
 		$policyStore->expects($this->never())->method('set');
 		$policyStore->expects($this->never())->method('clear');
-		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore = $this->settingsStoreMock();
 		$settingsStore->expects($this->never())->method('setEnabled');
 
 		$installer = $this->createMock(InstallerService::class);
@@ -914,7 +914,7 @@ final class ApiTest extends TestCase {
 	}
 
 	public function testPoliciesCarryTheDefaultLevel(): void {
-		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore = $this->settingsStoreMock();
 		$settingsStore->method('getDefaultLevel')->willReturn('minor');
 
 		$installer = $this->createMock(InstallerService::class);
