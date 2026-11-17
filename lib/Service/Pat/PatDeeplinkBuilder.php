@@ -62,6 +62,9 @@ class PatDeeplinkBuilder {
 		if ($forge === ForgeRegistry::FORGE_GITHUB) {
 			throw new InvalidArgumentException('A forge-token link is for a Forgejo or Gitea forge, not GitHub.');
 		}
+		if ($forge === ForgeRegistry::FORGE_GITLAB) {
+			return $this->buildGitlabToken();
+		}
 
 		return [
 			'kind' => Pat::KIND_FORGE_TOKEN,
@@ -71,6 +74,31 @@ class PatDeeplinkBuilder {
 				'Give it a name like "Nextcloud Versioniq" and select read-only repository scopes only.',
 				'Set an expiration if your policy requires one.',
 				'Click "Generate Token" and paste the resulting value back into Versioniq.',
+			],
+		];
+	}
+
+	/**
+	 * GitLab's personal access token page (gitlab.com or the self-managed host)
+	 * with the name and the read_api scope filled in (sources-gitlab-forge D5).
+	 * The validator refuses any token that carries more than read_api and
+	 * read_repository.
+	 *
+	 * @return array{kind:string, url:string, instructions:list<string>}
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-3.1
+	 */
+	private function buildGitlabToken(): array {
+		$query = http_build_query(['name' => 'Nextcloud Versioniq', 'scopes' => 'read_api'], '', '&', PHP_QUERY_RFC3986);
+
+		return [
+			'kind' => Pat::KIND_FORGE_TOKEN,
+			'url' => $this->forgeRegistry->get(ForgeRegistry::FORGE_GITLAB)->tokenCreateUrl . '?' . $query,
+			'instructions' => [
+				'Open the link to create a personal access token on your GitLab host; the name and the read_api scope are filled in.',
+				'Leave every other scope off: a token with api, write_repository or sudo is refused.',
+				'Set an expiration date if your policy requires one.',
+				'Click "Create personal access token" and paste the resulting glpat-... value back into Versioniq.',
 			],
 		];
 	}

@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Pat;
 
+use OCA\Versioniq\Kernel\Contracts\PatExpiryEvaluatorInterface;
 use OCP\AppFramework\Utility\ITimeFactory;
 
 /**
@@ -22,7 +23,7 @@ use OCP\AppFramework\Utility\ITimeFactory;
  *
  * @psalm-api
  */
-class PatExpiryEvaluator {
+class PatExpiryEvaluator implements PatExpiryEvaluatorInterface {
 	/** Notify at ≤14 days remaining. */
 	public const THRESHOLD_14D = '14d';
 	/** Notify again at ≤3 days remaining. */

@@ -33,6 +33,8 @@ const settings = {
 	githubWebDefault: 'https://github.com',
 	advisoryFeedUrl: '',
 	advisoryFeedDefault: 'https://api.github.com/repos/nextcloud/security-advisories/security-advisories',
+	ncscFeedUrl: '',
+	ncscFeedDefault: 'https://advisories.ncsc.nl/csaf/v2/',
 	osvApiBase: '',
 	osvApiDefault: 'https://api.osv.dev',
 	maxLinesBehind: 2,
@@ -117,6 +119,7 @@ describe('InstanceSettingsPanel saving', () => {
 		mockedWrite.mockResolvedValue({ payload: settings } as never)
 		const wrapper = await mountPanel()
 		await wrapper.find('[data-testid="setting-advisory-feed"]').setValue('https://mirror.example.org/feed')
+		await wrapper.find('[data-testid="setting-ncsc-feed"]').setValue('https://csaf.example.org/v2')
 		await wrapper.find('[data-testid="setting-max-lines-behind"]').setValue('')
 
 		await save(wrapper)
@@ -128,8 +131,12 @@ describe('InstanceSettingsPanel saving', () => {
 			githubApiBase: 'https://ghe.example.org/api/v3',
 			githubWebBase: '',
 			advisoryFeedUrl: 'https://mirror.example.org/feed',
+			ncscFeedUrl: 'https://csaf.example.org/v2',
 			osvApiBase: '',
 			maxLinesBehind: '',
+			reactivateAuto: 'false',
+			advisoryFeedSource: 'remote',
+			notifyUsersOnUpdate: 'true',
 		})
 		expect(wrapper.find('[data-testid="instance-settings-notice"]').text()).toBe('Settings saved.')
 	})

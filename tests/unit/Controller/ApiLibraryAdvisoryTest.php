@@ -57,7 +57,7 @@ final class ApiLibraryAdvisoryTest extends TestCase {
 		});
 
 		$results = $this->createMock(AdvisoryResultStore::class);
-		$results->method('read')->willReturn(['advisories' => ['mail' => ['state' => 'none']], 'checkedAt' => 1700000000]);
+		$results->method('read')->willReturn(['advisories' => ['mail' => ['state' => 'none']], 'checkedAt' => 1700000000, 'status' => 'ok', 'errors' => []]);
 
 		return $this->buildByName(ApiController::class, [
 			'appName' => 'versioniq',
@@ -75,14 +75,14 @@ final class ApiLibraryAdvisoryTest extends TestCase {
 	public function testTheSwitchIsOffAndRoundTrips(): void {
 		$this->assertFalse($this->controller()->advisorySettings()->getData()['librariesEnabled']);
 
-		$on = $this->controller()->updateAdvisorySettings(null, null, '1');
+		$on = $this->controller()->updateAdvisorySettings(librariesEnabled: '1');
 		$this->assertSame(200, $on->getStatus());
 		$this->assertTrue($on->getData()['librariesEnabled']);
 		$this->assertTrue($this->controller()->advisorySettings()->getData()['librariesEnabled']);
 		$this->assertSame(true, $this->stored['advisory.libraries_enabled']);
 
 		// PHP reads a JSON false as '', which is an explicit off.
-		$this->assertFalse($this->controller()->updateAdvisorySettings(null, null, '')->getData()['librariesEnabled']);
+		$this->assertFalse($this->controller()->updateAdvisorySettings(librariesEnabled: '')->getData()['librariesEnabled']);
 		$this->assertSame(false, $this->stored['advisory.libraries_enabled']);
 	}
 
@@ -90,11 +90,11 @@ final class ApiLibraryAdvisoryTest extends TestCase {
 		$this->stored['advisory.libraries_enabled'] = true;
 
 		$this->assertTrue($this->controller()->updateAdvisorySettings('12', null)->getData()['librariesEnabled']);
-		$this->assertTrue($this->controller()->updateAdvisorySettings(null, null, 'maybe')->getData()['librariesEnabled']);
+		$this->assertTrue($this->controller()->updateAdvisorySettings(librariesEnabled: 'maybe')->getData()['librariesEnabled']);
 	}
 
 	public function testANonAdminCannotSwitchItOn(): void {
-		$response = $this->controller(false)->updateAdvisorySettings(null, null, '1');
+		$response = $this->controller(false)->updateAdvisorySettings(librariesEnabled: '1');
 
 		$this->assertSame(403, $response->getStatus());
 		$this->assertArrayNotHasKey('advisory.libraries_enabled', $this->stored);
@@ -105,12 +105,12 @@ final class ApiLibraryAdvisoryTest extends TestCase {
 		$libraries = $this->createMock(LibraryAdvisoryStore::class);
 		$libraries->method('read')->willReturn(['libraries' => $snapshot, 'checkedAt' => 1700000500]);
 
-		$this->assertSame([
-			'advisories' => ['mail' => ['state' => 'none']],
-			'checkedAt' => 1700000000,
-			'libraries' => $snapshot,
-			'librariesCheckedAt' => 1700000500,
-		], $this->controller(true, $libraries)->advisories()->getData());
+		$data = $this->controller(true, $libraries)->advisories()->getData();
+
+		$this->assertSame(['mail' => ['state' => 'none', 'heldByPin' => false]], $data['advisories']);
+		$this->assertSame(1700000000, $data['checkedAt']);
+		$this->assertSame($snapshot, $data['libraries']);
+		$this->assertSame(1700000500, $data['librariesCheckedAt']);
 	}
 
 	public function testWithoutALibraryStoreTheAdvisoriesSayNeverChecked(): void {

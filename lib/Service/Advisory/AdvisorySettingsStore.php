@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Advisory;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\AdvisorySettingsStoreInterface;
 use OCP\IAppConfig;
 
 /**
@@ -28,26 +29,16 @@ use OCP\IAppConfig;
  *
  * @psalm-api
  */
-class AdvisorySettingsStore {
+class AdvisorySettingsStore implements AdvisorySettingsStoreInterface {
 	public const CONFIG_INTERVAL_HOURS = 'advisory.interval_hours';
 	public const CONFIG_DIGEST_ENABLED = 'advisory.digest_enabled';
 	public const CONFIG_LIBRARIES_ENABLED = 'advisory.libraries_enabled';
 
+	/** Whether the sweep also reads NCSC-NL's advisories (advisories-ncsc-feed); off by default. */
+	public const CONFIG_NCSC_ENABLED = 'advisory.ncsc_enabled';
+
 	/** Four sweeps a day: well inside the window in which an advisory matters. */
 	public const DEFAULT_INTERVAL_HOURS = 6;
-
-	/**
-	 * Hourly is the floor because the sweep pulls the App Store catalogue and
-	 * the GHSA feed; more often than that is sustained upstream traffic for no
-	 * practical gain.
-	 */
-	public const MIN_INTERVAL_HOURS = 1;
-
-	/**
-	 * Daily is the ceiling. Beyond it, "your instance is checked for known
-	 * vulnerabilities" stops being a claim the feature can honestly make.
-	 */
-	public const MAX_INTERVAL_HOURS = 24;
 
 	public function __construct(
 		private IAppConfig $config,
@@ -109,6 +100,40 @@ class AdvisorySettingsStore {
 	 */
 	public function setDigestEnabled(bool $enabled): void {
 		$this->config->setValueBool(Application::APP_ID, self::CONFIG_DIGEST_ENABLED, $enabled);
+	}
+
+	/**
+	 * Whether the sweep also reads NCSC-NL's advisories; off until an admin switches it on.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/specs/security-advisory-correlation/spec.md#requirement-ncsc-nl-advisories-are-matched-to-the-installed-server-and-apps
+	 */
+	public function isNcscEnabled(): bool {
+		return $this->config->getValueBool(Application::APP_ID, self::CONFIG_NCSC_ENABLED, false);
+	}
+
+	/**
+	 * Switch the NCSC-NL check on or off.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/specs/security-advisory-correlation/spec.md#requirement-ncsc-nl-advisories-are-matched-to-the-installed-server-and-apps
+	 */
+	public function setNcscEnabled(bool $enabled): void {
+		$this->config->setValueBool(Application::APP_ID, self::CONFIG_NCSC_ENABLED, $enabled);
+	}
+
+	/**
+	 * How far the NCSC-NL read got: the newest changes.csv time processed
+	 * (null before the first read) and whether the last sweep caught up.
+	 *
+	 * @spec openspec/changes/advisories-ncsc-feed/specs/security-advisory-correlation/spec.md#requirement-ncsc-nl-advisories-are-matched-to-the-installed-server-and-apps
+	 * @return array{readUpTo: ?string, caughtUp: bool}
+	 */
+	public function ncscStatus(): array {
+		$cursor = $this->config->getValueString(Application::APP_ID, NcscAdvisoryFeed::CONFIG_CURSOR, '');
+
+		return [
+			'readUpTo' => $cursor !== '' ? $cursor : null,
+			'caughtUp' => $this->config->getValueBool(Application::APP_ID, NcscAdvisoryFeed::CONFIG_CAUGHT_UP, false),
+		];
 	}
 
 	/**

@@ -11,6 +11,7 @@ namespace OCA\Versioniq\Tests\Unit\Service\Installer;
 
 use OC\AppFramework\Bootstrap\Coordinator;
 use OC\DB\Connection;
+use OCA\Versioniq\Service\Audit\SeenStateStore;
 use OCA\Versioniq\Service\Installer\ChildProcessFinalizer;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
 use OCA\Versioniq\Service\Lkg\Lkg;
@@ -48,6 +49,12 @@ final class InstallFinalizerGoldenTest extends TestCase {
 
 	/** @var list<array<int, mixed>> */
 	private array $calls = [];
+
+	/** The record the store holds before the finalize. */
+	private ?Lkg $storedLkg = null;
+
+	/** The record the finalize wrote. */
+	private ?Lkg $writtenLkg = null;
 
 	private string $root = '';
 
@@ -195,6 +202,23 @@ final class InstallFinalizerGoldenTest extends TestCase {
 	}
 
 	/**
+	 * safety-rollback-backup-and-preflight 1.2: a successful update keeps the
+	 * record it replaces as `previous`, so the card can roll back one step.
+	 */
+	public function testASuccessfulUpdateKeepsTheReplacedRecordAsPrevious(): void {
+		$this->storedLkg = new Lkg('1.0.0', '2026-10-01T08:00:00+00:00', 'github:acme/someapp');
+		$outcome = $this->runCase([
+			'path' => 'plain', 'info' => ['id' => 'someapp', 'version' => '2.0.0'], 'enabled' => 'yes',
+			'output' => false, 'sourceId' => null, 'previous' => '1.0.0', 'appVersion' => '1.9.0',
+			'appInfo' => ['types' => []], 'throwAt' => null, 'noChild' => true,
+		]);
+
+		self::assertSame('someapp', $outcome['returned']);
+		self::assertSame('2.0.0', $this->writtenLkg?->version);
+		self::assertSame(['version' => '1.0.0', 'recordedAt' => '2026-10-01T08:00:00+00:00', 'sourceId' => 'github:acme/someapp'], $this->writtenLkg?->previous?->toArray());
+	}
+
+	/**
 	 * An install over a disabled app, or over an app enabled for one group,
 	 * writes back exactly the `enabled` value it was handed — the previous one
 	 * the installers read before the install (retro-enabled-state-and-unattended-tokens
@@ -243,6 +267,41 @@ final class InstallFinalizerGoldenTest extends TestCase {
 	}
 
 	/**
+	 * Versioniq's own install updates what it last saw, so the hourly check
+	 * never records it again (audit-external-changes).
+	 *
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	public function testASuccessfulInstallIsRememberedAsSeen(): void {
+		$seen = $this->createMock(SeenStateStore::class);
+		$seen->expects(self::once())->method('rememberApp')->with('someapp', ['version' => '2.0.0', 'enabled' => true]);
+
+		$outcome = $this->runCase([
+			'path' => 'plain', 'info' => ['id' => 'someapp', 'version' => '2.0.0'], 'enabled' => 'yes',
+			'output' => false, 'sourceId' => null, 'previous' => '', 'appVersion' => '1.9.0',
+			'appInfo' => ['types' => []], 'throwAt' => null, 'noChild' => true, 'seenState' => $seen,
+		]);
+
+		self::assertSame('someapp', $outcome['returned']);
+	}
+
+	/**
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	public function testAFailedInstallIsNotRememberedAsSeen(): void {
+		$seen = $this->createMock(SeenStateStore::class);
+		$seen->expects(self::never())->method('rememberApp');
+
+		$outcome = $this->runCase([
+			'path' => 'plain', 'info' => ['id' => 'someapp', 'version' => '2.0.0'], 'enabled' => 'no',
+			'output' => false, 'sourceId' => null, 'previous' => '', 'appVersion' => '1.9.0',
+			'appInfo' => ['types' => []], 'throwAt' => 'migrate', 'noChild' => true, 'seenState' => $seen,
+		]);
+
+		self::assertSame('migration failed', $outcome['threw']);
+	}
+
+	/**
 	 * @param array<string, mixed> $case
 	 * @return array<string, mixed>
 	 */
@@ -256,6 +315,7 @@ final class InstallFinalizerGoldenTest extends TestCase {
 			$this->lkgStore(),
 			$this->timeFactory(),
 			($case['noChild'] ?? false) === true ? null : $this->childFinalizer(),
+			$case['seenState'] ?? null,
 		);
 		if ($case['throwAt'] === 'migrate') {
 			\OC_App::$recorder = function (string $call, array $args): void {
@@ -365,8 +425,10 @@ final class InstallFinalizerGoldenTest extends TestCase {
 
 	private function lkgStore(): LkgStore {
 		$store = $this->createMock(LkgStore::class);
+		$store->method('get')->willReturnCallback(fn (): ?Lkg => $this->storedLkg);
 		$store->method('set')->willReturnCallback(function (string $appId, Lkg $lkg): void {
 			$this->calls[] = ['lkg.set', $appId, $lkg->version, $lkg->recordedAt, $lkg->sourceId];
+			$this->writtenLkg = $lkg;
 		});
 
 		return $store;

@@ -484,6 +484,7 @@ class OsvClient {
 	 * The key a library's findings are stored under.
 	 *
 	 * @param array{name: string, version: string} $library
+	 * @spec openspec/changes/advisories-bundled-libraries
 	 */
 	public static function key(array $library): string {
 		return $library['name'] . '@' . $library['version'];

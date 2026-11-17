@@ -113,7 +113,7 @@ describe('the rows and the links', () => {
 			.map((c: { settingsUrl?: string }) => c.settingsUrl)
 			.filter((url: string | undefined): url is string => typeof url === 'string')
 			.map((url: string) => url.slice(url.indexOf('#')))
-		expect(anchors).toEqual(['#section-sources', '#section-advisories', '#section-advisories'])
+		expect(anchors).toEqual(['#section-sources', '#section-advisories', '#section-advisories', '#section-advisories'])
 
 		for (const anchor of anchors) {
 			expect(tabForHash(anchor), anchor).not.toBeNull()
@@ -124,6 +124,16 @@ describe('the rows and the links', () => {
 		expect(tabForHash('#section-bundled-libraries')).toEqual({ tab: 'advisories', anchor: 'section-bundled-libraries' })
 		expect(tabForHash('#versioniq-main')).toBeNull()
 		expect(tabForHash('#toString')).toBeNull()
+	})
+
+	// advisories-per-app-detail D3: the card badge links to one app's block.
+	it('opens the Advisories tab at one app for the section-advisories- prefix', () => {
+		expect(tabForHash('#section-advisories-fixtureapp')).toEqual({ tab: 'advisories', anchor: 'section-advisories-fixtureapp' })
+		expect(tabForHash('section-advisories-:server')).toEqual({ tab: 'advisories', anchor: 'section-advisories-:server' })
+		// The bare connection anchor still opens the Apps tab, and the prefix alone names no app.
+		expect(tabForHash('#section-advisories')).toEqual({ tab: 'apps', anchor: 'section-advisories' })
+		expect(tabForHash('#section-advisories-')).toBeNull()
+		expect(read('src', 'App.vue')).toMatch(/\{ id: 'advisories' \}/)
 	})
 
 	it('maps each anchor to a tab App.vue declares', () => {

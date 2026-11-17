@@ -13,6 +13,16 @@ vi.mock('@nextcloud/l10n', () => ({
 	n: (_app: string, one: string, many: string, count: number) => (count === 1 ? one : many).replace('%n', String(count)),
 }))
 vi.mock('@nextcloud/vue/components/NcNoteCard', () => ({ default: { name: 'NcNoteCard', template: '<div><slot /></div>' } }))
+// AdvisoriesPanel's own components and calls, mocked as in AdvisoriesPanel.spec.ts.
+vi.mock('@nextcloud/vue/components/NcButton', () => ({ default: { name: 'NcButton', emits: ['click'], template: '<button @click="$emit(\'click\')"><slot /></button>' } }))
+vi.mock('@nextcloud/vue/components/NcCheckboxRadioSwitch', () => ({
+	default: { name: 'NcCheckboxRadioSwitch', props: ['modelValue'], emits: ['update:modelValue'], template: '<label><input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)"><slot /></label>' },
+}))
+// The dialogs are their own specs; here they only need to be reachable.
+vi.mock('../dialogs/DismissAdvisoryDialog.vue', () => ({ __esModule: true, default: { name: 'DismissAdvisoryDialog', props: ['open', 'appId', 'advisoryId'], emits: ['update:open', 'dismissed'], template: '<div v-if="open" data-testid="dismiss-dialog" :data-target="appId + \'|\' + advisoryId" />' } }))
+vi.mock('../dialogs/AssignAdvisoryDialog.vue', () => ({ __esModule: true, default: { name: 'AssignAdvisoryDialog', props: ['open', 'appId', 'advisoryId', 'current'], emits: ['update:open', 'assigned'], template: '<div v-if="open" data-testid="assign-dialog" :data-target="appId + \'|\' + advisoryId" />' } }))
+vi.mock('../ocs', () => ({ ocsGet: vi.fn(), ocsWrite: vi.fn() }))
+vi.mock('../utils/enableApp', () => ({ currentLoginName: () => 'bob' }))
 
 const finding = {
 	package: 'vendor/library',

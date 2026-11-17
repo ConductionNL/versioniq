@@ -32,10 +32,13 @@ const settings = {
 	githubWebDefault: 'https://github.com',
 	advisoryFeedUrl: '',
 	advisoryFeedDefault: 'https://api.github.com/repos/nextcloud/security-advisories/security-advisories',
+	ncscFeedUrl: '',
+	ncscFeedDefault: 'https://advisories.ncsc.nl/csaf/v2/',
 	osvApiBase: '',
 	osvApiDefault: 'https://api.osv.dev',
 	maxLinesBehind: null,
 	maxLinesBehindMax: 10,
+	notifyUsersOnUpdate: true,
 }
 
 describe('InstanceSettingsPanel', () => {
@@ -72,6 +75,25 @@ describe('InstanceSettingsPanel', () => {
 			artifactCacheKeep: '3',
 		}))
 		expect(wrapper.find('[data-testid="instance-settings-notice"]').exists()).toBe(true)
+	})
+
+	// @spec openspec/changes/audit-external-changes
+	it('shows automatic re-enabling off and sends it when switched on', async () => {
+		mockedGet.mockResolvedValue({ payload: { ...settings, reactivateAuto: false } })
+		mockedWrite.mockResolvedValue({ payload: { ...settings, reactivateAuto: true } })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		const box = wrapper.find('[data-testid="setting-reactivate-auto"]')
+		expect((box.element as HTMLInputElement).checked).toBe(false)
+		expect(wrapper.text()).toContain('Enable an app again when an update left it disabled and it runs on this server')
+
+		await box.setValue(true)
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		expect(mockedWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/instance-settings', expect.objectContaining({ reactivateAuto: 'true' }))
+		expect((wrapper.find('[data-testid="setting-reactivate-auto"]').element as HTMLInputElement).checked).toBe(true)
 	})
 
 	// @spec openspec/changes/advisories-bundled-libraries
@@ -120,5 +142,34 @@ describe('InstanceSettingsPanel', () => {
 
 		expect(mockedWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/instance-settings', expect.objectContaining({ maxLinesBehind: '1' }))
 		expect((wrapper.find('[data-testid="setting-max-lines-behind"]').element as HTMLInputElement).value).toBe('1')
+	})
+
+	// releases-notes-reach 1.2: telling users about Versioniq's updates, on by default.
+	// @spec openspec/changes/releases-notes-reach/tasks.md#task-1.2
+	it('shows the user notice switch as stored and sends it on save', async () => {
+		mockedGet.mockResolvedValue({ payload: settings })
+		mockedWrite.mockResolvedValue({ payload: { ...settings, notifyUsersOnUpdate: false } })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		const box = wrapper.find('[data-testid="setting-notify-users-on-update"]')
+		expect((box.element as HTMLInputElement).checked).toBe(true)
+		await box.setValue(false)
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		expect(mockedWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/instance-settings', expect.objectContaining({ notifyUsersOnUpdate: 'false' }))
+		expect((wrapper.find('[data-testid="setting-notify-users-on-update"]').element as HTMLInputElement).checked).toBe(false)
+	})
+
+	it('treats settings from an older server without the switch as on', async () => {
+		const { notifyUsersOnUpdate, ...older } = settings
+		mockedGet.mockResolvedValue({ payload: older })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+
+		expect(notifyUsersOnUpdate).toBe(true)
+		expect((wrapper.find('[data-testid="setting-notify-users-on-update"]').element as HTMLInputElement).checked).toBe(true)
 	})
 })
