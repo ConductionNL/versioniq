@@ -743,7 +743,8 @@ OC.L10N.register(
         "Website": "Website",
         "Report a problem": "Report a problem",
         "disabled": "disabled",
-        "enabled": "enabled"
+        "enabled": "enabled",
+        "Select version {version}": "Select version {version}"
     },
     "nplurals=2; plural=(n != 1);"
 )

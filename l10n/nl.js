@@ -745,7 +745,8 @@ OC.L10N.register(
         "Website": "Website",
         "Report a problem": "Probleem melden",
         "disabled": "uitgeschakeld",
-        "enabled": "ingeschakeld"
+        "enabled": "ingeschakeld",
+        "Select version {version}": "Versie {version} kiezen"
     },
     "nplurals=2; plural=(n != 1);"
 )

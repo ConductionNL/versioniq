@@ -781,6 +781,7 @@
         "Website": "Website",
         "Report a problem": "Report a problem",
         "disabled": "disabled",
-        "enabled": "enabled"
+        "enabled": "enabled",
+        "Select version {version}": "Select version {version}"
     }
 }
