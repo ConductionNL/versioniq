@@ -23,7 +23,8 @@ use OCP\Notification\UnknownNotificationException;
  * Renders Versioniq notifications (the `pinned_to_vulnerable` advisory
  * notice, the `pat_expiring` / `pat_expired` token-expiry notices, the
  * `pin_drift` version-pinning notice, and the `auto_update_success` /
- * `auto_update_failure` auto-update outcome notices) into localized
+ * `auto_update_failure` auto-update outcome notices, and the
+ * `auto_update_group` notice of an update group run) into localized
  * subject/message text for the notifications app. Read-only presentation —
  * it never changes a version, a token, or a pin.
  *
@@ -73,6 +74,7 @@ class Notifier implements INotifier {
 			'pat_expired' => $this->renderPatExpired(...),
 			'auto_update_success' => $this->renderAutoUpdateSuccess(...),
 			'auto_update_failure' => $this->renderAutoUpdateFailure(...),
+			'auto_update_group' => $this->renderAutoUpdateGroup(...),
 			// Sent weekly by AdvisoryDigestNotifier. Without this branch the
 			// digest was stored but skipped by the bell every time (#428).
 			'advisory_digest' => $this->renderAdvisoryDigest(...),
@@ -189,6 +191,43 @@ class Notifier implements INotifier {
 			->setParsedMessage(
 				$l->t('%1$s could not be automatically updated to %2$s. %3$s', [$app, $targetVersion, $hint])
 			);
+	}
+
+	/**
+	 * "Update group {name}" and one line per member with its outcome, in
+	 * install order (autoupdate-run-batching D3).
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	private function renderAutoUpdateGroup(INotification $notification, IL10N $l): void {
+		/** @var mixed $members */
+		$members = $notification->getSubjectParameters()['members'] ?? [];
+		$lines = [];
+		foreach (is_array($members) ? $members : [] as $member) {
+			if (is_array($member)) {
+				$lines[] = self::groupMemberLine($member, $l);
+			}
+		}
+
+		$notification
+			->setParsedSubject($l->t('Update group %1$s', [$this->stringParameter($notification, 'group')]))
+			->setParsedMessage(implode("\n", $lines));
+	}
+
+	/**
+	 * The line of one member of an update group's notification.
+	 *
+	 * @param array<array-key, mixed> $member
+	 */
+	private static function groupMemberLine(array $member, IL10N $l): string {
+		$app = is_string($member['appId'] ?? null) ? $member['appId'] : '';
+		$version = is_string($member['version'] ?? null) ? $member['version'] : '';
+
+		return match ($member['outcome'] ?? null) {
+			'installed' => $l->t('%1$s: updated to %2$s', [$app, $version]),
+			'failed' => $l->t('%1$s: update to %2$s failed', [$app, $version]),
+			default => $l->t('%1$s: not attempted', [$app]),
+		};
 	}
 
 	private function renderAdvisoryDigest(INotification $notification, IL10N $l): void {
