@@ -4,6 +4,7 @@
 import type {Provenance} from './components/AppSourceBadges.vue';
 import type {PrefillBindPayload} from './components/DiscoverPanel.vue';
 import type {BlockedVersion, PolicyLevel} from './components/PolicySelector.vue';
+import type { UpdateGroupView } from './components/UpdateGroupsPanel.vue'
 import type { PinRecord } from './dialogs/PinDialog.vue'
 import type {AdvisoryCorrelation, AdvisoryTriageMap, Compliance, NcscStatus} from './utils/advisories.ts';
 import type { AutoUpdateSchedule as AutoUpdateScheduleValue, UpdateKind } from './utils/autoUpdateSchedule.ts'
@@ -21,6 +22,7 @@ import NcButton from '@nextcloud/vue/components/NcButton'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import AdvisoriesPanel from './components/AdvisoriesPanel.vue'
 import AlertsPanel from './components/AlertsPanel.vue'
+import AppAboutCard from './components/AppAboutCard.vue'
 import AppSourceBadges from './components/AppSourceBadges.vue'
 import AutoUpdateOverview from './components/AutoUpdateOverview.vue'
 import AutoUpdateSchedule from './components/AutoUpdateSchedule.vue'
@@ -32,6 +34,7 @@ import InstallProgress from './components/InstallProgress.vue'
 import InstallResultNotices from './components/InstallResultNotices.vue'
 import InstanceSettingsPanel from './components/InstanceSettingsPanel.vue'
 import IntegrationsPanel from './components/IntegrationsPanel.vue'
+import LifecycleBadge from './components/LifecycleBadge.vue'
 import MigrationPreviewPanel from './components/MigrationPreviewPanel.vue'
 import PatchPolicyPanel from './components/PatchPolicyPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
@@ -41,8 +44,10 @@ import ReleaseDate from './components/ReleaseDate.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
 import SourceOverrideField from './components/SourceOverrideField.vue'
 import SourcesPanel from './components/SourcesPanel.vue'
+import SuccessorsPanel from './components/SuccessorsPanel.vue'
 import TokensPanel from './components/TokensPanel.vue'
 import TrustedSourcesPanel from './components/TrustedSourcesPanel.vue'
+import UpdateGroupsPanel from './components/UpdateGroupsPanel.vue'
 import VersionChangelog from './components/VersionChangelog.vue'
 import VersionFacts from './components/VersionFacts.vue'
 import DowngradeConfirmDialog from './dialogs/DowngradeConfirmDialog.vue'
@@ -51,6 +56,7 @@ import KnownIssueDialog from './dialogs/KnownIssueDialog.vue'
 import PinDialog from './dialogs/PinDialog.vue'
 import PinOverrideDialog from './dialogs/PinOverrideDialog.vue'
 import QuickUpdateDialog from './dialogs/QuickUpdateDialog.vue'
+import ReplaceAppDialog from './dialogs/ReplaceAppDialog.vue'
 import ShaMismatchDialog from './dialogs/ShaMismatchDialog.vue'
 import UpdateAllDialog from './dialogs/UpdateAllDialog.vue'
 import { ocsWrite } from './ocs.ts'
@@ -77,6 +83,9 @@ type AppOption = {
 	description: string
 	summary: string
 	preview: string
+	author?: string
+	licence?: string
+	links?: { website: string | null, repository: string | null, bugs: string | null }
 	isCore: boolean
 	isShipped?: boolean
 	boundSourceId?: string | null
@@ -108,6 +117,9 @@ type AppVersion = {
 
 const isLoading = ref(true)
 const apps = ref<AppOption[]>([])
+// The app the replace dialog is open for; its successor offer comes from the
+// pending-updates snapshot (inventory-lifecycle-signals, design D4).
+const replaceTarget = ref<string | null>(null)
 const advisories = ref<Record<string, AdvisoryCorrelation>>({})
 // Dismissals and owners per `{appId}|{advisoryId}`, applied when read (advisories-triage).
 const advisoryTriage = ref<AdvisoryTriageMap>({})
@@ -275,6 +287,11 @@ const autoUpdateNextRuns = ref<Partial<Record<UpdateKind, string | null>>>({})
 const securityHolds = ref<Record<string, string>>({})
 const advisoriesFresh = ref(true)
 const manualKinds = ref<string[]>([])
+// Update groups and the units a limit held back (autoupdate-run-batching).
+const updateGroups = ref<UpdateGroupView[]>([])
+const waitingUnits = ref<Record<string, string>>({})
+const maxPerRun = ref<number | null>(null)
+const maxPerWeek = ref<number | null>(null)
 const isSavingAutoUpdateSettings = ref(false)
 const autoUpdateSettingsError = ref('')
 const autoUpdateSettingsNotice = ref('')
@@ -647,6 +664,14 @@ async function loadApps (): Promise<void> {
 	}
 }
 
+/**
+ * Re-reads the app list after an app was replaced by its successor.
+ */
+async function onReplaced (): Promise<void> {
+	replaceTarget.value = null
+	await loadApps()
+}
+
 // Advisory correlation is fetched separately from the app list so a slow or
 // unreachable advisory source never delays the (fast) app list. The badge
 // appears once this resolves. Read-only — it never changes a version.
@@ -946,7 +971,7 @@ function pinTooltip (pin: PinRecord | null): string {
 async function loadPolicies (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/policies')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string, autoUpdateSchedule?: unknown, nextRuns?: Partial<Record<UpdateKind, string | null>>, securityHolds?: Record<string, string>, advisoriesFresh?: boolean, manualKinds?: string[] }>(response)
+		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string, autoUpdateSchedule?: unknown, nextRuns?: Partial<Record<UpdateKind, string | null>>, securityHolds?: Record<string, string>, advisoriesFresh?: boolean, manualKinds?: string[], groups?: UpdateGroupView[], waiting?: Record<string, string>, maxPerRun?: number | null, maxPerWeek?: number | null }>(response)
 		const map: Record<string, PolicyRecord> = {}
 		for (const policy of payload.policies || []) {
 			map[policy.appId] = policy
@@ -959,6 +984,7 @@ async function loadPolicies (): Promise<void> {
 		securityHolds.value = payload.securityHolds ?? {}
 		advisoriesFresh.value = payload.advisoriesFresh !== false
 		manualKinds.value = payload.manualKinds ?? []
+		applyRunBatching(payload)
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
 		autoUpdateSchedule.value = scheduleFrom(payload.autoUpdateSchedule)
 		savedAutoUpdateSchedule.value = scheduleFrom(payload.autoUpdateSchedule)
@@ -969,7 +995,27 @@ async function loadPolicies (): Promise<void> {
 	}
 }
 
+/**
+ * Stores the update groups, the units a cap holds back and both caps from a
+ * policies payload; absent fields read as none.
+ *
+ * @param payload The policies payload.
+ * @param payload.groups The update groups, in their stored order.
+ * @param payload.waiting The held units, by key, with the time each was first held.
+ * @param payload.maxPerRun The per-run cap, or null for no limit.
+ * @param payload.maxPerWeek The weekly cap, or null for no limit.
+ * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+ */
+function applyRunBatching (payload: { groups?: UpdateGroupView[], waiting?: Record<string, string>, maxPerRun?: number | null, maxPerWeek?: number | null }): void {
+	updateGroups.value = payload.groups ?? []
+	waitingUnits.value = payload.waiting ?? {}
+	maxPerRun.value = payload.maxPerRun ?? null
+	maxPerWeek.value = payload.maxPerWeek ?? null
+}
+
 const policyLevelFor = (appId: string): PolicyLevel => policies.value[appId]?.level ?? 'none'
+// A group only plans apps with a policy, so those are the ones it can hold.
+const groupableApps = computed(() => Object.values(policies.value).filter((policy) => policy.level !== 'none').map((policy) => policy.appId))
 const blockedVersionsFor = (appId: string): BlockedVersion[] => policies.value[appId]?.blockedVersions ?? []
 
 /**
@@ -2687,6 +2733,12 @@ watch(dryRunEnabled, () => {
 				:busy="isInstallingVersion"
 				@update:open="isDowngradeConfirmOpen = $event"
 				@resolve="onDowngradeResolved" />
+			<ReplaceAppDialog v-if="replaceTarget && pendingUpdates[replaceTarget]?.successor"
+				:open="true"
+				:appId="replaceTarget"
+				:offer="pendingUpdates[replaceTarget].successor"
+				@update:open="(value: boolean) => { if (!value) { replaceTarget = null } }"
+				@replaced="onReplaced" />
 			<KnownIssueDialog
 				:open="isKnownIssueDialogOpen"
 				:appId="selectedApp"
@@ -2877,7 +2929,16 @@ watch(dryRunEnabled, () => {
 									:disabled="isSavingPolicy"
 									:updates="pendingUpdates"
 									:updatesCheckedLabel="updatesFreshnessLabel"
+									:groups="updateGroups"
+									:waiting="waitingUnits"
 									@retry="onRetryAttempt" />
+								<UpdateGroupsPanel
+									:apps="groupableApps"
+									:labels="appLabels"
+									:groups="updateGroups"
+									:maxPerRun="maxPerRun"
+									:maxPerWeek="maxPerWeek"
+									@saved="loadPolicies" />
 
 								<h3 id="section-advisories" :class="$style.advisorySettingsHeading">{{ t('versioniq', 'Security advisory checks') }}</h3>
 								<p :class="$style.hint">
@@ -3056,6 +3117,7 @@ watch(dryRunEnabled, () => {
 																{{ outsidePolicyLabel(pendingUpdates[app.id]?.linesBehind ?? 0) }}
 															</span>
 														</p>
+														<LifecycleBadge :lifecycle="pendingUpdates[app.id]?.lifecycle ?? null" />
 														<AppSourceBadges
 															:isShipped="app.isShipped === true"
 															:isCore="app.isCore"
@@ -3077,6 +3139,15 @@ watch(dryRunEnabled, () => {
 															data-testid="safe-version-button"
 															@click.stop="openQuickUpdate(app.id, safeVersionFor(app) ?? '', advisoryFor(app.id)?.advisories?.[0]?.id ?? null)">
 															{{ t('versioniq', 'Update to safe version {version}', { version: safeVersionFor(app) ?? '' }) }}
+														</button>
+														<button
+															v-if="pendingUpdates[app.id]?.successor"
+															type="button"
+															:class="$style.appCardButton"
+															:disabled="isCheckingVersions || isInstallingVersion"
+															data-testid="replace-successor-button"
+															@click.stop="replaceTarget = app.id">
+															{{ t('versioniq', 'Replace with {successor}', { successor: pendingUpdates[app.id]?.successor?.to ?? '' }) }}
 														</button>
 													</div>
 													<div :class="$style.appCardMedia">
@@ -3253,6 +3324,7 @@ watch(dryRunEnabled, () => {
 										<MigrationPreviewPanel
 											v-if="selectedVersionRange?.direction === 'upgrade' && migrationPreview !== undefined"
 											:preview="migrationPreview" />
+										<AppAboutCard v-if="selectedAppOption" :app="selectedAppOption" />
 									</div>
 									<template v-if="appDetailTab === 'versions'">
 										<SourceOverrideField
@@ -3523,6 +3595,7 @@ watch(dryRunEnabled, () => {
 					aria-labelledby="settings-tab">
 					<InstanceSettingsPanel />
 					<PatchPolicyPanel />
+					<SuccessorsPanel />
 				</div>
 				<IntegrationsPanel v-if="integriqInstalled && currentTab === 'integrations'"
 					id="integrations-panel"
