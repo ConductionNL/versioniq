@@ -1,23 +1,29 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
-import type { AdvisoryAssignee, AdvisoryCorrelation, AdvisoryTriageMap, TriagedAdvisory, TriagedCorrelation } from '../utils/advisories.ts'
+import type { AdvisoryAssignee, AdvisoryCorrelation, AdvisoryHistoryEntry, AdvisoryTriageMap, Compliance, NcscStatus, TriagedAdvisory, TriagedCorrelation } from '../utils/advisories.ts'
 
 import { n, t } from '@nextcloud/l10n'
 import { computed, defineAsyncComponent, ref } from 'vue'
+import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import AdvisoryItem from './AdvisoryItem.vue'
 import DismissedAdvisories from './DismissedAdvisories.vue'
 import { ocsGet, ocsWrite } from '../ocs.ts'
-import { applyTriage, isAssignedTo, SERVER_ADVISORY_KEY, splitAdvisoryRows } from '../utils/advisories.ts'
+import { advisoryAnchor, advisoryHistory, applyTriage, complianceSentence, fixSentence, isAssignedTo, RECENT_ADVISORIES, SERVER_ADVISORY_KEY, splitAdvisoryRows } from '../utils/advisories.ts'
 import { currentLoginName } from '../utils/enableApp.ts'
 
 const props = withDefaults(defineProps<{
 	advisories: Record<string, AdvisoryCorrelation>
 	freshnessLabel: string
 	triage?: AdvisoryTriageMap
+	compliance?: Compliance | null
+	/** How far the NCSC-NL read got; null or absent when NCSC-NL checks are off. */
+	ncscStatus?: NcscStatus | null
 }>(), {
 	triage: () => ({}),
+	compliance: null,
+	ncscStatus: null,
 })
 const emit = defineEmits<{
 	'update:triage': [triage: AdvisoryTriageMap]
@@ -41,6 +47,18 @@ const DismissAdvisoryDialog = defineAsyncComponent(() => import('../dialogs/Dism
 const AssignAdvisoryDialog = defineAsyncComponent(() => import('../dialogs/AssignAdvisoryDialog.vue'))
 
 const rows = computed(() => splitAdvisoryRows(props.advisories))
+
+/** "NCSC-NL: catching up, read up to {date}" until a sweep reached the present (advisories-ncsc-feed). */
+const ncscCatchingUp = computed(() => {
+	const status = props.ncscStatus
+	if (!status || !status.enabled || status.caughtUp) {
+		return ''
+	}
+
+	return status.readUpTo
+		? t('versioniq', 'NCSC-NL: catching up, read up to {date}', { date: status.readUpTo.slice(0, 10) })
+		: t('versioniq', 'NCSC-NL: not read yet')
+})
 const server = computed((): TriagedCorrelation | null => rows.value.server
 	? applyTriage({ ...rows.value.server, appId: SERVER_ADVISORY_KEY }, props.triage)
 	: null)
@@ -112,13 +130,72 @@ async function reopen (appId: string, advisoryId: string): Promise<void> {
 		reopening.value = false
 	}
 }
+
+const complianceLine = computed(() => complianceSentence(props.compliance))
+
+/** The targets whose whole history is shown, not only the most recent ones. */
+const expanded = ref<Record<string, boolean>>({})
+
+/** One history entry, with its triaged advisory while it still counts. */
+type HistoryItem = { entry: AdvisoryHistoryEntry, triaged: TriagedAdvisory | null }
+
+/**
+ * A target's history, newest first, without the advisories a dismissal holds
+ * (those are in its Dismissed list) and, with the filter on, only the ones
+ * assigned to me. An entry that still counts carries its triaged advisory, so
+ * it can be dismissed or assigned; one the installed version is not affected
+ * by carries none.
+ *
+ * @param row The target's triaged correlation.
+ * @spec openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation/spec.md#requirement-each-product-lists-its-recent-advisories-with-cve-ids-and-dates
+ */
+function historyItems (row: TriagedCorrelation): HistoryItem[] {
+	const dismissed = new Set(row.dismissedAdvisories.map((advisory) => advisory.id))
+	const counting = new Map(row.advisories.map((advisory) => [advisory.id, advisory]))
+	const items = advisoryHistory(row as AdvisoryCorrelation)
+		.filter((entry) => !dismissed.has(entry.id))
+		.map((entry) => ({ entry, triaged: counting.get(entry.id) ?? null }))
+	return onlyMine.value
+		? items.filter((item) => item.triaged !== null && isAssignedTo(item.triaged, uid, myGroups.value))
+		: items
+}
+
+/**
+ * The entries of a target to render: the most recent, or all once expanded.
+ *
+ * @param key The target key.
+ * @param row The target's triaged correlation.
+ * @spec openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation/spec.md#requirement-each-product-lists-its-recent-advisories-with-cve-ids-and-dates
+ */
+function shownHistory (key: string, row: TriagedCorrelation): HistoryItem[] {
+	const items = historyItems(row)
+	return expanded.value[key] ? items : items.slice(0, RECENT_ADVISORIES)
+}
+
+/**
+ * Shows every advisory of a target.
+ *
+ * @param key The target key.
+ * @spec openspec/changes/advisories-per-app-detail/tasks.md#4.1
+ */
+function showAll (key: string): void {
+	expanded.value = { ...expanded.value, [key]: true }
+}
 </script>
 
 <template>
 	<section :class="$style.panel" data-testid="advisories-panel">
 		<h3>{{ t('versioniq', 'Security advisories') }}</h3>
+		<p v-if="complianceLine"
+			:class="[$style.compliance, { [$style.affected]: compliance?.status === 'not_compliant' }]"
+			data-testid="advisories-compliance">
+			{{ complianceLine }}
+		</p>
 		<p v-if="freshnessLabel" :class="$style.hint">
 			{{ freshnessLabel }}
+		</p>
+		<p v-if="ncscCatchingUp" :class="$style.hint" data-testid="advisories-ncsc-catching-up">
+			{{ ncscCatchingUp }}
 		</p>
 		<NcCheckboxRadioSwitch
 			type="switch"
@@ -139,23 +216,34 @@ async function reopen (appId: string, advisoryId: string): Promise<void> {
 				</p>
 				<NcNoteCard v-if="server.state === 'pinned-to-vulnerable'" type="error">
 					{{ t('versioniq', 'This server version is affected by a published advisory.') }}
-					<template v-if="server.recommendedVersion">
+					<template v-if="fixSentence(server, true)">
+						{{ fixSentence(server, true) }}
+					</template>
+					<template v-else-if="server.recommendedVersion">
 						{{ t('versioniq', 'Upgrade to {version} or later.', { version: server.recommendedVersion }) }}
 					</template>
 				</NcNoteCard>
 				<p v-else :class="$style.hint">
 					{{ n('versioniq', '%n published advisory is about the server; it does not affect this version.', '%n published advisories are about the server; none affect this version.', server.advisories.length) }}
 				</p>
-				<details v-if="visible(server.advisories).length > 0" :open="server.state === 'pinned-to-vulnerable'">
+				<details v-if="historyItems(server).length > 0" :open="server.state === 'pinned-to-vulnerable'">
 					<summary>{{ t('versioniq', 'Show server advisories') }}</summary>
 					<ul :class="$style.list">
 						<AdvisoryItem
-							v-for="advisory in visible(server.advisories)"
-							:key="advisory.id"
-							:advisory="advisory"
-							@dismiss="dismissTarget = { appId: server.appId, advisoryId: advisory.id }"
-							@assign="assignTarget = { appId: server.appId, advisoryId: advisory.id, current: advisory.assignee ?? null }" />
+							v-for="item in shownHistory(':server', server)"
+							:key="item.entry.id"
+							:advisory="item.triaged ?? item.entry"
+							:entry="item.entry"
+							:readOnly="item.triaged === null"
+							@dismiss="dismissTarget = { appId: server.appId, advisoryId: item.entry.id }"
+							@assign="assignTarget = { appId: server.appId, advisoryId: item.entry.id, current: item.triaged?.assignee ?? null }" />
 					</ul>
+					<NcButton v-if="!expanded[':server'] && historyItems(server).length > RECENT_ADVISORIES"
+						variant="tertiary"
+						data-testid="advisories-show-all"
+						@click="showAll(':server')">
+						{{ t('versioniq', 'Show all {count}', { count: String(historyItems(server).length) }) }}
+					</NcButton>
 				</details>
 				<DismissedAdvisories
 					:advisories="server.dismissedAdvisories"
@@ -174,6 +262,7 @@ async function reopen (appId: string, advisoryId: string): Promise<void> {
 			</p>
 			<article
 				v-for="row in visibleApps"
+				:id="advisoryAnchor(row.appId)"
 				:key="row.appId"
 				:class="$style.appRow"
 				data-testid="advisories-app-row">
@@ -187,17 +276,28 @@ async function reopen (appId: string, advisoryId: string): Promise<void> {
 						{{ t('versioniq', 'safe version: {version}', { version: row.recommendedVersion }) }}
 					</span>
 				</p>
+				<p v-if="fixSentence(row)" :class="$style.affected" data-testid="advisory-fix">
+					{{ fixSentence(row) }}
+				</p>
 				<p v-if="row.error" :class="$style.hint">
 					{{ row.error }}
 				</p>
 				<ul :class="$style.list">
 					<AdvisoryItem
-						v-for="advisory in visible(row.advisories)"
-						:key="advisory.id"
-						:advisory="advisory"
-						@dismiss="dismissTarget = { appId: row.appId, advisoryId: advisory.id }"
-						@assign="assignTarget = { appId: row.appId, advisoryId: advisory.id, current: advisory.assignee ?? null }" />
+						v-for="item in shownHistory(row.appId, row)"
+						:key="item.entry.id"
+						:advisory="item.triaged ?? item.entry"
+						:entry="item.entry"
+						:readOnly="item.triaged === null"
+						@dismiss="dismissTarget = { appId: row.appId, advisoryId: item.entry.id }"
+						@assign="assignTarget = { appId: row.appId, advisoryId: item.entry.id, current: item.triaged?.assignee ?? null }" />
 				</ul>
+				<NcButton v-if="!expanded[row.appId] && historyItems(row).length > RECENT_ADVISORIES"
+					variant="tertiary"
+					data-testid="advisories-show-all"
+					@click="showAll(row.appId)">
+					{{ t('versioniq', 'Show all {count}', { count: String(historyItems(row).length) }) }}
+				</NcButton>
 				<DismissedAdvisories
 					v-if="!onlyMine"
 					:advisories="row.dismissedAdvisories"
@@ -234,6 +334,10 @@ async function reopen (appId: string, advisoryId: string): Promise<void> {
 
 .hint {
 	color: var(--color-text-maxcontrast);
+}
+
+.compliance {
+	font-weight: bold;
 }
 
 .block {

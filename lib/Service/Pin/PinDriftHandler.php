@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Pin;
 
+use OCA\Versioniq\Kernel\Contracts\PinDriftHandlerInterface;
 use OCA\Versioniq\Service\AdminNotice;
 use OCA\Versioniq\Service\AdminNotificationServices;
 use OCA\Versioniq\Service\Audit\AuditOrigin;
@@ -33,7 +34,7 @@ use Psr\Log\LoggerInterface;
  *
  * @psalm-api
  */
-class PinDriftHandler {
+class PinDriftHandler implements PinDriftHandlerInterface {
 	use NotifiesAdmins;
 	use ResolvesAdminUids;
 

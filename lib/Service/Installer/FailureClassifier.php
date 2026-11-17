@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Installer;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\FailureClassifierInterface;
 use OCP\AppFramework\Http;
 use OCP\IL10N;
 use OCP\L10N\IFactory;
@@ -30,36 +31,7 @@ use Throwable;
  * @spec openspec/specs/version-management/spec.md
  * @psalm-api
  */
-class FailureClassifier {
-	public const CATEGORY_PREFLIGHT_PERMISSION = 'preflight_permission';
-	/**
-	 * Not enough free disk space for the package (safety-rollback-backup-and-preflight D2).
-	 */
-	public const CATEGORY_PREFLIGHT_SPACE = 'preflight_space';
-	public const CATEGORY_DOWNLOAD = 'download';
-	public const CATEGORY_CHECKSUM_MISMATCH = 'checksum_mismatch';
-	/**
-	 * A recorded (trust-on-first-use) SHA-256 mismatch — distinct from
-	 * {@see CATEGORY_CHECKSUM_MISMATCH} (the source-published sibling
-	 * checksum): this is a history check the source cannot rewrite. See
-	 * "Recorded SHA-256 enforced on reinstall".
-	 */
-	public const CATEGORY_SHA_MISMATCH = 'sha_mismatch';
-	public const CATEGORY_EXTRACT = 'extract';
-	public const CATEGORY_APPID_MISMATCH = 'appid_mismatch';
-	public const CATEGORY_VERSION_MISMATCH = 'version_mismatch';
-	public const CATEGORY_INCOMPATIBLE = 'incompatible';
-	public const CATEGORY_FILESYSTEM = 'filesystem';
-	public const CATEGORY_FINALIZE = 'finalize';
-	/**
-	 * A downgrade requested without `allowDowngrade: true` — see "Server-side
-	 * downgrade guard". Distinct from every other category: nothing was
-	 * attempted (no download, no filesystem change), the request is simply
-	 * refused pending acknowledgement.
-	 */
-	public const CATEGORY_DOWNGRADE_GUARD = 'downgrade_guard';
-	public const CATEGORY_UNKNOWN = 'unknown';
-
+class FailureClassifier implements FailureClassifierInterface {
 	/**
 	 * Tri-state outcome of the post-swap restore attempt, used to pick an honest
 	 * finalize-failure hint. A fresh install (no prior version) must not be told
