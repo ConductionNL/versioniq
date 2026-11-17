@@ -106,22 +106,18 @@ function formatRows (rows: number | null): string {
 }
 
 .list {
-	list-style: none;
-	margin: 0;
-	padding: 0;
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
 }
 
-.item {
-	padding-top: 6px;
+/* A rule between steps, none above the first. */
+.item + .item {
 	border-top: 1px solid var(--color-border);
-}
-
-.item:first-child {
-	padding-top: 0;
-	border-top: none;
+	padding-top: 6px;
 }
 
 .tables {
