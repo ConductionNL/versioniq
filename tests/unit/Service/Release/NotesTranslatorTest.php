@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\Service\Release;
 
 use OCA\Versioniq\Service\InstallerService;
+use OCA\Versioniq\Service\Release\NotesTranslationRequest;
 use OCA\Versioniq\Service\Release\NotesTranslator;
 use OCP\IAppConfig;
 use OCP\TaskProcessing\IManager;
@@ -29,6 +30,7 @@ use RuntimeException;
  * @spec openspec/changes/releases-notes-reach/specs/changelog-visibility/spec.md
  */
 #[CoversClass(NotesTranslator::class)]
+#[CoversClass(NotesTranslationRequest::class)]
 final class NotesTranslatorTest extends TestCase {
 	/** @var array<string, string> */
 	private array $store = [];
@@ -97,8 +99,8 @@ final class NotesTranslatorTest extends TestCase {
 		$this->provider(true);
 		$translator = $this->translator();
 
-		$first = $translator->translate('deck', '2.0.0', 'nl', null, 'admin');
-		$second = $translator->translate('deck', '2.0.0', 'nl', null, 'admin');
+		$first = $translator->translate(new NotesTranslationRequest('deck', '2.0.0', 'nl', null, 'admin'));
+		$second = $translator->translate(new NotesTranslationRequest('deck', '2.0.0', 'nl', null, 'admin'));
 
 		self::assertSame(200, $first['statusCode']);
 		self::assertSame([
@@ -110,7 +112,7 @@ final class NotesTranslatorTest extends TestCase {
 		self::assertTrue($second['payload']['kept']);
 		self::assertCount(1, $this->tasks);
 		self::assertSame(
-			['versioniq/' . NotesTranslator::storeKey('appstore', '2.0.0', 'nl') => 'Verhelpt de synchronisatie'],
+			['versioniq/' . NotesTranslator::storeKey(new NotesTranslationRequest('deck', '2.0.0', 'nl'), 'appstore') => 'Verhelpt de synchronisatie'],
 			$this->store,
 		);
 	}
@@ -118,7 +120,7 @@ final class NotesTranslatorTest extends TestCase {
 	public function testTheTaskCarriesTheNotesAndBothLanguages(): void {
 		$this->provider(true);
 
-		$this->translator()->translate('deck', '2.0.0', 'pt_BR', null, 'admin');
+		$this->translator()->translate(new NotesTranslationRequest('deck', '2.0.0', 'pt_BR', null, 'admin'));
 
 		$task = $this->tasks[0];
 		self::assertSame(TextToTextTranslate::ID, $task->getTaskTypeId());
@@ -130,7 +132,7 @@ final class NotesTranslatorTest extends TestCase {
 	public function testNotesWithoutALanguageLetTheProviderDetectIt(): void {
 		$this->provider(true);
 
-		$result = $this->translator()->translate('deck', '1.9.0', 'nl', null, 'admin');
+		$result = $this->translator()->translate(new NotesTranslationRequest('deck', '1.9.0', 'nl', null, 'admin'));
 
 		self::assertSame(200, $result['statusCode']);
 		self::assertNull($result['payload']['sourceLanguage']);
@@ -141,9 +143,9 @@ final class NotesTranslatorTest extends TestCase {
 		$this->provider(true);
 		$translator = $this->translator();
 
-		$translator->translate('deck', '2.0.0', 'nl', null, 'admin');
-		$translator->translate('deck', '2.0.0', 'de', null, 'admin');
-		$translator->translate('deck', '1.9.0', 'nl', null, 'admin');
+		$translator->translate(new NotesTranslationRequest('deck', '2.0.0', 'nl', null, 'admin'));
+		$translator->translate(new NotesTranslationRequest('deck', '2.0.0', 'de', null, 'admin'));
+		$translator->translate(new NotesTranslationRequest('deck', '1.9.0', 'nl', null, 'admin'));
 
 		self::assertCount(3, $this->tasks);
 		self::assertCount(3, $this->store);
@@ -152,7 +154,7 @@ final class NotesTranslatorTest extends TestCase {
 	public function testWithoutAProviderTheAnswerIs409AndNothingRuns(): void {
 		$this->provider(false);
 
-		$result = $this->translator()->translate('deck', '2.0.0', 'nl', null, 'admin');
+		$result = $this->translator()->translate(new NotesTranslationRequest('deck', '2.0.0', 'nl', null, 'admin'));
 
 		self::assertSame(409, $result['statusCode']);
 		self::assertSame('No machine translation is available: install a translation provider app on this instance first.', $result['payload']['message']);
@@ -162,9 +164,9 @@ final class NotesTranslatorTest extends TestCase {
 
 	public function testAKeptTranslationIsServedEvenWithoutAProvider(): void {
 		$this->provider(false);
-		$this->store['versioniq/' . NotesTranslator::storeKey('appstore', '2.0.0', 'nl')] = 'Eerder vertaald';
+		$this->store['versioniq/' . NotesTranslator::storeKey(new NotesTranslationRequest('deck', '2.0.0', 'nl'), 'appstore')] = 'Eerder vertaald';
 
-		$result = $this->translator()->translate('deck', '2.0.0', 'nl', null, 'admin');
+		$result = $this->translator()->translate(new NotesTranslationRequest('deck', '2.0.0', 'nl', null, 'admin'));
 
 		self::assertSame(200, $result['statusCode']);
 		self::assertSame('Eerder vertaald', $result['payload']['translation']);
@@ -174,8 +176,8 @@ final class NotesTranslatorTest extends TestCase {
 		$this->provider(true);
 		$translator = $this->translator();
 
-		self::assertSame(404, $translator->translate('deck', '1.8.0', 'nl', null, 'admin')['statusCode']);
-		self::assertSame(404, $translator->translate('deck', '9.9.9', 'nl', null, 'admin')['statusCode']);
+		self::assertSame(404, $translator->translate(new NotesTranslationRequest('deck', '1.8.0', 'nl', null, 'admin'))['statusCode']);
+		self::assertSame(404, $translator->translate(new NotesTranslationRequest('deck', '9.9.9', 'nl', null, 'admin'))['statusCode']);
 		self::assertSame([], $this->tasks);
 	}
 
@@ -184,9 +186,9 @@ final class NotesTranslatorTest extends TestCase {
 		$translator = $this->translator();
 
 		foreach (['', 'dutch', 'nl/../x', 'NL'] as $language) {
-			self::assertSame(400, $translator->translate('deck', '2.0.0', $language, null, 'admin')['statusCode'], $language);
+			self::assertSame(400, $translator->translate(new NotesTranslationRequest('deck', '2.0.0', $language, null, 'admin'))['statusCode'], $language);
 		}
-		self::assertSame(400, $translator->translate('deck', ' ', 'nl', null, 'admin')['statusCode']);
+		self::assertSame(400, $translator->translate(new NotesTranslationRequest('deck', ' ', 'nl', null, 'admin'))['statusCode']);
 		self::assertSame([], $this->tasks);
 	}
 
@@ -194,7 +196,7 @@ final class NotesTranslatorTest extends TestCase {
 		$this->taskProcessing->method('getAvailableTaskTypeIds')->willReturn([TextToTextTranslate::ID]);
 		$this->taskProcessing->method('runTask')->willThrowException(new RuntimeException('provider down'));
 
-		$result = $this->translator()->translate('deck', '2.0.0', 'nl', null, 'admin');
+		$result = $this->translator()->translate(new NotesTranslationRequest('deck', '2.0.0', 'nl', null, 'admin'));
 
 		self::assertSame(502, $result['statusCode']);
 		self::assertSame([], $this->store);
@@ -202,7 +204,7 @@ final class NotesTranslatorTest extends TestCase {
 
 	public function testAnUnsuccessfulOrEmptyTaskIs502(): void {
 		$this->provider(true, 'ignored', Task::STATUS_FAILED);
-		self::assertSame(502, $this->translator()->translate('deck', '2.0.0', 'nl', null, 'admin')['statusCode']);
+		self::assertSame(502, $this->translator()->translate(new NotesTranslationRequest('deck', '2.0.0', 'nl', null, 'admin'))['statusCode']);
 	}
 
 	public function testAListingErrorIsPassedOn(): void {
@@ -210,7 +212,7 @@ final class NotesTranslatorTest extends TestCase {
 		$this->listing([], 403, true, 'This core app cannot be managed from Versioniq.');
 		$this->provider(true);
 
-		$result = $this->translator()->translate('files', '2.0.0', 'nl', null, 'admin');
+		$result = $this->translator()->translate(new NotesTranslationRequest('files', '2.0.0', 'nl', null, 'admin'));
 
 		self::assertSame(403, $result['statusCode']);
 		self::assertSame('This core app cannot be managed from Versioniq.', $result['payload']['message']);
@@ -221,13 +223,13 @@ final class NotesTranslatorTest extends TestCase {
 		$this->listing([], 200, true, 'App is not available in the Nextcloud App Store.');
 		$this->provider(true);
 
-		self::assertSame(502, $this->translator()->translate('deck', '2.0.0', 'nl', null, 'admin')['statusCode']);
+		self::assertSame(502, $this->translator()->translate(new NotesTranslationRequest('deck', '2.0.0', 'nl', null, 'admin'))['statusCode']);
 	}
 
 	public function testALongTranslationIsCappedAtSixteenKilobytesOnACharacterBoundary(): void {
 		$this->provider(true, str_repeat('é', 10000));
 
-		$result = $this->translator()->translate('deck', '2.0.0', 'nl', null, 'admin');
+		$result = $this->translator()->translate(new NotesTranslationRequest('deck', '2.0.0', 'nl', null, 'admin'));
 
 		$kept = $result['payload']['translation'];
 		self::assertLessThanOrEqual(NotesTranslator::MAX_BYTES, strlen($kept));

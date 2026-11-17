@@ -687,7 +687,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 		return [
 			'version' => $version,
 			'changelog' => $changelog,
-			'changelogLanguage' => $changelog === null ? null : $this->changelogLanguageOf($release),
+			'changelogLanguage' => $this->languageOfNotes($release, $changelog),
 			'serverCompatible' => is_string($spec) ? self::satisfiesPlatformSpec($serverVersion, $spec) : null,
 			'releasedAt' => ReleaseDate::normalize($release['created'] ?? null),
 			// The catalogue publishes no per-release download count (design D2).
@@ -811,6 +811,15 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 		} catch (Throwable) {
 			return null;
 		}
+	}
+
+	/**
+	 * The language of a release's notes, or null when it has none.
+	 *
+	 * @param array<array-key, mixed> $release
+	 */
+	private function languageOfNotes(array $release, ?string $changelog): ?string {
+		return $changelog === null ? null : $this->changelogLanguageOf($release);
 	}
 
 	/**

@@ -69,42 +69,69 @@ class NotesTranslator {
 	 * The notes of one version in the target language: the kept translation,
 	 * or a new one from the provider, which is then kept.
 	 *
-	 * @param string $appId The app
-	 * @param string $version The version whose notes to translate
-	 * @param string $targetLanguage A language code such as `nl` or `pt_BR`
-	 * @param string|null $source A source override, as the version listing takes it
-	 * @param string|null $userId The admin asking, recorded on the task
-	 *
 	 * @return array{statusCode: int, payload: array<string, mixed>}
 	 *
 	 * @spec openspec/changes/releases-notes-reach/specs/changelog-visibility/spec.md
 	 */
-	public function translate(string $appId, string $version, string $targetLanguage, ?string $source, ?string $userId): array {
-		$targetLanguage = trim($targetLanguage);
-		if (preg_match('/^[a-z]{2,3}(?:[_-][A-Za-z0-9]{2,8})?$/', $targetLanguage) !== 1 || trim($version) === '') {
+	public function translate(NotesTranslationRequest $request): array {
+		if (!self::namesVersionAndLanguage($request)) {
 			return self::answer(Http::STATUS_BAD_REQUEST, ['message' => 'Name a version and a language such as nl or pt_BR.']);
 		}
 
-		$listing = $this->installerService->getAppVersions($appId, $source);
-		$listingStatus = $listing['statusCode'];
-		if ($listingStatus !== Http::STATUS_OK || $listing['hasError'] === true) {
-			// A listing that failed with 200 (no versions, an error) is the source's failure.
-			return self::answer($listingStatus === Http::STATUS_OK ? Http::STATUS_BAD_GATEWAY : $listingStatus, [
-				'message' => is_string($listing['error'] ?? null) ? $listing['error'] : 'The versions of this app could not be listed.',
-			]);
+		$listing = $this->installerService->getAppVersions($request->appId, $request->source);
+		$refusal = self::listingRefusal($listing);
+		if ($refusal !== null) {
+			return $refusal;
 		}
 
-		$entry = self::entryFor($listing['versions'], $version);
-		$notes = $entry['changelog'] ?? null;
-		if (!is_string($notes) || trim($notes) === '') {
+		$entry = self::entryFor($listing['versions'], $request->version);
+		if (!is_string($entry['changelog'] ?? null) || trim($entry['changelog']) === '') {
 			return self::answer(Http::STATUS_NOT_FOUND, ['message' => 'This version has no release notes.']);
 		}
-		$sourceLanguage = is_string($entry['changelogLanguage'] ?? null) ? $entry['changelogLanguage'] : null;
 
-		$key = self::storeKey((string)$listing['sourceId'], $version, $targetLanguage);
+		return $this->translatedNotes($request, ['sourceId' => (string)$listing['sourceId']] + $entry);
+	}
+
+	/**
+	 * Whether the request names a version and a language code such as nl or pt_BR.
+	 */
+	private static function namesVersionAndLanguage(NotesTranslationRequest $request): bool {
+		return preg_match('/^[a-z]{2,3}(?:[_-][A-Za-z0-9]{2,8})?$/', trim($request->language)) === 1 && trim($request->version) !== '';
+	}
+
+	/**
+	 * The answer for a listing that failed, or null when it listed versions.
+	 *
+	 * @param array<string, mixed> $listing
+	 * @return array{statusCode: int, payload: array<string, mixed>}|null
+	 */
+	private static function listingRefusal(array $listing): ?array {
+		$listingStatus = $listing['statusCode'];
+		if ($listingStatus === Http::STATUS_OK && $listing['hasError'] !== true) {
+			return null;
+		}
+
+		// A listing that failed with 200 (no versions, an error) is the source's failure.
+		$message = $listing['error'] ?? null;
+
+		return self::answer($listingStatus === Http::STATUS_OK ? Http::STATUS_BAD_GATEWAY : $listingStatus, [
+			'message' => is_string($message) ? $message : 'The versions of this app could not be listed.',
+		]);
+	}
+
+	/**
+	 * The kept translation of a listed entry's notes, or a new one, which is then kept.
+	 *
+	 * @param array<array-key, mixed> $entry The listed version, with the `sourceId` it was listed from.
+	 * @return array{statusCode: int, payload: array<string, mixed>}
+	 */
+	private function translatedNotes(NotesTranslationRequest $request, array $entry): array {
+		$targetLanguage = trim($request->language);
+		$sourceLanguage = is_string($entry['changelogLanguage'] ?? null) ? $entry['changelogLanguage'] : null;
+		$key = self::storeKey($request, (string)$entry['sourceId']);
 		$kept = $this->appConfig->getValueString(Application::APP_ID, $key, '');
 		if ($kept !== '') {
-			return self::answer(Http::STATUS_OK, self::result($kept, $sourceLanguage, $targetLanguage, true));
+			return self::answer(Http::STATUS_OK, self::result($kept, ['source' => $sourceLanguage, 'target' => $targetLanguage]) + ['kept' => true]);
 		}
 
 		if (!$this->isAvailable()) {
@@ -113,7 +140,7 @@ class NotesTranslator {
 			]);
 		}
 
-		$translation = $this->runTranslation($notes, $sourceLanguage, $targetLanguage, $userId);
+		$translation = $this->runTranslation($request, $entry);
 		if ($translation === null) {
 			return self::answer(Http::STATUS_BAD_GATEWAY, ['message' => 'The translation provider could not translate these notes.']);
 		}
@@ -121,27 +148,31 @@ class NotesTranslator {
 		$translation = self::capped($translation);
 		$this->appConfig->setValueString(Application::APP_ID, $key, $translation);
 
-		return self::answer(Http::STATUS_OK, self::result($translation, $sourceLanguage, $targetLanguage, false));
+		return self::answer(Http::STATUS_OK, self::result($translation, ['source' => $sourceLanguage, 'target' => $targetLanguage]) + ['kept' => false]);
 	}
 
 	/**
 	 * The app-config key of a kept translation: the source, version and
 	 * language hashed, so the key stays short whatever the source id.
+	 *
+	 * @spec openspec/changes/releases-notes-reach/specs/changelog-visibility/spec.md
 	 */
-	public static function storeKey(string $sourceId, string $version, string $language): string {
-		return self::STORE_PREFIX . sha1($sourceId . '|' . $version . '|' . $language);
+	public static function storeKey(NotesTranslationRequest $request, string $sourceId): string {
+		return self::STORE_PREFIX . sha1($sourceId . '|' . $request->version . '|' . trim($request->language));
 	}
 
 	/**
-	 * Run the provider; null when it fails or answers no text.
+	 * Run the provider over a listed entry's notes, or null when it fails or answers no text.
+	 *
+	 * @param array<array-key, mixed> $entry
 	 */
-	private function runTranslation(string $notes, ?string $sourceLanguage, string $targetLanguage, ?string $userId): ?string {
+	private function runTranslation(NotesTranslationRequest $request, array $entry): ?string {
+		$sourceLanguage = is_string($entry['changelogLanguage'] ?? null) ? $entry['changelogLanguage'] : null;
 		$task = new Task(TextToTextTranslate::ID, [
-			'input' => $notes,
+			'input' => (string)$entry['changelog'],
 			'origin_language' => $sourceLanguage ?? self::DETECT_LANGUAGE,
-			'target_language' => $targetLanguage,
-		], Application::APP_ID, $userId);
-
+			'target_language' => trim($request->language),
+		], Application::APP_ID, $request->userId);
 		try {
 			$done = $this->taskProcessing->runTask($task);
 		} catch (Throwable $error) {
@@ -149,6 +180,13 @@ class NotesTranslator {
 			return null;
 		}
 
+		return self::outputOf($done);
+	}
+
+	/**
+	 * A finished task's text, or null when it did not succeed or answered nothing.
+	 */
+	private function outputOf(Task $done): ?string {
 		$output = $done->getOutput()['output'] ?? null;
 		if ($done->getStatus() !== Task::STATUS_SUCCESSFUL || !is_string($output) || trim($output) === '') {
 			$this->logger->warning('Versioniq: the translation provider answered no text', ['status' => $done->getStatus()]);
@@ -165,17 +203,11 @@ class NotesTranslator {
 	 * @return array<array-key, mixed>|null
 	 */
 	private static function entryFor(mixed $versions, string $version): ?array {
-		if (!is_array($versions)) {
-			return null;
-		}
-		/** @var mixed $entry */
-		foreach ($versions as $entry) {
-			if (is_array($entry) && ($entry['version'] ?? null) === $version) {
-				return $entry;
-			}
-		}
+		$matches = is_array($versions)
+			? array_filter($versions, static fn (mixed $entry): bool => is_array($entry) && ($entry['version'] ?? null) === $version)
+			: [];
 
-		return null;
+		return $matches === [] ? null : reset($matches);
 	}
 
 	private static function capped(string $translation): string {
@@ -183,15 +215,15 @@ class NotesTranslator {
 	}
 
 	/**
-	 * @return array{translation: string, sourceLanguage: ?string, targetLanguage: string, machineTranslation: true, kept: bool}
+	 * @param array{source: ?string, target: string} $languages The notes' language and the one translated into.
+	 * @return array{translation: string, sourceLanguage: ?string, targetLanguage: string, machineTranslation: true}
 	 */
-	private static function result(string $translation, ?string $sourceLanguage, string $targetLanguage, bool $kept): array {
+	private static function result(string $translation, array $languages): array {
 		return [
 			'translation' => $translation,
-			'sourceLanguage' => $sourceLanguage,
-			'targetLanguage' => $targetLanguage,
+			'sourceLanguage' => $languages['source'],
+			'targetLanguage' => $languages['target'],
 			'machineTranslation' => true,
-			'kept' => $kept,
 		];
 	}
 

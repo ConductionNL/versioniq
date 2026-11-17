@@ -10,14 +10,14 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Controller;
 
+use OCA\Versioniq\Service\Api\ApiCaller;
+use OCA\Versioniq\Service\Release\NotesTranslationRequest;
 use OCA\Versioniq\Service\Release\NotesTranslator;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\OCSController;
-use OCP\IGroupManager;
 use OCP\IRequest;
-use OCP\IUserSession;
 
 /**
  * Translates a version's release notes on request (releases-notes-reach D3).
@@ -32,8 +32,7 @@ class ChangelogController extends OCSController {
 		string $appName,
 		IRequest $request,
 		private NotesTranslator $notesTranslator,
-		private IGroupManager $groupManager,
-		private IUserSession $userSession,
+		private ApiCaller $caller,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -62,13 +61,13 @@ class ChangelogController extends OCSController {
 	#[ApiRoute(verb: 'POST', url: '/api/changelog/translate')]
 	#[ApiRoute(verb: 'POST', url: '/api/v1/changelog/translate', postfix: 'v1')]
 	public function translate(string $appId = '', string $version = '', string $language = '', ?string $source = null): DataResponse {
-		$user = $this->userSession->getUser();
-		if ($user === null || !$this->groupManager->isAdmin($user->getUID())) {
+		$uid = $this->caller->adminUid();
+		if ($uid === null) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
 		$override = ($source !== null && trim($source) !== '') ? trim($source) : null;
-		$result = $this->notesTranslator->translate(trim($appId), trim($version), $language, $override, $user->getUID());
+		$result = $this->notesTranslator->translate(new NotesTranslationRequest(trim($appId), trim($version), $language, $override, $uid));
 
 		return new DataResponse($result['payload'], $result['statusCode']);
 	}

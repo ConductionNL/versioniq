@@ -10,7 +10,10 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\Controller;
 
 use OCA\Versioniq\Controller\ChangelogController;
+use OCA\Versioniq\Service\Api\ApiCaller;
+use OCA\Versioniq\Service\Release\NotesTranslationRequest;
 use OCA\Versioniq\Service\Release\NotesTranslator;
+use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IGroupManager;
 use OCP\IRequest;
 use OCP\IUser;
@@ -42,12 +45,12 @@ final class ChangelogControllerTest extends TestCase {
 		$groups = $this->createMock(IGroupManager::class);
 		$groups->method('isAdmin')->with('alice')->willReturn($admin);
 
-		return new ChangelogController('versioniq', $this->createMock(IRequest::class), $this->translator, $groups, $session);
+		return new ChangelogController('versioniq', $this->createMock(IRequest::class), $this->translator, new ApiCaller($session, $groups, $this->createMock(ITimeFactory::class)));
 	}
 
 	public function testAnAdminGetsTheTranslatorsAnswer(): void {
 		$this->translator->expects($this->once())->method('translate')
-			->with('deck', '2.0.0', 'nl', null, 'alice')
+			->with(new NotesTranslationRequest('deck', '2.0.0', 'nl', null, 'alice'))
 			->willReturn(['statusCode' => 200, 'payload' => ['translation' => 'Vertaald', 'machineTranslation' => true]]);
 
 		$response = $this->controller(true)->translate(' deck ', ' 2.0.0 ', 'nl');
@@ -58,8 +61,8 @@ final class ChangelogControllerTest extends TestCase {
 
 	public function testTheSourceOverrideIsPassedTrimmedAndABlankOneIsDropped(): void {
 		$this->translator->expects($this->exactly(2))->method('translate')
-			->willReturnCallback(static function (string $appId, string $version, string $language, ?string $source): array {
-				return ['statusCode' => 200, 'payload' => ['source' => $source]];
+			->willReturnCallback(static function (NotesTranslationRequest $request): array {
+				return ['statusCode' => 200, 'payload' => ['source' => $request->source]];
 			});
 		$controller = $this->controller(true);
 

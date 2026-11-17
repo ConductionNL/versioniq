@@ -82,6 +82,32 @@ function toggle (): void {
 }
 
 /**
+ * The request body: the app, the version, the admin's language and a source override when one is set.
+ */
+function translateBody (): Record<string, unknown> {
+	const body: Record<string, unknown> = { appId: props.appId, version: props.version, language: userLanguage }
+	if (props.source.trim() !== '') {
+		body.source = props.source.trim()
+	}
+	return body
+}
+
+/**
+ * Keep and show a translation the server answered, or show why there is none.
+ *
+ * @param payload what the server answered
+ * @param error whether the request failed
+ */
+function takeTranslation (payload: TranslationPayload | null | undefined, error: boolean): void {
+	if (error || typeof payload?.translation !== 'string') {
+		translateError.value = payload?.message || t('versioniq', 'The release notes could not be translated.')
+		return
+	}
+	translation.value = payload.translation
+	showingTranslation.value = true
+}
+
+/**
  * Ask the server for the translation, or show the one already fetched.
  */
 async function translate (): Promise<void> {
@@ -92,17 +118,8 @@ async function translate (): Promise<void> {
 	translating.value = true
 	translateError.value = ''
 	try {
-		const body: Record<string, unknown> = { appId: props.appId, version: props.version, language: userLanguage }
-		if (props.source.trim() !== '') {
-			body.source = props.source.trim()
-		}
-		const { payload, error } = await ocsPost<TranslationPayload>(TRANSLATE, body)
-		if (error || typeof payload?.translation !== 'string') {
-			translateError.value = payload?.message || t('versioniq', 'The release notes could not be translated.')
-			return
-		}
-		translation.value = payload.translation
-		showingTranslation.value = true
+		const { payload, error } = await ocsPost<TranslationPayload>(TRANSLATE, translateBody())
+		takeTranslation(payload, Boolean(error))
 	} catch {
 		translateError.value = t('versioniq', 'The release notes could not be translated.')
 	} finally {
