@@ -13,12 +13,15 @@ import { collectAll, download, EXPORT_LIMIT, toCsv, toJson } from '../utils/audi
 import { labelCarriesMessage, operationLabel } from '../utils/auditOperations.ts'
 import { errorMessage } from '../utils/errorMessage.ts'
 import { historyMessage } from '../utils/externalChanges.ts'
+import { downloadSbom, SBOM_PATH } from '../utils/sbomDownload.ts'
 
 type AuditEntry = {
 	id: number
 	actorUid: string
 	appId: string
 	operation: string
+	/** On install rows: whether an SBOM of the state the install produced was kept (inventory-export-sbom-metrics D4). */
+	sbomAvailable?: boolean
 	fromVersion: string | null
 	toVersion: string | null
 	sourceId: string | null
@@ -81,6 +84,20 @@ function versionTransition (entry: AuditEntry): string {
 }
 
 const isFailure = (entry: AuditEntry): boolean => entry.status !== 'success'
+
+/**
+ * Download the SBOM kept for one install row.
+ *
+ * @param entry the install row
+ * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-every-update-leaves-an-sbom-of-the-state-it-produced
+ */
+async function downloadRowSbom (entry: AuditEntry): Promise<void> {
+	try {
+		await downloadSbom(`${SBOM_PATH}/${entry.id}`, `nextcloud-sbom-install-${entry.id}.cdx.json`)
+	} catch {
+		error.value = t('versioniq', 'Could not download the SBOM of this install.')
+	}
+}
 
 /**
  * Marks a first page or a next page as loading; a first page starts again at offset 0.
@@ -327,6 +344,13 @@ const isEmpty = computed(() => hasLoadedOnce.value && !isLoading.value && entrie
 							<p v-if="entry.message && !labelCarriesMessage(entry)" :class="$style.message" data-testid="history-message">
 								{{ historyMessage(entry.operation, entry.message) }}
 							</p>
+							<NcButton v-if="entry.sbomAvailable"
+								variant="tertiary"
+								data-testid="history-sbom"
+								:aria-label="t('versioniq', 'Download the SBOM of this install')"
+								@click="downloadRowSbom(entry)">
+								{{ t('versioniq', 'SBOM') }}
+							</NcButton>
 						</td>
 						<td v-if="securityOnly" data-testid="history-fixed">
 							{{ (entry.fixedAdvisories || []).map((advisory) => advisory.id).join(', ') }}

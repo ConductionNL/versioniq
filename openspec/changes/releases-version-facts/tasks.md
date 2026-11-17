@@ -24,7 +24,7 @@
 - [x] 4.2 Add the "Released" column and the new JSON keys to `lib/Command/ListVersions.php`. Verify: `tests/unit/Command/ListVersionsTest.php`.
 - [x] 4.3 Add the new strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
       (Built: 25 strings in `l10n/en.json` and `l10n/nl.json`, `.js` rebuilt; `check:l10n-js` and `check-l10n-keys` pass.)
-- [ ] 4.4 Extend `tests/e2e/versions.spec.ts`: the forge fixture serves a release with `published_at`, a breaking heading and a known-issues section; assert the date, the badge and the section.
+- [x] 4.4 Extend `tests/e2e/versions.spec.ts`: the forge fixture serves a release with `published_at`, a breaking heading and a known-issues section; assert the date, the badge and the section.
 
 ## 5. Close
 

@@ -69,6 +69,27 @@ class AuditEntryMapper extends QBMapper {
 	}
 
 	/**
+	 * The newest successful install row of an app, or null when it has none;
+	 * the row an SBOM copy is kept with (inventory-export-sbom-metrics D4).
+	 *
+	 * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-every-update-leaves-an-sbom-of-the-state-it-produced
+	 */
+	public function findLatestSuccessfulInstall(string $appId): ?AuditEntry {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')
+			->from($this->tableName)
+			->where($qb->expr()->eq('app_id', $qb->createNamedParameter($appId, IQueryBuilder::PARAM_STR)))
+			->andWhere($qb->expr()->eq('operation', $qb->createNamedParameter('install', IQueryBuilder::PARAM_STR)))
+			->andWhere($qb->expr()->eq('status', $qb->createNamedParameter('success', IQueryBuilder::PARAM_STR)))
+			->orderBy('id', 'DESC')
+			->setMaxResults(1);
+
+		$entries = $this->findEntities($qb);
+
+		return $entries[0] ?? null;
+	}
+
+	/**
 	 * How the app's installs went, per target version: the `install` rows
 	 * grouped by `to_version` and `status`; see "Every version shows how
 	 * widely it runs and how installs of it went". Other operations, and

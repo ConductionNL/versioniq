@@ -1737,7 +1737,7 @@ class ApiController extends OCSController {
 			$entries = $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset);
 
 			return new DataResponse([
-				'entries' => $entries,
+				'entries' => $this->withSbomFlags($entries),
 				'limit' => $limit,
 				'offset' => $offset,
 			]);
@@ -1751,11 +1751,43 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
 		}
 
-		return new DataResponse((new AuditPeriodQuery($this->reports->auditEntryMapper))->page(
+		$result = (new AuditPeriodQuery($this->reports->auditEntryMapper))->page(
 			$period,
 			['appId' => $appId, 'operation' => $operation, 'securityOnly' => $securityOnly],
 			['limit' => $limit, 'offset' => $offset],
-		));
+		);
+		$result['entries'] = $this->withSbomFlags($result['entries']);
+
+		return new DataResponse($result);
+	}
+
+	/**
+	 * The history rows with `sbomAvailable` on each install row: whether an SBOM
+	 * of the state it produced was kept (inventory-export-sbom-metrics D4).
+	 * Without the archive the rows go out as before.
+	 *
+	 * @param list<\OCA\Versioniq\Db\AuditEntry|array<string, mixed>> $entries
+	 *
+	 * @return list<mixed>
+	 *
+	 * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-every-update-leaves-an-sbom-of-the-state-it-produced
+	 */
+	private function withSbomFlags(array $entries): array {
+		$archive = $this->install->sbomArchive;
+		if ($archive === null) {
+			return $entries;
+		}
+
+		$stored = $archive->storedIds();
+
+		return array_map(static function ($entry) use ($stored) {
+			$row = is_array($entry) ? $entry : $entry->jsonSerialize();
+			if (($row['operation'] ?? null) === 'install') {
+				$row['sbomAvailable'] = isset($stored[$row['id'] ?? -1]);
+			}
+
+			return $row;
+		}, $entries);
 	}
 
 	/**

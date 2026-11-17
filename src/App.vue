@@ -44,6 +44,7 @@ import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
 import PublisherMark from './components/PublisherMark.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
+import SbomExportMenu from './components/SbomExportMenu.vue'
 import SecurityReportPanel from './components/SecurityReportPanel.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
 import SourceOverrideField from './components/SourceOverrideField.vue'
@@ -3750,12 +3751,15 @@ watch(dryRunEnabled, () => {
 					id="alerts-panel"
 					role="tabpanel"
 					aria-labelledby="alerts-tab" />
-				<HistoryPanel v-if="currentTab === 'history'"
+				<div v-if="currentTab === 'history'"
 					id="history-panel"
 					role="tabpanel"
-					aria-labelledby="history-tab" />
-				<!-- audit-security-reports D6: the remediation report under the history. -->
-				<SecurityReportPanel v-if="currentTab === 'history'" />
+					aria-labelledby="history-tab">
+					<SbomExportMenu />
+					<HistoryPanel />
+					<!-- audit-security-reports D6: the remediation report under the history. -->
+					<SecurityReportPanel />
+				</div>
 				<SourcesPanel v-show="currentTab === 'sources'"
 					id="sources-panel"
 					role="tabpanel"

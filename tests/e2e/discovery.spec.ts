@@ -52,6 +52,32 @@ test.describe("app discovery", () => {
 		).toBeVisible();
 	});
 
+	// @spec openspec/changes/inventory-verified-publisher/specs/app-discovery/spec.md
+	test("a featured App Store hit names its publisher and the featured mark", async ({
+		page,
+	}) => {
+		await openSettings(page);
+		await openTab(page, "Discover");
+
+		await page.getByTestId("discover-search-input").fill("calendar");
+		const hit = page
+			.getByTestId("discover-hit")
+			.filter({ hasText: "Calendar" })
+			.first();
+		await expect(hit, await discoverDiagnostics(page, "calendar")).toBeVisible(
+			{ timeout: 45_000 },
+		);
+		await expect(hit.getByTestId("publisher-name")).toContainText(
+			"Fixture Calendar Team",
+		);
+		await expect(hit.getByTestId("publisher-name")).not.toContainText("@");
+		await expect(
+			hit.getByTestId("publisher-trust-mark").filter({
+				hasText: "Featured in the App Store",
+			}),
+		).toBeVisible();
+	});
+
 	test("an installed hit routes into its version picker", async ({
 		page,
 	}) => {
