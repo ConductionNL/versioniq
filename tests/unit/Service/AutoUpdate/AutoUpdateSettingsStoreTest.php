@@ -10,10 +10,12 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\Service\AutoUpdate;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCP\IAppConfig;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 
 final class AutoUpdateSettingsStoreTest extends TestCase {
 	public function testIsEnabledDefaultsToFalse(): void {
@@ -113,5 +115,38 @@ final class AutoUpdateSettingsStoreTest extends TestCase {
 		$store->markWindowSwept('01:00-05:00@2026-07-23');
 		$this->assertTrue($store->hasSweptWindow('01:00-05:00@2026-07-23'));
 		$this->assertFalse($store->hasSweptWindow('01:00-05:00@2026-07-24'));
+	}
+
+	public function testScheduleRoundTripsThroughConfig(): void {
+		$stored = '';
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getValueString')->willReturnCallback(
+			static function (string $app, string $key, string $default = '') use (&$stored): string {
+				return $key === AutoUpdateSettingsStore::CONFIG_SCHEDULE ? $stored : $default;
+			}
+		);
+		$config->method('setValueString')->willReturnCallback(
+			static function (string $app, string $key, string $value) use (&$stored): bool {
+				$stored = $value;
+				return true;
+			}
+		);
+		$store = new AutoUpdateSettingsStore($config);
+
+		$this->assertSame(AutoUpdateSchedule::everyDay()->toArray(), $store->getSchedule()->toArray());
+		$schedule = AutoUpdateSchedule::fromArray(['major' => ['days' => [6], 'monthly' => true]]);
+		$store->setSchedule($schedule);
+		$this->assertSame($schedule->toArray(), $store->getSchedule()->toArray());
+	}
+
+	public function testAMalformedStoredScheduleRunsEveryDayAndWarns(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getValueString')->willReturn('{"major":{"days":[9]}}');
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->expects($this->once())->method('warning');
+
+		$store = new AutoUpdateSettingsStore($config, null, $logger);
+
+		$this->assertSame(AutoUpdateSchedule::everyDay()->toArray(), $store->getSchedule()->toArray());
 	}
 }

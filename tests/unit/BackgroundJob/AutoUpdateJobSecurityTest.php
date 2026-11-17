@@ -21,6 +21,7 @@ use OCA\Versioniq\Service\Advisory\AdvisoryService;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
 use OCA\Versioniq\Service\InstallerService;
@@ -85,6 +86,7 @@ final class AutoUpdateJobSecurityTest extends TestCase {
 		];
 		$this->mocks['settingsStore']->method('isEnabled')->willReturn(true);
 		$this->mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$this->mocks['settingsStore']->method('getSchedule')->willReturn(AutoUpdateSchedule::everyDay());
 		$this->mocks['advisorySettings']->method('getIntervalSeconds')->willReturn(self::INTERVAL);
 		$this->mocks['policyStore']->method('all')->willReturn([
 			'openregister' => new Policy(Policy::LEVEL_SECURITY, 'admin', '2026-07-01T00:00:00+00:00'),

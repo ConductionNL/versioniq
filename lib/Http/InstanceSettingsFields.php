@@ -56,6 +56,9 @@ final class InstanceSettingsFields extends RequestFields {
 	/** @var string|null Where advisories are read from: remote (the feed address) or local (the imported copy) */
 	public ?string $advisoryFeedSource = null;
 
+	/** @var string|null Whether an update through Versioniq tells the app's users: true or false */
+	public ?string $notifyUsersOnUpdate = null;
+
 	/**
 	 * The fields that were sent, by name, in declaration order.
 	 *

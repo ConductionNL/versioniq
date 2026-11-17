@@ -21,6 +21,7 @@ use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCA\Versioniq\Service\Installer\AppsRoot;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
+use OCA\Versioniq\Service\Installer\InstallProgress;
 use OCA\Versioniq\Service\Installer\InstalledFolder;
 use OCA\Versioniq\Service\Installer\InstallFailure;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
@@ -76,6 +77,7 @@ class SelectedReleaseInstallerService {
 		private IUserSession $userSession,
 		private MigrationDiffer $migrationDiffer,
 		private ArtifactCache $artifactCache,
+		private ?InstallProgress $progress = null,
 	) {
 	}
 
@@ -123,6 +125,8 @@ class SelectedReleaseInstallerService {
 			'stage' => $stage,
 			'data' => $data,
 		];
+		// install-live-progress: the same stage names, live; no detail, which holds temp paths.
+		$this->progress?->stage(name: $stage);
 	}
 
 	/**
@@ -637,10 +641,14 @@ class SelectedReleaseInstallerService {
 	private function downloadRelease(SignedReleaseRun $run): void {
 		try {
 			$client = $this->getClientService()->newClient();
-			$client->get($run->release->download, [
+			$options = [
 				'sink' => $run->temp->file,
 				'timeout' => $this->getDownloadTimeout(),
-			]);
+			];
+			if ($this->progress !== null) {
+				$options['progress'] = $this->progress->downloadProgress();
+			}
+			$client->get($run->release->download, $options);
 		} catch (Exception $error) {
 			// Download failed (network error, dead URL, deleted release):
 			// fall back to a cached artifact for this exact appId+version, if

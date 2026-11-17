@@ -20,6 +20,7 @@ use OCA\Versioniq\Service\Advisory\LocalFeedCopy;
 use OCA\Versioniq\Service\Advisory\NcscAdvisoryFeed;
 use OCA\Versioniq\Service\Advisory\NextcloudAdvisoryFeed;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
+use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Lifecycle\ServerEolFeed;
 use OCA\Versioniq\Service\Source\AppStoreSource;
 use OCA\Versioniq\Service\Source\ForgeRegistry;
@@ -53,6 +54,12 @@ class InstanceSettings implements InstanceSettingsInterface {
 	/** Whether Discover also searches public GitHub; read by GithubSearchDiscovery (sources-trust-audit-and-offline-feed). */
 	public const KEY_GITHUB_SEARCH = 'discovery.github_search_enabled';
 
+	/**
+	 * Whether an update through Versioniq tells the app's users, as the
+	 * platform's own updates do (releases-notes-reach D1). On by default.
+	 */
+	public const KEY_NOTIFY_USERS_ON_UPDATE = InstallerService::KEY_NOTIFY_USERS_ON_UPDATE;
+
 	public const MAX_LINES_BEHIND = 10;
 
 	/** Ten years: longer is a history nobody reads, and the table keeps growing. */
@@ -83,7 +90,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, eolFeedUrl: string, eolFeedOff: bool, eolFeedDefault: string, ncscFeedUrl: string, ncscFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, reactivateAuto: bool, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int}
+	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, eolFeedUrl: string, eolFeedOff: bool, eolFeedDefault: string, ncscFeedUrl: string, ncscFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, reactivateAuto: bool, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int, notifyUsersOnUpdate: bool}
 	 */
 	public function read(): array {
 		$retention = $this->config->getValueInt(Application::APP_ID, PruneAuditJob::CONFIG_KEY_RETENTION_DAYS, PruneAuditJob::DEFAULT_RETENTION_DAYS);
@@ -114,6 +121,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 			'reactivateAuto' => $this->config->getValueBool(Application::APP_ID, self::KEY_REACTIVATE_AUTO, false),
 			'githubSearchEnabled' => $this->config->getValueString(Application::APP_ID, self::KEY_GITHUB_SEARCH, 'false') === 'true',
 			...$this->feedSource(),
+			'notifyUsersOnUpdate' => $this->config->getValueBool(Application::APP_ID, self::KEY_NOTIFY_USERS_ON_UPDATE, true),
 		];
 	}
 
@@ -135,12 +143,16 @@ class InstanceSettings implements InstanceSettingsInterface {
 		$urls = $this->validatedUrls($fields);
 		$reactivate = self::validatedSwitch($fields, 'reactivateAuto', 'Automatic re-enabling');
 		$githubSearch = self::validatedSwitch($fields, 'githubSearchEnabled', 'GitHub search');
+		$notify = self::validatedSwitch($fields, 'notifyUsersOnUpdate', 'Telling users about updates');
 		$feedSource = self::validatedFeedSource($fields);
 		$eolFeed = isset($fields['eolFeedUrl']) ? $this->url($fields['eolFeedUrl'], false) : null;
 
 		$this->storeInts($ints);
 		if ($githubSearch !== null) {
 			$this->config->setValueString(Application::APP_ID, self::KEY_GITHUB_SEARCH, $githubSearch);
+		}
+		if ($notify !== null) {
+			$this->config->setValueBool(Application::APP_ID, self::KEY_NOTIFY_USERS_ON_UPDATE, $notify === 'true');
 		}
 		if ($feedSource !== null) {
 			$this->config->setValueString(Application::APP_ID, NextcloudAdvisoryFeed::CONFIG_FEED_SOURCE, $feedSource);
@@ -171,7 +183,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 	 */
 	private static function appliedFields(array $fields): array {
 		return array_values(array_filter(
-			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS), 'reactivateAuto', 'githubSearchEnabled', 'advisoryFeedSource', 'eolFeedUrl'],
+			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', 'notifyUsersOnUpdate', ...array_keys(self::URL_FIELDS), 'reactivateAuto', 'githubSearchEnabled', 'advisoryFeedSource', 'eolFeedUrl'],
 			static fn (string $field): bool => isset($fields[$field]),
 		));
 	}
