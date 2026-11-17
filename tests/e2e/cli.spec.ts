@@ -218,4 +218,31 @@ test.describe("occ CLI", () => {
 				.catch(() => undefined);
 		}
 	});
+
+	// @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md
+	test("versioniq:channel puts one app on beta and refuses a typo", async () => {
+		try {
+			const set = await occ("versioniq:channel", FIXTURE_APP, "beta");
+			expect(set.code, set.stdout).toBe(0);
+			const listed = await occ(
+				"versioniq:versions",
+				FIXTURE_APP,
+				`--source=${FIXTURE_SOURCE}`,
+				"--json",
+			);
+			expect(lastJson(listed.stdout).channel).toBe("beta");
+
+			const typo = await occ("versioniq:channel", FIXTURE_APP, "betta");
+			expect(typo.code).not.toBe(0);
+			const after = await occ(
+				"versioniq:versions",
+				FIXTURE_APP,
+				`--source=${FIXTURE_SOURCE}`,
+				"--json",
+			);
+			expect(lastJson(after.stdout).channel).toBe("beta");
+		} finally {
+			await occ("versioniq:channel", FIXTURE_APP, "default");
+		}
+	});
 });

@@ -8,16 +8,17 @@ An administrator learns which installed or pinned app versions are affected by a
 ### Requirement: The installed/pinned version is correlated against known security advisories
 
 For each installed app, the system MUST resolve whether the currently-installed or
-admin-pinned version is affected by a published security advisory, using the app's bound
-source: the Nextcloud App Store security information for store-sourced apps, and the source
-adapter's advisory endpoint (e.g. GitHub/Codeberg security advisories) for external-sourced
-apps. External calls MUST reuse the existing source-adapter and PAT/credential path (no new
-bespoke HTTP client, no secret held outside the existing management). The correlation MUST be
-read-only and MUST NOT change any installed or pinned version.
+admin-pinned version is affected by a published security advisory. It MUST read two kinds of
+source. Nextcloud's own advisory feed (the records published on `nextcloud/security-advisories`,
+at the address in `advisory.feed_base` when an admin set one) MUST be read once per sweep and
+applies to every installed app and to the server, whatever the app's source. For an app bound
+to a GitHub repository or a self-hosted Forgejo repository, the system MUST also read that
+repository's security advisories. External calls MUST reuse the existing source-adapter and
+PAT/credential path (no new bespoke HTTP client, no secret held outside the existing
+management). The correlation MUST be read-only and MUST NOT change any installed or pinned
+version.
 
 #### Scenario: A pinned older version with an open advisory is flagged
-
-@e2e exclude the /api/advisories endpoint correlates every installed app (too slow for e2e); the pinned-to-vulnerable correlation is unit-tested in AdvisoryService and was confirmed live against the fixture (state=pinned-to-vulnerable, recommended 1.1.0).
 
 - **GIVEN** an app the admin has pinned to an older version that has a published security advisory
 - **WHEN** the version list is shown
@@ -30,7 +31,23 @@ read-only and MUST NOT change any installed or pinned version.
 - **GIVEN** an installed app whose current version has no known advisory from its bound source
 - **THEN** its advisory state MUST be `none`
 
-@e2e exclude advisory resolution is unit-tested against a stubbed source-adapter advisory feed (store + external); a Playwright badge smoke follows once a live fixture exists.
+#### Scenario: An App Store app is checked against Nextcloud's advisory feed
+
+@e2e exclude the feed is read by a background sweep; covered by tests/unit/Service/Advisory/AdvisoryServiceTest.php (testAnAppStoreAppIsCorrelatedFromTheCentralFeed) and tests/unit/Service/Advisory/NextcloudAdvisoryFeedTest.php.
+
+- **GIVEN** `calendar` 5.1.2 is installed from the App Store, and Nextcloud's advisory feed holds an advisory for `calendar` fixed in 5.1.3
+- **WHEN** the advisory sweep runs
+- **THEN** `calendar` MUST be marked affected, with the advisory id and 5.1.3 as the recommended version
+- **AND** the sweep MUST read the feed once, not once per app
+
+#### Scenario: A GitHub-bound app is checked against its repository's advisories
+
+@e2e exclude needs a live repository with a published advisory; covered by tests/unit/Service/Source/ForgeReleaseSourceTest.php and tests/unit/Service/Source/ForgeReleaseSourceBackgroundTokenTest.php (testAdvisoriesUseTheSharedTokenWithoutASessionUser).
+
+- **GIVEN** `hermiq` 1.4.0 is bound to `github:ConductionNL/hermiq`, and that repository published an advisory affecting 1.4.0
+- **WHEN** the advisory sweep runs
+- **THEN** the sweep MUST read `/repos/ConductionNL/hermiq/security-advisories` on the GitHub API, with a matching shared token when the repository is private
+- **AND** `hermiq` MUST be marked affected with that advisory's id
 
 ### Requirement: The admin is notified and stays in control
 
@@ -196,3 +213,14 @@ The advisory feed setting MUST offer to import a local copy: an admin uploads a 
 - **WHEN** an admin imports a file that is not a valid feed
 - **THEN** the import MUST be refused with a message saying why
 - **AND** the previous copy MUST stay in use
+
+### Requirement: An admin updates to the safe version straight from the advisory
+
+When an app's advisory state names a recommended version, the card MUST offer "Update to safe version {version}". It MUST show which advisory that version resolves, and after one confirmation it MUST install that version through the normal install endpoint, with every guard of that endpoint in place. The system MUST still never install it without the admin's action.
+
+#### Scenario: An admin fixes an advisory in one action
+
+- **GIVEN** `openregister` 2.3.0 is affected by advisory GHSA-xxxx and the recommended version is 2.3.4
+- **WHEN** an admin clicks "Update to safe version 2.3.4" on the card and confirms
+- **THEN** `openregister` 2.3.4 MUST be installed through the install endpoint
+- **AND** after the next advisory sweep the card MUST no longer show the advisory

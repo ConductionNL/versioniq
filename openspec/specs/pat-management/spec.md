@@ -349,6 +349,17 @@ A background job runs with no signed-in user: the advisory refresh, the automati
 - **WHEN** that admin opens the version list of the app bound to `acme/tool`
 - **THEN** the request MUST carry that admin's token
 
+### Requirement: GitLab tokens are validated for read-only scopes
+
+When an admin stores a token for the `gitlab` forge, the system MUST read the token's scopes and expiry from GitLab's own token endpoint, MUST accept it only when its scopes are within `read_api` and `read_repository`, and MUST reject a token that carries `api`, `write_repository` or `sudo`, naming the scope to drop.
+
+#### Scenario: A full-access GitLab token is refused
+
+- **GIVEN** an admin pastes a GitLab personal access token with scopes `api` and `read_repository`
+- **WHEN** they save it on the Tokens tab
+- **THEN** the token MUST be rejected with a message that names `api`
+- **AND** no token MUST be stored
+
 ## User Stories
 
 1. As an admin, I want to install apps from private ConductionNL repos so I can deploy customer-specific builds without leaving Nextcloud.

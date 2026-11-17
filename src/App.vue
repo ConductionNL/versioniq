@@ -45,6 +45,7 @@ import PolicySelector from './components/PolicySelector.vue'
 import PublisherMark from './components/PublisherMark.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
 import RollbackPanel from './components/RollbackPanel.vue'
+import SbomExportMenu from './components/SbomExportMenu.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
 import SourceOverrideField from './components/SourceOverrideField.vue'
 import SourcesPanel from './components/SourcesPanel.vue'
@@ -3755,6 +3756,7 @@ watch(dryRunEnabled, () => {
 					role="tabpanel"
 					aria-labelledby="history-tab">
 					<RollbackPanel />
+					<SbomExportMenu />
 					<HistoryPanel />
 				</div>
 				<SourcesPanel v-show="currentTab === 'sources'"
