@@ -21,6 +21,7 @@ import NcButton from '@nextcloud/vue/components/NcButton'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import AdvisoriesPanel from './components/AdvisoriesPanel.vue'
 import AlertsPanel from './components/AlertsPanel.vue'
+import AppAboutCard from './components/AppAboutCard.vue'
 import AppSourceBadges from './components/AppSourceBadges.vue'
 import AutoUpdateOverview from './components/AutoUpdateOverview.vue'
 import AutoUpdateSchedule from './components/AutoUpdateSchedule.vue'
@@ -76,6 +77,9 @@ type AppOption = {
 	description: string
 	summary: string
 	preview: string
+	author?: string
+	licence?: string
+	links?: { website: string | null, repository: string | null, bugs: string | null }
 	isCore: boolean
 	isShipped?: boolean
 	boundSourceId?: string | null
@@ -3207,6 +3211,7 @@ watch(dryRunEnabled, () => {
 											{{ t('versioniq', 'Downgrade path detected.') }}
 										</p>
 										<ChangelogRangePanel :entries="changelogRange" />
+										<AppAboutCard v-if="selectedAppOption" :app="selectedAppOption" />
 									</div>
 									<template v-if="appDetailTab === 'versions'">
 										<SourceOverrideField

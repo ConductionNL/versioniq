@@ -631,7 +631,15 @@ OC.L10N.register(
         "Using the cached download": "De bewaarde download gebruiken",
         "Validating info.xml": "info.xml controleren",
         "failed": "mislukt",
-        "{seconds} s": "{seconds} s"
+        "{seconds} s": "{seconds} s",
+        "Bind an installed app to a GitHub repository, or to one on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.": "Koppel een geïnstalleerde app aan een GitHub-repository, of aan een repository op een zelf gehoste Forgejo- of Gitea-server, zodat versies daaruit worden gehaald in plaats van uit de App Store. De repository moet op de lijst met vertrouwde bronnen staan.",
+        "About {app}": "Over {app}",
+        "Publisher": "Uitgever",
+        "Licence": "Licentie",
+        "Website": "Website",
+        "Report a problem": "Probleem melden",
+        "disabled": "uitgeschakeld",
+        "enabled": "ingeschakeld"
     },
     "nplurals=2; plural=(n != 1);"
 )

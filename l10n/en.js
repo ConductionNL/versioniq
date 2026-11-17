@@ -629,7 +629,15 @@ OC.L10N.register(
         "Using the cached download": "Using the cached download",
         "Validating info.xml": "Validating info.xml",
         "failed": "failed",
-        "{seconds} s": "{seconds} s"
+        "{seconds} s": "{seconds} s",
+        "Bind an installed app to a GitHub repository, or to one on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.": "Bind an installed app to a GitHub repository, or to one on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.",
+        "About {app}": "About {app}",
+        "Publisher": "Publisher",
+        "Licence": "Licence",
+        "Website": "Website",
+        "Report a problem": "Report a problem",
+        "disabled": "disabled",
+        "enabled": "enabled"
     },
     "nplurals=2; plural=(n != 1);"
 )
