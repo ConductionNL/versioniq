@@ -475,3 +475,167 @@ test.describe("background jobs", () => {
 		).toBeFalsy();
 	});
 });
+
+/**
+ * Security fixes first (autoupdate-security-first 4.3): a fixture advisory
+ * affects fixtureapp 1.0.0 and is patched in 1.0.1. The advisory check alone
+ * never changes a version; the auto-update job installs the fix only where a
+ * policy and the patch policy allow it.
+ *
+ * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md
+ */
+test.describe("security fixes in the auto-update job", () => {
+	const OCS = { "OCS-APIRequest": "true", "Content-Type": "application/json" };
+
+	const installed = async () =>
+		(await occ("config:app:get", FIXTURE_APP, "installed_version")).trim();
+
+	/** A GHSA-shaped advisory on fixtureapp below 1.0.1, fixed in 1.0.1. */
+	function advisory(severity: string) {
+		return {
+			ghsa_id: `GHSA-e2e0-secf-${severity}`,
+			severity,
+			summary: "Fixture advisory fixed in 1.0.1",
+			published_at: "2026-01-01T00:00:00Z",
+			vulnerabilities: [
+				{
+					package: { ecosystem: "other", name: FIXTURE_APP },
+					vulnerable_version_range: "< 1.0.1",
+					first_patched_version: "1.0.1",
+				},
+			],
+		};
+	}
+
+	/** Serves the advisories and runs the advisory check over them. */
+	async function advisories(page: Page, list: unknown[]) {
+		await fixtureControl(page, "repo", { repo: "fixtureowner/fixtureapp", advisories: list });
+		await runJob("AdvisoryRefreshJob");
+	}
+
+	async function setLevel(page: Page, level: string) {
+		const res = await page.request.put(
+			`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/policy?format=json`,
+			{ headers: OCS, data: { level } },
+		);
+		expect(res.ok(), `PUT policy ${level}: ${res.status()}`).toBe(true);
+	}
+
+	/** Records a patch policy: every security severity and kind at its default, with the overrides. */
+	async function patchPolicy(
+		page: Page,
+		overrides: { security?: Record<string, { handling: string; deadlineDays: number | null }>; regular?: Record<string, string> },
+	) {
+		const security: Record<string, { handling: string; deadlineDays: number | null }> = {};
+		for (const severity of ["critical", "high", "medium", "low", "unknown"]) {
+			security[severity] = overrides.security?.[severity] ?? { handling: "scheduled", deadlineDays: null };
+		}
+		const regular = { patch: "automatic", minor: "automatic", major: "automatic", ...overrides.regular };
+		const res = await page.request.put("/ocs/v2.php/apps/versioniq/api/patch-policy?format=json", {
+			headers: OCS,
+			data: { security, regular, statement: "" },
+		});
+		expect(res.ok(), `PUT patch-policy: ${res.status()} ${await res.text()}`).toBe(true);
+	}
+
+	async function enableAutomation() {
+		await occ("config:app:set", "versioniq", "auto_update_enabled", "--value", "1");
+		await occ("config:app:set", "versioniq", "auto_update_window", "--value", "00:00-23:59");
+		await occ("config:app:delete", "versioniq", "auto_update_last_swept_window");
+	}
+
+	test.beforeEach(async ({ page }) => {
+		test.skip(!(await fixtureAvailable(page)), "forge fixture not running");
+		await resetFixtureApp(page);
+		for (const key of ["patch_policy", "auto_update_schedule", `policy.${FIXTURE_APP}`, `auto_attempt.${FIXTURE_APP}`]) {
+			await occ("config:app:delete", "versioniq", key);
+		}
+	});
+
+	test.afterEach(async ({ page }) => {
+		await fixtureControl(page, "repo", { repo: "fixtureowner/fixtureapp", advisories: [] }).catch(() => undefined);
+		for (const key of [
+			"patch_policy",
+			"auto_update_schedule",
+			"auto_update_enabled",
+			"auto_update_window",
+			"auto_update_last_swept_window",
+			`auto_attempt.${FIXTURE_APP}`,
+		]) {
+			await occ("config:app:delete", "versioniq", key);
+		}
+		await page.request
+			.delete(`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/policy?format=json`, {
+				headers: { "OCS-APIRequest": "true" },
+			})
+			.catch(() => undefined);
+		// Leave a snapshot without the fixture advisory for the specs after this one.
+		await runJob("AdvisoryRefreshJob").catch(() => undefined);
+	});
+
+	// @e2e autoupdate-security-first::the-advisory-check-changes-no-version
+	test("the advisory check alone changes no version, nor does the job without a policy", async ({
+		page,
+	}) => {
+		await advisories(page, [advisory("high")]);
+		expect(await installed(), "after the advisory check").toBe("1.0.0");
+
+		await enableAutomation();
+		await runJob("AutoUpdateJob");
+		expect(await installed(), "no policy: nothing installs").toBe("1.0.0");
+	});
+
+	// @e2e autoupdate-security-first::security-level-installs-the-fix
+	test("on level security the job installs the fix", async ({ page }) => {
+		await advisories(page, [advisory("high")]);
+		await setLevel(page, "security");
+		await enableAutomation();
+
+		await runJob("AutoUpdateJob");
+		expect(await installed()).toBe("1.0.1");
+	});
+
+	// @e2e autoupdate-security-first::security-level-without-an-advisory-installs-nothing
+	test("on level security without an advisory the job installs nothing", async ({ page }) => {
+		await advisories(page, []);
+		await setLevel(page, "security");
+		await enableAutomation();
+
+		await runJob("AutoUpdateJob");
+		expect(await installed()).toBe("1.0.0");
+	});
+
+	// @e2e autoupdate-security-first::patch-updates-by-hand-hold-the-fix
+	test("with patch updates set to by hand, level patch installs nothing", async ({ page }) => {
+		await advisories(page, [advisory("high")]);
+		await patchPolicy(page, { regular: { patch: "manual" } });
+		await setLevel(page, "patch");
+		await enableAutomation();
+
+		await runJob("AutoUpdateJob");
+		expect(await installed()).toBe("1.0.0");
+	});
+
+	// @e2e autoupdate-security-first::a-critical-fix-goes-at-the-next-window
+	test("a critical fix set to the next window installs on level minor while minors are not due today", async ({
+		page,
+	}) => {
+		await advisories(page, [advisory("critical")]);
+		await patchPolicy(page, { security: { critical: { handling: "next_window", deadlineDays: 3 } } });
+		// Minors are due only on a weekday four days off, so not today in any time zone.
+		const notToday = ((new Date().getUTCDay() + 3) % 7) + 1;
+		await occ(
+			"config:app:set",
+			"versioniq",
+			"auto_update_schedule",
+			"--value",
+			JSON.stringify({ minor: { days: [notToday], monthly: false } }),
+		);
+		await setLevel(page, "minor");
+		await enableAutomation();
+
+		await runJob("AutoUpdateJob");
+		expect(await installed(), "the security fix, not the 1.1.0 minor").toBe("1.0.1");
+	});
+});
+
