@@ -346,7 +346,7 @@ final class SourceBindingStoreTest extends TestCase {
 			->with(...AuditArgs::expected(
 				'alice',
 				'openregister',
-				AuditLogger::OPERATION_BIND_SOURCE,
+				AuditLogger::OPERATION_UNBIND_SOURCE,
 				null,
 				null,
 				'appstore',

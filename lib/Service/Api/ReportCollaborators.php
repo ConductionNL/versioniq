@@ -14,6 +14,7 @@ namespace OCA\Versioniq\Service\Api;
 use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
 use OCA\Versioniq\Service\Readiness\ReadinessAccess;
+use OCA\Versioniq\Service\Release\KnownIssueStore;
 
 /**
  * What the read-only report endpoints draw on: the stored reports, the
@@ -29,6 +30,7 @@ final class ReportCollaborators {
 		// Optional: the last upgrade readiness report and the job list a check is
 		// queued on (inventory-upgrade-readiness D4).
 		public readonly ?ReadinessAccess $readiness = null,
+		public readonly ?KnownIssueStore $knownIssues = null,
 	) {
 	}
 }

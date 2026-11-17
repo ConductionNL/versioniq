@@ -121,6 +121,7 @@ trait MapsGithubRepositories {
 				installable: $installable,
 				installableReason: $installable ? null : sprintf(self::UNTRUSTED_REASON, $binding['owner']),
 			),
+			publisher: new DiscoveryPublisher(name: $binding['owner'] !== '' ? $binding['owner'] : null),
 		);
 	}
 

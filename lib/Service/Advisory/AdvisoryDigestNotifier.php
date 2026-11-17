@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Advisory;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\AdvisoryDigestNotifierInterface;
 use OCA\Versioniq\Service\AdminNotificationServices;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
@@ -34,7 +35,7 @@ use Throwable;
  *
  * @psalm-api
  */
-class AdvisoryDigestNotifier {
+class AdvisoryDigestNotifier implements AdvisoryDigestNotifierInterface {
 	private const CONFIG_LAST_SENT = 'advisory.digest_last_sent';
 
 	/** Seven days. */
@@ -57,14 +58,14 @@ class AdvisoryDigestNotifier {
 	 * channel stops being read.
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
-	 * @param array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}> $correlations
+	 * @param array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, recommendedVersion: ?string, error: ?string, history?: list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool}>, fixStatus?: ?string}> $correlations
 	 */
 	public function sendIfDue(array $correlations, int $now): int {
 		if (!$this->isDue($now)) {
 			return 0;
 		}
 
-		$informational = self::informational($correlations);
+		$informational = self::informational($this->applyTriage($correlations, $now));
 		if ($informational === []) {
 			// Nothing to say. The clock is NOT advanced, so the first week
 			// with something to report sends immediately rather than waiting
@@ -84,6 +85,31 @@ class AdvisoryDigestNotifier {
 		return $fired;
 	}
 
+	/**
+	 * The correlations with the stored triage applied, so an actively
+	 * dismissed advisory is not counted (advisories-triage, design D2). The
+	 * state is left as stored: a row whose advisories are all dismissed has
+	 * none left to count, whatever its state.
+	 *
+	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-dismisses-an-advisory-with-a-recorded-reason
+	 * @param array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}> $correlations
+	 * @return array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}>
+	 */
+	private function applyTriage(array $correlations, int $now): array {
+		$store = new AdvisoryTriageStore($this->config, $this->logger);
+		$triage = new AdvisoryTriage($store->read(), gmdate(DATE_ATOM, $now));
+		foreach ($correlations as $appId => $correlation) {
+			$dismissed = AdvisoryTriage::dismissedIds(row: $triage->apply(row: $correlation));
+			$correlation['advisories'] = array_values(array_filter(
+				$correlation['advisories'],
+				static fn (array $advisory): bool => isset($dismissed[$advisory['id']]) === false,
+			));
+			$correlations[$appId] = $correlation;
+		}
+
+		return $correlations;
+	}
+
 	/** Whether the digest is enabled and none was sent inside the last seven days. */
 	private function isDue(int $now): bool {
 		if (!$this->settings->isDigestEnabled()) {
@@ -99,8 +125,8 @@ class AdvisoryDigestNotifier {
 	 * The apps with advisories that do not affect the installed version; the
 	 * urgent path already notifies about the others.
 	 *
-	 * @param array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}> $correlations
-	 * @return list<array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}>
+	 * @param array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, recommendedVersion: ?string, error: ?string, history?: list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool}>, fixStatus?: ?string}> $correlations
+	 * @return list<array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, recommendedVersion: ?string, error: ?string, history?: list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool}>, fixStatus?: ?string}>
 	 */
 	private static function informational(array $correlations): array {
 		return array_values(array_filter(
@@ -113,7 +139,7 @@ class AdvisoryDigestNotifier {
 	/**
 	 * Notifies every admin of the informational apps; returns how many were reached.
 	 *
-	 * @param list<array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}> $informational
+	 * @param list<array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, recommendedVersion: ?string, error: ?string, history?: list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool}>, fixStatus?: ?string}> $informational
 	 */
 	private function fireToAdmins(array $informational): int {
 		$appCount = count($informational);
