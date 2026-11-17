@@ -597,7 +597,26 @@ OC.L10N.register(
         "GitLab projects are read from gitlab.com. Set the address of your own GitLab host to read them from there instead; leave it empty for gitlab.com.": "GitLab projects are read from gitlab.com. Set the address of your own GitLab host to read them from there instead; leave it empty for gitlab.com.",
         "Self-managed GitLab host": "Self-managed GitLab host",
         "Save GitLab host": "Save GitLab host",
-        "Bind an installed app to a GitHub repository, a GitLab project, or a repository on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.": "Bind an installed app to a GitHub repository, a GitLab project, or a repository on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list."
+        "Bind an installed app to a GitHub repository, a GitLab project, or a repository on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.": "Bind an installed app to a GitHub repository, a GitLab project, or a repository on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.",
+        "Checking access to the source": "Checking access to the source",
+        "Checking the certificate": "Checking the certificate",
+        "Checking the checksum": "Checking the checksum",
+        "Checking the signature": "Checking the signature",
+        "Comparing migrations": "Comparing migrations",
+        "Downloaded": "Downloaded",
+        "Downloading": "Downloading",
+        "Extracting": "Extracting",
+        "Finishing the install": "Finishing the install",
+        "Maintenance mode is on while the app installs. Keep this page open until the install finishes.": "Maintenance mode is on while the app installs. Keep this page open until the install finishes.",
+        "Reading the release": "Reading the release",
+        "Resolving the release": "Resolving the release",
+        "Running migrations": "Running migrations",
+        "Running repair steps": "Running repair steps",
+        "Swapping the files": "Swapping the files",
+        "Using the cached download": "Using the cached download",
+        "Validating info.xml": "Validating info.xml",
+        "failed": "failed",
+        "{seconds} s": "{seconds} s"
     },
     "nplurals=2; plural=(n != 1);"
 )
