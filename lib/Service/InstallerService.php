@@ -774,7 +774,7 @@ class InstallerService implements InstallerServiceInterface {
 			return ['installed' => false, 'outcome' => $this->installEnvelope(Http::STATUS_CONFLICT, $this->briefPayload($pending->run, 'The uploaded archive changed after it was inspected. Upload it again.'))];
 		}
 		$target = $pending->run->request->target;
-		$release = $this->upload?->signatures->storeRelease($target->appId, $target->version, $path);
+		$release = $this->upload?->signatures->storeRelease($pending->run->request->target, $path);
 		$refusal = $release === null ? $this->unsignedUploadRefusal($pending) : null;
 		if ($refusal !== null) {
 			return ['installed' => false, 'outcome' => self::fromUpload($refusal)];
@@ -849,7 +849,7 @@ class InstallerService implements InstallerServiceInterface {
 
 			return $this->uploadOutcome($this->installEnvelope(Http::STATUS_OK, $this->uploadSuccessPayload($run, $result)), $archive);
 		} catch (InstallFailure $failure) {
-			return $this->uploadOutcome(self::withDebugLog($this->installFailureOutcome($run, $failure), $run, $this->uploadDebugLog($archive)), $archive);
+			return $this->uploadOutcome($run->withDebugLog($this->installFailureOutcome($run, $failure), $this->uploadDebugLog($archive)), $archive);
 		} catch (Exception $error) {
 			return $this->uploadOutcome($this->classifiedFailureOutcome($run, $this->uploadDebugLog($archive), $error), $archive);
 		} finally {
@@ -1293,7 +1293,7 @@ class InstallerService implements InstallerServiceInterface {
 		} catch (ShaMismatchException $error) {
 			return $this->shaMismatchOutcome($install, $error);
 		} catch (InstallFailure $failure) {
-			return self::withDebugLog($this->installFailureOutcome($install->run, $failure), $install->run, $this->installerDebugLog($install->source));
+			return $install->run->withDebugLog($this->installFailureOutcome($install->run, $failure), $this->installerDebugLog($install->source));
 		} catch (Exception $error) {
 			return $this->classifiedFailureOutcome($install->run, $this->installerDebugLog($install->source), $error);
 		} finally {
@@ -1550,19 +1550,6 @@ class InstallerService implements InstallerServiceInterface {
 			'hint' => $classification['hint'],
 			'installStatus' => 'failed',
 		]) + $run->debugSuffix($debugLog));
-	}
-
-	/**
-	 * An outcome with the installer's breadcrumb log attached when the request asked for debug output.
-	 *
-	 * @param array{statusCode:int, payload:array<string, mixed>} $outcome
-	 * @param array<int, mixed> $debugLog The breadcrumb log of the installer that ran.
-	 * @return array{statusCode:int, payload:array<string, mixed>}
-	 */
-	private static function withDebugLog(array $outcome, InstallRun $run, array $debugLog): array {
-		$outcome['payload'] += $run->debugSuffix($debugLog);
-
-		return $outcome;
 	}
 
 	/**

@@ -67,4 +67,19 @@ final class InstallRun {
 	public function debugSuffix(array $log): array {
 		return $this->request->options->includeDebug ? ['debug' => $log] : [];
 	}
+
+	/**
+	 * An install outcome with `$log` attached as its `debug` entry when the request asked for debug output.
+	 *
+	 * @param array{statusCode:int, payload:array<string, mixed>} $outcome
+	 * @param array<array-key, mixed> $log The breadcrumb log of the installer that ran.
+	 * @return array{statusCode:int, payload:array<string, mixed>}
+	 *
+	 * @spec openspec/changes/install-manual-upload/tasks.md#task-2.1
+	 */
+	public function withDebugLog(array $outcome, array $log): array {
+		$outcome['payload'] += $this->debugSuffix($log);
+
+		return $outcome;
+	}
 }

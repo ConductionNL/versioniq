@@ -11,6 +11,7 @@ namespace OCA\Versioniq\Tests\Unit\Controller;
 
 use InvalidArgumentException;
 use OCA\Versioniq\Controller\UploadController;
+use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\StoreSignatureCheck;
 use OCA\Versioniq\Service\Installer\UploadedArchive;
 use OCA\Versioniq\Service\InstallerService;
@@ -126,7 +127,7 @@ final class UploadControllerTest extends TestCase {
 		$this->groups->method('isAdmin')->willReturn(true);
 		$this->request->method('getUploadedFile')->willReturn(['error' => UPLOAD_ERR_OK, 'tmp_name' => '/tmp/phpUPLOAD']);
 		$this->uploads->expects($this->once())->method('store')->with('/tmp/phpUPLOAD')->willReturn($inspected);
-		$this->signatures->expects($this->once())->method('storeRelease')->with('myapp', '2.1.0', '/tmp/phpUPLOAD')->willReturn(null);
+		$this->signatures->expects($this->once())->method('storeRelease')->with($this->callback(fn (InstallTarget $t): bool => $t->appId === 'myapp' && $t->version === '2.1.0'), '/tmp/phpUPLOAD')->willReturn(null);
 
 		$response = $this->controller()->inspect();
 

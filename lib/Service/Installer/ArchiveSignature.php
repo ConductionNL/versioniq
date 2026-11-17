@@ -22,14 +22,13 @@ namespace OCA\Versioniq\Service\Installer;
 final class ArchiveSignature {
 	/**
 	 * @param string $bytes The archive.
-	 * @param string $signature The release signature, base64.
-	 * @param string $certificate The release certificate, PEM.
+	 * @param array{signature:string, certificate:string} $release The release: its signature, base64, and its certificate, PEM.
 	 *
 	 * @spec openspec/changes/install-manual-upload/tasks.md#task-1.2
 	 */
-	public static function verifies(string $bytes, string $signature, string $certificate): bool {
-		$decoded = self::decoded($signature);
-		$publicKey = $decoded === null ? false : @openssl_pkey_get_public($certificate);
+	public static function verifies(string $bytes, array $release): bool {
+		$decoded = self::decoded($release['signature']);
+		$publicKey = $decoded === null ? false : @openssl_pkey_get_public($release['certificate']);
 
 		return $publicKey !== false && openssl_verify($bytes, (string)$decoded, $publicKey, OPENSSL_ALGO_SHA512) === 1;
 	}

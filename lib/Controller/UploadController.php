@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
+use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\StoreSignatureCheck;
 use OCA\Versioniq\Service\Installer\UploadedArchive;
 use OCA\Versioniq\Service\InstallerService;
@@ -87,7 +88,7 @@ class UploadController extends OCSController {
 			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_UNPROCESSABLE_ENTITY);
 		}
 
-		$inspected['signedByStore'] = $this->signatures->storeRelease($inspected['appId'], $inspected['version'], $path) !== null;
+		$inspected['signedByStore'] = $this->signatures->storeRelease(new InstallTarget($inspected['appId'], $inspected['version'], null), $path) !== null;
 
 		return new DataResponse($inspected);
 	}

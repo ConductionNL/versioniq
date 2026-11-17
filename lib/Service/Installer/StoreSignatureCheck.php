@@ -39,13 +39,13 @@ class StoreSignatureCheck {
 	 *
 	 * @spec openspec/changes/install-manual-upload/tasks.md#task-1.2
 	 */
-	public function storeRelease(string $appId, string $version, string $archivePath): ?array {
-		$release = $this->signedRelease($appId, $version);
+	public function storeRelease(InstallTarget $target, string $archivePath): ?array {
+		$release = $this->signedRelease($target->appId, $target->version);
 		if ($release === null || !self::verifiesArchive($release, $archivePath)) {
 			return null;
 		}
 
-		return $this->signedInstaller->trustsCertificate($appId, $release['certificate']) ? $release : null;
+		return $this->signedInstaller->trustsCertificate($target->appId, $release['certificate']) ? $release : null;
 	}
 
 	/**
@@ -81,6 +81,6 @@ class StoreSignatureCheck {
 	private static function verifiesArchive(array $release, string $archivePath): bool {
 		$bytes = @file_get_contents($archivePath);
 
-		return is_string($bytes) && ArchiveSignature::verifies($bytes, $release['signature'], $release['certificate']);
+		return is_string($bytes) && ArchiveSignature::verifies($bytes, $release);
 	}
 }

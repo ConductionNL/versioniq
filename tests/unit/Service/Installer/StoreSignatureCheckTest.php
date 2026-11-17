@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\Service\Installer;
 
 use OCA\Versioniq\Service\Installer\ArchiveSignature;
+use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\StoreSignatureCheck;
 use OCA\Versioniq\Service\SelectedReleaseInstallerService;
 use OCA\Versioniq\Service\Source\AppStoreSource;
@@ -77,47 +78,47 @@ final class StoreSignatureCheckTest extends TestCase {
 			->willReturn($release);
 		$this->signed->expects($this->once())->method('trustsCertificate')->with('myapp', $this->certificate)->willReturn(true);
 
-		self::assertSame($release, $this->check()->storeRelease('myapp', '2.0.0', $this->archive(self::BYTES)));
+		self::assertSame($release, $this->check()->storeRelease(new InstallTarget('myapp', '2.0.0', null), $this->archive(self::BYTES)));
 	}
 
 	public function testDifferentBytesAreNotSigned(): void {
 		$this->store->method('resolveRelease')->willReturn($this->release());
 		$this->signed->expects($this->never())->method('trustsCertificate');
 
-		self::assertNull($this->check()->storeRelease('myapp', '2.0.0', $this->archive(self::BYTES . 'patched')));
+		self::assertNull($this->check()->storeRelease(new InstallTarget('myapp', '2.0.0', null), $this->archive(self::BYTES . 'patched')));
 	}
 
 	public function testACertificateTheCodeSigningChainRefusesIsNotSigned(): void {
 		$this->store->method('resolveRelease')->willReturn($this->release());
 		$this->signed->method('trustsCertificate')->willReturn(false);
 
-		self::assertNull($this->check()->storeRelease('myapp', '2.0.0', $this->archive(self::BYTES)));
+		self::assertNull($this->check()->storeRelease(new InstallTarget('myapp', '2.0.0', null), $this->archive(self::BYTES)));
 	}
 
 	public function testAVersionTheStoreDoesNotListIsNotSigned(): void {
 		$this->store->method('resolveRelease')->willReturn(null);
 
-		self::assertNull($this->check()->storeRelease('myapp', '2.0.0', $this->archive(self::BYTES)));
+		self::assertNull($this->check()->storeRelease(new InstallTarget('myapp', '2.0.0', null), $this->archive(self::BYTES)));
 	}
 
 	public function testAStoreErrorOrUnreachableStoreIsNotSigned(): void {
 		$this->store->method('resolveRelease')->willReturnOnConsecutiveCalls(['error' => 'Store down.'], $this->throwException(new RuntimeException('timeout')));
 
-		self::assertNull($this->check()->storeRelease('myapp', '2.0.0', $this->archive(self::BYTES)));
-		self::assertNull($this->check()->storeRelease('myapp', '2.0.0', $this->archive(self::BYTES)));
+		self::assertNull($this->check()->storeRelease(new InstallTarget('myapp', '2.0.0', null), $this->archive(self::BYTES)));
+		self::assertNull($this->check()->storeRelease(new InstallTarget('myapp', '2.0.0', null), $this->archive(self::BYTES)));
 	}
 
 	public function testAReleaseWithoutSignatureOrCertificateIsNotSigned(): void {
 		$this->store->method('resolveRelease')->willReturn(['version' => '2.0.0', 'signature' => '', 'certificate' => $this->certificate]);
 		$this->signed->expects($this->never())->method('trustsCertificate');
 
-		self::assertNull($this->check()->storeRelease('myapp', '2.0.0', $this->archive(self::BYTES)));
+		self::assertNull($this->check()->storeRelease(new InstallTarget('myapp', '2.0.0', null), $this->archive(self::BYTES)));
 	}
 
 	public function testTheSignatureCheckRefusesGarbage(): void {
-		self::assertTrue(ArchiveSignature::verifies(self::BYTES, $this->signature, $this->certificate));
-		self::assertFalse(ArchiveSignature::verifies(self::BYTES, 'not base64!', $this->certificate));
-		self::assertFalse(ArchiveSignature::verifies(self::BYTES, $this->signature, 'not a certificate'));
+		self::assertTrue(ArchiveSignature::verifies(self::BYTES, ['signature' => $this->signature, 'certificate' => $this->certificate]));
+		self::assertFalse(ArchiveSignature::verifies(self::BYTES, ['signature' => 'not base64!', 'certificate' => $this->certificate]));
+		self::assertFalse(ArchiveSignature::verifies(self::BYTES, ['signature' => $this->signature, 'certificate' => 'not a certificate']));
 	}
 
 	/**
