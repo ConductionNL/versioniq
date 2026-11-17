@@ -1327,6 +1327,11 @@ class InstallerService implements InstallerServiceInterface {
 			$orphanedMigrations = $result['orphanedMigrations'];
 			$fields['orphanedMigrations'] = $orphanedMigrations;
 		}
+		if (array_key_exists('migrationPreview', $result)) {
+			/** @var array<string, mixed>|null $migrationPreview */
+			$migrationPreview = $result['migrationPreview'];
+			$fields['migrationPreview'] = $migrationPreview;
+		}
 
 		return $fields;
 	}

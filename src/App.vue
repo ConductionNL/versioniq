@@ -11,7 +11,7 @@ import type { AutoUpdateSchedule as AutoUpdateScheduleValue, UpdateKind } from '
 import type { ReleaseChannel } from './utils/channelFilter.ts'
 import type { LeftDisabled } from './utils/externalChanges.ts'
 import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
-import type {LkgRecord} from './utils/migrationSafety.ts';
+import type {LkgRecord, MigrationPreview} from './utils/migrationSafety.ts';
 import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
 import type { SweepStatus } from './utils/sweepOutcome.ts'
 import type {BatchCandidate, BatchRow} from './utils/updateBatch.ts';
@@ -38,6 +38,7 @@ import InstallResultNotices from './components/InstallResultNotices.vue'
 import InstanceSettingsPanel from './components/InstanceSettingsPanel.vue'
 import IntegrationsPanel from './components/IntegrationsPanel.vue'
 import LifecycleBadge from './components/LifecycleBadge.vue'
+import MigrationPreviewPanel from './components/MigrationPreviewPanel.vue'
 import PatchPolicyPanel from './components/PatchPolicyPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
@@ -178,6 +179,14 @@ let downgradeResolve: ((value: boolean) => void) | null = null
 // Migration diff for the downgrade dialog — fetched via a dry-run preview
 // before the dialog opens; see "Migration diff on downgrade".
 const downgradeOrphanedMigrations = ref<string[] | null>(null)
+// The database changes of the selected upgrade: undefined until "Preview
+// database changes" is picked, null when the target could not be read.
+// @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
+const migrationPreview = ref<MigrationPreview | null | undefined>(undefined)
+const isPreviewingMigrations = ref(false)
+watch([() => selectedApp.value, () => selectedVersion.value], () => {
+	migrationPreview.value = undefined
+})
 // Suppresses the safe-mode auto-clear watcher while "Roll back to last
 // known good" programmatically selects a (necessarily older) version.
 const suppressSafeModeAutoClear = ref(false)
@@ -1958,6 +1967,31 @@ function versionRangeText (summary: VersionRangeInfo | null): string {
 	return `${summary.direction === 'upgrade' ? 'Upgrade' : 'Downgrade'} crosses ${summary.major} major and ${summary.minor} minor version step${summary.minor === 1 ? '' : 's'}.`
 }
 
+/**
+ * Runs an upgrade dry run and keeps its database changes for the panel;
+ * nothing is installed (safety-upgrade-migration-preview, design D5).
+ *
+ * @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
+ */
+async function previewMigrations (): Promise<void> {
+	const appId = selectedApp.value
+	const version = selectedVersion.value
+	if (!appId || !version || isPreviewingMigrations.value) {
+		return
+	}
+	isPreviewingMigrations.value = true
+	try {
+		const { payload } = await requestInstall({ appId, version, forceDryRun: true })
+		if (selectedApp.value === appId && selectedVersion.value === version) {
+			migrationPreview.value = payload.migrationPreview ?? null
+		}
+	} catch {
+		migrationPreview.value = null
+	} finally {
+		isPreviewingMigrations.value = false
+	}
+}
+
 // Previews the migration diff for a downgrade via a dry-run install request
 // before the confirmation dialog opens, so the dialog can name the exact
 // migrations the target lacks instead of only warning generically; see
@@ -2047,6 +2081,7 @@ type InstallApiPayload = {
 	actualSha?: string
 	recordedShaMatched?: boolean
 	orphanedMigrations?: string[] | null
+	migrationPreview?: MigrationPreview | null
 	integrityWarning?: string | null
 	space?: { appsFree: number | null, tempFree: number | null } | null
 	servedFromCache?: boolean
@@ -3445,6 +3480,17 @@ watch(dryRunEnabled, () => {
 											{{ t('versioniq', 'Downgrade path detected.') }}
 										</p>
 										<ChangelogRangePanel :entries="changelogRange" />
+										<NcButton
+											v-if="selectedVersionRange?.direction === 'upgrade'"
+											variant="secondary"
+											data-testid="preview-migrations"
+											:disabled="isPreviewingMigrations || isInstallingVersion"
+											@click="previewMigrations">
+											{{ isPreviewingMigrations ? t('versioniq', 'Previewing database changes…') : t('versioniq', 'Preview database changes') }}
+										</NcButton>
+										<MigrationPreviewPanel
+											v-if="selectedVersionRange?.direction === 'upgrade' && migrationPreview !== undefined"
+											:preview="migrationPreview" />
 										<AppAboutCard v-if="selectedAppOption" :app="selectedAppOption" />
 									</div>
 									<template v-if="appDetailTab === 'versions'">
