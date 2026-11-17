@@ -14,6 +14,7 @@ namespace OCA\Versioniq\Tests\Unit\Command;
 
 use OCA\Versioniq\Command\PromoteVersion;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
+use OCA\Versioniq\Service\Instance\PromotionOptions;
 use OCA\Versioniq\Service\Instance\PromotionService;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -25,6 +26,7 @@ use Symfony\Component\Console\Tester\CommandTester;
  *
  * @covers \OCA\Versioniq\Command\PromoteVersion
  * @covers \OCA\Versioniq\Command\InstallVersion
+ * @uses \OCA\Versioniq\Service\Instance\PromotionOptions
  */
 final class PromoteVersionTest extends TestCase {
 	/** @var list<array{string, string, bool, bool, ?string, bool}> */
@@ -37,8 +39,8 @@ final class PromoteVersionTest extends TestCase {
 	 */
 	private function tester(array $answers): CommandTester {
 		$promotions = $this->createMock(PromotionService::class);
-		$promotions->method('promote')->willReturnCallback(function (string $connection, string $appId, bool $allowDowngrade = false, bool $override = false, ?string $planned = null, bool $dryRun = false) use ($answers): array {
-			$this->calls[] = [$connection, $appId, $allowDowngrade, $override, $planned, $dryRun];
+		$promotions->method('promote')->willReturnCallback(function (string $connection, string $appId, PromotionOptions $options) use ($answers): array {
+			$this->calls[] = [$connection, $appId, $options->allowDowngrade, $options->overrideMinDays, $options->plannedVersion, $options->dryRun];
 			return $answers[$appId];
 		});
 

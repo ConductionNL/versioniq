@@ -832,21 +832,30 @@ class InstallerService implements InstallerServiceInterface {
 		$version = $run->request->target->version;
 		$recorded = $run->binding->getRecordedSha($version);
 		if ($recorded === null) {
-			try {
-				$run->binding = $run->binding->withRecordedSha($version, $expected);
-			} catch (InvalidArgumentException $error) {
-				return $this->installEnvelope(Http::STATUS_BAD_REQUEST, $this->briefPayload($run, $error->getMessage()));
-			}
-
-			return null;
+			return $this->adoptExpectedSha($run, $expected);
 		}
 
-		if (hash_equals($recorded, strtolower($expected))) {
-			return null;
+		return hash_equals($recorded, strtolower($expected)) ? null : $this->installEnvelope(
+			Http::STATUS_CONFLICT,
+			['code' => 'sha_differs', 'expectedSha' => strtolower($expected), 'recordedSha' => $recorded]
+				+ $this->briefPayload($run, sprintf('The two instances installed different packages for %s.', $version)),
+		);
+	}
+
+	/**
+	 * A binding that recorded no digest for the version takes the expected one.
+	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-promotes-the-exact-package-an-earlier-stage-runs
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null A 400 when the digest is not acceptable
+	 */
+	private function adoptExpectedSha(InstallRun $run, string $expected): ?array {
+		try {
+			$run->binding = $run->binding->withRecordedSha($run->request->target->version, $expected);
+		} catch (InvalidArgumentException $error) {
+			return $this->installEnvelope(Http::STATUS_BAD_REQUEST, $this->briefPayload($run, $error->getMessage()));
 		}
 
-		return $this->installEnvelope(Http::STATUS_CONFLICT, ['code' => 'sha_differs', 'expectedSha' => strtolower($expected), 'recordedSha' => $recorded]
-			+ $this->briefPayload($run, sprintf('The two instances installed different packages for %s.', $version)));
+		return null;
 	}
 
 	/**

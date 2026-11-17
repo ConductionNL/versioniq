@@ -17,6 +17,7 @@ import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwit
 import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import { ocsGet, ocsWrite } from '../ocs.ts'
+import { errorMessage } from '../utils/errorMessage.ts'
 
 /** What the server plans to install (PromotionService::plan()). */
 export type PromotionPlan = {
@@ -65,16 +66,23 @@ const promoted = ref<{ version: string, previousVersion: string | null } | null>
 const endpoint = computed(() => `/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(props.appId)}/promote`)
 
 const isDowngrade = computed(() => plan.value?.direction === 'downgrade')
+/**
+ * Whether a plan may be installed as it stands: another version, and the waiting period met or overridden.
+ *
+ * @param current The plan shown.
+ */
+function planAllows (current: PromotionPlan): boolean {
+	return current.direction !== 'same' && (current.waitMet || override.value)
+}
+
+const busy = computed((): boolean => promoting.value || promoted.value !== null)
 const canPromote = computed((): boolean => {
 	const current = plan.value
-	if (!current || promoting.value || promoted.value !== null || current.direction === 'same') {
-		return false
-	}
-	if (!current.waitMet && !override.value) {
+	if (!current || busy.value) {
 		return false
 	}
 
-	return !isDowngrade.value || downgradeAcknowledged.value
+	return planAllows(current) && (!isDowngrade.value || downgradeAcknowledged.value)
 })
 
 /**
@@ -119,7 +127,7 @@ async function loadPlan (): Promise<void> {
 		}
 		plan.value = payload
 	} catch (e) {
-		error.value = e instanceof Error ? e.message : t('versioniq', 'Could not read what would be promoted.')
+		error.value = errorMessage(e, t('versioniq', 'Could not read what would be promoted.'))
 	} finally {
 		loading.value = false
 	}
@@ -149,25 +157,54 @@ async function promote (): Promise<void> {
 	promoting.value = true
 	error.value = ''
 	try {
-		const { payload, error: apiError } = await ocsWrite<PromotionAnswer>('POST', endpoint.value, {
-			connection: props.connection.id,
-			version: current.version,
-			allowDowngrade: isDowngrade.value && downgradeAcknowledged.value,
-			overrideMinDays: !current.waitMet && override.value,
-		})
+		const { payload, error: apiError } = await ocsWrite<PromotionAnswer>('POST', endpoint.value, promotionBody(current))
 		if (apiError) {
-			error.value = payload?.message || apiError
-			if (payload?.plan) {
-				plan.value = payload.plan
-			}
-			return
+			showRefusal(payload, apiError)
+		} else {
+			showPromoted(current, payload)
 		}
-		promoted.value = { version: current.version, previousVersion: payload?.previousVersion ?? current.installedVersion }
-		emit('promoted', props.appId)
 	} catch (e) {
-		error.value = e instanceof Error ? e.message : t('versioniq', 'Could not promote this app.')
+		error.value = errorMessage(e, t('versioniq', 'Could not promote this app.'))
 	} finally {
 		promoting.value = false
+	}
+}
+
+/**
+ * The request of a promotion: the version shown and the acknowledgements that apply to it.
+ *
+ * @param current The plan shown.
+ */
+function promotionBody (current: PromotionPlan): Record<string, unknown> {
+	return {
+		connection: props.connection.id,
+		version: current.version,
+		allowDowngrade: isDowngrade.value && downgradeAcknowledged.value,
+		overrideMinDays: !current.waitMet && override.value,
+	}
+}
+
+/**
+ * An install: the version promoted and the one this instance ran before, for the rollback.
+ *
+ * @param current The plan installed.
+ * @param payload The answer.
+ */
+function showPromoted (current: PromotionPlan, payload: PromotionAnswer | null | undefined): void {
+	promoted.value = { version: current.version, previousVersion: payload?.previousVersion ?? current.installedVersion }
+	emit('promoted', props.appId)
+}
+
+/**
+ * A refusal: the server's reason, and the newer plan it sends in place of the one shown.
+ *
+ * @param payload The answer.
+ * @param apiError The error the request ended with.
+ */
+function showRefusal (payload: PromotionAnswer | null | undefined, apiError: string): void {
+	error.value = payload?.message || apiError
+	if (payload?.plan) {
+		plan.value = payload.plan
 	}
 }
 
@@ -256,7 +293,7 @@ const buttons = computed(() => promoted.value !== null
 
 .error {
 	margin: 0;
-	color: var(--color-error);
 	font-size: 13px;
+	color: var(--color-error);
 }
 </style>

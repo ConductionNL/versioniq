@@ -65,6 +65,15 @@ const error = ref('')
 const notice = ref('')
 
 /**
+ * A number as the form shows it, '' when it is not set.
+ *
+ * @param value The number, or null or undefined when it is not set.
+ */
+function optionalNumberText (value: number | null | undefined): string {
+	return value === null || value === undefined ? '' : String(value)
+}
+
+/**
  * @param settings The settings from the server.
  * @spec openspec/specs/external-sources/spec.md
  */
@@ -78,7 +87,7 @@ function fill (settings: Settings): void {
 		githubWebBase: settings.githubWebBase,
 		advisoryFeedUrl: settings.advisoryFeedUrl,
 		ncscFeedUrl: settings.ncscFeedUrl ?? '',
-		maxLinesBehind: settings.maxLinesBehind === null || settings.maxLinesBehind === undefined ? '' : String(settings.maxLinesBehind),
+		maxLinesBehind: optionalNumberText(settings.maxLinesBehind),
 		promotionMinDays: String(settings.promotionMinDays ?? 0),
 		reactivateAuto: settings.reactivateAuto === true,
 		advisoryFeedSource: settings.advisoryFeedSource === 'local' ? 'local' : 'remote',
@@ -161,15 +170,12 @@ async function load (): Promise<void> {
  * @spec openspec/specs/external-sources/spec.md
  */
 async function save (): Promise<void> {
-	saving.value = true
-	error.value = ''
 	notice.value = ''
-	const refusal = waitingPeriodError()
-	if (refusal !== '') {
-		error.value = refusal
-		saving.value = false
+	error.value = waitingPeriodError()
+	if (error.value !== '') {
 		return
 	}
+	saving.value = true
 	try {
 		const body = Object.fromEntries(Object.entries(form.value).map(([key, value]) => [key, String(value).trim()]))
 		const { payload, error: apiError } = await ocsWrite<Settings>('PUT', ENDPOINT, body)

@@ -15,6 +15,7 @@ import NcDialog from '@nextcloud/vue/components/NcDialog'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
 import { ocsWrite } from '../ocs.ts'
+import { errorMessage } from '../utils/errorMessage.ts'
 
 const props = defineProps<{
 	open: boolean
@@ -28,28 +29,61 @@ const emit = defineEmits<{
 
 const ENDPOINT = '/ocs/v2.php/apps/versioniq/api/instances'
 
-const form = ref({ id: '', name: '', stage: '', order: '0', baseUrl: '', username: '', password: '' })
+const EMPTY_FORM = { id: '', name: '', stage: '', order: '0', baseUrl: '', username: '', password: '' }
+
+const form = ref({ ...EMPTY_FORM })
 const saving = ref(false)
 const error = ref('')
 
 const editing = computed((): boolean => props.connection !== null)
 
+/**
+ * The form for a connection: its fields with an empty password, or an empty form for a new one.
+ *
+ * @param connection The connection to edit, or null to add one.
+ */
+function formOf (connection: InstanceConnection | null): typeof EMPTY_FORM {
+	if (connection === null) {
+		return { ...EMPTY_FORM }
+	}
+	const { id, name, stage, order, baseUrl, username } = connection
+
+	return { id, name, stage, order: String(order), baseUrl, username, password: '' }
+}
+
 watch(() => props.open, (isOpen) => {
-	if (!isOpen) {
-		return
+	if (isOpen) {
+		form.value = formOf(props.connection)
+		error.value = ''
 	}
-	const connection = props.connection
-	form.value = {
-		id: connection?.id ?? '',
-		name: connection?.name ?? '',
-		stage: connection?.stage ?? '',
-		order: String(connection?.order ?? 0),
-		baseUrl: connection?.baseUrl ?? '',
-		username: connection?.username ?? '',
-		password: '',
-	}
-	error.value = ''
 }, { immediate: true })
+
+/**
+ * The connection as the server takes it: trimmed, the order a number.
+ */
+function requestBody (): Record<string, unknown> & { id: string } {
+	const { id, name, stage, order, baseUrl, username, password } = form.value
+	return {
+		id: id.trim(),
+		name: name.trim(),
+		stage: stage.trim(),
+		order: Number.parseInt(order, 10) || 0,
+		baseUrl: baseUrl.trim(),
+		username: username.trim(),
+		password,
+	}
+}
+
+/**
+ * Where a save goes: a PUT of the edited connection, or a POST of a new one.
+ *
+ * @param id The connection id.
+ */
+function saveTarget (id: string): { method: 'PUT' | 'POST', path: string } {
+	return editing.value
+		? { method: 'PUT', path: `${ENDPOINT}/${encodeURIComponent(id)}` }
+		: { method: 'POST', path: ENDPOINT }
+}
 
 /**
  * Save the connection (password-confirmed); the server refuses an http
@@ -61,17 +95,9 @@ async function save (): Promise<void> {
 	saving.value = true
 	error.value = ''
 	try {
-		const body = {
-			id: form.value.id.trim(),
-			name: form.value.name.trim(),
-			stage: form.value.stage.trim(),
-			order: Number.parseInt(form.value.order, 10) || 0,
-			baseUrl: form.value.baseUrl.trim(),
-			username: form.value.username.trim(),
-			password: form.value.password,
-		}
-		const path = editing.value ? `${ENDPOINT}/${encodeURIComponent(body.id)}` : ENDPOINT
-		const { payload, error: apiError } = await ocsWrite<InstanceConnection & { message?: string }>(editing.value ? 'PUT' : 'POST', path, body)
+		const body = requestBody()
+		const { method, path } = saveTarget(body.id)
+		const { payload, error: apiError } = await ocsWrite<InstanceConnection & { message?: string }>(method, path, body)
 		if (apiError) {
 			error.value = payload?.message || apiError
 			return
@@ -79,26 +105,16 @@ async function save (): Promise<void> {
 		emit('saved', payload)
 		emit('update:open', false)
 	} catch (e) {
-		error.value = e instanceof Error ? e.message : t('versioniq', 'Could not save the connection.')
+		error.value = errorMessage(e, t('versioniq', 'Could not save the connection.'))
 	} finally {
 		saving.value = false
 	}
 }
 
 const buttons = computed(() => [
-	{
-		label: t('versioniq', 'Cancel'),
-		type: 'tertiary' as const,
-		callback: () => emit('update:open', false),
-	},
-	{
-		label: t('versioniq', 'Save connection'),
-		type: 'primary' as const,
-		disabled: saving.value,
-		callback: save,
-	},
+	{ label: t('versioniq', 'Cancel'), type: 'tertiary' as const, callback: () => emit('update:open', false) },
+	{ label: t('versioniq', 'Save connection'), type: 'primary' as const, disabled: saving.value, callback: save },
 ])
-
 /**
  * @param field The form field.
  * @param value Its new value.

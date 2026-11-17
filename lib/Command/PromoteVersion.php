@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Command;
 
+use OCA\Versioniq\Service\Instance\PromotionOptions;
 use OCA\Versioniq\Service\Instance\PromotionService;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -59,30 +60,28 @@ class PromoteVersion extends Command {
 		$connection = (string)$input->getArgument('connection');
 		/** @var list<string> $appIds */
 		$appIds = (array)$input->getArgument('appIds');
+		$options = self::optionsFrom($input);
 		$exitCode = self::EXIT_OK;
 
 		foreach ($appIds as $appId) {
-			$result = $this->promotions->promote(
-				$connection,
-				$appId,
-				(bool)$input->getOption('allow-downgrade'),
-				(bool)$input->getOption('override-min-days'),
-				null,
-				(bool)$input->getOption('dry-run'),
-			);
+			$result = $this->promotions->promote($connection, $appId, $options);
 			$code = self::exitCodeFor($result['statusCode'], $result['payload']);
-			$this->report($output, $appId, $code, $result['payload']);
-			if ($code === self::EXIT_OK) {
-				continue;
-			}
-
+			self::outputFor($output, $code)->writeln(self::decorated($code, $appId . ': ' . self::outcomeLine($code, $result['payload'])));
 			$exitCode = $exitCode === self::EXIT_OK ? $code : $exitCode;
-			if (!(bool)$input->getOption('continue')) {
+			if ($code !== self::EXIT_OK && !(bool)$input->getOption('continue')) {
 				break;
 			}
 		}
 
 		return $exitCode;
+	}
+
+	private static function optionsFrom(InputInterface $input): PromotionOptions {
+		return new PromotionOptions(
+			allowDowngrade: (bool)$input->getOption('allow-downgrade'),
+			overrideMinDays: (bool)$input->getOption('override-min-days'),
+			dryRun: (bool)$input->getOption('dry-run'),
+		);
 	}
 
 	/**
@@ -99,28 +98,56 @@ class PromoteVersion extends Command {
 	}
 
 	/**
-	 * @param array<string, mixed> $payload
+	 * Where an outcome line goes: the error output when the promotion failed.
 	 */
-	private function report(OutputInterface $output, string $appId, int $code, array $payload): void {
-		if ($code !== self::EXIT_OK) {
-			/** @var mixed $message */
-			$message = $payload['message'] ?? null;
-			$message = is_string($message) ? $message : 'The promotion failed.';
-			$error = $output instanceof ConsoleOutputInterface ? $output->getErrorOutput() : $output;
-			$error->writeln(sprintf('<error>%s: %s</error>', $appId, $message));
-			return;
+	private static function outputFor(OutputInterface $output, int $code): OutputInterface {
+		if ($code === self::EXIT_OK || !$output instanceof ConsoleOutputInterface) {
+			return $output;
 		}
 
+		return $output->getErrorOutput();
+	}
+
+	/**
+	 * An outcome line, marked as an error when the promotion failed.
+	 */
+	private static function decorated(int $code, string $line): string {
+		return $code === self::EXIT_OK ? $line : sprintf('<error>%s</error>', $line);
+	}
+
+	/**
+	 * What one promotion did, or why it failed, after the app id.
+	 *
+	 * @param array<string, mixed> $payload
+	 */
+	private static function outcomeLine(int $code, array $payload): string {
+		return $code === self::EXIT_OK ? self::successLine($payload) : self::failureLine($payload);
+	}
+
+	/**
+	 * @param array<string, mixed> $payload
+	 */
+	private static function failureLine(array $payload): string {
+		/** @var mixed $message */
+		$message = $payload['message'] ?? null;
+
+		return is_string($message) ? $message : 'The promotion failed.';
+	}
+
+	/**
+	 * @param array<string, mixed> $payload
+	 */
+	private static function successLine(array $payload): string {
 		/** @var mixed $plan */
 		$plan = $payload['plan'] ?? null;
 		if (($payload['dryRun'] ?? false) === true && is_array($plan)) {
-			$output->writeln(sprintf('%s: would promote %s to %s.', $appId, (string)($plan['installedVersion'] ?? ''), (string)($plan['version'] ?? '')));
-			return;
+			return sprintf('would promote %s to %s.', (string)($plan['installedVersion'] ?? ''), (string)($plan['version'] ?? ''));
 		}
 
 		/** @var mixed $from */
 		$from = $payload['promotedFrom'] ?? null;
 		$name = is_array($from) ? (string)($from['name'] ?? '') : '';
-		$output->writeln(sprintf('%s: promoted from %s; the previous version was %s.', $appId, $name, (string)($payload['previousVersion'] ?? '')));
+
+		return sprintf('promoted from %s; the previous version was %s.', $name, (string)($payload['previousVersion'] ?? ''));
 	}
 }

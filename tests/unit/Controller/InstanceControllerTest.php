@@ -21,6 +21,7 @@ use OCA\Versioniq\Service\Instance\InstanceConnectionStore;
 use OCA\Versioniq\Service\Instance\InstanceConnection;
 use OCA\Versioniq\Service\Instance\ManifestBuilder;
 use OCA\Versioniq\Service\Instance\PromotionRefusal;
+use OCA\Versioniq\Service\Instance\PromotionOptions;
 use OCA\Versioniq\Service\Instance\PromotionService;
 use OCA\Versioniq\Service\Instance\RemoteInstanceReader;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
@@ -42,6 +43,7 @@ use ReflectionMethod;
  * @uses \OCA\Versioniq\Service\Instance\InstanceConnectionStore
  * @uses \OCA\Versioniq\Service\Instance\InstanceConnection
  * @uses \OCA\Versioniq\Service\Instance\PromotionRefusal
+ * @uses \OCA\Versioniq\Service\Instance\PromotionOptions
  */
 final class InstanceControllerTest extends TestCase {
 
@@ -268,7 +270,7 @@ final class InstanceControllerTest extends TestCase {
 	public function testAWaitingPeriodNotMetAnswers409WithTheDaysLeft(): void {
 		$promotions = $this->createMock(PromotionService::class);
 		$promotions->expects(self::once())->method('promote')
-			->with('acceptance', 'openregister', false, false, '2.4.1')
+			->with('acceptance', 'openregister', new PromotionOptions(false, false, '2.4.1'))
 			->willReturn(['statusCode' => 409, 'payload' => ['code' => 'waiting_period', 'daysLeft' => 9, 'message' => '9 days are left in the waiting period of 14 days.']]);
 
 		$response = $this->controller(promotions: $promotions)->promote('openregister', 'acceptance', '2.4.1');
@@ -281,7 +283,7 @@ final class InstanceControllerTest extends TestCase {
 	public function testTheOverrideAndDowngradeArePassedThroughAndAnEmptyVersionTakesWhatRunsNow(): void {
 		$promotions = $this->createMock(PromotionService::class);
 		$promotions->expects(self::once())->method('promote')
-			->with('acceptance', 'openregister', true, true, null)
+			->with('acceptance', 'openregister', new PromotionOptions(true, true, null))
 			->willReturn(['statusCode' => 200, 'payload' => ['previousVersion' => '2.3.0']]);
 
 		$response = $this->controller(promotions: $promotions)->promote('openregister', 'acceptance', '', true, true);

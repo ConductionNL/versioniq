@@ -100,33 +100,37 @@ function appsOf (manifest: Manifest | null | undefined): Map<string, ManifestApp
 }
 
 /**
- * The columns in chain order: by `order`, this instance placed at its own.
- * Equal orders keep this instance last, then the connections by name.
+ * The column of one connection.
+ *
+ * @param connection The connection, with its remembered remote state.
+ * @param selfOrder This instance's place in the chain.
+ */
+function remoteColumn (connection: InstanceConnection, selfOrder: number): InstanceColumn {
+	const remote = connection.remote
+	const manifest = remote?.manifest ?? null
+	return {
+		id: connection.id,
+		name: connection.name,
+		stage: connection.stage,
+		order: connection.order,
+		isSelf: false,
+		isEarlier: selfOrder > connection.order,
+		fetchedAt: remote?.fetchedAt ?? null,
+		error: remote?.error ?? null,
+		olderVersioniq: remote?.error === ERROR_OLDER_VERSIONIQ,
+		apps: appsOf(manifest),
+		hasManifest: manifest !== null,
+	}
+}
+
+/**
+ * The column of this instance.
  *
  * @param self This instance's place in the chain.
  * @param own This instance's manifest, or null when it could not be read.
- * @param connections The connections, each with its remembered remote state.
- * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-the-instances-tab-shows-every-instances-versions-side-by-side
  */
-export function instanceColumns (self: SelfInstance, own: Manifest | null, connections: InstanceConnection[]): InstanceColumn[] {
-	const remotes: InstanceColumn[] = connections.map((connection) => {
-		const remote = connection.remote
-		const manifest = remote?.manifest ?? null
-		return {
-			id: connection.id,
-			name: connection.name,
-			stage: connection.stage,
-			order: connection.order,
-			isSelf: false,
-			isEarlier: connection.order < self.order,
-			fetchedAt: remote?.fetchedAt ?? null,
-			error: remote?.error ?? null,
-			olderVersioniq: remote?.error === ERROR_OLDER_VERSIONIQ,
-			apps: appsOf(manifest),
-			hasManifest: manifest !== null,
-		}
-	})
-	const selfColumn: InstanceColumn = {
+function selfColumn (self: SelfInstance, own: Manifest | null): InstanceColumn {
+	return {
 		id: null,
 		name: self.name,
 		stage: self.stage,
@@ -139,16 +143,37 @@ export function instanceColumns (self: SelfInstance, own: Manifest | null, conne
 		apps: appsOf(own),
 		hasManifest: own !== null,
 	}
+}
 
-	return [...remotes, selfColumn].sort((left, right) => {
-		if (left.order !== right.order) {
-			return left.order - right.order
-		}
-		if (left.isSelf !== right.isSelf) {
-			return left.isSelf ? 1 : -1
-		}
-		return left.name.localeCompare(right.name)
-	})
+/**
+ * Chain order: by `order`; equal orders keep this instance last, then the connections by name.
+ *
+ * @param left One column.
+ * @param right The other column.
+ */
+function compareColumns (left: InstanceColumn, right: InstanceColumn): number {
+	if (left.order !== right.order) {
+		return left.order - right.order
+	}
+	if (left.isSelf !== right.isSelf) {
+		return left.isSelf ? 1 : -1
+	}
+	return left.name.localeCompare(right.name)
+}
+
+/**
+ * The columns in chain order: by `order`, this instance placed at its own.
+ * Equal orders keep this instance last, then the connections by name.
+ *
+ * @param self This instance's place in the chain.
+ * @param own This instance's manifest, or null when it could not be read.
+ * @param connections The connections, each with its remembered remote state.
+ * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-the-instances-tab-shows-every-instances-versions-side-by-side
+ */
+export function instanceColumns (self: SelfInstance, own: Manifest | null, connections: InstanceConnection[]): InstanceColumn[] {
+	const remotes = connections.map((connection) => remoteColumn(connection, self.order))
+
+	return [...remotes, selfColumn(self, own)].sort(compareColumns)
 }
 
 /**
@@ -187,15 +212,38 @@ export function instanceRows (columns: InstanceColumn[]): InstanceRow[] {
  * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-promotes-the-exact-package-an-earlier-stage-runs
  */
 export function canPromoteFrom (row: InstanceRow, columns: InstanceColumn[], index: number): boolean {
-	const column = columns[index]
-	const version = row.cells[index]?.installedVersion ?? null
-	if (!column || !column.isEarlier || column.id === null || version === null) {
+	const version = promotableVersion(columns[index], row.cells[index])
+	if (version === null) {
 		return false
 	}
-	const selfIndex = columns.findIndex((candidate) => candidate.isSelf)
-	const own = selfIndex === -1 ? null : (row.cells[selfIndex]?.installedVersion ?? null)
 
-	return own !== version
+	return ownVersion(row, columns) !== version
+}
+
+/**
+ * The version a cell offers for promotion: null unless its column is an earlier connection that runs one.
+ *
+ * @param column The column of the cell.
+ * @param cell The cell.
+ */
+function promotableVersion (column: InstanceColumn | undefined, cell: ManifestApp | null | undefined): string | null {
+	if (!column?.isEarlier || column.id === null) {
+		return null
+	}
+
+	return cell?.installedVersion ?? null
+}
+
+/**
+ * The version this instance runs in a row, or null when it runs none.
+ *
+ * @param row The row.
+ * @param columns The columns, in the row's order.
+ */
+function ownVersion (row: InstanceRow, columns: InstanceColumn[]): string | null {
+	const selfIndex = columns.findIndex((candidate) => candidate.isSelf)
+
+	return selfIndex === -1 ? null : (row.cells[selfIndex]?.installedVersion ?? null)
 }
 
 /**

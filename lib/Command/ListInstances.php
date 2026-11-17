@@ -71,13 +71,7 @@ class ListInstances extends Command {
 	 * @return array{id: string, name: string, stage: string, fetchedAt: ?string, error: ?string, apps: array<string, ?string>}
 	 */
 	private function column(InstanceConnection $connection, bool $refresh): array {
-		try {
-			$read = $refresh ? $this->reader->fetch($connection) : $this->reader->cached($connection);
-		} catch (Throwable) {
-			$read = $this->reader->cached($connection);
-			$read['error'] = RemoteInstanceReader::ERROR_UNREACHABLE;
-		}
-
+		$read = $this->readOf($connection, $refresh);
 		/** @var mixed $apps */
 		$apps = $read['manifest']['apps'] ?? [];
 
@@ -92,6 +86,19 @@ class ListInstances extends Command {
 	}
 
 	/**
+	 * The connection's record, read now when $refresh is set; a read that throws keeps the cached manifest.
+	 *
+	 * @return array{manifest: ?array<string, mixed>, fetchedAt: ?string, error: ?string, checkedAt: ?string}
+	 */
+	private function readOf(InstanceConnection $connection, bool $refresh): array {
+		try {
+			return $refresh ? $this->reader->fetch($connection) : $this->reader->cached($connection);
+		} catch (Throwable) {
+			return ['error' => RemoteInstanceReader::ERROR_UNREACHABLE] + $this->reader->cached($connection);
+		}
+	}
+
+	/**
 	 * App id => installed version, from a manifest's app list.
 	 *
 	 * @param array<array-key, mixed> $apps
@@ -101,15 +108,10 @@ class ListInstances extends Command {
 		$versions = [];
 		/** @var mixed $app */
 		foreach ($apps as $app) {
-			if (!is_array($app)) {
-				continue;
-			}
-			/** @var mixed $appId */
-			$appId = $app['appId'] ?? null;
-			/** @var mixed $version */
-			$version = $app['installedVersion'] ?? null;
-			if (is_string($appId)) {
-				$versions[$appId] = is_string($version) && $version !== '' ? $version : null;
+			if (is_array($app) && is_string($app['appId'] ?? null)) {
+				/** @var mixed $version */
+				$version = $app['installedVersion'] ?? null;
+				$versions[$app['appId']] = is_string($version) && $version !== '' ? $version : null;
 			}
 		}
 
@@ -120,6 +122,23 @@ class ListInstances extends Command {
 	 * @param list<array{id: string, name: string, stage: string, fetchedAt: ?string, error: ?string, apps: array<string, ?string>}> $columns
 	 */
 	private function renderTable(OutputInterface $output, array $columns): void {
+		$header = array_map(static fn (array $column): string => sprintf('%s (%s)', $column['name'], $column['stage']), $columns);
+		(new Table($output))->setHeaders(array_merge(['App'], $header, ['']))->setRows(self::rows($columns))->render();
+
+		foreach ($columns as $column) {
+			if ($column['error'] !== null) {
+				$output->writeln(sprintf('%s: %s Last read: %s.', $column['name'], $column['error'], $column['fetchedAt'] ?? 'never'));
+			}
+		}
+	}
+
+	/**
+	 * One row per app id on any column, sorted: the version per column and whether they differ.
+	 *
+	 * @param list<array{id: string, name: string, stage: string, fetchedAt: ?string, error: ?string, apps: array<string, ?string>}> $columns
+	 * @return list<list<string>>
+	 */
+	private static function rows(array $columns): array {
 		$appIds = [];
 		foreach ($columns as $column) {
 			$appIds += array_fill_keys(array_keys($column['apps']), true);
@@ -129,16 +148,9 @@ class ListInstances extends Command {
 		$rows = [];
 		foreach (array_keys($appIds) as $appId) {
 			$cells = array_map(static fn (array $column): string => $column['apps'][$appId] ?? 'Not installed', $columns);
-			$rows[] = array_merge([$appId], $cells, [count(array_unique($cells)) > 1 ? 'Differs' : '']);
+			$rows[] = array_merge([(string)$appId], $cells, [count(array_unique($cells)) > 1 ? 'Differs' : '']);
 		}
 
-		$header = array_map(static fn (array $column): string => sprintf('%s (%s)', $column['name'], $column['stage']), $columns);
-		(new Table($output))->setHeaders(array_merge(['App'], $header, ['']))->setRows($rows)->render();
-
-		foreach ($columns as $column) {
-			if ($column['error'] !== null) {
-				$output->writeln(sprintf('%s: %s Last read: %s.', $column['name'], $column['error'], $column['fetchedAt'] ?? 'never'));
-			}
-		}
+		return $rows;
 	}
 }

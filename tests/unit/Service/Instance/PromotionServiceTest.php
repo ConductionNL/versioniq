@@ -18,6 +18,8 @@ use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Instance\InstanceConnection;
 use OCA\Versioniq\Service\Instance\InstanceConnectionStore;
+use OCA\Versioniq\Service\Instance\PromotionOptions;
+use OCA\Versioniq\Service\Instance\PromotionPlanner;
 use OCA\Versioniq\Service\Instance\PromotionService;
 use OCA\Versioniq\Service\Instance\RemoteInstanceReader;
 use OCA\Versioniq\Service\InstallerService;
@@ -35,6 +37,8 @@ use PHPUnit\Framework\TestCase;
  * audit message, and a remote that moved on (install-multi-instance-promotion task 3.2).
  *
  * @covers \OCA\Versioniq\Service\Instance\PromotionService
+ * @covers \OCA\Versioniq\Service\Instance\PromotionPlanner
+ * @uses \OCA\Versioniq\Service\Instance\PromotionOptions
  * @covers \OCA\Versioniq\Service\Settings\InstanceSettings
  * @uses \OCA\Versioniq\Service\Instance\InstanceConnection
  * @uses \OCA\Versioniq\Service\Instance\PromotionRefusal
@@ -131,7 +135,7 @@ final class PromotionServiceTest extends TestCase {
 		$session = $this->createMock(IUserSession::class);
 		$session->method('getUser')->willReturn($user);
 
-		return new PromotionService($store, $reader, $installer, new InstanceSettings($appConfig), $audit, $apps, $time, $session);
+		return new PromotionService(new PromotionPlanner($store, $reader, new InstanceSettings($appConfig), $apps, $time), $installer, $audit, $session);
 	}
 
 	public function testAnUpgradeInstallsTheRemoteVersionFromItsSourceWithItsDigestAndIsAudited(): void {
@@ -177,7 +181,7 @@ final class PromotionServiceTest extends TestCase {
 		self::assertFalse($this->installs[0]->options->allowDowngrade);
 
 		$this->installAnswer = ['statusCode' => 200, 'payload' => []];
-		$this->service()->promote('acceptance', 'openregister', allowDowngrade: true);
+		$this->service()->promote('acceptance', 'openregister', new PromotionOptions(allowDowngrade: true));
 		self::assertTrue($this->installs[1]->options->allowDowngrade);
 		self::assertSame('success', $this->audits[1][2]);
 	}
@@ -221,7 +225,7 @@ final class PromotionServiceTest extends TestCase {
 	public function testAnOverrideInstallsAndIsWrittenIntoTheAuditMessage(): void {
 		$this->remoteRuns('2.4.1', 5);
 
-		$result = $this->service(minDays: 14)->promote('acceptance', 'openregister', overrideMinDays: true);
+		$result = $this->service(minDays: 14)->promote('acceptance', 'openregister', new PromotionOptions(overrideMinDays: true));
 
 		self::assertSame(200, $result['statusCode']);
 		self::assertCount(1, $this->installs);
@@ -231,7 +235,7 @@ final class PromotionServiceTest extends TestCase {
 	public function testARemoteThatNoLongerRunsThePlannedVersionIsRefused(): void {
 		$this->remoteRuns('2.4.2', 30);
 
-		$result = $this->service()->promote('acceptance', 'openregister', plannedVersion: '2.4.1');
+		$result = $this->service()->promote('acceptance', 'openregister', new PromotionOptions(plannedVersion: '2.4.1'));
 
 		self::assertSame(409, $result['statusCode']);
 		self::assertSame('version_moved', $result['payload']['code']);
@@ -254,7 +258,7 @@ final class PromotionServiceTest extends TestCase {
 	public function testADryRunPlansWithoutInstalling(): void {
 		$this->remoteRuns('2.4.1', 30);
 
-		$result = $this->service()->promote('acceptance', 'openregister', dryRun: true);
+		$result = $this->service()->promote('acceptance', 'openregister', new PromotionOptions(dryRun: true));
 
 		self::assertTrue($result['payload']['dryRun']);
 		self::assertSame('2.4.1', $result['payload']['plan']['version']);

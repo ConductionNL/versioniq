@@ -17,6 +17,7 @@ use OCA\Versioniq\Kernel\Contracts\ManifestBuilderInterface;
 use OCA\Versioniq\Service\Audit\AdminChangeAuditInterface;
 use OCA\Versioniq\Service\Instance\InstanceConnection;
 use OCA\Versioniq\Service\Instance\InstanceConnectionStore;
+use OCA\Versioniq\Service\Instance\PromotionOptions;
 use OCA\Versioniq\Service\Instance\PromotionRefusal;
 use OCA\Versioniq\Service\Instance\PromotionService;
 use OCA\Versioniq\Service\Instance\RemoteInstanceReader;
@@ -204,7 +205,7 @@ class InstanceController extends OCSController {
 			return new DataResponse(['message' => 'Unavailable'], Http::STATUS_SERVICE_UNAVAILABLE);
 		}
 
-		$result = $this->promotions->promote($connection, $appId, $allowDowngrade, $overrideMinDays, $version === '' ? null : $version);
+		$result = $this->promotions->promote($connection, $appId, new PromotionOptions($allowDowngrade, $overrideMinDays, $version === '' ? null : $version));
 
 		/** @psalm-suppress InvalidReturnStatement, ArgumentTypeCoercion Dynamic status passthrough — see the docblock. */
 		return new DataResponse($result['payload'], $result['statusCode']);

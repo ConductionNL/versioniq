@@ -96,18 +96,8 @@ class RemoteInstanceReader {
 	 * @return array{manifest: array<string, mixed>}|array{error: string}
 	 */
 	private function read(InstanceConnection $connection): array {
-		$url = rtrim($connection->baseUrl, '/') . self::MANIFEST_PATH;
 		try {
-			$response = $this->store->withPassword(
-				$connection,
-				fn (string $password): IResponse => $this->clientService->newClient()->get($url, [
-					'auth' => [$connection->username, $password],
-					'headers' => ['OCS-APIREQUEST' => 'true', 'Accept' => 'application/json'],
-					'timeout' => self::TIMEOUT_SECONDS,
-					'http_errors' => false,
-					'nextcloud' => ['allow_local_address' => $this->systemConfig->getSystemValueBool('allow_local_remote_servers', false)],
-				]),
-			);
+			$response = $this->store->withPassword($connection, fn (string $password): IResponse => $this->request($connection, $password));
 		} catch (Throwable $error) {
 			$this->logger->warning('RemoteInstanceReader: manifest read failed', [
 				'connection' => $connection->id,
@@ -118,7 +108,20 @@ class RemoteInstanceReader {
 			return ['error' => self::ERROR_UNREACHABLE];
 		}
 
-		return $this->answer($response);
+		return self::answer($response);
+	}
+
+	/**
+	 * The GET of the remote manifest endpoint with the connection's credential.
+	 */
+	private function request(InstanceConnection $connection, string $password): IResponse {
+		return $this->clientService->newClient()->get(rtrim($connection->baseUrl, '/') . self::MANIFEST_PATH, [
+			'auth' => [$connection->username, $password],
+			'headers' => ['OCS-APIREQUEST' => 'true', 'Accept' => 'application/json'],
+			'timeout' => self::TIMEOUT_SECONDS,
+			'http_errors' => false,
+			'nextcloud' => ['allow_local_address' => $this->systemConfig->getSystemValueBool('allow_local_remote_servers', false)],
+		]);
 	}
 
 	/**
@@ -126,24 +129,46 @@ class RemoteInstanceReader {
 	 *
 	 * @return array{manifest: array<string, mixed>}|array{error: string}
 	 */
-	private function answer(IResponse $response): array {
-		$status = $response->getStatusCode();
-		if ($status === 401 || $status === 403) {
-			return ['error' => self::ERROR_NOT_ADMIN];
+	private static function answer(IResponse $response): array {
+		$error = self::statusError($response->getStatusCode());
+		if ($error !== null) {
+			return ['error' => $error];
+		}
+
+		$manifest = self::manifestOf((string)$response->getBody());
+
+		return $manifest === null ? ['error' => self::ERROR_UNREADABLE] : ['manifest' => $manifest];
+	}
+
+	/**
+	 * Why an answer with this status carries no manifest; null for 200.
+	 */
+	private static function statusError(int $status): ?string {
+		if (in_array($status, [401, 403], true)) {
+			return self::ERROR_NOT_ADMIN;
 		}
 
 		if ($status === 404) {
-			return ['error' => self::ERROR_OLDER_VERSIONIQ];
+			return self::ERROR_OLDER_VERSIONIQ;
 		}
 
-		/** @var mixed $body */
-		$body = json_decode((string)$response->getBody(), true);
-		$manifest = is_array($body) ? ($body['ocs']['data'] ?? null) : null;
-		if ($status !== 200 || !is_array($manifest) || !is_array($manifest['apps'] ?? null)) {
-			return ['error' => $status === 200 ? self::ERROR_UNREADABLE : sprintf('The instance answered HTTP %d.', $status)];
+		return $status === 200 ? null : sprintf('The instance answered HTTP %d.', $status);
+	}
+
+	/**
+	 * The manifest an OCS answer body carries, or null when it carries none with an apps list.
+	 *
+	 * @return array<string, mixed>|null
+	 */
+	private static function manifestOf(string $body): ?array {
+		/** @var mixed $decoded */
+		$decoded = json_decode($body, true);
+		$manifest = is_array($decoded) ? ($decoded['ocs']['data'] ?? null) : null;
+		if (!is_array($manifest) || !is_array($manifest['apps'] ?? null)) {
+			return null;
 		}
 
-		return ['manifest' => self::arrayOrNull($manifest) ?? []];
+		return self::arrayOrNull($manifest) ?? [];
 	}
 
 	private function cacheKey(InstanceConnection $connection): string {
