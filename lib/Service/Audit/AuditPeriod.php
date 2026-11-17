@@ -80,6 +80,8 @@ final class AuditPeriod {
 	 * @param string $createdAt `Y-m-d H:i:s` UTC.
 	 *
 	 * @return bool
+	 *
+	 * @spec openspec/changes/audit-security-reports/specs/audit-trail/spec.md
 	 */
 	public function contains(string $createdAt): bool {
 		return $createdAt >= $this->fromUtc && ($this->toUtc === null || $createdAt <= $this->toUtc);

@@ -51,6 +51,8 @@ function isoDay (day: Date): string {
  * The first and last day of the month before the given day.
  *
  * @param today the day the page opens
+ *
+ * @spec openspec/changes/audit-security-reports/specs/security-advisory-correlation/spec.md
  */
 export function lastMonth (today: Date): { from: string, to: string } {
 	const first = new Date(today.getFullYear(), today.getMonth() - 1, 1)
@@ -71,6 +73,8 @@ function cell (value: number | string | null | undefined): string {
  * The per-severity figures and the trend as one CSV file.
  *
  * @param report the report
+ *
+ * @spec openspec/changes/audit-security-reports/specs/security-advisory-correlation/spec.md
  */
 export function reportCsv (report: SecurityReport): string {
 	const lines = ['severity,opened,resolvedByUpdate,resolvedByDismissal,resolvedWithinDeadline,withinDeadlineShare,openPastDeadline,openExceptions,medianDays,deadlineDays']

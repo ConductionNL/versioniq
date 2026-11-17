@@ -33,6 +33,8 @@ export const CSV_COLUMNS = ['createdAt', 'actorUid', 'appId', 'operation', 'from
  *
  * @param fetchPage reads one page at an offset
  * @return the rows and whether the limit cut them
+ *
+ * @spec openspec/changes/audit-security-reports/specs/audit-trail/spec.md
  */
 export async function collectAll (fetchPage: (offset: number, limit: number) => Promise<ExportEntry[]>): Promise<{ rows: ExportEntry[], cut: boolean }> {
 	const rows: ExportEntry[] = []
@@ -62,6 +64,8 @@ function csvField (value: string): string {
  * The rows as CSV with a header line.
  *
  * @param rows the entries
+ *
+ * @spec openspec/changes/audit-security-reports/specs/audit-trail/spec.md
  */
 export function toCsv (rows: ExportEntry[]): string {
 	const lines = [CSV_COLUMNS.join(',')]
@@ -81,6 +85,8 @@ export function toCsv (rows: ExportEntry[]): string {
  * The rows as pretty JSON.
  *
  * @param rows the entries
+ *
+ * @spec openspec/changes/audit-security-reports/specs/audit-trail/spec.md
  */
 export function toJson (rows: ExportEntry[]): string {
 	return JSON.stringify(rows, null, 2) + '\n'
@@ -92,6 +98,8 @@ export function toJson (rows: ExportEntry[]): string {
  * @param name the file name
  * @param type the media type
  * @param content the file's text
+ *
+ * @spec openspec/changes/audit-security-reports/specs/audit-trail/spec.md
  */
 export function download (name: string, type: string, content: string): void {
 	const url = URL.createObjectURL(new Blob([content], { type }))

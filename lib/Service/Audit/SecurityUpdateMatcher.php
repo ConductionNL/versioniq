@@ -104,6 +104,8 @@ class SecurityUpdateMatcher {
 	 * @param list<AuditEntry> $entries The entries.
 	 *
 	 * @return list<AuditEntry>
+	 *
+	 * @spec openspec/changes/audit-security-reports/specs/audit-trail/spec.md
 	 */
 	public static function sorted(array $entries): array {
 		$sorted = array_values($entries);

@@ -155,11 +155,6 @@ class AuditEntryMapper extends QBMapper {
 	}
 
 	/**
-	 * Deletes entries older than the cutoff in batches, oldest first; see "Retention".
-	 *
-	 * @spec openspec/specs/audit-trail/spec.md
-	 */
-	/**
 	 * Entries created between two UTC moments (both inclusive), oldest
 	 * first, optionally for one app and one operation; uses the
 	 * `created_at` index. See audit-security-reports D5.
@@ -202,6 +197,11 @@ class AuditEntryMapper extends QBMapper {
 		return $this->findEntities($qb);
 	}
 
+	/**
+	 * Deletes entries older than the cutoff in batches, oldest first; see "Retention".
+	 *
+	 * @spec openspec/specs/audit-trail/spec.md
+	 */
 	public function deleteOlderThan(\DateTimeImmutable $cutoff, int $batchSize): int {
 		$selectQb = $this->db->getQueryBuilder();
 		$selectQb->select('id')
