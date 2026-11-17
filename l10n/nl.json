@@ -478,9 +478,6 @@
         "Security fixes of unknown severity": "Beveiligingsupdates met onbekende ernst",
         "installed at the next update window.": "geïnstalleerd in het eerstvolgende updatevenster.",
         "installed with the regular automatic updates.": "geïnstalleerd met de gewone automatische updates.",
-        "Major updates": "Major-updates",
-        "Minor updates": "Minor-updates",
-        "Patch updates": "Patch-updates",
         "_Deadline: %n day._::_Deadline: %n days._": [
             "Termijn: %n dag.",
             "Termijn: %n dagen."
@@ -676,6 +673,13 @@
         "%1$s: updated to %2$s": "%1$s: bijgewerkt naar %2$s",
         "%1$s: update to %2$s failed": "%1$s: update naar %2$s mislukt",
         "%1$s: not attempted": "%1$s: niet geprobeerd",
+        "Tell an app's users what changed after Versioniq updates it": "Laat de gebruikers van een app weten wat er veranderd is nadat Versioniq de app heeft bijgewerkt",
+        "They get the same notice as after an update from the Apps page. A dry run never sends it.": "Ze krijgen dezelfde melding als na een update vanaf de Apps-pagina. Een proefrun stuurt die nooit.",
+        "Translate to {language}": "Vertalen naar het {language}",
+        "Machine translation": "Machinevertaling",
+        "Show original": "Origineel tonen",
+        "Translating…": "Bezig met vertalen…",
+        "The release notes could not be translated.": "De releasenotities konden niet worden vertaald.",
         "Checking access to the source": "Toegang tot de bron controleren",
         "Checking the certificate": "Het certificaat controleren",
         "Checking the checksum": "De controlesom controleren",
