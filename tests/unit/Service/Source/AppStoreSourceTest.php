@@ -149,6 +149,58 @@ final class AppStoreSourceTest extends TestCase {
 		], $byVersion);
 	}
 
+	/**
+	 * Each version says which language its notes were taken from: the admin's
+	 * language when the release has it, English as the fallback, nothing
+	 * without notes (releases-notes-reach 2.1).
+	 *
+	 * @spec openspec/changes/releases-notes-reach/specs/changelog-visibility/spec.md
+	 */
+	public function testEachVersionNamesTheLanguageOfItsNotes(): void {
+		$releases = [
+			['version' => '2.3.0', 'translations' => ['en' => ['changelog' => 'English notes'], 'nl' => ['changelog' => 'Nederlandse notities']]],
+			['version' => '2.2.0', 'translations' => ['en' => ['changelog' => 'Only English']]],
+			['version' => '2.1.0', 'translations' => ['nl' => ['changelog' => '  ']]],
+			['version' => '2.0.0'],
+			'1.9.0',
+		];
+
+		$result = $this->buildSource(['id' => 'openregister', 'releases' => $releases], 'nl')
+			->listVersions('openregister', $this->binding());
+
+		$byVersion = [];
+		foreach ($result['versions'] as $entry) {
+			$byVersion[$entry['version']] = [$entry['changelog'], $entry['changelogLanguage']];
+		}
+		$this->assertSame([
+			'2.3.0' => ['Nederlandse notities', 'nl'],
+			'2.2.0' => ['Only English', 'en'],
+			'2.1.0' => [null, null],
+			'2.0.0' => [null, null],
+			'1.9.0' => [null, null],
+		], $byVersion);
+	}
+
+	/**
+	 * A version listed twice keeps the language of the notes it keeps.
+	 *
+	 * @spec openspec/changes/releases-notes-reach/specs/changelog-visibility/spec.md
+	 */
+	public function testAVersionListedTwiceKeepsTheLanguageOfTheNotesItKeeps(): void {
+		$result = $this->buildSource([
+			'id' => 'openregister',
+			'releases' => [
+				['version' => '2.3.0'],
+				['version' => '2.3.0', 'translations' => ['en' => ['changelog' => 'English notes']]],
+				['version' => '2.3.0', 'translations' => ['nl' => ['changelog' => 'Nederlandse notities']]],
+			],
+		], 'nl')->listVersions('openregister', $this->binding());
+
+		$this->assertCount(1, $result['versions']);
+		$this->assertSame('English notes', $result['versions'][0]['changelog']);
+		$this->assertSame('en', $result['versions'][0]['changelogLanguage']);
+	}
+
 	public function testFallsBackToEnglishWhenRequestedLanguageMissing(): void {
 		$source = $this->buildSource([
 			'id' => 'openregister',
