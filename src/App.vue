@@ -45,6 +45,7 @@ import PolicySelector from './components/PolicySelector.vue'
 import ProposedUpdatesPanel from './components/ProposedUpdatesPanel.vue'
 import PublisherMark from './components/PublisherMark.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
+import SbomExportMenu from './components/SbomExportMenu.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
 import SourceOverrideField from './components/SourceOverrideField.vue'
 import SourcesPanel from './components/SourcesPanel.vue'
@@ -3779,10 +3780,13 @@ watch(dryRunEnabled, () => {
 					id="alerts-panel"
 					role="tabpanel"
 					aria-labelledby="alerts-tab" />
-				<HistoryPanel v-if="currentTab === 'history'"
+				<div v-if="currentTab === 'history'"
 					id="history-panel"
 					role="tabpanel"
-					aria-labelledby="history-tab" />
+					aria-labelledby="history-tab">
+					<SbomExportMenu />
+					<HistoryPanel />
+				</div>
 				<SourcesPanel v-show="currentTab === 'sources'"
 					id="sources-panel"
 					role="tabpanel"
