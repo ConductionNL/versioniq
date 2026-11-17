@@ -475,3 +475,79 @@ test.describe("background jobs", () => {
 		).toBeFalsy();
 	});
 });
+
+/**
+ * The instance default level (autoupdate-default-and-config-file 1.2): an app
+ * without its own policy follows the default, so with the default at patch
+ * the job gives fixtureapp its patch update.
+ *
+ * Every other enabled app without a policy is given its own "off" for the
+ * test, so the default reaches fixtureapp alone; those policies are removed
+ * again afterwards.
+ *
+ * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
+ */
+test.describe("the instance default level in the auto-update job", () => {
+	const SHIELD = JSON.stringify({ level: "none", setBy: "e2e", setAt: "2026-01-01T00:00:00+00:00" });
+	let shielded: string[] = [];
+
+	const installed = async () =>
+		(await occ("config:app:get", FIXTURE_APP, "installed_version")).trim();
+
+	test.beforeEach(async ({ page }) => {
+		test.skip(!(await fixtureAvailable(page)), "forge fixture not running");
+		await resetFixtureApp(page);
+		await occ("config:app:delete", "versioniq", `policy.${FIXTURE_APP}`);
+		await occ("config:app:delete", "versioniq", `auto_attempt.${FIXTURE_APP}`);
+
+		const enabled = Object.keys(
+			JSON.parse((await occ("app:list", "--enabled", "--output=json")).match(/\{[\s\S]*\}/)?.[0] ?? "{}").enabled ?? {},
+		);
+		shielded = [];
+		for (const appId of enabled.filter((id) => id !== FIXTURE_APP)) {
+			if ((await occ("config:app:get", "versioniq", `policy.${appId}`)).trim() === "") {
+				await occ("config:app:set", "versioniq", `policy.${appId}`, `--value=${SHIELD}`);
+				shielded.push(appId);
+			}
+		}
+	});
+
+	test.afterEach(async () => {
+		for (const appId of shielded) {
+			await occ("config:app:delete", "versioniq", `policy.${appId}`);
+		}
+		for (const key of [
+			"auto_update_default_level",
+			"auto_update_enabled",
+			"auto_update_window",
+			"auto_update_last_swept_window",
+			`auto_attempt.${FIXTURE_APP}`,
+		]) {
+			await occ("config:app:delete", "versioniq", key);
+		}
+	});
+
+	// @e2e auto-update-policies::an-app-without-a-policy-follows-the-default
+	test("with the default at patch, an app without its own policy gets its patch update", async () => {
+		await occ("config:app:set", "versioniq", "auto_update_default_level", "--value", "patch");
+		await occ("config:app:set", "versioniq", "auto_update_enabled", "--value", "1");
+		await occ("config:app:set", "versioniq", "auto_update_window", "--value", "00:00-23:59");
+		await occ("config:app:delete", "versioniq", "auto_update_last_swept_window");
+
+		await runJob("AutoUpdateJob");
+		// patch of 1.0.0 is 1.0.1; 1.1.0 and 1.2.0 are minors.
+		expect(await installed()).toBe("1.0.1");
+	});
+
+	// @e2e auto-update-policies::the-default-at-none-changes-nothing
+	test("with the default at none, an app without its own policy is left alone", async () => {
+		await occ("config:app:set", "versioniq", "auto_update_default_level", "--value", "none");
+		await occ("config:app:set", "versioniq", "auto_update_enabled", "--value", "1");
+		await occ("config:app:set", "versioniq", "auto_update_window", "--value", "00:00-23:59");
+		await occ("config:app:delete", "versioniq", "auto_update_last_swept_window");
+
+		await runJob("AutoUpdateJob");
+		expect(await installed()).toBe("1.0.0");
+	});
+});
+
