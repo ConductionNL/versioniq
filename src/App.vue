@@ -6,6 +6,7 @@ import type {PrefillBindPayload} from './components/DiscoverPanel.vue';
 import type {BlockedVersion, PolicyLevel} from './components/PolicySelector.vue';
 import type { PinRecord } from './dialogs/PinDialog.vue'
 import type {AdvisoryCorrelation, AdvisoryTriageMap, Compliance, NcscStatus} from './utils/advisories.ts';
+import type { AutoUpdateSchedule as AutoUpdateScheduleValue, UpdateKind } from './utils/autoUpdateSchedule.ts'
 import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
 import type {LkgRecord} from './utils/migrationSafety.ts';
 import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
@@ -22,10 +23,12 @@ import AdvisoriesPanel from './components/AdvisoriesPanel.vue'
 import AlertsPanel from './components/AlertsPanel.vue'
 import AppSourceBadges from './components/AppSourceBadges.vue'
 import AutoUpdateOverview from './components/AutoUpdateOverview.vue'
+import AutoUpdateSchedule from './components/AutoUpdateSchedule.vue'
 import CachePanel from './components/CachePanel.vue'
 import ChangelogRangePanel from './components/ChangelogRangePanel.vue'
 import DiscoverPanel from './components/DiscoverPanel.vue'
 import HistoryPanel from './components/HistoryPanel.vue'
+import InstallProgress from './components/InstallProgress.vue'
 import InstallResultNotices from './components/InstallResultNotices.vue'
 import InstanceSettingsPanel from './components/InstanceSettingsPanel.vue'
 import IntegrationsPanel from './components/IntegrationsPanel.vue'
@@ -53,6 +56,7 @@ import UpdateAllDialog from './dialogs/UpdateAllDialog.vue'
 import { ocsWrite } from './ocs.ts'
 import { advisoryAnchor, advisoryBadgeText, applyTriage, complianceSentence } from './utils/advisories.ts'
 import { advisoryFreshnessLabel as advisoryFreshnessLabelFor } from './utils/advisoryFreshness.ts'
+import { defaultSchedule, scheduleFrom } from './utils/autoUpdateSchedule.ts'
 import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow.ts'
 import { buildChangelogRange } from './utils/changelog.ts'
 import { tabForHash } from './utils/connectionRegistry.ts'
@@ -90,6 +94,7 @@ type AppOption = {
 type AppVersion = {
 	version: string
 	changelog?: string | null
+	changelogLanguage?: string | null
 	recordedSha?: string | null
 	cachedOffline?: boolean
 	serverCompatible?: boolean | null
@@ -121,6 +126,8 @@ const versionFilter = ref('')
 const hasCheckedVersions = ref(false)
 const isCheckingVersions = ref(false)
 const isInstallingVersion = ref(false)
+// install-live-progress: the token the running install reports its stages under.
+const installProgressToken = ref('')
 const installedVersion = ref('')
 const availableSource = ref('')
 // One-off source for the selected app's version list and next install; the
@@ -251,6 +258,10 @@ const autoUpdateWindowInput = ref(AUTO_UPDATE_WINDOW_DEFAULT)
 const savedAutoUpdateWindow = ref(AUTO_UPDATE_WINDOW_DEFAULT)
 // The zone the server reads the window in (Nextcloud's default_timezone, else UTC).
 const autoUpdateTimeZone = ref('UTC')
+// Which days each kind of update may install (autoupdate-schedules), and the next run per kind as the server computed it.
+const autoUpdateSchedule = ref<AutoUpdateScheduleValue>(defaultSchedule())
+const savedAutoUpdateSchedule = ref<AutoUpdateScheduleValue>(defaultSchedule())
+const autoUpdateNextRuns = ref<Partial<Record<UpdateKind, string | null>>>({})
 // Why the last run held a security fix back, whether the advisory check is
 // recent enough to act on, and the kinds the patch policy sets to by hand
 // (autoupdate-security-first).
@@ -930,7 +941,7 @@ function pinTooltip (pin: PinRecord | null): string {
 async function loadPolicies (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/policies')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string, securityHolds?: Record<string, string>, advisoriesFresh?: boolean, manualKinds?: string[] }>(response)
+		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string, autoUpdateSchedule?: unknown, nextRuns?: Partial<Record<UpdateKind, string | null>>, securityHolds?: Record<string, string>, advisoriesFresh?: boolean, manualKinds?: string[] }>(response)
 		const map: Record<string, PolicyRecord> = {}
 		for (const policy of payload.policies || []) {
 			map[policy.appId] = policy
@@ -944,6 +955,9 @@ async function loadPolicies (): Promise<void> {
 		advisoriesFresh.value = payload.advisoriesFresh !== false
 		manualKinds.value = payload.manualKinds ?? []
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
+		autoUpdateSchedule.value = scheduleFrom(payload.autoUpdateSchedule)
+		savedAutoUpdateSchedule.value = scheduleFrom(payload.autoUpdateSchedule)
+		autoUpdateNextRuns.value = payload.nextRuns ?? {}
 	} catch {
 		// Non-fatal: the app list stays usable without policy badges.
 		policies.value = {}
@@ -1046,9 +1060,11 @@ async function onPolicyChange (appId: string, level: PolicyLevel): Promise<void>
 }
 
 const isAutoUpdateWindowValid = computed(() => isValidAutoUpdateWindow(autoUpdateWindowInput.value))
+const isScheduleDirty = computed(() => JSON.stringify(autoUpdateSchedule.value) !== JSON.stringify(savedAutoUpdateSchedule.value))
 const isAutoUpdateSettingsDirty = computed(() => (
 	autoUpdateEnabled.value !== savedAutoUpdateEnabled.value
 	|| autoUpdateWindowInput.value.trim() !== savedAutoUpdateWindow.value
+	|| isScheduleDirty.value
 ))
 
 /**
@@ -1084,13 +1100,20 @@ async function saveAutoUpdateSettings (): Promise<void> {
 			//
 			// The query string above already sends '1'/'0'; this makes the body
 			// agree with it so the value cannot depend on which one wins.
-			body: JSON.stringify({ enabled: autoUpdateEnabled.value ? '1' : '0', window }),
+			// The schedule travels in the body only (an object, which a query string cannot
+			// carry), and only when it changed, so a save that leaves it alone stores nothing.
+			body: JSON.stringify({ enabled: autoUpdateEnabled.value ? '1' : '0', window, ...(isScheduleDirty.value ? { schedule: autoUpdateSchedule.value } : {}) }),
 		})
-		const payload = await unwrapOcsResponse<{ autoUpdateEnabled?: boolean, autoUpdateWindow?: string }>(response)
+		const payload = await unwrapOcsResponse<{ autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateSchedule?: unknown, nextRuns?: Partial<Record<UpdateKind, string | null>> }>(response)
 		autoUpdateEnabled.value = Boolean(payload.autoUpdateEnabled)
 		autoUpdateWindowInput.value = payload.autoUpdateWindow || window
 		savedAutoUpdateEnabled.value = autoUpdateEnabled.value
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
+		if (payload.autoUpdateSchedule !== undefined) {
+			autoUpdateSchedule.value = scheduleFrom(payload.autoUpdateSchedule)
+		}
+		savedAutoUpdateSchedule.value = scheduleFrom(autoUpdateSchedule.value)
+		autoUpdateNextRuns.value = payload.nextRuns ?? autoUpdateNextRuns.value
 		autoUpdateSettingsNotice.value = t('versioniq', 'Automatic update settings saved.')
 	} catch (e) {
 		autoUpdateSettingsError.value = e instanceof Error ? e.message : t('versioniq', 'Could not save automatic update settings.')
@@ -1866,7 +1889,20 @@ function installQuery (request: InstallRequest): Record<string, string> {
 		dryRun: (request.forceDryRun || dryRunRequested.value) ? '1' : '0',
 		targetVersion: request.version,
 	}, sourceOverride.value)
+	const progressToken = installProgressTokenFor(request)
+	if (progressToken !== '') {
+		query.progressToken = progressToken
+	}
 	return addInstallFlags(query, request)
+}
+
+/**
+ * The progress token to send with an install, '' for none: a dry run reports no progress.
+ *
+ * @param request The install request.
+ */
+function installProgressTokenFor (request: InstallRequest): string {
+	return request.forceDryRun ? '' : installProgressToken.value
 }
 
 /**
@@ -2051,12 +2087,24 @@ function selectedInstallTarget (): InstallTarget {
 }
 
 /**
+ * A random token for one install's progress record (install-live-progress).
+ *
+ * @spec openspec/changes/install-live-progress/specs/version-management/spec.md
+ */
+function newProgressToken (): string {
+	const bytes = new Uint8Array(16)
+	globalThis.crypto.getRandomValues(bytes)
+	return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+/**
  * Marks an install as running and clears the previous result.
  *
  * @param target The install about to run.
  */
 function startInstall (target: InstallTarget): void {
 	isInstallingVersion.value = true
+	installProgressToken.value = newProgressToken()
 	errorMessage.value = ''
 	hasInstallResult.value = false
 	lastInstallResult.value = null
@@ -2248,6 +2296,7 @@ async function runInstall (target: InstallTarget): Promise<void> {
 		showInstallError(error, target)
 	} finally {
 		isInstallingVersion.value = false
+		installProgressToken.value = ''
 	}
 }
 
@@ -2764,6 +2813,9 @@ watch(dryRunEnabled, () => {
 										:class="$style.appFilterInput"
 										:disabled="isSavingAutoUpdateSettings">
 								</label>
+								<AutoUpdateSchedule
+									v-model="autoUpdateSchedule"
+									:disabled="isSavingAutoUpdateSettings" />
 								<p v-if="autoUpdateWindowInput.trim() !== '' && !isAutoUpdateWindowValid" :class="$style.autoUpdateWindowError" data-testid="auto-update-window-error">
 									{{ t('versioniq', 'Use the HH:MM-HH:MM format, e.g. 01:00-05:00.') }}
 								</p>
@@ -2786,6 +2838,8 @@ watch(dryRunEnabled, () => {
 									:autoUpdateEnabled="autoUpdateEnabled"
 									:window="savedAutoUpdateWindow"
 									:timeZone="autoUpdateTimeZone"
+									:schedule="savedAutoUpdateSchedule"
+									:nextRuns="autoUpdateNextRuns"
 									:securityHolds="securityHolds"
 									:advisoriesFresh="advisoriesFresh"
 									:manualKinds="manualKinds"
@@ -3223,7 +3277,12 @@ watch(dryRunEnabled, () => {
 															:busy="isRemovingKnownIssue || isInstallingVersion"
 															@add="openKnownIssueDialog"
 															@remove="removeKnownIssue" />
-														<VersionChangelog :version="version.version" :changelog="version.changelog ?? null" />
+														<VersionChangelog
+															:version="version.version"
+															:changelog="version.changelog ?? null"
+															:changelogLanguage="version.changelogLanguage ?? null"
+															:appId="selectedApp.trim()"
+															:source="sourceOverride" />
 														<div
 															v-if="selectedVersion === version.version && selectedVersion !== ''"
 															:class="$style.versionActionGroup">
@@ -3280,6 +3339,7 @@ watch(dryRunEnabled, () => {
 								</div>
 							</div>
 							<div v-if="hasSplitLayout && appDetailTab === 'versions'" :class="$style.rightColumn">
+								<InstallProgress v-if="isInstallingVersion && installProgressToken" :token="installProgressToken" />
 								<div v-if="hasInstallResult && lastInstallResult" :class="$style.resultPanel">
 									<p :class="$style.versionSummary">
 										{{ t('versioniq', 'Install result') }}
