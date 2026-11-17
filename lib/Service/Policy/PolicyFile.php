@@ -144,17 +144,26 @@ final class PolicyFile {
 
 		/** @var array<string, mixed> $autoUpdate */
 		$errors = self::unknownKeys($autoUpdate, self::AUTO_UPDATE_KEYS, '$.autoUpdate');
-		if (array_key_exists('enabled', $autoUpdate) && !is_bool($autoUpdate['enabled'])) {
-			$errors[] = '$.autoUpdate.enabled: must be true or false';
-		}
-		if (array_key_exists('window', $autoUpdate) && (!is_string($autoUpdate['window']) || !AutoUpdateWindow::isValid($autoUpdate['window']))) {
-			$errors[] = '$.autoUpdate.window: must be HH:MM-HH:MM';
-		}
-		if (array_key_exists('defaultLevel', $autoUpdate) && !self::isLevel($autoUpdate['defaultLevel'])) {
-			$errors[] = '$.autoUpdate.defaultLevel: ' . self::levelReason();
+		foreach (self::autoUpdateRules() as $key => [$valid, $reason]) {
+			if (array_key_exists($key, $autoUpdate) && !$valid($autoUpdate[$key])) {
+				$errors[] = '$.autoUpdate.' . $key . ': ' . $reason;
+			}
 		}
 
 		return $errors;
+	}
+
+	/**
+	 * Per `autoUpdate` key, the check its value must pass and the reason given when it does not.
+	 *
+	 * @return array<string, array{0: \Closure(mixed): bool, 1: string}>
+	 */
+	private static function autoUpdateRules(): array {
+		return [
+			'enabled' => [static fn (mixed $value): bool => is_bool($value), 'must be true or false'],
+			'window' => [static fn (mixed $value): bool => is_string($value) && AutoUpdateWindow::isValid($value), 'must be HH:MM-HH:MM'],
+			'defaultLevel' => [static fn (mixed $value): bool => self::isLevel($value), self::levelReason()],
+		];
 	}
 
 	/**

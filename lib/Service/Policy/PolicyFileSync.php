@@ -57,6 +57,18 @@ class PolicyFileSync {
 	 */
 	public function plan(PolicyFileContents $file, bool $prune): array {
 		$stored = $this->export();
+		// With prune, every stored policy the file does not name is wanted gone (null).
+		$wanted = $prune ? $file->policies + array_fill_keys(array_keys($stored->policies), null) : $file->policies;
+
+		return [...self::settingChanges($stored, $file), ...self::policyChanges($stored->policies, $wanted)];
+	}
+
+	/**
+	 * The settings the file names with another value than the stored one.
+	 *
+	 * @return list<PolicyChange>
+	 */
+	private static function settingChanges(PolicyFileContents $stored, PolicyFileContents $file): array {
 		$changes = [];
 		foreach (self::settingPairs($stored, $file) as $key => [$from, $to]) {
 			if ($to !== null && $to !== $from) {
@@ -64,11 +76,21 @@ class PolicyFileSync {
 			}
 		}
 
-		$appIds = array_keys($file->policies + ($prune ? $stored->policies : []));
-		sort($appIds);
-		foreach ($appIds as $appId) {
-			$from = $stored->policies[$appId] ?? null;
-			$to = $file->policies[$appId] ?? null;
+		return $changes;
+	}
+
+	/**
+	 * The per-app policies whose wanted level (null: removed) differs from the stored one, by app id.
+	 *
+	 * @param array<string, string>      $stored The stored level per app.
+	 * @param array<string, string|null> $wanted The wanted level per app.
+	 * @return list<PolicyChange>
+	 */
+	private static function policyChanges(array $stored, array $wanted): array {
+		ksort($wanted);
+		$changes = [];
+		foreach ($wanted as $appId => $to) {
+			$from = $stored[$appId] ?? null;
 			if ($to !== $from) {
 				$changes[] = new PolicyChange('policies.' . $appId, $from, $to);
 			}

@@ -935,6 +935,36 @@ function pinTooltip (pin: PinRecord | null): string {
 	return parts.join(' — ')
 }
 
+/**
+ * The default level and where the policies come from, as GET /api/policies answered them.
+ *
+ * @param level The instance default level; absent reads as none.
+ * @param managedBy The policy file in file mode, else null.
+ */
+function applyPolicySource (level: PolicyLevel | undefined, managedBy: ManagedBy | null | undefined): void {
+	autoUpdateDefaultLevel.value = level || 'none'
+	savedAutoUpdateDefaultLevel.value = autoUpdateDefaultLevel.value
+	policyFile.value = managedBy || null
+}
+
+/**
+ * The default level to send: only when it changed, so a save of the switch
+ * or window alone sends exactly what it always did.
+ */
+function changedDefaultLevel (): { defaultLevel?: PolicyLevel } {
+	return autoUpdateDefaultLevel.value !== savedAutoUpdateDefaultLevel.value ? { defaultLevel: autoUpdateDefaultLevel.value } : {}
+}
+
+/**
+ * Keep the default level the server answered as the saved one.
+ *
+ * @param level The stored default level; absent keeps the one on the page.
+ */
+function settleDefaultLevel (level: PolicyLevel | undefined): void {
+	autoUpdateDefaultLevel.value = level || autoUpdateDefaultLevel.value
+	savedAutoUpdateDefaultLevel.value = autoUpdateDefaultLevel.value
+}
+
 // Auto-update policies + global settings, fetched once and kept in a
 // per-appId map, same pattern as pins/advisories; read-only badges here,
 // writes go through onPolicyChange()/saveAutoUpdateSettings().
@@ -958,9 +988,7 @@ async function loadPolicies (): Promise<void> {
 		advisoriesFresh.value = payload.advisoriesFresh !== false
 		manualKinds.value = payload.manualKinds ?? []
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
-		autoUpdateDefaultLevel.value = payload.autoUpdateDefaultLevel || 'none'
-		savedAutoUpdateDefaultLevel.value = autoUpdateDefaultLevel.value
-		policyFile.value = payload.managedBy || null
+		applyPolicySource(payload.autoUpdateDefaultLevel, payload.managedBy)
 		autoUpdateSchedule.value = scheduleFrom(payload.autoUpdateSchedule)
 		savedAutoUpdateSchedule.value = scheduleFrom(payload.autoUpdateSchedule)
 		autoUpdateNextRuns.value = payload.nextRuns ?? {}
@@ -1129,9 +1157,7 @@ async function saveAutoUpdateSettings (): Promise<void> {
 	try {
 		await ensurePasswordConfirmation()
 		const window = autoUpdateWindowInput.value.trim()
-		// The default level travels only when it changed, so a save of the
-		// switch or window alone sends exactly what it always did.
-		const defaultLevel = autoUpdateDefaultLevel.value !== savedAutoUpdateDefaultLevel.value ? { defaultLevel: autoUpdateDefaultLevel.value } : {}
+		const defaultLevel = changedDefaultLevel()
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/auto-update/settings', {
 			enabled: autoUpdateEnabled.value ? '1' : '0',
 			window,
@@ -1160,8 +1186,7 @@ async function saveAutoUpdateSettings (): Promise<void> {
 		autoUpdateWindowInput.value = payload.autoUpdateWindow || window
 		savedAutoUpdateEnabled.value = autoUpdateEnabled.value
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
-		autoUpdateDefaultLevel.value = payload.autoUpdateDefaultLevel || autoUpdateDefaultLevel.value
-		savedAutoUpdateDefaultLevel.value = autoUpdateDefaultLevel.value
+		settleDefaultLevel(payload.autoUpdateDefaultLevel)
 		if (payload.autoUpdateSchedule !== undefined) {
 			autoUpdateSchedule.value = scheduleFrom(payload.autoUpdateSchedule)
 		}

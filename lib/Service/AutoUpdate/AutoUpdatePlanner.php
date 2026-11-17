@@ -14,6 +14,7 @@ namespace OCA\Versioniq\Service\AutoUpdate;
 
 use OCA\Versioniq\Service\Policy\PatchPolicy;
 use OCA\Versioniq\Service\Policy\Policy;
+use OCA\Versioniq\Service\Policy\PolicyStore;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -63,27 +64,13 @@ final class AutoUpdatePlanner {
 	 */
 	public function planRun(PlanRun $run, ?array $levels = null): AutoUpdatePlan {
 		$planned = [];
-		foreach ($levels ?? $this->storedLevels() as $appId => $level) {
+		foreach ($levels ?? PolicyStore::levelsOf($this->stores->policyStore->all()) as $appId => $level) {
 			if ($level !== Policy::LEVEL_NONE) {
 				$planned[] = $this->planIsolated(new PlanTarget((string)$appId, $level), $run);
 			}
 		}
 
 		return new AutoUpdatePlan(self::firstThenLater(array_values(array_filter($planned))), $run->holds());
-	}
-
-	/**
-	 * The level of every stored policy, by app.
-	 *
-	 * @return array<string, string>
-	 */
-	private function storedLevels(): array {
-		$levels = [];
-		foreach ($this->stores->policyStore->all() as $appId => $policy) {
-			$levels[$appId] = $policy->level;
-		}
-
-		return $levels;
 	}
 
 	/**

@@ -31,6 +31,7 @@ use OCA\Versioniq\Service\Policy\PatchPolicy;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyFileContents;
 use OCA\Versioniq\Service\Policy\PolicyFileException;
+use OCA\Versioniq\Service\Policy\PolicyStore;
 use OCP\AppFramework\Http;
 use OCP\BackgroundJob\TimedJob;
 use Psr\Log\LoggerInterface;
@@ -239,9 +240,9 @@ class AutoUpdateJob extends TimedJob {
 	 * @return array<string, string>
 	 */
 	private function levelsByApp(?PolicyFileContents $file): array {
-		$levels = $file?->policies ?? $this->storedLevels();
-		$default = $file !== null ? ($file->defaultLevel ?? Policy::LEVEL_NONE) : $this->stores->settingsStore->getDefaultLevel();
-		if (!Policy::isValidLevel($default) || $default === Policy::LEVEL_NONE) {
+		$levels = $file?->policies ?? PolicyStore::levelsOf($this->stores->policyStore->all());
+		$default = $this->defaultLevelFor($file);
+		if ($default === Policy::LEVEL_NONE) {
 			return $levels;
 		}
 
@@ -252,16 +253,11 @@ class AutoUpdateJob extends TimedJob {
 		return $levels;
 	}
 
-	/**
-	 * @return array<string, string>
-	 */
-	private function storedLevels(): array {
-		$levels = [];
-		foreach ($this->stores->policyStore->all() as $appId => $policy) {
-			$levels[$appId] = $policy->level;
-		}
+	/** The instance default level: the file's in file mode, else the stored one; anything invalid reads as none. */
+	private function defaultLevelFor(?PolicyFileContents $file): string {
+		$default = $file !== null ? ($file->defaultLevel ?? Policy::LEVEL_NONE) : $this->stores->settingsStore->getDefaultLevel();
 
-		return $levels;
+		return Policy::isValidLevel($default) ? $default : Policy::LEVEL_NONE;
 	}
 
 	private function attemptInstall(InstallTarget $target, string $installedVersion): void {

@@ -39,10 +39,7 @@ final class PolicyFileContents {
 	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
 	 */
 	public static function fromStores(PolicyStore $policyStore, AutoUpdateSettingsStore $settingsStore): self {
-		$policies = [];
-		foreach ($policyStore->all() as $appId => $policy) {
-			$policies[$appId] = $policy->level;
-		}
+		$policies = PolicyStore::levelsOf($policyStore->all());
 		ksort($policies);
 
 		return new self(

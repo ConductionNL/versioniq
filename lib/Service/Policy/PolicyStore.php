@@ -101,6 +101,17 @@ class PolicyStore {
 	}
 
 	/**
+	 * The level of each policy, keyed by app id.
+	 *
+	 * @param array<string, Policy> $policies Policies keyed by app id, as all() returns them.
+	 * @return array<string, string>
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
+	 */
+	public static function levelsOf(array $policies): array {
+		return array_map(static fn (Policy $policy): string => $policy->level, $policies);
+	}
+
+	/**
 	 * Persists a policy; see "Per-app update policy" ("Set a patch policy").
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md

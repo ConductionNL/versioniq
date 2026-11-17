@@ -999,20 +999,9 @@ class ApiController extends OCSController {
 			];
 		}
 
-		return new DataResponse([
-			'policies' => $policies,
-			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
-			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
-			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
-			'autoUpdateDefaultLevel' => $this->autoUpdate->settingsStore->getDefaultLevel(),
-			'managedBy' => null,
-			// Why the last run held a security fix back, whether the advisory
-			// snapshot is fresh enough for security installs, and the kinds
-			// the patch policy sets to by hand (autoupdate-security-first).
-			'securityHolds' => (object)$this->autoUpdate->security->securityHolds->read(),
-			'advisoriesFresh' => $this->advisoriesFresh(),
-			'manualKinds' => ($this->autoUpdate->security->patchPolicyStore->read() ?? PatchPolicy::none())->manualKinds(),
-		] + $this->scheduleView());
+		return new DataResponse(
+			['policies' => $policies] + $this->storedSettingsView() + ['managedBy' => null] + $this->securityView() + $this->scheduleView()
+		);
 	}
 
 	/**
@@ -1066,10 +1055,7 @@ class ApiController extends OCSController {
 			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
 			'autoUpdateDefaultLevel' => $file->defaultLevel ?? Policy::LEVEL_NONE,
 			'managedBy' => ['file' => $source?->filePath(), 'readAt' => $readAt, 'error' => $error],
-			'securityHolds' => (object)$this->autoUpdate->security->securityHolds->read(),
-			'advisoriesFresh' => $this->advisoriesFresh(),
-			'manualKinds' => ($this->autoUpdate->security->patchPolicyStore->read() ?? PatchPolicy::none())->manualKinds(),
-	] + $this->scheduleView();
+		] + $this->securityView() + $this->scheduleView();
 	}
 
 	/**
@@ -1235,36 +1221,80 @@ class ApiController extends OCSController {
 		// one leaves the switch and the window as they were (autoupdate-schedules, D6).
 		/** @var mixed $scheduleParam */
 		$scheduleParam = $this->request->getParam('schedule');
-		$problem = $this->autoUpdateSettingsProblem($windowParam, $scheduleParam);
+		$defaultLevelParam = $this->stringParam('defaultLevel', '');
+		$problem = $this->autoUpdateSettingsProblem($windowParam, $scheduleParam) ?? $this->defaultLevelProblem($defaultLevelParam);
 		if ($problem !== null) {
 			return $problem;
 		}
 
-		$defaultLevelParam = $this->stringParam('defaultLevel', '');
-		if ($defaultLevelParam !== '' && !Policy::isValidLevel($defaultLevelParam)) {
-			return new DataResponse(
-				['message' => 'defaultLevel must be one of: ' . implode(', ', Policy::VALID_LEVELS) . '.'],
-				Http::STATUS_BAD_REQUEST
-			);
-		}
-
-		if ($enabledParam !== null) {
-			$this->autoUpdate->settingsStore->setEnabled($this->readBinaryBool($enabledParam, $this->autoUpdate->settingsStore->isEnabled()));
-		}
-		if ($windowParam !== '') {
-			$this->autoUpdate->settingsStore->setWindow($windowParam);
-		}
+		$this->storeSwitchAndWindow($enabledParam, $windowParam);
 		if ($defaultLevelParam !== '') {
 			$this->autoUpdate->settingsStore->setDefaultLevel($defaultLevelParam);
 		}
 		$this->storeSchedule($scheduleParam);
 
-		return new DataResponse([
-			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
-			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
-			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
-			'autoUpdateDefaultLevel' => $this->autoUpdate->settingsStore->getDefaultLevel(),
-		] + $this->scheduleView());
+		return new DataResponse($this->storedSettingsView() + $this->scheduleView());
+	}
+
+	/**
+	 * Store the kill switch and window that were sent; one left out keeps its stored value.
+	 */
+	private function storeSwitchAndWindow(?string $enabledParam, string $windowParam): void {
+		$settings = $this->autoUpdate->settingsStore;
+		if ($enabledParam !== null) {
+			$settings->setEnabled($this->readBinaryBool($enabledParam, $settings->isEnabled()));
+		}
+		if ($windowParam !== '') {
+			$settings->setWindow($windowParam);
+		}
+	}
+
+	/**
+	 * 400 for a default level that is not a policy level; null for a valid or omitted one.
+	 *
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
+	 */
+	private function defaultLevelProblem(string $defaultLevelParam): ?DataResponse {
+		if ($defaultLevelParam === '' || Policy::isValidLevel($defaultLevelParam)) {
+			return null;
+		}
+
+		return new DataResponse(
+			['message' => 'defaultLevel must be one of: ' . implode(', ', Policy::VALID_LEVELS) . '.'],
+			Http::STATUS_BAD_REQUEST
+		);
+	}
+
+	/**
+	 * The stored kill switch, window, time zone and default level, as the page reads them.
+	 *
+	 * @return array{autoUpdateEnabled: bool, autoUpdateWindow: string, autoUpdateTimeZone: string, autoUpdateDefaultLevel: string}
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
+	 */
+	private function storedSettingsView(): array {
+		$settings = $this->autoUpdate->settingsStore;
+
+		return [
+			'autoUpdateEnabled' => $settings->isEnabled(),
+			'autoUpdateWindow' => $settings->getWindow(),
+			'autoUpdateTimeZone' => $settings->getTimeZoneName(),
+			'autoUpdateDefaultLevel' => $settings->getDefaultLevel(),
+		];
+	}
+
+	/**
+	 * Why the last run held a security fix back, whether the advisory snapshot
+	 * is fresh enough for security installs, and the kinds the patch policy
+	 * sets to by hand (autoupdate-security-first).
+	 *
+	 * @return array{securityHolds: object, advisoriesFresh: bool, manualKinds: list<string>}
+	 */
+	private function securityView(): array {
+		return [
+			'securityHolds' => (object)$this->autoUpdate->security->securityHolds->read(),
+			'advisoriesFresh' => $this->advisoriesFresh(),
+			'manualKinds' => ($this->autoUpdate->security->patchPolicyStore->read() ?? PatchPolicy::none())->manualKinds(),
+		];
 	}
 
 	/**
