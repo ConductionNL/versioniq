@@ -23,7 +23,7 @@ final class AdminNotice {
 	private string $objectType = '';
 	private string $objectId = '';
 	private string $subject = '';
-	/** @var array<string, string> */
+	/** @var array<string, mixed> */
 	private array $subjectParameters = [];
 	private string $link = '';
 	private string $logMessage = '';
@@ -45,7 +45,7 @@ final class AdminNotice {
 	}
 
 	/**
-	 * @param array<string, string> $parameters
+	 * @param array<string, mixed> $parameters
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 * @spec openspec/specs/version-pinning/spec.md
 	 */

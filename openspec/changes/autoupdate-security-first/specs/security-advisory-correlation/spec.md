@@ -46,3 +46,12 @@ administrator decides.
 - **WHEN** the refresh runs at 14:00
 - **THEN** no version MUST change at 14:00
 - **AND** the next nightly run inside the window MUST install 2.3.5 through the standard installer and notify the admins
+
+#### Scenario: A critical advisory reaches the admin at the next sweep
+
+@e2e exclude the notification fires from a background job; covered by tests/unit/Service/Advisory/AdvisoryNotifierTest.php.
+
+- **GIVEN** the sweep runs every hour, and a critical advisory is published for the installed version of `calendar`
+- **WHEN** the next sweep runs
+- **THEN** every admin MUST get a notification naming `calendar`, its version and the advisory
+- **AND** the advisory MUST NOT wait for the weekly digest, which only counts advisories that do not affect the installed version

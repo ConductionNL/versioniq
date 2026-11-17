@@ -57,6 +57,12 @@ class AuditLogger implements AdminChangeAuditInterface {
 
 	/** An `app_install_overwrite` override set, or lifted after a major upgrade. */
 	public const OPERATION_FORCE_INCOMPATIBLE = 'force_incompatible';
+	/** A version change Versioniq did not make (audit-external-changes). */
+	public const OPERATION_EXTERNAL_UPDATE = 'external_update';
+	/** An app switched off without a version change (audit-external-changes). */
+	public const OPERATION_EXTERNAL_DISABLE = 'external_disable';
+	/** An app Versioniq enabled again after an update left it off (audit-external-changes). */
+	public const OPERATION_REACTIVATE = 'reactivate';
 
 	private const OPERATION_PATTERN = '/^[a-z_]{1,32}$/';
 	private const MESSAGE_MAX_LENGTH = 4000;
@@ -90,7 +96,7 @@ class AuditLogger implements AdminChangeAuditInterface {
 		try {
 			$entry = $this->entryFor($subject, $versions);
 			$entry->setStatus($status);
-			$entry->setMessage($this->sanitizeMessage($message));
+			$entry->setMessage($this->sanitizeMessage($subject->operation === self::OPERATION_INSTALL ? AuditNote::applyTo($message) : $message));
 			$entry->setCreatedAt($this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'));
 			$entry->setOrigin($subject->origin ?? AuditOrigin::current());
 

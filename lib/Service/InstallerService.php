@@ -16,6 +16,7 @@ use Exception;
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Kernel\Contracts\InstallerServiceInterface;
+use OCA\Versioniq\Service\Channel\VersionChannels;
 use OCA\Versioniq\Service\Discovery\PublisherTrust;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCA\Versioniq\Service\Installer\DeclaredServerRange;
@@ -55,7 +56,7 @@ use OCP\IUserSession;
  *
  * @psalm-api
  * @psalm-type AppLists = array{enabled: array<string>, versions: array<string, string>, core: array<string>, info: array<string, array<string, mixed>>}
- * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,publisher:?string,marks:list<string>,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string,previous?:array{version:string,recordedAt:string,sourceId:?string}},installedKnownIssues:list<array<string,mixed>>,provenance:?array{kind:'versioniq'|'outside',sourceId:?string,version:string},forcedOn?:int,compatibilityOverridden?:true,serverTooNew?:true}
+ * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,author:string,licence:string,links:array{website:?string,repository:?string,bugs:?string},isCore:bool,isShipped:bool,publisher:?string,marks:list<string>,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string,previous?:array{version:string,recordedAt:string,sourceId:?string}},installedKnownIssues:list<array<string,mixed>>,provenance:?array{kind:'versioniq'|'outside',sourceId:?string,version:string},forcedOn?:int,compatibilityOverridden?:true,serverTooNew?:true}
  */
 class InstallerService implements InstallerServiceInterface {
 	/** Server-side changelog size cap; see "Version listings carry release notes". */
@@ -80,6 +81,7 @@ class InstallerService implements InstallerServiceInterface {
 		private InstallState $state,
 		private IUserSession $userSession,
 		private ITimeFactory $timeFactory,
+		private ?VersionChannels $channels = null,
 	) {
 	}
 
@@ -165,6 +167,7 @@ class InstallerService implements InstallerServiceInterface {
 		return [
 			'id' => $appId,
 			...self::appTexts($lists['info'][$appId] ?? [], $appId),
+			...self::appAbout($lists['info'][$appId] ?? []),
 			...$this->appStatus($appId, $lists, $binding),
 			'publisher' => PublisherTrust::publisherFromAuthors($lists['info'][$appId]['author'] ?? null),
 			'marks' => $this->cardMarks($appId, $binding),
@@ -230,6 +233,121 @@ class InstallerService implements InstallerServiceInterface {
 			'summary' => self::trimmedText($app, 'summary'),
 			'preview' => self::trimmedText($app, 'preview'),
 		];
+	}
+
+	/**
+	 * Who publishes the app, under which licence, and its declared links,
+	 * from the installed `info.xml` (inventory-app-details-card D1).
+	 *
+	 * @param array<string, mixed> $app The app's parsed info.
+	 *
+	 * @return array{author: string, licence: string, links: array{website: ?string, repository: ?string, bugs: ?string}}
+	 *
+	 * @spec openspec/changes/inventory-app-details-card/tasks.md#1-payload
+	 */
+	private static function appAbout(array $app): array {
+		return [
+			'author' => self::authorName(author: $app['author'] ?? null),
+			'licence' => self::licenceName(licence: $app['licence'] ?? ($app['license'] ?? null)),
+			'links' => [
+				'website' => self::webLink(value: $app['website'] ?? null),
+				'repository' => self::webLink(value: $app['repository'] ?? null),
+				'bugs' => self::webLink(value: $app['bugs'] ?? null),
+			],
+		];
+	}
+
+	/**
+	 * The authors' names joined with ", ": `info.xml` allows several
+	 * `author` elements with `mail` and `homepage` attributes, which arrive as
+	 * a string, an array with `@value`, or a list of either. Mail addresses
+	 * never reach the page (D2).
+	 *
+	 * @param mixed $author The parsed `author` value.
+	 *
+	 * @return string The names, or ''.
+	 *
+	 * @spec openspec/changes/inventory-app-details-card/tasks.md#1-payload
+	 */
+	private static function authorName(mixed $author): string {
+		if (is_string($author)) {
+			return trim($author);
+		}
+
+		if (!is_array($author)) {
+			return '';
+		}
+
+		if (array_key_exists('@value', $author)) {
+			return is_string($author['@value']) ? trim($author['@value']) : '';
+		}
+
+		$names = [];
+		foreach ($author as $key => $entry) {
+			if ($key === '@attributes') {
+				continue;
+			}
+
+			$name = self::authorName(author: $entry);
+			if ($name !== '' && !in_array($name, $names, true)) {
+				$names[] = $name;
+			}
+		}
+
+		return implode(', ', $names);
+	}
+
+	/**
+	 * The licence, or several joined with ", ".
+	 *
+	 * @param mixed $licence The parsed `licence` value.
+	 *
+	 * @return string The licence, or ''.
+	 */
+	private static function licenceName(mixed $licence): string {
+		if (is_string($licence)) {
+			return trim($licence);
+		}
+
+		if (!is_array($licence)) {
+			return '';
+		}
+
+		$names = array_values(array_filter(array_map(
+			static fn (mixed $entry): string => is_string($entry) ? trim($entry) : '',
+			$licence
+		)));
+
+		return implode(', ', array_unique($names));
+	}
+
+	/**
+	 * An http or https address, or null: any other scheme is dropped so the
+	 * card never renders a `javascript:` link (D3). A `repository` element
+	 * with a `type` attribute arrives as an array with `@value`.
+	 *
+	 * @param mixed $value The parsed value.
+	 *
+	 * @return ?string The address, or null.
+	 *
+	 * @spec openspec/changes/inventory-app-details-card/tasks.md#1-payload
+	 */
+	private static function webLink(mixed $value): ?string {
+		if (is_array($value) && array_key_exists('@value', $value)) {
+			$value = $value['@value'];
+		}
+
+		if (!is_string($value)) {
+			return null;
+		}
+
+		$url = trim($value);
+		$scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+		if (!in_array($scheme, ['http', 'https'], true) || filter_var($url, FILTER_VALIDATE_URL) === false) {
+			return null;
+		}
+
+		return $url;
 	}
 
 	/**
@@ -372,13 +490,15 @@ class InstallerService implements InstallerServiceInterface {
 
 	/**
 	 * Resolves the active source and lists versions for an app; see "Fetch Available Versions", "Explicit source
-	 * override" and "Version listings carry release notes".
+	 * override" and "Version listings carry release notes". With release channels wired, every entry carries
+	 * `preRelease`, `lts` and `onChannel`, and the envelope names the effective `channel`.
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @spec openspec/specs/changelog-visibility/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
 	 * @spec openspec/specs/artifact-cache/spec.md
-	 * @return array{installedVersion: ?string, availableVersions: list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool}>, versions: list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool}>, source: string, sourceId: string, statusCode: int, hasError: bool, error?: string}
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-an-admin-sets-a-release-channel-for-the-instance-and-per-app
+	 * @return array{installedVersion: ?string, availableVersions: list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool, preRelease?: bool, lts?: bool, onChannel?: bool}>, versions: list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool, preRelease?: bool, lts?: bool, onChannel?: bool}>, source: string, sourceId: string, statusCode: int, channel?: string, hasError: bool, error?: string}
 	 */
 	public function getAppVersions(string $appId, ?string $sourceOverride = null): array {
 		$appId = trim($appId);
@@ -409,6 +529,14 @@ class InstallerService implements InstallerServiceInterface {
 		$versions = $this->applyCachedOffline($versions, $appId);
 		/** @var list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool}> $versions */
 		$versions = $this->applyCachedServerCompatibility($versions, $appId);
+		$channel = [];
+		if ($this->channels !== null) {
+			// Stamped, not filtered: the picker reveals the rest and the CLI lists every version.
+			$stamped = $this->channels->stamp($appId, $versions);
+			/** @var list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool, preRelease?: bool, lts?: bool, onChannel?: bool}> $versions */
+			$versions = $stamped['versions'];
+			$channel = ['channel' => $stamped['channel']];
+		}
 
 		return [
 			'installedVersion' => $installedVersion,
@@ -417,7 +545,7 @@ class InstallerService implements InstallerServiceInterface {
 			'source' => $binding->kind,
 			'sourceId' => $binding->getId(),
 			'statusCode' => Http::STATUS_OK,
-		] + self::listingErrorFields($result);
+		] + $channel + self::listingErrorFields($result);
 	}
 
 	/**
@@ -447,7 +575,7 @@ class InstallerService implements InstallerServiceInterface {
 	 * server release) are never published to the App Store, so a store miss
 	 * for one is explained instead of surfacing a generic "not available".
 	 *
-	 * @return array{versions: list<array{version: string, changelog?: ?string, serverCompatible?: ?bool, releasedAt?: ?string}>, error: ?string}
+	 * @return array{versions: list<array{version: string, changelog?: ?string, serverCompatible?: ?bool, releasedAt?: ?string, sourcePreRelease?: true, sourceLts?: true}>, error: ?string}
 	 */
 	private function listSourceVersions(string $appId, SourceBinding $binding): array {
 		$result = $this->sources->sourceRegistry->get($binding)->listVersions($appId, $binding);
@@ -536,8 +664,8 @@ class InstallerService implements InstallerServiceInterface {
 	 * through, so truncation behaviour is identical regardless of origin.
 	 *
 	 * @spec openspec/specs/changelog-visibility/spec.md
-	 * @param list<array{version:string, changelog?:?string, serverCompatible?:?bool, releasedAt?:?string}> $versions
-	 * @return list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string}>
+	 * @param list<array{version:string, changelog?:?string, serverCompatible?:?bool, releasedAt?:?string, sourcePreRelease?:true, sourceLts?:true}> $versions
+	 * @return list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string, sourcePreRelease?:true, sourceLts?:true}>
 	 */
 	private function applyChangelogTruncation(array $versions): array {
 		return array_map(
@@ -566,8 +694,8 @@ class InstallerService implements InstallerServiceInterface {
 	 * record; see "Recorded digests are binding-scoped and surfaced".
 	 *
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @param list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string}> $versions
-	 * @return list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string, recordedSha:?string}>
+	 * @param list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string, sourcePreRelease?:true, sourceLts?:true}> $versions
+	 * @return list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string, sourcePreRelease?:true, sourceLts?:true, recordedSha:?string}>
 	 */
 	private function applyRecordedSha(array $versions, SourceBinding $binding): array {
 		return array_map(
@@ -1282,6 +1410,11 @@ class InstallerService implements InstallerServiceInterface {
 			/** @var list<string>|null $orphanedMigrations */
 			$orphanedMigrations = $result['orphanedMigrations'];
 			$fields['orphanedMigrations'] = $orphanedMigrations;
+		}
+		if (array_key_exists('migrationPreview', $result)) {
+			/** @var array<string, mixed>|null $migrationPreview */
+			$migrationPreview = $result['migrationPreview'];
+			$fields['migrationPreview'] = $migrationPreview;
 		}
 
 		return $fields;
