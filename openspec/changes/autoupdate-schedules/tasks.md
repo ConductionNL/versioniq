@@ -22,7 +22,7 @@
 - [x] 3.4 Add the new strings to `l10n/en.json` and `l10n/nl.json`. Verify: `npm run check:l10n-js`.
   - en and nl; `npm run check:l10n-js` passes.
 - [x] 3.5 Extend `tests/e2e/auto-update.spec.ts`: an admin saves weekdays Mon to Fri for every kind, reloads, and sees them and the next run. Verify: the spec passes in the Playwright job.
-- [ ] 3.6 Extend `tests/e2e/jobs.spec.ts` with the forge fixture app (1.0.0, with 1.0.1, 1.1.0 and 1.2.0 served): a schedule without today's weekday installs nothing; with today added, `runJob("AutoUpdateJob")` installs; policy `minor` with patches due today and minors not due installs 1.0.1, not 1.2.0. Verify: the spec passes in the Playwright job.
+- [x] 3.6 Extend `tests/e2e/jobs.spec.ts` with the forge fixture app (1.0.0, with 1.0.1, 1.1.0 and 1.2.0 served): a schedule without today's weekday installs nothing; with today added, `runJob("AutoUpdateJob")` installs; policy `minor` with patches due today and minors not due installs 1.0.1, not 1.2.0. Verify: the spec passes in the Playwright job.
 
 ## 4. Close
 

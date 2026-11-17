@@ -113,6 +113,37 @@ test.describe("background jobs", () => {
 		expect(subj).toContain("auto_update_success");
 	});
 
+	// @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	test("a schedule installs only on its days, and per kind", async ({
+		page,
+	}) => {
+		// The window runs today (UTC), so today's ISO weekday decides.
+		const today = ((new Date().getUTCDay() + 6) % 7) + 1;
+		const otherDay = (today % 7) + 1;
+		const schedule = (patch: number, minor: number, major: number) =>
+			JSON.stringify({
+				patch: { days: [patch], monthly: false },
+				minor: { days: [minor], monthly: false },
+				major: { days: [major], monthly: false },
+			});
+		try {
+			await setPolicy(page, "minor");
+			await occ("config:app:set", "versioniq", "auto_update_enabled", "--value", "1");
+			await occ("config:app:set", "versioniq", "auto_update_window", "--value", "00:00-23:59");
+
+			await occ("config:app:set", "versioniq", "auto_update_schedule", "--value", schedule(otherDay, otherDay, otherDay));
+			await runJob("AutoUpdateJob");
+			expect(await installed(), "no kind is due today").toBe("1.0.0");
+
+			await occ("config:app:delete", "versioniq", "auto_update_last_swept_window");
+			await occ("config:app:set", "versioniq", "auto_update_schedule", "--value", schedule(today, otherDay, otherDay));
+			await runJob("AutoUpdateJob");
+			expect(await installed(), "patches due today, minors not").toBe("1.0.1");
+		} finally {
+			await occ("config:app:delete", "versioniq", "auto_update_schedule");
+		}
+	});
+
 	test("a pinned app is skipped by the auto-update job", async ({ page }) => {
 		// @e2e auto-update-policies::pinned-app-skipped
 		await setPolicy(page, "all");
