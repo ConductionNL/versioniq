@@ -23,6 +23,7 @@ use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
 use OCA\Versioniq\Service\Checks\CheckRunner;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
+use OCA\Versioniq\Service\AutoUpdate\PlanRun;
 use OCA\Versioniq\Service\AutoUpdate\SecurityCandidate;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
@@ -119,14 +120,30 @@ class AutoUpdateJob extends TimedJob {
 		}
 		$this->stores->settingsStore->markWindowSwept($openingKey);
 
+		// The weekday is the one the window opened on (autoupdate-schedules, D3);
+		// with no kind due tonight, no source is asked at all (D4).
+		$this->runDue($this->stores->settingsStore->getSchedule()->dueKinds(AutoUpdateWindow::openedOn($window, $now)));
+	}
+
+	/**
+	 * Plan and install tonight's run for the kinds the schedule lets run; nothing when none is due.
+	 *
+	 * @param list<string> $dueKinds
+	 *
+	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	 */
+	private function runDue(array $dueKinds): void {
+		if ($dueKinds === []) {
+			return;
+		}
+
 		// Plan first, then install (autoupdate-run-batching D1). The advisory
 		// snapshot and the patch policy are read once per run
 		// (autoupdate-security-first D2, D3); no stored policy reads as
 		// today's behaviour, and security fixes are planned first (D4).
-		$plan = (new AutoUpdatePlanner($this->stores, $this->install, $this->logger))->plan(
-			$this->advisorySnapshot(),
-			$this->stores->security->patchPolicyStore->read() ?? PatchPolicy::none()
-		);
+		$advisories = $this->advisorySnapshot();
+		$run = new PlanRun($advisories['rows'], $advisories['fresh'], $this->stores->security->patchPolicyStore->read() ?? PatchPolicy::none());
+		$plan = (new AutoUpdatePlanner($this->stores, $this->install, $this->logger))->planRun($run->withDueKinds($dueKinds));
 		$this->installPlanned($plan);
 		$this->stores->security->securityHolds->replace($plan->securityHolds);
 	}

@@ -25,6 +25,14 @@ final class PlanRun {
 	private array $holds = [];
 
 	/**
+	/**
+	 * The kinds of regular update the schedule lets run (autoupdate-schedules D4); every kind by default.
+	 *
+	 * @var list<string>
+	 */
+	private array $dueKinds = UpdateType::ALL;
+
+	/**
 	 * @param array<string, mixed> $rows The advisory snapshot's rows, by app id.
 	 */
 	public function __construct(
@@ -32,6 +40,29 @@ final class PlanRun {
 		public readonly bool $fresh,
 		public readonly PatchPolicy $patchPolicy,
 	) {
+	}
+
+	/**
+	 * This run, letting only the given kinds of regular update install.
+	 *
+	 * @param list<string> $dueKinds
+	 *
+ * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	 */
+	public function withDueKinds(array $dueKinds): self {
+		$run = clone $this;
+		$run->dueKinds = $dueKinds;
+
+		return $run;
+	}
+
+	/**
+	 * Whether the step from `$installedVersion` to `$candidate` is a kind the schedule lets run.
+	 *
+ * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	 */
+	public function isDue(string $installedVersion, string $candidate): bool {
+		return in_array(UpdateType::classify($installedVersion, $candidate), $this->dueKinds, true);
 	}
 
 	/**

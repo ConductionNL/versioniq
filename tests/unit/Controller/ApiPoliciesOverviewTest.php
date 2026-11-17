@@ -14,6 +14,8 @@ require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 use OCA\Versioniq\Controller\ApiController;
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\SecurityHoldStore;
 use OCA\Versioniq\Service\Policy\PatchPolicy;
 use OCA\Versioniq\Service\Policy\PatchPolicyStore;
@@ -59,6 +61,8 @@ final class ApiPoliciesOverviewTest extends TestCase {
 		$patchPolicies->method('read')->willReturn($patchPolicy);
 		$holdStore = $this->createMock(SecurityHoldStore::class);
 		$holdStore->method('read')->willReturn($holds);
+		$autoUpdateSettings = $this->createMock(AutoUpdateSettingsStore::class);
+		$autoUpdateSettings->method('getSchedule')->willReturn(AutoUpdateSchedule::everyDay());
 
 		$controller = $this->buildByName(ApiController::class, [
 			'appName' => 'versioniq',
@@ -70,6 +74,8 @@ final class ApiPoliciesOverviewTest extends TestCase {
 			'advisorySettings' => $settings,
 			'patchPolicyStore' => $patchPolicies,
 			'securityHolds' => $holdStore,
+			'autoUpdateSettingsStore' => $autoUpdateSettings,
+			'settingsStore' => $autoUpdateSettings,
 			'connectionReports' => null,
 			// ServerVersion is `readonly` and cannot be mocked.
 			'serverVersion' => (new \ReflectionClass(ServerVersion::class))->newInstanceWithoutConstructor(),

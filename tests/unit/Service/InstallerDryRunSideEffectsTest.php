@@ -290,7 +290,7 @@ final class InstallerDryRunSideEffectsTest extends TestCase {
 			$this->createMock(IUserSession::class),
 			$this->createMock(MigrationDiffer::class),
 			$this->createMock(ArtifactCache::class),
-			$runner,
+			checkRunner: $runner,
 		);
 		$release = ['download' => 'https://apps.example.org/someapp-2.0.0.tar.gz', 'version' => '2.0.0', 'certificate' => (string)$pem, 'signature' => base64_encode((string)$signature)];
 
