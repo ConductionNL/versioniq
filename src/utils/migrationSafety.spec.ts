@@ -2,7 +2,7 @@
 // Covers "Migration diff on downgrade" and "Last-known-good version record":
 // @spec openspec/specs/migration-safety/spec.md
 import { describe, expect, it, vi } from 'vitest'
-import { migrationActionText, migrationPreviewTexts, orphanedMigrationsSummary, shouldOfferLkgRollback, sizeClassAdvice } from './migrationSafety.ts'
+import { lkgRollbackTargets, migrationActionText, migrationPreviewTexts, orphanedMigrationsSummary, shouldOfferLkgRollback, sizeClassAdvice } from './migrationSafety.ts'
 
 function substitute (text: string, vars: Record<string, unknown> = {}) {
   return text.replace(/\{(\w+)\}/g, (_match: string, key: string) => String(vars[key] ?? ''))
@@ -110,5 +110,38 @@ describe('migrationPreviewTexts', () => {
 		expect(texts.noChanges).toBe('No database changes')
 		expect(texts.dataStep).toBe('Moves data; the time depends on the amount of data.')
 		expect(texts.undescribed).toBe('This step does not describe what it changes.')
+	})
+})
+
+// @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+describe('lkgRollbackTargets', () => {
+	const record = (version: string, previous?: string) => ({
+		version,
+		recordedAt: '2026-11-14T10:00:00+00:00',
+		sourceId: 'appstore',
+		previous: previous === undefined ? undefined : { version: previous, recordedAt: '2026-11-01T10:00:00+00:00', sourceId: 'appstore' },
+	})
+
+	it('offers the previous version when the last good version is installed', () => {
+		expect(lkgRollbackTargets({ installedVersion: '0.4.46', lkg: record('0.4.46', '0.4.44') }))
+			.toEqual([{ version: '0.4.44', label: 'Roll back to 0.4.44' }])
+	})
+
+	it('also offers the last good version when it differs from the installed and the previous one', () => {
+		expect(lkgRollbackTargets({ installedVersion: '0.4.48', lkg: record('0.4.46', '0.4.44') })).toEqual([
+			{ version: '0.4.44', label: 'Roll back to 0.4.44' },
+			{ version: '0.4.46', label: 'Roll back to the last good version (0.4.46)' },
+		])
+	})
+
+	it('offers a record without previous as before', () => {
+		expect(lkgRollbackTargets({ installedVersion: '1.2.0', lkg: record('1.0.0') })).toEqual([{ version: '1.0.0', label: 'Roll back to 1.0.0' }])
+		expect(lkgRollbackTargets({ installedVersion: '1.0.0', lkg: record('1.0.0') })).toEqual([])
+	})
+
+	it('offers nothing when the previous version is installed, or nothing is known', () => {
+		expect(lkgRollbackTargets({ installedVersion: '0.4.44', lkg: record('0.4.44', '0.4.44') })).toEqual([])
+		expect(lkgRollbackTargets({ installedVersion: '0.4.46', lkg: null })).toEqual([])
+		expect(lkgRollbackTargets({ installedVersion: null, lkg: record('0.4.46', '0.4.44') })).toEqual([])
 	})
 })

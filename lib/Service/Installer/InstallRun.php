@@ -23,6 +23,14 @@ use OCA\Versioniq\Service\Source\SourceBinding;
  * @spec openspec/specs/version-management/spec.md
  */
 final class InstallRun {
+	/**
+	 * The free space the pre-flight found, reported on the outcome
+	 * (safety-rollback-backup-and-preflight D2); null when it was not measured.
+	 *
+	 * @var array{fits: bool, appsFree: ?int, appsNeeded: int, tempFree: ?int, tempNeeded: int}|null
+	 */
+	public ?array $space = null;
+
 	public function __construct(
 		public readonly InstallRequest $request,
 		public SourceBinding $binding,
