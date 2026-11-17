@@ -92,7 +92,7 @@ class InstallFinalizer {
 		$this->progress?->stage(name: 'finalize');
 		$childAppId = $this->finalizeInChild($appPath, $info, $enabled, $sourceId);
 		if ($childAppId !== null) {
-			$this->rememberInstall($childAppId, $this->installedVersionOf($info), $enabled);
+			$this->rememberInstall($childAppId, ['version' => $this->installedVersionOf($info), 'enabled' => $enabled !== 'no']);
 
 			return $childAppId;
 		}
@@ -151,7 +151,7 @@ class InstallFinalizer {
 			$this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
 			$sourceId,
 		));
-		$this->rememberInstall($appId, $installedVersion, $enabled);
+		$this->rememberInstall($appId, ['version' => $installedVersion, 'enabled' => $enabled !== 'no']);
 
 		return $appId;
 	}
@@ -162,10 +162,11 @@ class InstallFinalizer {
 	 * after a successful install.
 	 *
 	 * @spec openspec/changes/audit-external-changes
+	 * @param array{version: string, enabled: bool} $seen The installed version and whether it is enabled.
 	 */
-	private function rememberInstall(string $appId, string $installedVersion, string $enabled): void {
+	private function rememberInstall(string $appId, array $seen): void {
 		try {
-			$this->seenState?->rememberApp($appId, $installedVersion, $enabled !== 'no');
+			$this->seenState?->rememberApp($appId, $seen);
 		} catch (\Throwable $error) {
 			$this->logger->warning('InstallFinalizer: could not update the seen state', ['appId' => $appId, 'message' => $error->getMessage()]);
 		}

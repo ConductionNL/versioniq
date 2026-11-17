@@ -13,6 +13,7 @@ use OCA\Versioniq\Listener\AppUpdatedListener;
 use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Audit\AuditSubject;
+use OCA\Versioniq\Service\Audit\ChangeOrigin;
 use OCA\Versioniq\Service\Audit\ExternalChangeRecorder;
 use OCA\Versioniq\Service\Audit\SeenStateStore;
 use OCA\Versioniq\Service\Audit\TriggerDescriber;
@@ -22,8 +23,6 @@ use OCP\App\Events\AppUpdateEvent;
 use OCP\App\IAppManager;
 use OCP\EventDispatcher\Event;
 use OCP\IAppConfig;
-use OCP\IUser;
-use OCP\IUserSession;
 use OCP\User\Events\UserDeletedEvent;
 use PHPUnit\Framework\TestCase;
 
@@ -83,16 +82,12 @@ final class AppUpdatedListenerTest extends TestCase {
 		$audit->method('record')->willReturnCallback(static function (AuditSubject $subject, AuditedVersions $versions, string $status, ?string $message = null) use (&$rows): void {
 			$rows[] = [$subject, $versions, $message];
 		});
-		$user = $this->createMock(IUser::class);
-		$user->method('getUID')->willReturn('bob');
-		$session = $this->createMock(IUserSession::class);
-		$session->method('getUser')->willReturn($user);
 		$bindings = $this->createMock(SourceBindingStore::class);
 		$bindings->method('get')->willReturn(null);
 		$triggers = $this->createMock(TriggerDescriber::class);
-		$triggers->method('describe')->willReturn('POST /settings/apps/update/calendar');
+		$triggers->method('origin')->willReturn(new ChangeOrigin('POST /settings/apps/update/calendar', 'bob'));
 
-		return new ExternalChangeRecorder(new SeenStateStore($config), $audit, $session, $bindings, $triggers, $this->createMock(IAppManager::class));
+		return new ExternalChangeRecorder(new SeenStateStore($config, $this->createMock(IAppManager::class)), $audit, $bindings, $triggers);
 	}
 
 	/**

@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Audit;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCP\App\IAppManager;
 use OCP\IAppConfig;
 
 /**
@@ -37,6 +38,7 @@ class SeenStateStore {
 
 	public function __construct(
 		private IAppConfig $config,
+		private IAppManager $appManager,
 	) {
 	}
 
@@ -48,19 +50,7 @@ class SeenStateStore {
 	 * @return SeenState|null
 	 */
 	public function read(): ?array {
-		$raw = $this->config->getValueString(Application::APP_ID, self::KEY, '');
-		if ($raw === '') {
-			return null;
-		}
-		try {
-			/** @var mixed $decoded */
-			$decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
-		} catch (\JsonException) {
-			return null;
-		}
-		if (!is_array($decoded)) {
-			return null;
-		}
+		$decoded = self::decode($this->config->getValueString(Application::APP_ID, self::KEY, ''));
 		/** @var mixed $serverVersion */
 		$serverVersion = $decoded['serverVersion'] ?? null;
 		/** @var mixed $apps */
@@ -76,6 +66,36 @@ class SeenStateStore {
 			'apps' => self::apps($apps),
 			'disabledByUpdate' => self::leftDisabled(is_array($leftDisabled) ? $leftDisabled : []),
 		];
+	}
+
+	/**
+	 * Every app with an installed version, enabled or not, as now seen.
+	 *
+	 * @spec openspec/changes/audit-external-changes
+	 * @return array<string, SeenApp>
+	 */
+	public function installedApps(): array {
+		$enabled = array_flip($this->appManager->getEnabledApps());
+		$apps = [];
+		/** @var mixed $version */
+		foreach ($this->config->searchValues('installed_version') as $appId => $version) {
+			if (is_scalar($version) && (string)$version !== '') {
+				$apps[$appId] = ['version' => (string)$version, 'enabled' => isset($enabled[$appId])];
+			}
+		}
+		ksort($apps);
+
+		return $apps;
+	}
+
+	/**
+	 * Stores a new version of one app, keeping whether it was seen enabled,
+	 * or asking the app manager for an app not seen before.
+	 *
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	public function rememberVersion(string $appId, string $version): void {
+		$this->rememberApp($appId, ['version' => $version, 'enabled' => $this->app($appId)['enabled'] ?? $this->appManager->isEnabledForAnyone($appId)]);
 	}
 
 	/**
@@ -115,14 +135,15 @@ class SeenStateStore {
 	 * Stores what is now seen of one app. Does nothing before the baseline.
 	 *
 	 * @spec openspec/changes/audit-external-changes
+	 * @param SeenApp $app Its version and whether it is enabled.
 	 */
-	public function rememberApp(string $appId, string $version, bool $enabled): void {
+	public function rememberApp(string $appId, array $app): void {
 		$state = $this->read();
 		if ($state === null) {
 			return;
 		}
-		$state['apps'][$appId] = ['version' => $version, 'enabled' => $enabled];
-		if ($enabled) {
+		$state['apps'][$appId] = ['version' => $app['version'], 'enabled' => $app['enabled']];
+		if ($app['enabled']) {
 			unset($state['disabledByUpdate'][$appId]);
 		}
 		$this->write($state);
@@ -151,6 +172,25 @@ class SeenStateStore {
 	 */
 	public function disabledByUpdate(): array {
 		return $this->read()['disabledByUpdate'] ?? [];
+	}
+
+	/**
+	 * The stored JSON as an array, or null when empty or unreadable.
+	 *
+	 * @return array<array-key, mixed>|null
+	 */
+	private static function decode(string $raw): ?array {
+		if ($raw === '') {
+			return null;
+		}
+		try {
+			/** @var mixed $decoded */
+			$decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+		} catch (\JsonException) {
+			return null;
+		}
+
+		return is_array($decoded) ? $decoded : null;
 	}
 
 	/**

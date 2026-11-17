@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Audit;
 
 use OCP\IRequest;
+use OCP\IUserSession;
 
 /**
  * Says what triggered a change made outside Versioniq: the command line on
@@ -32,7 +33,18 @@ class TriggerDescriber {
 
 	public function __construct(
 		private IRequest $request,
+		private IUserSession $userSession,
 	) {
+	}
+
+	/**
+	 * Who made a change in the current process, the signed-in user's uid or
+	 * `system`, and what triggered it.
+	 *
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	public function origin(): ChangeOrigin {
+		return new ChangeOrigin($this->describe(), $this->userSession->getUser()?->getUID() ?? ExternalChangeRecorder::SYSTEM);
 	}
 
 	/**
@@ -65,28 +77,34 @@ class TriggerDescriber {
 		if ($argv === []) {
 			return self::UNKNOWN;
 		}
-		$words = [basename($argv[0])];
+		$words = [basename($argv[0]), ...self::redacted(array_slice($argv, 1))];
+
+		return mb_substr(implode(' ', $words), 0, self::MAX_LENGTH);
+	}
+
+	/**
+	 * The arguments with the value of every secret option replaced.
+	 *
+	 * @param list<string> $arguments
+	 * @return list<string>
+	 */
+	private static function redacted(array $arguments): array {
+		$words = [];
 		$redactNext = false;
-		foreach (array_slice($argv, 1) as $argument) {
+		foreach ($arguments as $argument) {
 			if ($redactNext) {
 				$words[] = '[redacted]';
 				$redactNext = false;
 				continue;
 			}
-			$option = strtolower(explode('=', $argument, 2)[0]);
-			if (in_array($option, self::SECRET_OPTIONS, true)) {
-				if (str_contains($argument, '=')) {
-					$words[] = explode('=', $argument, 2)[0] . '=[redacted]';
-				} else {
-					$words[] = $argument;
-					$redactNext = true;
-				}
-				continue;
-			}
-			$words[] = $argument;
+			$name = explode('=', $argument, 2)[0];
+			$secret = in_array(strtolower($name), self::SECRET_OPTIONS, true);
+			$inline = $secret && str_contains($argument, '=');
+			$words[] = $inline ? $name . '=[redacted]' : $argument;
+			$redactNext = $secret && !$inline;
 		}
 
-		return mb_substr(implode(' ', $words), 0, self::MAX_LENGTH);
+		return $words;
 	}
 
 	/**

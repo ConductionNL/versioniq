@@ -11,10 +11,13 @@ namespace OCA\Versioniq\Tests\Unit\Service\Audit;
 
 use OCA\Versioniq\Service\Audit\TriggerDescriber;
 use OCP\IRequest;
+use OCP\IUser;
+use OCP\IUserSession;
 use PHPUnit\Framework\TestCase;
 
 /**
  * @covers \OCA\Versioniq\Service\Audit\TriggerDescriber
+ * @uses \OCA\Versioniq\Service\Audit\ChangeOrigin
  */
 final class TriggerDescriberTest extends TestCase {
 	public function testAnOccCommandIsNamedWithItsArguments(): void {
@@ -55,7 +58,26 @@ final class TriggerDescriberTest extends TestCase {
 		$previous = $_SERVER['argv'] ?? null;
 		$_SERVER['argv'] = ['/srv/nextcloud/occ', 'app:disable', 'calendar'];
 		try {
-			$this->assertSame('occ app:disable calendar', (new TriggerDescriber($request))->describe());
+			$this->assertSame('occ app:disable calendar', (new TriggerDescriber($request, $this->createMock(IUserSession::class)))->describe());
+		} finally {
+			$_SERVER['argv'] = $previous;
+		}
+	}
+
+	public function testTheOriginIsTheSignedInUserOrSystem(): void {
+		$previous = $_SERVER['argv'] ?? null;
+		$_SERVER['argv'] = ['occ', 'app:update', 'forms'];
+		try {
+			$session = $this->createMock(IUserSession::class);
+			$session->method('getUser')->willReturn(null);
+			$origin = (new TriggerDescriber($this->createMock(IRequest::class), $session))->origin();
+			$this->assertSame(['occ app:update forms', 'system'], [$origin->trigger, $origin->actor]);
+
+			$user = $this->createMock(IUser::class);
+			$user->method('getUID')->willReturn('bob');
+			$signedIn = $this->createMock(IUserSession::class);
+			$signedIn->method('getUser')->willReturn($user);
+			$this->assertSame('bob', (new TriggerDescriber($this->createMock(IRequest::class), $signedIn))->origin()->actor);
 		} finally {
 			$_SERVER['argv'] = $previous;
 		}

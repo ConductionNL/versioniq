@@ -12,8 +12,6 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Audit;
 
 use OCA\Versioniq\Service\Source\SourceBindingStore;
-use OCP\App\IAppManager;
-use OCP\IUserSession;
 
 /**
  * Writes the history rows for changes Versioniq did not make: a version that
@@ -33,10 +31,8 @@ class ExternalChangeRecorder {
 	public function __construct(
 		private SeenStateStore $seenState,
 		private AuditLogger $auditLogger,
-		private IUserSession $userSession,
 		private SourceBindingStore $bindings,
 		private TriggerDescriber $triggers,
-		private IAppManager $appManager,
 	) {
 	}
 
@@ -58,8 +54,8 @@ class ExternalChangeRecorder {
 			return false;
 		}
 
-		$this->recordUpdate($appId, $seen['version'] ?? null, $newVersion, $this->triggers->describe(), $this->actor());
-		$this->seenState->rememberApp($appId, $newVersion, $seen['enabled'] ?? $this->appManager->isEnabledForAnyone($appId));
+		$this->recordUpdate(new AppVersionChange($appId, $seen['version'] ?? null, $newVersion), $this->triggers->origin());
+		$this->seenState->rememberVersion($appId, $newVersion);
 
 		return true;
 	}
@@ -69,12 +65,12 @@ class ExternalChangeRecorder {
 	 *
 	 * @spec openspec/changes/audit-external-changes
 	 */
-	public function recordUpdate(string $appId, ?string $fromVersion, ?string $toVersion, string $trigger, string $actor): void {
+	public function recordUpdate(AppVersionChange $change, ChangeOrigin $origin): void {
 		$this->auditLogger->record(
-			new AuditSubject($actor, $appId, AuditLogger::OPERATION_EXTERNAL_UPDATE),
-			new AuditedVersions($fromVersion, $toVersion, $this->sourceId($appId)),
+			new AuditSubject($origin->actor, $change->appId, AuditLogger::OPERATION_EXTERNAL_UPDATE),
+			new AuditedVersions($change->fromVersion, $change->toVersion, $this->sourceId($change->appId)),
 			AuditLogger::STATUS_SUCCESS,
-			$trigger,
+			$origin->trigger,
 		);
 	}
 
@@ -83,45 +79,38 @@ class ExternalChangeRecorder {
 	 *
 	 * @spec openspec/changes/audit-external-changes
 	 */
-	public function recordDisable(string $appId, string $version, string $trigger, string $actor): void {
+	public function recordDisable(AppVersionChange $change, ChangeOrigin $origin): void {
 		$this->auditLogger->record(
-			new AuditSubject($actor, $appId, AuditLogger::OPERATION_EXTERNAL_DISABLE),
-			new AuditedVersions($version, $version, $this->sourceId($appId)),
+			new AuditSubject($origin->actor, $change->appId, AuditLogger::OPERATION_EXTERNAL_DISABLE),
+			new AuditedVersions($change->fromVersion, $change->toVersion, $this->sourceId($change->appId)),
 			AuditLogger::STATUS_SUCCESS,
-			$trigger,
+			$origin->trigger,
 		);
 	}
 
 	/**
-	 * Writes one `reactivate` row with its outcome.
+	 * Writes one `reactivate` row with its outcome: succeeded when $error is
+	 * null, else failed with that error.
 	 *
 	 * @spec openspec/changes/audit-external-changes
 	 */
-	public function recordReactivate(string $appId, string $version, bool $succeeded, string $message): void {
+	public function recordReactivate(AppVersionChange $change, ?string $error): void {
 		$this->auditLogger->record(
-			new AuditSubject(self::SYSTEM, $appId, AuditLogger::OPERATION_REACTIVATE),
-			new AuditedVersions(null, $version, $this->sourceId($appId)),
-			$succeeded ? AuditLogger::STATUS_SUCCESS : AuditLogger::STATUS_FAILURE,
-			$message,
+			new AuditSubject(self::SYSTEM, $change->appId, AuditLogger::OPERATION_REACTIVATE),
+			new AuditedVersions($change->fromVersion, $change->toVersion, $this->sourceId($change->appId)),
+			$error === null ? AuditLogger::STATUS_SUCCESS : AuditLogger::STATUS_FAILURE,
+			$error === null ? 'Enabled again after an update left it disabled.' : 'Could not enable the app after an update: ' . $error,
 		);
 	}
 
 	/**
-	 * The signed-in user's uid, or `system`.
+	 * Who made the change in the current process (the signed-in user's uid,
+	 * or `system`) and what triggered it.
 	 *
 	 * @spec openspec/changes/audit-external-changes
 	 */
-	public function actor(): string {
-		return $this->userSession->getUser()?->getUID() ?? self::SYSTEM;
-	}
-
-	/**
-	 * The trigger of the current process.
-	 *
-	 * @spec openspec/changes/audit-external-changes
-	 */
-	public function trigger(): string {
-		return $this->triggers->describe();
+	public function origin(): ChangeOrigin {
+		return $this->triggers->origin();
 	}
 
 	/**

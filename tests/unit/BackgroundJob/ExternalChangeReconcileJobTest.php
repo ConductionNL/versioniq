@@ -11,8 +11,12 @@ namespace OCA\Versioniq\Tests\Unit\BackgroundJob;
 
 use OCA\Versioniq\BackgroundJob\ExternalChangeReconcileJob;
 use OCA\Versioniq\Service\Advisory\ServerVersionProvider;
+use OCA\Versioniq\Service\Audit\AppVersionChange;
+use OCA\Versioniq\Service\Audit\ChangeOrigin;
+use OCA\Versioniq\Service\Audit\ExternalChangeReconciler;
 use OCA\Versioniq\Service\Audit\ExternalChangeRecorder;
 use OCA\Versioniq\Service\Audit\SeenStateStore;
+use OCA\Versioniq\Service\Reactivation\DisabledApp;
 use OCA\Versioniq\Service\Reactivation\ReactivationService;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -23,7 +27,11 @@ use Psr\Log\LoggerInterface;
 
 /**
  * @covers \OCA\Versioniq\BackgroundJob\ExternalChangeReconcileJob
+ * @covers \OCA\Versioniq\Service\Audit\ExternalChangeReconciler
  * @uses \OCA\Versioniq\Service\Audit\SeenStateStore
+ * @uses \OCA\Versioniq\Service\Audit\AppVersionChange
+ * @uses \OCA\Versioniq\Service\Audit\ChangeOrigin
+ * @uses \OCA\Versioniq\Service\Reactivation\DisabledApp
  */
 final class ExternalChangeReconcileJobTest extends TestCase {
 	private string $stored = '';
@@ -50,10 +58,10 @@ final class ExternalChangeReconcileJobTest extends TestCase {
 		$config->method('searchValues')->with('installed_version')->willReturn($versions);
 
 		$recorder = $this->createMock(ExternalChangeRecorder::class);
-		$recorder->method('recordUpdate')->willReturnCallback(function (string $appId, ?string $from, ?string $to, string $trigger, string $actor): void {
-			$this->assertSame(ExternalChangeRecorder::HOURLY_TRIGGER, $trigger);
-			$this->assertSame('system', $actor);
-			$this->updates[] = [$appId, $from, $to];
+		$recorder->method('recordUpdate')->willReturnCallback(function (AppVersionChange $change, ChangeOrigin $origin): void {
+			$this->assertSame(ExternalChangeRecorder::HOURLY_TRIGGER, $origin->trigger);
+			$this->assertSame('system', $origin->actor);
+			$this->updates[] = [$change->appId, $change->fromVersion, $change->toVersion];
 		});
 
 		$appManager = $this->createMock(IAppManager::class);
@@ -61,7 +69,9 @@ final class ExternalChangeReconcileJobTest extends TestCase {
 		$provider = $this->createMock(ServerVersionProvider::class);
 		$provider->method('current')->willReturn($server);
 
-		return new ExternalChangeReconcileJob($this->createMock(ITimeFactory::class), new SeenStateStore($config), $recorder, $this->reactivation, $appManager, $config, $provider, $this->createMock(LoggerInterface::class));
+		$reconciler = new ExternalChangeReconciler(new SeenStateStore($config, $appManager), $recorder, $this->reactivation, $provider);
+
+		return new ExternalChangeReconcileJob($this->createMock(ITimeFactory::class), $reconciler, $this->createMock(LoggerInterface::class));
 	}
 
 	private function seed(array $apps, string $server = '33.0.2'): void {
@@ -116,7 +126,7 @@ final class ExternalChangeReconcileJobTest extends TestCase {
 	public function testAnEnabledAppFoundDisabledGoesToReactivationWithThePictureFromBefore(): void {
 		$this->seed(['forms' => ['version' => '4.3.0', 'enabled' => true], 'notes' => ['version' => '1.0.0', 'enabled' => false]]);
 		$this->reactivation->expects($this->once())->method('appDisabled')
-			->with('forms', ['version' => '4.3.0', 'enabled' => true], '33.0.2', 'system', ExternalChangeRecorder::HOURLY_TRIGGER);
+			->with($this->equalTo(new DisabledApp('forms', ['version' => '4.3.0', 'enabled' => true], '33.0.2')), $this->equalTo(ChangeOrigin::hourly()));
 
 		$this->job(['forms' => '4.3.0', 'notes' => '1.0.0'], [], '34.0.0')->reconcile();
 
@@ -133,5 +143,16 @@ final class ExternalChangeReconcileJobTest extends TestCase {
 		$this->job(['forms' => '4.3.0', 'notes' => '1.0.0'], ['forms'], '34.0.0')->reconcile();
 
 		$this->assertSame(['notes'], array_keys(json_decode($this->stored, true)['disabledByUpdate']));
+	}
+
+	public function testAFailingCheckIsLoggedAndNeverEscapes(): void {
+		$reconciler = $this->createMock(ExternalChangeReconciler::class);
+		$reconciler->method('reconcile')->willThrowException(new \RuntimeException('config unavailable'));
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->expects($this->once())->method('error')->with('ExternalChangeReconcileJob: check failed', ['message' => 'config unavailable']);
+		$job = new ExternalChangeReconcileJob($this->createMock(ITimeFactory::class), $reconciler, $logger);
+
+		$run = new \ReflectionMethod($job, 'run');
+		$run->invoke($job, null);
 	}
 }

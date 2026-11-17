@@ -11,8 +11,6 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Listener;
 
-use OCA\Versioniq\Service\Audit\ExternalChangeRecorder;
-use OCA\Versioniq\Service\Audit\SeenStateStore;
 use OCA\Versioniq\Service\Reactivation\ReactivationService;
 use OCP\App\Events\AppDisableEvent;
 use OCP\EventDispatcher\Event;
@@ -32,9 +30,7 @@ use Psr\Log\LoggerInterface;
  */
 class AppDisabledListener implements IEventListener {
 	public function __construct(
-		private SeenStateStore $seenState,
 		private ReactivationService $reactivation,
-		private ExternalChangeRecorder $recorder,
 		private LoggerInterface $logger,
 	) {
 	}
@@ -48,18 +44,7 @@ class AppDisabledListener implements IEventListener {
 		}
 
 		try {
-			$state = $this->seenState->read();
-			if ($state === null) {
-				return;
-			}
-			$appId = $event->getAppId();
-			$this->reactivation->appDisabled(
-				$appId,
-				$state['apps'][$appId] ?? null,
-				$state['serverVersion'],
-				$this->recorder->actor(),
-				$this->recorder->trigger(),
-			);
+			$this->reactivation->disabledNow($event->getAppId());
 		} catch (\Throwable $error) {
 			// Best-effort: disabling an app must never fail on the history.
 			$this->logger->warning('AppDisabledListener: could not record a disable', ['message' => $error->getMessage()]);

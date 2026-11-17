@@ -11,10 +11,15 @@ namespace OCA\Versioniq\Tests\Unit\Service\Reactivation;
 
 use OCA\Versioniq\Service\AdminNotificationServices;
 use OCA\Versioniq\Service\Advisory\ServerVersionProvider;
+use OCA\Versioniq\Service\Audit\AppVersionChange;
+use OCA\Versioniq\Service\Audit\ChangeOrigin;
 use OCA\Versioniq\Service\Audit\ExternalChangeRecorder;
 use OCA\Versioniq\Service\Audit\SeenStateStore;
 use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
+use OCA\Versioniq\Service\Reactivation\DisabledApp;
+use OCA\Versioniq\Service\Reactivation\ReactivationReporter;
 use OCA\Versioniq\Service\Reactivation\ReactivationService;
+use OCA\Versioniq\Service\Reactivation\ReactivationServices;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IAppConfig;
@@ -31,6 +36,11 @@ use Psr\Log\LoggerInterface;
 /**
  * @covers \OCA\Versioniq\Service\Reactivation\ReactivationService
  * @uses \OCA\Versioniq\Service\Audit\SeenStateStore
+ * @uses \OCA\Versioniq\Service\Audit\AppVersionChange
+ * @uses \OCA\Versioniq\Service\Audit\ChangeOrigin
+ * @uses \OCA\Versioniq\Service\Reactivation\DisabledApp
+ * @uses \OCA\Versioniq\Service\Reactivation\ReactivationReporter
+ * @uses \OCA\Versioniq\Service\Reactivation\ReactivationServices
  * @uses \OCA\Versioniq\Service\AdminNotice
  * @uses \OCA\Versioniq\Service\AdminNotificationServices
  */
@@ -120,14 +130,10 @@ final class ReactivationServiceTest extends TestCase {
 		}
 
 		return new ReactivationService(
-			new SeenStateStore($config),
+			new SeenStateStore($config, $this->appManager),
 			$this->recorder,
-			$this->appManager,
-			$provider,
-			$config,
-			new AdminNotificationServices($manager, $groups, $time, $urls),
-			$this->createMock(LoggerInterface::class),
-			$store,
+			new ReactivationServices($this->appManager, $provider, $config, $store),
+			new ReactivationReporter(new AdminNotificationServices($manager, $groups, $time, $urls), $this->createMock(LoggerInterface::class)),
 		);
 	}
 
@@ -146,7 +152,7 @@ final class ReactivationServiceTest extends TestCase {
 		$this->appManager->expects($this->never())->method('enableApp');
 		$this->recorder->expects($this->never())->method('recordReactivate');
 
-		$outcome = $this->service('34.0.0', '4.3.0', true)->appDisabled('forms', $this->seen(), '33.0.2', 'system', 'found by the hourly check');
+		$outcome = $this->service('34.0.0', '4.3.0', true)->appDisabled(new DisabledApp('forms', $this->seen(), '33.0.2'), new ChangeOrigin('found by the hourly check', 'system'));
 
 		$this->assertSame(ReactivationService::NOTIFIED, $outcome);
 		$this->assertSame([[
@@ -161,9 +167,9 @@ final class ReactivationServiceTest extends TestCase {
 	public function testWithTheSwitchOnARunnableAppIsEnabledAgainAndRecorded(): void {
 		$this->automatic = true;
 		$this->appManager->expects($this->once())->method('enableApp')->with('forms');
-		$this->recorder->expects($this->once())->method('recordReactivate')->with('forms', '4.3.0', true, 'Enabled again after an update left it disabled.');
+		$this->recorder->expects($this->once())->method('recordReactivate')->with($this->equalTo(new AppVersionChange('forms', null, '4.3.0')), null);
 
-		$outcome = $this->service('34.0.0', '4.3.0', true)->appDisabled('forms', $this->seen(), '33.0.2', 'system', 'hourly');
+		$outcome = $this->service('34.0.0', '4.3.0', true)->appDisabled(new DisabledApp('forms', $this->seen(), '33.0.2'), new ChangeOrigin('hourly', 'system'));
 
 		$this->assertSame(ReactivationService::REACTIVATED, $outcome);
 		$this->assertSame([], $this->notified);
@@ -176,7 +182,7 @@ final class ReactivationServiceTest extends TestCase {
 		$this->appManager->expects($this->never())->method('enableApp');
 
 		$outcome = $this->service('34.0.0', '4.3.0', false, ['forms' => ['newestCompatibleVersion' => '4.5.0']])
-			->appDisabled('forms', $this->seen(), '33.0.2', 'system', 'hourly');
+			->appDisabled(new DisabledApp('forms', $this->seen(), '33.0.2'), new ChangeOrigin('hourly', 'system'));
 
 		$this->assertSame(ReactivationService::NOTIFIED, $outcome);
 		$this->assertSame('0', $this->notified[0]['parameters']['compatible']);
@@ -187,9 +193,9 @@ final class ReactivationServiceTest extends TestCase {
 	public function testADisableWithoutAVersionChangeIsRecordedAndLeftAlone(): void {
 		$this->automatic = true;
 		$this->appManager->expects($this->never())->method('enableApp');
-		$this->recorder->expects($this->once())->method('recordDisable')->with('forms', '4.3.0', 'POST /settings/apps/disable', 'bob');
+		$this->recorder->expects($this->once())->method('recordDisable')->with($this->equalTo(new AppVersionChange('forms', '4.3.0', '4.3.0')), $this->equalTo(new ChangeOrigin('POST /settings/apps/disable', 'bob')));
 
-		$outcome = $this->service('33.0.2', '4.3.0', true)->appDisabled('forms', $this->seen(), '33.0.2', 'bob', 'POST /settings/apps/disable');
+		$outcome = $this->service('33.0.2', '4.3.0', true)->appDisabled(new DisabledApp('forms', $this->seen(), '33.0.2'), new ChangeOrigin('POST /settings/apps/disable', 'bob'));
 
 		$this->assertSame(ReactivationService::DELIBERATE, $outcome);
 		$this->assertSame([], $this->notified);
@@ -199,9 +205,9 @@ final class ReactivationServiceTest extends TestCase {
 	public function testAFailedEnableIsRecordedAndTheAdminsAreTold(): void {
 		$this->automatic = true;
 		$this->appManager->method('enableApp')->willThrowException(new \RuntimeException('dependency missing'));
-		$this->recorder->expects($this->once())->method('recordReactivate')->with('forms', '4.4.0', false, 'Could not enable the app after an update: dependency missing');
+		$this->recorder->expects($this->once())->method('recordReactivate')->with($this->equalTo(new AppVersionChange('forms', null, '4.4.0')), 'dependency missing');
 
-		$outcome = $this->service('33.0.2', '4.4.0', true)->appDisabled('forms', $this->seen(), '33.0.2', 'system', 'hourly');
+		$outcome = $this->service('33.0.2', '4.4.0', true)->appDisabled(new DisabledApp('forms', $this->seen(), '33.0.2'), new ChangeOrigin('hourly', 'system'));
 
 		$this->assertSame(ReactivationService::NOTIFIED, $outcome);
 		// The app's own version changed, so the notice names it.
@@ -214,12 +220,26 @@ final class ReactivationServiceTest extends TestCase {
 
 		$service = $this->service('34.0.0', '4.3.0', true);
 
-		$this->assertSame(ReactivationService::IGNORED, $service->appDisabled('forms', ['version' => '4.3.0', 'enabled' => false], '33.0.2', 'system', 'hourly'));
-		$this->assertSame(ReactivationService::IGNORED, $service->appDisabled('forms', null, '33.0.2', 'system', 'hourly'));
+		$this->assertSame(ReactivationService::IGNORED, $service->appDisabled(new DisabledApp('forms', ['version' => '4.3.0', 'enabled' => false], '33.0.2'), new ChangeOrigin('hourly', 'system')));
+		$this->assertSame(ReactivationService::IGNORED, $service->appDisabled(new DisabledApp('forms', null, '33.0.2'), new ChangeOrigin('hourly', 'system')));
 		$this->assertSame([], $this->notified);
 	}
 
 	public function testAutomaticReEnablingIsOffByDefault(): void {
 		$this->assertFalse($this->service('34.0.0', '4.3.0', true)->isAutomatic());
+	}
+
+	public function testADisableNextcloudReportedUsesWhatWasSeenAndTheCurrentOrigin(): void {
+		$this->recorder->method('origin')->willReturn(new ChangeOrigin('POST /settings/apps/disable', 'bob'));
+		$this->recorder->expects($this->once())->method('recordDisable')->with($this->equalTo(new AppVersionChange('forms', '4.3.0', '4.3.0')), $this->equalTo(new ChangeOrigin('POST /settings/apps/disable', 'bob')));
+
+		$this->assertSame(ReactivationService::DELIBERATE, $this->service('33.0.2', '4.3.0', true)->disabledNow('forms'));
+	}
+
+	public function testADisableNextcloudReportedBeforeTheBaselineIsIgnored(): void {
+		$this->stored = '';
+		$this->recorder->expects($this->never())->method('recordDisable');
+
+		$this->assertNull($this->service('33.0.2', '4.3.0', true)->disabledNow('forms'));
 	}
 }

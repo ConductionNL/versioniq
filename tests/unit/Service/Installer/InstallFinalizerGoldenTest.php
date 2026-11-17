@@ -274,7 +274,7 @@ final class InstallFinalizerGoldenTest extends TestCase {
 	 */
 	public function testASuccessfulInstallIsRememberedAsSeen(): void {
 		$seen = $this->createMock(SeenStateStore::class);
-		$seen->expects(self::once())->method('rememberApp')->with('someapp', '2.0.0', true);
+		$seen->expects(self::once())->method('rememberApp')->with('someapp', ['version' => '2.0.0', 'enabled' => true]);
 
 		$outcome = $this->runCase([
 			'path' => 'plain', 'info' => ['id' => 'someapp', 'version' => '2.0.0'], 'enabled' => 'yes',

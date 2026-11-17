@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\Service\Audit;
 
 use OCA\Versioniq\Service\Audit\SeenStateStore;
+use OCP\App\IAppManager;
 use OCP\IAppConfig;
 use PHPUnit\Framework\TestCase;
 
@@ -20,8 +21,12 @@ final class SeenStateStoreTest extends TestCase {
 	/** @var array<string, string> */
 	private array $stored = [];
 
-	private function store(): SeenStateStore {
+	/** @var array<string, string> */
+	private array $installed = [];
+
+	private function store(?IAppManager $appManager = null): SeenStateStore {
 		$config = $this->createMock(IAppConfig::class);
+		$config->method('searchValues')->willReturnCallback(fn (): array => $this->installed);
 		$config->method('getValueString')->willReturnCallback(fn (string $app, string $key, string $default = ''): string => $this->stored[$key] ?? $default);
 		$config->method('setValueString')->willReturnCallback(function (string $app, string $key, string $value): bool {
 			$this->stored[$key] = $value;
@@ -29,7 +34,7 @@ final class SeenStateStoreTest extends TestCase {
 			return true;
 		});
 
-		return new SeenStateStore($config);
+		return new SeenStateStore($config, $appManager ?? $this->createMock(IAppManager::class));
 	}
 
 	private function baseline(): SeenStateStore {
@@ -60,7 +65,7 @@ final class SeenStateStoreTest extends TestCase {
 	public function testAnAppIsNotRememberedBeforeTheBaseline(): void {
 		$store = $this->store();
 
-		$store->rememberApp('forms', '4.3.0', true);
+		$store->rememberApp('forms', ['version' => '4.3.0', 'enabled' => true]);
 		$store->markDisabledByUpdate('forms', ['toVersion' => '4.4.0', 'compatible' => true, 'compatibleVersion' => null]);
 
 		$this->assertSame([], $this->stored);
@@ -69,7 +74,7 @@ final class SeenStateStoreTest extends TestCase {
 	public function testRememberingAnAppKeepsTheOthers(): void {
 		$store = $this->baseline();
 
-		$store->rememberApp('calendar', '5.2.0', false);
+		$store->rememberApp('calendar', ['version' => '5.2.0', 'enabled' => false]);
 
 		$this->assertSame(['version' => '4.3.0', 'enabled' => true], $store->app('forms'));
 		$this->assertSame(['version' => '5.2.0', 'enabled' => false], $store->app('calendar'));
@@ -80,10 +85,10 @@ final class SeenStateStoreTest extends TestCase {
 		$mark = ['toVersion' => 'Nextcloud 34', 'compatible' => false, 'compatibleVersion' => '4.4.0'];
 
 		$store->markDisabledByUpdate('forms', $mark);
-		$store->rememberApp('forms', '4.3.0', false);
+		$store->rememberApp('forms', ['version' => '4.3.0', 'enabled' => false]);
 		$this->assertSame(['forms' => $mark], $store->disabledByUpdate());
 
-		$store->rememberApp('forms', '4.3.0', true);
+		$store->rememberApp('forms', ['version' => '4.3.0', 'enabled' => true]);
 		$this->assertSame([], $store->disabledByUpdate());
 	}
 
@@ -116,5 +121,38 @@ final class SeenStateStoreTest extends TestCase {
 			'apps' => ['forms' => ['version' => '4.3.0', 'enabled' => true]],
 			'disabledByUpdate' => ['forms' => ['toVersion' => '4.4.0', 'compatible' => false, 'compatibleVersion' => null]],
 		], $this->store()->read());
+	}
+
+	public function testInstalledAppsListsEveryInstalledVersionSortedWithItsEnabledState(): void {
+		$this->installed = ['forms' => '4.3.0', 'calendar' => '5.2.0', 'broken' => ''];
+		$appManager = $this->createMock(IAppManager::class);
+		$appManager->method('getEnabledApps')->willReturn(['forms']);
+
+		$this->assertSame(
+			['calendar' => ['version' => '5.2.0', 'enabled' => false], 'forms' => ['version' => '4.3.0', 'enabled' => true]],
+			$this->store($appManager)->installedApps(),
+		);
+	}
+
+	public function testANewVersionKeepsTheEnabledStateLastSeen(): void {
+		$appManager = $this->createMock(IAppManager::class);
+		$appManager->expects($this->never())->method('isEnabledForAnyone');
+		$store = $this->store($appManager);
+		$store->write(['serverVersion' => '33.0.2', 'apps' => ['forms' => ['version' => '4.3.0', 'enabled' => false]], 'disabledByUpdate' => []]);
+
+		$store->rememberVersion('forms', '4.4.0');
+
+		$this->assertSame(['version' => '4.4.0', 'enabled' => false], $store->app('forms'));
+	}
+
+	public function testANewVersionOfAnAppNotSeenBeforeAsksTheAppManager(): void {
+		$appManager = $this->createMock(IAppManager::class);
+		$appManager->expects($this->once())->method('isEnabledForAnyone')->with('forms')->willReturn(true);
+		$store = $this->store($appManager);
+		$store->write(['serverVersion' => '33.0.2', 'apps' => [], 'disabledByUpdate' => []]);
+
+		$store->rememberVersion('forms', '4.4.0');
+
+		$this->assertSame(['version' => '4.4.0', 'enabled' => true], $store->app('forms'));
 	}
 }
