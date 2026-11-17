@@ -117,6 +117,42 @@ final class NotifierTest extends TestCase {
 		$this->assertSame($notification, $result);
 	}
 
+	public function testAGroupRunListsEveryMemberWithItsOutcome(): void {
+		$notifier = new Notifier($this->l10nFactory());
+
+		$parsed = [];
+		$notification = $this->createMock(INotification::class);
+		$notification->method('getApp')->willReturn(Application::APP_ID);
+		$notification->method('getSubject')->willReturn('auto_update_group');
+		$notification->method('getSubjectParameters')->willReturn([
+			'group' => 'Registers',
+			'members' => [
+				['appId' => 'openregister', 'version' => '2.3.4', 'outcome' => 'installed'],
+				['appId' => 'opencatalogi', 'version' => '1.2.1', 'outcome' => 'failed'],
+				['appId' => 'woo', 'version' => '3.0.1', 'outcome' => 'not_attempted'],
+			],
+		]);
+		$notification->expects($this->once())->method('setParsedSubject')->willReturnCallback(
+			function (string $subject) use (&$parsed, $notification): INotification {
+				$parsed['subject'] = $subject;
+				return $notification;
+			}
+		);
+		$notification->expects($this->once())->method('setParsedMessage')->willReturnCallback(
+			function (string $message) use (&$parsed, $notification): INotification {
+				$parsed['message'] = $message;
+				return $notification;
+			}
+		);
+
+		$notifier->prepare($notification, 'en');
+
+		$this->assertSame([
+			'subject' => 'Update group Registers',
+			'message' => "openregister: updated to 2.3.4\nopencatalogi: update to 1.2.1 failed\nwoo: not attempted",
+		], $parsed);
+	}
+
 	public function testUnknownSubjectThrows(): void {
 		$notifier = new Notifier($this->l10nFactory());
 
@@ -206,6 +242,58 @@ final class NotifierTest extends TestCase {
 	}
 
 	/**
+	 * Prepares one `app_left_disabled` notification and returns its parsed subject and message.
+	 *
+	 * @param array<string, string> $parameters
+	 * @return array{0: string, 1: string}
+	 */
+	private function leftDisabled(array $parameters): array {
+		$parsed = ['', ''];
+		$notification = $this->createMock(INotification::class);
+		$notification->method('getApp')->willReturn(Application::APP_ID);
+		$notification->method('getSubject')->willReturn('app_left_disabled');
+		$notification->method('getSubjectParameters')->willReturn($parameters);
+		$notification->method('setParsedSubject')->willReturnCallback(function (string $text) use ($notification, &$parsed): INotification {
+			$parsed[0] = $text;
+
+			return $notification;
+		});
+		$notification->method('setParsedMessage')->willReturnCallback(function (string $text) use ($notification, &$parsed): INotification {
+			$parsed[1] = $text;
+
+			return $notification;
+		});
+
+		(new Notifier($this->l10nFactory()))->prepare($notification, 'en');
+
+		return $parsed;
+	}
+
+	/**
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	public function testAnAppLeftDisabledThatRunsSaysToEnableIt(): void {
+		$this->assertSame(
+			['An update left an app disabled', 'forms was left disabled by the update from Nextcloud 33 to Nextcloud 34. It runs on this server: enable it.'],
+			$this->leftDisabled(['app' => 'forms', 'fromVersion' => 'Nextcloud 33', 'toVersion' => 'Nextcloud 34', 'compatible' => '1', 'serverMajor' => '34', 'compatibleVersion' => '']),
+		);
+	}
+
+	/**
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	public function testAnAppLeftDisabledThatDoesNotRunNamesTheServerAndTheVersionThatDoes(): void {
+		$this->assertSame(
+			'hermiq was left disabled by the update from Nextcloud 33 to Nextcloud 34. It does not run on Nextcloud 34.',
+			$this->leftDisabled(['app' => 'hermiq', 'fromVersion' => 'Nextcloud 33', 'toVersion' => 'Nextcloud 34', 'compatible' => '0', 'serverMajor' => '34', 'compatibleVersion' => ''])[1],
+		);
+		$this->assertSame(
+			'hermiq was left disabled by the update from Nextcloud 33 to Nextcloud 34. It does not run on Nextcloud 34; version 1.5.0 does.',
+			$this->leftDisabled(['app' => 'hermiq', 'fromVersion' => 'Nextcloud 33', 'toVersion' => 'Nextcloud 34', 'compatible' => '0', 'serverMajor' => '34', 'compatibleVersion' => '1.5.0'])[1],
+		);
+	}
+
+	/**
 	 * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-admins-are-notified-of-new-releases-in-the-scope-they-choose
 	 */
 	public function testNewReleaseNamesTheAppAndVersionAndSaysWhenItDoesNotRunHere(): void {
@@ -253,5 +341,25 @@ final class NotifierTest extends TestCase {
 			'alice assigned advisory GHSA-1 for openregister to you. Review it on the Versioniq Advisories tab.',
 			'alice assigned advisory GHSA-1 for the Nextcloud server to you. Review it on the Versioniq Advisories tab.',
 		], $messages);
+	}
+
+	/**
+	 * The server end-of-life warning names the major, the date and the days
+	 * left (inventory-lifecycle-signals, design D3).
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-admins-are-warned-before-the-server-leaves-support
+	 */
+	public function testServerEolNamesTheMajorTheDateAndTheDaysLeft(): void {
+		$notifier = new Notifier($this->l10nFactory());
+		$notification = $this->createMock(INotification::class);
+		$notification->method('getApp')->willReturn(Application::APP_ID);
+		$notification->method('getSubject')->willReturn('server_eol');
+		$notification->method('getSubjectParameters')->willReturn(['major' => '31', 'date' => '2026-06-30', 'daysRemaining' => 90]);
+		$notification->expects($this->once())->method('setParsedSubject')->with('Nextcloud 31 reaches end of life soon')->willReturnSelf();
+		$notification->expects($this->once())->method('setParsedMessage')
+			->with('Nextcloud 31 stops receiving updates on 2026-06-30, in 90 days. Plan the upgrade to a maintained version.')
+			->willReturnSelf();
+
+		$this->assertSame($notification, $notifier->prepare($notification, 'en'));
 	}
 }

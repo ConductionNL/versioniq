@@ -49,6 +49,8 @@ class InstanceSettings implements InstanceSettingsInterface {
 	public const KEY_ADVISORY_FEED = 'advisory.feed_base';
 	/** How many release lines an app may fall behind; absent means off (inventory-pending-updates D3). */
 	public const KEY_MAX_LINES_BEHIND = 'update.max_lines_behind';
+	/** Whether apps an update left disabled are enabled again when they run (audit-external-changes). */
+	public const KEY_REACTIVATE_AUTO = 'reactivate.auto';
 	/** Whether Discover also searches public GitHub; read by GithubSearchDiscovery (sources-trust-audit-and-offline-feed). */
 	public const KEY_GITHUB_SEARCH = 'discovery.github_search_enabled';
 
@@ -88,7 +90,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, eolFeedUrl: string, eolFeedOff: bool, eolFeedDefault: string, ncscFeedUrl: string, ncscFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int, notifyUsersOnUpdate: bool}
+	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, eolFeedUrl: string, eolFeedOff: bool, eolFeedDefault: string, ncscFeedUrl: string, ncscFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, reactivateAuto: bool, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int, notifyUsersOnUpdate: bool}
 	 */
 	public function read(): array {
 		$retention = $this->config->getValueInt(Application::APP_ID, PruneAuditJob::CONFIG_KEY_RETENTION_DAYS, PruneAuditJob::DEFAULT_RETENTION_DAYS);
@@ -116,6 +118,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 			'ncscFeedDefault' => NcscAdvisoryFeed::DEFAULT_BASE,
 			'maxLinesBehind' => $this->maxLinesBehind(),
 			'maxLinesBehindMax' => self::MAX_LINES_BEHIND,
+			'reactivateAuto' => $this->config->getValueBool(Application::APP_ID, self::KEY_REACTIVATE_AUTO, false),
 			'githubSearchEnabled' => $this->config->getValueString(Application::APP_ID, self::KEY_GITHUB_SEARCH, 'false') === 'true',
 			...$this->feedSource(),
 			'notifyUsersOnUpdate' => $this->config->getValueBool(Application::APP_ID, self::KEY_NOTIFY_USERS_ON_UPDATE, true),
@@ -138,6 +141,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 		$ints = $this->validatedInts($fields);
 		$lagLimit = $this->validatedLagLimit($fields);
 		$urls = $this->validatedUrls($fields);
+		$reactivate = self::validatedSwitch($fields, 'reactivateAuto', 'Automatic re-enabling');
 		$githubSearch = self::validatedSwitch($fields, 'githubSearchEnabled', 'GitHub search');
 		$notify = self::validatedSwitch($fields, 'notifyUsersOnUpdate', 'Telling users about updates');
 		$feedSource = self::validatedFeedSource($fields);
@@ -159,6 +163,9 @@ class InstanceSettings implements InstanceSettingsInterface {
 		foreach ($urls as $key => $value) {
 			$this->storeOrClear($key, $value);
 		}
+		if ($reactivate !== null) {
+			$this->config->setValueBool(Application::APP_ID, self::KEY_REACTIVATE_AUTO, $reactivate === 'true');
+		}
 		if ($eolFeed !== null) {
 			// Unlike the other addresses, an empty end-of-life feed is kept:
 			// it switches the warnings off instead of falling back to the default.
@@ -176,7 +183,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 	 */
 	private static function appliedFields(array $fields): array {
 		return array_values(array_filter(
-			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', 'notifyUsersOnUpdate', ...array_keys(self::URL_FIELDS), 'githubSearchEnabled', 'advisoryFeedSource', 'eolFeedUrl'],
+			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', 'notifyUsersOnUpdate', ...array_keys(self::URL_FIELDS), 'reactivateAuto', 'githubSearchEnabled', 'advisoryFeedSource', 'eolFeedUrl'],
 			static fn (string $field): bool => isset($fields[$field]),
 		));
 	}

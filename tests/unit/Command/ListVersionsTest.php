@@ -118,6 +118,56 @@ final class ListVersionsTest extends TestCase {
 		self::assertSame($facts, array_intersect_key($decoded['availableVersions'][0], $facts));
 	}
 
+	public function testHumanListingSaysWhetherEachVersionIsOnTheChannel(): void {
+		$installer = $this->createMock(InstallerService::class);
+		$installer->method('getAppVersions')->willReturn([
+			'installedVersion' => '1.0.0',
+			'availableVersions' => [
+				['version' => '2.0.0-beta.1', 'changelog' => null, 'recordedSha' => null, 'serverCompatible' => true, 'preRelease' => true, 'onChannel' => false],
+				['version' => '1.1.0', 'changelog' => null, 'recordedSha' => null, 'serverCompatible' => true, 'preRelease' => false, 'onChannel' => true],
+				['version' => '1.0.5', 'changelog' => null, 'recordedSha' => null, 'serverCompatible' => true],
+			],
+			'versions' => [],
+			'source' => 'appstore',
+			'sourceId' => 'appstore',
+			'channel' => 'stable',
+			'statusCode' => Http::STATUS_OK,
+			'hasError' => false,
+		]);
+
+		$tester = new CommandTester(new ListVersions($installer));
+		self::assertSame(0, $tester->execute(['appId' => 'deck']));
+		$display = $tester->getDisplay();
+
+		self::assertStringContainsString('Release channel: stable', $display);
+		self::assertStringContainsString('On the channel', $display);
+		self::assertMatchesRegularExpression('/\|\s*2\.0\.0-beta\.1\s*\|\s*newer\s*\|\s*yes\s*\|\s*no, pre-release\s*\|/', $display);
+		self::assertMatchesRegularExpression('/\|\s*1\.1\.0\s*\|\s*newer\s*\|\s*yes\s*\|\s*yes\s*\|/', $display);
+		self::assertMatchesRegularExpression('/\|\s*1\.0\.5\s*\|\s*newer\s*\|\s*yes\s*\|\s*unknown\s*\|/', $display);
+	}
+
+	public function testJsonListingCarriesTheChannelFields(): void {
+		$installer = $this->createMock(InstallerService::class);
+		$installer->method('getAppVersions')->willReturn([
+			'installedVersion' => '1.0.0',
+			'availableVersions' => [['version' => '1.1.0-rc1', 'changelog' => null, 'recordedSha' => null, 'preRelease' => true, 'onChannel' => true]],
+			'versions' => [],
+			'source' => 'appstore',
+			'sourceId' => 'appstore',
+			'channel' => 'beta',
+			'statusCode' => Http::STATUS_OK,
+			'hasError' => false,
+		]);
+
+		$tester = new CommandTester(new ListVersions($installer));
+		self::assertSame(0, $tester->execute(['appId' => 'deck', '--json' => true]));
+		/** @var array<string, mixed> $decoded */
+		$decoded = json_decode($tester->getDisplay(), true, 512, JSON_THROW_ON_ERROR);
+
+		self::assertSame('beta', $decoded['channel']);
+		self::assertSame(['version' => '1.1.0-rc1', 'changelog' => null, 'recordedSha' => null, 'preRelease' => true, 'onChannel' => true], $decoded['availableVersions'][0]);
+	}
+
 	public function testJsonListingEmitsMachineReadableEnvelopeWithRequiredFields(): void {
 		$installer = $this->createMock(InstallerService::class);
 		$installer->method('getAppVersions')->willReturn([

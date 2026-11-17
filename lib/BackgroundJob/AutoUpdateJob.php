@@ -14,8 +14,11 @@ namespace OCA\Versioniq\BackgroundJob;
 
 use OCA\Versioniq\Kernel\Contracts\AttemptLedgerInterface;
 use OCA\Versioniq\Kernel\Contracts\AutoUpdateNotifierInterface;
+use OCA\Versioniq\Service\Audit\AuditNote;
 use OCA\Versioniq\Service\Audit\AuditOrigin;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateMember;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlan;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
@@ -167,26 +170,113 @@ class AutoUpdateJob extends TimedJob {
 
 	/**
 	 * Install every member of the plan that will install, one app at a time.
+	 * Members of an update group install in the group's order; at the first
+	 * failure the group stops and the members after it are not attempted, so
+	 * they are not written to the ledger and plan again next run (D3). A
+	 * group's installs are audited as "Update group {name}" and reported in
+	 * one notification per group instead of one per app.
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
 	 */
 	private function installPlanned(AutoUpdatePlan $plan): void {
+		/** @var array<string, list<array{appId: string, version: string, outcome: string}>> $groupOutcomes */
+		$groupOutcomes = [];
+		/** @var array<string, true> $stopped */
+		$stopped = [];
 		foreach ($plan->installable() as $member) {
-			try {
-				$this->attemptInstall(
-					new InstallTarget($member->appId, (string)$member->candidate, null),
-					(string)$member->installedVersion
-				);
-			} catch (\Throwable $error) {
-				// Per-app isolation — see "the job MUST proceed to the next app
-				// after any failure".
-				$this->logger->warning('AutoUpdateJob: failed to process an app', [
-					'appId' => $member->appId,
-					'message' => $error->getMessage(),
-				]);
+			$outcome = $this->runMember($member, $stopped);
+			if ($outcome !== null) {
+				$groupOutcomes[(string)$member->group][] = $outcome;
 			}
+		}
+
+		foreach ($groupOutcomes as $group => $outcomes) {
+			$this->notifier->notifyGroup($group, $outcomes);
 		}
 	}
 
-	private function attemptInstall(InstallTarget $target, string $installedVersion): void {
+	/**
+	 * Installs one member; for a group member, the outcome its group reports.
+	 * A group stops at its first failure: the members after it are not attempted.
+	 *
+	 * @param array<string, true> $stopped The groups that stopped, updated here.
+	 *
+	 * @return array{appId: string, version: string, outcome: string}|null Null for an app in no group.
+	 */
+	private function runMember(AutoUpdateMember $member, array &$stopped): ?array {
+		$group = $member->group;
+		if ($group === null) {
+			$this->installMember($member);
+			return null;
+		}
+
+		if (isset($stopped[$group])) {
+			return self::groupOutcome($member, AutoUpdateNotifier::OUTCOME_NOT_ATTEMPTED);
+		}
+
+		$installed = AuditNote::during('Update group ' . $group, fn (): bool => $this->installMember($member));
+		if (!$installed) {
+			$stopped[$group] = true;
+		}
+
+		return self::groupOutcome($member, $installed ? AutoUpdateNotifier::OUTCOME_INSTALLED : AutoUpdateNotifier::OUTCOME_FAILED);
+	}
+
+	/**
+	 * One line of a group's outcome.
+	 *
+	 * @return array{appId: string, version: string, outcome: string}
+	 */
+	private static function groupOutcome(AutoUpdateMember $member, string $outcome): array {
+		return ['appId' => $member->appId, 'version' => (string)$member->candidate, 'outcome' => $outcome];
+	}
+
+	/**
+	 * Installs one member; whether it installed. An error is logged and
+	 * counts as a failure, and the run moves on.
+	 */
+	private function installMember(AutoUpdateMember $member): bool {
+		try {
+			return $this->attemptInstall(
+				new InstallTarget($member->appId, (string)$member->candidate, null),
+				(string)$member->installedVersion,
+				$member->group === null
+			);
+		} catch (\Throwable $error) {
+			// Per-app isolation — see "the job MUST proceed to the next app
+			// after any failure".
+			$this->logger->warning('AutoUpdateJob: failed to process an app', [
+				'appId' => $member->appId,
+				'message' => $error->getMessage(),
+			]);
+
+			return false;
+		}
+	}
+
+	/**
+	 * Installs the target and records the attempt; whether it installed.
+	 * The per-app notification is sent only when $notify is set: a group
+	 * member is reported in its group's notification.
+	 */
+	private function attemptInstall(InstallTarget $target, string $installedVersion, bool $notify = true): bool {
+		[$installed, $payload] = $this->installAndRecord($target);
+		if ($notify && $installed) {
+			$this->notifier->notifySuccess($target->appId, $installedVersion, self::versionInstalled($payload, $target));
+		}
+		if ($notify && !$installed) {
+			$this->notifyFailure($target, $payload);
+		}
+
+		return $installed;
+	}
+
+	/**
+	 * Installs the target and records the attempt in the ledger.
+	 *
+	 * @return array{0: bool, 1: array<array-key, mixed>} Whether it installed, and the installer's payload.
+	 */
+	private function installAndRecord(InstallTarget $target): array {
 		$installResult = $this->install->installerService->installAppVersion(new InstallRequest(
 			$target,
 			new InstallOptions(false, false, false, false),
@@ -196,16 +286,11 @@ class AutoUpdateJob extends TimedJob {
 		$at = $this->time->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM);
 		$statusCode = $installResult['statusCode'] ?? Http::STATUS_INTERNAL_SERVER_ERROR;
 		$payload = $installResult['payload'] ?? [];
+		$installed = $statusCode >= Http::STATUS_OK && $statusCode < Http::STATUS_MULTIPLE_CHOICES;
+		$outcome = $installed ? AttemptLedgerInterface::OUTCOME_SUCCESS : AttemptLedgerInterface::OUTCOME_FAILURE;
+		$this->stores->attemptLedger->record($target->appId, $target->version, $outcome, $at);
 
-		if ($statusCode >= Http::STATUS_OK && $statusCode < Http::STATUS_MULTIPLE_CHOICES) {
-			$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedgerInterface::OUTCOME_SUCCESS, $at);
-			$this->notifier->notifySuccess($target->appId, $installedVersion, self::versionInstalled($payload, $target));
-
-			return;
-		}
-
-		$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedgerInterface::OUTCOME_FAILURE, $at);
-		$this->notifyFailure($target, $payload);
+		return [$installed, $payload];
 	}
 
 	/**

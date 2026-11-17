@@ -34,4 +34,14 @@ interface AutoUpdateNotifierInterface {
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 */
 	public function notifyFailure(string $appId, string $targetVersion, string $category, string $hint): void;
+
+	/**
+	 * Notifies admins once for a group run, listing every member with its
+	 * outcome; group members get no per-app notification.
+	 *
+	 * @param list<array{appId: string, version: string, outcome: string}> $outcomes In install order.
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	public function notifyGroup(string $group, array $outcomes): void;
 }
