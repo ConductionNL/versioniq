@@ -21,6 +21,15 @@ vi.mock('@nextcloud/vue/components/NcNoteCard', () => ({ default: { name: 'NcNot
 vi.mock('@nextcloud/vue/components/NcPasswordField', () => ({ default: { name: 'NcPasswordField', template: '<div><slot /></div>' } }))
 vi.mock('@nextcloud/vue/components/NcSelect', () => ({ default: { name: 'NcSelect', template: '<div><slot /></div>' } }))
 vi.mock('@nextcloud/vue/components/NcTextField', () => ({ default: { name: 'NcTextField', template: '<div><slot /></div>' } }))
+// install-live-progress: the progress checklist polls on its own; its own spec covers it.
+vi.mock('./components/InstallProgress.vue', () => ({ default: { name: 'InstallProgress', render: () => null } }))
+// A fixed progress token, so the recorded install URLs stay the same between runs.
+vi.spyOn(globalThis.crypto, 'getRandomValues').mockImplementation(<T extends ArrayBufferView | null>(array: T): T => {
+	if (array instanceof Uint8Array) {
+		array.fill(7)
+	}
+	return array
+})
 
 type Recorded = { url: string, method?: string, body?: unknown }
 
@@ -107,17 +116,17 @@ describe('install request', () => {
 			  {
 			    "body": "{"version":"5.0.0"}",
 			    "method": "POST",
-			    "url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions/5.0.0/install?debug=0&dryRun=1&targetVersion=5.0.0&allowDowngrade=1&format=json",
+			    "url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions/5.0.0/install?debug=0&dryRun=1&targetVersion=5.0.0&progressToken=07070707070707070707070707070707&allowDowngrade=1&format=json",
 			  },
 			  {
 			    "body": "{"version":"5.0.0"}",
 			    "method": "POST",
-			    "url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions/5.0.0/install?debug=0&dryRun=1&targetVersion=5.0.0&overridePin=unpin&allowDowngrade=1&format=json",
+			    "url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions/5.0.0/install?debug=0&dryRun=1&targetVersion=5.0.0&progressToken=07070707070707070707070707070707&overridePin=unpin&allowDowngrade=1&format=json",
 			  },
 			  {
 			    "body": "{"version":"5.0.0"}",
 			    "method": "POST",
-			    "url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions/5.0.0/install?debug=0&dryRun=1&targetVersion=5.0.0&acceptNewSha=1&allowDowngrade=1&format=json",
+			    "url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions/5.0.0/install?debug=0&dryRun=1&targetVersion=5.0.0&progressToken=07070707070707070707070707070707&acceptNewSha=1&allowDowngrade=1&format=json",
 			  },
 			]
 		`)
@@ -136,7 +145,7 @@ describe('install request', () => {
 			  {
 			    "body": "{"version":"1.2.0"}",
 			    "method": "POST",
-			    "url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/deck/versions/1.2.0/install?debug=0&dryRun=0&targetVersion=1.2.0&format=json",
+			    "url": "http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/deck/versions/1.2.0/install?debug=0&dryRun=0&targetVersion=1.2.0&progressToken=07070707070707070707070707070707&format=json",
 			  },
 			  {
 			    "body": "{"version":"1.2.0"}",

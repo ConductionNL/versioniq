@@ -12,8 +12,10 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Api;
 
 use OCA\Versioniq\Service\Cache\ArtifactCache;
+use OCA\Versioniq\Service\Installer\InstallProgress;
 use OCA\Versioniq\Service\InstallerService;
 use OCP\App\IAppManager;
+use OCP\ISession;
 use OCP\ServerVersion;
 
 /**
@@ -28,6 +30,10 @@ final class InstallCollaborators {
 		public readonly ServerVersion $serverVersion,
 		public readonly IAppManager $appManager,
 		public readonly ArtifactCache $artifactCache,
+		/** install-live-progress: the stage record the page polls; null in hand-built tests. */
+		public readonly ?InstallProgress $progress = null,
+		/** install-live-progress: closed before an install so progress polls are not blocked by its lock. */
+		public readonly ?ISession $session = null,
 	) {
 	}
 }
