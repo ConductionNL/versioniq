@@ -272,7 +272,7 @@ class ExternalReleaseInstallerService {
 	/**
 	 * The stored token for the binding's download; none for an uploaded archive.
 	 */
-	private function downloadToken(ExternalInstallRun $run): ?string {
+	private function downloadToken(ExternalInstallRun $run): ?\OCA\Versioniq\Db\Pat {
 		return $this->localArchive === null ? $this->resolveAuth($run->binding) : null;
 	}
 
