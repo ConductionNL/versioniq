@@ -12,12 +12,13 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Api;
 
 use OCA\Versioniq\Db\AuditEntryMapper;
+use OCA\Versioniq\Service\Advisory\LibraryAdvisoryStore;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
 use OCA\Versioniq\Service\Release\KnownIssueStore;
 
 /**
  * What the read-only report endpoints draw on: the stored reports, the
- * discovery search and the audit log.
+ * discovery search, the audit log and the bundled-library snapshot.
  *
  * @psalm-api
  */
@@ -27,6 +28,8 @@ final class ReportCollaborators {
 		public readonly DiscoveryAggregator $discoveryAggregator,
 		public readonly AuditEntryMapper $auditEntryMapper,
 		public readonly ?KnownIssueStore $knownIssues = null,
+		// Optional: the bundled-library snapshot (advisories-bundled-libraries).
+		public readonly ?LibraryAdvisoryStore $libraryAdvisoryStore = null,
 	) {
 	}
 }

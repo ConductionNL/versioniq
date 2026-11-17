@@ -30,6 +30,7 @@ use OCA\Versioniq\Service\Installer\ReleaseInstall;
 use OCA\Versioniq\Service\Installer\ReleaseInstallers;
 use OCA\Versioniq\Service\Installer\ServerAccess;
 use OCA\Versioniq\Service\Installer\ShaMismatchException;
+use OCA\Versioniq\Service\Inventory\SbomArchive;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Release\ReleaseNotesReader;
 use OCA\Versioniq\Service\Source\AppStoreSource;
@@ -81,6 +82,8 @@ class InstallerService implements InstallerServiceInterface {
 		private InstallState $state,
 		private IUserSession $userSession,
 		private ITimeFactory $timeFactory,
+		// Optional: keeps an SBOM of the state each real install produced (inventory-export-sbom-metrics D4).
+		private ?SbomArchive $sbomArchive = null,
 		private ?VersionChannels $channels = null,
 	) {
 	}
@@ -1291,9 +1294,25 @@ class InstallerService implements InstallerServiceInterface {
 			// After the pin is settled, so our own listener does not read a
 			// re-pinned install as drift.
 			$this->dispatchUpdateEvent($install);
+			$this->archiveSbom($appId);
 		}
 
 		return $this->installEnvelope(Http::STATUS_OK, $payload);
+	}
+
+	/**
+	 * Keeps an SBOM of the state the install produced. Never reaches the
+	 * install: the archive logs its own failures, and anything it still throws
+	 * stops here.
+	 *
+	 * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-every-update-leaves-an-sbom-of-the-state-it-produced
+	 */
+	private function archiveSbom(string $appId): void {
+		try {
+			$this->sbomArchive?->writeFor($appId);
+		} catch (\Throwable) {
+			// The archive already logged it; the install result stands.
+		}
 	}
 
 	/**

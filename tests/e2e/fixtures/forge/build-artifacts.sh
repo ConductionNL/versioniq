@@ -31,10 +31,32 @@ infoxml() { # appid version [min-version max-version]
 XML
 }
 
+# A Composer 2 manifest naming one bundled PHP library, so the bundled-library
+# check (advisories-bundled-libraries) has something to ask the OSV double about.
+# The OSV double in server.mjs knows an advisory for exactly this version.
+manifest() { # appdir
+  mkdir -p "$1/vendor/composer"
+  cat > "$1/vendor/composer/installed.json" <<'JSON'
+{
+    "packages": [
+        {
+            "name": "vendor/library",
+            "version": "2.4.3",
+            "version_normalized": "2.4.3.0",
+            "type": "library"
+        }
+    ],
+    "dev": false,
+    "dev-package-names": []
+}
+JSON
+}
+
 make() { # filename appid infoversion [extrabyte]
   local file="$1" appid="$2" ver="$3" extra="${4:-}"
   rm -rf "$tmp/build"; mkdir -p "$tmp/build/$appid/appinfo"
   infoxml "$appid" "$ver" > "$tmp/build/$appid/appinfo/info.xml"
+  [ "$appid" = fixtureapp ] && manifest "$tmp/build/$appid"
   # optional extra byte to make otherwise-identical archives differ (TOFU tamper)
   [ -n "$extra" ] && printf '%s' "$extra" > "$tmp/build/$appid/appinfo/.variant"
   tar -C "$tmp/build" -czf "$OUT/$file" "$appid"
@@ -45,6 +67,7 @@ make_with_migration() { # filename appid infoversion migrationclass
   local file="$1" appid="$2" ver="$3" mig="$4"
   rm -rf "$tmp/build"; mkdir -p "$tmp/build/$appid/appinfo" "$tmp/build/$appid/lib/Migration"
   infoxml "$appid" "$ver" > "$tmp/build/$appid/appinfo/info.xml"
+  manifest "$tmp/build/$appid"
   # A no-op migration step so this version's archive carries a Version*.php the
   # migration-diff can compare against an installed copy that lacks it.
   cat > "$tmp/build/$appid/lib/Migration/$mig.php" <<PHP
@@ -89,6 +112,7 @@ make_bad_finalize() { # filename appid version
   local file="$1" appid="$2" ver="$3"
   rm -rf "$tmp/build"; mkdir -p "$tmp/build/$appid/appinfo" "$tmp/build/$appid/lib/Migration"
   infoxml "$appid" "$ver" > "$tmp/build/$appid/appinfo/info.xml"
+  manifest "$tmp/build/$appid"
   cat > "$tmp/build/$appid/lib/Migration/Version1030Date20260101000000.php" <<PHP
 <?php
 namespace OCA\\ForgeFixtureApp\\Migration;
@@ -106,4 +130,17 @@ PHP
 }
 make_bad_finalize fixtureapp-1.3.0.tar.gz fixtureapp 1.3.0
 
-echo "built artifacts in $OUT:"; ls -1 "$OUT" | grep -v '.sha256$'
+# A self-signed certificate for the fixture's https listener. The OSV base
+# (`advisory.osv_api_base`) is https only, so the OSV double must speak TLS; the
+# bootstrap scripts import this certificate into Nextcloud's trust store.
+# Generated once and kept, so a re-run does not invalidate an imported copy.
+if [ ! -s "$OUT/tls/fixture.crt" ] || [ ! -s "$OUT/tls/fixture.key" ]; then
+  mkdir -p "$OUT/tls"
+  openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
+    -subj "/CN=forge-fixture" \
+    -addext "subjectAltName=DNS:forge-fixture,DNS:localhost,IP:127.0.0.1" \
+    -keyout "$OUT/tls/fixture.key" -out "$OUT/tls/fixture.crt" >/dev/null 2>&1
+  chmod 644 "$OUT/tls/fixture.key" "$OUT/tls/fixture.crt"
+fi
+
+echo "built artifacts in $OUT:"; ls -1 "$OUT" | grep -v '.sha256$' | grep -v '^tls$'
