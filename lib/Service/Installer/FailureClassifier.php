@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Installer;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\FailureClassifierInterface;
 use OCP\AppFramework\Http;
 use OCP\IL10N;
 use OCP\L10N\IFactory;
@@ -30,38 +31,7 @@ use Throwable;
  * @spec openspec/specs/version-management/spec.md
  * @psalm-api
  */
-class FailureClassifier {
-	public const CATEGORY_PREFLIGHT_PERMISSION = 'preflight_permission';
-	public const CATEGORY_DOWNLOAD = 'download';
-	public const CATEGORY_CHECKSUM_MISMATCH = 'checksum_mismatch';
-	/**
-	 * A recorded (trust-on-first-use) SHA-256 mismatch — distinct from
-	 * {@see CATEGORY_CHECKSUM_MISMATCH} (the source-published sibling
-	 * checksum): this is a history check the source cannot rewrite. See
-	 * "Recorded SHA-256 enforced on reinstall".
-	 */
-	public const CATEGORY_SHA_MISMATCH = 'sha_mismatch';
-	public const CATEGORY_EXTRACT = 'extract';
-	public const CATEGORY_APPID_MISMATCH = 'appid_mismatch';
-	public const CATEGORY_VERSION_MISMATCH = 'version_mismatch';
-	public const CATEGORY_INCOMPATIBLE = 'incompatible';
-	public const CATEGORY_FILESYSTEM = 'filesystem';
-	public const CATEGORY_FINALIZE = 'finalize';
-	/**
-	 * A downgrade requested without `allowDowngrade: true` — see "Server-side
-	 * downgrade guard". Distinct from every other category: nothing was
-	 * attempted (no download, no filesystem change), the request is simply
-	 * refused pending acknowledgement.
-	 */
-	public const CATEGORY_DOWNGRADE_GUARD = 'downgrade_guard';
-	/**
-	 * A dry run or an update check that must pass before an automatic install
-	 * failed, so the nightly job did not install the version; see "The
-	 * nightly job installs only after the attached checks pass".
-	 */
-	public const CATEGORY_CHECKS_FAILED = 'checks_failed';
-	public const CATEGORY_UNKNOWN = 'unknown';
-
+class FailureClassifier implements FailureClassifierInterface {
 	/**
 	 * Tri-state outcome of the post-swap restore attempt, used to pick an honest
 	 * finalize-failure hint. A fresh install (no prior version) must not be told
@@ -135,6 +105,7 @@ class FailureClassifier {
 	public function httpStatusFor(string $category): int {
 		return match ($category) {
 			self::CATEGORY_PREFLIGHT_PERMISSION,
+			self::CATEGORY_PREFLIGHT_SPACE,
 			self::CATEGORY_DOWNGRADE_GUARD => Http::STATUS_CONFLICT,
 			self::CATEGORY_INCOMPATIBLE,
 			self::CATEGORY_VERSION_MISMATCH,
@@ -177,6 +148,7 @@ class FailureClassifier {
 
 		return match ($category) {
 			self::CATEGORY_PREFLIGHT_PERMISSION => $l->t('The app folder is not writable by the web-server user. If this is a bind-mounted dev checkout, fix the folder ownership/permissions (or install the app into a writable apps directory).'),
+			self::CATEGORY_PREFLIGHT_SPACE => $l->t('Free up disk space in the apps folder and the temporary folder, then retry. Nothing was downloaded or changed.'),
 			self::CATEGORY_DOWNLOAD => $l->t('The release could not be downloaded from its source. Check connectivity to the source and that the release asset still exists.'),
 			self::CATEGORY_CHECKSUM_MISMATCH => $l->t('The downloaded archive failed its integrity check. The release may be corrupted or tampered with; do not install it.'),
 			self::CATEGORY_SHA_MISMATCH => $l->t('The downloaded artifact does not match the SHA-256 recorded the first time this version was installed. The upstream release may have been rewritten. Only proceed if you are certain the new artifact is legitimate, then explicitly accept the new checksum to install it.'),
@@ -267,6 +239,7 @@ class FailureClassifier {
 
 		return match ($category) {
 			self::CATEGORY_PREFLIGHT_PERMISSION => $l->t('The app folder is not writable by the web-server user.'),
+			self::CATEGORY_PREFLIGHT_SPACE => $l->t('There is not enough free disk space for this install.'),
 			self::CATEGORY_DOWNGRADE_GUARD => $l->t('The requested version is older than the installed version. Pass allowDowngrade to proceed.'),
 			default => $l->t('Installation failed.'),
 		};

@@ -65,4 +65,20 @@ describe('InstallResultNotices', () => {
 		expect(wrapper.find('[data-testid="install-checks"]').exists()).toBe(false)
 		expect(wrapper.html()).not.toContain('Update checks')
 	})
+
+	// @spec openspec/changes/safety-rollback-backup-and-preflight/specs/version-management/spec.md
+	it('shows the free space the pre-flight found and that the app folder is writable', () => {
+		const wrapper = mount(InstallResultNotices, { props: { integrityWarning: null, servedFromCache: false, space: { appsFree: 9663676416, tempFree: 512 } } })
+
+		expect(wrapper.find('[data-testid="install-environment-checked"]').text())
+			.toBe('Environment checked: 9.0 GB free in the apps folder, 512 B free in the temp folder; the app folder is writable.')
+	})
+
+	it('says when a folder\'s free space is unknown, and shows nothing without a measurement', () => {
+		const unknown = mount(InstallResultNotices, { props: { integrityWarning: null, servedFromCache: false, space: { appsFree: null, tempFree: 1048576 } } })
+		expect(unknown.find('[data-testid="install-environment-checked"]').text()).toContain('unknown free in the apps folder, 1.0 MB free in the temp folder')
+
+		const none = mount(InstallResultNotices, { props: { integrityWarning: null, servedFromCache: false } })
+		expect(none.find('[data-testid="install-environment-checked"]').exists()).toBe(false)
+	})
 })

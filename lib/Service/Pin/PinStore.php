@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Pin;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\PinStoreInterface;
 use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Audit\AuditSubject;
@@ -33,7 +34,7 @@ use Psr\Log\LoggerInterface;
  *
  * @psalm-api
  */
-class PinStore {
+class PinStore implements PinStoreInterface {
 	/** @use AppConfigJsonRecords<Pin> */
 	use AppConfigJsonRecords;
 

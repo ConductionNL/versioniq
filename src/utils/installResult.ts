@@ -37,6 +37,13 @@ export type InstallResult = {
 	servedFromCache?: boolean
 	/** The update checks a dry run ran; present only when the payload carried them. */
 	checks?: CheckResult[]
+	/** The free space the pre-flight found (safety-rollback-backup-and-preflight D2). */
+	space?: InstallSpace | null
+}
+
+export type InstallSpace = {
+	appsFree: number | null
+	tempFree: number | null
 }
 
 export type InstallPayload = {
@@ -56,6 +63,7 @@ export type InstallPayload = {
 	integrityWarning?: string | null
 	servedFromCache?: boolean
 	checks?: unknown
+	space?: { appsFree?: unknown, tempFree?: unknown } | null
 }
 
 /**
@@ -116,13 +124,31 @@ function statusFields (payload: InstallPayload): Pick<InstallResult, 'dryRun' | 
  *
  * @param payload The install endpoint's payload.
  */
-function evidenceFields (payload: InstallPayload): Pick<InstallResult, 'debug' | 'recordedShaMatched' | 'integrityWarning' | 'servedFromCache'> {
+function evidenceFields (payload: InstallPayload): Pick<InstallResult, 'debug' | 'recordedShaMatched' | 'integrityWarning' | 'servedFromCache' | 'space'> {
+	const space = spaceField(payload.space)
+
 	return {
 		debug: Array.isArray(payload.debug) ? payload.debug as InstallDebugEntry[] : [],
 		recordedShaMatched: payload.recordedShaMatched ?? null,
 		integrityWarning: typeof payload.integrityWarning === 'string' && payload.integrityWarning !== '' ? payload.integrityWarning : null,
 		servedFromCache: payload.servedFromCache === true,
+		// Present only when the pre-flight measured it, so other results keep their shape.
+		...(space === null ? {} : { space }),
 	}
+}
+
+/**
+ * The measured free space, or null when the pre-flight did not report one.
+ *
+ * @param space The payload's `space`.
+ */
+function spaceField (space: InstallPayload['space']): InstallSpace | null {
+	if (!space || typeof space !== 'object') {
+		return null
+	}
+	const bytes = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : null
+
+	return { appsFree: bytes(space.appsFree), tempFree: bytes(space.tempFree) }
 }
 
 /**

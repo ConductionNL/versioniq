@@ -12,13 +12,13 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Command;
 
+use OCA\Versioniq\Kernel\Contracts\FailureClassifierInterface;
+use OCA\Versioniq\Kernel\Contracts\InstallerServiceInterface;
 use OCA\Versioniq\Service\Checks\CheckRunner;
-use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\PinChoice;
-use OCA\Versioniq\Service\InstallerService;
 use OCP\AppFramework\Http;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -63,7 +63,7 @@ class InstallVersion extends Command {
 	private const EXIT_CHECKS_FAILED = 12;
 
 	public function __construct(
-		private InstallerService $installerService,
+		private InstallerServiceInterface $installerService,
 	) {
 		parent::__construct();
 	}
@@ -153,17 +153,33 @@ class InstallVersion extends Command {
 			return;
 		}
 		if ($exitCode === self::EXIT_OK) {
-			$output->writeln(sprintf('<info>%s</info>', $payload['message'] ?? 'App installed.'));
-			if (isset($payload['toVersion'])) {
-				$output->writeln(sprintf('Version: %s', $payload['toVersion']));
-			}
-			if (isset($payload['updateType'])) {
-				$output->writeln(sprintf('Update type: %s', $payload['updateType']));
-			}
+			self::renderInstalled($output, $payload);
 
 			return;
 		}
 
+		$this->renderFailure($output, $exitCode, $payload);
+	}
+
+	/**
+	 * The success lines: the message, then the version and update type when
+	 * the outcome names them.
+	 */
+	private static function renderInstalled(OutputInterface $output, array $payload): void {
+		$output->writeln(sprintf('<info>%s</info>', $payload['message'] ?? 'App installed.'));
+		if (isset($payload['toVersion'])) {
+			$output->writeln(sprintf('Version: %s', $payload['toVersion']));
+		}
+		if (isset($payload['updateType'])) {
+			$output->writeln(sprintf('Update type: %s', $payload['updateType']));
+		}
+	}
+
+	/**
+	 * The failure lines on the error output: the message, the hint, and the
+	 * install status after a failed finalize.
+	 */
+	private function renderFailure(OutputInterface $output, int $exitCode, array $payload): void {
 		$error = $this->errorOutput($output);
 		$error->writeln(sprintf('<error>%s</error>', $payload['message'] ?? 'Install failed.'));
 		if (isset($payload['hint']) && is_string($payload['hint']) && $payload['hint'] !== '') {
@@ -232,25 +248,35 @@ class InstallVersion extends Command {
 
 		/** @var mixed $category */
 		$category = $payload['category'] ?? null;
-		if (is_string($category)) {
-			$mapped = match ($category) {
-				FailureClassifier::CATEGORY_DOWNGRADE_GUARD => self::EXIT_DOWNGRADE_REFUSED,
-				FailureClassifier::CATEGORY_PREFLIGHT_PERMISSION => self::EXIT_PREFLIGHT_PERMISSION,
-				FailureClassifier::CATEGORY_DOWNLOAD => self::EXIT_DOWNLOAD,
-				FailureClassifier::CATEGORY_CHECKSUM_MISMATCH,
-				FailureClassifier::CATEGORY_SHA_MISMATCH,
-				FailureClassifier::CATEGORY_APPID_MISMATCH,
-				FailureClassifier::CATEGORY_VERSION_MISMATCH => self::EXIT_INTEGRITY,
-				FailureClassifier::CATEGORY_INCOMPATIBLE => self::EXIT_INCOMPATIBLE,
-				FailureClassifier::CATEGORY_FINALIZE => self::EXIT_FINALIZE,
-				FailureClassifier::CATEGORY_CHECKS_FAILED => self::EXIT_CHECKS_FAILED,
-				default => null,
-			};
-			if ($mapped !== null) {
-				return $mapped;
-			}
-		}
+		$mapped = is_string($category) ? self::exitCodeForCategory($category) : null;
 
+		return $mapped ?? self::exitCodeForStatus($statusCode);
+	}
+
+	/**
+	 * The documented exit code of a failure category, or null for a category
+	 * without one of its own.
+	 */
+	private static function exitCodeForCategory(string $category): ?int {
+		return match ($category) {
+			FailureClassifierInterface::CATEGORY_DOWNGRADE_GUARD => self::EXIT_DOWNGRADE_REFUSED,
+			FailureClassifierInterface::CATEGORY_PREFLIGHT_PERMISSION => self::EXIT_PREFLIGHT_PERMISSION,
+			FailureClassifierInterface::CATEGORY_DOWNLOAD => self::EXIT_DOWNLOAD,
+			FailureClassifierInterface::CATEGORY_CHECKSUM_MISMATCH,
+			FailureClassifierInterface::CATEGORY_SHA_MISMATCH,
+			FailureClassifierInterface::CATEGORY_APPID_MISMATCH,
+			FailureClassifierInterface::CATEGORY_VERSION_MISMATCH => self::EXIT_INTEGRITY,
+			FailureClassifierInterface::CATEGORY_INCOMPATIBLE => self::EXIT_INCOMPATIBLE,
+			FailureClassifierInterface::CATEGORY_FINALIZE => self::EXIT_FINALIZE,
+			FailureClassifierInterface::CATEGORY_CHECKS_FAILED => self::EXIT_CHECKS_FAILED,
+			default => null,
+		};
+	}
+
+	/**
+	 * The exit code an HTTP status maps to when its category named none.
+	 */
+	private static function exitCodeForStatus(int $statusCode): int {
 		if ($statusCode === Http::STATUS_FORBIDDEN) {
 			return self::EXIT_UNTRUSTED_SOURCE;
 		}
