@@ -7,7 +7,11 @@ import * as l10n from '@nextcloud/l10n'
 
 const ENGLISH_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-/** The short day names, indexed by JavaScript day (0 is Sunday). */
+/**
+ * The short day names, indexed by JavaScript day (0 is Sunday).
+ *
+ * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+ */
 export function shortDayNames (): string[] {
 	try {
 		const names = l10n.getDayNamesShort()
@@ -20,7 +24,11 @@ export function shortDayNames (): string[] {
 	return [...ENGLISH_SHORT]
 }
 
-/** The first day of the user's week as JavaScript counts it, 0 is Sunday. */
+/**
+ * The first day of the user's week as JavaScript counts it, 0 is Sunday.
+ *
+ * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+ */
 export function firstDayOfWeek (): number {
 	try {
 		const day = l10n.getFirstDay()

@@ -22,7 +22,11 @@ const KINDS_BY_LEVEL: Record<string, readonly UpdateKind[]> = {
 
 export const EVERY_DAY = [1, 2, 3, 4, 5, 6, 7]
 
-/** Every kind on every day, weekly: what the server reads when nothing is stored. */
+/**
+ * Every kind on every day, weekly: what the server reads when nothing is stored.
+ *
+ * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+ */
 export function defaultSchedule (): AutoUpdateSchedule {
 	return {
 		patch: { days: [...EVERY_DAY], monthly: false },
@@ -35,6 +39,7 @@ export function defaultSchedule (): AutoUpdateSchedule {
  * A schedule as the server sent it, with anything missing or malformed read as the default.
  *
  * @param value the `autoUpdateSchedule` of GET /api/policies
+ * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
  */
 export function scheduleFrom (value: unknown): AutoUpdateSchedule {
 	const schedule = defaultSchedule()
@@ -52,6 +57,7 @@ export function scheduleFrom (value: unknown): AutoUpdateSchedule {
  *
  * @param target the kind's entry, holding the default
  * @param entry what the server sent for the kind
+ * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
  */
 function readEntry (target: KindSchedule, entry: unknown): void {
 	if (entry === null || typeof entry !== 'object') {
@@ -68,6 +74,7 @@ function readEntry (target: KindSchedule, entry: unknown): void {
  * Distinct weekdays 1 to 7, ascending.
  *
  * @param days the days to keep
+ * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
  */
 export function normalizedDays (days: unknown[]): number[] {
 	return [...new Set(days.filter((day): day is number => Number.isInteger(day) && (day as number) >= 1 && (day as number) <= 7))].sort((a, b) => a - b)
@@ -77,6 +84,7 @@ export function normalizedDays (days: unknown[]): number[] {
  * Whether every kind has the same days and the same monthly choice.
  *
  * @param schedule the schedule
+ * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
  */
 export function isSameForEveryKind (schedule: AutoUpdateSchedule): boolean {
 	const first = JSON.stringify(schedule.patch)
@@ -89,6 +97,7 @@ export function isSameForEveryKind (schedule: AutoUpdateSchedule): boolean {
  * @param schedule the schedule
  * @param kind the kind to change, or null for every kind
  * @param entry its new days and monthly choice
+ * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
  */
 export function withKind (schedule: AutoUpdateSchedule, kind: UpdateKind | null, entry: KindSchedule): AutoUpdateSchedule {
 	const next: AutoUpdateSchedule = {
@@ -106,6 +115,7 @@ export function withKind (schedule: AutoUpdateSchedule, kind: UpdateKind | null,
  * The ISO weekdays in the order a week starts for the user.
  *
  * @param firstDay the first day of the week as JavaScript counts it, 0 is Sunday
+ * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
  */
 export function weekdayOrder (firstDay: number): number[] {
 	const start = Number.isInteger(firstDay) && firstDay >= 0 && firstDay <= 6 ? firstDay : 1
@@ -119,6 +129,7 @@ export function weekdayOrder (firstDay: number): number[] {
  * The JavaScript day index (0 is Sunday) of an ISO weekday, for the day-name lists.
  *
  * @param isoDay 1 to 7
+ * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
  */
 export function jsDayOf (isoDay: number): number {
 	return isoDay % 7
@@ -129,6 +140,7 @@ export function jsDayOf (isoDay: number): number {
  * minor for minor, all three for all.
  *
  * @param level the app's policy level
+ * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
  */
 export function kindsReachedBy (level: string): UpdateKind[] {
 	return Object.hasOwn(KINDS_BY_LEVEL, level) ? [...(KINDS_BY_LEVEL[level] ?? [])] : []
@@ -144,6 +156,7 @@ export function kindsReachedBy (level: string): UpdateKind[] {
  * @param words the joining words: `to` for a run, `everyDay` for all seven
  * @param words.to the word between the ends of a run
  * @param words.everyDay the text for all seven days
+ * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
  */
 export function describeDays (days: number[], order: number[], names: string[], words: { to: string, everyDay: string }): string {
 	const chosen = new Set(normalizedDays(days))
