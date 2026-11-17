@@ -41,7 +41,8 @@ function stubFetch (installAnswers: unknown[]): Recorded[] {
 	vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
 		const url = String(input)
 		let body: unknown = ok()
-		if (url.includes('/install')) {
+		// The install call itself, not the progress poll beside it (install-live-progress).
+		if (/\/install(\?|$)/.test(url)) {
 			recorded.push({ url, method: init?.method, body: init?.body })
 			body = installAnswers.shift() ?? body
 		} else if (url.includes('/policy') && init?.method === 'PUT') {
