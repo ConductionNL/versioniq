@@ -11,6 +11,7 @@ import type {LkgRecord} from './utils/migrationSafety.ts';
 import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
 import type { SweepStatus } from './utils/sweepOutcome.ts'
 import type {BatchCandidate, BatchRow} from './utils/updateBatch.ts';
+import type {AdminKnownIssue, VersionOutcomes} from './utils/versionFacts.ts';
 
 import { loadState } from '@nextcloud/initial-state'
 import { n, t } from '@nextcloud/l10n'
@@ -41,14 +42,17 @@ import SuccessorsPanel from './components/SuccessorsPanel.vue'
 import TokensPanel from './components/TokensPanel.vue'
 import TrustedSourcesPanel from './components/TrustedSourcesPanel.vue'
 import VersionChangelog from './components/VersionChangelog.vue'
+import VersionFacts from './components/VersionFacts.vue'
 import DowngradeConfirmDialog from './dialogs/DowngradeConfirmDialog.vue'
 import EnableAppDialog from './dialogs/EnableAppDialog.vue'
+import KnownIssueDialog from './dialogs/KnownIssueDialog.vue'
 import PinDialog from './dialogs/PinDialog.vue'
 import PinOverrideDialog from './dialogs/PinOverrideDialog.vue'
 import QuickUpdateDialog from './dialogs/QuickUpdateDialog.vue'
 import ReplaceAppDialog from './dialogs/ReplaceAppDialog.vue'
 import ShaMismatchDialog from './dialogs/ShaMismatchDialog.vue'
 import UpdateAllDialog from './dialogs/UpdateAllDialog.vue'
+import { ocsWrite } from './ocs.ts'
 import { advisoryAnchor, advisoryBadgeText, applyTriage, complianceSentence } from './utils/advisories.ts'
 import { advisoryFreshnessLabel as advisoryFreshnessLabelFor } from './utils/advisoryFreshness.ts'
 import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow.ts'
@@ -63,6 +67,7 @@ import { isBlockedBySafeMode } from './utils/safeMode.ts'
 import { sweepStateOf } from './utils/sweepOutcome.ts'
 import { batchOutcome, quickUpdateTarget, runUpdateBatch, updateAllCandidates } from './utils/updateBatch.ts'
 import { compareVersions, parseVersionCore } from './utils/versionCompare.ts'
+import { breakingBetween, breakingSentence } from './utils/versionFacts.ts'
 
 type AppOption = {
 	id: string
@@ -78,6 +83,7 @@ type AppOption = {
 	installedVersion?: string | null
 	state?: 'enabled' | 'disabled' | 'notInstalled'
 	lkg?: LkgRecord | null
+	installedKnownIssues?: AdminKnownIssue[]
 	provenance?: Provenance | null
 	publisher?: string | null
 	marks?: string[]
@@ -90,6 +96,11 @@ type AppVersion = {
 	cachedOffline?: boolean
 	serverCompatible?: boolean | null
 	releasedAt?: string | null
+	downloads?: number | null
+	outcomes?: VersionOutcomes | null
+	breaking?: boolean
+	knownIssues?: string | null
+	adminKnownIssues?: AdminKnownIssue[]
 }
 
 const isLoading = ref(true)
@@ -127,6 +138,10 @@ const debugModeEnabled = ref(false)
 // its own explicit request parameter, decoupled from debug/verbosity.
 const dryRunEnabled = ref(false)
 const isDowngradeConfirmOpen = ref(false)
+// releases-version-facts: the known-issue dialog and a removal in flight.
+const isKnownIssueDialogOpen = ref(false)
+const knownIssueDialogVersion = ref('')
+const isRemovingKnownIssue = ref(false)
 const downgradeConfirmFromVersion = ref('')
 const downgradeConfirmToVersion = ref('')
 const downgradeConfirmApp = ref('')
@@ -1647,6 +1662,75 @@ const selectedVersionRange = computed(() => {
 
 const downgradeVersionRange = computed(() => getVersionRangeSummary(downgradeConfirmFromVersion.value, downgradeConfirmToVersion.value))
 
+// releases-version-facts D3: the releases marked as breaking in the range.
+const selectedBreakingText = computed(() => breakingSentence(breakingBetween(versions.value, installedVersion.value, selectedVersion.value)))
+const downgradeBreakingText = computed(() => breakingSentence(breakingBetween(versions.value, downgradeConfirmFromVersion.value, downgradeConfirmToVersion.value)))
+
+/**
+ * Open the dialog that records a known issue against a version.
+ *
+ * @param version The version.
+ * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+ */
+function openKnownIssueDialog (version: string): void {
+	knownIssueDialogVersion.value = version
+	isKnownIssueDialogOpen.value = true
+}
+
+/**
+ * Store a version's admin notes after a change, on its entry and, for the
+ * installed version, on the app card.
+ *
+ * @param version The version.
+ * @param issues The version's notes after the change.
+ * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+ */
+function onKnownIssuesChanged (version: string, issues: AdminKnownIssue[]): void {
+	versions.value = versions.value.map((entry) => (entry.version === version ? { ...entry, adminKnownIssues: issues } : entry))
+	if (version === installedVersion.value) {
+		apps.value = apps.value.map((app) => (app.id === selectedApp.value ? { ...app, installedKnownIssues: issues } : app))
+	}
+}
+
+/**
+ * Remove one admin note from a version.
+ *
+ * @param version The version.
+ * @param index The note's position.
+ * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+ */
+async function removeKnownIssue (version: string, index: number): Promise<void> {
+	isRemovingKnownIssue.value = true
+	errorMessage.value = ''
+	try {
+		const { payload, error } = await ocsWrite<{ knownIssues: AdminKnownIssue[] }>(
+			'DELETE',
+			`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(selectedApp.value)}/versions/${encodeURIComponent(version)}/known-issues/${index}`,
+		)
+		if (error) {
+			errorMessage.value = error
+			return
+		}
+		onKnownIssuesChanged(version, Array.isArray(payload.knownIssues) ? payload.knownIssues : [])
+	} catch (e) {
+		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not remove the known issue.')
+	} finally {
+		isRemovingKnownIssue.value = false
+	}
+}
+
+/**
+ * The card's tooltip for known issues in the installed version: each workaround.
+ *
+ * @param issues The installed version's admin notes.
+ * @return The tooltip.
+ */
+function installedIssuesTitle (issues: AdminKnownIssue[]): string {
+	return issues
+		.map((issue) => issue.workaround ? t('versioniq', '{issue} Workaround: {workaround}', { issue: issue.text, workaround: issue.workaround }) : issue.text)
+		.join('\n')
+}
+
 // Aggregate "changes between installed → target" panel — reuses the
 // already-fetched `versions` array, zero extra requests; see "Aggregate
 // range changelog on target selection".
@@ -2528,6 +2612,7 @@ watch(dryRunEnabled, () => {
 				:fromVersion="downgradeConfirmFromVersion"
 				:toVersion="downgradeConfirmToVersion"
 				:rangeText="downgradeVersionRange ? versionRangeText(downgradeVersionRange) : ''"
+				:breakingText="downgradeBreakingText"
 				:orphanedMigrations="downgradeOrphanedMigrations"
 				:busy="isInstallingVersion"
 				@update:open="isDowngradeConfirmOpen = $event"
@@ -2538,6 +2623,12 @@ watch(dryRunEnabled, () => {
 				:offer="pendingUpdates[replaceTarget].successor"
 				@update:open="(value: boolean) => { if (!value) { replaceTarget = null } }"
 				@replaced="onReplaced" />
+			<KnownIssueDialog
+				:open="isKnownIssueDialogOpen"
+				:appId="selectedApp"
+				:version="knownIssueDialogVersion"
+				@update:open="isKnownIssueDialogOpen = $event"
+				@saved="onKnownIssuesChanged" />
 			<PinDialog
 				:open="isPinDialogOpen"
 				:appId="pinDialogAppId"
@@ -2873,6 +2964,13 @@ watch(dryRunEnabled, () => {
 															{{ t('versioniq', 'Installed {version}', { version: app.installedVersion }) }}
 														</p>
 														<p
+															v-if="(app.installedKnownIssues ?? []).length > 0"
+															:class="$style.appCardMeta"
+															data-testid="app-known-issue"
+															:title="installedIssuesTitle(app.installedKnownIssues ?? [])">
+															{{ t('versioniq', 'Known issue in the installed version') }}
+														</p>
+														<p
 															v-if="updateBadgeFor(app.id) || outsidePolicyFor(app.id)"
 															:class="$style.updateFlags">
 															<span
@@ -3074,6 +3172,12 @@ watch(dryRunEnabled, () => {
 											{{ versionRangeText(selectedVersionRange) }}
 										</p>
 										<p
+											v-if="selectedBreakingText"
+											:class="$style.versionSummary"
+											data-testid="range-breaking">
+											{{ selectedBreakingText }}
+										</p>
+										<p
 											v-if="selectedVersionRange?.direction === 'degrade'"
 											:class="$style.versionDegradeSummary">
 											{{ t('versioniq', 'Downgrade path detected.') }}
@@ -3139,6 +3243,12 @@ watch(dryRunEnabled, () => {
 																{{ t('versioniq', 'Selected') }}
 															</span>
 														</div>
+														<VersionFacts
+															:entry="version"
+															:installedVersion="installedVersion"
+															:busy="isRemovingKnownIssue || isInstallingVersion"
+															@add="openKnownIssueDialog"
+															@remove="removeKnownIssue" />
 														<VersionChangelog :version="version.version" :changelog="version.changelog ?? null" />
 														<div
 															v-if="selectedVersion === version.version && selectedVersion !== ''"
