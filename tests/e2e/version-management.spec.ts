@@ -5,6 +5,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import {
 	appConfigValue,
+	chooseApp,
 	FIXTURE_APP,
 	FIXTURE_SOURCE,
 	fixtureAvailable,
@@ -208,11 +209,34 @@ test.describe("version management", () => {
 				.locator("article")
 				.filter({ has: page.getByText("files", { exact: true }) })
 				.first();
-			await expect(card).toContainText("CORE");
+			await expect(card).toContainText("Core");
 			// Core apps carry no "Choose app" action — they cannot be version-managed.
 			await expect(
 				card.getByRole("button", { name: "Choose app" }),
 			).toHaveCount(0);
+		});
+	});
+
+	// @spec openspec/changes/inventory-app-details-card/specs/version-management/spec.md
+	test.describe("app details", () => {
+		test("opening an app's versions shows its licence and a source link", async ({
+			page,
+		}) => {
+			// `notifications` declares a licence and a repository in its info.xml,
+			// and CI installs it as an additional app.
+			await openSettings(page);
+			await chooseApp(page, "notifications");
+			const card = page.getByTestId("app-about-card");
+			await expect(card).toBeVisible();
+			await expect(card.getByTestId("app-about-licence")).not.toHaveText(
+				/^\s*(—)?\s*$/,
+			);
+			const source = card.getByTestId("app-about-link-repository");
+			await expect(source).toHaveAttribute(
+				"href",
+				/^https:\/\/github\.com\/nextcloud\/notifications/,
+			);
+			await expect(source).toHaveAttribute("rel", "noopener noreferrer");
 		});
 	});
 

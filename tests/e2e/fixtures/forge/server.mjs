@@ -49,6 +49,16 @@ const APPSTORE_CATALOG = [
 		name: { en: "Calendar" },
 		summary: { en: "A calendar app for Nextcloud" },
 		website: "https://github.com/nextcloud/calendar",
+		// discovery.spec asserts the publisher and the featured mark; the mail
+		// address must never reach the page.
+		authors: [
+			{
+				name: "Fixture Calendar Team",
+				mail: "calendar-team@example.test",
+				homepage: "",
+			},
+		],
+		isFeatured: true,
 		releases: [
 			{ version: "5.4.0", isNightly: false },
 			{ version: "5.3.0", isNightly: false },
@@ -102,16 +112,6 @@ const DEFAULT_RELEASES = [
 	{ tag: "v0.9.0", asset: "fixtureapp-0.9.0.tar.gz", sha: true },
 ];
 
-// fixtureowner/fixtureapp2 carries the same release line, for the specs that
-// need two apps updating together (update groups, run limits).
-const DEFAULT_RELEASES_2 = ["1.2.0", "1.1.0", "1.0.1", "1.0.0", "0.9.0"].map(
-	(version) => ({
-		tag: `v${version}`,
-		asset: `fixtureapp2-${version}.tar.gz`,
-		sha: true,
-	}),
-);
-
 // Mutable state, resettable via POST /control/reset.
 let state = freshState();
 function freshState() {
@@ -122,8 +122,19 @@ function freshState() {
 				releases: structuredClone(DEFAULT_RELEASES),
 				advisories: [],
 			},
+			// A second app on the same release line.
 			"fixtureowner/fixtureapp2": {
-				releases: structuredClone(DEFAULT_RELEASES_2),
+				releases: DEFAULT_RELEASES.filter((r) => r.tag !== "v0.9.0").map(
+					(r) => ({
+						...r,
+						asset: r.asset.replace("fixtureapp-", "fixtureapp2-"),
+					}),
+				),
+				advisories: [],
+			},
+			// The same releases as a GitLab project in a subgroup.
+			"fixturegroup/sub/fixtureapp": {
+				releases: structuredClone(DEFAULT_RELEASES),
 				advisories: [],
 			},
 		},
@@ -172,11 +183,16 @@ function releaseJson(repo) {
 		}
 		return {
 			tag_name: r.tag,
-			name: r.tag,
+			name: r.name ?? r.tag,
 			// Release notes — mapped to the version's changelog by the app.
 			body:
 				r.body ?? `## ${r.tag}\n\n- Fixture release notes for ${r.tag}`,
 			assets,
+			// Publisher marks a spec can set through /control/repo.
+			...(r.prerelease !== undefined ? { prerelease: r.prerelease } : {}),
+			...(r.published_at !== undefined
+				? { published_at: r.published_at }
+				: {}),
 		};
 	});
 }
@@ -278,6 +294,38 @@ function forgeApi(req, res, path) {
 	return false;
 }
 
+// GitLab `/api/v4/projects/{url-encoded path}/releases`: `description` for the
+// notes, `released_at` for the date, and `assets.links[]` for the files.
+function gitlabApi(res, path) {
+	const m = path.match(/^\/api\/v4\/projects\/([^/]+)\/releases$/);
+	if (!m) return false;
+	const repo = state.repos[decodeURIComponent(m[1])];
+	const error = repoError(repo, { checkAuth: false, auth: "" });
+	if (error) {
+		json(res, ...error);
+		return true;
+	}
+	json(
+		res,
+		200,
+		releaseJson(repo).map((r) => ({
+			tag_name: r.tag_name,
+			name: r.name,
+			description: r.body,
+			released_at: r.published_at ?? null,
+			upcoming_release: false,
+			assets: {
+				links: r.assets.map((a) => ({
+					name: a.name,
+					url: a.browser_download_url,
+					direct_asset_url: a.browser_download_url,
+				})),
+			},
+		})),
+	);
+	return true;
+}
+
 // --- Artifact download -----------------------------------------------------
 async function download(res, requested) {
 	const forced = state.assetStatus[requested];
@@ -329,6 +377,7 @@ async function route(req, res) {
 	const control = CONTROL_ROUTES[path];
 	if (control && req.method === "POST") return control(req, res);
 
+	if (gitlabApi(res, path)) return;
 	if (forgeApi(req, res, path)) return;
 
 	const dl = path.match(/^\/dl\/(.+)$/);

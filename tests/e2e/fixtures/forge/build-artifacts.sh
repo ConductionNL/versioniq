@@ -9,12 +9,8 @@ mkdir -p "$OUT"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 
 infoxml() { # appid version
-  # Each fixture app gets its own namespace, so two installed side by side do
-  # not share an autoloader prefix: fixtureapp -> ForgeFixtureApp,
-  # fixtureapp2 -> ForgeFixtureApp2.
-  # fixtureapp2 is also named "Forge Fixture App 2", so the two read apart.
-  local ns="ForgeFixtureApp" name="Forge Fixture App"
-  case "$1" in fixtureapp?*) ns="ForgeFixtureApp${1#fixtureapp}"; name="Forge Fixture App ${1#fixtureapp}" ;; esac
+  local ns=ForgeFixtureApp name="Forge Fixture App"
+  [ "$1" = fixtureapp2 ] && ns=ForgeFixtureAppTwo name="Forge Fixture App Two"
   cat <<XML
 <?xml version="1.0"?>
 <info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
@@ -66,11 +62,11 @@ make fixtureapp-0.9.0.tar.gz fixtureapp 0.9.0
 make fixtureapp-1.0.0.tar.gz fixtureapp 1.0.0
 make fixtureapp-1.0.1.tar.gz fixtureapp 1.0.1
 make fixtureapp-1.1.0.tar.gz fixtureapp 1.1.0
-# fixtureapp2: the same release line as fixtureapp, so update groups and run
-# limits have a second app that updates the way the first one does.
-for v in 0.9.0 1.0.0 1.0.1 1.1.0 1.2.0; do
-  make "fixtureapp2-$v.tar.gz" fixtureapp2 "$v"
-done
+# A second app on the same release line, for specs that update two apps.
+make fixtureapp2-1.0.0.tar.gz fixtureapp2 1.0.0
+make fixtureapp2-1.0.1.tar.gz fixtureapp2 1.0.1
+make fixtureapp2-1.1.0.tar.gz fixtureapp2 1.1.0
+make fixtureapp2-1.2.0.tar.gz fixtureapp2 1.2.0
 # TOFU tamper: same tag 1.0.1, different bytes (simulates a rewritten release).
 make fixtureapp-1.0.1-tampered.tar.gz fixtureapp 1.0.1 tampered
 # Integrity failures: appId mismatch, version mismatch (tag says 1.0.1, info says 9.9.9).
