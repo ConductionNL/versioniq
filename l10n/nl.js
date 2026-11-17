@@ -592,7 +592,26 @@ OC.L10N.register(
         "GitLab projects are read from gitlab.com. Set the address of your own GitLab host to read them from there instead; leave it empty for gitlab.com.": "GitLab-projecten worden van gitlab.com gelezen. Vul het adres van uw eigen GitLab-host in om ze daar vandaan te lezen; laat het leeg voor gitlab.com.",
         "Self-managed GitLab host": "Eigen GitLab-host",
         "Save GitLab host": "GitLab-host opslaan",
-        "Bind an installed app to a GitHub repository, a GitLab project, or a repository on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.": "Koppel een geïnstalleerde app aan een GitHub-repository, een GitLab-project of een repository op een eigen Forgejo- of Gitea-host, zodat de versies van die forge komen in plaats van uit de App Store. De repository moet op de lijst met vertrouwde bronnen staan."
+        "Bind an installed app to a GitHub repository, a GitLab project, or a repository on a self-hosted Forgejo or Gitea host, so its versions are pulled from that forge instead of the App Store. The repository must be on the trusted-sources list.": "Koppel een geïnstalleerde app aan een GitHub-repository, een GitLab-project of een repository op een eigen Forgejo- of Gitea-host, zodat de versies van die forge komen in plaats van uit de App Store. De repository moet op de lijst met vertrouwde bronnen staan.",
+        "Checking access to the source": "Toegang tot de bron controleren",
+        "Checking the certificate": "Het certificaat controleren",
+        "Checking the checksum": "De controlesom controleren",
+        "Checking the signature": "De handtekening controleren",
+        "Comparing migrations": "Migraties vergelijken",
+        "Downloaded": "Gedownload",
+        "Downloading": "Downloaden",
+        "Extracting": "Uitpakken",
+        "Finishing the install": "De installatie afronden",
+        "Maintenance mode is on while the app installs. Keep this page open until the install finishes.": "De onderhoudsmodus staat aan zolang de app wordt geïnstalleerd. Houd deze pagina open tot de installatie klaar is.",
+        "Reading the release": "De release lezen",
+        "Resolving the release": "De release opzoeken",
+        "Running migrations": "Migraties uitvoeren",
+        "Running repair steps": "Herstelstappen uitvoeren",
+        "Swapping the files": "De bestanden vervangen",
+        "Using the cached download": "De bewaarde download gebruiken",
+        "Validating info.xml": "info.xml controleren",
+        "failed": "mislukt",
+        "{seconds} s": "{seconds} s"
     },
     "nplurals=2; plural=(n != 1);"
 )
