@@ -243,10 +243,7 @@ class ExternalReleaseInstallerService {
 	 * allocates the temporary paths, then resolves the stored token.
 	 */
 	private function prepareDownload(ExternalInstallRun $run): ReleaseDownload {
-		if ($this->localArchive === null && $run->request->downloadUrl() === '') {
-			throw new Exception('No download URL found for the selected release.');
-		}
-
+		$this->assertDownloadable($run);
 		$run->previousEnabled = $this->configs->appConfig->getValueString($run->request->appId, 'enabled', 'no');
 
 		$tempFile = $this->download->tempManager->getTemporaryFile('.tar.gz');
@@ -255,10 +252,28 @@ class ExternalReleaseInstallerService {
 			throw new Exception('Could not allocate temporary download paths.');
 		}
 
-		$token = $this->localArchive === null ? $this->resolveAuth($run->binding) : null;
+		$token = $this->downloadToken($run);
 		$this->addDebug('auth-resolution', ['hasPat' => $token !== null]);
 
 		return new ReleaseDownload($tempFile, $tempFolder, $token);
+	}
+
+	/**
+	 * Refuses a download without a URL; an uploaded archive needs none.
+	 *
+	 * @throws Exception When there is nothing to download from.
+	 */
+	private function assertDownloadable(ExternalInstallRun $run): void {
+		if ($this->localArchive === null && $run->request->downloadUrl() === '') {
+			throw new Exception('No download URL found for the selected release.');
+		}
+	}
+
+	/**
+	 * The stored token for the binding's download; none for an uploaded archive.
+	 */
+	private function downloadToken(ExternalInstallRun $run): ?string {
+		return $this->localArchive === null ? $this->resolveAuth($run->binding) : null;
 	}
 
 	/**
@@ -472,10 +487,7 @@ class ExternalReleaseInstallerService {
 		// first successful external install". Sibling-verified or locally
 		// computed, the value is the same: verifyChecksum() already threw if
 		// a sibling digest existed and disagreed with the computed one.
-		// An upload is not the bound source: its digest is not recorded on the binding.
-		$updatedBinding = $this->localArchive !== null
-			? $install->run->binding
-			: $install->run->binding->withRecordedSha($install->run->request->version, $install->check->sha);
+		$updatedBinding = $this->bindingAfterInstall($install);
 		$this->recordInstallAudit($install->run, [AuditLogger::STATUS_SUCCESS, $this->successAuditMessage($install)]);
 
 		return $this->resultEnvelope($install, ['binding' => $updatedBinding, 'installedApp' => $installedApp]);
@@ -522,13 +534,36 @@ class ExternalReleaseInstallerService {
 	}
 
 	/**
+	 * The binding with the install's digest recorded; an upload is not the
+	 * bound source, so its digest is not recorded on the binding.
+	 */
+	private function bindingAfterInstall(ExternalInstall $install): SourceBinding {
+		return $this->localArchive !== null
+			? $install->run->binding
+			: $install->run->binding->withRecordedSha($install->run->request->version, $install->check->sha);
+	}
+
+	/**
+	 * The recorded SHA-256 this install replaced under the acceptNewSha
+	 * override, or null when it matched, none was recorded, or the archive
+	 * is an upload.
+	 */
+	private function overriddenRecordedSha(ExternalInstall $install): ?string {
+		if ($this->localArchive !== null || $install->check->recordedShaMatched) {
+			return null;
+		}
+
+		return $install->run->recordedSha();
+	}
+
+	/**
 	 * The audit message of a successful install: the integrity warning, plus a
 	 * note (and a logged warning) when a new SHA-256 replaced a recorded one.
 	 */
 	private function successAuditMessage(ExternalInstall $install): ?string {
 		$integrityWarning = $install->check->integrityWarning;
-		$recordedSha = $install->run->recordedSha();
-		if ($this->localArchive !== null || $recordedSha === null || $install->check->recordedShaMatched) {
+		$recordedSha = $this->overriddenRecordedSha($install);
+		if ($recordedSha === null) {
 			return $integrityWarning;
 		}
 
