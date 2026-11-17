@@ -51,7 +51,7 @@ final class SourceRegistryTest extends TestCase {
 	public function testParseUnknownPrefixRejected(): void {
 		$this->expectException(InvalidArgumentException::class);
 
-		SourceRegistry::parseSourceId('gitlab:ConductionNL/openregister');
+		SourceRegistry::parseSourceId('bitbucket:ConductionNL/openregister');
 	}
 
 	public function testParseCodeberg(): void {
@@ -108,5 +108,22 @@ final class SourceRegistryTest extends TestCase {
 
 		$this->assertContains('forgejo', $ids);
 		$this->assertNotContains('codeberg', $ids);
+	}
+
+	/**
+	 * sources-gitlab-forge 1.2: a gitlab source id keeps the whole path.
+	 */
+	public function testParseGitlabKeepsTheNestedPath(): void {
+		$binding = SourceRegistry::parseSourceId('gitlab:group/sub/project');
+
+		$this->assertSame('gitlab', $binding->getForge());
+		$this->assertSame('gitlab:group/sub/project', $binding->getId());
+		$this->assertSame('group/sub/project', $binding->getOwnerRepo());
+	}
+
+	public function testParseGitlabRefusesATraversalSegment(): void {
+		$this->expectException(\InvalidArgumentException::class);
+
+		SourceRegistry::parseSourceId('gitlab:group/../x');
 	}
 }

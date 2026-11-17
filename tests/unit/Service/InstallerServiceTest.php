@@ -160,6 +160,67 @@ final class InstallerServiceTest extends TestCase {
 		self::assertNotSame('', $result['payload']['hint']);
 	}
 
+	/**
+	 * safety-rollback-backup-and-preflight 2.1: an install that does not fit
+	 * on disk is refused with 409 before any release is resolved or downloaded,
+	 * and the result names the free and needed space.
+	 */
+	public function testSpacePreflightAbortsBeforeDownloadWhenTheInstallDoesNotFit(): void {
+		$this->appManager->method('getAppPath')->willReturn('/var/www/html/apps-extra/procest');
+		$this->environmentCheck->method('isDestinationWritable')->willReturn(true);
+		$space = ['fits' => false, 'appsFree' => 1000, 'appsNeeded' => 157286400, 'tempFree' => null, 'tempNeeded' => 104857600];
+		$this->environmentCheck->expects(self::once())->method('hasSpaceFor')
+			->with('/var/www/html/apps-extra/procest')
+			->willReturn($space);
+		$this->sourceRegistry->expects(self::never())->method('get');
+
+		$result = InstallArgs::call($this->service(), 'procest', '2.0.0', false);
+
+		self::assertSame(Http::STATUS_CONFLICT, $result['statusCode']);
+		self::assertSame(FailureClassifier::CATEGORY_PREFLIGHT_SPACE, $result['payload']['category']);
+		self::assertSame(FailureClassifier::STAGE_REQUESTED, $result['payload']['stage']);
+		self::assertSame($space, $result['payload']['space']);
+		self::assertSame('failed', $result['payload']['installStatus']);
+	}
+
+	/**
+	 * safety-rollback-backup-and-preflight 2.2: an install that fits reports
+	 * the free space the pre-flight found, for the progress step.
+	 */
+	public function testTheOutcomeCarriesTheFreeSpaceThePreflightFound(): void {
+		$space = ['fits' => true, 'appsFree' => 9000000000, 'appsNeeded' => 157286400, 'tempFree' => 5000000000, 'tempNeeded' => 104857600];
+		$this->environmentCheck->method('hasSpaceFor')->willReturn($space);
+		$this->stubSuccessfulSignedInstall('2.0.0');
+
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
+
+		self::assertSame(Http::STATUS_OK, $result['statusCode']);
+		self::assertSame($space, $result['payload']['space']);
+	}
+
+	public function testAnOutcomeWithoutAMeasurementCarriesNoSpace(): void {
+		$this->environmentCheck->method('hasSpaceFor')->willReturn([]);
+		$this->stubSuccessfulSignedInstall('2.0.0');
+
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
+
+		self::assertSame(Http::STATUS_OK, $result['statusCode']);
+		self::assertArrayNotHasKey('space', $result['payload']);
+	}
+
+	/**
+	 * A non-writable folder is reported as such; the space check does not run on top of it.
+	 */
+	public function testThePermissionRefusalComesBeforeTheSpaceCheck(): void {
+		$this->appManager->method('getAppPath')->willReturn('/var/www/html/apps-extra/procest');
+		$this->environmentCheck->method('isDestinationWritable')->willReturn(false);
+		$this->environmentCheck->expects(self::never())->method('hasSpaceFor');
+
+		$result = InstallArgs::call($this->service(), 'procest', '2.0.0', false);
+
+		self::assertSame(FailureClassifier::CATEGORY_PREFLIGHT_PERMISSION, $result['payload']['category']);
+	}
+
 	public function testStructuredFailureFieldsPresentWithDebugOff(): void {
 		$this->appManager->method('getAppPath')->willReturn('/writable/app');
 		$this->environmentCheck->method('isDestinationWritable')->willReturn(true);

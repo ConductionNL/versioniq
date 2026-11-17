@@ -17,9 +17,11 @@ require_once __DIR__ . '/../Support/DispatchesLikeNextcloud.php';
 use OCA\Versioniq\Controller\ApiController;
 use OCA\Versioniq\Db\AuditEntry;
 use OCA\Versioniq\Db\AuditEntryMapper;
+use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Db\PatMapper;
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Service\Advisory\AdvisoryTriageStore;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
@@ -120,6 +122,7 @@ final class ApiTest extends TestCase {
 		?ArtifactCache $artifactCache = null,
 		?AttemptLedger $attemptLedger = null,
 		?SkipList $skipList = null,
+		?KnownIssueStore $knownIssues = null,
 	): ApiController {
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn($uid);
@@ -154,6 +157,7 @@ final class ApiTest extends TestCase {
 			'connectionReports' => null,
 			'attemptLedger' => $attemptLedger ?? $this->createMock(AttemptLedger::class),
 			'skipList' => $skipList,
+			'knownIssues' => $knownIssues,
 		]);
 	}
 
@@ -269,6 +273,65 @@ final class ApiTest extends TestCase {
 
 		$this->assertSame(200, $response->getStatus());
 		$this->assertSame(['trustedPatterns' => []], $response->getData());
+	}
+
+	/**
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+	 */
+	public function testAppOutcomesForbiddenForNonAdmin(): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->never())->method('countOutcomesByVersion');
+
+		$response = $this->buildController(null, $mapper)->appOutcomes('hermiq');
+
+		$this->assertSame(403, $response->getStatus());
+		$this->assertSame(['message' => 'Forbidden'], $response->getData());
+	}
+
+	/**
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+	 */
+	public function testAppOutcomesAsAdminReturnsTheCountsPerVersion(): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->once())->method('countOutcomesByVersion')->with('hermiq')
+			->willReturn(['1.4.0' => ['succeeded' => 3, 'failed' => 1]]);
+
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->createMock(IRequest::class), $mapper)->appOutcomes(' hermiq ');
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame(['appId' => 'hermiq', 'outcomes' => ['1.4.0' => ['succeeded' => 3, 'failed' => 1]]], $response->getData());
+	}
+
+	/**
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+	 */
+	public function testKnownIssueEndpointsAreAdminOnly(): void {
+		$controller = $this->buildController();
+
+		$this->assertSame(403, $controller->addKnownIssue('openregister', '2.4.1', 'Broken')->getStatus());
+		$this->assertSame(403, $controller->removeKnownIssue('openregister', '2.4.1', 0)->getStatus());
+	}
+
+	/**
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+	 */
+	public function testKnownIssueEndpointsChangeTheStoreAsTheAdmin(): void {
+		$store = $this->createMock(KnownIssueStore::class);
+		$store->expects($this->once())->method('add')
+			->with(['appId' => 'openregister', 'version' => '2.4.1', 'actor' => 'admin'], ['text' => 'Export times out', 'workaround' => 'Per schema', 'link' => null])
+			->willReturn([['text' => 'Export times out']]);
+		$store->expects($this->exactly(2))->method('remove')
+			->willReturnOnConsecutiveCalls([], $this->throwException(new \InvalidArgumentException('This version has no known issue at that position.')));
+
+		$controller = $this->buildAdminController($this->createMock(InstallerService::class), $this->createMock(IRequest::class), knownIssues: $store);
+
+		$added = $controller->addKnownIssue(' openregister ', '2.4.1', 'Export times out', 'Per schema');
+		$this->assertSame(200, $added->getStatus());
+		$this->assertSame(['appId' => 'openregister', 'version' => '2.4.1', 'knownIssues' => [['text' => 'Export times out']]], $added->getData());
+		$this->assertSame(200, $controller->removeKnownIssue('openregister', '2.4.1', 0)->getStatus());
+		$refused = $controller->removeKnownIssue('openregister', '2.4.1', 9);
+		$this->assertSame(400, $refused->getStatus());
+		$this->assertSame(['message' => 'This version has no known issue at that position.'], $refused->getData());
 	}
 
 	public function testAuditLogForbiddenForNonAdmin(): void {
@@ -584,6 +647,30 @@ final class ApiTest extends TestCase {
 		$this->assertSame('alice', $response->getData()['policy']['setBy']);
 	}
 
+	/**
+	 * @spec openspec/changes/autoupdate-security-first/tasks.md#task-1.1
+	 */
+	public function testSetPolicyStoresTheSecurityLevel(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'level' => 'security',
+				default => $default,
+			}
+		);
+
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->expects($this->once())
+			->method('set')
+			->with('openregister', $this->callback(static fn ($policy): bool => $policy->level === 'security'));
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'alice', $policyStore)->setPolicy('openregister');
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame('security', $response->getData()['policy']['level']);
+	}
+
 	public function testClearPolicyClearsTheStore(): void {
 		$request = $this->createMock(IRequest::class);
 
@@ -783,7 +870,7 @@ final class ApiTest extends TestCase {
 		$request->method('getParam')->willReturnCallback(
 			static fn (string $name, mixed $default = null): mixed => match ($name) {
 				'kind' => 'github-release',
-				'forge' => 'gitlab',
+				'forge' => 'bitbucket',
 				'owner' => 'acme',
 				'repo' => 'widget',
 				default => $default,
@@ -956,5 +1043,46 @@ final class ApiTest extends TestCase {
 
 		$this->assertTrue($controller->unskipVersion('openregister', '2.3.4')->getData()['unskipped']);
 		$this->assertSame('2.3.5', $controller->skippedVersions('openregister')->getData()['skipped'][0]['version']);
+	}
+
+	/**
+	 * GET /api/advisories returns the raw snapshot plus the stored triage
+	 * map, keyed `{appId}|{advisoryId}`, for the page (advisories-triage D1, D4).
+	 */
+	public function testAdvisoriesCarriesTheTriageMap(): void {
+		$triage = ['notes|GHSA-1' => ['dismissal' => ['reason' => 'not_used', 'by' => 'alice', 'installedVersion' => '4.1.0']]];
+		$results = $this->createMock(AdvisoryResultStore::class);
+		$results->method('read')->willReturn(['advisories' => ['notes' => ['state' => 'advisory-available']], 'checkedAt' => 1_700_000_000, 'status' => 'ok', 'errors' => []]);
+		$triageStore = $this->createMock(AdvisoryTriageStore::class);
+		$triageStore->expects($this->once())->method('read')->willReturn($triage);
+		$user = $this->createMock(IUser::class);
+		$user->method('getUID')->willReturn('admin');
+		$session = $this->createMock(IUserSession::class);
+		$session->method('getUser')->willReturn($user);
+		$groupManager = $this->createMock(IGroupManager::class);
+		$groupManager->method('isAdmin')->with('admin')->willReturn(true);
+
+		$controller = $this->buildByName(ApiController::class, [
+			'appName' => 'versioniq',
+			'request' => $this->createMock(IRequest::class),
+			'groupManager' => $groupManager,
+			'userSession' => $session,
+			'serverVersion' => $this->fakeServerVersion(),
+			'timeFactory' => $this->fakeTimeFactory(),
+			'advisoryResultStore' => $results,
+			'advisoryTriageStore' => $triageStore,
+			'connectionReports' => null,
+		]);
+
+		$response = $controller->advisories();
+
+		$this->assertSame(200, $response->getStatus());
+		$data = $response->getData();
+		$this->assertSame(['notes' => ['state' => 'advisory-available', 'heldByPin' => false]], $data['advisories']);
+		$this->assertSame(1_700_000_000, $data['checkedAt']);
+		$this->assertSame(['advisories', 'checkedAt', 'status', 'errors', 'compliance', 'triage'], array_keys($data));
+		$this->assertSame('ok', $data['status']);
+		$this->assertSame([], $data['errors']);
+		$this->assertSame($triage, $data['triage']);
 	}
 }

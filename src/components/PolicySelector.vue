@@ -6,7 +6,7 @@ import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 
-export type PolicyLevel = 'none' | 'patch' | 'minor' | 'all'
+export type PolicyLevel = 'none' | 'patch' | 'minor' | 'all' | 'security'
 
 /** A version whose automatic update failed; the job skips it until retried. */
 export type BlockedVersion = { version: string, at: string }
@@ -37,6 +37,8 @@ const options = computed<SelectOption[]>(() => [
 	{ id: 'patch', label: t('versioniq', 'Patch') },
 	{ id: 'minor', label: t('versioniq', 'Minor') },
 	{ id: 'all', label: t('versioniq', 'All') },
+	// Installs only the fix the advisory check recommends (autoupdate-security-first).
+	{ id: 'security', label: t('versioniq', 'Security fixes only') },
 ])
 
 const selected = computed<SelectOption>({

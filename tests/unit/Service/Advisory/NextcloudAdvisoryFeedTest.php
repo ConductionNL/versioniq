@@ -12,6 +12,7 @@ namespace OCA\Versioniq\Tests\Unit\Service\Advisory;
 require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
 
 use OCA\Versioniq\Service\Advisory\AdvisoryPackageMap;
+use OCA\Versioniq\Service\Advisory\LocalFeedCopy;
 use OCA\Versioniq\Service\Advisory\NextcloudAdvisoryFeed;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
@@ -251,5 +252,90 @@ final class NextcloudAdvisoryFeedTest extends TestCase {
 		self::assertSame('unknown', $result['advisories']['mail'][0]['severity']);
 		self::assertSame('high', $result['advisories']['spreed'][0]['severity']);
 		self::assertSame('medium', $result['advisories']['tables'][0]['severity']);
+	}
+
+	/**
+	 * A feed reading the imported local copy (sources-trust-audit-and-offline-feed 3.2).
+	 *
+	 * @param list<array<array-key, mixed>>|null $records The copy's records, null for no copy.
+	 */
+	private function localFeed(?array $records, IClientService $clientService): NextcloudAdvisoryFeed {
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getValueString')->willReturnCallback(
+			static fn (string $app, string $key, string $default = ''): string => $key === 'advisory.feed_source' ? 'local' : '',
+		);
+		$appManager = $this->createMock(IAppManager::class);
+		$appManager->method('getEnabledApps')->willReturn(['mail', 'spreed']);
+		$appManager->method('getAppInfo')->willReturnCallback(
+			static fn (string $id) => ['name' => ['mail' => 'Mail', 'spreed' => 'Talk'][$id] ?? $id],
+		);
+		$logger = $this->createMock(LoggerInterface::class);
+		$copy = $this->createMock(LocalFeedCopy::class);
+		$copy->method('records')->willReturn($records);
+
+		return $this->buildByName(NextcloudAdvisoryFeed::class, [
+			'clientService' => $clientService,
+			'config' => $config,
+			'packageMap' => new AdvisoryPackageMap($appManager, $logger),
+			'logger' => $logger,
+			'localCopy' => $copy,
+		]);
+	}
+
+	public function testALocalSourceReadsTheImportedCopyWithoutAnyRequest(): void {
+		$clientService = $this->createMock(IClientService::class);
+		$clientService->expects(self::never())->method('newClient');
+
+		$feed = $this->localFeed([
+			$this->advisory('GHSA-aaaa', [['package' => 'Mail', 'range' => '< 3.7.25', 'patched' => '3.7.25']]),
+			$this->advisory('GHSA-bbbb', [['package' => 'Talk', 'patched' => '21.1.10']]),
+		], $clientService);
+		$result = $feed->fetchAll();
+
+		self::assertTrue($feed->usesLocalCopy());
+		self::assertNull($result['error']);
+		self::assertSame(['mail', 'spreed'], array_keys($result['advisories']));
+		self::assertSame('GHSA-aaaa', $result['advisories']['mail'][0]['id']);
+		self::assertSame('3.7.25', $result['advisories']['mail'][0]['firstPatchedVersion']);
+	}
+
+	public function testALocalSourceWithoutACopyIsAnErrorNotNoAdvisories(): void {
+		$clientService = $this->createMock(IClientService::class);
+		$clientService->expects(self::never())->method('newClient');
+
+		$result = $this->localFeed(null, $clientService)->fetchAll();
+
+		self::assertSame([], $result['advisories']);
+		self::assertSame('The feed source is the local copy, but no copy of the advisory feed has been imported.', $result['error']);
+	}
+
+	/**
+	 * advisories-per-app-detail 1.1: the feed keeps the CVE ids, date and
+	 * link the GHSA record carries, for every target it names, and leaves
+	 * them empty when the record has none.
+	 *
+	 * @spec openspec/changes/advisories-per-app-detail/tasks.md#1.1
+	 */
+	public function testKeepsTheCveIdsDateAndLinkOfTheRecord(): void {
+		$full = $this->advisory('GHSA-aaaa', [['package' => 'Mail', 'patched' => '3.7.25'], ['package' => 'Talk', 'patched' => '21.1.10']]) + [
+			'cve_id' => 'cve-2026-1111',
+			'identifiers' => [['type' => 'CVE', 'value' => 'CVE-2026-1111'], ['type' => 'GHSA', 'value' => 'GHSA-aaaa']],
+			'published_at' => '2026-08-01T12:30:00+02:00',
+			'html_url' => 'https://github.com/nextcloud/security-advisories/security/advisories/GHSA-aaaa',
+		];
+		$body = json_encode([$full, $this->advisory('GHSA-bbbb', [['package' => 'Tables', 'patched' => '1.0.1']])], JSON_THROW_ON_ERROR);
+
+		$result = $this->feed([['body' => $body]])->fetchAll();
+
+		foreach (['mail', 'spreed'] as $target) {
+			$advisory = $result['advisories'][$target][0];
+			self::assertSame(['CVE-2026-1111'], $advisory['cveIds']);
+			self::assertSame('2026-08-01T10:30:00Z', $advisory['publishedAt']);
+			self::assertSame('https://github.com/nextcloud/security-advisories/security/advisories/GHSA-aaaa', $advisory['url']);
+		}
+		$bare = $result['advisories']['tables'][0];
+		self::assertSame([], $bare['cveIds']);
+		self::assertNull($bare['publishedAt']);
+		self::assertNull($bare['url']);
 	}
 }

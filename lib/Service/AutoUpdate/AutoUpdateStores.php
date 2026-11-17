@@ -18,7 +18,9 @@ use OCA\Versioniq\Service\Policy\PolicyStore;
 /**
  * The stored state automatic updates run on: the per-app policies, the pins
  * that hold an app back, the global settings (on/off, window, time zone) and
- * the ledger of versions already attempted, and the versions an admin skipped.
+ * the ledger of versions already attempted, the versions an admin skipped,
+ * and the security side (see AutoUpdateSecurityStores), which the `security`
+ * level and the patch policy read.
  *
  * @psalm-api
  */
@@ -28,6 +30,7 @@ final class AutoUpdateStores {
 		public readonly PinStore $pinStore,
 		public readonly AutoUpdateSettingsStore $settingsStore,
 		public readonly AttemptLedger $attemptLedger,
+		public readonly AutoUpdateSecurityStores $security,
 		public readonly ?SkipList $skipList = null,
 	) {
 	}
