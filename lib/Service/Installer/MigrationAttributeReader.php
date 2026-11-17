@@ -44,6 +44,12 @@ class MigrationAttributeReader {
 	private const DESCRIPTION_POSITION_COLUMN = 3;
 	private const DESCRIPTION_POSITION_OTHER = 2;
 
+	/** The delimiters an argument list nests, opening => closing. */
+	private const ARGUMENT_BRACKETS = ['(' => ')', '[' => ']'];
+
+	/** Each opening delimiter the reader matches, opening => closing. */
+	private const DELIMITERS = ['(' => ')', '[' => ']', '{' => '}'];
+
 	private const SCHEMA_CALLS = '/->\s*(?:createTable|getTable|dropTable|hasTable)\s*\(\s*([\'"])([^\'"]+)\1/';
 
 	/**
@@ -193,7 +199,7 @@ class MigrationAttributeReader {
 		$found = [];
 		$offset = 0;
 		while (($start = strpos($source, '#[', $offset)) !== false) {
-			$end = self::closingBracket($source, $start + 1);
+			$end = self::closing($source, $start + 1);
 			if ($end === null) {
 				break;
 			}
@@ -296,7 +302,7 @@ class MigrationAttributeReader {
 		$start = 0;
 		$depth = 0;
 		foreach (self::unquoted($text, 0) as $i => $char) {
-			$depth += self::depthChange($char, '([', ')]');
+			$depth += self::depthChange($char, self::ARGUMENT_BRACKETS);
 			if ($char === ',' && $depth === 0) {
 				$parts[] = substr($text, $start, $i - $start);
 				$start = $i + 1;
@@ -308,17 +314,22 @@ class MigrationAttributeReader {
 		return array_values(array_filter($parts, static fn (string $part): bool => trim($part) !== ''));
 	}
 
-	/** The position of the bracket that closes the one at `$open`, skipping quoted text, else null. */
-	private static function closingBracket(string $source, int $open): ?int {
-		return self::closing($source, $open, '[', ']');
-	}
+	/**
+	 * The position of the delimiter closing the one at `$open` (a `(`, `[`
+	 * or `{`), skipping quoted text, else null. Only that delimiter pair
+	 * counts towards the nesting.
+	 */
+	private static function closing(string $source, int $open): ?int {
+		$opening = $source[$open] ?? '';
+		if (!isset(self::DELIMITERS[$opening])) {
+			return null;
+		}
 
-	/** The position of the delimiter closing the one at `$open`, skipping quoted text, else null. */
-	private static function closing(string $source, int $open, string $opening, string $closing): ?int {
+		$pair = [$opening => self::DELIMITERS[$opening]];
 		$depth = 0;
 		foreach (self::unquoted($source, $open) as $i => $char) {
-			$depth += self::depthChange($char, $opening, $closing);
-			if ($char === $closing && $depth === 0) {
+			$depth += self::depthChange($char, $pair);
+			if ($char === $pair[$opening] && $depth === 0) {
 				return $i;
 			}
 		}
@@ -366,13 +377,17 @@ class MigrationAttributeReader {
 		return ($char === '\'' || $char === '"') ? $char : null;
 	}
 
-	/** +1 for an opening delimiter, -1 for a closing one, else 0. */
-	private static function depthChange(string $char, string $openers, string $closers): int {
-		if (str_contains($openers, $char)) {
+	/**
+	 * +1 for an opening delimiter, -1 for a closing one, else 0.
+	 *
+	 * @param array<string, string> $delimiters Opening => closing.
+	 */
+	private static function depthChange(string $char, array $delimiters): int {
+		if (isset($delimiters[$char])) {
 			return 1;
 		}
 
-		return str_contains($closers, $char) ? -1 : 0;
+		return in_array($char, $delimiters, true) ? -1 : 0;
 	}
 
 	/** The text between the braces of a method, or null when the class does not declare it. */
@@ -386,7 +401,7 @@ class MigrationAttributeReader {
 			return null;
 		}
 
-		$close = self::closing($source, $open, '{', '}');
+		$close = self::closing($source, $open);
 
 		return $close === null ? null : substr($source, $open + 1, $close - $open - 1);
 	}

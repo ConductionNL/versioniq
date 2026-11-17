@@ -64,7 +64,7 @@ class TableSizeProbe {
 		$queried = 0;
 		foreach (array_values(array_unique($tables)) as $table) {
 			if (preg_match(self::TABLE_NAME, $table) !== 1 || $queried >= self::MAX_TABLES) {
-				$result[] = self::row($table, null, self::CLASS_UNKNOWN);
+				$result[] = self::unsized($table, self::CLASS_UNKNOWN);
 				continue;
 			}
 
@@ -94,23 +94,23 @@ class TableSizeProbe {
 	private function measure(string $table): array {
 		try {
 			if (!$this->db->tableExists($table)) {
-				return self::row($table, null, self::CLASS_NEW);
+				return self::unsized($table, self::CLASS_NEW);
 			}
 
 			$count = $this->countRows($table);
 		} catch (\Throwable $error) {
 			$this->logger->warning('TableSizeProbe: could not count a table', ['table' => $table, 'exception' => $error::class]);
 
-			return self::row($table, null, self::CLASS_UNKNOWN);
+			return self::unsized($table, self::CLASS_UNKNOWN);
 		}
 
 		if (!is_numeric($count)) {
-			return self::row($table, null, self::CLASS_UNKNOWN);
+			return self::unsized($table, self::CLASS_UNKNOWN);
 		}
 
 		$rows = (int)$count;
 
-		return self::row($table, $rows, self::sizeClass($rows));
+		return ['name' => $table, 'rows' => $rows, 'sizeClass' => self::sizeClass($rows)];
 	}
 
 	/** The row count the database reports for an existing table. */
@@ -125,11 +125,11 @@ class TableSizeProbe {
 	}
 
 	/**
-	 * One table's entry.
+	 * The entry of a table whose rows were not counted: a new one, or one that could not be.
 	 *
 	 * @return array{name: string, rows: int|null, sizeClass: string}
 	 */
-	private static function row(string $table, ?int $rows, string $sizeClass): array {
-		return ['name' => $table, 'rows' => $rows, 'sizeClass' => $sizeClass];
+	private static function unsized(string $table, string $sizeClass): array {
+		return ['name' => $table, 'rows' => null, 'sizeClass' => $sizeClass];
 	}
 }
