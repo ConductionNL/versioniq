@@ -39,24 +39,32 @@ final class AutoUpdatePlanner {
 	 * Security fixes the patch policy handles at the next window run first
 	 * (autoupdate-security-first D4), then every other member in policy
 	 * order. An app that fails to plan is logged and left out, so one broken
-	 * app never blocks the rest.
+	 * app never blocks the rest. Members of an update group then move
+	 * together, in the group's order, or wait together (D3), and the per-run
+	 * and weekly caps and the waiting list decide the run order and what
+	 * waits (D4, D5).
 	 *
 	 * @param array{rows: array<string, mixed>, fresh: bool} $advisories The run's advisory snapshot.
 	 * @param PatchPolicy|null $patchPolicy The patch policy; null reads as none.
+	 * @param \DateTimeImmutable|null $now The run's time; now when null.
 	 *
 	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
 	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-an-admin-records-a-patch-policy-and-security-fixes-go-first
 	 */
-	public function plan(array $advisories = ['rows' => [], 'fresh' => false], ?PatchPolicy $patchPolicy = null): AutoUpdatePlan {
-		return $this->planRun(new PlanRun($advisories['rows'], $advisories['fresh'], $patchPolicy ?? PatchPolicy::none()));
+	public function plan(array $advisories = ['rows' => [], 'fresh' => false], ?PatchPolicy $patchPolicy = null, ?\DateTimeImmutable $now = null): AutoUpdatePlan {
+		return $this->planRun(new PlanRun($advisories['rows'], $advisories['fresh'], $patchPolicy ?? PatchPolicy::none()), $now);
 	}
 
 	/**
 	 * The plan of one run: its advisory snapshot, patch policy and the kinds the schedule lets run tonight.
 	 *
+	 * @param PlanRun $run The run.
+	 * @param \DateTimeImmutable|null $now The run's time; now when null.
+	 *
 	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
 	 */
-	public function planRun(PlanRun $run): AutoUpdatePlan {
+	public function planRun(PlanRun $run, ?\DateTimeImmutable $now = null): AutoUpdatePlan {
 		$planned = [];
 		foreach ($this->stores->policyStore->all() as $appId => $policy) {
 			if ($policy->level !== Policy::LEVEL_NONE) {
@@ -64,7 +72,11 @@ final class AutoUpdatePlanner {
 			}
 		}
 
-		return new AutoUpdatePlan(self::firstThenLater(array_values(array_filter($planned))), $run->holds());
+		$limiter = new AutoUpdateLimiter($this->stores->settingsStore, $this->stores->attemptLedger);
+		$grouped = AutoUpdateGroups::apply(array_values(array_filter($planned)), $this->stores->groupStore->all());
+		$members = self::firstThenLater($grouped);
+
+		return new AutoUpdatePlan($limiter->apply($members, $now ?? new \DateTimeImmutable()), $run->holds());
 	}
 
 	/**

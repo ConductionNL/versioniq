@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: EUPL-1.2
 // Copyright (C) 2026 Conduction B.V.
+import type { LifecycleSignals } from '../components/LifecycleBadge.vue'
 import type { SweepStatus } from './sweepOutcome.ts'
 
 import { n, t } from '@nextcloud/l10n'
@@ -15,7 +16,12 @@ export type PendingUpdate = {
 	pinned: boolean
 	sourceId: string | null
 	error: string | null
+	lifecycle?: LifecycleSignals
+	successor?: SuccessorOffer
 }
+
+/** The successor the sweep found offered for an app, with the newest version of it this server can run. */
+export type SuccessorOffer = { from: string, to: string, source: string, custom: boolean, version: string }
 
 export type UpdatesFilter = 'all' | 'update' | 'outsidePolicy'
 

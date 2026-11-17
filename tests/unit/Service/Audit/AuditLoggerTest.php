@@ -14,6 +14,7 @@ require_once __DIR__ . '/../../Support/AuditArgs.php';
 use OCA\Versioniq\Db\AuditEntry;
 use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Service\Audit\AuditLogger;
+use OCA\Versioniq\Service\Audit\AuditNote;
 use OCA\Versioniq\Tests\Unit\Support\AuditArgs;
 use OCP\AppFramework\Utility\ITimeFactory;
 use PHPUnit\Framework\TestCase;
@@ -150,6 +151,35 @@ final class AuditLoggerTest extends TestCase {
 		$message = (string)$captured->getMessage();
 		$this->assertStringNotContainsString('ghp_supersecrettoken1234567890', $message);
 		$this->assertStringContainsString('[redacted]', $message);
+	}
+
+	/**
+	 * @return array<string, array{0: string, 1: string, 2: ?string}>
+	 */
+	public static function notedMessages(): array {
+		return [
+			'an install without a message takes the note' => [AuditLogger::OPERATION_INSTALL, '', 'Update group Registers'],
+			'an install message follows the note' => [AuditLogger::OPERATION_INSTALL, 'download failed', 'Update group Registers: download failed'],
+			'another operation is unchanged' => [AuditLogger::OPERATION_PIN, 'pinned', 'pinned'],
+		];
+	}
+
+	#[\PHPUnit\Framework\Attributes\DataProvider('notedMessages')]
+	public function testAnInstallDuringAnAuditNoteCarriesTheNote(string $operation, string $message, ?string $expected): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$captured = null;
+		$mapper->method('insert')->willReturnCallback(function (AuditEntry $entry) use (&$captured): AuditEntry {
+			$captured = $entry;
+
+			return $entry;
+		});
+		$logger = new AuditLogger($mapper, $this->timeFactory(), $this->createMock(LoggerInterface::class));
+
+		AuditNote::during('Update group Registers', static fn () => AuditArgs::call($logger, 'system', 'openregister', $operation, '2.3.0', '2.3.4', 'appstore', AuditLogger::STATUS_SUCCESS, $message));
+
+		$this->assertInstanceOf(AuditEntry::class, $captured);
+		$this->assertSame($expected, $captured->getMessage());
+		$this->assertNull(AuditNote::current());
 	}
 
 	public function testEmptyStringsAreNormalisedToNull(): void {

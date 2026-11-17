@@ -7,6 +7,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": false,
                 "boundSourceId": "appstore",
@@ -34,6 +41,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -57,6 +71,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -76,6 +97,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": "github:ConductionNL/qfdelta",
@@ -95,6 +123,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -114,6 +149,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -141,6 +183,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -388,6 +437,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": false,
                 "boundSourceId": "appstore",
@@ -415,6 +471,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -438,6 +501,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -457,6 +527,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": "github:ConductionNL/qfdelta",
@@ -476,6 +553,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -495,6 +579,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -522,6 +613,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -717,6 +815,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": false,
                 "boundSourceId": "appstore",
@@ -744,6 +849,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -767,6 +879,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -786,6 +905,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": "github:ConductionNL/qfdelta",
@@ -805,6 +931,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -824,6 +957,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -851,6 +991,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1110,6 +1257,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": false,
                 "boundSourceId": "appstore",
@@ -1137,6 +1291,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1160,6 +1321,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -1179,6 +1347,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": "github:ConductionNL/qfdelta",
@@ -1198,6 +1373,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1217,6 +1399,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -1244,6 +1433,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1439,6 +1635,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1506,6 +1709,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1529,6 +1739,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1621,6 +1838,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": false,
                 "boundSourceId": "appstore",
@@ -1653,6 +1877,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1676,6 +1907,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -1695,6 +1933,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": "github:ConductionNL/qfdelta",
@@ -1714,6 +1959,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1733,6 +1985,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -1764,6 +2023,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -1975,6 +2241,13 @@
                 "description": "Long text",
                 "summary": "Short",
                 "preview": "https://example.test/a.png",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": false,
                 "boundSourceId": "appstore",
@@ -2002,6 +2275,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -2025,6 +2305,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -2044,6 +2331,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": "github:ConductionNL/qfdelta",
@@ -2063,6 +2357,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -2082,6 +2383,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -2109,6 +2417,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -2320,6 +2635,13 @@
                 "description": "Long text",
                 "summary": "Short",
                 "preview": "https://example.test/a.png",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": false,
                 "boundSourceId": "appstore",
@@ -2347,6 +2669,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -2370,6 +2699,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": "github:ConductionNL/qfdelta",
@@ -2389,6 +2725,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -2408,6 +2751,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -2435,6 +2785,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -2625,6 +2982,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -2644,6 +3008,13 @@
                 "description": "Long text",
                 "summary": "Short",
                 "preview": "https://example.test/a.png",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": false,
                 "boundSourceId": "appstore",
@@ -2671,6 +3042,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -2694,6 +3072,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": "github:ConductionNL/qfdelta",
@@ -2713,6 +3098,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -2732,6 +3124,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -2759,6 +3158,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -2970,6 +3376,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": false,
                 "boundSourceId": "appstore",
@@ -2997,6 +3410,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -3020,6 +3440,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": true,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -3039,6 +3466,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": "github:ConductionNL/qfdelta",
@@ -3058,6 +3492,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,
@@ -3077,6 +3518,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": true,
                 "boundSourceId": null,
@@ -3104,6 +3552,13 @@
                 "description": "",
                 "summary": "",
                 "preview": "",
+                "author": "",
+                "licence": "",
+                "links": {
+                    "website": null,
+                    "repository": null,
+                    "bugs": null
+                },
                 "isCore": false,
                 "isShipped": false,
                 "boundSourceId": null,

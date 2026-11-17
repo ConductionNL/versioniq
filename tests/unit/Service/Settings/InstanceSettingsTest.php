@@ -306,6 +306,23 @@ final class InstanceSettingsTest extends TestCase {
 	}
 
 	/**
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	public function testAutomaticReEnablingIsOffUntilSwitchedOnAndRefusesOtherValues(): void {
+		$store = $this->store();
+		self::assertFalse($store->read()['reactivateAuto']);
+
+		self::assertSame(['reactivateAuto'], $store->update(['reactivateAuto' => '1']));
+		self::assertTrue($store->read()['reactivateAuto']);
+		$store->update(['reactivateAuto' => 'false']);
+		self::assertFalse($store->read()['reactivateAuto']);
+
+		$this->expectException(InvalidArgumentException::class);
+		$this->expectExceptionMessage('Automatic re-enabling must be on or off.');
+		$store->update(['reactivateAuto' => 'maybe']);
+	}
+
+	/**
 	 * releases-notes-reach 1.2: telling users about Versioniq's updates is on
 	 * until the admin switches it off; anything but on or off is refused and
 	 * writes nothing.
