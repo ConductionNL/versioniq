@@ -36,7 +36,7 @@ use UnexpectedValueException;
  * to `SelectedReleaseInstallerService`, not the external installer.
  *
  * @psalm-api
- * @psalm-type VersionEntry = array{version: string, changelog: ?string, changelogLanguage: ?string, serverCompatible: ?bool, releasedAt: ?string, downloads: null}
+ * @psalm-type VersionEntry = array{version: string, changelog: ?string, changelogLanguage: ?string, serverCompatible: ?bool, releasedAt: ?string, downloads: null, sourcePreRelease?: true}
  */
 class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppStoreSourceInterface {
 	public const DEFAULT_API_BASE = 'https://garm3.nextcloud.com/api/v1';
@@ -703,7 +703,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @param array<mixed> $releases
-	 * @return list<array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string, downloads: null}>
+	 * @return list<VersionEntry>
 	 */
 	private function normalizeVersions(array $releases): array {
 		$serverVersion = $this->getServerVersion();
@@ -750,7 +750,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 		$spec = $release['platformVersionSpec'] ?? null;
 		$changelog = $this->extractChangelog($release);
 
-		return [
+		$entry = [
 			'version' => $version,
 			'changelog' => $changelog,
 			'changelogLanguage' => $this->languageOfNotes($release, $changelog),
@@ -759,6 +759,13 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 			// The catalogue publishes no per-release download count (design D2).
 			'downloads' => null,
 		];
+		// The store marks a nightly build itself; an absent flag is not a nightly,
+		// and the version-suffix rule still applies (releases-channel-and-prereleases D1).
+		if (($release['isNightly'] ?? false) === true) {
+			$entry['sourcePreRelease'] = true;
+		}
+
+		return $entry;
 	}
 
 	/**
@@ -788,6 +795,9 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 		$known['changelog'] ??= $entry['changelog'];
 		$known['serverCompatible'] ??= $entry['serverCompatible'];
 		$known['releasedAt'] ??= $entry['releasedAt'];
+		if (isset($entry['sourcePreRelease'])) {
+			$known['sourcePreRelease'] = true;
+		}
 
 		return $known;
 	}

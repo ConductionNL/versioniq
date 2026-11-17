@@ -89,7 +89,7 @@ class ListVersions extends Command {
 	}
 
 	/**
-	 * @param array{installedVersion:?string, availableVersions:list<array{version:string,changelog?:?string,recordedSha?:?string,serverCompatible?:?bool,releasedAt?:?string}>, versions:list<array{version:string,changelog?:?string,recordedSha?:?string}>, source:string, sourceId:string, error?:string} $result
+	 * @param array{installedVersion:?string, availableVersions:list<array{version:string,changelog?:?string,recordedSha?:?string,serverCompatible?:?bool,preRelease?:bool,onChannel?:bool,releasedAt?:?string}>, versions:list<array{version:string,changelog?:?string,recordedSha?:?string}>, source:string, sourceId:string, channel?:string, error?:string} $result
 	 */
 	private function renderTable(OutputInterface $output, string $appId, array $result): void {
 		$installedVersion = $result['installedVersion'] ?? null;
@@ -97,6 +97,9 @@ class ListVersions extends Command {
 		$output->writeln(sprintf('App: %s', $appId));
 		$output->writeln(sprintf('Source: %s', $result['sourceId'] ?? 'none'));
 		$output->writeln(sprintf('Installed version: %s', $installedVersion ?? '(not installed)'));
+		if (isset($result['channel'])) {
+			$output->writeln(sprintf('Release channel: %s', $result['channel']));
+		}
 
 		$availableVersions = $result['availableVersions'] ?? [];
 		if ($availableVersions === []) {
@@ -112,13 +115,14 @@ class ListVersions extends Command {
 				$version,
 				$this->compatibilityMarker($version, $installedVersion),
 				$this->serverCompatibilityMarker($entry['serverCompatible'] ?? null),
+				self::channelMarker($entry),
 				$entry['recordedSha'] ?? '',
 				self::releasedOn($entry['releasedAt'] ?? null),
 			];
 		}
 
 		$table = new Table($output);
-		$table->setHeaders(['Version', 'Relative to installed', 'Runs on this server', 'Recorded SHA-256', 'Released']);
+		$table->setHeaders(['Version', 'Relative to installed', 'Runs on this server', 'On the channel', 'Recorded SHA-256', 'Released']);
 		$table->setRows($rows);
 		$table->render();
 	}
@@ -165,6 +169,24 @@ class ListVersions extends Command {
 		}
 
 		return $serverCompatible ? 'yes' : 'no';
+	}
+
+	/**
+	 * Says whether a version is on the app's release channel: `yes` or `no`,
+	 * with `pre-release` for a version marked as one, or `unknown` when the
+	 * listing carries no channel.
+	 *
+	 * @param array<string, mixed> $entry A listed version.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-the-channel-is-visible-and-settable-from-the-cli
+	 */
+	private static function channelMarker(array $entry): string {
+		if (!is_bool($entry['onChannel'] ?? null)) {
+			return 'unknown';
+		}
+		$marker = $entry['onChannel'] ? 'yes' : 'no';
+
+		return ($entry['preRelease'] ?? false) === true ? $marker . ', pre-release' : $marker;
 	}
 
 	private function errorOutput(OutputInterface $output): OutputInterface {
