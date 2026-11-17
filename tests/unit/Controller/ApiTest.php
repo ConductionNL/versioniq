@@ -22,6 +22,7 @@ use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\Advisory\AdvisoryTriageStore;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\UpdateGroup;
 use OCA\Versioniq\Service\AutoUpdate\UpdateGroupStore;
@@ -98,8 +99,8 @@ final class ApiTest extends TestCase {
 			'appManager' => $appManager ?? $this->createMock(IAppManager::class),
 			'timeFactory' => $this->fakeTimeFactory(),
 			'policyStore' => $policyStore ?? $this->createMock(PolicyStore::class),
-			'autoUpdateSettingsStore' => $autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
-			'settingsStore' => $autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
+			'autoUpdateSettingsStore' => $autoUpdateSettingsStore ?? $this->settingsStoreMock(),
+			'settingsStore' => $autoUpdateSettingsStore ?? $this->settingsStoreMock(),
 			'artifactCache' => $artifactCache ?? $this->createMock(ArtifactCache::class),
 			'connectionReports' => null,
 			'attemptLedger' => $attemptLedger ?? $this->createMock(AttemptLedger::class),
@@ -151,8 +152,8 @@ final class ApiTest extends TestCase {
 			'appManager' => $appManager ?? $this->createMock(IAppManager::class),
 			'timeFactory' => $this->fakeTimeFactory(),
 			'policyStore' => $policyStore ?? $this->createMock(PolicyStore::class),
-			'autoUpdateSettingsStore' => $autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
-			'settingsStore' => $autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
+			'autoUpdateSettingsStore' => $autoUpdateSettingsStore ?? $this->settingsStoreMock(),
+			'settingsStore' => $autoUpdateSettingsStore ?? $this->settingsStoreMock(),
 			'artifactCache' => $artifactCache ?? $this->createMock(ArtifactCache::class),
 			'connectionReports' => null,
 			'attemptLedger' => $attemptLedger ?? $this->createMock(AttemptLedger::class),
@@ -586,7 +587,7 @@ final class ApiTest extends TestCase {
 			'openregister' => new \OCA\Versioniq\Service\Policy\Policy('patch', 'alice', '2026-07-23T00:00:00+00:00'),
 		]);
 
-		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore = $this->settingsStoreMock();
 		$settingsStore->method('isEnabled')->willReturn(true);
 		$settingsStore->method('getWindow')->willReturn('01:00-05:00');
 
@@ -693,7 +694,7 @@ final class ApiTest extends TestCase {
 			}
 		);
 
-		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore = $this->settingsStoreMock();
 		$settingsStore->expects($this->never())->method('setWindow');
 
 		$installer = $this->createMock(InstallerService::class);
@@ -715,7 +716,7 @@ final class ApiTest extends TestCase {
 			}
 		);
 
-		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore = $this->settingsStoreMock();
 		$settingsStore->expects($this->once())->method('setEnabled')->with(true);
 		$settingsStore->expects($this->once())->method('setWindow')->with('22:00-04:00');
 		$settingsStore->method('isEnabled')->willReturn(true);
@@ -778,7 +779,7 @@ final class ApiTest extends TestCase {
 	}
 
 	public function testUpdateAutoUpdateSettingsStoresACapAndClearsAnEmptyOne(): void {
-		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore = $this->settingsStoreMock();
 		$settingsStore->expects($this->once())->method('setMaxPerRun')->with(5);
 		$settingsStore->expects($this->once())->method('setMaxPerWeek')->with(null);
 		$settingsStore->method('getMaxPerRun')->willReturn(5);
@@ -795,7 +796,7 @@ final class ApiTest extends TestCase {
 	}
 
 	public function testUpdateAutoUpdateSettingsLeavesTheCapsAloneWhenNotSent(): void {
-		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore = $this->settingsStoreMock();
 		$settingsStore->expects($this->never())->method('setMaxPerRun');
 		$settingsStore->expects($this->never())->method('setMaxPerWeek');
 		$settingsStore->method('getMaxPerWeek')->willReturn(40);
@@ -897,7 +898,7 @@ final class ApiTest extends TestCase {
 	}
 
 	public function testPoliciesReturnsTheGroupsAndTheWaitingList(): void {
-		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore = $this->settingsStoreMock();
 		$settingsStore->method('getDeferred')->willReturn(['group:Registers' => '2026-07-20T02:00:00+00:00']);
 		$groupStore = $this->createMock(UpdateGroupStore::class);
 		$groupStore->method('all')->willReturn([
@@ -916,6 +917,67 @@ final class ApiTest extends TestCase {
 			'setAt' => '2026-07-01T00:00:00+00:00',
 		]], $response->getData()['groups']);
 		$this->assertEquals((object)['group:Registers' => '2026-07-20T02:00:00+00:00'], $response->getData()['waiting']);
+	}
+
+	/**
+	 * @return array<string, array{0: mixed}>
+	 */
+	public static function invalidSchedules(): array {
+		return [
+			'weekday 8' => [['major' => ['days' => [8]]]],
+			'unknown kind' => [['weekly' => ['days' => [1]]]],
+			'string monthly' => [['minor' => ['days' => [1], 'monthly' => 'yes']]],
+		];
+	}
+
+	#[\PHPUnit\Framework\Attributes\DataProvider('invalidSchedules')]
+	public function testUpdateAutoUpdateSettingsRejectsAnInvalidScheduleBeforeAnyWrite(mixed $schedule): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'window' => '22:00-04:00',
+				'schedule' => $schedule,
+				default => $default,
+			}
+		);
+
+		$settingsStore = $this->settingsStoreMock();
+		$settingsStore->expects($this->never())->method('setEnabled');
+		$settingsStore->expects($this->never())->method('setWindow');
+		$settingsStore->expects($this->never())->method('setSchedule');
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', null, $settingsStore)
+			->updateAutoUpdateSettings('1');
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertStringStartsWith('schedule', $response->getData()['message']);
+	}
+
+	public function testUpdateAutoUpdateSettingsStoresAValidSchedule(): void {
+		$schedule = ['major' => ['days' => [6], 'monthly' => true]];
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'schedule' => $schedule,
+				default => $default,
+			}
+		);
+
+		$settingsStore = $this->settingsStoreMock();
+		$settingsStore->expects($this->once())->method('setSchedule')->with(
+			$this->callback(static fn (AutoUpdateSchedule $stored): bool => $stored->toArray() === AutoUpdateSchedule::fromArray($schedule)->toArray())
+		);
+		$settingsStore->method('getWindow')->willReturn('01:00-05:00');
+		$settingsStore->method('getTimeZoneName')->willReturn('UTC');
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', null, $settingsStore)
+			->updateAutoUpdateSettings();
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertArrayHasKey('nextRuns', $response->getData());
+		$this->assertArrayHasKey('autoUpdateSchedule', $response->getData());
 	}
 
 	// --- dryRun decoupled from debug (see MODIFIED "Debug Mode") ---
@@ -1173,6 +1235,17 @@ final class ApiTest extends TestCase {
 
 	public function testClearBindingForbiddenForNonAdmin(): void {
 		$this->assertSame(403, $this->buildController()->clearBinding('openregister')->getStatus());
+	}
+
+	/**
+	 * A settings-store double whose schedule is the default every-day schedule.
+	 *
+	 * @return AutoUpdateSettingsStore&\PHPUnit\Framework\MockObject\MockObject
+	 */
+	private function settingsStoreMock(): AutoUpdateSettingsStore {
+		$store = $this->createMock(AutoUpdateSettingsStore::class);
+		$store->method('getSchedule')->willReturn(AutoUpdateSchedule::everyDay());
+		return $store;
 	}
 
 	/**
