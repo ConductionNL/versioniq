@@ -8,6 +8,8 @@ import type { UpdateGroupView } from './components/UpdateGroupsPanel.vue'
 import type { PinRecord } from './dialogs/PinDialog.vue'
 import type {AdvisoryCorrelation, AdvisoryTriageMap, Compliance, NcscStatus} from './utils/advisories.ts';
 import type { AutoUpdateSchedule as AutoUpdateScheduleValue, UpdateKind } from './utils/autoUpdateSchedule.ts'
+import type { ReleaseChannel } from './utils/channelFilter.ts'
+import type { LeftDisabled } from './utils/externalChanges.ts'
 import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
 import type {LkgRecord, MigrationPreview} from './utils/migrationSafety.ts';
 import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
@@ -28,6 +30,7 @@ import AutoUpdateOverview from './components/AutoUpdateOverview.vue'
 import AutoUpdateSchedule from './components/AutoUpdateSchedule.vue'
 import CachePanel from './components/CachePanel.vue'
 import ChangelogRangePanel from './components/ChangelogRangePanel.vue'
+import ChannelSelector from './components/ChannelSelector.vue'
 import DiscoverPanel from './components/DiscoverPanel.vue'
 import HistoryPanel from './components/HistoryPanel.vue'
 import InstallProgress from './components/InstallProgress.vue'
@@ -65,8 +68,10 @@ import { advisoryFreshnessLabel as advisoryFreshnessLabelFor } from './utils/adv
 import { defaultSchedule, scheduleFrom } from './utils/autoUpdateSchedule.ts'
 import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow.ts'
 import { buildChangelogRange } from './utils/changelog.ts'
+import { channelLabel, noLtsLinesMarked, offChannelTags, pickerVersions } from './utils/channelFilter.ts'
 import { tabForHash } from './utils/connectionRegistry.ts'
 import { currentLoginName, enableApp } from './utils/enableApp.ts'
+import { leftDisabledMarks, leftDisabledNotice } from './utils/externalChanges.ts'
 import { normalizeInstallResult, withSourceOverride } from './utils/installResult.ts'
 import { lkgRollbackTargets } from './utils/migrationSafety.ts'
 import { filterByUpdates, isOutsidePolicy, outsidePolicyLabel, updateBadge, updatesFreshnessLabel as updatesFreshnessLabelFor } from './utils/pendingUpdates.ts'
@@ -108,6 +113,9 @@ type AppVersion = {
 	cachedOffline?: boolean
 	serverCompatible?: boolean | null
 	releasedAt?: string | null
+	preRelease?: boolean
+	lts?: boolean
+	onChannel?: boolean
 	downloads?: number | null
 	outcomes?: VersionOutcomes | null
 	breaking?: boolean
@@ -133,6 +141,13 @@ const pinnedOnly = ref(false)
 const updateChannel = ref('')
 const selectedApp = ref('')
 const versions = ref<AppVersion[]>([])
+// releases-channel-and-prereleases: the effective channel the versions answer
+// names, the picker's "Show all versions" switch, and the channel settings.
+const versionChannel = ref('')
+const showAllVersions = ref(false)
+type ChannelState = { channels: string[], default: string, apps: Record<string, string>, ltsLines: Record<string, string[]> }
+const channelState = ref<ChannelState>({ channels: [], default: 'server', apps: {}, ltsLines: {} })
+const isSavingChannel = ref(false)
 const versionFilter = ref('')
 const hasCheckedVersions = ref(false)
 const isCheckingVersions = ref(false)
@@ -651,14 +666,29 @@ async function onEnableConfirmed (password: string): Promise<void> {
 	}
 }
 
+// Apps an update left disabled, by app id (audit-external-changes).
+const leftDisabled = ref<Record<string, LeftDisabled>>({})
+
+/**
+ * Whether the Enable action fits: the app is disabled and, when an update
+ * left it so, the installed version runs on this server.
+ *
+ * @param app The card's app.
+ * @spec openspec/changes/audit-external-changes
+ */
+function offersEnable (app: AppOption): boolean {
+	return app.state === 'disabled' && leftDisabled.value[app.id]?.compatible !== false
+}
+
 /**
  *
  */
 async function loadApps (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/apps')), { headers: { ...ocsHeaders, Accept: 'application/json' } })
-		const payload = await unwrapOcsResponse<{ apps: AppOption[] }>(response)
+		const payload = await unwrapOcsResponse<{ apps: AppOption[], disabledByUpdate?: unknown }>(response)
 		apps.value = payload.apps || []
+		leftDisabled.value = leftDisabledMarks(payload.disabledByUpdate)
 	} catch (error) {
 		errorMessage.value = error instanceof Error ? error.message : 'Could not fetch app list.'
 	}
@@ -1235,6 +1265,8 @@ function resetSelectedAppState (): void {
 	selectedVersion.value = ''
 	versionFilter.value = ''
 	hasCheckedVersions.value = false
+	versionChannel.value = ''
+	showAllVersions.value = false
 	installedVersion.value = ''
 	availableSource.value = ''
 	sourceOverride.value = ''
@@ -1279,6 +1311,7 @@ type VersionsPayload = {
 	source?: string
 	sourceId?: string
 	error?: string
+	channel?: string
 }
 
 /**
@@ -1316,6 +1349,7 @@ async function fetchVersionsPayload (appId: string): Promise<VersionsPayload> {
  */
 function applyVersionsPayload (payload: VersionsPayload): void {
 	versions.value = payload.availableVersions || payload.versions || []
+	versionChannel.value = payload.channel || ''
 	installedVersion.value = payload.installedVersion || ''
 	availableSource.value = payload.sourceId || payload.source || ''
 	errorMessage.value = payload.error ?? ''
@@ -1333,7 +1367,122 @@ function isBlockedBySafeModeRule (version: string): boolean {
 		enabled: isSafeMode.value,
 		installedVersion: installedVersion.value,
 		updateChannel: updateChannel.value,
+		onChannel: versions.value.find((entry) => entry.version === version)?.onChannel,
 	})
+}
+
+/**
+ * Safe mode's listing rule: with "Show all versions" on, an off-channel
+ * version stays listed and tagged, and selecting it is refused.
+ *
+ * @param version the listed version
+ */
+function isHiddenBySafeMode (version: AppVersion): boolean {
+	return isBlockedBySafeMode(version.version, {
+		enabled: isSafeMode.value,
+		installedVersion: installedVersion.value,
+		updateChannel: updateChannel.value,
+		onChannel: showAllVersions.value && version.onChannel === false ? true : version.onChannel,
+	})
+}
+
+const versionChannelName = computed(() => (versionChannel.value ? channelLabel(versionChannel.value) : ''))
+
+const ltsLinesMissing = computed(() => noLtsLinesMarked(
+	versionChannel.value,
+	channelState.value.ltsLines[selectedApp.value] ?? [],
+	versions.value,
+))
+
+/**
+ * Read the release channel settings (admin only; a refusal leaves the defaults).
+ */
+async function loadChannels (): Promise<void> {
+	try {
+		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/channels')), { headers: { ...ocsHeaders, Accept: 'application/json' } })
+		channelState.value = normaliseChannelState(await unwrapOcsResponse<Partial<ChannelState>>(response))
+	} catch {
+		// Not an admin, or an older server: the selectors keep their defaults.
+	}
+}
+
+/**
+ * The channel settings with every part present, whatever the server left out.
+ *
+ * @param state the answer
+ */
+function normaliseChannelState (state: Partial<ChannelState> | null | undefined): ChannelState {
+	return {
+		channels: Array.isArray(state?.channels) ? state.channels : [],
+		default: typeof state?.default === 'string' && state.default !== '' ? state.default : 'server',
+		apps: state?.apps && typeof state.apps === 'object' ? state.apps : {},
+		ltsLines: state?.ltsLines && typeof state.ltsLines === 'object' ? state.ltsLines : {},
+	}
+}
+
+/**
+ * Send one password-confirmed channel change and keep the settings it answers.
+ *
+ * @param change the endpoint below /api (path), PUT or DELETE (method) and the request body (body)
+ * @param change.path the endpoint below /api
+ * @param change.method PUT or DELETE
+ * @param change.body the request body
+ */
+async function sendChannelChange ({ path, method, body }: { path: string, method: 'PUT' | 'DELETE', body: Record<string, unknown> }): Promise<void> {
+	if (isSavingChannel.value) {
+		return
+	}
+	isSavingChannel.value = true
+	errorMessage.value = ''
+	try {
+		await ensurePasswordConfirmation()
+		const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/${path}`)), {
+			method,
+			headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
+			body: JSON.stringify(body),
+		})
+		channelState.value = normaliseChannelState(await unwrapOcsResponse<Partial<ChannelState>>(response))
+		if (selectedApp.value !== '') {
+			applyVersionsPayload(await fetchVersionsPayload(selectedApp.value))
+		}
+	} catch (e) {
+		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not change the release channel.')
+	} finally {
+		isSavingChannel.value = false
+	}
+}
+
+/**
+ * An app's channel was chosen; null means it follows the default again.
+ *
+ * @param appId the app
+ * @param channel the channel, or null
+ */
+async function onChannelChange (appId: string, channel: ReleaseChannel | null): Promise<void> {
+	const path = `app/${encodeURIComponent(appId)}/channel`
+	await sendChannelChange({ path, method: channel === null ? 'DELETE' : 'PUT', body: channel === null ? {} : { channel } })
+}
+
+/**
+ * An app's long-term support lines were saved.
+ *
+ * @param appId the app
+ * @param lines the lines
+ */
+async function onLtsLinesChange (appId: string, lines: string[]): Promise<void> {
+	await sendChannelChange({ path: `app/${encodeURIComponent(appId)}/lts-lines`, method: 'PUT', body: { lines } })
+}
+
+/**
+ * The instance default channel was chosen on the Settings tab.
+ *
+ * @param _appId always '' for the default
+ * @param channel the channel
+ */
+async function onDefaultChannelChange (_appId: string, channel: ReleaseChannel | null): Promise<void> {
+	if (channel !== null) {
+		await sendChannelChange({ path: 'channel', method: 'PUT', body: { channel } })
+	}
 }
 
 /**
@@ -1504,9 +1653,10 @@ function appCardFallback (app: AppOption): string {
 
 const filteredVersions = computed(() => {
 	const filter = versionFilter.value.trim().toLowerCase()
+	const onChannel = pickerVersions(versions.value, showAllVersions.value)
 	const list = isSafeMode.value
-		? versions.value.filter((version) => !isBlockedBySafeModeRule(version.version))
-		: versions.value
+		? onChannel.filter((version) => !isHiddenBySafeMode(version))
+		: onChannel
 
 	if (filter === '') {
 		return list
@@ -2665,6 +2815,7 @@ onMounted(async () => {
 	void loadPolicies().catch(() => undefined)
 	void loadAdvisorySettings().catch(() => undefined)
 	void loadUpdates().catch(() => undefined)
+	void loadChannels().catch(() => undefined)
 })
 
 watch([safeModeEnabled, installedVersion, selectedVersion], () => {
@@ -3061,6 +3212,12 @@ watch(dryRunEnabled, () => {
 																{{ appStateLabel(app.state) }}
 															</span>
 															<span
+																v-if="app.state === 'disabled' && leftDisabled[app.id]"
+																:class="$style.appCardStateFlag"
+																data-testid="app-left-disabled">
+																{{ leftDisabledNotice(leftDisabled[app.id]) }}
+															</span>
+															<span
 																v-if="pinFor(app.id)"
 																:class="$style.pinBadge"
 																data-testid="pin-badge"
@@ -3178,6 +3335,15 @@ watch(dryRunEnabled, () => {
 													:blockedVersions="blockedVersionsFor(app.id)"
 													@change="onPolicyChange"
 													@retry="onRetryAttempt" />
+												<ChannelSelector
+													v-if="!app.isCore"
+													:appId="app.id"
+													:channel="channelState.apps[app.id] ?? null"
+													:defaultChannel="channelState.default"
+													:ltsLines="channelState.ltsLines[app.id] ?? []"
+													:disabled="isSavingChannel"
+													@change="onChannelChange"
+													@ltsLines="onLtsLinesChange" />
 											</div>
 											<button
 												v-if="!app.isCore"
@@ -3197,7 +3363,7 @@ watch(dryRunEnabled, () => {
 												{{ t('versioniq', 'Update to {version}', { version: quickUpdateTargetFor(app.id) ?? '' }) }}
 											</button>
 											<button
-												v-if="app.state === 'disabled'"
+												v-if="offersEnable(app)"
 												type="button"
 												:class="$style.appCardButton"
 												data-testid="app-enable-button"
@@ -3333,6 +3499,23 @@ watch(dryRunEnabled, () => {
 											:boundSourceId="selectedAppOption?.boundSourceId ?? null"
 											:disabled="isCheckingVersions || isInstallingVersion"
 											@apply="onApplySourceOverride" />
+										<div v-if="versions.length > 0" :class="$style.versionChannelBar" data-testid="version-channel-bar">
+											<span v-if="versionChannelName" data-testid="version-channel-name">
+												{{ t('versioniq', 'Release channel: {channel}', { channel: versionChannelName }) }}
+											</span>
+											<label :class="$style.safeMode">
+												<input
+													v-model="showAllVersions"
+													type="checkbox"
+													data-testid="show-all-versions"
+													:class="$style.safeModeCheckbox"
+													:disabled="isInstallingVersion">
+												<span>{{ t('versioniq', 'Show all versions') }}</span>
+											</label>
+											<p v-if="ltsLinesMissing && !showAllVersions" :class="$style.versionChannelNotice" data-testid="no-lts-lines">
+												{{ t('versioniq', 'No long-term support lines are marked for this app') }}
+											</p>
+										</div>
 										<div v-if="versions.length > 0" :class="$style.versionListContainer">
 											<!-- aria-label, not a placeholder. A placeholder is not an
 											     accessible name: it is announced inconsistently and
@@ -3358,6 +3541,13 @@ watch(dryRunEnabled, () => {
 															<span>{{ version.version }}</span>
 															<ReleaseDate :releasedAt="version.releasedAt ?? null" />
 															<ServerCompatBadge :serverCompatible="version.serverCompatible ?? null" />
+															<span
+																v-for="tag in offChannelTags(version, versionChannel)"
+																:key="tag"
+																:class="$style.versionChannelTag"
+																data-testid="version-channel-tag">
+																{{ tag }}
+															</span>
 															<span
 																v-if="version.cachedOffline"
 																:class="$style.cachedOfflineBadge"
@@ -3593,6 +3783,12 @@ watch(dryRunEnabled, () => {
 					id="settings-panel"
 					role="tabpanel"
 					aria-labelledby="settings-tab">
+					<div :class="$style.defaultChannel" data-testid="default-channel">
+						<ChannelSelector
+							:channel="channelState.default"
+							:disabled="isSavingChannel"
+							@change="onDefaultChannelChange" />
+					</div>
 					<InstanceSettingsPanel />
 					<PatchPolicyPanel />
 					<SuccessorsPanel />
@@ -3679,6 +3875,32 @@ watch(dryRunEnabled, () => {
 
 .layout {
 	width: 100%;
+}
+
+.versionChannelBar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 8px;
+}
+
+.versionChannelNotice {
+	width: 100%;
+	color: var(--color-warning-text);
+}
+
+.versionChannelTag {
+	font-size: 12px;
+	padding: 0 6px;
+	border-radius: var(--border-radius-pill);
+	background-color: var(--color-warning-hover, var(--color-background-dark));
+	color: var(--color-main-text);
+}
+
+.defaultChannel {
+	max-width: 400px;
+	padding: 16px;
 }
 
 .updateChannel {

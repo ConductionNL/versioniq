@@ -77,7 +77,7 @@ class ApiController extends OCSController {
 	/**
 	 * Lists installed apps (admin-only); see "List Installed Apps"
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{apps: list<array<string, mixed>>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{apps: list<array<string, mixed>>, disabledByUpdate: array<string, array{toVersion: string, compatible: bool, compatibleVersion: ?string}>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Installed apps returned
 	 * 403: Caller is not an administrator
@@ -91,7 +91,12 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		return new DataResponse(['apps' => $this->install->installerService->getInstalledApps()]);
+		return new DataResponse([
+			'apps' => $this->install->installerService->getInstalledApps(),
+			// Apps an update left disabled, for the notice on their card
+			// (audit-external-changes).
+			'disabledByUpdate' => $this->reports->stores->seenStateStore?->disabledByUpdate() ?? [],
+		]);
 	}
 
 	/**

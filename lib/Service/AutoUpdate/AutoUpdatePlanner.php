@@ -295,7 +295,9 @@ final class AutoUpdatePlanner {
 	}
 
 	/**
-	 * The versions the app's source offers, or null when the source failed.
+	 * The versions the app's source lists on its release channel, or null when the source failed.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-the-nightly-job-takes-only-versions-on-the-apps-channel
 	 *
 	 * @return list<string>|null
 	 */
@@ -305,9 +307,16 @@ final class AutoUpdatePlanner {
 			return null;
 		}
 
-		return array_map(
-			static fn (array $entry): string => $entry['version'],
-			$result['availableVersions'] ?? []
+		// Only versions on the app's release channel are candidates; an entry
+		// without the stamp predates channels and stays one.
+		$onChannel = array_filter(
+			$result['availableVersions'] ?? [],
+			static fn (array $entry): bool => ($entry['onChannel'] ?? true) !== false
 		);
+
+		return array_values(array_map(
+			static fn (array $entry): string => (string)$entry['version'],
+			$onChannel
+		));
 	}
 }
