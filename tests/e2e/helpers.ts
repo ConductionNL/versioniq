@@ -23,7 +23,8 @@ export type TabName =
 	| "Discover"
 	| "Artifact cache"
 	| "Settings"
-	| "Integrations";
+	| "Integrations"
+	| "Instances";
 
 /**
  * Opens the admin settings page and waits for the app shell to be interactive.
