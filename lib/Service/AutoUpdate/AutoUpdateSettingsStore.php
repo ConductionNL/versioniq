@@ -36,6 +36,21 @@ class AutoUpdateSettingsStore {
 	/** Opening key ({@see AutoUpdateWindow::openingKey()}) of the last window the job swept. */
 	public const CONFIG_LAST_SWEPT_WINDOW = 'auto_update_last_swept_window';
 
+	/** Most updates one run may install; absent means no cap (autoupdate-run-batching D4). */
+	public const CONFIG_MAX_PER_RUN = 'auto_update.max_per_run';
+
+	/** Most install attempts in seven days; absent means no cap (D4). */
+	public const CONFIG_MAX_PER_WEEK = 'auto_update.max_per_week';
+
+	/** The units a cap held back, as `{unitKey: firstHeldAt}` (D5). */
+	public const CONFIG_DEFERRED = 'auto_update.deferred';
+
+	/** The highest per-run cap an admin may set. */
+	public const MAX_PER_RUN_LIMIT = 50;
+
+	/** The highest weekly cap an admin may set. */
+	public const MAX_PER_WEEK_LIMIT = 200;
+
 	public function __construct(
 		private IAppConfig $config,
 		// Optional and last so existing callers keep working; the container
@@ -169,5 +184,99 @@ class AutoUpdateSettingsStore {
 		}
 
 		$this->config->setValueString(Application::APP_ID, self::CONFIG_DEFAULT_LEVEL, $level);
+	}
+
+	/**
+	 * The per-run cap, or null when there is none.
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	public function getMaxPerRun(): ?int {
+		return $this->readCap(self::CONFIG_MAX_PER_RUN, self::MAX_PER_RUN_LIMIT);
+	}
+
+	/**
+	 * The weekly cap, or null when there is none.
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	public function getMaxPerWeek(): ?int {
+		return $this->readCap(self::CONFIG_MAX_PER_WEEK, self::MAX_PER_WEEK_LIMIT);
+	}
+
+	/**
+	 * Set or clear the per-run cap; null clears it.
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	public function setMaxPerRun(?int $max): void {
+		$this->writeCap(self::CONFIG_MAX_PER_RUN, $max);
+	}
+
+	/**
+	 * Set or clear the weekly cap; null clears it.
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	public function setMaxPerWeek(?int $max): void {
+		$this->writeCap(self::CONFIG_MAX_PER_WEEK, $max);
+	}
+
+	/**
+	 * The units a cap held back, keyed by unit, with when each was first held.
+	 *
+	 * @return array<string, string>
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	public function getDeferred(): array {
+		$decoded = json_decode($this->config->getValueString(Application::APP_ID, self::CONFIG_DEFERRED, ''), true);
+		if (!is_array($decoded)) {
+			return [];
+		}
+
+		/** @var array<string, string> */
+		return array_filter(
+			$decoded,
+			static fn (mixed $heldAt, int|string $key): bool => is_string($key) && is_string($heldAt) && $heldAt !== '',
+			ARRAY_FILTER_USE_BOTH
+		);
+	}
+
+	/**
+	 * Store the units a cap held back; an empty list removes the key.
+	 *
+	 * @param array<string, string> $deferred
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	public function setDeferred(array $deferred): void {
+		if ($deferred === []) {
+			$this->config->deleteKey(Application::APP_ID, self::CONFIG_DEFERRED);
+			return;
+		}
+
+		$this->config->setValueString(Application::APP_ID, self::CONFIG_DEFERRED, (string)json_encode($deferred));
+	}
+
+	/**
+	 * A stored cap, or null when absent or outside 1 to $limit.
+	 */
+	private function readCap(string $key, int $limit): ?int {
+		$value = $this->config->getValueInt(Application::APP_ID, $key, 0);
+
+		return ($value >= 1 && $value <= $limit) ? $value : null;
+	}
+
+	/**
+	 * Store a cap, or remove it for null.
+	 */
+	private function writeCap(string $key, ?int $max): void {
+		if ($max === null) {
+			$this->config->deleteKey(Application::APP_ID, $key);
+			return;
+		}
+
+		$this->config->setValueInt(Application::APP_ID, $key, $max);
 	}
 }

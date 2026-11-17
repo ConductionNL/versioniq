@@ -244,6 +244,17 @@ From a hit, the admin MUST be able to: (a) for an installed app, jump to the App
 - WHEN it renders
 - THEN the card MUST state the source is not trusted and link to the Trusted sources tab
 
+### Requirement: Public GitHub search is switched on and off on the page
+
+The Discover tab MUST say whether search in public GitHub repositories is on and MUST offer a switch for it. The switch MUST write the existing `discovery.github_search_enabled` key through the instance settings, MUST require password confirmation, and MUST be recorded in the audit trail as a settings change. Private repositories MUST stay searched with the admin's visible tokens whatever the switch says.
+
+#### Scenario: An admin switches public GitHub search on
+
+- **GIVEN** public GitHub search is off
+- **WHEN** an admin turns the switch on and confirms their password
+- **THEN** the next search MUST include public GitHub hits
+- **AND** the tab MUST say search in public GitHub repositories is on
+
 ## User Stories
 
 1. As an admin, I want to search across the App Store and my private repos in one go so I don't have to remember where each app lives.

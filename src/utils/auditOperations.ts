@@ -30,6 +30,10 @@ const OPERATION_LABELS = new Map<string, (pattern: string) => string>([
 	['trust_source', (pattern) => t('versioniq', 'Trusted source added: {pattern}', { pattern })],
 	['untrust_source', (pattern) => t('versioniq', 'Trusted source removed: {pattern}', { pattern })],
 	['unbind_source', () => t('versioniq', 'Source binding cleared')],
+	// Changes made outside Versioniq (audit-external-changes).
+	['external_update', () => t('versioniq', 'Changed outside Versioniq')],
+	['external_disable', () => t('versioniq', 'Disabled outside Versioniq')],
+	['reactivate', () => t('versioniq', 'Enabled again after an update')],
 ])
 
 /**

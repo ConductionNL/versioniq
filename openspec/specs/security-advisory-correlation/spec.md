@@ -2,7 +2,9 @@
 
 ## Purpose
 An administrator learns which installed or pinned app versions are affected by a published security advisory, without leaving Nextcloud. The system reads Nextcloud's advisory feed and the forge advisories of bound sources on a schedule the admin sets, matches each advisory to the installed version per release branch, notifies admins of new advisories that affect them and sends a weekly digest of the rest. It never changes a version on its own.
+
 ## Requirements
+
 ### Requirement: The installed/pinned version is correlated against known security advisories
 
 For each installed app, the system MUST resolve whether the currently-installed or
@@ -46,6 +48,14 @@ the administrator decides.
 
 @e2e exclude notify-on-new-advisory covered by the refresh-job unit test; no auto-change asserted (job performs no install/pin mutation).
 
+#### Scenario: A critical advisory reaches the admin at the next sweep
+
+@e2e exclude the notification fires from a background job; covered by tests/unit/Service/Advisory/AdvisoryNotifierTest.php.
+
+- **GIVEN** the sweep runs every hour, and a critical advisory is published for the installed version of `calendar`
+- **WHEN** the next sweep runs
+- **THEN** every admin MUST get a notification naming `calendar`, its version and the advisory
+- **AND** the advisory MUST NOT wait for the weekly digest, which only counts advisories that do not affect the installed version
 
 ### Requirement: Every stored advisory is reachable from a page, with its severity
 
@@ -72,7 +82,6 @@ critical and a low advisory do not look the same.
 - **GIVEN** an app with a low and a critical advisory
 - **WHEN** the Apps tab renders its card
 - **THEN** the advisory badge MUST read the state followed by "Critical"
-
 
 ### Requirement: Advisories are matched per release branch
 
@@ -169,3 +178,21 @@ The advisory sweep and the update availability sweep MUST each store their outco
 - **GIVEN** the 06:02 availability sweep could not reach the source of Pipelinq
 - **WHEN** an admin opens the Apps tab
 - **THEN** the check line MUST say updates were checked at 06:02 except for Pipelinq
+
+### Requirement: An instance without internet imports a local copy of the advisory feed
+
+The advisory feed setting MUST offer to import a local copy: an admin uploads a feed file in the format the feed address serves. Versioniq MUST validate the file, keep it in its app data and, when `advisory.feed_source` is `local`, read advisories from that copy without any network request. The setting MUST show the date of the copy and warn when it is older than 30 days. A file that does not parse MUST be refused and the previous copy kept.
+
+#### Scenario: An offline instance checks advisories from an imported copy
+
+- **GIVEN** an instance with no internet access and a feed file downloaded elsewhere on 20 October
+- **WHEN** an admin imports the file and sets the feed source to the local copy
+- **THEN** the next advisory sweep MUST correlate installed versions against that copy
+- **AND** no request MUST go to the feed address
+- **AND** the setting MUST show "Local copy of 20 Oct"
+
+#### Scenario: A broken file
+
+- **WHEN** an admin imports a file that is not a valid feed
+- **THEN** the import MUST be refused with a message saying why
+- **AND** the previous copy MUST stay in use

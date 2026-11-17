@@ -36,7 +36,7 @@ use UnexpectedValueException;
  * to `SelectedReleaseInstallerService`, not the external installer.
  *
  * @psalm-api
- * @psalm-type VersionEntry = array{version: string, changelog: ?string, changelogLanguage: ?string, serverCompatible: ?bool, releasedAt: ?string, downloads: null}
+ * @psalm-type VersionEntry = array{version: string, changelog: ?string, changelogLanguage: ?string, serverCompatible: ?bool, releasedAt: ?string, downloads: null, sourcePreRelease?: true}
  */
 class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppStoreSourceInterface {
 	public const DEFAULT_API_BASE = 'https://garm3.nextcloud.com/api/v1';
@@ -118,6 +118,72 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 		}
 
 		return ['versions' => $this->normalizeVersions($releases), 'error' => null];
+	}
+
+	/**
+	 * The server majors among `$majors` that at least one listed release of
+	 * the app supports, read from each release's `platformVersionSpec` in the
+	 * cached catalogue entry; null when the app is not cached or no release
+	 * names a range. Reads the cache only: the availability sweep has just
+	 * listed the app's versions, so this costs no request.
+	 *
+	 * A major counts as supported when its first or its last release
+	 * (`<major>.0.0`, `<major>.99.99`) satisfies the range, so a range that
+	 * starts or ends inside a major still covers it.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 * @param list<int> $majors The majors to test.
+	 * @return list<int>|null
+	 */
+	public function supportedMajors(string $appId, array $majors): ?array {
+		$releases = $this->readCachedPayload($appId, true)['releases'] ?? null;
+		if (!is_array($releases)) {
+			return null;
+		}
+
+		$specs = self::platformSpecs($releases);
+		if ($specs === []) {
+			return null;
+		}
+
+		return array_values(array_filter($majors, static fn (int $major): bool => self::majorSatisfiesAny($major, $specs)));
+	}
+
+	/**
+	 * The distinct, non-empty `platformVersionSpec` ranges of the releases.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 * @param array<array-key, mixed> $releases The cached releases.
+	 * @return list<string>
+	 */
+	private static function platformSpecs(array $releases): array {
+		$specs = [];
+		foreach ($releases as $release) {
+			$spec = is_array($release) ? ($release['platformVersionSpec'] ?? null) : null;
+			if (is_string($spec) && trim($spec) !== '') {
+				$specs[trim($spec)] = true;
+			}
+		}
+
+		return array_map('strval', array_keys($specs));
+	}
+
+	/**
+	 * Whether the major's first or last release (`<major>.0.0`,
+	 * `<major>.99.99`) satisfies at least one of the ranges.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 * @param list<string> $specs The ranges.
+	 */
+	private static function majorSatisfiesAny(int $major, array $specs): bool {
+		foreach ($specs as $spec) {
+			if (self::satisfiesPlatformSpec($major . '.0.0', $spec) === true
+				|| self::satisfiesPlatformSpec($major . '.99.99', $spec) === true) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -637,7 +703,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @param array<mixed> $releases
-	 * @return list<array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string, downloads: null}>
+	 * @return list<VersionEntry>
 	 */
 	private function normalizeVersions(array $releases): array {
 		$serverVersion = $this->getServerVersion();
@@ -684,7 +750,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 		$spec = $release['platformVersionSpec'] ?? null;
 		$changelog = $this->extractChangelog($release);
 
-		return [
+		$entry = [
 			'version' => $version,
 			'changelog' => $changelog,
 			'changelogLanguage' => $this->languageOfNotes($release, $changelog),
@@ -693,6 +759,13 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 			// The catalogue publishes no per-release download count (design D2).
 			'downloads' => null,
 		];
+		// The store marks a nightly build itself; an absent flag is not a nightly,
+		// and the version-suffix rule still applies (releases-channel-and-prereleases D1).
+		if (($release['isNightly'] ?? false) === true) {
+			$entry['sourcePreRelease'] = true;
+		}
+
+		return $entry;
 	}
 
 	/**
@@ -722,6 +795,9 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 		$known['changelog'] ??= $entry['changelog'];
 		$known['serverCompatible'] ??= $entry['serverCompatible'];
 		$known['releasedAt'] ??= $entry['releasedAt'];
+		if (isset($entry['sourcePreRelease'])) {
+			$known['sourcePreRelease'] = true;
+		}
 
 		return $known;
 	}

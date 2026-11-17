@@ -14,11 +14,14 @@ require_once __DIR__ . '/../Support/InstallArgs.php';
 require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 
 use OCA\Versioniq\BackgroundJob\AutoUpdateJob;
+use OCA\Versioniq\Service\Audit\AuditNote;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\AutoUpdate\UpdateGroup;
+use OCA\Versioniq\Service\AutoUpdate\UpdateGroupStore;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
@@ -50,7 +53,7 @@ final class AutoUpdateJobTest extends TestCase {
 	}
 
 	/**
-	 * @return array{policyStore: PolicyStore, pinStore: PinStore, installerService: InstallerService, appManager: IAppManager, candidateSelector: CandidateSelector, attemptLedger: AttemptLedger, settingsStore: AutoUpdateSettingsStore, notifier: AutoUpdateNotifier, logger: LoggerInterface}
+	 * @return array{policyStore: PolicyStore, pinStore: PinStore, installerService: InstallerService, appManager: IAppManager, candidateSelector: CandidateSelector, attemptLedger: AttemptLedger, settingsStore: AutoUpdateSettingsStore, notifier: AutoUpdateNotifier, logger: LoggerInterface, groupStore: UpdateGroupStore}
 	 */
 	private function mocks(): array {
 		return [
@@ -63,6 +66,7 @@ final class AutoUpdateJobTest extends TestCase {
 			'settingsStore' => $this->settingsStoreMock(),
 			'notifier' => $this->createMock(AutoUpdateNotifier::class),
 			'logger' => $this->createMock(LoggerInterface::class),
+			'groupStore' => $this->createMock(UpdateGroupStore::class),
 		];
 	}
 
@@ -81,6 +85,7 @@ final class AutoUpdateJobTest extends TestCase {
 			'settingsStore' => $mocks['settingsStore'],
 			'notifier' => $mocks['notifier'],
 			'logger' => $mocks['logger'],
+			'groupStore' => $mocks['groupStore'],
 		]);
 	}
 
@@ -173,6 +178,48 @@ final class AutoUpdateJobTest extends TestCase {
 
 		$job = $this->buildJob($mocks, $this->timeFactory());
 		$this->runJob($job);
+	}
+
+	/**
+	 * A policy of `all` on a stable channel never sees a pre-release; on a beta
+	 * channel the stamp admits it and the selector gets it.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-the-nightly-job-takes-only-versions-on-the-apps-channel
+	 * @dataProvider channelStamps
+	 * @param list<string> $expected
+	 */
+	public function testOnlyVersionsOnTheChannelReachTheSelector(bool $preReleaseOnChannel, array $expected): void {
+		$mocks = $this->mocks();
+		$mocks['settingsStore']->method('isEnabled')->willReturn(true);
+		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$mocks['policyStore']->method('all')->willReturn([
+			'openregister' => new Policy(Policy::LEVEL_ALL, 'admin', '2026-07-01T00:00:00+00:00'),
+		]);
+		$mocks['pinStore']->method('get')->willReturn(null);
+		$mocks['installerService']->method('isManageableApp')->willReturn(true);
+		$mocks['appManager']->method('getAppVersion')->willReturn('2.5.2');
+		$mocks['installerService']->method('getAppVersions')->willReturn([
+			'availableVersions' => [
+				['version' => '2.6.0-beta.1', 'onChannel' => $preReleaseOnChannel],
+				['version' => '2.5.3', 'onChannel' => true],
+			],
+			'channel' => $preReleaseOnChannel ? 'beta' : 'stable',
+			'hasError' => false,
+		]);
+		$mocks['candidateSelector']->expects($this->once())->method('select')
+			->with('2.5.2', $expected, Policy::LEVEL_ALL)->willReturn(null);
+
+		$this->runJob($this->buildJob($mocks, $this->timeFactory()));
+	}
+
+	/**
+	 * @return array<string, array{bool, list<string>}>
+	 */
+	public static function channelStamps(): array {
+		return [
+			'stable channel' => [false, ['2.5.3']],
+			'beta channel' => [true, ['2.6.0-beta.1', '2.5.3']],
+		];
 	}
 
 	public function testAlreadyAttemptedCandidateIsNotReattempted(): void {
@@ -574,6 +621,100 @@ final class AutoUpdateJobTest extends TestCase {
 	 */
 	private function named(array $mocks): array {
 		return ['time' => $this->timeFactory()] + $mocks;
+	}
+
+	/**
+	 * Mocks for a run inside the window where every app is installed at
+	 * 1.0.0, offers 1.0.1, and belongs to the group "Registers" in this order.
+	 *
+	 * @param list<string> $apps
+	 * @return array<string, mixed>
+	 */
+	private function groupRun(array $apps): array {
+		$mocks = $this->mocks();
+		$mocks['settingsStore']->method('isEnabled')->willReturn(true);
+		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$mocks['policyStore']->method('all')->willReturn(array_fill_keys($apps, new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00')));
+		$mocks['pinStore']->method('get')->willReturn(null);
+		$mocks['installerService']->method('isManageableApp')->willReturn(true);
+		$mocks['appManager']->method('getAppVersion')->willReturn('1.0.0');
+		$mocks['installerService']->method('getAppVersions')->willReturn(['availableVersions' => [['version' => '1.0.1']], 'hasError' => false]);
+		$mocks['candidateSelector']->method('select')->willReturn('1.0.1');
+		$mocks['attemptLedger']->method('hasAttempted')->willReturn(false);
+		$mocks['groupStore']->method('all')->willReturn([
+			new UpdateGroup('registers', 'Registers', $apps, ['by' => 'admin', 'at' => '2026-07-01T00:00:00+00:00']),
+		]);
+
+		return $mocks;
+	}
+
+	public function testAGroupInstallsInOrderUnderItsAuditNoteWithOneNotification(): void {
+		$mocks = $this->groupRun(['openregister', 'opencatalogi']);
+		$seen = [];
+		$mocks['installerService']->expects($this->exactly(2))->method('installAppVersion')
+			->willReturnCallback(static function ($request) use (&$seen): array {
+				$seen[] = [$request->target->appId, AuditNote::current()];
+
+				return ['statusCode' => 200, 'payload' => ['installedVersion' => '1.0.1']];
+			});
+		$mocks['notifier']->expects($this->never())->method('notifySuccess');
+		$mocks['notifier']->expects($this->once())->method('notifyGroup')->with('Registers', [
+			['appId' => 'openregister', 'version' => '1.0.1', 'outcome' => AutoUpdateNotifier::OUTCOME_INSTALLED],
+			['appId' => 'opencatalogi', 'version' => '1.0.1', 'outcome' => AutoUpdateNotifier::OUTCOME_INSTALLED],
+		]);
+
+		$this->runJob($this->buildJob($mocks, $this->timeFactory()));
+
+		$this->assertSame([['openregister', 'Update group Registers'], ['opencatalogi', 'Update group Registers']], $seen);
+		$this->assertNull(AuditNote::current());
+	}
+
+	public function testAFailedSecondMemberStopsTheThird(): void {
+		$mocks = $this->groupRun(['first', 'second', 'third']);
+		$installed = [];
+		$mocks['installerService']->expects($this->exactly(2))->method('installAppVersion')
+			->willReturnCallback(static function ($request) use (&$installed): array {
+				$installed[] = $request->target->appId;
+
+				return $request->target->appId === 'second'
+					? ['statusCode' => 404, 'payload' => ['category' => 'download', 'hint' => '']]
+					: ['statusCode' => 200, 'payload' => ['installedVersion' => '1.0.1']];
+			});
+		$recorded = [];
+		$mocks['attemptLedger']->method('record')->willReturnCallback(static function (string $appId, string $version, string $outcome) use (&$recorded): void {
+			$recorded[] = [$appId, $outcome];
+		});
+		$mocks['notifier']->expects($this->never())->method('notifyFailure');
+		$mocks['notifier']->expects($this->once())->method('notifyGroup')->with('Registers', [
+			['appId' => 'first', 'version' => '1.0.1', 'outcome' => AutoUpdateNotifier::OUTCOME_INSTALLED],
+			['appId' => 'second', 'version' => '1.0.1', 'outcome' => AutoUpdateNotifier::OUTCOME_FAILED],
+			['appId' => 'third', 'version' => '1.0.1', 'outcome' => AutoUpdateNotifier::OUTCOME_NOT_ATTEMPTED],
+		]);
+
+		$this->runJob($this->buildJob($mocks, $this->timeFactory()));
+
+		$this->assertSame(['first', 'second'], $installed);
+		$this->assertSame([['first', AttemptLedger::OUTCOME_SUCCESS], ['second', AttemptLedger::OUTCOME_FAILURE]], $recorded);
+	}
+
+	public function testAPinnedMemberHoldsTheGroupSoNothingInstalls(): void {
+		$mocks = $this->mocks();
+		$mocks['settingsStore']->method('isEnabled')->willReturn(true);
+		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$mocks['policyStore']->method('all')->willReturn(array_fill_keys(['openregister', 'opencatalogi'], new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00')));
+		$mocks['pinStore']->method('get')->willReturnCallback(static fn (string $appId): ?Pin => $appId === 'opencatalogi' ? new Pin('1.0.0', 'alice', '2026-07-01T00:00:00+00:00') : null);
+		$mocks['installerService']->method('isManageableApp')->willReturn(true);
+		$mocks['appManager']->method('getAppVersion')->willReturn('1.0.0');
+		$mocks['installerService']->method('getAppVersions')->willReturn(['availableVersions' => [['version' => '1.0.1']], 'hasError' => false]);
+		$mocks['candidateSelector']->method('select')->willReturn('1.0.1');
+		$mocks['attemptLedger']->method('hasAttempted')->willReturn(false);
+		$mocks['groupStore']->method('all')->willReturn([
+			new UpdateGroup('registers', 'Registers', ['openregister', 'opencatalogi'], ['by' => 'admin', 'at' => '2026-07-01T00:00:00+00:00']),
+		]);
+		$mocks['installerService']->expects($this->never())->method('installAppVersion');
+		$mocks['notifier']->expects($this->never())->method('notifyGroup');
+
+		$this->runJob($this->buildJob($mocks, $this->timeFactory()));
 	}
 
 	public function testADayWithNoDueKindSweepsNothing(): void {
