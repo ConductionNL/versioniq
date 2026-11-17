@@ -55,6 +55,8 @@ export function isStableOnlyChannel (channel: string): boolean {
 /**
  * Whether safe mode blocks a version.
  *
+ * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md
+ *
  * @param version the version
  * @param context safe mode, the installed version and the server update channel
  * @param onChannel whether the version is on the app's release channel, when the server said

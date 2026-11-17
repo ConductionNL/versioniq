@@ -22,6 +22,8 @@ export type ChannelVersion = {
 /**
  * The versions the picker lists.
  *
+ * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md
+ *
  * @param versions the stamped versions
  * @param showAll whether "Show all versions" is on
  */
@@ -35,6 +37,8 @@ export function pickerVersions<T extends ChannelVersion> (versions: T[], showAll
 // The tags of a version revealed by "Show all versions": why it is off the channel.
 /**
  * Why a revealed version is off the channel.
+ *
+ * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md
  *
  * @param version the version
  * @param channel the effective channel
@@ -58,6 +62,8 @@ export function offChannelTags (version: ChannelVersion, channel: string): strin
 /**
  * Whether the long-term support channel has no marked line.
  *
+ * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md
+ *
  * @param channel the effective channel
  * @param adminLines the lines an admin marked
  * @param versions the stamped versions
@@ -69,6 +75,8 @@ export function noLtsLinesMarked (channel: string, adminLines: string[], version
 // A channel's name as the page shows it.
 /**
  * A channel's display name.
+ *
+ * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md
  *
  * @param channel the channel
  */
@@ -90,6 +98,8 @@ export function channelLabel (channel: string): string {
 // Parse the long-term support lines field: `2.3, 3` into ['2.3', '3'].
 /**
  * Parse the lines field.
+ *
+ * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md
  *
  * @param text the field's text
  */
