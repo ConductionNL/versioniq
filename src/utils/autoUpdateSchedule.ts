@@ -14,6 +14,12 @@ export type KindSchedule = { days: number[], monthly: boolean }
 
 export type AutoUpdateSchedule = Record<UpdateKind, KindSchedule>
 
+const KINDS_BY_LEVEL: Record<string, readonly UpdateKind[]> = {
+	patch: ['patch'],
+	minor: ['patch', 'minor'],
+	all: UPDATE_KINDS,
+}
+
 export const EVERY_DAY = [1, 2, 3, 4, 5, 6, 7]
 
 /** Every kind on every day, weekly: what the server reads when nothing is stored. */
@@ -36,17 +42,26 @@ export function scheduleFrom (value: unknown): AutoUpdateSchedule {
 		return schedule
 	}
 	for (const kind of UPDATE_KINDS) {
-		const entry = (value as Record<string, unknown>)[kind]
-		if (entry === null || typeof entry !== 'object') {
-			continue
-		}
-		const { days, monthly } = entry as { days?: unknown, monthly?: unknown }
-		if (Array.isArray(days)) {
-			schedule[kind].days = normalizedDays(days)
-		}
-		schedule[kind].monthly = monthly === true
+		readEntry(schedule[kind], (value as Record<string, unknown>)[kind])
 	}
 	return schedule
+}
+
+/**
+ * Copy what a sent entry holds onto one kind's entry; a malformed entry changes nothing.
+ *
+ * @param target the kind's entry, holding the default
+ * @param entry what the server sent for the kind
+ */
+function readEntry (target: KindSchedule, entry: unknown): void {
+	if (entry === null || typeof entry !== 'object') {
+		return
+	}
+	const { days, monthly } = entry as { days?: unknown, monthly?: unknown }
+	if (Array.isArray(days)) {
+		target.days = normalizedDays(days)
+	}
+	target.monthly = monthly === true
 }
 
 /**
@@ -116,16 +131,7 @@ export function jsDayOf (isoDay: number): number {
  * @param level the app's policy level
  */
 export function kindsReachedBy (level: string): UpdateKind[] {
-	switch (level) {
-	case 'patch':
-		return ['patch']
-	case 'minor':
-		return ['patch', 'minor']
-	case 'all':
-		return [...UPDATE_KINDS]
-	default:
-		return []
-	}
+	return Object.hasOwn(KINDS_BY_LEVEL, level) ? [...(KINDS_BY_LEVEL[level] ?? [])] : []
 }
 
 /**

@@ -19,7 +19,6 @@ use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
-use OCA\Versioniq\Service\AutoUpdate\UpdateType;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
@@ -487,7 +486,7 @@ final class AutoUpdateJobTest extends TestCase {
 			'hasError' => false,
 		]);
 		$mocks['candidateSelector']->expects($this->once())->method('select')
-			->with('2.3.0', ['2.3.4', '2.4.0'], Policy::LEVEL_MINOR, [UpdateType::PATCH])
+			->with('2.3.0', ['2.3.4'], Policy::LEVEL_MINOR)
 			->willReturn(null);
 
 		$job = $this->buildJob($mocks, $this->timeFactory());

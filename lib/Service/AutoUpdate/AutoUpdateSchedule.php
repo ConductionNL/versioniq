@@ -85,21 +85,16 @@ final class AutoUpdateSchedule {
 	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
 	 */
 	public static function invalidReason(mixed $value): ?string {
-		if (!is_array($value)) {
-			return 'schedule must be an object keyed by kind';
-		}
-		if ($value !== [] && array_is_list($value)) {
+		if (!is_array($value) || ($value !== [] && array_is_list($value))) {
 			return 'schedule must be an object keyed by kind';
 		}
 
-		foreach (array_keys($value) as $kind) {
-			$reason = self::invalidEntry((string)$kind, $value[$kind]);
-			if ($reason !== null) {
-				return $reason;
-			}
-		}
+		$reasons = array_filter(array_map(
+			static fn (int|string $kind): ?string => self::invalidEntry((string)$kind, $value[$kind]),
+			array_keys($value)
+		));
 
-		return null;
+		return $reasons === [] ? null : reset($reasons);
 	}
 
 	/**
@@ -116,20 +111,36 @@ final class AutoUpdateSchedule {
 			return 'schedule.' . $kind . ' is not a kind of update; use patch, minor or major';
 		}
 
-		if (!is_array($entry) || !array_key_exists('days', $entry) || !is_array($entry['days']) || !array_is_list($entry['days'])) {
+		if (!self::hasDayList($entry)) {
 			return 'schedule.' . $kind . '.days must be a list of weekdays';
 		}
 
-		foreach ($entry['days'] as $day) {
-			if (!is_int($day) || $day < 1 || $day > 7) {
-				return 'schedule.' . $kind . '.days holds weekdays 1 (Monday) to 7 (Sunday)';
-			}
+		return self::invalidDays($kind, $entry['days']) ?? self::invalidMonthly($kind, $entry);
+	}
+
+	private static function hasDayList(mixed $entry): bool {
+		return is_array($entry) && array_key_exists('days', $entry) && is_array($entry['days']) && array_is_list($entry['days']);
+	}
+
+	/**
+	 * @param list<mixed> $days
+	 */
+	private static function invalidDays(string $kind, array $days): ?string {
+		if (array_filter($days, static fn (mixed $day): bool => !is_int($day) || $day < 1 || $day > 7) !== []) {
+			return 'schedule.' . $kind . '.days holds weekdays 1 (Monday) to 7 (Sunday)';
 		}
 
-		if (count(array_unique($entry['days'])) !== count($entry['days'])) {
+		if (count(array_unique($days)) !== count($days)) {
 			return 'schedule.' . $kind . '.days names a weekday twice';
 		}
 
+		return null;
+	}
+
+	/**
+	 * @param array<string, mixed> $entry
+	 */
+	private static function invalidMonthly(string $kind, array $entry): ?string {
 		if (array_key_exists('monthly', $entry) && !is_bool($entry['monthly'])) {
 			return 'schedule.' . $kind . '.monthly must be true or false';
 		}
@@ -168,15 +179,33 @@ final class AutoUpdateSchedule {
 			return null;
 		}
 
+		// An opening already open counts as now.
+		if (AutoUpdateWindow::isWithin($window, $now) && $this->isDue($kind, AutoUpdateWindow::openedOn($window, $now))) {
+			return $now;
+		}
+
+		return $this->firstDueOpening($kind, self::upcomingOpenings($window, $now));
+	}
+
+	/**
+	 * The window's openings that have not started yet, daily from the next one up to the horizon.
+	 */
+	private static function upcomingOpenings(string $window, \DateTimeImmutable $now): \DatePeriod {
 		[$hour, $minute] = array_map('intval', explode(':', explode('-', trim($window))[0]));
-		$openedOn = AutoUpdateWindow::isWithin($window, $now) ? AutoUpdateWindow::openedOn($window, $now) : null;
-		for ($offset = -1; $offset <= self::HORIZON_DAYS; $offset++) {
-			$midnight = $now->setTime(0, 0);
-			$day = $offset < 0 ? $midnight->sub(new \DateInterval('P1D')) : $midnight->add(new \DateInterval('P' . $offset . 'D'));
-			$opening = $day->setTime($hour, $minute);
-			$isCurrent = $openedOn !== null && $day->format('Y-m-d') === $openedOn->format('Y-m-d');
-			if (($opening >= $now || $isCurrent) && $this->isDue($kind, $day)) {
-				return $isCurrent ? $now : $opening;
+		$todaysOpening = $now->setTime($hour, $minute);
+		$first = $todaysOpening < $now ? $todaysOpening->add(new \DateInterval('P1D')) : $todaysOpening;
+		$last = $todaysOpening->add(new \DateInterval('P' . self::HORIZON_DAYS . 'D'));
+
+		return new \DatePeriod($first, new \DateInterval('P1D'), $last, \DatePeriod::INCLUDE_END_DATE);
+	}
+
+	/**
+	 * The first of `$openings` on which `$kind` is due, or null.
+	 */
+	private function firstDueOpening(string $kind, \DatePeriod $openings): ?\DateTimeImmutable {
+		foreach ($openings as $opening) {
+			if ($opening instanceof \DateTimeImmutable && $this->isDue($kind, $opening)) {
+				return $opening;
 			}
 		}
 

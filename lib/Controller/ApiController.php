@@ -1105,20 +1105,13 @@ class ApiController extends OCSController {
 		$enabledParam = ($enabled === '') ? '0' : $enabled;
 		$windowParam = $this->stringParam('window', '');
 
-		if ($windowParam !== '' && !AutoUpdateWindow::isValid($windowParam)) {
-			return new DataResponse(
-				['message' => 'window must be in HH:MM-HH:MM format.'],
-				Http::STATUS_BAD_REQUEST
-			);
-		}
-
-		// The schedule is checked in full before anything is written, so a bad one
-		// leaves the switch and the window as they were (autoupdate-schedules, D6).
+		// The window and the schedule are checked in full before anything is written, so a bad
+		// one leaves the switch and the window as they were (autoupdate-schedules, D6).
 		/** @var mixed $scheduleParam */
 		$scheduleParam = $this->request->getParam('schedule');
-		$scheduleProblem = ($scheduleParam === null) ? null : AutoUpdateSchedule::invalidReason($scheduleParam);
-		if ($scheduleProblem !== null) {
-			return new DataResponse(['message' => $scheduleProblem . '.'], Http::STATUS_BAD_REQUEST);
+		$problem = $this->autoUpdateSettingsProblem($windowParam, $scheduleParam);
+		if ($problem !== null) {
+			return $problem;
 		}
 
 		if ($enabledParam !== null) {
@@ -1127,15 +1120,45 @@ class ApiController extends OCSController {
 		if ($windowParam !== '') {
 			$this->autoUpdate->settingsStore->setWindow($windowParam);
 		}
-		if (is_array($scheduleParam)) {
-			$this->autoUpdate->settingsStore->setSchedule(AutoUpdateSchedule::fromArray($scheduleParam));
-		}
+		$this->storeSchedule($scheduleParam);
 
 		return new DataResponse([
 			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
 			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
 			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
 		] + $this->scheduleView());
+	}
+
+	/**
+	 * The 400 answer for a malformed window or schedule, or null when both are fine or absent.
+	 *
+	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	 */
+	private function autoUpdateSettingsProblem(string $windowParam, mixed $scheduleParam): ?DataResponse {
+		if ($windowParam !== '' && !AutoUpdateWindow::isValid($windowParam)) {
+			return new DataResponse(
+				['message' => 'window must be in HH:MM-HH:MM format.'],
+				Http::STATUS_BAD_REQUEST
+			);
+		}
+
+		$scheduleProblem = ($scheduleParam === null) ? null : AutoUpdateSchedule::invalidReason($scheduleParam);
+		if ($scheduleProblem !== null) {
+			return new DataResponse(['message' => $scheduleProblem . '.'], Http::STATUS_BAD_REQUEST);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Store a schedule that was sent; one left out keeps the stored schedule.
+	 *
+	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	 */
+	private function storeSchedule(mixed $scheduleParam): void {
+		if (is_array($scheduleParam)) {
+			$this->autoUpdate->settingsStore->setSchedule(AutoUpdateSchedule::fromArray($scheduleParam));
+		}
 	}
 
 	/**

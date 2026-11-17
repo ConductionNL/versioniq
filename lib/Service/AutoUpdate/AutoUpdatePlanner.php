@@ -43,14 +43,20 @@ final class AutoUpdatePlanner {
 	 *
 	 * @param array{rows: array<string, mixed>, fresh: bool} $advisories The run's advisory snapshot.
 	 * @param PatchPolicy|null $patchPolicy The patch policy; null reads as none.
-	 * @param list<string> $dueKinds The kinds of regular update the schedule lets run tonight (autoupdate-schedules D4).
 	 *
 	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
 	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-an-admin-records-a-patch-policy-and-security-fixes-go-first
+	 */
+	public function plan(array $advisories = ['rows' => [], 'fresh' => false], ?PatchPolicy $patchPolicy = null): AutoUpdatePlan {
+		return $this->planRun(new PlanRun($advisories['rows'], $advisories['fresh'], $patchPolicy ?? PatchPolicy::none()));
+	}
+
+	/**
+	 * The plan of one run: its advisory snapshot, patch policy and the kinds the schedule lets run tonight.
+	 *
 	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
 	 */
-	public function plan(array $advisories = ['rows' => [], 'fresh' => false], ?PatchPolicy $patchPolicy = null, array $dueKinds = UpdateType::ALL): AutoUpdatePlan {
-		$run = new PlanRun($advisories['rows'], $advisories['fresh'], $patchPolicy ?? PatchPolicy::none(), $dueKinds);
+	public function planRun(PlanRun $run): AutoUpdatePlan {
 		$planned = [];
 		foreach ($this->stores->policyStore->all() as $appId => $policy) {
 			if ($policy->level !== Policy::LEVEL_NONE) {
@@ -203,9 +209,10 @@ final class AutoUpdatePlanner {
 		$installedVersion = $app->installedVersion;
 		$allowed = array_values(array_filter(
 			$app->available,
-			static fn (string $version): bool => $patchPolicy->regularHandling(PatchPolicy::kindOf($installedVersion, $version)) !== PatchPolicy::HANDLING_MANUAL,
+			static fn (string $version): bool => $patchPolicy->regularHandling(PatchPolicy::kindOf($installedVersion, $version)) !== PatchPolicy::HANDLING_MANUAL
+				&& $run->isDue($installedVersion, $version),
 		));
-		$candidate = $this->install->candidateSelector->select($installedVersion, $allowed, $app->level, $run->dueKinds);
+		$candidate = $this->install->candidateSelector->select($installedVersion, $allowed, $app->level);
 		if ($candidate === null) {
 			return new AutoUpdateMember($app->appId, $installedVersion, null, AutoUpdateMember::REASON_NO_CANDIDATE);
 		}
