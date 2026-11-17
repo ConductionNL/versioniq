@@ -8,6 +8,8 @@ import AutoUpdateOverview from './AutoUpdateOverview.vue'
 vi.mock('@nextcloud/l10n', () => ({
 	t: (_app: string, text: string, vars: Record<string, unknown> = {}) =>
 		text.replace(/\{(\w+)\}/g, (_match: string, key: string) => String(vars[key] ?? '')),
+	getDayNamesShort: () => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+	getFirstDay: () => 1,
 }))
 vi.mock('@nextcloud/vue/components/NcButton', () => ({ default: { name: 'NcButton', emits: ['click'], template: '<button type="button" @click="$emit(\'click\')"><slot /></button>' } }))
 
@@ -121,5 +123,55 @@ describe('AutoUpdateOverview security holds', () => {
 		expect(wrapper.findAll('[data-testid="overview-by-hand"]').map((row) => row.text())).toEqual([
 			'Patch updates are set to by hand in the patch policy, so no app gets them automatically.',
 		])
+	})
+
+	// autoupdate-schedules task 3.3: days and next run per kind.
+	// @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	it('shows the days and next run of each kind a policy reaches, and never for a kind with no days', () => {
+		const schedule = {
+			patch: { days: [1, 2, 3, 4, 5], monthly: false },
+			minor: { days: [2], monthly: true },
+			major: { days: [], monthly: false },
+		}
+		const nextRuns = { patch: '2026-11-16T01:00:00+01:00', minor: '2026-12-01T01:00:00+01:00', major: null }
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies: { ...policies, mail: { ...policies.mail, level: 'all' } }, labels: {}, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'Europe/Amsterdam', schedule, nextRuns },
+		})
+
+		const patch = wrapper.find('[data-testid="overview-kind-patch"]').text()
+		const next = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' }).format(new Date('2026-11-16T01:00:00+01:00'))
+		expect(patch).toBe(`Patch updates: Mon to Fri, next run ${next} (Europe/Amsterdam)`)
+		expect(wrapper.find('[data-testid="overview-kind-minor"]').text()).toContain('Minor updates: Tue, the first of each month, next run')
+		expect(wrapper.find('[data-testid="overview-kind-major"]').text()).toBe('Major updates: never automatically')
+		expect(wrapper.find('[data-testid="overview-nothing-runs"]').exists()).toBe(false)
+	})
+
+	it('lists only the kinds the scheduled policies reach', () => {
+		const schedule = { patch: { days: [1, 2, 3, 4, 5, 6, 7], monthly: false }, minor: { days: [1], monthly: false }, major: { days: [1], monthly: false } }
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies: { calendar: policies.calendar }, labels: {}, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'UTC', schedule, nextRuns: {} },
+		})
+
+		expect(wrapper.findAll('[data-testid^="overview-kind-"]').map((row) => row.text())).toEqual(['Patch updates: every day'])
+	})
+
+	it('says nothing runs when no kind has a day', () => {
+		const empty = { patch: { days: [], monthly: false }, minor: { days: [], monthly: false }, major: { days: [], monthly: false } }
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies, labels: {}, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'UTC', schedule: empty, nextRuns: { patch: null, minor: null, major: null } },
+		})
+
+		expect(wrapper.find('[data-testid="overview-nothing-runs"]').text()).toBe('No kind of update is scheduled, so nothing runs.')
+		expect(wrapper.find('[data-testid="overview-kind-patch"]').text()).toBe('Patch updates: never automatically')
+		expect(wrapper.find('[data-testid="overview-kind-minor"]').text()).toBe('Minor updates: never automatically')
+	})
+
+	it('shows no kind lines without a schedule', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies, labels: {}, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'UTC' },
+		})
+
+		expect(wrapper.findAll('[data-testid^="overview-kind-"]')).toHaveLength(0)
+		expect(wrapper.find('[data-testid="overview-nothing-runs"]').exists()).toBe(false)
 	})
 })

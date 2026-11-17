@@ -15,6 +15,7 @@ namespace OCA\Versioniq\Service\AutoUpdate;
 use OCA\Versioniq\AppInfo\Application;
 use OCP\IAppConfig;
 use OCP\IConfig;
+use Psr\Log\LoggerInterface;
 
 /**
  * Reads and writes the two global auto-update settings: `auto_update_enabled`
@@ -27,6 +28,8 @@ use OCP\IConfig;
 class AutoUpdateSettingsStore {
 	public const CONFIG_ENABLED = 'auto_update_enabled';
 	public const CONFIG_WINDOW = 'auto_update_window';
+	/** The per-kind weekday schedule ({@see AutoUpdateSchedule}), JSON; absent means every day. */
+	public const CONFIG_SCHEDULE = 'auto_update_schedule';
 	/** Opening key ({@see AutoUpdateWindow::openingKey()}) of the last window the job swept. */
 	public const CONFIG_LAST_SWEPT_WINDOW = 'auto_update_last_swept_window';
 
@@ -35,7 +38,38 @@ class AutoUpdateSettingsStore {
 		// Optional and last so existing callers keep working; the container
 		// always passes it.
 		private ?IConfig $systemConfig = null,
+		// Optional for the same reason; a malformed schedule is logged through it.
+		private ?LoggerInterface $logger = null,
 	) {
+	}
+
+	/**
+	 * The per-kind schedule. A missing value means every day for every kind, the
+	 * behaviour before schedules existed; a malformed one is logged and read the same way.
+	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	 */
+	public function getSchedule(): AutoUpdateSchedule {
+		$raw = $this->config->getValueString(Application::APP_ID, self::CONFIG_SCHEDULE, '');
+		if ($raw === '') {
+			return AutoUpdateSchedule::everyDay();
+		}
+
+		/** @var mixed $decoded */
+		$decoded = json_decode($raw, true);
+		if (!is_array($decoded) || !AutoUpdateSchedule::isValidArray($decoded)) {
+			$this->logger?->warning('AutoUpdateSettingsStore: malformed auto-update schedule, running every day', ['value' => $raw]);
+			return AutoUpdateSchedule::everyDay();
+		}
+
+		return AutoUpdateSchedule::fromArray($decoded);
+	}
+
+	/**
+	 * Stores the per-kind schedule.
+	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	 */
+	public function setSchedule(AutoUpdateSchedule $schedule): void {
+		$this->config->setValueString(Application::APP_ID, self::CONFIG_SCHEDULE, (string)json_encode($schedule->toArray()));
 	}
 
 	/**

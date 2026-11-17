@@ -126,21 +126,21 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		$endpoint = $forge->repositoryEndpoint($ownerRepo);
 
 		if ($pat === null) {
-			return $this->archivedFlag($forge, $endpoint, null);
+			return $this->archivedFlag(new ForgeCall($forge, $endpoint));
 		}
 
 		/** @var ?bool */
-		return $this->pats->patManager->useToken($pat, fn (string $token): ?bool => $this->archivedFlag($forge, $endpoint, $token));
+		return $this->pats->patManager->useToken($pat, fn (string $token): ?bool => $this->archivedFlag(new ForgeCall($forge, $endpoint, $token)));
 	}
 
 	/**
 	 * The `archived` field of a repository answer, or null for a failed or unreadable one.
 	 */
-	private function archivedFlag(Forge $forge, string $endpoint, ?string $token): ?bool {
+	private function archivedFlag(ForgeCall $call): ?bool {
 		try {
-			$response = $this->clientService->newClient()->get($endpoint, $this->requestOptions($forge, $token));
+			$response = $this->clientService->newClient()->get($call->endpoint, $this->requestOptions($call->forge, $call->token));
 		} catch (Exception $error) {
-			$this->logger->info('ForgeReleaseSource: repository lookup failed', ['forge' => $forge->id, 'message' => $error->getMessage()]);
+			$this->logger->info('ForgeReleaseSource: repository lookup failed', ['forge' => $call->forge->id, 'message' => $error->getMessage()]);
 
 			return null;
 		}
@@ -171,7 +171,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 *
 	 * @param array<array-key, mixed> $releases
 	 * @param string $assetPattern The binding's asset pattern, for the download count.
-	 * @return list<array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int}>
+	 * @return list<array{version: string, changelog: ?string, changelogLanguage: null, releasedAt: ?string, downloads: ?int}>
 	 */
 	private function versionEntries(array $releases, string $assetPattern): array {
 		$versions = [];
@@ -185,6 +185,8 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			$versions[] = [
 				'version' => $this->normalizeVersion($tag),
 				'changelog' => $this->extractChangelog($release),
+				// A release body names no language (releases-notes-reach D2).
+				'changelogLanguage' => null,
 				// A draft carries no published_at and stays null.
 				'releasedAt' => ReleaseDate::normalize($release['published_at'] ?? null),
 				'downloads' => self::assetDownloads($release['assets'] ?? null, $assetPattern),
@@ -426,11 +428,11 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		}
 
 		if ($pat === null) {
-			return $this->performFetch($forge, $endpoint, null);
+			return $this->performFetch(new ForgeCall($forge, $endpoint));
 		}
 
 		/** @var array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string} */
-		return $this->pats->patManager->useToken($pat, fn (string $token): array => $this->performFetch($forge, $endpoint, $token));
+		return $this->pats->patManager->useToken($pat, fn (string $token): array => $this->performFetch(new ForgeCall($forge, $endpoint, $token)));
 	}
 
 	/**
@@ -445,11 +447,11 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		$endpoint = $forge->releasesEndpoint($ownerRepo);
 
 		if ($pat === null) {
-			return $this->performFetch($forge, $endpoint, null);
+			return $this->performFetch(new ForgeCall($forge, $endpoint));
 		}
 
 		/** @var array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string} */
-		return $this->pats->patManager->useToken($pat, fn (string $token): array => $this->performFetch($forge, $endpoint, $token));
+		return $this->pats->patManager->useToken($pat, fn (string $token): array => $this->performFetch(new ForgeCall($forge, $endpoint, $token)));
 	}
 
 	/**
@@ -458,13 +460,14 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
 	 * @return array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string}
 	 */
-	private function performFetch(Forge $forge, string $endpoint, ?string $token): array {
+	private function performFetch(ForgeCall $call): array {
+		$forge = $call->forge;
 		try {
-			$response = $this->clientService->newClient()->get($endpoint, $this->requestOptions($forge, $token));
+			$response = $this->clientService->newClient()->get($call->endpoint, $this->requestOptions($forge, $call->token));
 		} catch (Exception $error) {
 			$this->logger->warning('ForgeReleaseSource: fetch failed', [
 				'forge' => $forge->id,
-				'endpoint' => $endpoint,
+				'endpoint' => $call->endpoint,
 				'message' => $error->getMessage(),
 			]);
 
