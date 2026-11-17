@@ -13,7 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Listener;
 
 use OCA\Versioniq\Service\Audit\ExternalChangeRecorder;
-use OCA\Versioniq\Service\Pin\PinDriftHandler;
+use OCA\Versioniq\Kernel\Contracts\PinDriftHandlerInterface;
 use OCP\App\Events\AppUpdateEvent;
 use OCP\App\IAppManager;
 use OCP\EventDispatcher\Event;
@@ -36,7 +36,7 @@ use OCP\EventDispatcher\IEventListener;
 class AppUpdatedListener implements IEventListener {
 	public function __construct(
 		private IAppManager $appManager,
-		private PinDriftHandler $driftHandler,
+		private PinDriftHandlerInterface $driftHandler,
 		// Records the change for every app, pinned or not (audit-external-changes).
 		private ?ExternalChangeRecorder $recorder = null,
 	) {

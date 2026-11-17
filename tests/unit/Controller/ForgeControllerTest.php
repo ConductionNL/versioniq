@@ -28,7 +28,7 @@ final class ForgeControllerTest extends TestCase {
 	/** @var array<string, string> */
 	private array $config = [];
 
-	private function controller(bool $admin = true): ForgeController {
+	private function controller(bool $admin = true, bool $signedIn = true): ForgeController {
 		$appConfig = $this->createMock(IAppConfig::class);
 		$appConfig->method('getValueString')->willReturnCallback(
 			fn (string $app, string $key, string $default = ''): string => $this->config[$key] ?? $default,
@@ -49,7 +49,7 @@ final class ForgeControllerTest extends TestCase {
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn('admin');
 		$session = $this->createMock(IUserSession::class);
-		$session->method('getUser')->willReturn($user);
+		$session->method('getUser')->willReturn($signedIn ? $user : null);
 		$groups = $this->createMock(IGroupManager::class);
 		$groups->method('isAdmin')->willReturn($admin);
 
@@ -67,6 +67,18 @@ final class ForgeControllerTest extends TestCase {
 
 		self::assertSame(403, $controller->forgejoHost()->getStatus());
 		self::assertSame(403, $controller->setForgejoHost('https://git.example.org')->getStatus());
+		self::assertSame([], $this->config);
+	}
+
+	public function testSignedOutCallerCannotReadOrWrite(): void {
+		$controller = $this->controller(true, false);
+
+		$read = $controller->forgejoHost();
+		$write = $controller->setForgejoHost('https://git.example.org');
+
+		self::assertSame(403, $read->getStatus());
+		self::assertSame(403, $write->getStatus());
+		self::assertSame(['message' => 'Forbidden'], $read->getData());
 		self::assertSame([], $this->config);
 	}
 
@@ -123,5 +135,40 @@ final class ForgeControllerTest extends TestCase {
 
 		self::assertSame(['host' => '', 'configured' => false], $response->getData());
 		self::assertArrayNotHasKey('forge.forgejo.web_base', $this->config);
+	}
+
+	/**
+	 * GitLab reads gitlab.com until a self-managed host is set, and only admins read or set it.
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-4.1
+	 */
+	public function testGitlabHostDefaultsToGitlabComAndIsAdminOnly(): void {
+		self::assertSame(['host' => 'https://gitlab.com', 'selfManaged' => false], $this->controller()->gitlabHost()->getData());
+
+		$denied = $this->controller(false);
+		self::assertSame(403, $denied->gitlabHost()->getStatus());
+		self::assertSame(403, $denied->setGitlabHost('https://gitlab.example.org')->getStatus());
+		self::assertSame([], $this->config);
+	}
+
+	/**
+	 * A self-managed host is stored like the Forgejo host, a bad one refused, and empty returns to gitlab.com.
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-4.1
+	 */
+	public function testGitlabHostIsSetRefusedAndCleared(): void {
+		$this->config['forge.gitlab.api_base'] = 'https://stale.example.org/api/v4';
+
+		$set = $this->controller()->setGitlabHost(' https://gitlab.example.org/ ');
+		self::assertSame(['host' => 'https://gitlab.example.org', 'selfManaged' => true], $set->getData());
+		self::assertSame('https://gitlab.example.org', $this->config['forge.gitlab.web_base']);
+		self::assertArrayNotHasKey('forge.gitlab.api_base', $this->config);
+
+		self::assertSame(400, $this->controller()->setGitlabHost('http://gitlab.example.org')->getStatus());
+		self::assertSame('https://gitlab.example.org', $this->config['forge.gitlab.web_base']);
+
+		$cleared = $this->controller()->setGitlabHost('');
+		self::assertSame(['host' => 'https://gitlab.com', 'selfManaged' => false], $cleared->getData());
+		self::assertArrayNotHasKey('forge.gitlab.web_base', $this->config);
 	}
 }

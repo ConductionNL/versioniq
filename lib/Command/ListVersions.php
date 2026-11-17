@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Command;
 
-use OCA\Versioniq\Service\InstallerService;
+use OCA\Versioniq\Kernel\Contracts\InstallerServiceInterface;
 use OCP\AppFramework\Http;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\Table;
@@ -33,7 +33,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class ListVersions extends Command {
 	public function __construct(
-		private InstallerService $installerService,
+		private InstallerServiceInterface $installerService,
 	) {
 		parent::__construct();
 	}
@@ -89,7 +89,7 @@ class ListVersions extends Command {
 	}
 
 	/**
-	 * @param array{installedVersion:?string, availableVersions:list<array{version:string,changelog?:?string,recordedSha?:?string,serverCompatible?:?bool}>, versions:list<array{version:string,changelog?:?string,recordedSha?:?string}>, source:string, sourceId:string, error?:string} $result
+	 * @param array{installedVersion:?string, availableVersions:list<array{version:string,changelog?:?string,recordedSha?:?string,serverCompatible?:?bool,releasedAt?:?string}>, versions:list<array{version:string,changelog?:?string,recordedSha?:?string}>, source:string, sourceId:string, error?:string} $result
 	 */
 	private function renderTable(OutputInterface $output, string $appId, array $result): void {
 		$installedVersion = $result['installedVersion'] ?? null;
@@ -113,13 +113,28 @@ class ListVersions extends Command {
 				$this->compatibilityMarker($version, $installedVersion),
 				$this->serverCompatibilityMarker($entry['serverCompatible'] ?? null),
 				$entry['recordedSha'] ?? '',
+				self::releasedOn($entry['releasedAt'] ?? null),
 			];
 		}
 
 		$table = new Table($output);
-		$table->setHeaders(['Version', 'Relative to installed', 'Runs on this server', 'Recorded SHA-256']);
+		$table->setHeaders(['Version', 'Relative to installed', 'Runs on this server', 'Recorded SHA-256', 'Released']);
 		$table->setRows($rows);
 		$table->render();
+	}
+
+	/**
+	 * The release day of a version (releases-version-facts D1), from its
+	 * ISO-8601 `releasedAt`; blank when the source gave none.
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-carries-its-release-date
+	 */
+	private static function releasedOn(mixed $releasedAt): string {
+		if (!is_string($releasedAt) || preg_match('/^\d{4}-\d{2}-\d{2}/', $releasedAt, $day) !== 1) {
+			return '';
+		}
+
+		return $day[0];
 	}
 
 	/**

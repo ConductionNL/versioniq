@@ -15,8 +15,12 @@ namespace OCA\Versioniq\Service\Settings;
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\BackgroundJob\PruneAuditJob;
+use OCA\Versioniq\Kernel\Contracts\InstanceSettingsInterface;
+use OCA\Versioniq\Service\Advisory\LocalFeedCopy;
+use OCA\Versioniq\Service\Advisory\NcscAdvisoryFeed;
 use OCA\Versioniq\Service\Advisory\NextcloudAdvisoryFeed;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
+use OCA\Versioniq\Service\Lifecycle\ServerEolFeed;
 use OCA\Versioniq\Service\Source\AppStoreSource;
 use OCA\Versioniq\Service\Source\ForgeRegistry;
 use OCP\IAppConfig;
@@ -37,7 +41,7 @@ use OCP\IAppConfig;
  *
  * @psalm-api
  */
-class InstanceSettings {
+class InstanceSettings implements InstanceSettingsInterface {
 	public const KEY_APPSTORE_API_BASE = 'appstore.api_base';
 	public const KEY_GITHUB_API_BASE = 'forge.github.api_base';
 	public const KEY_GITHUB_WEB_BASE = 'forge.github.web_base';
@@ -46,6 +50,8 @@ class InstanceSettings {
 	public const KEY_MAX_LINES_BEHIND = 'update.max_lines_behind';
 	/** Whether apps an update left disabled are enabled again when they run (audit-external-changes). */
 	public const KEY_REACTIVATE_AUTO = 'reactivate.auto';
+	/** Whether Discover also searches public GitHub; read by GithubSearchDiscovery (sources-trust-audit-and-offline-feed). */
+	public const KEY_GITHUB_SEARCH = 'discovery.github_search_enabled';
 
 	public const MAX_LINES_BEHIND = 10;
 
@@ -62,6 +68,8 @@ class InstanceSettings {
 		'githubApiBase' => [self::KEY_GITHUB_API_BASE, true],
 		'githubWebBase' => [self::KEY_GITHUB_WEB_BASE, true],
 		'advisoryFeedUrl' => [self::KEY_ADVISORY_FEED, false],
+		// The NCSC-NL CSAF directory (advisories-ncsc-feed), https only.
+		'ncscFeedUrl' => [NcscAdvisoryFeed::CONFIG_BASE, true],
 	];
 
 	public function __construct(
@@ -75,7 +83,7 @@ class InstanceSettings {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, reactivateAuto: bool}
+	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, eolFeedUrl: string, eolFeedOff: bool, eolFeedDefault: string, ncscFeedUrl: string, ncscFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, reactivateAuto: bool, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int}
 	 */
 	public function read(): array {
 		$retention = $this->config->getValueInt(Application::APP_ID, PruneAuditJob::CONFIG_KEY_RETENTION_DAYS, PruneAuditJob::DEFAULT_RETENTION_DAYS);
@@ -95,9 +103,17 @@ class InstanceSettings {
 			'githubWebDefault' => ForgeRegistry::GITHUB_WEB_DEFAULT,
 			'advisoryFeedUrl' => $this->stored(self::KEY_ADVISORY_FEED),
 			'advisoryFeedDefault' => NextcloudAdvisoryFeed::DEFAULT_FEED_URL,
+			// '' with the key present means the admin switched the feed off.
+			'eolFeedUrl' => $this->stored(ServerEolFeed::KEY_FEED),
+			'eolFeedOff' => $this->config->hasKey(Application::APP_ID, ServerEolFeed::KEY_FEED) && $this->stored(ServerEolFeed::KEY_FEED) === '',
+			'eolFeedDefault' => ServerEolFeed::DEFAULT_FEED_URL,
+			'ncscFeedUrl' => $this->stored(NcscAdvisoryFeed::CONFIG_BASE),
+			'ncscFeedDefault' => NcscAdvisoryFeed::DEFAULT_BASE,
 			'maxLinesBehind' => $this->maxLinesBehind(),
 			'maxLinesBehindMax' => self::MAX_LINES_BEHIND,
 			'reactivateAuto' => $this->config->getValueBool(Application::APP_ID, self::KEY_REACTIVATE_AUTO, false),
+			'githubSearchEnabled' => $this->config->getValueString(Application::APP_ID, self::KEY_GITHUB_SEARCH, 'false') === 'true',
+			...$this->feedSource(),
 		];
 	}
 
@@ -118,8 +134,17 @@ class InstanceSettings {
 		$lagLimit = $this->validatedLagLimit($fields);
 		$urls = $this->validatedUrls($fields);
 		$reactivate = self::validatedSwitch($fields, 'reactivateAuto', 'Automatic re-enabling');
+		$githubSearch = self::validatedSwitch($fields, 'githubSearchEnabled', 'GitHub search');
+		$feedSource = self::validatedFeedSource($fields);
+		$eolFeed = isset($fields['eolFeedUrl']) ? $this->url($fields['eolFeedUrl'], false) : null;
 
 		$this->storeInts($ints);
+		if ($githubSearch !== null) {
+			$this->config->setValueString(Application::APP_ID, self::KEY_GITHUB_SEARCH, $githubSearch);
+		}
+		if ($feedSource !== null) {
+			$this->config->setValueString(Application::APP_ID, NextcloudAdvisoryFeed::CONFIG_FEED_SOURCE, $feedSource);
+		}
 		if ($lagLimit !== null) {
 			$this->storeOrClear(self::KEY_MAX_LINES_BEHIND, $lagLimit);
 		}
@@ -127,7 +152,12 @@ class InstanceSettings {
 			$this->storeOrClear($key, $value);
 		}
 		if ($reactivate !== null) {
-			$this->config->setValueBool(Application::APP_ID, self::KEY_REACTIVATE_AUTO, $reactivate);
+			$this->config->setValueBool(Application::APP_ID, self::KEY_REACTIVATE_AUTO, $reactivate === 'true');
+		}
+		if ($eolFeed !== null) {
+			// Unlike the other addresses, an empty end-of-life feed is kept:
+			// it switches the warnings off instead of falling back to the default.
+			$this->config->setValueString(Application::APP_ID, ServerEolFeed::KEY_FEED, $eolFeed);
 		}
 
 		return self::appliedFields($fields);
@@ -141,27 +171,65 @@ class InstanceSettings {
 	 */
 	private static function appliedFields(array $fields): array {
 		return array_values(array_filter(
-			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS), 'reactivateAuto'],
+			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', ...array_keys(self::URL_FIELDS), 'reactivateAuto', 'githubSearchEnabled', 'advisoryFeedSource', 'eolFeedUrl'],
 			static fn (string $field): bool => isset($fields[$field]),
 		));
 	}
 
 	/**
-	 * A sent on/off field as a bool, null when it was not sent; anything but
-	 * 1/0/true/false is refused.
+	 * A sent on/off switch as it is stored (`true` or `false`), null when not sent.
 	 *
-	 * @param array<string, string> $fields
-	 * @spec openspec/changes/audit-external-changes
+	 * @param array<string, string> $fields The sent fields.
+	 * @throws InvalidArgumentException When the value is not on or off.
+	 * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/app-discovery/spec.md
 	 */
-	private static function validatedSwitch(array $fields, string $field, string $label): ?bool {
+	private static function validatedSwitch(array $fields, string $field, string $label): ?string {
 		if (!isset($fields[$field])) {
 			return null;
 		}
 
 		return match (strtolower(trim($fields[$field]))) {
-			'1', 'true' => true,
-			'0', 'false', '' => false,
+			'true', '1' => 'true',
+			'false', '0' => 'false',
 			default => throw new InvalidArgumentException($label . ' must be on or off.'),
+		};
+	}
+
+	/**
+	 * Where advisories are read from, and the state of the imported copy: when
+	 * it was imported and the age past which the page warns about it.
+	 *
+	 * @return array{advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int}
+	 * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/security-advisory-correlation/spec.md
+	 */
+	private function feedSource(): array {
+		$copiedAt = $this->config->getValueInt(Application::APP_ID, LocalFeedCopy::CONFIG_COPIED_AT, 0);
+
+		return [
+			'advisoryFeedSource' => $this->config->getValueString(Application::APP_ID, NextcloudAdvisoryFeed::CONFIG_FEED_SOURCE, NextcloudAdvisoryFeed::SOURCE_REMOTE) === NextcloudAdvisoryFeed::SOURCE_LOCAL
+				? NextcloudAdvisoryFeed::SOURCE_LOCAL
+				: NextcloudAdvisoryFeed::SOURCE_REMOTE,
+			'advisoryFeedCopiedAt' => $copiedAt > 0 ? $copiedAt : null,
+			'advisoryFeedCopyMaxAgeDays' => LocalFeedCopy::MAX_AGE_DAYS,
+		];
+	}
+
+	/**
+	 * A sent feed source as it is stored (`remote` or `local`), null when not sent.
+	 *
+	 * @param array<string, string> $fields The sent fields.
+	 * @throws InvalidArgumentException When the value is neither.
+	 * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/security-advisory-correlation/spec.md
+	 */
+	private static function validatedFeedSource(array $fields): ?string {
+		if (!isset($fields['advisoryFeedSource'])) {
+			return null;
+		}
+
+		return match (strtolower(trim($fields['advisoryFeedSource']))) {
+			NextcloudAdvisoryFeed::SOURCE_REMOTE => NextcloudAdvisoryFeed::SOURCE_REMOTE,
+			NextcloudAdvisoryFeed::SOURCE_LOCAL => NextcloudAdvisoryFeed::SOURCE_LOCAL,
+			default => throw new InvalidArgumentException('The advisory feed source must be remote or local.'),
 		};
 	}
 

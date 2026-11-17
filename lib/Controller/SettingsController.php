@@ -15,16 +15,16 @@ namespace OCA\Versioniq\Controller;
 use InvalidArgumentException;
 use OCA\Versioniq\Http\InstanceSettingsFields;
 use OCA\Versioniq\Http\RequestFieldsFrom;
-use OCA\Versioniq\Service\Audit\AuditedVersions;
-use OCA\Versioniq\Service\Audit\AuditLogger;
-use OCA\Versioniq\Service\Audit\AuditSubject;
-use OCA\Versioniq\Service\Settings\InstanceSettings;
+use OCA\Versioniq\Kernel\Contracts\InstanceSettingsInterface;
+use OCA\Versioniq\Service\Advisory\LocalFeedCopy;
+use OCA\Versioniq\Service\Audit\AdminChangeAuditInterface;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Http\Response;
 use OCP\AppFramework\OCSController;
+use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IGroupManager;
 use OCP\IRequest;
 use OCP\IUserSession;
@@ -42,13 +42,18 @@ use OCP\IUserSession;
  * @psalm-suppress UnusedClass
  */
 class SettingsController extends OCSController {
+	use ChecksAdmin;
+
 	public function __construct(
 		string $appName,
 		IRequest $request,
-		private InstanceSettings $settings,
-		private AuditLogger $auditLogger,
+		private InstanceSettingsInterface $settings,
+		private AdminChangeAuditInterface $auditLogger,
 		private IGroupManager $groupManager,
 		private IUserSession $userSession,
+		// The offline advisory copy (sources-trust-audit-and-offline-feed).
+		private ?LocalFeedCopy $localFeedCopy = null,
+		private ?ITimeFactory $time = null,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -114,13 +119,11 @@ class SettingsController extends OCSController {
 
 		$after = $this->settings->read();
 		if ($applied !== []) {
-			$this->auditLogger->record(
-				new AuditSubject($this->userSession->getUser()?->getUID() ?? '', 'versioniq', AuditLogger::OPERATION_SETTINGS),
-				new AuditedVersions(null, null, null),
-				AuditLogger::STATUS_SUCCESS,
+			$this->auditLogger->recordAdminChange(
+				$this->userSession->getUser()?->getUID() ?? '',
+				AdminChangeAuditInterface::OPERATION_SETTINGS,
 				'Settings changed: ' . implode(', ', array_map(
-					// An on/off setting reads as on or off, not as 1 or an empty string.
-					static fn (string $field): string => $field . '=' . (is_bool($after[$field]) ? ($after[$field] ? 'on' : 'off') : (string)$after[$field]),
+					static fn (string $field): string => $field . '=' . self::settingText($after[$field]),
 					$applied,
 				)),
 			);
@@ -129,12 +132,102 @@ class SettingsController extends OCSController {
 		return new DataResponse($after);
 	}
 
-	private function isAdmin(): bool {
-		$user = $this->userSession->getUser();
-		if ($user === null) {
-			return false;
+	/**
+	 * Imports a local copy of the advisory feed (password-confirmed)
+	 *
+	 * The uploaded `file` must be a feed file in the format the feed address
+	 * serves. A file that does not parse is refused and the previous copy
+	 * stays in use. The import is audited as a settings change.
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{copiedAt: int, records: int}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 *
+	 * 200: The copy was stored
+	 * 400: No file was sent, or it is not a valid feed; the previous copy is kept
+	 * 403: Caller is not an administrator
+	 *
+	 * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/security-advisory-correlation/spec.md
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'POST', url: '/api/advisory/feed-copy')]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/advisory/feed-copy', postfix: 'v1')]
+	public function importAdvisoryFeedCopy(): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		return $this->groupManager->isAdmin($user->getUID());
+		$copy = $this->importUploadedFeedCopy();
+		if ($copy instanceof DataResponse) {
+			return $copy;
+		}
+
+		$this->auditLogger->recordAdminChange(
+			$this->userSession->getUser()?->getUID() ?? '',
+			AdminChangeAuditInterface::OPERATION_SETTINGS,
+			'Advisory feed copy imported: ' . $copy['records'] . ' advisories',
+		);
+
+		return new DataResponse($copy);
+	}
+
+	/**
+	 * Imports the uploaded `file` as the local advisory copy: the stored copy's
+	 * summary, or the 400 that says why nothing was stored.
+	 *
+	 * @return array{copiedAt: int, records: int}|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>
+	 */
+	private function importUploadedFeedCopy(): array|DataResponse {
+		if ($this->localFeedCopy === null || $this->time === null) {
+			return new DataResponse(['message' => 'The local advisory copy is not available.'], Http::STATUS_BAD_REQUEST);
+		}
+
+		$content = $this->uploadedContent();
+		if ($content === null) {
+			return new DataResponse(['message' => 'Choose a feed file to import.'], Http::STATUS_BAD_REQUEST);
+		}
+
+		try {
+			return $this->localFeedCopy->import($content, $this->time->getTime());
+		} catch (InvalidArgumentException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
+	}
+
+	/**
+	 * The content of the uploaded `file`, or null when none arrived whole.
+	 */
+	private function uploadedContent(): ?string {
+		$path = $this->uploadedPath();
+		if ($path === null) {
+			return null;
+		}
+		$content = file_get_contents($path);
+
+		return is_string($content) ? $content : null;
+	}
+
+	/**
+	 * The readable temporary path of the uploaded `file`, or null when none arrived whole.
+	 */
+	private function uploadedPath(): ?string {
+		/** @var mixed $upload */
+		$upload = $this->request->getUploadedFile('file');
+		if (!is_array($upload) || ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+			return null;
+		}
+		/** @var mixed $path */
+		$path = $upload['tmp_name'] ?? null;
+
+		return is_string($path) && is_readable($path) ? $path : null;
+	}
+
+	/**
+	 * A setting's value as the audit message writes it: on/off for a switch.
+	 */
+	private static function settingText(bool|int|string|null $value): string {
+		if (is_bool($value)) {
+			return $value ? 'on' : 'off';
+		}
+
+		return (string)$value;
 	}
 }

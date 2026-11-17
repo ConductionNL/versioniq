@@ -11,6 +11,7 @@ namespace OCA\Versioniq\Tests\Unit\Service;
 
 use DateTime;
 use OCA\Versioniq\Service\AdminNotice;
+use OCA\Versioniq\Service\Alert\AlertDispatcher;
 use OCA\Versioniq\Service\AdminNotificationServices;
 use OCA\Versioniq\Service\NotifiesAdmins;
 use OCA\Versioniq\Service\ResolvesAdminUids;
@@ -44,7 +45,7 @@ final class NotifiesAdminsTest extends TestCase {
 	 * @param list<string>|null $uids admin group members; null: no admin group
 	 * @param list<string> $failFor uids whose notify() throws
 	 */
-	private function host(?array $uids, LoggerInterface $logger, array $failFor = []): object {
+	private function host(?array $uids, LoggerInterface $logger, array $failFor = [], ?AlertDispatcher $alerts = null): object {
 		$group = null;
 		if ($uids !== null) {
 			$group = $this->createMock(IGroup::class);
@@ -78,7 +79,7 @@ final class NotifiesAdminsTest extends TestCase {
 			$this->calls[] = ['notify', $user];
 		});
 
-		$admin = new AdminNotificationServices($manager, $groups, $time, $urls);
+		$admin = new AdminNotificationServices($manager, $groups, $time, $urls, $alerts);
 
 		return new class($admin, $logger) {
 			use NotifiesAdmins;
@@ -223,5 +224,24 @@ final class NotifiesAdminsTest extends TestCase {
 			['Failed to notify admin', ['app' => 'mail', 'uid' => 'alice', 'message' => 'no manager']],
 			['Failed to notify admin', ['app' => 'mail', 'uid' => 'bob', 'message' => 'no manager']],
 		], $logged);
+	}
+
+	/**
+	 * releases-new-release-alerts D6: after the bell, the alert is queued for the webhooks once, however many admins
+	 * there are and even when one notification fails; the last notifier step, so a dead target never delays the bell.
+	 *
+	 * @spec openspec/changes/releases-new-release-alerts/specs/alert-webhooks/spec.md#requirement-every-versioniq-alert-is-delivered-to-matching-targets-in-the-background
+	 */
+	public function testTheAlertIsDispatchedOnceAfterTheAdminsAreNotified(): void {
+		$alerts = $this->createMock(AlertDispatcher::class);
+		$alerts->expects($this->once())->method('dispatch')->with('update_failed', ['app' => 'mail'])
+			->willReturnCallback(function (): void {
+				$this->calls[] = ['dispatch'];
+			});
+
+		$this->host(['alice', 'bob'], $this->createMock(LoggerInterface::class), ['bob'], $alerts)->send($this->notice());
+
+		self::assertSame(['dispatch'], end($this->calls));
+		self::assertContains(['notify', 'alice'], $this->calls);
 	}
 }

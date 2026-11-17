@@ -11,8 +11,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\BackgroundJob;
 
-use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
-use OCA\Versioniq\Service\Availability\AvailabilityService;
+use OCA\Versioniq\Kernel\Contracts\AvailabilityServiceInterface;
+use OCA\Versioniq\Kernel\Contracts\ReleaseSweepRecorderInterface;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
 use Psr\Log\LoggerInterface;
@@ -33,8 +33,8 @@ class AvailabilityRefreshJob extends TimedJob {
 
 	public function __construct(
 		ITimeFactory $time,
-		private AvailabilityService $availabilityService,
-		private AvailabilityResultStore $resultStore,
+		private AvailabilityServiceInterface $availabilityService,
+		private ReleaseSweepRecorderInterface $recorder,
 		private LoggerInterface $logger,
 	) {
 		parent::__construct($time);
@@ -47,8 +47,8 @@ class AvailabilityRefreshJob extends TimedJob {
 	 */
 	protected function run($argument): void {
 		try {
-			$updates = $this->availabilityService->sweep(self::SWEEP_BUDGET_SECONDS);
-			$this->resultStore->save($updates, $this->time->getTime());
+			$updates = $this->availabilityService->sweep(self::SWEEP_BUDGET_SECONDS, $this->recorder->followed());
+			$this->recorder->record($updates, $this->time->getTime());
 
 			$unreached = count(array_filter($updates, static fn (array $entry): bool => ($entry['error'] ?? null) !== null));
 			if ($unreached > 0) {
@@ -59,6 +59,19 @@ class AvailabilityRefreshJob extends TimedJob {
 			}
 		} catch (\Throwable $error) {
 			$this->logger->error('AvailabilityRefreshJob: the update check failed; the previous snapshot is kept', ['message' => $error->getMessage()]);
+			$this->recordFailure();
+		}
+	}
+
+	/**
+	 * Says the sweep failed, so the check line does not read as checked.
+	 * Recording it must not throw out of the job either.
+	 */
+	private function recordFailure(): void {
+		try {
+			$this->recorder->recordFailure($this->time->getTime());
+		} catch (\Throwable $error) {
+			$this->logger->error('AvailabilityRefreshJob: could not record the failed sweep', ['message' => $error->getMessage()]);
 		}
 	}
 }

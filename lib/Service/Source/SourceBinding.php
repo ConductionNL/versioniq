@@ -33,6 +33,8 @@ final class SourceBinding {
 	public const FORGE_GITHUB = 'github';
 	public const FORGE_FORGEJO = 'forgejo';
 	public const FORGE_CODEBERG = 'codeberg';
+	/** GitLab: the binding holds a nested project `path` instead of owner and repo (sources-gitlab-forge D3). */
+	public const FORGE_GITLAB = 'gitlab';
 
 	/**
 	 * Every forge a stored binding, source id or trusted pattern may carry,
@@ -40,8 +42,16 @@ final class SourceBinding {
 	 *
 	 * @var list<string>
 	 */
-	public const FORGES = [self::FORGE_GITHUB, self::FORGE_FORGEJO, self::FORGE_CODEBERG];
+	public const FORGES = [self::FORGE_GITHUB, self::FORGE_FORGEJO, self::FORGE_CODEBERG, self::FORGE_GITLAB];
 	private const ALLOWED_FORGES = self::FORGES;
+
+	/**
+	 * Forges kept only for what was stored under them: never offered for a
+	 * new binding, token or trusted pattern (codeberg-is-no-release-source).
+	 *
+	 * @var list<string>
+	 */
+	public const RETIRED_FORGES = [self::FORGE_CODEBERG];
 
 	/**
 	 * Cap on the number of `version => sha256` entries carried in the binding's
@@ -77,6 +87,11 @@ final class SourceBinding {
 	 * @throws InvalidArgumentException
 	 */
 	private static function assertValidReleaseConfig(array $config): void {
+		if (($config['forge'] ?? null) === self::FORGE_GITLAB) {
+			self::requireNonEmptyString($config, 'path');
+			GitlabProjectPath::assertSafe((string)$config['path']);
+			return;
+		}
 		self::requireNonEmptyString($config, 'owner');
 		self::requireNonEmptyString($config, 'repo');
 		// Reject path-traversal characters in owner/repo. fnmatch in
@@ -155,17 +170,22 @@ final class SourceBinding {
 
 		// Forge-qualified id. For github this is byte-identical to the legacy
 		// `github:owner/repo` form (getForge() defaults to github).
-		return $this->getForge() . ':' . $this->configString('owner') . '/' . $this->configString('repo');
+		return $this->getForge() . ':' . ($this->getOwnerRepo() ?? '');
 	}
 
 	/**
-	 * Returns the `owner/repo` for github bindings, null otherwise; see "GitHub releases as a source".
+	 * Returns the `owner/repo` for github bindings (the project path for gitlab), null otherwise; see "GitHub releases as a source".
 	 *
 	 * @spec openspec/specs/external-sources/spec.md
 	 */
 	public function getOwnerRepo(): ?string {
 		if ($this->kind !== self::KIND_GITHUB_RELEASE) {
 			return null;
+		}
+
+		if ($this->getForge() === self::FORGE_GITLAB) {
+			// The whole nested project path (sources-gitlab-forge D3).
+			return $this->configString('path');
 		}
 
 		return $this->configString('owner') . '/' . $this->configString('repo');
@@ -271,14 +291,9 @@ final class SourceBinding {
 		$sanitized = [];
 		/** @var mixed $sha */
 		foreach ($map as $version => $sha) {
-			if (!is_string($version) || $version === '' || !is_string($sha)) {
-				continue;
+			if (is_string($version) && $version !== '' && is_string($sha) && preg_match(self::SHA256_PATTERN, strtolower($sha)) === 1) {
+				$sanitized[$version] = strtolower($sha);
 			}
-			$lower = strtolower($sha);
-			if (preg_match(self::SHA256_PATTERN, $lower) !== 1) {
-				continue;
-			}
-			$sanitized[$version] = $lower;
 		}
 
 		return $sanitized;
@@ -377,29 +392,55 @@ final class SourceBinding {
 	}
 
 	/**
+	 * Whether a forge is retired, so a new binding or pattern may not name it.
+	 *
+	 * @spec openspec/changes/codeberg-is-no-release-source/specs/external-sources/spec.md
+	 */
+	public static function isRetiredForge(string $forge): bool {
+		return in_array($forge, self::RETIRED_FORGES, true);
+	}
+
+	/**
 	 * Builds a validated release binding on any known forge; an unknown forge
-	 * is rejected by the constructor.
+	 * is rejected by the constructor. A gitlab binding takes the namespace and
+	 * the project name together as its project path.
 	 *
 	 * @spec openspec/specs/external-sources/spec.md
+	 * @spec openspec/changes/sources-gitlab-forge/specs/external-sources/spec.md
 	 * @throws InvalidArgumentException
 	 */
 	public static function release(string $forge, string $owner, string $repo, string $assetPattern = '*.tar.gz'): self {
+		if ($forge === self::FORGE_GITLAB) {
+			// A GitLab project has a path, not an owner and a repo: the
+			// namespace and the project name together are that path.
+			return self::gitlab($owner . '/' . $repo, $assetPattern);
+		}
+
 		return self::forgeRelease($forge, $owner, $repo, $assetPattern);
+	}
+
+	/**
+	 * A GitLab release binding for a nested project path such as
+	 * `group/subgroup/project` (sources-gitlab-forge D3).
+	 *
+	 * @throws InvalidArgumentException When the path is not a safe project path.
+	 * @spec openspec/changes/sources-gitlab-forge/specs/external-sources/spec.md
+	 */
+	public static function gitlab(string $path, string $assetPattern = '*.tar.gz'): self {
+		return new self(self::KIND_GITHUB_RELEASE, ['forge' => self::FORGE_GITLAB, 'path' => $path, 'assetPattern' => $assetPattern], self::boundNow());
 	}
 
 	/**
 	 * Shared factory for forge-release bindings with a boundAt timestamp.
 	 */
 	private static function forgeRelease(string $forge, string $owner, string $repo, string $assetPattern): self {
-		return new self(
-			self::KIND_GITHUB_RELEASE,
-			[
-				'forge' => $forge,
-				'owner' => $owner,
-				'repo' => $repo,
-				'assetPattern' => $assetPattern,
-			],
-			(new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format(\DateTimeInterface::ATOM),
-		);
+		return new self(self::KIND_GITHUB_RELEASE, ['forge' => $forge, 'owner' => $owner, 'repo' => $repo, 'assetPattern' => $assetPattern], self::boundNow());
+	}
+
+	/**
+	 * The moment a new binding is made, in UTC, as its `boundAt`.
+	 */
+	private static function boundNow(): string {
+		return (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format(\DateTimeInterface::ATOM);
 	}
 }

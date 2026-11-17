@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\AutoUpdate;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\AttemptLedgerInterface;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
 
@@ -26,12 +27,9 @@ use Psr\Log\LoggerInterface;
  *
  * @psalm-api
  */
-class AttemptLedger {
+class AttemptLedger implements AttemptLedgerInterface {
 	private const KEY_PREFIX = 'auto_attempt.';
 	private const MAX_ENTRIES = 10;
-
-	public const OUTCOME_SUCCESS = 'success';
-	public const OUTCOME_FAILURE = 'failure';
 
 	public function __construct(
 		private IAppConfig $config,
@@ -68,6 +66,46 @@ class AttemptLedger {
 		}
 
 		$this->store($appId, $entries);
+	}
+
+	/**
+	 * How many attempts, successful or not, were recorded at or after a time,
+	 * across every app: the weekly count the per-week cap reads
+	 * (autoupdate-run-batching D4). Reads every `auto_attempt.*` key at once.
+	 *
+	 * @param string $isoTime The earliest moment counted, ISO 8601.
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	public function countSince(string $isoTime): int {
+		$since = strtotime($isoTime);
+		if ($since === false) {
+			return 0;
+		}
+
+		$count = 0;
+		foreach (array_keys($this->config->getAllValues(Application::APP_ID, self::KEY_PREFIX)) as $key) {
+			if (str_starts_with($key, self::KEY_PREFIX)) {
+				$count += $this->countAppSince(substr($key, strlen(self::KEY_PREFIX)), $since);
+			}
+		}
+
+		return $count;
+	}
+
+	/**
+	 * How many of one app's attempts were recorded at or after a Unix time.
+	 */
+	private function countAppSince(string $appId, int $since): int {
+		$count = 0;
+		foreach ($this->all($appId) as $entry) {
+			$at = strtotime($entry['at']);
+			if ($at !== false && $at >= $since) {
+				$count++;
+			}
+		}
+
+		return $count;
 	}
 
 	/**

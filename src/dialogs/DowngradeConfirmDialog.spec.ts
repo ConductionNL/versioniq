@@ -44,6 +44,14 @@ describe('DowngradeConfirmDialog', () => {
 		expect(wrapper.findAll('li').map((li) => li.text())).toEqual(['Version5000Date20260101', 'Version5000Date20260202'])
 	})
 
+	it('names the breaking releases in the range, and hides the row without them (releases-version-facts D3)', () => {
+		const withBreaking = mount(DowngradeConfirmDialog, { props: { ...props, breakingText: 'Includes releases marked as breaking: 4.8.0.' } })
+		const without = mount(DowngradeConfirmDialog, { props })
+
+		expect(withBreaking.find('[data-testid="downgrade-breaking"]').text()).toBe('Includes releases marked as breaking: 4.8.0.')
+		expect(without.find('[data-testid="downgrade-breaking"]').exists()).toBe(false)
+	})
+
 	it('shows a dash for an unknown installed version and hides an empty range', () => {
 		const wrapper = mount(DowngradeConfirmDialog, { props: { ...props, fromVersion: '', rangeText: '' } })
 
@@ -89,4 +97,14 @@ describe('DowngradeConfirmDialog', () => {
 		expect(wrapper.find('[data-label="Downgrade"]').attributes('disabled')).toBeUndefined()
 		expect(wrapper.find('[data-label="Cancel"]').attributes('disabled')).toBeUndefined()
 	})
+	it('ignores a re-open and only resolves on an explicit close', async () => {
+		const wrapper = mount(DowngradeConfirmDialog, { props })
+
+		wrapper.findComponent({ name: 'NcDialog' }).vm.$emit('update:open', true)
+		await wrapper.vm.$nextTick()
+
+		expect(wrapper.emitted('resolve')).toBeUndefined()
+		expect(wrapper.emitted('update:open')).toBeUndefined()
+	})
+
 })

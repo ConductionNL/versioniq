@@ -21,6 +21,7 @@ use OCA\Versioniq\Controller\OpenApiController;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Http\Response;
 use OCP\IRequest;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
 
@@ -93,6 +94,41 @@ class OpenApiControllerTest extends TestCase {
 		$this->assertSame(expected: 404, actual: $response->getStatus());
 		$this->assertSame(expected: '*', actual: $this->headersOf(response: $response)['Access-Control-Allow-Origin']);
 	}
+
+	/**
+	 * Documents that are not JSON, or have no `info` object.
+	 *
+	 * @return array<string,array{0:string}>
+	 */
+	public static function unusableDocuments(): array {
+		return [
+			'not json' => ['{"openapi":'],
+			'no info' => ['{"openapi":"3.0.3","paths":{}}'],
+			'info not an object' => ['{"openapi":"3.0.3","info":"1.0","paths":{}}'],
+			'a list' => ['[{"info":{}}]'],
+		];
+	}//end unusableDocuments()
+
+	/**
+	 * A document that cannot be read as an OpenAPI document is not found rather than served.
+	 *
+	 * @param string $contents The document's contents.
+	 *
+	 * @return void
+	 */
+	#[DataProvider('unusableDocuments')]
+	public function testAnUnusableDocumentIsNotFound(string $contents): void {
+		$dir = sys_get_temp_dir() . '/openapi-' . uniqid();
+		mkdir($dir);
+		file_put_contents($dir . '/openapi.json', $contents);
+
+		$response = $this->controller(appPath: $dir)->show();
+		unlink($dir . '/openapi.json');
+		rmdir($dir);
+
+		$this->assertSame(expected: 404, actual: $response->getStatus());
+		$this->assertSame(expected: ['error' => 'The OpenAPI document is not installed'], actual: $response->getData());
+	}//end testAnUnusableDocumentIsNotFound()
 
 	/**
 	 * The headers a response set, read without the server container that
