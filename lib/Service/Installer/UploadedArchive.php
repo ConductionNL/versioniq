@@ -135,6 +135,17 @@ class UploadedArchive {
 		if (!is_resource($source) || $target === false) {
 			throw new InvalidArgumentException('The upload could not be read.');
 		}
+		self::copyStream($source, $target);
+	}
+
+	/**
+	 * Copies one stream into the other and closes both.
+	 *
+	 * @param resource $source
+	 * @param resource $target
+	 * @throws InvalidArgumentException When the copy fails.
+	 */
+	private static function copyStream($source, $target): void {
 		try {
 			if (stream_copy_to_stream($source, $target) === false) {
 				throw new InvalidArgumentException('The upload could not be read.');
@@ -203,6 +214,16 @@ class UploadedArchive {
 			return null;
 		}
 
+		return self::validRecord($decoded);
+	}
+
+	/**
+	 * A decoded record when every field has its type, else null.
+	 *
+	 * @param array<mixed> $decoded
+	 * @return array{appId:string, version:string, sha256:string, created:int}|null
+	 */
+	private static function validRecord(array $decoded): ?array {
 		$appId = $decoded['appId'] ?? null;
 		$version = $decoded['version'] ?? null;
 		$sha256 = $decoded['sha256'] ?? null;
@@ -247,20 +268,8 @@ class UploadedArchive {
 	 */
 	private static function findInfoXml($stream): string {
 		$longName = null;
-		while (true) {
-			$header = self::readBlock($stream, 512);
-			if ($header === null || trim($header, "\0") === '') {
-				break;
-			}
-			if (substr($header, 257, 5) !== 'ustar' && !self::validChecksum($header)) {
-				throw new InvalidArgumentException('The upload is not a .tar.gz archive.');
-			}
-
-			$size = self::octal(substr($header, 124, 12));
-			if ($size === null) {
-				throw new InvalidArgumentException('The upload is not a .tar.gz archive.');
-			}
-			$type = $header[156];
+		while (($header = self::nextHeader($stream)) !== null) {
+			[$size, $type] = self::entryOf($header);
 			$name = $longName ?? self::headerName($header);
 			$longName = null;
 			$padded = (int)(ceil($size / 512) * 512);
@@ -269,17 +278,65 @@ class UploadedArchive {
 				$longName = rtrim((string)self::readBlock($stream, $padded), "\0");
 				continue;
 			}
-			if (($type === '0' || $type === "\0") && preg_match('#^(\./)?[^/]+/appinfo/info\.xml$#D', $name) === 1) {
-				if ($size > self::MAX_INFO_XML_BYTES) {
-					throw new InvalidArgumentException('appinfo/info.xml in the archive is too large.');
-				}
-				return substr((string)self::readBlock($stream, $padded), 0, $size);
+			if (self::isInfoXml($type, $name)) {
+				return self::infoXmlEntry($stream, $size);
 			}
 
 			self::skip($stream, $padded);
 		}
 
 		throw new InvalidArgumentException('The archive has no appinfo/info.xml.');
+	}
+
+	/**
+	 * The next tar header block, or null at the end of the archive.
+	 *
+	 * @param resource $stream The gz stream.
+	 */
+	private static function nextHeader($stream): ?string {
+		$header = self::readBlock($stream, 512);
+
+		return $header === null || trim($header, "\0") === '' ? null : $header;
+	}
+
+	/**
+	 * The size and type flag of a tar entry.
+	 *
+	 * @return array{0:int, 1:string}
+	 * @throws InvalidArgumentException When the header is not a tar header.
+	 */
+	private static function entryOf(string $header): array {
+		if (substr($header, 257, 5) !== 'ustar' && !self::validChecksum($header)) {
+			throw new InvalidArgumentException('The upload is not a .tar.gz archive.');
+		}
+
+		$size = self::octal(substr($header, 124, 12));
+		if ($size === null) {
+			throw new InvalidArgumentException('The upload is not a .tar.gz archive.');
+		}
+
+		return [$size, $header[156]];
+	}
+
+	/**
+	 * Whether a tar entry is the app's appinfo/info.xml: a regular file one folder deep.
+	 */
+	private static function isInfoXml(string $type, string $name): bool {
+		return ($type === '0' || $type === "\0") && preg_match('#^(\./)?[^/]+/appinfo/info\.xml$#D', $name) === 1;
+	}
+
+	/**
+	 * Reads the info.xml entry the stream is positioned at.
+	 *
+	 * @param resource $stream The gz stream.
+	 * @throws InvalidArgumentException When the entry is too large.
+	 */
+	private static function infoXmlEntry($stream, int $size): string {
+		if ($size > self::MAX_INFO_XML_BYTES) {
+			throw new InvalidArgumentException('appinfo/info.xml in the archive is too large.');
+		}
+
+		return substr((string)self::readBlock($stream, (int)(ceil($size / 512) * 512)), 0, $size);
 	}
 
 	/**
