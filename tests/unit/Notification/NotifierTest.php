@@ -117,6 +117,42 @@ final class NotifierTest extends TestCase {
 		$this->assertSame($notification, $result);
 	}
 
+	public function testAGroupRunListsEveryMemberWithItsOutcome(): void {
+		$notifier = new Notifier($this->l10nFactory());
+
+		$parsed = [];
+		$notification = $this->createMock(INotification::class);
+		$notification->method('getApp')->willReturn(Application::APP_ID);
+		$notification->method('getSubject')->willReturn('auto_update_group');
+		$notification->method('getSubjectParameters')->willReturn([
+			'group' => 'Registers',
+			'members' => [
+				['appId' => 'openregister', 'version' => '2.3.4', 'outcome' => 'installed'],
+				['appId' => 'opencatalogi', 'version' => '1.2.1', 'outcome' => 'failed'],
+				['appId' => 'woo', 'version' => '3.0.1', 'outcome' => 'not_attempted'],
+			],
+		]);
+		$notification->expects($this->once())->method('setParsedSubject')->willReturnCallback(
+			function (string $subject) use (&$parsed, $notification): INotification {
+				$parsed['subject'] = $subject;
+				return $notification;
+			}
+		);
+		$notification->expects($this->once())->method('setParsedMessage')->willReturnCallback(
+			function (string $message) use (&$parsed, $notification): INotification {
+				$parsed['message'] = $message;
+				return $notification;
+			}
+		);
+
+		$notifier->prepare($notification, 'en');
+
+		$this->assertSame([
+			'subject' => 'Update group Registers',
+			'message' => "openregister: updated to 2.3.4\nopencatalogi: update to 1.2.1 failed\nwoo: not attempted",
+		], $parsed);
+	}
+
 	public function testUnknownSubjectThrows(): void {
 		$notifier = new Notifier($this->l10nFactory());
 

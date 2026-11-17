@@ -120,6 +120,38 @@ final class AutoUpdateNotifierTest extends TestCase {
 		$notifier->notifyFailure('openregister', '2.3.4', 'checksum_mismatch', 'The downloaded archive failed its integrity check.');
 	}
 
+	public function testNotifyGroupSendsOneNotificationListingEveryMember(): void {
+		$outcomes = [
+			['appId' => 'openregister', 'version' => '2.3.4', 'outcome' => AutoUpdateNotifier::OUTCOME_INSTALLED],
+			['appId' => 'opencatalogi', 'version' => '1.2.1', 'outcome' => AutoUpdateNotifier::OUTCOME_FAILED],
+			['appId' => 'woo', 'version' => '3.0.1', 'outcome' => AutoUpdateNotifier::OUTCOME_NOT_ATTEMPTED],
+		];
+		$notification = $this->createMock(INotification::class);
+		$notification->method('setApp')->willReturnSelf();
+		$notification->method('setUser')->willReturnSelf();
+		$notification->method('setDateTime')->willReturnSelf();
+		$notification->method('setLink')->willReturnSelf();
+		$notification->expects($this->once())->method('setObject')->with('auto_update_group', 'Registers')->willReturnSelf();
+		$notification->expects($this->once())
+			->method('setSubject')
+			->with('auto_update_group', ['group' => 'Registers', 'members' => $outcomes])
+			->willReturnSelf();
+
+		$notificationManager = $this->createMock(IManager::class);
+		$notificationManager->method('createNotification')->willReturn($notification);
+		$notificationManager->expects($this->once())->method('notify')->with($notification);
+
+		$notifier = $this->buildByName(AutoUpdateNotifier::class, [
+			'notificationManager' => $notificationManager,
+			'groupManager' => $this->groupManagerWithAdmins(['admin']),
+			'timeFactory' => $this->timeFactory(),
+			'urlGenerator' => $this->urlGenerator(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
+
+		$notifier->notifyGroup('Registers', $outcomes);
+	}
+
 	public function testNotifyFailureDoesNotThrowWhenNotifyManagerFails(): void {
 		$notificationManager = $this->createMock(IManager::class);
 		$notificationManager->method('createNotification')->willThrowException(new \RuntimeException('boom'));

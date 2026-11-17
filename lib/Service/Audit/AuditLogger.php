@@ -87,7 +87,7 @@ class AuditLogger implements AdminChangeAuditInterface {
 		try {
 			$entry = $this->entryFor($subject, $versions);
 			$entry->setStatus($status);
-			$entry->setMessage($this->sanitizeMessage($message));
+			$entry->setMessage($this->sanitizeMessage($subject->operation === self::OPERATION_INSTALL ? AuditNote::applyTo($message) : $message));
 			$entry->setCreatedAt($this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'));
 			$entry->setOrigin($subject->origin ?? AuditOrigin::current());
 
