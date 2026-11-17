@@ -23,9 +23,12 @@ use OCA\Versioniq\Service\Api\AccessCollaborators;
 use OCA\Versioniq\Service\Api\InstallCollaborators;
 use OCA\Versioniq\Service\Api\ReportCollaborators;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\AutoUpdate\SecurityCandidate;
+use OCA\Versioniq\Service\AutoUpdate\UpdateGroup;
+use OCA\Versioniq\Service\AutoUpdate\UpdateGroupInput;
 use OCA\Versioniq\Service\AutoUpdate\UpdateType;
 use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
 use OCA\Versioniq\Service\Installer\InstallOptions;
@@ -33,10 +36,10 @@ use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Pat\NewPat;
-use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Policy\PatchPolicy;
 use OCA\Versioniq\Service\Policy\Policy;
+use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\UntrustedSourceException;
@@ -74,7 +77,7 @@ class ApiController extends OCSController {
 	/**
 	 * Lists installed apps (admin-only); see "List Installed Apps"
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{apps: list<array<string, mixed>>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{apps: list<array<string, mixed>>, disabledByUpdate: array<string, array{toVersion: string, compatible: bool, compatibleVersion: ?string}>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Installed apps returned
 	 * 403: Caller is not an administrator
@@ -88,7 +91,12 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		return new DataResponse(['apps' => $this->install->installerService->getInstalledApps()]);
+		return new DataResponse([
+			'apps' => $this->install->installerService->getInstalledApps(),
+			// Apps an update left disabled, for the notice on their card
+			// (audit-external-changes).
+			'disabledByUpdate' => $this->reports->stores->seenStateStore?->disabledByUpdate() ?? [],
+		]);
 	}
 
 	/**
@@ -1004,7 +1012,11 @@ class ApiController extends OCSController {
 			'securityHolds' => (object)$this->autoUpdate->security->securityHolds->read(),
 			'advisoriesFresh' => $this->advisoriesFresh(),
 			'manualKinds' => ($this->autoUpdate->security->patchPolicyStore->read() ?? PatchPolicy::none())->manualKinds(),
-		] + $this->scheduleView());
+			// Update groups, in their stored order, and the units a cap held
+			// back with the time each was first held (autoupdate-run-batching D2, D5).
+			'groups' => self::groupsPayload($this->autoUpdate->groupStore->all()),
+			'waiting' => (object)$this->autoUpdate->settingsStore->getDeferred(),
+		] + $this->autoUpdateCaps() + $this->scheduleView());
 	}
 
 	/**
@@ -1111,6 +1123,54 @@ class ApiController extends OCSController {
 	}
 
 	/**
+	 * Replaces the update groups (password-confirmed). The whole list is
+	 * checked first: a group of one, a duplicate name, an app in two groups
+	 * or an app this instance cannot manage is refused with 400 and nothing
+	 * changes.
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{groups: list<array<string, mixed>>}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 *
+	 * 200: The stored groups
+	 * 400: The list is refused
+	 * 403: Caller is not an administrator
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'PUT', url: '/api/auto-update/groups')]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/auto-update/groups', postfix: 'v1')]
+	public function updateAutoUpdateGroups(): DataResponse {
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
+		}
+
+		try {
+			$groups = UpdateGroupInput::parse(
+				$this->request->getParam('groups'),
+				fn (string $appId): bool => $this->install->installerService->isManageableApp($appId),
+				['by' => $user->getUID(), 'at' => $this->access->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM)],
+			);
+		} catch (\InvalidArgumentException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
+
+		$this->autoUpdate->groupStore->replaceAll($groups);
+
+		return new DataResponse(['groups' => self::groupsPayload($groups)]);
+	}
+
+	/**
+	 * The groups as the API returns them.
+	 *
+	 * @param list<UpdateGroup> $groups
+	 * @return list<array<string, mixed>>
+	 */
+	private static function groupsPayload(array $groups): array {
+		return array_map(static fn (UpdateGroup $group): array => $group->toArray(), $groups);
+	}
+
+	/**
 	 * Updates the global auto-update kill switch and/or maintenance window
 	 * (password-confirmed); rejects a malformed window with 400; see "Global
 	 * kill switch and window"
@@ -1157,19 +1217,27 @@ class ApiController extends OCSController {
 			return $problem;
 		}
 
+		// autoupdate-run-batching D4: both caps are checked before anything is
+		// stored, so a bad one changes nothing.
+		$caps = $this->capParams();
+		if ($caps instanceof DataResponse) {
+			return $caps;
+		}
+
 		if ($enabledParam !== null) {
 			$this->autoUpdate->settingsStore->setEnabled($this->readBinaryBool($enabledParam, $this->autoUpdate->settingsStore->isEnabled()));
 		}
 		if ($windowParam !== '') {
 			$this->autoUpdate->settingsStore->setWindow($windowParam);
 		}
+		$this->storeCaps($caps);
 		$this->storeSchedule($scheduleParam);
 
 		return new DataResponse([
 			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
 			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
 			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
-		] + $this->scheduleView());
+		] + $this->autoUpdateCaps() + $this->scheduleView());
 	}
 
 	/**
@@ -1726,6 +1794,91 @@ class ApiController extends OCSController {
 		}
 
 		return $default;
+	}
+
+	/**
+	 * The caps the request sets, by name, each an int or null for no limit; a
+	 * cap the request leaves out is absent. A bad cap answers 400.
+	 *
+	 * @return array<string, int|null>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>
+	 */
+	private function capParams(): array|DataResponse {
+		$caps = [];
+		foreach (['maxPerRun' => AutoUpdateSettingsStore::MAX_PER_RUN_LIMIT, 'maxPerWeek' => AutoUpdateSettingsStore::MAX_PER_WEEK_LIMIT] as $name => $limit) {
+			$cap = $this->capParam($name, $limit);
+			if ($cap === false) {
+				return new DataResponse(
+					['message' => sprintf('%s must be a whole number from 1 to %d, or empty for no limit.', $name, $limit)],
+					Http::STATUS_BAD_REQUEST
+				);
+			}
+			if ($cap !== true) {
+				$caps[$name] = $cap;
+			}
+		}
+
+		return $caps;
+	}
+
+	/**
+	 * Stores each cap the request set.
+	 *
+	 * @param array<string, int|null> $caps The caps, by name.
+	 */
+	private function storeCaps(array $caps): void {
+		if (array_key_exists('maxPerRun', $caps)) {
+			$this->autoUpdate->settingsStore->setMaxPerRun($caps['maxPerRun']);
+		}
+		if (array_key_exists('maxPerWeek', $caps)) {
+			$this->autoUpdate->settingsStore->setMaxPerWeek($caps['maxPerWeek']);
+		}
+	}
+
+	/**
+	 * The auto-update caps as the API returns them; null is no limit
+	 * (autoupdate-run-batching D4).
+	 *
+	 * @return array{maxPerRun: int|null, maxPerWeek: int|null}
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	private function autoUpdateCaps(): array {
+		return [
+			'maxPerRun' => $this->autoUpdate->settingsStore->getMaxPerRun(),
+			'maxPerWeek' => $this->autoUpdate->settingsStore->getMaxPerWeek(),
+		];
+	}
+
+	/**
+	 * One cap from the request: true when it was not sent, null for an empty
+	 * value (no limit), the number for 1 to $limit, false for anything else.
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	private function capParam(string $name, int $limit): bool|int|null {
+		/** @var mixed $value */
+		$value = $this->request->getParam($name);
+		if ($value === null) {
+			return true;
+		}
+
+		$text = is_scalar($value) ? trim((string)$value) : 'invalid';
+		if ($text === '') {
+			return null;
+		}
+
+		return self::capWithin($text, $limit);
+	}
+
+	/**
+	 * The cap the text names, or false when it is not a whole number from 1 to $limit.
+	 */
+	private static function capWithin(string $text, int $limit): int|false {
+		if (preg_match('/^\d+$/', $text) !== 1 || (int)$text < 1 || (int)$text > $limit) {
+			return false;
+		}
+
+		return (int)$text;
 	}
 
 	private function stringParam(string $name, string $default): string {
