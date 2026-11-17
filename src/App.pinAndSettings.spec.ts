@@ -173,6 +173,25 @@ describe('App automatic update settings', () => {
 		expect([vm.autoUpdateEnabled, vm.autoUpdateWindowInput, vm.savedAutoUpdateWindow]).toEqual([true, '22:00-23:30', '22:00-23:30'])
 	})
 
+	// autoupdate-schedules task 3.2: the schedule is saved with the switch and window.
+	// @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	it('sends a changed schedule in the body and keeps the next runs the server answers', async () => {
+		const weekdays = { patch: { days: [1, 2, 3, 4, 5], monthly: false }, minor: { days: [1, 2, 3, 4, 5], monthly: false }, major: { days: [1, 2, 3, 4, 5], monthly: false } }
+		const nextRuns = { patch: '2026-11-16T01:00:00+01:00', minor: '2026-11-16T01:00:00+01:00', major: '2026-11-16T01:00:00+01:00' }
+		const { vm, calls } = await mountPage({ '/api/auto-update/settings': { data: { autoUpdateEnabled: true, autoUpdateWindow: '01:00-05:00', autoUpdateSchedule: weekdays, nextRuns } } })
+		vm.autoUpdateEnabled = true
+		vm.autoUpdateWindowInput = '01:00-05:00'
+		vm.autoUpdateSchedule = weekdays
+
+		await vm.saveAutoUpdateSettings()
+		await flushPromises()
+
+		expect(calls[0].body).toEqual({ enabled: '1', window: '01:00-05:00', schedule: weekdays })
+		expect(vm.savedAutoUpdateSchedule).toEqual(weekdays)
+		expect(vm.autoUpdateNextRuns).toEqual(nextRuns)
+		expect(vm.isAutoUpdateSettingsDirty).toBe(false)
+	})
+
 	it('shows the refusal and keeps the saved state when the server refuses', async () => {
 		const { vm } = await mountPage({ '/api/auto-update/settings': refused('Password confirmation is required') })
 		vm.autoUpdateEnabled = true
