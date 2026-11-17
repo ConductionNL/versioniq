@@ -61,6 +61,7 @@ final class SettingsUpdateGoldenTest extends TestCase {
 			'github web base' => ['params' => ['githubWebBase' => 'https://ghe.example.org']],
 			'advisory feed' => ['params' => ['advisoryFeedUrl' => 'https://feed.example.org']],
 			'max lines behind' => ['params' => ['maxLinesBehind' => '2']],
+			'user notice switched off' => ['params' => ['notifyUsersOnUpdate' => 'false']],
 			'blank values are sent on' => ['params' => ['appStoreApiBase' => '', 'maxLinesBehind' => ' ']],
 			'every field, reversed order' => ['params' => ['maxLinesBehind' => '3', 'advisoryFeedUrl' => 'https://f.example', 'githubWebBase' => 'https://w.example', 'githubApiBase' => 'https://a.example', 'appStoreApiBase' => 'https://s.example', 'artifactCacheKeep' => '5', 'auditRetentionDays' => '365']],
 			'null is left alone' => ['params' => ['auditRetentionDays' => null, 'artifactCacheKeep' => '4']],
@@ -112,7 +113,7 @@ final class SettingsUpdateGoldenTest extends TestCase {
 
 	private function controller(IRequest $request, bool $admin): SettingsController {
 		$settings = $this->createMock(InstanceSettings::class);
-		$settings->method('read')->willReturn(['auditRetentionDays' => 365, 'artifactCacheKeep' => 3, 'appStoreApiBase' => '', 'githubApiBase' => '', 'githubWebBase' => '', 'advisoryFeedUrl' => '', 'maxLinesBehind' => '']);
+		$settings->method('read')->willReturn(['auditRetentionDays' => 365, 'artifactCacheKeep' => 3, 'appStoreApiBase' => '', 'githubApiBase' => '', 'githubWebBase' => '', 'advisoryFeedUrl' => '', 'maxLinesBehind' => '', 'notifyUsersOnUpdate' => false]);
 		$settings->method('update')->willReturnCallback(function (array $fields): array {
 			$this->updates[] = $fields;
 			if (in_array('reject', $fields, true)) {
@@ -122,7 +123,7 @@ final class SettingsUpdateGoldenTest extends TestCase {
 			return array_keys(array_filter($fields, static fn (string $value): bool => $value !== 'none'));
 		});
 
-		$audit = $this->createMock(AuditLogger::class);
+		$audit = $this->getMockBuilder(AuditLogger::class)->disableOriginalConstructor()->onlyMethods(['record'])->getMock();
 		$audit->method('record')->willReturnCallback(function (mixed ...$args): void {
 			// The message argument of record(), by its position, whatever shape
 			// the leading ones take and whatever optional ones follow it.

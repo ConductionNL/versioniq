@@ -117,6 +117,47 @@ final class AvailabilityServiceTest extends TestCase {
 		self::assertFalse($entry['updateAvailable']);
 	}
 
+	/**
+	 * releases-channel-and-prereleases task 4.2: the sweep counts the versions on the app's channel.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-the-nightly-job-takes-only-versions-on-the-apps-channel
+	 */
+	public function testABetaChannelAppCountsItsNewestPreRelease(): void {
+		$listing = self::envelope([['3.0.0-beta.2', true], ['2.4.0', true], ['2.3.0', true]]);
+		foreach ($listing['availableVersions'] as $i => $version) {
+			$listing['availableVersions'][$i]['onChannel'] = true;
+		}
+		$service = $this->service([self::app('hermiq', '2.3.0')], ['hermiq' => $listing]);
+
+		$entry = $service->sweep(60.0)['hermiq'];
+
+		self::assertSame('3.0.0-beta.2', $entry['newestVersion']);
+		self::assertSame('3.0.0-beta.2', $entry['newestCompatibleVersion']);
+		self::assertSame(2, $entry['linesBehind']);
+		self::assertTrue($entry['updateAvailable']);
+	}
+
+	/**
+	 * A version the listing marks off the app's channel is not counted, though it looks like a plain release.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-the-nightly-job-takes-only-versions-on-the-apps-channel
+	 */
+	public function testAVersionOffTheChannelIsNotCounted(): void {
+		$listing = self::envelope([['3.0.0', true], ['2.3.5', true], ['2.3.0', true], ['2.4.0-rc1', true]]);
+		$onChannel = [false, true, true, false];
+		foreach ($onChannel as $i => $on) {
+			$listing['availableVersions'][$i]['onChannel'] = $on;
+		}
+		$service = $this->service([self::app('deck', '2.3.0')], ['deck' => $listing]);
+
+		$entry = $service->sweep(60.0)['deck'];
+
+		self::assertSame('2.3.5', $entry['newestVersion']);
+		self::assertSame('2.3.5', $entry['newestCompatibleVersion']);
+		self::assertSame(0, $entry['linesBehind']);
+		self::assertTrue($entry['updateAvailable']);
+	}
+
 	public function testAPinnedAppIsSweptAndMarkedPinned(): void {
 		$service = $this->service(
 			[self::app('openregister', '2.3.0')],

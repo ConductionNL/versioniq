@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\AutoUpdate;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\AttemptLedgerInterface;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
 
@@ -26,12 +27,9 @@ use Psr\Log\LoggerInterface;
  *
  * @psalm-api
  */
-class AttemptLedger {
+class AttemptLedger implements AttemptLedgerInterface {
 	private const KEY_PREFIX = 'auto_attempt.';
 	private const MAX_ENTRIES = 10;
-
-	public const OUTCOME_SUCCESS = 'success';
-	public const OUTCOME_FAILURE = 'failure';
 
 	public function __construct(
 		private IAppConfig $config,

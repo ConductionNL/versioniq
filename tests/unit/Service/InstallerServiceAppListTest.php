@@ -167,4 +167,89 @@ final class InstallerServiceAppListTest extends TestCase {
 	public function testVersioniqItselfIsNeverListed(): void {
 		self::assertArrayNotHasKey('versioniq', $this->appsById());
 	}
+	/**
+	 * The card carries the publisher, licence and declared links from the
+	 * installed info.xml: authors joined without mail addresses, a missing
+	 * link as null, and only http or https links (inventory-app-details-card).
+	 */
+	public function testTheCardCarriesPublisherLicenceAndSafeLinks(): void {
+		\OC_App::$allApps = [
+			[
+				'id' => 'deck',
+				'name' => 'Deck',
+				'author' => 'Nextcloud',
+				'licence' => 'agpl',
+				'website' => 'https://github.com/nextcloud/deck',
+				'repository' => ['@attributes' => ['type' => 'git'], '@value' => 'https://github.com/nextcloud/deck.git'],
+				'bugs' => 'https://github.com/nextcloud/deck/issues',
+			],
+			[
+				'id' => 'calendar',
+				'name' => 'Calendar',
+				'author' => [
+					['@attributes' => ['mail' => 'georg@example.org', 'homepage' => 'https://example.org'], '@value' => 'Georg Ehrke'],
+					['@attributes' => ['mail' => 'thomas@example.org'], '@value' => 'Thomas Citharel'],
+					'Team Popcorn',
+				],
+				'licence' => ['agpl', 'mit'],
+				'website' => 'javascript:alert(1)',
+				'repository' => 'ftp://example.org/calendar',
+			],
+		];
+
+		try {
+			$apps = $this->appsById();
+		} finally {
+			\OC_App::$allApps = [];
+		}
+
+		self::assertSame('Nextcloud', $apps['deck']['author']);
+		self::assertSame('agpl', $apps['deck']['licence']);
+		self::assertSame(
+			[
+				'website' => 'https://github.com/nextcloud/deck',
+				'repository' => 'https://github.com/nextcloud/deck.git',
+				'bugs' => 'https://github.com/nextcloud/deck/issues',
+			],
+			$apps['deck']['links']
+		);
+
+		self::assertSame('Georg Ehrke, Thomas Citharel, Team Popcorn', $apps['calendar']['author']);
+		self::assertStringNotContainsString('@', $apps['calendar']['author']);
+		self::assertSame('agpl, mit', $apps['calendar']['licence']);
+		self::assertSame(['website' => null, 'repository' => null, 'bugs' => null], $apps['calendar']['links']);
+
+		// An app the server does not know (bound, not installed) has an empty card.
+		self::assertSame('', $apps['hermiq']['author']);
+		self::assertSame('', $apps['hermiq']['licence']);
+		self::assertSame(['website' => null, 'repository' => null, 'bugs' => null], $apps['hermiq']['links']);
+	}
+
+	/**
+	 * A version Versioniq put in place names that install's source; a version
+	 * that differs from the record, or has none, was changed outside Versioniq.
+	 *
+	 * @spec openspec/specs/external-sources/spec.md#requirement-the-card-names-where-the-installed-version-came-from
+	 */
+	public function testProvenanceComesFromTheLastFinalizedInstall(): void {
+		$record = ['version' => '1.12.0', 'recordedAt' => '2026-11-01T10:00:00+00:00', 'sourceId' => 'github:ConductionNL/pipelinq'];
+
+		self::assertSame(
+			['kind' => 'versioniq', 'sourceId' => 'github:ConductionNL/pipelinq', 'version' => '1.12.0'],
+			InstallerService::provenance('1.12.0', $record),
+		);
+		self::assertSame(
+			['kind' => 'outside', 'sourceId' => null, 'version' => '1.15.0'],
+			InstallerService::provenance('1.15.0', ['version' => '1.14.1', 'recordedAt' => '2026-11-01T10:00:00+00:00', 'sourceId' => null]),
+		);
+		self::assertSame(['kind' => 'outside', 'sourceId' => null, 'version' => '5.0.1'], InstallerService::provenance('5.0.1', null));
+		self::assertNull(InstallerService::provenance(null, $record));
+	}
+
+	public function testEveryCardCarriesItsProvenance(): void {
+		$apps = $this->appsById();
+
+		self::assertSame(['kind' => 'outside', 'sourceId' => null, 'version' => '1.14.0'], $apps['deck']['provenance']);
+		self::assertNull($apps['hermiq']['provenance']);
+	}
 }

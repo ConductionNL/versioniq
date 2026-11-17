@@ -143,6 +143,7 @@ final class AdvisoryRefreshJobTest extends TestCase {
 
 		$store = $this->createMock(AdvisoryResultStore::class);
 		$store->expects($this->once())->method('save')->with($correlations, 1_700_000_000);
+		$store->expects($this->never())->method('saveFailure');
 
 		$notifier = $this->createMock(AdvisoryNotifier::class);
 		$notifier->method('notifyNewAdvisories')->willThrowException(new \RuntimeException('notifications app is gone'));
@@ -185,6 +186,7 @@ final class AdvisoryRefreshJobTest extends TestCase {
 
 		$store = $this->createMock(AdvisoryResultStore::class);
 		$store->expects($this->never())->method('save');
+		$store->expects($this->once())->method('saveFailure')->with(1_700_000_000);
 
 		$logger = $this->createMock(LoggerInterface::class);
 		$logger->expects($this->once())->method('error');
@@ -227,6 +229,38 @@ final class AdvisoryRefreshJobTest extends TestCase {
 		$this->runJob($service, $store, $notifier, $logger, exposureTracker: $tracker);
 
 		$this->assertSame(['save', 'track', 'notify'], $calls);
+	}
+
+	/**
+	 * An advisory never changes a version by itself: the advisory check and
+	 * its notifier take no installer, policy or auto-update dependency, so the
+	 * only path to an install stays AutoUpdateJob, in the window, on a policy
+	 * the admin set (autoupdate-security-first D6).
+	 *
+	 * @spec openspec/changes/autoupdate-security-first/tasks.md#task-3.3
+	 */
+	public function testTheAdvisoryCheckTakesNoInstallerOrPolicyDependency(): void {
+		$forbidden = [
+			\OCA\Versioniq\Service\InstallerService::class,
+			\OCA\Versioniq\Service\Policy\PolicyStore::class,
+			\OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall::class,
+			\OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores::class,
+			\OCA\Versioniq\Service\AutoUpdate\CandidateSelector::class,
+			\OCA\Versioniq\Service\AutoUpdate\SecurityCandidate::class,
+		];
+
+		foreach ([AdvisoryRefreshJob::class, \OCA\Versioniq\BackgroundJob\AdvisoryRefreshSteps::class, AdvisoryNotifier::class] as $class) {
+			$constructor = (new \ReflectionClass($class))->getConstructor();
+			$this->assertNotNull($constructor, $class);
+			$types = array_map(
+				static fn (\ReflectionParameter $parameter): string => (string)$parameter->getType(),
+				$constructor->getParameters()
+			);
+			$this->assertNotEmpty($types, $class);
+			foreach ($types as $type) {
+				$this->assertNotContains(ltrim($type, '?'), $forbidden, $class . ' must not depend on ' . $type);
+			}
+		}
 	}
 
 	/**

@@ -12,7 +12,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Listener;
 
-use OCA\Versioniq\Service\Pin\PinDriftHandler;
+use OCA\Versioniq\Service\Audit\ExternalChangeRecorder;
+use OCA\Versioniq\Kernel\Contracts\PinDriftHandlerInterface;
 use OCP\App\Events\AppUpdateEvent;
 use OCP\App\IAppManager;
 use OCP\EventDispatcher\Event;
@@ -35,15 +36,19 @@ use OCP\EventDispatcher\IEventListener;
 class AppUpdatedListener implements IEventListener {
 	public function __construct(
 		private IAppManager $appManager,
-		private PinDriftHandler $driftHandler,
+		private PinDriftHandlerInterface $driftHandler,
+		// Records the change for every app, pinned or not (audit-external-changes).
+		private ?ExternalChangeRecorder $recorder = null,
 	) {
 	}
 
 	/**
 	 * On an app update, compares the freshly-installed version against any
-	 * pin for that app; see "Drift detection" (listener path).
+	 * pin for that app; see "Drift detection" (listener path). Then records
+	 * the change in the history for every app.
 	 *
 	 * @spec openspec/specs/version-pinning/spec.md
+	 * @spec openspec/changes/audit-external-changes
 	 */
 	public function handle(Event $event): void {
 		if (!($event instanceof AppUpdateEvent)) {
@@ -57,5 +62,14 @@ class AppUpdatedListener implements IEventListener {
 		}
 
 		$this->driftHandler->handle($appId, $installedVersion);
+
+		// After the drift check, so a pinned app keeps its pin_drift row and
+		// gets this one next to it: that one says the pin broke, this one
+		// says what changed and how.
+		try {
+			$this->recorder?->versionChanged($appId, $installedVersion);
+		} catch (\Throwable) {
+			// Recording is best-effort: an update must never fail on it.
+		}
 	}
 }

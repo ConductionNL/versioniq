@@ -816,8 +816,8 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "building",
-				"evidence": "src/components/AppSourceBadges.vue:29, src/App.vue:2195, src/components/SourcesPanel.vue:160, lib/Service/InstallerService.php:162",
+				"state": "built",
+				"evidence": "src/components/AppSourceBadges.vue:47 (provenance badge), lib/Service/InstallerService.php:210 (provenance from the last-known-good record)",
 				"reachedOn": "Apps tab (every app card) and Sources tab",
 				"owner": "ConductionNL/versioniq",
 				"change": "inventory-pins-checks-and-pending",
@@ -825,7 +825,7 @@
 					"canvas": "design-system",
 					"board": "VqApps"
 				},
-				"requirement": "openspec/changes/inventory-pins-checks-and-pending/specs/external-sources :: The card names where the installed version came from"
+				"requirement": "openspec/specs/external-sources :: The card names where the installed version came from"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3510,8 +3510,8 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "building",
-				"evidence": "lib/Controller/ApiController.php:539, src/App.vue:781, src/App.vue:2150",
+				"state": "built",
+				"evidence": "src/App.vue:1255 (pinnedCount), src/App.vue:2483 (Pinned filter toggle), lib/Controller/ApiController.php:645 (GET /api/pins)",
 				"reachedOn": "Apps tab (pin badges on app cards)",
 				"owner": "ConductionNL/versioniq",
 				"change": "inventory-pins-checks-and-pending",
@@ -3519,7 +3519,7 @@
 					"canvas": "design-system",
 					"board": "VqApps"
 				},
-				"requirement": "openspec/changes/inventory-pins-checks-and-pending/specs/version-pinning :: The app list filters to pinned apps"
+				"requirement": "openspec/specs/version-pinning :: The app list filters to pinned apps"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3790,16 +3790,16 @@
 			"area": "autoupdate",
 			"name": "Schedule updates on specific weekdays or with a cron-like schedule.",
 			"rowSource": "competitor",
-			"versioniq": "no",
+			"versioniq": "yes",
 			"nextcloud": "no",
 			"renovate": "yes",
 			"dependabot": "yes",
 			"osv-scanner": "no",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/AutoUpdate/AutoUpdateWindow.php:26 (time of day only), lib/Service/AutoUpdate/AutoUpdateSettingsStore.php:27",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/AutoUpdate/AutoUpdateSchedule.php:146 (dueKinds per ISO weekday, monthly), lib/BackgroundJob/AutoUpdateJob.php:115, src/components/AutoUpdateSchedule.vue:89 (weekday checkboxes)",
+				"reachedOn": "Settings tab, Automatic updates: the schedule under the window, and the overview",
 				"owner": "ConductionNL/versioniq",
 				"change": "autoupdate-schedules",
 				"screen": {
@@ -4188,8 +4188,8 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "building",
-				"evidence": "src/components/AutoUpdateOverview.vue:76, src/components/AutoUpdateOverview.vue:86, src/App.vue:2067, lib/Controller/ApiController.php:724",
+				"state": "built",
+				"evidence": "src/components/AutoUpdateOverview.vue:44 (pending list), src/utils/pendingAutoUpdates.ts:50, lib/Controller/ApiController.php:154",
 				"reachedOn": "Apps tab, Automatic updates section (Scheduled and blocked updates)",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/auto-update-policies",
@@ -4198,7 +4198,7 @@
 					"board": "VqAutomatischeUpdates"
 				},
 				"change": "inventory-pins-checks-and-pending",
-				"requirement": "openspec/changes/inventory-pins-checks-and-pending/specs/auto-update-policies :: The overview lists the updates that are pending now"
+				"requirement": "openspec/specs/auto-update-policies :: The overview lists the updates that are pending now"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4355,16 +4355,16 @@
 			"name": "Use a different schedule for each kind of update to the same app, for example patches daily and majors monthly.",
 			"origin": "featureRequest",
 			"originUrl": "https://github.com/dependabot/dependabot-core/issues/1778",
-			"versioniq": "no",
+			"versioniq": "yes",
 			"nextcloud": "no",
 			"renovate": "yes",
 			"dependabot": "no",
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:54 runs one daily job for every policy level",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/AutoUpdate/AutoUpdateSchedule.php:146-166 (dueKinds, nextRun per kind), lib/Service/AutoUpdate/CandidateSelector.php (due kinds filter), src/components/AutoUpdateOverview.vue:53 (days and next run per kind)",
+				"reachedOn": "Settings tab, Automatic updates: Different days per kind of update",
 				"owner": "ConductionNL/versioniq",
 				"change": "autoupdate-schedules",
 				"screen": {
@@ -4998,12 +4998,12 @@
 			"osv-scanner": "yes",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "building",
-				"evidence": "lib/Service/Advisory/NextcloudAdvisoryFeed.php:263, lib/Service/Settings/InstanceSettings.php:105, src/components/InstanceSettingsPanel.vue:178",
-				"reachedOn": "Settings tab (Advisory feed address); occ config:app:set versioniq advisory.feed_base",
+				"state": "built",
+				"evidence": "lib/Service/Advisory/LocalFeedCopy.php:63, lib/Service/Advisory/NextcloudAdvisoryFeed.php:362, lib/Controller/SettingsController.php:154, src/components/InstanceSettingsPanel.vue:258",
+				"reachedOn": "Settings tab (Read advisories from: the local copy; Import a local copy of the advisory feed)",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/audit-trail",
-				"readOn": "2026-10-07",
+				"readOn": "2026-11-14",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
@@ -5036,8 +5036,8 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "building",
-				"evidence": "lib/Controller/ApiController.php:157, src/App.vue:724, src/App.vue:1980, lib/BackgroundJob/AdvisoryRefreshJob.php:95",
+				"state": "built",
+				"evidence": "lib/Controller/ApiController.php:126 (status and errors next to checkedAt), src/App.vue:612, src/utils/sweepOutcome.ts",
 				"reachedOn": "Apps tab, advisory freshness line",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/security-advisory-correlation",
@@ -5046,7 +5046,7 @@
 					"board": "VqApps"
 				},
 				"change": "inventory-pins-checks-and-pending",
-				"requirement": "openspec/changes/inventory-pins-checks-and-pending/specs/security-advisory-correlation :: The check line says whether the last sweep succeeded"
+				"requirement": "openspec/specs/security-advisory-correlation :: The check line says whether the last sweep succeeded"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5922,16 +5922,17 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "building",
-				"evidence": "lib/Service/Discovery/GithubSearchDiscovery.php:55, lib/Service/Discovery/DiscoveryAggregator.php:40",
-				"reachedOn": "Discover tab, only after occ config:app:set versioniq discovery.github_search_enabled true",
+				"state": "built",
+				"evidence": "lib/Service/Discovery/GithubSearchDiscovery.php:55, src/components/DiscoverPanel.vue:285, lib/Service/Settings/InstanceSettings.php:101",
+				"reachedOn": "Discover tab (Search public GitHub repositories switch)",
 				"owner": "ConductionNL/versioniq",
 				"change": "sources-trust-audit-and-offline-feed",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqOntdekken"
 				},
-				"requirement": "openspec/changes/sources-trust-audit-and-offline-feed/specs/app-discovery :: Public GitHub search is switched on and off on the page"
+				"requirement": "openspec/changes/sources-trust-audit-and-offline-feed/specs/app-discovery :: Public GitHub search is switched on and off on the page",
+				"readOn": "2026-11-14"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6362,8 +6363,8 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "building",
-				"evidence": "lib/Service/Source/SourceBindingStore.php:109, lib/Service/Source/TrustedSourceList.php:80",
+				"state": "built",
+				"evidence": "lib/Service/Source/TrustedSourceList.php:58, lib/Service/Source/SourceBindingStore.php:132, src/utils/auditOperations.ts:30",
 				"reachedOn": "History tab",
 				"owner": "ConductionNL/versioniq",
 				"change": "sources-trust-audit-and-offline-feed",
@@ -6371,7 +6372,8 @@
 					"canvas": "design-system",
 					"board": "VqHistorie"
 				},
-				"requirement": "openspec/changes/sources-trust-audit-and-offline-feed/specs/audit-trail :: Trusted-source changes and cleared bindings are recorded"
+				"requirement": "openspec/changes/sources-trust-audit-and-offline-feed/specs/audit-trail :: Trusted-source changes and cleared bindings are recorded",
+				"readOn": "2026-11-14"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",

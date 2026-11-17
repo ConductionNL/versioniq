@@ -11,7 +11,9 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Availability;
 
+use OCA\Versioniq\Kernel\Contracts\AvailabilityServiceInterface;
 use OCA\Versioniq\Service\InstallerService;
+use OCA\Versioniq\Service\Lifecycle\LifecycleCard;
 use OCA\Versioniq\Service\Pin\PinStore;
 use Psr\Log\LoggerInterface;
 
@@ -30,9 +32,11 @@ use Psr\Log\LoggerInterface;
  * @psalm-api
  * @psalm-import-type InstalledAppCard from InstallerService
  */
-class AvailabilityService {
+class AvailabilityService implements AvailabilityServiceInterface {
 	/** Plain major.minor.patch, the rule CandidateSelector applies. */
 	private const SEMVER_PATTERN = '/^(\d+)\.(\d+)\.(\d+)$/';
+	/** The release a version on the app's channel belongs to, a pre-release suffix allowed. */
+	private const CHANNEL_VERSION_PATTERN = '/^v?(\d+)\.(\d+)\.(\d+)(?:-.+)?$/';
 
 	/** When the running sweep must stop listing sources. */
 	private float $deadline = 0.0;
@@ -42,6 +46,7 @@ class AvailabilityService {
 		private PinStore $pinStore,
 		private LoggerInterface $logger,
 		private ?WithdrawnVersionStore $withdrawnVersions = null,
+		private ?LifecycleCard $lifecycle = null,
 	) {
 	}
 
@@ -52,7 +57,7 @@ class AvailabilityService {
 	 * than left out, so the page says "not checked" instead of nothing.
 	 *
 	 * @spec openspec/specs/pending-updates/spec.md#requirement-the-installed-version-and-pending-updates-are-swept-into-a-snapshot
-	 * @return array<string, array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, installedWithdrawn: ?bool}>
+	 * @return array<string, array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, installedWithdrawn: ?bool, lifecycle?: array<string, mixed>}>
 	 * @param list<array{appId: string, sourceId: ?string}> $followed Followed apps that join the sweep when not installed (releases-new-release-alerts D3).
 	 */
 	public function sweep(float $budgetSeconds, array $followed = []): array {
@@ -69,7 +74,7 @@ class AvailabilityService {
 			$boundSourceId = is_string($app['boundSourceId'] ?? null) ? $app['boundSourceId'] : null;
 			$check = new AppVersionCheck($installedVersion, $this->pinStore->get($appId) !== null, $boundSourceId);
 			$results[$appId] = microtime(true) >= $deadline
-				? $this->entry($check, [], 'The update check ran out of time before it reached this app.')
+				? $this->entry($check, ['error' => 'The update check ran out of time before it reached this app.'])
 				: $this->listedEntry($appId, $check);
 		}
 
@@ -164,7 +169,7 @@ class AvailabilityService {
 	 * The row for an app from its source's version listing; a listing that
 	 * fails or reports an error is recorded as that error.
 	 *
-	 * @return array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, installedWithdrawn: ?bool}
+	 * @return array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, installedWithdrawn: ?bool, lifecycle?: array<string, mixed>}
 	 */
 	private function listedEntry(string $appId, AppVersionCheck $check): array {
 		try {
@@ -172,37 +177,101 @@ class AvailabilityService {
 		} catch (\Throwable $error) {
 			$this->logger->warning('AvailabilityService: listing versions failed', ['app' => $appId, 'message' => $error->getMessage()]);
 
-			return $this->entry($check, [], $error->getMessage());
+			return $this->entry($check, ['error' => $error->getMessage()]);
 		}
 
-		$error = ($listing['hasError'] ?? false) === true
-			? ($listing['error'] ?? 'The source did not answer.')
-			: null;
+		$error = self::listingError($listing);
 		$versions = $error === null && is_array($listing['availableVersions'] ?? null) ? $listing['availableVersions'] : [];
 		$sourceId = is_string($listing['sourceId'] ?? null) ? $listing['sourceId'] : $check->sourceId;
+		$judged = $this->recordWithdrawals($appId, $error === null ? $versions : []);
+
+		$entry = $this->entry($check->withSource($sourceId), ['versions' => $versions, 'error' => $error]);
+		if (!$judged) {
+			$entry['installedWithdrawn'] = null;
+		}
+
+		return $this->withSuccessor($appId, $this->withArchived($appId, $entry));
+	}
+
+	/**
+	 * The error a listing reports, or null for a successful one.
+	 *
+	 * @param array<string, mixed> $listing
+	 */
+	private static function listingError(array $listing): ?string {
+		return ($listing['hasError'] ?? false) === true
+			? ($listing['error'] ?? 'The source did not answer.')
+			: null;
+	}
+
+	/**
+	 * Records which versions a successful listing names, and says whether it
+	 * could judge withdrawal at all.
+	 *
+	 * Only a successful listing that names versions says anything about
+	 * withdrawal. A failed, malformed or empty one withdraws nothing: an
+	 * empty answer from a misconfigured source would otherwise mark every
+	 * earlier version withdrawn and block reinstalling it.
+	 *
+	 * @param list<array<string, mixed>> $versions The listing's versions; empty for a failed listing.
+	 */
+	private function recordWithdrawals(string $appId, array $versions): bool {
 		$listed = self::listedVersions($versions);
-		// Only a successful listing that names versions says anything about
-		// withdrawal. A failed, malformed or empty one withdraws nothing: an
-		// empty answer from a misconfigured source would otherwise mark every
-		// earlier version withdrawn and block reinstalling it.
-		$judged = $error === null && $listed !== [];
-		if ($judged && $this->withdrawnVersions !== null) {
+		if ($listed === []) {
+			return false;
+		}
+		if ($this->withdrawnVersions !== null) {
 			$this->withdrawnVersions->recordListing($appId, $listed);
 		}
 
-		$entry = $this->entry($check->withSource($sourceId), $versions, $error);
-		if (!$judged) {
-			$entry['installedWithdrawn'] = null;
+		return true;
+	}
+
+	/**
+	 * Adds the successor offered for the app, under `successor`, when the
+	 * successor list names one this server can run; the card offers to
+	 * replace the app with it (inventory-lifecycle-signals, design D4).
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-an-admin-replaces-an-app-with-its-successor-in-one-action
+	 * @param array<string, mixed> $entry
+	 * @return array<string, mixed>
+	 */
+	private function withSuccessor(string $appId, array $entry): array {
+		$offer = $this->lifecycle?->successors?->offerFor($appId);
+		if ($offer !== null) {
+			$entry['successor'] = $offer;
 		}
 
 		return $entry;
 	}
 
 	/**
-	 * @param list<array<string, mixed>> $versions
-	 * @return array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, installedWithdrawn: ?bool}
+	 * Stamps whether the app's repository is archived, and whether the app is
+	 * out of support, on an entry that carries life cycle signals.
+	 *
+	 * A failed listing leaves both unknown.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 *
+	 * @param array<string, mixed> $entry
+	 * @return array<string, mixed>
 	 */
-	private function entry(AppVersionCheck $check, array $versions, ?string $error): array {
+	private function withArchived(string $appId, array $entry): array {
+		if (isset($entry['lifecycle']) && $this->lifecycle !== null) {
+			$entry['lifecycle']['archived'] = $entry['error'] === null ? $this->lifecycle->signals->archived($appId) : null;
+			$entry['lifecycle']['endOfSupport'] = $entry['error'] === null ? $this->lifecycle->signals->endOfSupport($appId) : null;
+		}
+
+		return $entry;
+	}
+
+	/**
+	 * @param array{versions?: list<array<string, mixed>>, error?: ?string} $listing The listed versions (none when absent) and the listing's error (none when absent).
+	 * @return array{installedVersion: string, newestVersion: ?string, newestCompatibleVersion: ?string, linesBehind: int, updateAvailable: bool, pinned: bool, sourceId: ?string, error: ?string, installedWithdrawn: ?bool, lifecycle?: array<string, mixed>}
+	 */
+	private function entry(AppVersionCheck $check, array $listing): array {
+		$versions = $listing['versions'] ?? [];
+		$error = $listing['error'] ?? null;
 		$installedParts = $this->parse($check->installedVersion);
 		[$newest, $newestCompatible, $linesBehind] = $this->scanVersions($versions, $installedParts);
 
@@ -216,7 +285,18 @@ class AvailabilityService {
 			'sourceId' => $check->sourceId,
 			'error' => $error,
 			'installedWithdrawn' => $error === null ? $this->installedWithdrawn($check->installedVersion, $versions, $installedParts) : null,
-		];
+		] + $this->lifecycleOf($error, $versions);
+	}
+
+	/**
+	 * The app's life cycle signals, under `lifecycle`, when the sweep reads them.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 * @param list<array<string, mixed>> $versions
+	 * @return array{lifecycle?: array{removedFromStore: bool, noReleaseFor12Months: ?bool, lastReleasedAt: ?string}}
+	 */
+	private function lifecycleOf(?string $error, array $versions): array {
+		return $this->lifecycle === null ? [] : ['lifecycle' => $this->lifecycle->signals->signals($error, $versions)];
 	}
 
 	/**
@@ -290,7 +370,7 @@ class AvailabilityService {
 		$parsed = [];
 		foreach ($versions as $entry) {
 			$version = is_string($entry['version'] ?? null) ? trim((string)$entry['version']) : '';
-			$parts = $this->parse($version);
+			$parts = self::countedParts($version, $entry['onChannel'] ?? null);
 			if ($parts !== null) {
 				$parsed[] = [$version, $parts, ($entry['serverCompatible'] ?? null) !== false];
 			}
@@ -309,6 +389,27 @@ class AvailabilityService {
 	 */
 	private static function isNewerLine(array $parts, ?array $installed): bool {
 		return $installed !== null && ($parts[0] > $installed[0] || ($parts[0] === $installed[0] && $parts[1] > $installed[1]));
+	}
+
+	/**
+	 * The parts of a version the sweep counts: one on the app's channel, a
+	 * pre-release included; none off it; a plain `x.y.z` when the listing
+	 * carries no channel.
+	 *
+	 * @return array{int, int, int}|null
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-the-nightly-job-takes-only-versions-on-the-apps-channel
+	 */
+	private static function countedParts(string $version, mixed $onChannel): ?array {
+		if ($onChannel === false) {
+			return null;
+		}
+		$pattern = $onChannel === true ? self::CHANNEL_VERSION_PATTERN : self::SEMVER_PATTERN;
+		if (preg_match($pattern, $version, $matches) !== 1) {
+			return null;
+		}
+
+		return [(int)$matches[1], (int)$matches[2], (int)$matches[3]];
 	}
 
 	/**

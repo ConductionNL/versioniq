@@ -136,4 +136,39 @@ final class ForgeControllerTest extends TestCase {
 		self::assertSame(['host' => '', 'configured' => false], $response->getData());
 		self::assertArrayNotHasKey('forge.forgejo.web_base', $this->config);
 	}
+
+	/**
+	 * GitLab reads gitlab.com until a self-managed host is set, and only admins read or set it.
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-4.1
+	 */
+	public function testGitlabHostDefaultsToGitlabComAndIsAdminOnly(): void {
+		self::assertSame(['host' => 'https://gitlab.com', 'selfManaged' => false], $this->controller()->gitlabHost()->getData());
+
+		$denied = $this->controller(false);
+		self::assertSame(403, $denied->gitlabHost()->getStatus());
+		self::assertSame(403, $denied->setGitlabHost('https://gitlab.example.org')->getStatus());
+		self::assertSame([], $this->config);
+	}
+
+	/**
+	 * A self-managed host is stored like the Forgejo host, a bad one refused, and empty returns to gitlab.com.
+	 *
+	 * @spec openspec/changes/sources-gitlab-forge/tasks.md#task-4.1
+	 */
+	public function testGitlabHostIsSetRefusedAndCleared(): void {
+		$this->config['forge.gitlab.api_base'] = 'https://stale.example.org/api/v4';
+
+		$set = $this->controller()->setGitlabHost(' https://gitlab.example.org/ ');
+		self::assertSame(['host' => 'https://gitlab.example.org', 'selfManaged' => true], $set->getData());
+		self::assertSame('https://gitlab.example.org', $this->config['forge.gitlab.web_base']);
+		self::assertArrayNotHasKey('forge.gitlab.api_base', $this->config);
+
+		self::assertSame(400, $this->controller()->setGitlabHost('http://gitlab.example.org')->getStatus());
+		self::assertSame('https://gitlab.example.org', $this->config['forge.gitlab.web_base']);
+
+		$cleared = $this->controller()->setGitlabHost('');
+		self::assertSame(['host' => 'https://gitlab.com', 'selfManaged' => false], $cleared->getData());
+		self::assertArrayNotHasKey('forge.gitlab.web_base', $this->config);
+	}
 }

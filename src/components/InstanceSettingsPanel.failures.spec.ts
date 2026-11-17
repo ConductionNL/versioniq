@@ -131,6 +131,9 @@ describe('InstanceSettingsPanel saving', () => {
 			advisoryFeedUrl: 'https://mirror.example.org/feed',
 			ncscFeedUrl: 'https://csaf.example.org/v2',
 			maxLinesBehind: '',
+			reactivateAuto: 'false',
+			advisoryFeedSource: 'remote',
+			notifyUsersOnUpdate: 'true',
 		})
 		expect(wrapper.find('[data-testid="instance-settings-notice"]').text()).toBe('Settings saved.')
 	})

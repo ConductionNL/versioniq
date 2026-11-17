@@ -12,9 +12,9 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\BackgroundJob;
 
-use OCA\Versioniq\Service\Advisory\AdvisoryNotifier;
-use OCA\Versioniq\Service\Advisory\AdvisoryService;
-use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Kernel\Contracts\AdvisoryNotifierInterface;
+use OCA\Versioniq\Kernel\Contracts\AdvisoryServiceInterface;
+use OCA\Versioniq\Kernel\Contracts\AdvisorySettingsStoreInterface;
 use OCA\Versioniq\Service\Advisory\AdvisoryTriageStore;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
@@ -24,7 +24,7 @@ use Psr\Log\LoggerInterface;
  * Scheduled refresh that re-resolves security advisories for every installed
  * app and raises an admin notification for any advisory that newly affects a
  * pinned/installed version. It performs NO version change — it only reads
- * (via {@see AdvisoryService}) and notifies (via {@see AdvisoryNotifier}),
+ * (via {@see AdvisoryServiceInterface}) and notifies (via {@see AdvisoryNotifierInterface}),
  * neither of which can install or unpin; the administrator stays in control.
  *
  * @psalm-api
@@ -53,7 +53,7 @@ class AdvisoryRefreshJob extends TimedJob {
 		// would suggest the job can re-read the setting mid-life, which it
 		// cannot — the next run after a change picks up the new value because
 		// the job is constructed afresh.
-		AdvisorySettingsStore $settings,
+		AdvisorySettingsStoreInterface $settings,
 		private LoggerInterface $logger,
 	) {
 		parent::__construct($time);
@@ -70,6 +70,7 @@ class AdvisoryRefreshJob extends TimedJob {
 	 * @param mixed $argument
 	 */
 	protected function run($argument): void {
+		$saved = false;
 		try {
 			// The sweep passes its OWN budget. AdvisoryService's default is
 			// sized for a request someone is waiting on (5s); inheriting it
@@ -83,6 +84,7 @@ class AdvisoryRefreshJob extends TimedJob {
 			// admin UI can render is worth keeping even if the notification
 			// half then throws.
 			$this->steps->resultStore->save($correlations, $this->time->getTime());
+			$saved = true;
 			$this->stampTriage($correlations);
 
 			// Record what the new snapshot opened and resolved, and a server
@@ -123,6 +125,24 @@ class AdvisoryRefreshJob extends TimedJob {
 			}
 		} catch (\Throwable $error) {
 			$this->logger->error('AdvisoryRefreshJob: refresh failed', ['message' => $error->getMessage()]);
+			$this->recordFailureUnlessSaved($saved);
+		}
+	}
+
+	/**
+	 * Says the sweep failed, so the check line does not read as checked. Only
+	 * the sweep itself failing makes the check line say so; a notification
+	 * that fails after a stored sweep does not. Recording it must not throw
+	 * out of the job either.
+	 */
+	private function recordFailureUnlessSaved(bool $saved): void {
+		if ($saved) {
+			return;
+		}
+		try {
+			$this->steps->resultStore->saveFailure($this->time->getTime());
+		} catch (\Throwable $error) {
+			$this->logger->error('AdvisoryRefreshJob: could not record the failed sweep', ['message' => $error->getMessage()]);
 		}
 	}
 

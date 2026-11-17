@@ -13,7 +13,8 @@ namespace OCA\Versioniq\Service\Source;
 
 /**
  * The three addresses of a forge: its API base, its web base and the page
- * where a user creates an access token.
+ * where a user creates an access token; and the API dialect those
+ * addresses speak (sources-gitlab-forge D1).
  *
  * @spec openspec/specs/external-sources/spec.md
  * @psalm-api
@@ -23,6 +24,7 @@ final class ForgeUrls {
 		public readonly string $api,
 		public readonly string $web,
 		public readonly string $tokenCreate,
+		public readonly string $dialect = Forge::DIALECT_GITHUB,
 	) {
 	}
 }
