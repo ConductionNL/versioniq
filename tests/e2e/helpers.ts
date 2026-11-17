@@ -216,6 +216,12 @@ export const FIXTURE_URL =
 export const FIXTURE_APP = "fixtureapp";
 export const FIXTURE_SOURCE = "forgejo:fixtureowner/fixtureapp";
 
+/**
+ * A second fixture app on the same release line, bound to
+ * forgejo:fixtureowner/fixtureapp2, for update groups and run limits.
+ */
+export const FIXTURE_APP2 = "fixtureapp2";
+
 /** Whether the fixture forge is reachable — forge specs skip when it is not. */
 export async function fixtureAvailable(page: Page): Promise<boolean> {
 	try {
@@ -442,15 +448,16 @@ export async function awaitWebInstanceSettled(page: Page): Promise<void> {
 export async function installFixture(
 	page: Page,
 	version: string,
-	opts: { allowDowngrade?: boolean; acceptNewSha?: boolean } = {},
+	opts: { allowDowngrade?: boolean; acceptNewSha?: boolean; appId?: string } = {},
 ): Promise<{ status: number; body: any }> {
+	const appId = opts.appId ?? FIXTURE_APP;
 	const args = [
 		"php",
 		"occ",
 		"versioniq:install",
-		FIXTURE_APP,
+		appId,
 		version,
-		`--source=${FIXTURE_SOURCE}`,
+		`--source=forgejo:fixtureowner/${appId}`,
 		"--json",
 	];
 	if (opts.allowDowngrade) args.push("--allow-downgrade");
@@ -732,17 +739,25 @@ export async function runJob(classSubstring: string): Promise<void> {
 	await occ("background-job:execute", id, "--force-execute");
 }
 
-/** The fixture app's clean source binding, with no recorded digests. */
-const CLEAN_FIXTURE_BINDING = JSON.stringify({
-	kind: "github-release",
-	forge: "forgejo",
-	owner: "fixtureowner",
-	repo: "fixtureapp",
-	assetPattern: "*.tar.gz",
-});
+/** A fixture app's clean source binding, with no recorded digests. */
+function cleanFixtureBinding(appId: string): string {
+	return JSON.stringify({
+		kind: "github-release",
+		forge: "forgejo",
+		owner: "fixtureowner",
+		repo: appId,
+		assetPattern: "*.tar.gz",
+	});
+}
 
-/** Resets the fixture app to its 1.0.0 baseline via the real install path. */
-export async function resetFixtureApp(page: Page): Promise<void> {
+/**
+ * Resets a fixture app (fixtureapp unless named) to its 1.0.0 baseline via
+ * the real install path.
+ */
+export async function resetFixtureApp(
+	page: Page,
+	appId: string = FIXTURE_APP,
+): Promise<void> {
 	// Restore the fixture forge's default release set + clear asset overrides
 	// first, so the baseline install below can always fetch a genuine 1.0.0.
 	await resetFixture(page);
@@ -751,7 +766,7 @@ export async function resetFixtureApp(page: Page): Promise<void> {
 	// records a rewritten digest would make the next test's tamper "match").
 	await page.request
 		.delete(
-			`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/pin?format=json`,
+			`/ocs/v2.php/apps/versioniq/api/app/${appId}/pin?format=json`,
 			{
 				headers: { "OCS-APIRequest": "true" },
 			},
@@ -760,9 +775,9 @@ export async function resetFixtureApp(page: Page): Promise<void> {
 	await occ(
 		"config:app:set",
 		"versioniq",
-		`source.${FIXTURE_APP}`,
+		`source.${appId}`,
 		"--value",
-		CLEAN_FIXTURE_BINDING,
+		cleanFixtureBinding(appId),
 	);
 	// Clear the artifact cache too: a genuine copy cached by a prior test would
 	// otherwise be served as a download fallback and mask a tampered forge.
@@ -777,6 +792,7 @@ export async function resetFixtureApp(page: Page): Promise<void> {
 	for (let attempt = 0; attempt < 2; attempt++) {
 		const { body } = await installFixture(page, "1.0.0", {
 			allowDowngrade: true,
+			appId,
 		});
 		await occ("maintenance:mode", "--off");
 		if (body.installedVersion === "1.0.0" || body.updateType === "none")

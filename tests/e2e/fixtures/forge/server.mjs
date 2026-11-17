@@ -102,6 +102,16 @@ const DEFAULT_RELEASES = [
 	{ tag: "v0.9.0", asset: "fixtureapp-0.9.0.tar.gz", sha: true },
 ];
 
+// fixtureowner/fixtureapp2 carries the same release line, for the specs that
+// need two apps updating together (update groups, run limits).
+const DEFAULT_RELEASES_2 = ["1.2.0", "1.1.0", "1.0.1", "1.0.0", "0.9.0"].map(
+	(version) => ({
+		tag: `v${version}`,
+		asset: `fixtureapp2-${version}.tar.gz`,
+		sha: true,
+	}),
+);
+
 // Mutable state, resettable via POST /control/reset.
 let state = freshState();
 function freshState() {
@@ -110,6 +120,10 @@ function freshState() {
 		repos: {
 			"fixtureowner/fixtureapp": {
 				releases: structuredClone(DEFAULT_RELEASES),
+				advisories: [],
+			},
+			"fixtureowner/fixtureapp2": {
+				releases: structuredClone(DEFAULT_RELEASES_2),
 				advisories: [],
 			},
 		},
