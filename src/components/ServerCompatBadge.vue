@@ -4,15 +4,21 @@ import { t } from '@nextcloud/l10n'
 
 /**
  * Whether a version supports the running server, from `serverCompatible` on
- * the version listing: the App Store's platformVersionSpec, or for a cached
- * forge release its info.xml range. The API carried it and the web picker
- * never showed it (#435). Unknown renders nothing rather than a guess.
+ * the version listing: the App Store's platformVersionSpec, or for a forge
+ * release its info.xml range. The API carried it and the web picker never
+ * showed it (#435). Next to it, whether the version runs on the PHP version
+ * this server runs (`phpCompatible`, inventory-upgrade-readiness). Unknown
+ * renders nothing rather than a guess.
  *
  * @spec openspec/specs/version-management/spec.md
+ * @spec openspec/changes/inventory-upgrade-readiness/specs/version-management/spec.md#requirement-versions-say-whether-they-run-on-this-servers-php
  */
-defineProps<{
+withDefaults(defineProps<{
 	serverCompatible: boolean | null
-}>()
+	phpCompatible?: boolean | null
+}>(), {
+	phpCompatible: null,
+})
 </script>
 
 <template>
@@ -25,6 +31,16 @@ defineProps<{
 			? t('versioniq', 'This version declares support for the running Nextcloud version.')
 			: t('versioniq', 'This version does not declare support for the running Nextcloud version; installing it will likely fail.')">
 		{{ serverCompatible ? t('versioniq', 'Runs on this server') : t('versioniq', 'Not for this server version') }}
+	</span>
+	<span
+		v-if="phpCompatible !== null"
+		:class="[$style.badge, phpCompatible ? $style.yes : $style.no]"
+		data-testid="php-compat-badge"
+		:data-compatible="phpCompatible ? 'yes' : 'no'"
+		:title="phpCompatible
+			? t('versioniq', 'This version declares support for the PHP version this server runs.')
+			: t('versioniq', 'This version does not declare support for the PHP version this server runs; installing it will likely fail.')">
+		{{ phpCompatible ? t('versioniq', 'Runs on this PHP version') : t('versioniq', 'Not for this PHP version') }}
 	</span>
 </template>
 
