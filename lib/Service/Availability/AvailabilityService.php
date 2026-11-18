@@ -41,6 +41,14 @@ class AvailabilityService implements AvailabilityServiceInterface {
 	/** When the running sweep must stop listing sources. */
 	private float $deadline = 0.0;
 
+	/**
+	 * What the last sweep listed per app, kept for the proposal step so it
+	 * needs no source call of its own (autoupdate-proposed-updates, D1).
+	 *
+	 * @var array<string, array{installedVersion: string, versions: list<array<string, mixed>>|null}>
+	 */
+	private array $listings = [];
+
 	public function __construct(
 		private InstallerService $installerService,
 		private PinStore $pinStore,
@@ -64,6 +72,7 @@ class AvailabilityService implements AvailabilityServiceInterface {
 		$deadline = microtime(true) + $budgetSeconds;
 		$this->deadline = $deadline;
 		$results = [];
+		$this->listings = [];
 
 		foreach ($this->installerService->getInstalledApps() as $app) {
 			$installedVersion = $this->checkableVersion($app);
@@ -73,6 +82,7 @@ class AvailabilityService implements AvailabilityServiceInterface {
 			$appId = $app['id'];
 			$boundSourceId = is_string($app['boundSourceId'] ?? null) ? $app['boundSourceId'] : null;
 			$check = new AppVersionCheck($installedVersion, $this->pinStore->get($appId) !== null, $boundSourceId);
+			$this->listings[$appId] = ['installedVersion' => $installedVersion, 'versions' => null];
 			$results[$appId] = microtime(true) >= $deadline
 				? $this->entry($check, ['error' => 'The update check ran out of time before it reached this app.'])
 				: $this->listedEntry($appId, $check);
@@ -97,6 +107,19 @@ class AvailabilityService implements AvailabilityServiceInterface {
 		}
 
 		return $results;
+	}
+
+	/**
+	 * The version lists the last {@see sweep()} fetched, per app: the
+	 * installed version and the listed versions (each with its `changelog`
+	 * and `serverCompatible`), or null versions when the source failed or
+	 * the sweep ran out of time before the app.
+	 *
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
+	 * @return array<string, array{installedVersion: string, versions: list<array<string, mixed>>|null}>
+	 */
+	public function lastListings(): array {
+		return $this->listings;
 	}
 
 	/**
@@ -183,6 +206,11 @@ class AvailabilityService implements AvailabilityServiceInterface {
 		$error = self::listingError($listing);
 		$versions = $error === null && is_array($listing['availableVersions'] ?? null) ? $listing['availableVersions'] : [];
 		$sourceId = is_string($listing['sourceId'] ?? null) ? $listing['sourceId'] : $check->sourceId;
+		if ($error === null) {
+			/** @var list<array<string, mixed>> $versions */
+			$this->listings[$appId] = ['installedVersion' => $check->installedVersion, 'versions' => array_values($versions)];
+		}
+
 		$judged = $this->recordWithdrawals($appId, $error === null ? $versions : []);
 
 		$entry = $this->entry($check->withSource($sourceId), ['versions' => $versions, 'error' => $error]);

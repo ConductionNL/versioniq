@@ -43,6 +43,7 @@ import MigrationPreviewPanel from './components/MigrationPreviewPanel.vue'
 import PatchPolicyPanel from './components/PatchPolicyPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
+import ProposedUpdatesPanel from './components/ProposedUpdatesPanel.vue'
 import PublisherMark from './components/PublisherMark.vue'
 import ReadinessPanel from './components/ReadinessPanel.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
@@ -288,7 +289,7 @@ let shaMismatchResolve: ((accept: boolean) => void) | null = null
 // execution through the standard installer", "Global kill switch and
 // window"). Policies and the two global settings are fetched together from
 // GET /api/policies, mirroring the `pins`/`advisories` per-appId map pattern.
-type PolicyRecord = { appId: string, level: PolicyLevel, setBy: string, setAt: string, blockedVersions?: BlockedVersion[] }
+type PolicyRecord = { appId: string, level: PolicyLevel, setBy: string, setAt: string, requireApproval?: boolean, blockedVersions?: BlockedVersion[] }
 const policies = ref<Record<string, PolicyRecord>>({})
 const isSavingPolicy = ref(false)
 const autoUpdateEnabled = ref(false)
@@ -1083,6 +1084,7 @@ const policyLevelFor = (appId: string): PolicyLevel => policies.value[appId]?.le
 // A group only plans apps with a policy, so those are the ones it can hold.
 const groupableApps = computed(() => Object.values(policies.value).filter((policy) => policy.level !== 'none').map((policy) => policy.appId))
 const blockedVersionsFor = (appId: string): BlockedVersion[] => policies.value[appId]?.blockedVersions ?? []
+const requireApprovalFor = (appId: string): boolean => policies.value[appId]?.requireApproval === true
 
 /**
  * Clears a failed automatic-update attempt so the next run inside the window
@@ -1140,12 +1142,15 @@ async function clearPolicy (appId: string): Promise<void> {
  *
  * @param appId The app whose policy is set.
  * @param level The policy level to set.
+ * @param requireApproval Whether its automatic updates wait for approval; omitted keeps the stored choice.
  */
-async function setPolicy (appId: string, level: PolicyLevel): Promise<void> {
-	const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/policy`, { level })), {
+async function setPolicy (appId: string, level: PolicyLevel, requireApproval?: boolean): Promise<void> {
+	// Omitting requireApproval keeps what the server stored for the app.
+	const fields: Record<string, string> = requireApproval === undefined ? { level } : { level, requireApproval: requireApproval ? '1' : '0' }
+	const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/policy`, fields)), {
 		method: 'PUT',
 		headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
-		body: JSON.stringify({ level }),
+		body: JSON.stringify(fields),
 	})
 	const payload = await unwrapOcsResponse<{ appId: string, policy: PolicyRecord }>(response)
 	policies.value = { ...policies.value, [appId]: { ...payload.policy, appId } }
@@ -1169,6 +1174,28 @@ async function onPolicyChange (appId: string, level: PolicyLevel): Promise<void>
 		} else {
 			await setPolicy(appId, level)
 		}
+	} catch (e) {
+		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not update the auto-update policy.')
+	} finally {
+		isSavingPolicy.value = false
+	}
+}
+
+/**
+ * Turn the approval step for an app's automatic updates on or off.
+ *
+ * @param appId The app whose policy changes.
+ * @param requireApproval Whether its automatic updates wait for an admin's approval.
+ */
+async function onApprovalChange (appId: string, requireApproval: boolean): Promise<void> {
+	if (isSavingPolicy.value) {
+		return
+	}
+	isSavingPolicy.value = true
+	errorMessage.value = ''
+	try {
+		await ensurePasswordConfirmation()
+		await setPolicy(appId, policyLevelFor(appId), requireApproval)
 	} catch (e) {
 		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not update the auto-update policy.')
 	} finally {
@@ -3126,6 +3153,7 @@ watch(dryRunEnabled, () => {
 									:maxPerRun="maxPerRun"
 									:maxPerWeek="maxPerWeek"
 									@saved="loadPolicies" />
+								<ProposedUpdatesPanel :labels="appLabels" />
 
 								<h3 id="section-advisories" :class="$style.advisorySettingsHeading">{{ t('versioniq', 'Security advisory checks') }}</h3>
 								<p :class="$style.hint">
@@ -3385,7 +3413,9 @@ watch(dryRunEnabled, () => {
 													:autoUpdateEnabled="autoUpdateEnabled"
 													:disabled="isSavingPolicy"
 													:blockedVersions="blockedVersionsFor(app.id)"
+													:requireApproval="requireApprovalFor(app.id)"
 													@change="onPolicyChange"
+													@approval="onApprovalChange"
 													@retry="onRetryAttempt" />
 												<ChannelSelector
 													v-if="!app.isCore"
