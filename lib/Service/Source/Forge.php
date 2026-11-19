@@ -77,6 +77,16 @@ final class Forge {
 	}
 
 	/**
+	 * The endpoint that serves the repository's `appinfo/info.xml` at a tag or
+	 * branch (GitHub and Forgejo both answer `contents/{path}?ref={ref}`).
+	 *
+	 * @spec openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness/spec.md#requirement-a-forge-releases-ranges-are-read-without-downloading-the-release
+	 */
+	public function infoXmlEndpoint(string $ownerRepo, string $ref): string {
+		return sprintf('%s/repos/%s/contents/appinfo/info.xml?ref=%s', $this->apiBaseUrl, $ownerRepo, rawurlencode($ref));
+	}
+
+	/**
 	 * The endpoint that describes the token itself (its scopes and expiry),
 	 * or null when the forge has none: GitLab's `personal_access_tokens/self`.
 	 *

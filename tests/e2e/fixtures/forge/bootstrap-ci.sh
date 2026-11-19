@@ -56,7 +56,7 @@ echo "Building fixture artifacts…"
 # runner, so that is localhost — the container hostname the Docker bootstrap
 # uses would resolve to nothing here.
 echo "Starting fixture forge on ${BASE}…"
-PORT="${PORT}" PUBLIC_BASE="${BASE}" nohup node "${FX}/server.mjs" > "${LOG}" 2>&1 &
+PORT="${PORT}" TLS_PORT="${FORGE_FIXTURE_TLS_PORT:-9443}" PUBLIC_BASE="${BASE}" nohup node "${FX}/server.mjs" > "${LOG}" 2>&1 &
 FX_PID=$!
 
 ready=0
@@ -94,6 +94,12 @@ occ config:app:set versioniq forge.forgejo.web_base --value="${BASE}" > /dev/nul
 occ config:app:set versioniq forge.github.api_base --value="${BASE}" > /dev/null
 occ config:app:set versioniq forge.github.web_base --value="${BASE}" > /dev/null
 occ config:system:set allow_local_remote_servers --value=true --type=boolean > /dev/null
+
+# Trust the fixture's self-signed certificate. The OSV double answers on the
+# fixture's https listener because advisory.osv_api_base is https only
+# (advisories-bundled-libraries); without this every library check is a TLS
+# error rather than a finding.
+occ security:certificates:import "${FX}/artifacts/tls/fixture.crt" > /dev/null
 
 # Point the App Store at the fixture too. Reaching the real catalogue
 # (~12.4 MB from garm3.nextcloud.com) is what left discovery and version

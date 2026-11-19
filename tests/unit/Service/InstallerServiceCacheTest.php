@@ -100,8 +100,11 @@ final class InstallerServiceCacheTest extends TestCase {
 		$this->userSession = $userSession;
 	}
 
-	private function service(): InstallerService {
-		return $this->buildByName(InstallerService::class, [
+	/**
+	 * @param array<string, object> $extra More collaborators, by parameter name.
+	 */
+	private function service(array $extra = []): InstallerService {
+		return $this->buildByName(InstallerService::class, $extra + [
 			'appManager' => $this->appManager,
 			'config' => $this->config,
 			'appConfig' => $this->appConfig,
@@ -174,6 +177,39 @@ final class InstallerServiceCacheTest extends TestCase {
 		self::assertFalse($versions[1]['serverCompatible']);
 		self::assertNull($versions[2]['serverCompatible'] ?? null);
 		self::assertFalse($versions[3]['serverCompatible']);
+	}
+
+	/**
+	 * inventory-upgrade-readiness 1.2: an uncached forge release takes the
+	 * range its info.xml declares at the tag; a cached one keeps its archive's.
+	 *
+	 * @spec openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness/spec.md#requirement-a-forge-releases-ranges-are-read-without-downloading-the-release
+	 */
+	public function testUncachedForgeVersionsGetTheRangeOfTheirInfoXmlAtTheTag(): void {
+		$this->stubSourceReturning([
+			['version' => '2.3.0', 'changelog' => null],
+			['version' => '2.2.0', 'changelog' => null],
+		]);
+		$this->config->method('getSystemValueString')->willReturnCallback(
+			static fn (string $key, string $default = ''): string => $key === 'version' ? '31.0.4.1' : $default,
+		);
+		$this->artifactCache->method('cachedVersionsFor')->willReturn(['2.2.0']);
+		$this->artifactCache->method('platformSpecFor')->willReturn('>=32');
+		$forge = $this->createMock(\OCA\Versioniq\Service\Source\ForgeReleaseSource::class);
+		$forge->expects(self::once())->method('infoXmlAtTag')
+			->with(self::anything(), '2.3.0')
+			->willReturn('<info><dependencies><nextcloud min-version="30" max-version="31"/></dependencies></info>');
+		$stamper = new \OCA\Versioniq\Service\Source\ForgeRangeStamper(
+			new \OCA\Versioniq\Service\Source\ForgeRangeStore($this->createMock(IAppConfig::class)),
+			$forge
+		);
+
+		$versions = $this->service(['forgeRanges' => $stamper])->getAppVersions('openregister')['availableVersions'];
+
+		self::assertTrue($versions[0]['serverCompatible']);
+		self::assertSame('>=30 <=31', $versions[0]['platformSpec']);
+		self::assertFalse($versions[1]['serverCompatible']);
+		self::assertArrayNotHasKey('platformSpec', $versions[1]);
 	}
 
 	public function testGetAppVersionsMarksAllFalseWhenNothingCached(): void {

@@ -35,6 +35,8 @@ type Settings = {
 	advisoryFeedDefault: string
 	ncscFeedUrl: string
 	ncscFeedDefault: string
+	osvApiBase?: string
+	osvApiDefault?: string
 	maxLinesBehind: number | null
 	maxLinesBehindMax: number
 	updateChecks?: UpdateChecks
@@ -56,6 +58,7 @@ const form = ref({
 	githubWebBase: '',
 	advisoryFeedUrl: '',
 	ncscFeedUrl: '',
+	osvApiBase: '',
 	maxLinesBehind: '',
 	reactivateAuto: false,
 	advisoryFeedSource: 'remote',
@@ -80,6 +83,7 @@ function fill (settings: Settings): void {
 		githubWebBase: settings.githubWebBase,
 		advisoryFeedUrl: settings.advisoryFeedUrl,
 		ncscFeedUrl: settings.ncscFeedUrl ?? '',
+		osvApiBase: settings.osvApiBase ?? '',
 		maxLinesBehind: settings.maxLinesBehind === null || settings.maxLinesBehind === undefined ? '' : String(settings.maxLinesBehind),
 		reactivateAuto: settings.reactivateAuto === true,
 		advisoryFeedSource: settings.advisoryFeedSource === 'local' ? 'local' : 'remote',
@@ -323,6 +327,17 @@ onMounted(load)
 					<span data-testid="setting-advisory-feed-copy-error">{{ copyError }}</span>
 				</NcNoteCard>
 			</div>
+
+			<label :class="$style.field" for="setting-osv-api">
+				<span>{{ t('versioniq', 'OSV API address for the library check (https, a mirror)') }}</span>
+				<input
+					id="setting-osv-api"
+					v-model="form.osvApiBase"
+					type="url"
+					:placeholder="loaded.osvApiDefault"
+					data-testid="setting-osv-api">
+				<span :class="$style.hint">{{ t('versioniq', 'Default: {url}', { url: loaded.osvApiDefault ?? '' }) }}</span>
+			</label>
 
 			<p v-if="notice" :class="$style.notice" data-testid="instance-settings-notice">
 				{{ notice }}
