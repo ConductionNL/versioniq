@@ -44,6 +44,7 @@ import PatchPolicyPanel from './components/PatchPolicyPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
 import PublisherMark from './components/PublisherMark.vue'
+import ReadinessPanel from './components/ReadinessPanel.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
 import SbomExportMenu from './components/SbomExportMenu.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
@@ -120,6 +121,7 @@ type AppVersion = {
 	cachedOffline?: boolean
 	serverCompatible?: boolean | null
 	serverTooNew?: boolean
+	phpCompatible?: boolean | null
 	releasedAt?: string | null
 	preRelease?: boolean
 	lts?: boolean
@@ -332,6 +334,7 @@ const tabs = [
 	{ id: 'apps' },
 	{ id: 'advisories' },
 	{ id: 'alerts' },
+	{ id: 'readiness' },
 	{ id: 'history' },
 	{ id: 'sources' },
 	{ id: 'tokens' },
@@ -354,6 +357,7 @@ function tabLabel (id: string): string {
 	apps: t('versioniq', 'Apps'),
 	advisories: t('versioniq', 'Advisories'),
 	alerts: t('versioniq', 'Alerts'),
+	readiness: t('versioniq', 'Upgrade readiness'),
 	history: t('versioniq', 'History'),
 	sources: t('versioniq', 'Sources'),
 	tokens: t('versioniq', 'Tokens'),
@@ -3719,7 +3723,7 @@ watch(dryRunEnabled, () => {
 														<div :class="$style.versionItemMain">
 															<span>{{ version.version }}</span>
 															<ReleaseDate :releasedAt="version.releasedAt ?? null" />
-															<ServerCompatBadge :serverCompatible="version.serverCompatible ?? null" :serverTooNew="version.serverTooNew ?? null" />
+															<ServerCompatBadge :serverCompatible="version.serverCompatible ?? null" :serverTooNew="version.serverTooNew ?? null" :phpCompatible="version.phpCompatible ?? null" />
 															<span
 																v-for="tag in offChannelTags(version, versionChannel)"
 																:key="tag"
@@ -3923,6 +3927,10 @@ watch(dryRunEnabled, () => {
 						</div>
 					</main>
 				</div>
+				<ReadinessPanel v-if="currentTab === 'readiness'"
+					id="readiness-panel"
+					role="tabpanel"
+					aria-labelledby="readiness-tab" />
 				<AdvisoriesPanel v-if="currentTab === 'advisories'"
 					id="advisories-panel"
 					role="tabpanel"

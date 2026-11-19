@@ -14,6 +14,7 @@ namespace OCA\Versioniq\Service\Api;
 use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Service\Advisory\LibraryAdvisoryStore;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
+use OCA\Versioniq\Service\Readiness\ReadinessAccess;
 use OCA\Versioniq\Service\Release\KnownIssueStore;
 
 /**
@@ -27,6 +28,9 @@ final class ReportCollaborators {
 		public readonly ReportStores $stores,
 		public readonly DiscoveryAggregator $discoveryAggregator,
 		public readonly AuditEntryMapper $auditEntryMapper,
+		// Optional: the last upgrade readiness report and the job list a check is
+		// queued on (inventory-upgrade-readiness D4).
+		public readonly ?ReadinessAccess $readiness = null,
 		public readonly ?KnownIssueStore $knownIssues = null,
 		// Optional: the bundled-library snapshot (advisories-bundled-libraries).
 		public readonly ?LibraryAdvisoryStore $libraryAdvisoryStore = null,

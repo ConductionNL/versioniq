@@ -35,6 +35,7 @@ use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Release\ReleaseNotesReader;
 use OCA\Versioniq\Service\Source\AppStoreSource;
 use OCA\Versioniq\Service\Source\RetiredForgeException;
+use OCA\Versioniq\Service\Source\ForgeRangeStamper;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
@@ -532,6 +533,7 @@ class InstallerService implements InstallerServiceInterface {
 		$versions = $this->applyCachedOffline($versions, $appId);
 		/** @var list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool}> $versions */
 		$versions = $this->applyCachedServerCompatibility($versions, $appId);
+		$versions = $this->applyForgeRanges($versions, $binding);
 		$channel = [];
 		if ($this->channels !== null) {
 			// Stamped, not filtered: the picker reveals the rest and the CLI lists every version.
@@ -771,6 +773,27 @@ class InstallerService implements InstallerServiceInterface {
 				return $entry;
 			},
 			$versions
+		);
+	}
+
+	/**
+	 * Forge versions take the server and PHP range their info.xml declares at
+	 * the release tag, where no cached archive answers (inventory-upgrade-readiness D2).
+	 *
+	 * @param list<array<string, mixed>> $versions
+	 * @return list<array<string, mixed>>
+	 *
+	 * @spec openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness/spec.md#requirement-a-forge-releases-ranges-are-read-without-downloading-the-release
+	 */
+	private function applyForgeRanges(array $versions, SourceBinding $binding): array {
+		$stamper = $this->sources->forgeRanges;
+		if ($stamper === null) {
+			return $versions;
+		}
+
+		return ForgeRangeStamper::withVerdicts(
+			$stamper->stamp($versions, $binding),
+			['server' => $this->serverCoreVersion(), 'php' => PHP_VERSION]
 		);
 	}
 
