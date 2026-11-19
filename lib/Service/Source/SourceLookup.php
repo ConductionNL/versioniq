@@ -24,6 +24,8 @@ final class SourceLookup {
 	public function __construct(
 		public readonly SourceRegistry $sourceRegistry,
 		public readonly SourceBindingStore $bindingStore,
+		// Reads the server and PHP range of uncached forge releases (inventory-upgrade-readiness D2).
+		public readonly ?ForgeRangeStamper $forgeRanges = null,
 		public readonly ?PublisherTrust $publisherTrust = null,
 	) {
 	}
