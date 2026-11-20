@@ -107,6 +107,42 @@ describe('PolicySelector', () => {
 		expect(wrapper.find('[data-testid="policy-disabled-hint"]').text()).not.toContain('\u2014')
 	})
 
+	// @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+	it('saves the app\'s own minimum age, and empty as the instance value', async () => {
+		const wrapper = shallowMount(PolicySelector, {
+			props: { appId: 'openregister', level: 'patch', autoUpdateEnabled: true, minAgeDays: null, instanceMinAgeDays: 7 },
+		})
+
+		const input = wrapper.find('[data-testid="policy-min-age"]')
+		expect(wrapper.text()).toContain('Minimum age in days (empty uses 7)')
+		await input.setValue('14')
+		expect(wrapper.emitted('minAge')).toEqual([['openregister', 14]])
+
+		await wrapper.setProps({ minAgeDays: 14 })
+		await input.setValue('')
+		expect(wrapper.emitted('minAge')).toEqual([['openregister', 14], ['openregister', null]])
+	})
+
+	it('refuses a minimum age outside 0 to 90 days', async () => {
+		const wrapper = shallowMount(PolicySelector, {
+			props: { appId: 'openregister', level: 'patch', autoUpdateEnabled: true, minAgeDays: 3 },
+		})
+
+		const input = wrapper.find('[data-testid="policy-min-age"]')
+		await input.setValue('91')
+
+		expect(wrapper.emitted('minAge')).toBeUndefined()
+		expect(wrapper.find('[data-testid="policy-min-age-error"]').exists()).toBe(true)
+	})
+
+	it('offers no minimum age while the policy is off', () => {
+		const wrapper = shallowMount(PolicySelector, {
+			props: { appId: 'openregister', level: 'none', autoUpdateEnabled: true },
+		})
+
+		expect(wrapper.find('[data-testid="policy-min-age"]').exists()).toBe(false)
+	})
+
 	// autoupdate-default-and-config-file: own or default, reset, read-only file mode.
 	// @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
 	it('marks a level that follows the default and offers no reset', () => {

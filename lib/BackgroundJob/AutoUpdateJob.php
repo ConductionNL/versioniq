@@ -165,7 +165,12 @@ class AutoUpdateJob extends TimedJob {
 		// (autoupdate-default-and-config-file).
 		$advisories = $this->advisorySnapshot();
 		$run = new PlanRun($advisories['rows'], $advisories['fresh'], $this->stores->security->patchPolicyStore->read() ?? PatchPolicy::none());
-		$plan = (new AutoUpdatePlanner($this->stores, $this->install, $this->logger))->planRun($run->withDueKinds($dueKinds), $this->levelsByApp($file));
+		$plan = (new AutoUpdatePlanner($this->stores, $this->install, $this->logger))->planRun(
+			$run->withDueKinds($dueKinds),
+			$this->levelsByApp($file),
+			// Version ages are measured at the run's time (releases-minimum-age D2).
+			\DateTimeImmutable::createFromInterface($now)
+		);
 		$this->installPlanned($plan, $now);
 		$this->stores->security->securityHolds->replace($plan->securityHolds);
 	}
@@ -315,7 +320,8 @@ class AutoUpdateJob extends TimedJob {
 			return $this->attemptInstall(
 				new InstallTarget($member->appId, (string)$member->candidate, null),
 				(string)$member->installedVersion,
-				$member->group === null
+				$member->group === null,
+				$member->securityAdvisories()
 			);
 		} catch (\Throwable $error) {
 			// Per-app isolation — see "the job MUST proceed to the next app
@@ -398,10 +404,15 @@ class AutoUpdateJob extends TimedJob {
 	 * install. The per-app notification is sent only when $notify is set: a
 	 * group member is reported in its group's notification.
 	 *
+	 * A security fix installed before the minimum age carries its advisories
+	 * as an audit note and in the success notification (releases-minimum-age D6).
+	 *
+	 * @param list<string> $securityAdvisories The advisories of a security fix installed before the minimum age
+	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 * @spec openspec/changes/safety-update-checks/specs/auto-update-policies/spec.md#requirement-the-nightly-job-installs-only-after-the-attached-checks-pass
 	 */
-	private function attemptInstall(InstallTarget $target, string $installedVersion, bool $notify = true): bool {
+	private function attemptInstall(InstallTarget $target, string $installedVersion, bool $notify = true, array $securityAdvisories = []): bool {
 		$blocked = $this->install->checkRunner->matches($target->appId) ? $this->gateHint($target) : null;
 		if ($blocked !== null) {
 			$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedgerInterface::OUTCOME_FAILURE, $this->now());
@@ -412,9 +423,14 @@ class AutoUpdateJob extends TimedJob {
 			return false;
 		}
 
-		[$installed, $payload] = $this->installAndRecord($target);
+		[$installed, $payload] = $securityAdvisories === []
+			? $this->installAndRecord($target)
+			: AuditNote::during(
+				'Security fix, installed before the minimum age: ' . implode(', ', $securityAdvisories),
+				fn (): array => $this->installAndRecord($target)
+			);
 		if ($notify && $installed) {
-			$this->notifier->notifySuccess($target->appId, $installedVersion, self::versionInstalled($payload, $target));
+			$this->notifier->notifySuccess($target->appId, $installedVersion, self::versionInstalled($payload, $target), $securityAdvisories);
 		}
 		if ($notify && !$installed) {
 			$this->notifyFailure($target, $payload);

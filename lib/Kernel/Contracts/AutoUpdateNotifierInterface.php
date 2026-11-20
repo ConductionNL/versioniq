@@ -22,9 +22,11 @@ interface AutoUpdateNotifierInterface {
 	 * Notifies admins that an auto-update installed successfully; see "Every
 	 * auto-update outcome is reported" ("Success notification").
 	 *
+	 * @param list<string> $securityAdvisories The advisories of a security fix installed before the minimum age
+	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 */
-	public function notifySuccess(string $appId, ?string $fromVersion, string $toVersion): void;
+	public function notifySuccess(string $appId, ?string $fromVersion, string $toVersion, array $securityAdvisories = []): void;
 
 	/**
 	 * Notifies admins that an auto-update attempt failed, carrying the

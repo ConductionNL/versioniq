@@ -89,6 +89,41 @@ final class AutoUpdateNotifierTest extends TestCase {
 		$notifier->notifySuccess('openregister', '2.3.0', '2.3.4');
 	}
 
+	/**
+	 * A security fix installed before the minimum age passes its advisories
+	 * to the rendered notice (releases-minimum-age task 2.2).
+	 */
+	public function testNotifySuccessCarriesTheAdvisoriesOfAnEarlySecurityFix(): void {
+		$notification = $this->createMock(INotification::class);
+		$notification->method('setApp')->willReturnSelf();
+		$notification->method('setUser')->willReturnSelf();
+		$notification->method('setDateTime')->willReturnSelf();
+		$notification->method('setObject')->willReturnSelf();
+		$notification->method('setLink')->willReturnSelf();
+		$notification->expects($this->once())
+			->method('setSubject')
+			->with('auto_update_success', [
+				'app' => 'openregister',
+				'fromVersion' => '2.3.0',
+				'toVersion' => '2.3.4',
+				'securityAdvisories' => 'GHSA-1, GHSA-2',
+			])
+			->willReturnSelf();
+
+		$notificationManager = $this->createMock(IManager::class);
+		$notificationManager->method('createNotification')->willReturn($notification);
+
+		$notifier = $this->buildByName(AutoUpdateNotifier::class, [
+			'notificationManager' => $notificationManager,
+			'groupManager' => $this->groupManagerWithAdmins(['admin']),
+			'timeFactory' => $this->timeFactory(),
+			'urlGenerator' => $this->urlGenerator(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
+
+		$notifier->notifySuccess('openregister', '2.3.0', '2.3.4', ['GHSA-1', 'GHSA-2']);
+	}
+
 	public function testNotifyPlannedReachesTheAdminsAndTheNoticeGroupEachOnce(): void {
 		$users = fn (array $uids): array => array_map(function (string $uid): IUser {
 			$user = $this->createMock(IUser::class);

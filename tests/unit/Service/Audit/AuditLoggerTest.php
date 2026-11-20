@@ -62,6 +62,39 @@ final class AuditLoggerTest extends TestCase {
 		$this->assertSame('2026-07-23 12:00:00', $captured->getCreatedAt());
 	}
 
+	/**
+	 * An install row written inside AuditNote::during() carries the note in
+	 * front of its own message, a row with no message the note alone, and a
+	 * row written after it no note (releases-minimum-age task 2.2).
+	 */
+	public function testARowWrittenDuringANoteCarriesIt(): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$messages = [];
+		$mapper->method('insert')->willReturnCallback(static function (AuditEntry $entry) use (&$messages): AuditEntry {
+			$messages[] = $entry->getMessage();
+			return $entry;
+		});
+		$logger = new AuditLogger($mapper, $this->timeFactory(), $this->createMock(LoggerInterface::class));
+		$record = static fn (?string $message) => AuditArgs::call(
+			$logger, 'system', 'openregister', AuditLogger::OPERATION_INSTALL, '2.3.0', '2.3.4', 'appstore', AuditLogger::STATUS_SUCCESS, $message,
+		);
+
+		AuditNote::during('security fix, installed before the minimum age: GHSA-1', static function () use ($record): void {
+			$record('Installed');
+			$record(null);
+		});
+		$record('Installed');
+
+		$this->assertSame(
+			[
+				'security fix, installed before the minimum age: GHSA-1: Installed',
+				'security fix, installed before the minimum age: GHSA-1',
+				'Installed',
+			],
+			$messages
+		);
+	}
+
 	public function testThrowingMapperDoesNotPropagateOutOfRecord(): void {
 		$mapper = $this->createMock(AuditEntryMapper::class);
 		$mapper->method('insert')->willThrowException(new \RuntimeException('table missing'));

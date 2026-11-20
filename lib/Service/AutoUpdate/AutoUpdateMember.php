@@ -19,6 +19,14 @@ namespace OCA\Versioniq\Service\AutoUpdate;
  * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
  */
 final class AutoUpdateMember {
+	/**
+	 * The advisories of a security fix installed before the minimum age
+	 * (releases-minimum-age D6); [] for any other install.
+	 *
+	 * @var list<string>
+	 */
+	private array $securityAdvisories = [];
+
 	/** The app is pinned; it is skipped without asking its source. */
 	public const REASON_PINNED = 'pinned';
 
@@ -63,7 +71,7 @@ final class AutoUpdateMember {
 	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
 	 */
 	public function asNextWindowFix(): self {
-		return new self($this->appId, $this->installedVersion, $this->candidate, $this->reason, $this->group, true);
+		return $this->carried(new self($this->appId, $this->installedVersion, $this->candidate, $this->reason, $this->group, true));
 	}
 
 	/**
@@ -72,7 +80,7 @@ final class AutoUpdateMember {
 	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
 	 */
 	public function withReason(?string $reason): self {
-		return new self($this->appId, $this->installedVersion, $this->candidate, $reason, $this->group, $this->nextWindowFix);
+		return $this->carried(new self($this->appId, $this->installedVersion, $this->candidate, $reason, $this->group, $this->nextWindowFix));
 	}
 
 	/**
@@ -81,7 +89,7 @@ final class AutoUpdateMember {
 	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
 	 */
 	public function inGroup(string $group): self {
-		return new self($this->appId, $this->installedVersion, $this->candidate, $this->reason, $group, $this->nextWindowFix);
+		return $this->carried(new self($this->appId, $this->installedVersion, $this->candidate, $this->reason, $group, $this->nextWindowFix));
 	}
 
 	/**
@@ -91,5 +99,39 @@ final class AutoUpdateMember {
 	 */
 	public function willInstall(): bool {
 		return $this->reason === null && $this->candidate !== null && $this->installedVersion !== null;
+	}
+
+	/**
+	 * This member as a security fix installed before the minimum age, with its advisories.
+	 *
+	 * @param list<string> $advisories
+	 *
+	 * @spec openspec/changes/releases-minimum-age
+	 */
+	public function withSecurityAdvisories(array $advisories): self {
+		$copy = clone $this;
+		$copy->securityAdvisories = $advisories;
+
+		return $copy;
+	}
+
+	/**
+	 * The advisories of a security fix installed before the minimum age; [] for any other install.
+	 *
+	 * @return list<string>
+	 *
+	 * @spec openspec/changes/releases-minimum-age
+	 */
+	public function securityAdvisories(): array {
+		return $this->securityAdvisories;
+	}
+
+	/**
+	 * A copy made by one of the with*() methods, keeping this member's advisories.
+	 */
+	private function carried(self $copy): self {
+		$copy->securityAdvisories = $this->securityAdvisories;
+
+		return $copy;
 	}
 }

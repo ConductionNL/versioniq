@@ -22,8 +22,9 @@ use OCA\Versioniq\Service\Policy\PolicyStore;
  * the ledger of versions already attempted, the update groups, the versions
  * an admin skipped, the security side (see AutoUpdateSecurityStores), which
  * the `security` level and the patch policy read, the proposed updates with
- * their approvals and declines, and where the settings and policies come
- * from when `config.php` names a policy file.
+ * their approvals and declines, where the settings and policies come from
+ * when `config.php` names a policy file; and, for the overview, the plan
+ * snapshot and the admins' minimum-age exceptions (releases-minimum-age).
  *
  * @psalm-api
  */
@@ -42,6 +43,8 @@ final class AutoUpdateStores {
 		// Where settings and policies come from when config.php names a policy
 		// file; without it the stores are the only source.
 		public readonly ?PolicySource $policySource = null,
+		public readonly ?AutoUpdatePlanStore $planStore = null,
+		public readonly ?MinAgeExceptionStore $minAgeExceptions = null,
 	) {
 	}
 }

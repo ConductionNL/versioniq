@@ -22,7 +22,8 @@ use OCP\App\IAppManager;
  * app and installs the chosen one; the app manager reports the installed
  * version; the selector chooses the candidate for the app's policy level; the
  * check runner says whether update checks gate the app, and the classifier
- * words the hint when one held the version back.
+ * words the hint when one held the version back; the planner holds back what
+ * is younger than the minimum age.
  *
  * @psalm-api
  */
@@ -33,6 +34,7 @@ final class AutoUpdateInstall {
 		public readonly CandidateSelector $candidateSelector,
 		public readonly CheckRunner $checkRunner,
 		public readonly FailureClassifier $failureClassifier,
+		public readonly ?MinimumAgePlanner $planner = null,
 	) {
 	}
 }

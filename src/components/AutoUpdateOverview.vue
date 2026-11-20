@@ -12,7 +12,23 @@ import { describeDays, kindsReachedBy, UPDATE_KINDS, weekdayOrder } from '../uti
 import { pendingAutoUpdates } from '../utils/pendingAutoUpdates.ts'
 import { firstDayOfWeek, shortDayNames } from '../utils/weekdays.ts'
 
-type PolicyRecord = { appId: string, level: PolicyLevel, blockedVersions?: BlockedVersion[] }
+/** A version younger than the minimum age, with when it may install (releases-minimum-age). */
+export type HeldVersion = { version: string, releasedAt: string, eligibleAt: string, reason: string }
+
+/** What the next run would do for one app, from the six-hourly plan (releases-minimum-age D4). */
+export type AutoUpdatePlanEntry = {
+	state: 'planned' | 'pinned' | 'source_error' | 'failed'
+	minAgeDays: number
+	next: string | null
+	heldBack: HeldVersion[]
+	securityBypass: { version: string, advisories: string[], reason: string } | null
+	exception: string | null
+}
+
+/** A held version an admin released early (releases-minimum-age D5). */
+export type MinAgeException = { version: string, by: string, at: string }
+
+type PolicyRecord = { appId: string, level: PolicyLevel, blockedVersions?: BlockedVersion[], plan?: AutoUpdatePlanEntry | null, minAgeException?: MinAgeException | null }
 
 /** The policy file the policies are read from, when they are; see design D4. */
 export type ManagedBy = { file: string, readAt?: string, error?: string | null }
@@ -46,18 +62,81 @@ const props = defineProps<{
 	nextRuns?: Partial<Record<UpdateKind, string | null>>
 	updates?: Record<string, PendingUpdate>
 	updatesCheckedLabel?: string
+	planCheckedAt?: number | null
 	groups?: Array<{ id?: string, name: string, apps: string[] }>
 	waiting?: Record<string, string>
 }>()
 
 const emit = defineEmits<{
 	(event: 'retry', appId: string, version: string): void
+	(event: 'release', appId: string, version: string): void
+	(event: 'withdraw', appId: string, version: string): void
 }>()
 
 const scheduled = computed(() => Object.entries(props.policies)
 	.filter(([, policy]) => policy.level !== 'none')
-	.map(([appId, policy]) => ({ appId: policy.appId || appId, level: policy.level }))
+	.map(([appId, policy]) => ({
+		appId: policy.appId || appId,
+		level: policy.level,
+		plan: policy.plan ?? null,
+		exception: policy.minAgeException ?? null,
+	}))
 	.sort((a, b) => a.appId.localeCompare(b.appId)))
+
+/**
+ * When the plan was last worked out, or that it never was (releases-minimum-age D4).
+ *
+ * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+ */
+const planCheckedLine = computed((): string => {
+	if (props.planCheckedAt === null || props.planCheckedAt === undefined) {
+		return t('versioniq', 'The next update of each app has not been worked out yet.')
+	}
+	return t('versioniq', 'Next updates worked out at {time}.', { time: new Date(props.planCheckedAt * 1000).toLocaleString() })
+})
+
+/**
+ * The "Next update" line of a planned app.
+ *
+ * @param plan The app's plan entry.
+ * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+ */
+function nextLine (plan: AutoUpdatePlanEntry): string {
+	return plan.next === null
+		? t('versioniq', 'No update qualifies')
+		: t('versioniq', 'Next update: {version}', { version: plan.next })
+}
+
+/**
+ * One held version, with the day it may install.
+ *
+ * @param held The held version.
+ * @param days The minimum age in days.
+ * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+ */
+function heldLine (held: HeldVersion, days: number): string {
+	return t('versioniq', '{version} held back until {date} (minimum age {days} days)', {
+		version: held.version,
+		date: new Date(held.eligibleAt).toLocaleDateString(),
+		days,
+	})
+}
+
+/**
+ * Why a security fix is or is not let through before the minimum age.
+ *
+ * @param plan The app's plan entry.
+ * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+ */
+function bypassLine (plan: AutoUpdatePlanEntry): string {
+	const bypass = plan.securityBypass
+	if (bypass === null) {
+		return ''
+	}
+	return bypass.reason === 'outside_level'
+		? t('versioniq', 'Security fix {version} is outside the update policy, so it is not installed automatically.', { version: bypass.version })
+		: t('versioniq', 'Security fix {version} skips the minimum age.', { version: bypass.version })
+}
 
 // The newer version each app with a policy can go to now, from the stored
 // availability sweep: no source is asked when the page opens.
@@ -283,8 +362,38 @@ function levelLabel (level: PolicyLevel): string {
 			<li v-for="row in scheduled" :key="row.appId" data-testid="overview-scheduled-row">
 				<strong>{{ labelFor(row.appId) }}</strong>
 				{{ t('versioniq', 'policy: {level}', { level: levelLabel(row.level) }) }}
+				<template v-if="row.plan && row.plan.state === 'planned'">
+					<span :class="$style.planLine" data-testid="overview-next">{{ nextLine(row.plan) }}</span>
+					<span
+						v-for="waiting in row.plan.heldBack"
+						:key="waiting.version"
+						:class="[$style.planLine, $style.blockedRow]"
+						data-testid="overview-held-back">
+						{{ heldLine(waiting, row.plan.minAgeDays) }}
+						<NcButton
+							v-if="!row.exception || row.exception.version !== waiting.version"
+							variant="tertiary"
+							:disabled="disabled"
+							@click="emit('release', row.appId, waiting.version)">
+							{{ t('versioniq', 'Release now') }}
+						</NcButton>
+					</span>
+					<span v-if="bypassLine(row.plan)" :class="$style.planLine" data-testid="overview-bypass">{{ bypassLine(row.plan) }}</span>
+				</template>
+				<span v-if="row.exception" :class="[$style.planLine, $style.blockedRow]" data-testid="overview-exception">
+					{{ t('versioniq', '{version} is released before the minimum age.', { version: row.exception.version }) }}
+					<NcButton
+						variant="tertiary"
+						:disabled="disabled"
+						@click="emit('withdraw', row.appId, row.exception.version)">
+						{{ t('versioniq', 'Withdraw') }}
+					</NcButton>
+				</span>
 			</li>
 		</ul>
+		<p v-if="scheduled.length > 0" :class="$style.hint" data-testid="overview-plan-checked">
+			{{ planCheckedLine }}
+		</p>
 		<p v-if="showStale" :class="$style.warning" data-testid="overview-stale">
 			{{ t('versioniq', 'Advisories were not checked recently, so security fixes wait.') }}
 		</p>
@@ -367,6 +476,12 @@ function levelLabel (level: PolicyLevel): string {
 }
 
 .hint {
+	color: var(--color-text-maxcontrast);
+}
+
+.planLine {
+	display: flex;
+	padding-inline-start: 12px;
 	color: var(--color-text-maxcontrast);
 }
 

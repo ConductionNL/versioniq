@@ -49,16 +49,35 @@ class AutoUpdateNotifier implements AutoUpdateNotifierInterface {
 
 	/**
 	 * Notifies admins that an auto-update installed successfully; see "Every
-	 * auto-update outcome is reported" ("Success notification").
+	 * auto-update outcome is reported" ("Success notification"). A security
+	 * fix installed before the minimum age carries its advisory ids, which the
+	 * rendered message names (releases-minimum-age D6).
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
+	 * @param list<string> $securityAdvisories The advisories of a security fix installed before the minimum age
+	 *
+	 * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
 	 */
-	public function notifySuccess(string $appId, ?string $fromVersion, string $toVersion): void {
+	public function notifySuccess(string $appId, ?string $fromVersion, string $toVersion, array $securityAdvisories = []): void {
 		$this->notifyAdmins($this->notice('auto_update_success', [
 			'app' => $appId,
 			'fromVersion' => $fromVersion ?? '',
 			'toVersion' => $toVersion,
-		])->withObject('auto_update', $appId . ':' . $toVersion));
+		] + self::advisoryParameter($securityAdvisories))->withObject('auto_update', $appId . ':' . $toVersion));
+	}
+
+	/**
+	 * The `securityAdvisories` parameter of a security fix installed early, or none.
+	 *
+	 * @param list<string> $advisories
+	 * @return array<string, string>
+	 */
+	private static function advisoryParameter(array $advisories): array {
+		if ($advisories === []) {
+			return [];
+		}
+
+		return ['securityAdvisories' => implode(', ', $advisories)];
 	}
 
 	/**

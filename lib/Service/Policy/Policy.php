@@ -48,15 +48,38 @@ final class Policy {
 		// Whether a manual install outside the level needs an explicit override
 		// (pinning-ranges-and-skips). Absent reads as false.
 		public readonly bool $holdManual = false,
+		// The policy's own minimum age in days; null follows the instance's (releases-minimum-age).
+		public readonly ?int $minAgeDays = null,
 	) {
-		if (!self::isValidLevel($level)) {
+		$this->assertRequiredFields();
+		$this->assertMinAgeDays();
+	}
+
+	/**
+	 * Refuses an unknown level or an empty setBy or setAt.
+	 *
+	 * @throws InvalidArgumentException When a required field is invalid.
+	 */
+	private function assertRequiredFields(): void {
+		if (!self::isValidLevel($this->level)) {
 			throw new InvalidArgumentException('Policy level must be one of: ' . implode(', ', self::VALID_LEVELS));
 		}
-		if ($setBy === '') {
+		if ($this->setBy === '') {
 			throw new InvalidArgumentException('Policy requires a non-empty setBy');
 		}
-		if ($setAt === '') {
+		if ($this->setAt === '') {
 			throw new InvalidArgumentException('Policy requires a non-empty setAt');
+		}
+	}
+
+	/**
+	 * Refuses a minimum age outside 0 to 90 days; absent uses the instance value.
+	 *
+	 * @throws InvalidArgumentException When minAgeDays is out of range.
+	 */
+	private function assertMinAgeDays(): void {
+		if ($this->minAgeDays !== null && ($this->minAgeDays < 0 || $this->minAgeDays > 90)) {
+			throw new InvalidArgumentException('Policy minAgeDays must be 0 to 90, or absent to use the instance value');
 		}
 	}
 
@@ -77,13 +100,18 @@ final class Policy {
 	 * @return array<string, mixed>
 	 */
 	public function toArray(): array {
-		return [
+		$payload = [
 			'level' => $this->level,
 			'setBy' => $this->setBy,
 			'setAt' => $this->setAt,
 			'requireApproval' => $this->requireApproval,
 			'holdManual' => $this->holdManual,
 		];
+		if ($this->minAgeDays !== null) {
+			$payload['minAgeDays'] = $this->minAgeDays;
+		}
+
+		return $payload;
 	}
 
 	/**
@@ -113,6 +141,21 @@ final class Policy {
 		}
 
 		// A policy stored before pinning-ranges-and-skips has no holdManual: off.
-		return new self($level, $setBy, $setAt, ($payload['requireApproval'] ?? false) === true, ($payload['holdManual'] ?? false) === true);
+		return new self($level, $setBy, $setAt, ($payload['requireApproval'] ?? false) === true, ($payload['holdManual'] ?? false) === true, self::minAgeDaysFrom($payload));
+	}
+
+	/**
+	 * The optional `minAgeDays` of a persisted payload.
+	 *
+	 * @param array<array-key, mixed> $payload
+	 * @throws InvalidArgumentException When it is present and not an integer.
+	 */
+	private static function minAgeDaysFrom(array $payload): ?int {
+		$minAgeDays = $payload['minAgeDays'] ?? null;
+		if ($minAgeDays !== null && !is_int($minAgeDays)) {
+			throw new InvalidArgumentException('Policy minAgeDays must be an integer');
+		}
+
+		return $minAgeDays;
 	}
 }

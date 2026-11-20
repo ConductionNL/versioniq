@@ -53,9 +53,25 @@ final class AutoUpdatePlanner {
 	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
 	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-an-admin-records-a-patch-policy-and-security-fixes-go-first
 	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
+	 * @spec openspec/changes/releases-minimum-age
 	 */
 	public function plan(array $advisories = ['rows' => [], 'fresh' => false], ?PatchPolicy $patchPolicy = null, ?array $levels = null, ?\DateTimeImmutable $now = null): AutoUpdatePlan {
 		return $this->planRun(new PlanRun($advisories['rows'], $advisories['fresh'], $patchPolicy ?? PatchPolicy::none()), $levels, $now);
+	}
+
+	/**
+	 * The app's own minimum age, or null when it follows the instance's: read
+	 * from its stored policy, and never in file mode, where the stores are not
+	 * the source (autoupdate-default-and-config-file D4).
+	 *
+	 * @spec openspec/changes/releases-minimum-age
+	 */
+	private function minAgeDaysOf(string $appId): ?int {
+		if ($this->stores->policySource?->filePath() !== null) {
+			return null;
+		}
+
+		return $this->stores->policyStore->get($appId)?->minAgeDays;
 	}
 
 	/**
@@ -70,10 +86,13 @@ final class AutoUpdatePlanner {
 	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
 	 */
 	public function planRun(PlanRun $run, ?array $levels = null, ?\DateTimeImmutable $now = null): AutoUpdatePlan {
+		// Version ages are measured at the run's time (releases-minimum-age D2).
+		$now ??= new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+		$instanceMinAge = $this->stores->settingsStore->getMinAgeDays();
 		$planned = [];
 		foreach ($levels ?? PolicyStore::levelsOf($this->stores->policyStore->all()) as $appId => $level) {
 			if ($level !== Policy::LEVEL_NONE) {
-				$planned[] = $this->planIsolated(new PlanTarget((string)$appId, $level), $run);
+				$planned[] = $this->planIsolated(new PlanTarget((string)$appId, $level, $this->minAgeDaysOf((string)$appId) ?? $instanceMinAge, $now), $run);
 			}
 		}
 
@@ -146,12 +165,36 @@ final class AutoUpdatePlanner {
 			return null;
 		}
 
-		$available = $this->availableVersions($target->appId);
-		if ($available === null) {
+		$entries = $this->availableEntries($target->appId);
+		if ($entries === null) {
 			return new AutoUpdateMember($target->appId, $installedVersion, null, AutoUpdateMember::REASON_SOURCE_ERROR);
 		}
 
-		return new PlanSubject($target->appId, $target->level, $installedVersion, $available);
+		return $this->subjectWithAges($target, $installedVersion, $entries);
+	}
+
+	/**
+	 * The app as the planner sees it, with the versions younger than the
+	 * minimum age set aside (releases-minimum-age D3): a regular update only
+	 * chooses among the eligible ones, so the newest old-enough version is
+	 * taken while a newer one waits. A security fix the age planner lets
+	 * through early is eligible, and carries its advisories (D6).
+	 *
+	 * @param list<array{version: string, releasedAt: ?string}> $entries The source's versions.
+	 *
+	 * @spec openspec/changes/releases-minimum-age
+	 */
+	private function subjectWithAges(PlanTarget $target, string $installedVersion, array $entries): PlanSubject {
+		$available = array_column($entries, 'version');
+		if ($target->minAgeDays <= 0 || $this->install->planner === null) {
+			return new PlanSubject($target->appId, $target->level, $installedVersion, $available);
+		}
+
+		$agePlan = $this->install->planner->plan(AgeQuery::of($target, $installedVersion, $entries));
+		$bypass = $agePlan['securityBypass'];
+		$advisories = ($bypass !== null && $bypass['reason'] === MinimumAgePlanner::REASON_SECURITY_FIX) ? $bypass['advisories'] : [];
+
+		return (new PlanSubject($target->appId, $target->level, $installedVersion, $available))->withAge(new AgeVerdict($agePlan['eligible'], $agePlan['bypassed'], $advisories));
 	}
 
 	/**
@@ -226,7 +269,7 @@ final class AutoUpdatePlanner {
 		$patchPolicy = $run->patchPolicy;
 		$installedVersion = $app->installedVersion;
 		$allowed = array_values(array_filter(
-			$app->available,
+			$app->installable(),
 			static fn (string $version): bool => $patchPolicy->regularHandling(PatchPolicy::kindOf($installedVersion, $version)) !== PatchPolicy::HANDLING_MANUAL
 				&& $run->isDue($installedVersion, $version),
 		));
@@ -247,7 +290,7 @@ final class AutoUpdatePlanner {
 			return new AutoUpdateMember($app->appId, $app->installedVersion, $version, AutoUpdateMember::REASON_BLOCKED);
 		}
 
-		return new AutoUpdateMember($app->appId, $app->installedVersion, $version, null);
+		return (new AutoUpdateMember($app->appId, $app->installedVersion, $version, null))->withSecurityAdvisories($app->bypassAdvisoriesFor($version));
 	}
 
 	/**
@@ -313,28 +356,32 @@ final class AutoUpdatePlanner {
 	}
 
 	/**
-	 * The versions the app's source lists on its release channel, or null when the source failed.
+	 * The versions the app's source lists on its release channel, with their
+	 * release times when the source gives one, or null when the source failed.
 	 *
 	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-the-nightly-job-takes-only-versions-on-the-apps-channel
 	 *
-	 * @return list<string>|null
+	 * @return list<array{version: string, releasedAt: ?string}>|null
+	 *
+	 * @spec openspec/changes/releases-minimum-age
 	 */
-	private function availableVersions(string $appId): ?array {
+	private function availableEntries(string $appId): ?array {
 		$result = $this->install->installerService->getAppVersions($appId);
 		if (($result['hasError'] ?? false) === true) {
 			return null;
 		}
 
-		// Only versions on the app's release channel are candidates; an entry
-		// without the stamp predates channels and stays one.
-		$onChannel = array_filter(
-			$result['availableVersions'] ?? [],
-			static fn (array $entry): bool => ($entry['onChannel'] ?? true) !== false
-		);
+		$entries = [];
+		foreach ($result['availableVersions'] ?? [] as $entry) {
+			// Only versions on the app's release channel are candidates; an entry
+			// without the stamp predates channels and stays one.
+			if (($entry['onChannel'] ?? true) === false) {
+				continue;
+			}
+			$released = $entry['releasedAt'] ?? null;
+			$entries[] = ['version' => (string)$entry['version'], 'releasedAt' => is_string($released) ? $released : null];
+		}
 
-		return array_values(array_map(
-			static fn (array $entry): string => (string)$entry['version'],
-			$onChannel
-		));
+		return $entries;
 	}
 }

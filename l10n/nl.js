@@ -1049,7 +1049,22 @@ OC.L10N.register(
         "Default level for apps without their own policy": "Standaardniveau voor apps zonder eigen beleid",
         "These policies are read from {file} and can only be changed there.": "Dit beleid wordt gelezen uit {file} en kan alleen daar worden gewijzigd.",
         "The policy file cannot be used, so nothing is updated automatically: {error}": "Het beleidsbestand is niet bruikbaar, dus er wordt niets automatisch bijgewerkt: {error}",
-        "_%n app without its own policy follows the default level: {level}._::_%n apps without their own policy follow the default level: {level}._": ["%n app zonder eigen beleid volgt het standaardniveau: {level}.","%n apps zonder eigen beleid volgen het standaardniveau: {level}."]
+        "_%n app without its own policy follows the default level: {level}._::_%n apps without their own policy follow the default level: {level}._": ["%n app zonder eigen beleid volgt het standaardniveau: {level}.","%n apps zonder eigen beleid volgen het standaardniveau: {level}."],
+        "Security fix, installed before the minimum age: %s": "Beveiligingsupdate, geïnstalleerd voordat de minimumleeftijd verstreken was: %s",
+        "Could not change the early release.": "Kon de vroege vrijgave niet wijzigen.",
+        "Minimum age of a new version in days (0 to 90, 0 is off)": "Minimumleeftijd van een nieuwe versie in dagen (0 tot 90, 0 is uit)",
+        "Use a whole number of days from 0 to 90.": "Gebruik een heel aantal dagen van 0 tot 90.",
+        "The next update of each app has not been worked out yet.": "De volgende update van elke app is nog niet bepaald.",
+        "Next updates worked out at {time}.": "Volgende updates bepaald op {time}.",
+        "No update qualifies": "Geen update komt in aanmerking",
+        "Next update: {version}": "Volgende update: {version}",
+        "{version} held back until {date} (minimum age {days} days)": "{version} wacht tot {date} (minimumleeftijd {days} dagen)",
+        "Security fix {version} is outside the update policy, so it is not installed automatically.": "Beveiligingsupdate {version} valt buiten het updatebeleid en wordt daarom niet automatisch geïnstalleerd.",
+        "Security fix {version} skips the minimum age.": "Beveiligingsupdate {version} hoeft de minimumleeftijd niet af te wachten.",
+        "Release now": "Nu vrijgeven",
+        "{version} is released before the minimum age.": "{version} is vrijgegeven vóór de minimumleeftijd.",
+        "Withdraw": "Intrekken",
+        "Minimum age in days (empty uses {days})": "Minimumleeftijd in dagen (leeg gebruikt {days})"
     },
     "nplurals=2; plural=(n != 1);"
 )

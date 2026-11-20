@@ -11,6 +11,7 @@ namespace OCA\Versioniq\Tests\Unit\Service\AutoUpdate;
 
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateMember;
@@ -19,6 +20,10 @@ use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSecurityStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\AutoUpdate\FirstSeenStore;
+use OCA\Versioniq\Service\AutoUpdate\MinAgeExceptionStore;
+use OCA\Versioniq\Service\AutoUpdate\MinimumAgePlanner;
+use OCA\Versioniq\Service\AutoUpdate\MinimumAgeRule;
 use OCA\Versioniq\Service\AutoUpdate\SecurityHoldStore;
 use OCA\Versioniq\Service\Checks\CheckRunner;
 use OCA\Versioniq\Service\AutoUpdate\UpdateGroup;
@@ -46,9 +51,11 @@ final class AutoUpdatePlannerTest extends TestCase {
 	private IAppManager&MockObject $apps;
 	private AttemptLedger&MockObject $ledger;
 	private LoggerInterface&MockObject $logger;
+	private AutoUpdateSettingsStore&MockObject $settings;
 	private UpdateGroupStore&MockObject $groups;
 
 	protected function setUp(): void {
+		$this->settings = $this->createMock(AutoUpdateSettingsStore::class);
 		$this->policies = $this->createMock(PolicyStore::class);
 		$this->pins = $this->createMock(PinStore::class);
 		$this->installer = $this->createMock(InstallerService::class);
@@ -63,7 +70,7 @@ final class AutoUpdatePlannerTest extends TestCase {
 			new AutoUpdateStores(
 				$this->policies,
 				$this->pins,
-				$settings ?? $this->createMock(AutoUpdateSettingsStore::class),
+				$settings ?? $this->settings,
 				$this->ledger,
 				new AutoUpdateSecurityStores(
 					$this->createMock(AdvisoryResultStore::class),
@@ -73,8 +80,27 @@ final class AutoUpdatePlannerTest extends TestCase {
 				),
 				$this->groups,
 			),
-			new AutoUpdateInstall($this->installer, $this->apps, new CandidateSelector(), $this->createMock(CheckRunner::class), $this->createMock(FailureClassifier::class)),
+			new AutoUpdateInstall($this->installer, $this->apps, new CandidateSelector(), $this->createMock(CheckRunner::class), $this->createMock(FailureClassifier::class), $this->minimumAgePlanner()),
 			$this->logger,
+		);
+	}
+
+	/**
+	 * The real minimum-age planner (releases-minimum-age) over a first-seen
+	 * store that saw every version a year ago, no exception and no advisory.
+	 */
+	private function minimumAgePlanner(): MinimumAgePlanner {
+		$firstSeen = $this->createMock(FirstSeenStore::class);
+		$firstSeen->method('firstSeen')->willReturn(new \DateTimeImmutable('2025-11-01T00:00:00+00:00'));
+		$advisories = $this->createMock(AdvisoryResultStore::class);
+		$advisories->method('read')->willReturn(['advisories' => [], 'checkedAt' => null]);
+
+		return new MinimumAgePlanner(
+			new CandidateSelector(),
+			new MinimumAgeRule($firstSeen),
+			$this->createMock(MinAgeExceptionStore::class),
+			$advisories,
+			$this->createMock(AuditLogger::class),
 		);
 	}
 
@@ -147,6 +173,31 @@ final class AutoUpdatePlannerTest extends TestCase {
 		$this->assertCount(1, $installable);
 		$this->assertSame(['ready', '1.0.0', '1.1.0'], [$installable[0]->appId, $installable[0]->installedVersion, $installable[0]->candidate]);
 		$this->assertTrue($installable[0]->willInstall());
+	}
+
+	/**
+	 * releases-minimum-age: a version younger than the minimum age waits, so
+	 * the run installs the newest version that is old enough.
+	 *
+	 * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+	 */
+	public function testAVersionYoungerThanTheMinimumAgeWaits(): void {
+		$this->policies->method('all')->willReturn(['ready' => self::policy(Policy::LEVEL_MINOR)]);
+		$this->pins->method('get')->willReturn(null);
+		$this->settings->method('getMinAgeDays')->willReturn(7);
+		$this->withSources([
+			'ready' => ['availableVersions' => [
+				['version' => '1.1.0', 'releasedAt' => '2026-11-01T00:00:00+00:00'],
+				['version' => '1.2.0', 'releasedAt' => '2026-11-13T00:00:00+00:00'],
+			], 'hasError' => false],
+		]);
+		$this->ledger->method('hasAttempted')->willReturn(false);
+
+		$installable = $this->planner()->plan(['rows' => [], 'fresh' => false], null, now: new \DateTimeImmutable('2026-11-14T12:00:00+00:00'))->installable();
+
+		$this->assertCount(1, $installable);
+		$this->assertSame('1.1.0', $installable[0]->candidate);
+		$this->assertSame([], $installable[0]->securityAdvisories());
 	}
 
 	public function testAPinnedOrUnmanageableAppIsNeverLookedUp(): void {

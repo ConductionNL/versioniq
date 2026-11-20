@@ -1628,4 +1628,84 @@ final class ApiTest extends TestCase {
 			'connectionReports' => null,
 		]);
 	}
+
+	public function testSetPolicyRejectsAnOutOfRangeMinimumAge(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'level' => 'patch',
+				'minAgeDays' => '91',
+				default => $default,
+			}
+		);
+
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->expects($this->never())->method('set');
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', $policyStore)->setPolicy('openregister');
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertStringContainsString('minAgeDays', $response->getData()['message']);
+	}
+
+	public function testSetPolicyStoresTheMinimumAge(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'level' => 'minor',
+				'minAgeDays' => '14',
+				default => $default,
+			}
+		);
+
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->expects($this->once())->method('set')
+			->with('openregister', $this->callback(static fn ($policy): bool => $policy->minAgeDays === 14));
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', $policyStore)->setPolicy('openregister');
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame(14, $response->getData()['policy']['minAgeDays']);
+	}
+
+	public function testUpdateAutoUpdateSettingsRejectsAnOutOfRangeMinimumAge(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'minAgeDays' => '-1',
+				default => $default,
+			}
+		);
+
+		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore->expects($this->never())->method('setMinAgeDays');
+		$settingsStore->expects($this->never())->method('setEnabled');
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', null, $settingsStore)->updateAutoUpdateSettings('1');
+
+		$this->assertSame(400, $response->getStatus());
+	}
+
+	public function testUpdateAutoUpdateSettingsStoresTheMinimumAge(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'minAgeDays' => 7,
+				default => $default,
+			}
+		);
+
+		$settingsStore = $this->settingsStoreMock();
+		$settingsStore->expects($this->once())->method('setMinAgeDays')->with(7);
+		$settingsStore->method('getMinAgeDays')->willReturn(7);
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', null, $settingsStore)->updateAutoUpdateSettings();
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame(7, $response->getData()['autoUpdateMinAgeDays']);
+	}
 }

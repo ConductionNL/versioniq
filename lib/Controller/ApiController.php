@@ -1166,6 +1166,7 @@ class ApiController extends OCSController {
 			return new DataResponse($this->filePolicies());
 		}
 
+		$snapshot = $this->autoUpdate->planStore?->read() ?? ['plans' => [], 'checkedAt' => null];
 		$policies = [];
 		foreach ($this->autoUpdate->policyStore->all() as $appId => $policy) {
 			$policies[] = $policy->toArray() + [
@@ -1173,6 +1174,10 @@ class ApiController extends OCSController {
 				// Versions whose automatic update failed and are skipped until
 				// the admin retries them (#438).
 				'blockedVersions' => $this->autoUpdate->attemptLedger->blockedVersions($appId),
+				// What the next run would do, from the six-hourly plan, and the
+				// version an admin released early (releases-minimum-age D4, D5).
+				'plan' => $snapshot['plans'][$appId] ?? null,
+				'minAgeException' => $this->autoUpdate->minAgeExceptions?->get($appId),
 			];
 		}
 
@@ -1184,6 +1189,8 @@ class ApiController extends OCSController {
 				'waiting' => (object)$this->autoUpdate->settingsStore->getDeferred(),
 				'noticeDays' => $this->autoUpdate->settingsStore->getNoticeDays(),
 				'noticeGroup' => $this->autoUpdate->settingsStore->getNoticeGroup(),
+				// When the plan was last worked out; null when it never was (releases-minimum-age).
+				'planCheckedAt' => $snapshot['checkedAt'],
 			] + $this->autoUpdateCaps() + $this->scheduleView()
 		);
 	}
@@ -1390,7 +1397,7 @@ class ApiController extends OCSController {
 	 * @return DataResponse<Http::STATUS_OK, array{appId: string, policy: array<string, mixed>}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_CONFLICT, array{message: string}, array{}>
 	 *
 	 * 200: The stored policy
-	 * 400: The requested policy level is not recognised
+	 * 400: The requested policy level is not recognised, or minAgeDays is outside 0 to 90
 	 * 403: Caller is not an administrator
 	 * 409: The policies are read from the policy file config.php names
 	 *
@@ -1430,12 +1437,18 @@ class ApiController extends OCSController {
 			$this->request->getParam('holdManual'),
 			$this->autoUpdate->policyStore->get($appId)?->holdManual ?? false
 		);
+		$minAgeDays = $this->optionalMinAgeDays();
+		if ($minAgeDays === false) {
+			return self::minAgeRefusal();
+		}
+
 		$policy = new Policy(
 			$level,
 			$user->getUID(),
 			$this->access->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
 			$approval,
 			$holdManual,
+			$minAgeDays,
 		);
 		$before = $this->reports->ruleAudit === null ? null : $this->autoUpdate->policyStore->get($appId)?->level;
 		$this->autoUpdate->policyStore->set($appId, $policy);
@@ -1541,7 +1554,7 @@ class ApiController extends OCSController {
 	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_CONFLICT, array{message: string}, array{}>
 	 *
 	 * 200: The stored global settings
-	 * 400: The maintenance window is malformed, the default level is unknown, the notice period is outside 0 to 60 days, or the notice group does not exist
+	 * 400: The maintenance window is malformed, the default level is unknown, the notice period is outside 0 to 60 days, the notice group does not exist, or minAgeDays is outside 0 to 90
 	 * 403: Caller is not an administrator
 	 * 409: The settings are read from the policy file config.php names
 	 *
@@ -1599,6 +1612,11 @@ class ApiController extends OCSController {
 			return $noticeRefusal;
 		}
 
+		$minAgeDays = $this->optionalMinAgeDays();
+		if ($minAgeDays === false) {
+			return self::minAgeRefusal();
+		}
+
 		$before = $this->reports->ruleAudit === null ? [] : $this->autoUpdateRule();
 		$this->storeNotice($noticeDays, $noticeGroup);
 		$this->storeSwitchAndWindow($enabledParam, $windowParam);
@@ -1607,6 +1625,7 @@ class ApiController extends OCSController {
 		}
 		$this->storeCaps($caps);
 		$this->storeSchedule($scheduleParam);
+		$this->storeMinAgeDays($minAgeDays);
 		$this->reports->ruleAudit?->autoUpdateSettings($this->callerUid(), $before, $this->autoUpdateRule());
 
 		return new DataResponse($this->storedSettingsView() + [
@@ -1658,6 +1677,7 @@ class ApiController extends OCSController {
 			'autoUpdateWindow' => $settings->getWindow(),
 			'autoUpdateTimeZone' => $settings->getTimeZoneName(),
 			'autoUpdateDefaultLevel' => $settings->getDefaultLevel(),
+			'autoUpdateMinAgeDays' => $settings->getMinAgeDays(),
 		];
 	}
 
@@ -2471,6 +2491,61 @@ class ApiController extends OCSController {
 		}
 
 		return (int)$text;
+	}
+
+	/**
+	 * Store the instance's minimum age when the request sent one.
+	 *
+	 * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+	 */
+	private function storeMinAgeDays(?int $minAgeDays): void {
+		if ($minAgeDays !== null) {
+			$this->autoUpdate->settingsStore->setMinAgeDays($minAgeDays);
+		}
+	}
+
+	/**
+	 * The optional `minAgeDays` parameter: null when absent or empty, the
+	 * number when it is a whole number from 0 to 90, false otherwise.
+	 *
+	 * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+	 */
+	private function optionalMinAgeDays(): int|false|null {
+		/** @var mixed $value */
+		$value = $this->request->getParam('minAgeDays', null);
+		if ($value === null || $value === '') {
+			return null;
+		}
+		/** @var mixed $value */
+		$value = self::wholeNumberString($value);
+		if (!is_int($value) || !AutoUpdateSettingsStore::isValidMinAgeDays($value)) {
+			return false;
+		}
+
+		return $value;
+	}
+
+	/**
+	 * A string of digits as its integer; any other value unchanged.
+	 */
+	private static function wholeNumberString(mixed $value): mixed {
+		if (is_string($value) && preg_match('/^\d+$/', trim($value)) === 1) {
+			return (int)trim($value);
+		}
+
+		return $value;
+	}
+
+	/**
+	 * The 400 for a minimum age outside 0 to 90 days.
+	 *
+	 * @return DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>
+	 */
+	private static function minAgeRefusal(): DataResponse {
+		return new DataResponse(
+			['message' => 'minAgeDays must be a whole number from 0 to ' . AutoUpdateSettingsStore::MAX_MIN_AGE_DAYS . '.'],
+			Http::STATUS_BAD_REQUEST
+		);
 	}
 
 	private function stringParam(string $name, string $default): string {

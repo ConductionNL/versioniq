@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
 import type {Provenance} from './components/AppSourceBadges.vue';
-import type { ManagedBy } from './components/AutoUpdateOverview.vue'
+import type {AutoUpdatePlanEntry, ManagedBy, MinAgeException} from './components/AutoUpdateOverview.vue';
 import type {PrefillBindPayload} from './components/DiscoverPanel.vue';
 import type {BlockedVersion, PolicyLevel} from './components/PolicySelector.vue';
 import type { UpdateGroupView } from './components/UpdateGroupsPanel.vue'
@@ -314,13 +314,18 @@ let shaMismatchResolve: ((accept: boolean) => void) | null = null
 // execution through the standard installer", "Global kill switch and
 // window"). Policies and the two global settings are fetched together from
 // GET /api/policies, mirroring the `pins`/`advisories` per-appId map pattern.
-type PolicyRecord = { appId: string, level: PolicyLevel, setBy: string, setAt: string, requireApproval?: boolean, holdManual?: boolean, blockedVersions?: BlockedVersion[] }
+type PolicyRecord = { appId: string, level: PolicyLevel, setBy: string, setAt: string, requireApproval?: boolean, holdManual?: boolean, minAgeDays?: number, blockedVersions?: BlockedVersion[], plan?: AutoUpdatePlanEntry | null, minAgeException?: MinAgeException | null }
 const policies = ref<Record<string, PolicyRecord>>({})
 const isSavingPolicy = ref(false)
 const autoUpdateEnabled = ref(false)
 const savedAutoUpdateEnabled = ref(false)
 const autoUpdateWindowInput = ref(AUTO_UPDATE_WINDOW_DEFAULT)
 const savedAutoUpdateWindow = ref(AUTO_UPDATE_WINDOW_DEFAULT)
+// The minimum age a version must reach before the job installs it, and when
+// the plan of the next run was worked out (releases-minimum-age).
+const autoUpdateMinAgeInput = ref<string | number>('0')
+const savedAutoUpdateMinAge = ref(0)
+const planCheckedAt = ref<number | null>(null)
 // The zone the server reads the window in (Nextcloud's default_timezone, else UTC).
 const autoUpdateTimeZone = ref('UTC')
 // The level every app without its own policy follows (none unless an admin set
@@ -1102,7 +1107,7 @@ function settleDefaultLevel (level: PolicyLevel | undefined): void {
 async function loadPolicies (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/policies')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string, autoUpdateDefaultLevel?: PolicyLevel, managedBy?: ManagedBy | null, autoUpdateSchedule?: unknown, nextRuns?: Partial<Record<UpdateKind, string | null>>, securityHolds?: Record<string, string>, advisoriesFresh?: boolean, manualKinds?: string[], groups?: UpdateGroupView[], waiting?: Record<string, string>, maxPerRun?: number | null, maxPerWeek?: number | null }>(response)
+		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string, autoUpdateDefaultLevel?: PolicyLevel, managedBy?: ManagedBy | null, autoUpdateSchedule?: unknown, nextRuns?: Partial<Record<UpdateKind, string | null>>, securityHolds?: Record<string, string>, advisoriesFresh?: boolean, manualKinds?: string[], groups?: UpdateGroupView[], waiting?: Record<string, string>, maxPerRun?: number | null, maxPerWeek?: number | null, autoUpdateMinAgeDays?: number, planCheckedAt?: number | null }>(response)
 		const map: Record<string, PolicyRecord> = {}
 		for (const policy of payload.policies || []) {
 			map[policy.appId] = policy
@@ -1117,6 +1122,9 @@ async function loadPolicies (): Promise<void> {
 		manualKinds.value = payload.manualKinds ?? []
 		applyRunBatching(payload)
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
+		savedAutoUpdateMinAge.value = payload.autoUpdateMinAgeDays ?? 0
+		autoUpdateMinAgeInput.value = String(savedAutoUpdateMinAge.value)
+		planCheckedAt.value = payload.planCheckedAt ?? null
 		applyPolicySource(payload.autoUpdateDefaultLevel, payload.managedBy)
 		autoUpdateSchedule.value = scheduleFrom(payload.autoUpdateSchedule)
 		savedAutoUpdateSchedule.value = scheduleFrom(payload.autoUpdateSchedule)
@@ -1288,8 +1296,9 @@ async function clearPolicy (appId: string): Promise<void> {
  * @param requireApproval Whether its automatic updates wait for approval; omitted keeps the stored choice.
  * @param holdManual Whether to hold manual installs to the level; omitted keeps the stored switch.
  */
-async function setPolicy (appId: string, level: PolicyLevel, requireApproval?: boolean, holdManual?: boolean): Promise<void> {
-	// An omitted switch keeps what the server stored for the app.
+async function setPolicy (appId: string, level: PolicyLevel, requireApproval?: boolean, holdManual?: boolean, minAgeDays: number | null = policies.value[appId]?.minAgeDays ?? null): Promise<void> {
+	// An omitted switch keeps what the server stored for the app; the app's own
+	// minimum age goes with every write, so changing the level keeps it.
 	const fields: Record<string, string> = { level }
 	if (requireApproval !== undefined) {
 		fields.requireApproval = requireApproval ? '1' : '0'
@@ -1297,13 +1306,74 @@ async function setPolicy (appId: string, level: PolicyLevel, requireApproval?: b
 	if (holdManual !== undefined) {
 		fields.holdManual = holdManual ? '1' : '0'
 	}
+	if (minAgeDays !== null) {
+		fields.minAgeDays = String(minAgeDays)
+	}
 	const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/policy`, fields)), {
 		method: 'PUT',
 		headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
 		body: JSON.stringify(fields),
 	})
 	const payload = await unwrapOcsResponse<{ appId: string, policy: PolicyRecord }>(response)
-	policies.value = { ...policies.value, [appId]: { ...payload.policy, appId } }
+	const current = policies.value[appId]
+	policies.value = { ...policies.value, [appId]: { ...current, ...payload.policy, minAgeDays: payload.policy.minAgeDays, appId } }
+}
+
+/**
+ * Sets an app's own minimum age, keeping its level (releases-minimum-age D1).
+ *
+ * @param appId The app.
+ * @param minAgeDays The days, or null to use the instance value.
+ * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+ */
+async function onPolicyMinAge (appId: string, minAgeDays: number | null): Promise<void> {
+	const level = policyLevelFor(appId)
+	if (isSavingPolicy.value || level === 'none') {
+		return
+	}
+	isSavingPolicy.value = true
+	errorMessage.value = ''
+	try {
+		await ensurePasswordConfirmation()
+		await setPolicy(appId, level, undefined, undefined, minAgeDays)
+	} catch (e) {
+		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not update the auto-update policy.')
+	} finally {
+		isSavingPolicy.value = false
+	}
+}
+
+/**
+ * Releases one held version before the minimum age, or withdraws that
+ * (releases-minimum-age D5); the overview shows the result at once.
+ *
+ * @param appId The app.
+ * @param version The held version.
+ * @param release True to release it now, false to withdraw the release.
+ * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+ */
+async function onMinAgeException (appId: string, version: string, release: boolean): Promise<void> {
+	if (isSavingPolicy.value) {
+		return
+	}
+	isSavingPolicy.value = true
+	errorMessage.value = ''
+	try {
+		await ensurePasswordConfirmation()
+		const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/min-age-exception/${encodeURIComponent(version)}`)), {
+			method: release ? 'POST' : 'DELETE',
+			headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
+		})
+		const payload = await unwrapOcsResponse<{ exception?: MinAgeException }>(response)
+		const current = policies.value[appId]
+		if (current) {
+			policies.value = { ...policies.value, [appId]: { ...current, minAgeException: release ? (payload.exception ?? null) : null } }
+		}
+	} catch (e) {
+		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not change the early release.')
+	} finally {
+		isSavingPolicy.value = false
+	}
 }
 
 /**
@@ -1378,10 +1448,13 @@ async function onApprovalChange (appId: string, requireApproval: boolean): Promi
 }
 
 const isAutoUpdateWindowValid = computed(() => isValidAutoUpdateWindow(autoUpdateWindowInput.value))
+const autoUpdateMinAgeText = computed(() => String(autoUpdateMinAgeInput.value ?? '').trim())
+const isAutoUpdateMinAgeValid = computed(() => /^(\d|[1-8]\d|90)$/.test(autoUpdateMinAgeText.value))
 const isScheduleDirty = computed(() => JSON.stringify(autoUpdateSchedule.value) !== JSON.stringify(savedAutoUpdateSchedule.value))
 const isAutoUpdateSettingsDirty = computed(() => (
 	autoUpdateEnabled.value !== savedAutoUpdateEnabled.value
 	|| autoUpdateWindowInput.value.trim() !== savedAutoUpdateWindow.value
+	|| autoUpdateMinAgeText.value !== String(savedAutoUpdateMinAge.value)
 	|| autoUpdateDefaultLevel.value !== savedAutoUpdateDefaultLevel.value
 	|| isScheduleDirty.value
 ))
@@ -1401,10 +1474,12 @@ async function saveAutoUpdateSettings (): Promise<void> {
 	try {
 		await ensurePasswordConfirmation()
 		const window = autoUpdateWindowInput.value.trim()
+		const minAgeDays = autoUpdateMinAgeText.value
 		const defaultLevel = changedDefaultLevel()
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/auto-update/settings', {
 			enabled: autoUpdateEnabled.value ? '1' : '0',
 			window,
+			minAgeDays,
 			...defaultLevel,
 		})), {
 			method: 'PUT',
@@ -1423,13 +1498,15 @@ async function saveAutoUpdateSettings (): Promise<void> {
 			// agree with it so the value cannot depend on which one wins.
 			// The schedule travels in the body only (an object, which a query string cannot
 			// carry), and only when it changed, so a save that leaves it alone stores nothing.
-			body: JSON.stringify({ enabled: autoUpdateEnabled.value ? '1' : '0', window, ...defaultLevel, ...(isScheduleDirty.value ? { schedule: autoUpdateSchedule.value } : {}) }),
+			body: JSON.stringify({ enabled: autoUpdateEnabled.value ? '1' : '0', window, minAgeDays, ...defaultLevel, ...(isScheduleDirty.value ? { schedule: autoUpdateSchedule.value } : {}) }),
 		})
-		const payload = await unwrapOcsResponse<{ autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateDefaultLevel?: PolicyLevel, autoUpdateSchedule?: unknown, nextRuns?: Partial<Record<UpdateKind, string | null>> }>(response)
+		const payload = await unwrapOcsResponse<{ autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateDefaultLevel?: PolicyLevel, autoUpdateSchedule?: unknown, nextRuns?: Partial<Record<UpdateKind, string | null>>, autoUpdateMinAgeDays?: number }>(response)
 		autoUpdateEnabled.value = Boolean(payload.autoUpdateEnabled)
 		autoUpdateWindowInput.value = payload.autoUpdateWindow || window
 		savedAutoUpdateEnabled.value = autoUpdateEnabled.value
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
+		savedAutoUpdateMinAge.value = payload.autoUpdateMinAgeDays ?? Number(minAgeDays)
+		autoUpdateMinAgeInput.value = String(savedAutoUpdateMinAge.value)
 		settleDefaultLevel(payload.autoUpdateDefaultLevel)
 		if (payload.autoUpdateSchedule !== undefined) {
 			autoUpdateSchedule.value = scheduleFrom(payload.autoUpdateSchedule)
@@ -3518,6 +3595,21 @@ watch(dryRunEnabled, () => {
 										:class="$style.appFilterInput"
 										:disabled="isSavingAutoUpdateSettings || policyFile !== null">
 								</label>
+								<label :class="$style.filterField" for="auto-update-min-age">
+									<span :class="$style.filterFieldLabel">{{ t('versioniq', 'Minimum age of a new version in days (0 to 90, 0 is off)') }}</span>
+									<input
+										id="auto-update-min-age"
+										v-model="autoUpdateMinAgeInput"
+										type="number"
+										min="0"
+										max="90"
+										data-testid="auto-update-min-age"
+										:class="$style.appFilterInput"
+										:disabled="isSavingAutoUpdateSettings">
+								</label>
+								<p v-if="!isAutoUpdateMinAgeValid" :class="$style.autoUpdateWindowError" data-testid="auto-update-min-age-error">
+									{{ t('versioniq', 'Use a whole number of days from 0 to 90.') }}
+								</p>
 								<NcSelect
 									v-model="defaultLevelOption"
 									data-testid="auto-update-default-level"
@@ -3541,7 +3633,7 @@ watch(dryRunEnabled, () => {
 								<NcButton
 									variant="primary"
 									data-testid="auto-update-settings-save"
-									:disabled="isSavingAutoUpdateSettings || !isAutoUpdateSettingsDirty || !isAutoUpdateWindowValid || policyFile !== null"
+									:disabled="isSavingAutoUpdateSettings || !isAutoUpdateSettingsDirty || !isAutoUpdateWindowValid || !isAutoUpdateMinAgeValid || policyFile !== null"
 									@click="saveAutoUpdateSettings">
 									{{ t('versioniq', 'Save') }}
 								</NcButton>
@@ -3564,7 +3656,10 @@ watch(dryRunEnabled, () => {
 									:updatesCheckedLabel="updatesFreshnessLabel"
 									:groups="updateGroups"
 									:waiting="waitingUnits"
-									@retry="onRetryAttempt" />
+									:planCheckedAt="planCheckedAt"
+									@retry="onRetryAttempt"
+									@release="(appId, version) => onMinAgeException(appId, version, true)"
+									@withdraw="(appId, version) => onMinAgeException(appId, version, false)" />
 								<UpdateGroupsPanel
 									:apps="groupableApps"
 									:labels="appLabels"
@@ -3838,6 +3933,8 @@ watch(dryRunEnabled, () => {
 													:autoUpdateEnabled="autoUpdateEnabled"
 													:disabled="isSavingPolicy"
 													:blockedVersions="blockedVersionsFor(app.id)"
+													:minAgeDays="policies[app.id]?.minAgeDays ?? null"
+													:instanceMinAgeDays="savedAutoUpdateMinAge"
 													:source="policySourceFor(app.id)"
 													:readOnly="policyFile !== null"
 													:requireApproval="requireApprovalFor(app.id)"
@@ -3848,7 +3945,8 @@ watch(dryRunEnabled, () => {
 													@change="onPolicyChange"
 													@approval="onApprovalChange"
 													@reset="onPolicyReset"
-													@retry="onRetryAttempt" />
+													@retry="onRetryAttempt"
+													@minAge="onPolicyMinAge" />
 												<ChannelSelector
 													v-if="!app.isCore"
 													:appId="app.id"

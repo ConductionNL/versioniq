@@ -264,3 +264,64 @@ describe('AutoUpdateOverview security holds', () => {
 		expect(wrapper.find('[data-testid="overview-nothing-runs"]').exists()).toBe(false)
 	})
 })
+
+// @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+describe('AutoUpdateOverview minimum age', () => {
+	const plan = (overrides: Record<string, unknown> = {}) => ({
+		state: 'planned',
+		minAgeDays: 7,
+		next: '2.3.1',
+		heldBack: [{ version: '2.3.2', releasedAt: '2026-07-20T00:00:00+00:00', eligibleAt: '2026-07-27T00:00:00+00:00', reason: 'minimum_age' }],
+		securityBypass: null,
+		exception: null,
+		...overrides,
+	})
+	const mountWith = (record: Record<string, unknown>, planCheckedAt: number | null = 1_784_772_000) => mount(AutoUpdateOverview, {
+		props: {
+			policies: { openregister: { appId: 'openregister', level: 'patch', blockedVersions: [], ...record } },
+			labels: { openregister: 'OpenRegister' },
+			autoUpdateEnabled: true,
+			window: '01:00-05:00',
+			timeZone: 'UTC',
+			planCheckedAt,
+		},
+	})
+
+	it('shows the next update and each held version with its date and a Release now', async () => {
+		const wrapper = mountWith({ plan: plan() })
+
+		expect(wrapper.find('[data-testid="overview-next"]').text()).toBe('Next update: 2.3.1')
+		const held = wrapper.findAll('[data-testid="overview-held-back"]')
+		expect(held).toHaveLength(1)
+		expect(held[0].text()).toContain('2.3.2 held back until')
+		expect(held[0].text()).toContain(new Date('2026-07-27T00:00:00+00:00').toLocaleDateString())
+		expect(held[0].text()).toContain('(minimum age 7 days)')
+		await held[0].find('button').trigger('click')
+		expect(wrapper.emitted('release')).toEqual([['openregister', '2.3.2']])
+		expect(wrapper.find('[data-testid="overview-plan-checked"]').text()).toContain('Next updates worked out at')
+	})
+
+	it('shows an exception with a Withdraw, and no Release now for that version', async () => {
+		const wrapper = mountWith({ plan: plan(), minAgeException: { version: '2.3.2', by: 'alice', at: '2026-07-21T00:00:00+00:00' } })
+
+		expect(wrapper.find('[data-testid="overview-held-back"] button').exists()).toBe(false)
+		const exception = wrapper.find('[data-testid="overview-exception"]')
+		expect(exception.text()).toContain('2.3.2 is released before the minimum age.')
+		await exception.find('button').trigger('click')
+		expect(wrapper.emitted('withdraw')).toEqual([['openregister', '2.3.2']])
+	})
+
+	it('says when no update qualifies, and why a security fix is not installed', () => {
+		const wrapper = mountWith({ plan: plan({ next: null, heldBack: [], securityBypass: { version: '3.0.1', advisories: ['GHSA-9'], reason: 'outside_level' } }) })
+
+		expect(wrapper.find('[data-testid="overview-next"]').text()).toBe('No update qualifies')
+		expect(wrapper.find('[data-testid="overview-bypass"]').text()).toBe('Security fix 3.0.1 is outside the update policy, so it is not installed automatically.')
+	})
+
+	it('says plainly when the plan was never worked out', () => {
+		const wrapper = mountWith({}, null)
+
+		expect(wrapper.find('[data-testid="overview-next"]').exists()).toBe(false)
+		expect(wrapper.find('[data-testid="overview-plan-checked"]').text()).toBe('The next update of each app has not been worked out yet.')
+	})
+})

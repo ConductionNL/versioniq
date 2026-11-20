@@ -56,6 +56,10 @@ class AutoUpdateSettingsStore {
 	/** The highest weekly cap an admin may set. */
 	public const MAX_PER_WEEK_LIMIT = 200;
 
+	/** Days a version waits before the nightly job may install it; 0 is off (releases-minimum-age D1). */
+	public const CONFIG_MIN_AGE_DAYS = 'auto_update_min_age_days';
+	public const MAX_MIN_AGE_DAYS = 90;
+
 	public function __construct(
 		private IAppConfig $config,
 		// Optional and last so existing callers keep working; the container
@@ -164,6 +168,39 @@ class AutoUpdateSettingsStore {
 	 */
 	public function setWindow(string $window): void {
 		$this->config->setValueString(Application::APP_ID, self::CONFIG_WINDOW, $window);
+	}
+
+	/**
+	 * Whether a minimum age in days is one the setting accepts: 0 (off) to 90.
+	 *
+	 * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+	 */
+	public static function isValidMinAgeDays(int $days): bool {
+		return $days >= 0 && $days <= self::MAX_MIN_AGE_DAYS;
+	}
+
+	/**
+	 * The instance's minimum age in days; 0 when unset or when a stored value is out of range.
+	 *
+	 * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+	 */
+	public function getMinAgeDays(): int {
+		$days = $this->config->getValueInt(Application::APP_ID, self::CONFIG_MIN_AGE_DAYS, 0);
+		return self::isValidMinAgeDays($days) ? $days : 0;
+	}
+
+	/**
+	 * Store the instance's minimum age in days.
+	 *
+	 * @throws \InvalidArgumentException When it is outside 0 to 90.
+	 *
+	 * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+	 */
+	public function setMinAgeDays(int $days): void {
+		if (!self::isValidMinAgeDays($days)) {
+			throw new \InvalidArgumentException('The minimum age must be 0 to ' . self::MAX_MIN_AGE_DAYS . ' days.');
+		}
+		$this->config->setValueInt(Application::APP_ID, self::CONFIG_MIN_AGE_DAYS, $days);
 	}
 
 	/**
