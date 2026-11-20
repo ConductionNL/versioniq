@@ -23,7 +23,8 @@
 
 ## 5. Command
 
-- [ ] 5.1 Add `lib/Command/ListAdvisories.php` (`versioniq:advisories`, `--json`, `--app`, `--check`) per D5 and register it. Verify: `tests/unit/Command/ListAdvisoriesTest.php` covers the three `--check` exit codes and the JSON keys; extend `tests/e2e/cli.spec.ts` with `--check` exiting 0 on a compliant fixture instance and 2 after `occ config:app:delete versioniq advisory.results`.
+- [x] 5.1 Add `lib/Command/ListAdvisories.php` (`versioniq:advisories`, `--json`, `--app`, `--check`) per D5 and register it. Verify: `tests/unit/Command/ListAdvisoriesTest.php` covers the three `--check` exit codes and the JSON keys; extend `tests/e2e/cli.spec.ts` with `--check` exiting 0 on a compliant fixture instance and 2 after `occ config:app:delete versioniq advisory.results`.
+  - `ListAdvisories` (`occ versioniq:advisories`, registered in `appinfo/info.xml`) reads the stored snapshot through `AdvisoryResultStore`, `FixStatus::withPins()` and `ComplianceStatus::from()`, the same units `GET /api/advisories` uses; `ListAdvisoriesTest` covers exit 0/1/2 of `--check`, exit 0 without it, the JSON keys and `--app`. `tests/e2e/cli.spec.ts` checks `--check` exits 0 after a sweep with no fixture advisories and 2 after `config:app:delete versioniq advisory.results`; the e2e spec is written and waits for the Playwright job.
 
 ## 6. Close
 

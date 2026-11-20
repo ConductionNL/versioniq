@@ -5,7 +5,8 @@
 // `/api/v1/user`), serves prebuilt app tarballs from ./artifacts, and exposes a
 // small `/control` surface so a spec can rewrite a release, delete an asset,
 // force a 404/429, or set an advisory feed — the states that are impossible to
-// reach against a real forge.
+// reach against a real forge. It also records webhook deliveries posted to
+// `/hooks/{name}`, which a spec reads back through `/control/webhooks`.
 //
 // The app is pointed here by setting `forge.forgejo.api_base` /
 // `forge.forgejo.web_base` app config to this server's URL (see docs/e2e.md).
@@ -149,6 +150,8 @@ function freshState() {
 		assetStatus: {},
 		// The NCSC-NL CSAF directory: forced status on changes.csv, documents.
 		csaf: { status: null, documents: defaultCsaf() },
+		// Webhook deliveries received on /hooks/{name}, oldest first.
+		webhooks: [],
 	};
 }
 
@@ -362,6 +365,41 @@ async function controlAsset(req, res) {
 	return json(res, 200, { ok: true });
 }
 
+// --- Webhook receiver (releases-new-release-alerts) ----------------------
+// A webhook target stored with an http address on this fixture posts its
+// deliveries to `/hooks/{name}`. Each is recorded with its headers and body and
+// answered 200; POST /control/webhooks `{ name? }` lists them (for one hook
+// name when given), and `{ clear: true }` forgets them.
+async function receiveWebhook(req, res, name) {
+	const chunks = [];
+	for await (const c of req) chunks.push(c);
+	const raw = Buffer.concat(chunks).toString("utf8");
+	let body;
+	try {
+		body = JSON.parse(raw);
+	} catch {
+		body = null;
+	}
+	state.webhooks.push({
+		name,
+		headers: req.headers,
+		raw,
+		body,
+		receivedAt: new Date().toISOString(),
+	});
+	return json(res, 200, { ok: true });
+}
+
+async function controlWebhooks(req, res) {
+	// { name?, clear? }
+	const b = await readBody(req);
+	if (b.clear === true) state.webhooks = [];
+	const deliveries = b.name
+		? state.webhooks.filter((d) => d.name === b.name)
+		: state.webhooks;
+	return json(res, 200, { ok: true, deliveries });
+}
+
 const CONTROL_ROUTES = {
 	"/control/reset": (_req, res) => {
 		state = freshState();
@@ -370,6 +408,7 @@ const CONTROL_ROUTES = {
 	"/control/repo": controlRepo,
 	"/control/asset": controlAsset,
 	"/control/csaf": controlCsaf,
+	"/control/webhooks": controlWebhooks,
 };
 
 // --- Forge API (Forgejo `/api/v1/...` and GitHub `/...` shapes) -----------
@@ -604,6 +643,9 @@ async function route(req, res) {
 	if (await osvApi(req, res, path)) return;
 	if (gitlabApi(res, path)) return;
 	if (forgeApi(req, res, path)) return;
+
+	const hook = path.match(/^\/hooks\/([A-Za-z0-9_-]+)$/);
+	if (hook && req.method === "POST") return receiveWebhook(req, res, hook[1]);
 
 	const dl = path.match(/^\/dl\/(.+)$/);
 	if (dl) return download(res, dl[1]);
