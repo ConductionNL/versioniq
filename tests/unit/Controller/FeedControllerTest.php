@@ -29,15 +29,19 @@ use PHPUnit\Framework\TestCase;
  * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-new-releases-are-available-as-an-rss-feed-for-admins
  */
 final class FeedControllerTest extends TestCase {
-	private function controller(bool $admin, bool $signedIn = true): FeedController {
-		$log = [
-			['appId' => 'hermiq', 'version' => '1.5.0', 'sourceId' => 'github:ConductionNL/hermiq', 'compatible' => true, 'releasedAt' => null, 'detectedAt' => 1_790_000_000],
-			['appId' => 'deck', 'version' => '2.0.0', 'sourceId' => 'appstore', 'compatible' => true, 'releasedAt' => 1_700_000_000, 'detectedAt' => 1_789_000_000],
-		];
+	private const DEFAULT_LOG = [
+		['appId' => 'hermiq', 'version' => '1.5.0', 'sourceId' => 'github:ConductionNL/hermiq', 'compatible' => true, 'releasedAt' => null, 'detectedAt' => 1_790_000_000],
+		['appId' => 'deck', 'version' => '2.0.0', 'sourceId' => 'appstore', 'compatible' => true, 'releasedAt' => 1_700_000_000, 'detectedAt' => 1_789_000_000],
+	];
+
+	/**
+	 * @param list<array<string, mixed>> $log
+	 */
+	private function controller(bool $admin, bool $signedIn = true, array $log = self::DEFAULT_LOG, string $adminPage = 'https://example.test/settings/admin/versioniq'): FeedController {
 		$config = $this->createMock(IAppConfig::class);
 		$config->method('getValueString')->willReturn(json_encode($log));
 		$url = $this->createMock(IURLGenerator::class);
-		$url->method('linkToRouteAbsolute')->willReturn('https://example.test/settings/admin/versioniq');
+		$url->method('linkToRouteAbsolute')->willReturn($adminPage);
 
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn('alice');
@@ -90,5 +94,21 @@ final class FeedControllerTest extends TestCase {
 
 		self::assertSame(['verb' => 'GET', 'url' => '/feed/releases.rss'], $route);
 		self::assertSame([], $method->getAttributes(NoAdminRequired::class));
+	}
+
+	public function testMarkupInATitleOrLinkIsEscapedAndTheFeedStaysWellFormed(): void {
+		$log = [['appId' => 'evil<b>&app', 'version' => '1.0.0"]]>', 'sourceId' => 'github:o/<r>', 'compatible' => true, 'releasedAt' => null, 'detectedAt' => 1_790_000_000]];
+		$response = $this->controller(true, true, $log, 'https://example.test/index.php?a=1&b=<2>')->releases();
+
+		self::assertInstanceOf(DataDisplayResponse::class, $response);
+		$body = $response->getData();
+		self::assertStringNotContainsString('<b>', $body);
+		self::assertStringContainsString('evil&lt;b&gt;&amp;app', $body);
+		$rss = simplexml_load_string($body);
+		self::assertNotFalse($rss);
+		self::assertSame('evil<b>&app 1.0.0"]]>', (string)$rss->channel->item[0]->title);
+		self::assertSame('https://example.test/index.php?a=1&b=<2>', (string)$rss->channel->item[0]->link);
+		self::assertSame('https://example.test/index.php?a=1&b=<2>', (string)$rss->channel->link);
+		self::assertSame('github:o/<r>', (string)$rss->channel->item[0]->category);
 	}
 }
