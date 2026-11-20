@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\BackgroundJob;
 
 use OCA\Versioniq\BackgroundJob\AvailabilityRefreshJob;
+use OCA\Versioniq\Service\AutoUpdate\ProposalService;
 use OCA\Versioniq\Service\Availability\AvailabilityResultStore;
 use OCA\Versioniq\Service\Availability\AvailabilityService;
 use OCA\Versioniq\Service\ReleaseAlert\ReleaseNotifier;
@@ -105,5 +106,52 @@ final class AvailabilityRefreshJobTest extends TestCase {
 		$service->expects(self::once())->method('sweep')->with(AvailabilityRefreshJob::SWEEP_BUDGET_SECONDS, $followed)->willReturn([]);
 
 		$this->runJob($service, $this->createMock(AvailabilityResultStore::class), null, $follows);
+	}
+
+	public function testTheProposalStepRunsOnTheSweepsListsAfterTheSnapshotIsSaved(): void {
+		$listings = ['deck' => ['installedVersion' => '1.9.0', 'versions' => [['version' => '1.9.3']]]];
+		$order = [];
+		$service = $this->createMock(AvailabilityService::class);
+		$service->method('sweep')->willReturn([]);
+		$service->method('lastListings')->willReturn($listings);
+		$store = $this->createMock(AvailabilityResultStore::class);
+		$store->method('save')->willReturnCallback(static function () use (&$order): void {
+			$order[] = 'save';
+		});
+		$proposals = $this->createMock(ProposalService::class);
+		$proposals->expects(self::once())->method('refresh')
+			->with($listings, self::callback(static fn (\DateTimeImmutable $now): bool => $now->format(DATE_ATOM) === '2026-10-01T10:00:00+00:00'))
+			->willReturnCallback(static function () use (&$order): void {
+				$order[] = 'refresh';
+			});
+
+		$this->runWithProposals($service, $store, $proposals, $this->createMock(LoggerInterface::class));
+
+		self::assertSame(['save', 'refresh'], $order);
+	}
+
+	public function testAFailingProposalStepIsLoggedAndKeepsTheSavedSweep(): void {
+		$service = $this->createMock(AvailabilityService::class);
+		$service->method('sweep')->willReturn([]);
+		$service->method('lastListings')->willReturn([]);
+		$store = $this->createMock(AvailabilityResultStore::class);
+		$store->expects(self::once())->method('save');
+		$proposals = $this->createMock(ProposalService::class);
+		$proposals->method('refresh')->willThrowException(new \RuntimeException('boom'));
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->expects(self::once())->method('error')
+			->with('AvailabilityRefreshJob: the proposed updates could not be worked out; the previous ones are kept', ['message' => 'boom']);
+
+		$this->runWithProposals($service, $store, $proposals, $logger);
+	}
+
+	private function runWithProposals(AvailabilityService $service, AvailabilityResultStore $store, ProposalService $proposals, LoggerInterface $logger): void {
+		$time = $this->createMock(ITimeFactory::class);
+		$time->method('getTime')->willReturn(1_790_000_000);
+		$time->method('getDateTime')->willReturn(new \DateTime('2026-10-01T10:00:00+00:00'));
+
+		$recorder = new ReleaseSweepRecorder($store, $this->createMock(ReleaseNotifier::class));
+		$job = new AvailabilityRefreshJob($time, $service, $recorder, $logger, $proposals);
+		(new \ReflectionMethod($job, 'run'))->invoke($job, null);
 	}
 }

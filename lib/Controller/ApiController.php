@@ -14,6 +14,7 @@ namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
 use OCA\Versioniq\BackgroundJob\UpgradeReadinessJob;
+use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Db\Pat;
 use OCA\Versioniq\Http\InstallVersionFields;
 use OCA\Versioniq\Http\RequestFieldsFrom;
@@ -21,8 +22,11 @@ use OCA\Versioniq\Kernel\Contracts\AdvisorySettingsStoreInterface;
 use OCA\Versioniq\Service\Advisory\ComplianceStatus;
 use OCA\Versioniq\Service\Advisory\FixStatus;
 use OCA\Versioniq\Service\Api\AccessCollaborators;
+use OCA\Versioniq\Service\Audit\AuditPeriod;
+use OCA\Versioniq\Service\Audit\AuditPeriodQuery;
 use OCA\Versioniq\Service\Api\InstallCollaborators;
 use OCA\Versioniq\Service\Api\ReportCollaborators;
+use OCA\Versioniq\Service\Audit\AuditOrigin;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
@@ -60,6 +64,9 @@ use OCP\IUser;
 class ApiController extends OCSController {
 	/** The spellings readBinaryBool() understands. */
 	private const BINARY_FLAGS = ['1', 'true', '0', 'false'];
+
+	/** The origins `GET /api/audit?origin=` filters on; anything else lists every row. */
+	private const AUDIT_ORIGINS = [AuditOrigin::WEB, AuditOrigin::CLI, AuditOrigin::JOB, AuditOrigin::LISTENER, AuditEntryMapper::ORIGIN_UNKNOWN];
 
 	/**
 	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
@@ -1136,6 +1143,8 @@ class ApiController extends OCSController {
 			// back with the time each was first held (autoupdate-run-batching D2, D5).
 			'groups' => self::groupsPayload($this->autoUpdate->groupStore->all()),
 			'waiting' => (object)$this->autoUpdate->settingsStore->getDeferred(),
+			'noticeDays' => $this->autoUpdate->settingsStore->getNoticeDays(),
+			'noticeGroup' => $this->autoUpdate->settingsStore->getNoticeGroup(),
 		] + $this->autoUpdateCaps() + $this->scheduleView());
 	}
 
@@ -1176,10 +1185,12 @@ class ApiController extends OCSController {
 	}
 
 	/**
-	 * Sets an app's auto-update policy level (password-confirmed); rejects an
-	 * unknown level with 400; see "Per-app update policy"
+	 * Sets an app's auto-update policy level and whether its automatic updates
+	 * need approval (password-confirmed); rejects an unknown level with 400;
+	 * see "Per-app update policy"
 	 *
 	 * @param string $appId The app to set a policy for
+	 * @param string|null $requireApproval `1`/`0`: install only versions an admin approved; OMIT to keep the current value
 	 *
 	 * @return DataResponse<Http::STATUS_OK, array{appId: string, policy: array<string, mixed>}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
@@ -1188,11 +1199,12 @@ class ApiController extends OCSController {
 	 * 403: Caller is not an administrator
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PUT', url: '/api/app/{appId}/policy')]
 	#[ApiRoute(verb: 'PUT', url: '/api/v1/app/{appId}/policy', postfix: 'v1')]
-	public function setPolicy(string $appId): DataResponse {
+	public function setPolicy(string $appId, ?string $requireApproval = null): DataResponse {
 		$user = $this->adminUser();
 		if (!$user instanceof IUser) {
 			return $user;
@@ -1206,12 +1218,21 @@ class ApiController extends OCSController {
 			);
 		}
 
+		// An omitted requireApproval keeps what the app's policy had, so a
+		// level change from an older client never drops the approval step.
+		$approval = $this->readBinaryBool(
+			$requireApproval === '' ? '0' : $requireApproval,
+			$this->autoUpdate->policyStore->get($appId)?->requireApproval ?? false,
+		);
 		$policy = new Policy(
 			$level,
 			$user->getUID(),
 			$this->access->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
+			$approval,
 		);
+		$before = $this->reports->ruleAudit === null ? null : $this->autoUpdate->policyStore->get($appId)?->level;
 		$this->autoUpdate->policyStore->set($appId, $policy);
+		$this->reports->ruleAudit?->policySet($user->getUID(), $appId, $before, $level);
 
 		return new DataResponse(['appId' => $appId, 'policy' => $policy->toArray()]);
 	}
@@ -1237,7 +1258,11 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
+		$before = $this->reports->ruleAudit === null ? null : $this->autoUpdate->policyStore->get($appId)?->level;
 		$this->autoUpdate->policyStore->clear($appId);
+		if ($before !== null) {
+			$this->reports->ruleAudit?->policyCleared($this->callerUid(), $appId, $before);
+		}
 
 		return new DataResponse(['appId' => $appId, 'cleared' => true]);
 	}
@@ -1296,19 +1321,22 @@ class ApiController extends OCSController {
 	 * kill switch and window"
 	 *
 	 * @param string|null $enabled `1`/`0` to set the global kill switch; OMIT to leave it untouched
+	 * @param string|null $noticeDays Days a planned update is announced before it installs, 0 to 60 (0 is off); OMIT to leave it untouched
+	 * @param string|null $noticeGroup Group whose members are told of planned updates besides the admins, empty to clear; OMIT to leave it untouched
 	 *
 	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: The stored global settings
-	 * 400: The maintenance window is malformed
+	 * 400: The maintenance window is malformed, the notice period is outside 0 to 60 days, or the notice group does not exist
 	 * 403: Caller is not an administrator
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PUT', url: '/api/auto-update/settings')]
 	#[ApiRoute(verb: 'PUT', url: '/api/v1/auto-update/settings', postfix: 'v1')]
-	public function updateAutoUpdateSettings(?string $enabled = null): DataResponse {
+	public function updateAutoUpdateSettings(?string $enabled = null, ?string $noticeDays = null, ?string $noticeGroup = null): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
@@ -1344,6 +1372,13 @@ class ApiController extends OCSController {
 			return $caps;
 		}
 
+		$noticeRefusal = $this->noticeRefusal($noticeDays, $noticeGroup);
+		if ($noticeRefusal !== null) {
+			return $noticeRefusal;
+		}
+
+		$before = $this->reports->ruleAudit === null ? [] : $this->autoUpdateRule();
+		$this->storeNotice($noticeDays, $noticeGroup);
 		if ($enabledParam !== null) {
 			$this->autoUpdate->settingsStore->setEnabled($this->readBinaryBool($enabledParam, $this->autoUpdate->settingsStore->isEnabled()));
 		}
@@ -1352,11 +1387,14 @@ class ApiController extends OCSController {
 		}
 		$this->storeCaps($caps);
 		$this->storeSchedule($scheduleParam);
+		$this->reports->ruleAudit?->autoUpdateSettings($this->callerUid(), $before, $this->autoUpdateRule());
 
 		return new DataResponse([
 			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
 			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
 			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
+			'noticeDays' => $this->autoUpdate->settingsStore->getNoticeDays(),
+			'noticeGroup' => $this->autoUpdate->settingsStore->getNoticeGroup(),
 		] + $this->autoUpdateCaps() + $this->scheduleView());
 	}
 
@@ -1389,6 +1427,44 @@ class ApiController extends OCSController {
 	private function storeSchedule(mixed $scheduleParam): void {
 		if (is_array($scheduleParam)) {
 			$this->autoUpdate->settingsStore->setSchedule(AutoUpdateSchedule::fromArray($scheduleParam));
+		}
+	}
+
+	/**
+	 * The 400 for a notice period outside 0..60 days or a notice group that
+	 * does not exist; null when both are acceptable or omitted. Nothing is
+	 * stored when either is refused.
+	 *
+	 * @return DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>|null
+	 */
+	private function noticeRefusal(?string $days, ?string $group): ?DataResponse {
+		if ($days !== null && trim($days) !== '' && !self::isNoticeDays($days)) {
+			return new DataResponse(
+				['message' => 'noticeDays must be a whole number from 0 to ' . AutoUpdateSettingsStore::MAX_NOTICE_DAYS . '.'],
+				Http::STATUS_BAD_REQUEST
+			);
+		}
+		if ($group !== null && trim($group) !== '' && !$this->access->caller->groupManager->groupExists(trim($group))) {
+			return new DataResponse(['message' => 'noticeGroup is not an existing group.'], Http::STATUS_BAD_REQUEST);
+		}
+
+		return null;
+	}
+
+	private static function isNoticeDays(string $days): bool {
+		return preg_match('/^\d{1,2}$/', trim($days)) === 1 && (int)trim($days) <= AutoUpdateSettingsStore::MAX_NOTICE_DAYS;
+	}
+
+	/**
+	 * Stores the notice period and group when the request carries them; an
+	 * empty group clears it.
+	 */
+	private function storeNotice(?string $days, ?string $group): void {
+		if ($days !== null && trim($days) !== '') {
+			$this->autoUpdate->settingsStore->setNoticeDays((int)trim($days));
+		}
+		if ($group !== null) {
+			$this->autoUpdate->settingsStore->setNoticeGroup(trim($group));
 		}
 	}
 
@@ -1445,6 +1521,7 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
+		$before = $this->reports->ruleAudit === null ? [] : $this->advisoryRule();
 		if ($intervalHours !== null && $intervalHours !== '') {
 			$refusal = $this->storeIntervalHours($intervalHours);
 			if ($refusal !== null) {
@@ -1458,8 +1535,42 @@ class ApiController extends OCSController {
 			$store = $this->reports->stores->advisorySettingsStore;
 			$store->setNcscEnabled($this->readBinaryBool($ncscEnabled === '' ? '0' : $ncscEnabled, $store->isNcscEnabled()));
 		}
+		$this->reports->ruleAudit?->advisorySettings($this->callerUid(), $before, $this->advisoryRule());
 
 		return $this->advisorySettingsResponse();
+	}
+
+	/**
+	 * The automatic update switch and window as they stand, for the rule audit.
+	 *
+	 * @return array{enabled: bool, window: string, maxPerRun: ?int, maxPerWeek: ?int}
+	 */
+	private function autoUpdateRule(): array {
+		return [
+			'enabled' => $this->autoUpdate->settingsStore->isEnabled(),
+			'window' => $this->autoUpdate->settingsStore->getWindow(),
+			'maxPerRun' => $this->autoUpdate->settingsStore->getMaxPerRun(),
+			'maxPerWeek' => $this->autoUpdate->settingsStore->getMaxPerWeek(),
+		];
+	}
+
+	/**
+	 * The advisory interval and switches as they stand, for the rule audit.
+	 *
+	 * @return array{intervalHours: int, digestEnabled: bool, ncscEnabled: bool, librariesEnabled: bool}
+	 */
+	private function advisoryRule(): array {
+		return [
+			'intervalHours' => $this->reports->stores->advisorySettingsStore->getIntervalHours(),
+			'digestEnabled' => $this->reports->stores->advisorySettingsStore->isDigestEnabled(),
+			'ncscEnabled' => $this->reports->stores->advisorySettingsStore->isNcscEnabled(),
+			'librariesEnabled' => $this->reports->stores->advisorySettingsStore->isLibraryCheckEnabled(),
+		];
+	}
+
+	/** The signed-in admin's uid, '' when there is none. */
+	private function callerUid(): string {
+		return $this->access->caller->userSession->getUser()?->getUID() ?? '';
 	}
 
 	/**
@@ -1849,7 +1960,10 @@ class ApiController extends OCSController {
 
 	/**
 	 * Lists audit entries, newest-first, admin-only, paginated and optionally
-	 * filtered by app id; see "Audit entries are immutable and admin-readable".
+	 * filtered by app id and by origin (`web`, `cli`, `job`, `listener`, or
+	 * `unknown` for rows written before origins were recorded); see "Audit
+	 * entries are immutable and admin-readable" and "Every audit row says where
+	 * it came from".
 	 * No mutation endpoint exists for this resource — the retention prune job
 	 * is the only deletion path.
 	 *
@@ -1872,13 +1986,39 @@ class ApiController extends OCSController {
 		$limit = max(1, min($limit, 200));
 		$offset = max(0, $this->intParam('offset', 0));
 
-		$entries = $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset);
+		$origin = $this->stringParam('origin', '');
+		$from = $this->stringParam('from', '');
+		$to = $this->stringParam('to', '');
+		$operation = $this->stringParam('operation', '');
+		$securityOnly = $this->readBinaryBool($this->request->getParam('securityOnly'), false);
+		if ($from === '' && $to === '' && $operation === '' && $securityOnly === false) {
+			$entries = in_array($origin, self::AUDIT_ORIGINS, true)
+				? $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset, $origin)
+				: $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset);
 
-		return new DataResponse([
-			'entries' => $this->withSbomFlags($entries),
-			'limit' => $limit,
-			'offset' => $offset,
-		]);
+			return new DataResponse([
+				'entries' => $this->withSbomFlags($entries),
+				'limit' => $limit,
+				'offset' => $offset,
+			]);
+		}
+
+		// audit-security-reports D5: a period in the admin's time zone, a
+		// single operation, and the security updates only.
+		try {
+			$period = AuditPeriod::fromDays($from, $to, $this->stringParam('timeZone', ''));
+		} catch (InvalidArgumentException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
+
+		$result = (new AuditPeriodQuery($this->reports->auditEntryMapper))->page(
+			$period,
+			['appId' => $appId, 'operation' => $operation, 'securityOnly' => $securityOnly],
+			['limit' => $limit, 'offset' => $offset],
+		);
+		$result['entries'] = $this->withSbomFlags($result['entries']);
+
+		return new DataResponse($result);
 	}
 
 	/**
@@ -1886,7 +2026,7 @@ class ApiController extends OCSController {
 	 * of the state it produced was kept (inventory-export-sbom-metrics D4).
 	 * Without the archive the rows go out as before.
 	 *
-	 * @param list<\OCA\Versioniq\Db\AuditEntry> $entries
+	 * @param list<\OCA\Versioniq\Db\AuditEntry|array<string, mixed>> $entries
 	 *
 	 * @return list<mixed>
 	 *
@@ -1901,9 +2041,9 @@ class ApiController extends OCSController {
 		$stored = $archive->storedIds();
 
 		return array_map(static function ($entry) use ($stored) {
-			$row = $entry->jsonSerialize();
-			if ($entry->getOperation() === 'install') {
-				$row['sbomAvailable'] = isset($stored[$entry->getId()]);
+			$row = is_array($entry) ? $entry : $entry->jsonSerialize();
+			if (($row['operation'] ?? null) === 'install') {
+				$row['sbomAvailable'] = isset($stored[$row['id'] ?? -1]);
 			}
 
 			return $row;

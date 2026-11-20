@@ -144,6 +144,23 @@ describe('InstanceSettingsPanel', () => {
 		expect((wrapper.find('[data-testid="setting-max-lines-behind"]').element as HTMLInputElement).value).toBe('1')
 	})
 
+	// @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
+	it('shows the update checks the settings carry and keeps them after a save', async () => {
+		const updateChecks = { verdict: [], command: [{ name: 'Lint', command: ['/opt/lint'], apps: [], timeout: 30 }], maxVerdict: 10, commandConfigKey: 'versioniq.update_checks' }
+		mockedGet.mockResolvedValue({ payload: { ...settings, updateChecks } })
+		mockedWrite.mockResolvedValue({ payload: settings })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		expect(wrapper.find('[data-testid="update-checks-panel"]').exists()).toBe(true)
+		expect(wrapper.text()).toContain('/opt/lint')
+
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		expect(wrapper.find('[data-testid="update-checks-panel"]').exists()).toBe(true)
+	})
+
 	// releases-notes-reach 1.2: telling users about Versioniq's updates, on by default.
 	// @spec openspec/changes/releases-notes-reach/tasks.md#task-1.2
 	it('shows the user notice switch as stored and sends it on save', async () => {
