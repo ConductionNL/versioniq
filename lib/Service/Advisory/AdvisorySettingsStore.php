@@ -32,6 +32,7 @@ use OCP\IAppConfig;
 class AdvisorySettingsStore implements AdvisorySettingsStoreInterface {
 	public const CONFIG_INTERVAL_HOURS = 'advisory.interval_hours';
 	public const CONFIG_DIGEST_ENABLED = 'advisory.digest_enabled';
+	public const CONFIG_LIBRARIES_ENABLED = 'advisory.libraries_enabled';
 
 	/** Whether the sweep also reads NCSC-NL's advisories (advisories-ncsc-feed); off by default. */
 	public const CONFIG_NCSC_ENABLED = 'advisory.ncsc_enabled';
@@ -133,5 +134,24 @@ class AdvisorySettingsStore implements AdvisorySettingsStoreInterface {
 			'readUpTo' => $cursor !== '' ? $cursor : null,
 			'caughtUp' => $this->config->getValueBool(Application::APP_ID, NcscAdvisoryFeed::CONFIG_CAUGHT_UP, false),
 		];
+	}
+
+	/**
+	 * Whether the libraries bundled in apps are checked against OSV.
+	 *
+	 * Defaults to OFF: the check sends library names and versions to an
+	 * outside service, which an admin decides to allow.
+	 *
+	 * @spec openspec/changes/advisories-bundled-libraries
+	 */
+	public function isLibraryCheckEnabled(): bool {
+		return $this->config->getValueBool(Application::APP_ID, self::CONFIG_LIBRARIES_ENABLED, false);
+	}
+
+	/**
+	 * @spec openspec/changes/advisories-bundled-libraries
+	 */
+	public function setLibraryCheckEnabled(bool $enabled): void {
+		$this->config->setValueBool(Application::APP_ID, self::CONFIG_LIBRARIES_ENABLED, $enabled);
 	}
 }

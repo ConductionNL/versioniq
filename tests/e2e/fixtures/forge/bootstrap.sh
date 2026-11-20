@@ -16,7 +16,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 docker network create "$NET" >/dev/null 2>&1 || true
 docker network connect "$NET" "$CT" 2>/dev/null || true
 docker rm -f forge-fixture >/dev/null 2>&1 || true
-docker run -d --name forge-fixture --network "$NET" -p "$PORT:9099" \
+docker run -d --name forge-fixture --network "$NET" -p "$PORT:9099" -p "${TLS_PORT:-9443}:9443" \
 	-v "$HERE":/fx -w /fx node:20-alpine node server.mjs >/dev/null
 # wait for readiness
 for _ in $(seq 1 30); do
@@ -32,6 +32,12 @@ occ config:app:set versioniq forge.forgejo.web_base --value="http://forge-fixtur
 occ config:app:set versioniq forge.github.api_base --value="http://forge-fixture:9099" >/dev/null
 occ config:app:set versioniq forge.github.web_base --value="http://forge-fixture:9099" >/dev/null
 occ config:system:set allow_local_remote_servers --value=true --type=boolean >/dev/null
+
+# Trust the fixture's self-signed certificate: the OSV double is reached over
+# https (advisory.osv_api_base is https only; advisories-bundled-libraries).
+docker cp "$HERE/artifacts/tls/fixture.crt" "$CT":/tmp/forge-fixture.crt >/dev/null
+docker exec -u root "$CT" chown www-data:www-data /tmp/forge-fixture.crt
+occ security:certificates:import /tmp/forge-fixture.crt >/dev/null
 occ config:app:set versioniq trusted_sources \
 	--value='["github:ConductionNL/*","codeberg:Conduction/*","forgejo:fixtureowner/*","github:fixtureowner/*"]' >/dev/null
 
