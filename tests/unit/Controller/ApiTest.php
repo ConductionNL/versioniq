@@ -1279,7 +1279,7 @@ final class ApiTest extends TestCase {
 
 	public function testSkipVersionStoresTheSkipWithItsReason(): void {
 		$skipList = $this->createMock(SkipList::class);
-		$skipList->expects($this->once())->method('skip')->with('openregister', '2.3.4', 'admin', $this->isType('string'), 'breaks the import')->willReturn(true);
+		$skipList->expects($this->once())->method('skip')->with('openregister', '2.3.4', $this->callback(static fn (array $stamp): bool => $stamp['by'] === 'admin' && is_string($stamp['at'])), 'breaks the import')->willReturn(true);
 
 		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith(['reason' => 'breaks the import']), null, null, null, 'admin', null, null, null, null, $skipList)->skipVersion('openregister', '2.3.4');
 
