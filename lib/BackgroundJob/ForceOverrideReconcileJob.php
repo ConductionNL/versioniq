@@ -36,6 +36,8 @@ class ForceOverrideReconcileJob extends TimedJob {
 
 	/**
 	 * @param mixed $argument
+	 *
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
 	 */
 	protected function run($argument): void {
 		$this->reconciler->reconcile();
