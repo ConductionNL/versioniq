@@ -70,7 +70,7 @@ final class AutoUpdateMember {
 	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
 	 */
 	public function asNextWindowFix(): self {
-		return new self($this->appId, $this->installedVersion, $this->candidate, $this->reason, $this->group, true);
+		return new self($this->appId, $this->installedVersion, $this->candidate, $this->reason, $this->group, true, $this->securityAdvisories);
 	}
 
 	/**
@@ -79,7 +79,7 @@ final class AutoUpdateMember {
 	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
 	 */
 	public function withReason(?string $reason): self {
-		return new self($this->appId, $this->installedVersion, $this->candidate, $reason, $this->group, $this->nextWindowFix);
+		return new self($this->appId, $this->installedVersion, $this->candidate, $reason, $this->group, $this->nextWindowFix, $this->securityAdvisories);
 	}
 
 	/**
@@ -88,7 +88,7 @@ final class AutoUpdateMember {
 	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
 	 */
 	public function inGroup(string $group): self {
-		return new self($this->appId, $this->installedVersion, $this->candidate, $this->reason, $group, $this->nextWindowFix);
+		return new self($this->appId, $this->installedVersion, $this->candidate, $this->reason, $group, $this->nextWindowFix, $this->securityAdvisories);
 	}
 
 	/**

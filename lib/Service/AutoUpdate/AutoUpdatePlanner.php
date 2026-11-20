@@ -299,7 +299,7 @@ final class AutoUpdatePlanner {
 
 		$advisories = ($app->bypassed !== null && $version === $app->bypassed) ? $app->bypassAdvisories : [];
 
-		return new AutoUpdateMember($app->appId, $app->installedVersion, $version, null, $advisories);
+		return new AutoUpdateMember($app->appId, $app->installedVersion, $version, null, securityAdvisories: $advisories);
 	}
 
 	/**
