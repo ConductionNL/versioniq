@@ -60,26 +60,18 @@ final class AutoUpdatePlanner {
 	}
 
 	/**
-	 * The apps' own minimum ages from their stored policies, by app; never in
-	 * file mode, where the stores are not the source
-	 * (autoupdate-default-and-config-file D4), so the instance value applies.
+	 * The app's own minimum age, or null when it follows the instance's: read
+	 * from its stored policy, and never in file mode, where the stores are not
+	 * the source (autoupdate-default-and-config-file D4).
 	 *
 	 * @spec openspec/changes/releases-minimum-age
-	 * @return array<string, int>
 	 */
-	private function ownMinAgeDays(): array {
+	private function minAgeDaysOf(string $appId): ?int {
 		if ($this->stores->policySource?->filePath() !== null) {
-			return [];
+			return null;
 		}
 
-		$ages = [];
-		foreach ($this->stores->policyStore->all() as $appId => $policy) {
-			if ($policy->minAgeDays !== null) {
-				$ages[(string)$appId] = $policy->minAgeDays;
-			}
-		}
-
-		return $ages;
+		return $this->stores->policyStore->get($appId)?->minAgeDays;
 	}
 
 	/**
@@ -97,11 +89,10 @@ final class AutoUpdatePlanner {
 		// Version ages are measured at the run's time (releases-minimum-age D2).
 		$now ??= new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
 		$instanceMinAge = $this->stores->settingsStore->getMinAgeDays();
-		$ownMinAges = $this->ownMinAgeDays();
 		$planned = [];
 		foreach ($levels ?? PolicyStore::levelsOf($this->stores->policyStore->all()) as $appId => $level) {
 			if ($level !== Policy::LEVEL_NONE) {
-				$planned[] = $this->planIsolated(new PlanTarget((string)$appId, $level, $ownMinAges[$appId] ?? $instanceMinAge, $now), $run);
+				$planned[] = $this->planIsolated(new PlanTarget((string)$appId, $level, $this->minAgeDaysOf((string)$appId) ?? $instanceMinAge, $now), $run);
 			}
 		}
 

@@ -1130,6 +1130,7 @@ final class AutoUpdateJobTest extends TestCase {
 		$mocks['settingsStore']->method('isEnabled')->willReturn(true);
 		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
 		$mocks['policyStore']->method('all')->willReturn(['openregister' => $policy]);
+		$mocks['policyStore']->method('get')->willReturnCallback(static fn (string $appId): ?Policy => $appId === 'openregister' ? $policy : null);
 		$mocks['pinStore']->method('get')->willReturn(null);
 		$mocks['installerService']->method('isManageableApp')->willReturn(true);
 		$mocks['appManager']->method('getAppVersion')->willReturn('2.3.0');
