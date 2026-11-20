@@ -185,8 +185,7 @@ class MinimumAgePlanner {
 	 * or a listed, newer fix the level does not reach, so the plan says why
 	 * it is not installed.
 	 *
-	 * @param array{security: array{version: string, advisories: list<string>}|null, bypassed: ?string, next: ?string} $found
-	 *        The fix the advisories recommend, the fix let through early and the version the run takes.
+	 * @param array{security: array{version: string, advisories: list<string>}|null, bypassed: ?string, next: ?string} $found The recommended fix, the early one and the version the run takes.
 	 * @return array{version: string, advisories: list<string>, reason: string}|null
 	 */
 	private function securityBypass(AgeQuery $query, array $found): ?array {
