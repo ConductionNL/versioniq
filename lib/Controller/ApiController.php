@@ -1271,8 +1271,7 @@ class ApiController extends OCSController {
 		$added = $skipList->skip(
 			$appId,
 			$version,
-			$user->getUID(),
-			$this->access->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
+			['by' => $user->getUID(), 'at' => $this->access->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM)],
 			$this->stringParam('reason', ''),
 		);
 

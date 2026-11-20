@@ -56,12 +56,12 @@ class RangeGuard {
 	 *
 	 * @spec openspec/changes/pinning-ranges-and-skips/specs/auto-update-policies/spec.md#requirement-a-policy-can-hold-manual-installs-to-its-level
 	 */
-	public function recordOverride(string $actorUid, string $appId, string $level, string $installedVersion, string $targetVersion): void {
+	public function recordOverride(string $actorUid, string $appId, string $level, AuditedVersions $versions): void {
 		$this->auditLogger->record(
 			new AuditSubject($actorUid, $appId, AuditLogger::OPERATION_RANGE_OVERRIDE),
-			new AuditedVersions($installedVersion, $targetVersion, null),
+			$versions,
 			AuditLogger::STATUS_SUCCESS,
-			sprintf('Installed %s outside the %s level on an explicit override.', $targetVersion, $level),
+			sprintf('Installed %s outside the %s level on an explicit override.', (string)$versions->toVersion, $level),
 		);
 	}
 }

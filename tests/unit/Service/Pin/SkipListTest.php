@@ -51,7 +51,7 @@ final class SkipListTest extends TestCase {
 			'breaks the import',
 		);
 
-		self::assertTrue($list->skip('openregister', '2.3.4', 'admin', '2026-11-14T09:00:00+00:00', ' breaks the import '));
+		self::assertTrue($list->skip('openregister', '2.3.4', ['by' => 'admin', 'at' => '2026-11-14T09:00:00+00:00'], ' breaks the import '));
 
 		self::assertSame(
 			[['version' => '2.3.4', 'skippedBy' => 'admin', 'skippedAt' => '2026-11-14T09:00:00+00:00', 'reason' => 'breaks the import']],
@@ -65,8 +65,8 @@ final class SkipListTest extends TestCase {
 		$list = $this->skipList();
 		$this->audit->expects(self::once())->method('record');
 
-		self::assertTrue($list->skip('openregister', '2.3.4', 'admin', 'T1', 'first'));
-		self::assertFalse($list->skip('openregister', '2.3.4', 'bob', 'T2', 'second'));
+		self::assertTrue($list->skip('openregister', '2.3.4', ['by' => 'admin', 'at' => 'T1'], 'first'));
+		self::assertFalse($list->skip('openregister', '2.3.4', ['by' => 'bob', 'at' => 'T2'], 'second'));
 
 		self::assertSame('first', $list->entries('openregister')[0]['reason']);
 		self::assertCount(1, $list->entries('openregister'));
@@ -75,7 +75,7 @@ final class SkipListTest extends TestCase {
 	public function testTheListKeepsTheNewestTwentySkips(): void {
 		$list = $this->skipList();
 		for ($i = 1; $i <= SkipList::MAX + 3; $i++) {
-			$list->skip('openregister', '1.0.' . $i, 'admin', 'T', '');
+			$list->skip('openregister', '1.0.' . $i, ['by' => 'admin', 'at' => 'T'], '');
 		}
 
 		$versions = $list->versions('openregister');
@@ -86,7 +86,7 @@ final class SkipListTest extends TestCase {
 
 	public function testUnskipRemovesTheVersionAuditsAndClearsAnEmptyList(): void {
 		$list = $this->skipList();
-		$list->skip('openregister', '2.3.4', 'admin', 'T', '');
+		$list->skip('openregister', '2.3.4', ['by' => 'admin', 'at' => 'T'], '');
 		$this->audit->expects(self::once())->method('record')->with(
 			self::callback(static fn ($subject): bool => $subject->operation === AuditLogger::OPERATION_UNSKIP_VERSION),
 			self::callback(static fn ($versions): bool => $versions->toVersion === '2.3.4'),
@@ -110,7 +110,7 @@ final class SkipListTest extends TestCase {
 
 	public function testAReasonIsCappedAtFiveHundredCharacters(): void {
 		$list = $this->skipList();
-		$list->skip('openregister', '2.3.4', 'admin', 'T', str_repeat('x', 600));
+		$list->skip('openregister', '2.3.4', ['by' => 'admin', 'at' => 'T'], str_repeat('x', 600));
 
 		self::assertSame(SkipList::MAX_REASON, mb_strlen($list->entries('openregister')[0]['reason']));
 	}

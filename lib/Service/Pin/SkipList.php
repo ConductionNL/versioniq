@@ -92,16 +92,18 @@ class SkipList {
 	 * entry and records nothing again; the list keeps the newest MAX skips.
 	 *
 	 * @spec openspec/changes/pinning-ranges-and-skips/specs/version-pinning/spec.md#requirement-an-admin-skips-one-version-and-keeps-later-ones
+	 * @param array{by: string, at: string} $stamp Who skips it, and when (ISO 8601).
 	 * @return bool True when the version was added, false when it was already skipped.
 	 */
-	public function skip(string $appId, string $version, string $actorUid, string $skippedAt, string $reason = ''): bool {
+	public function skip(string $appId, string $version, array $stamp, string $reason = ''): bool {
+		$actorUid = $stamp['by'];
 		$entries = $this->entries($appId);
 		if (in_array($version, array_column($entries, 'version'), true)) {
 			return false;
 		}
 
 		$reason = mb_substr(trim($reason), 0, self::MAX_REASON);
-		$entries[] = ['version' => $version, 'skippedBy' => $actorUid, 'skippedAt' => $skippedAt, 'reason' => $reason];
+		$entries[] = ['version' => $version, 'skippedBy' => $actorUid, 'skippedAt' => $stamp['at'], 'reason' => $reason];
 		$this->write($appId, array_slice($entries, -self::MAX));
 
 		$this->auditLogger->record(

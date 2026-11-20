@@ -16,6 +16,7 @@ use Exception;
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Kernel\Contracts\InstallerServiceInterface;
+use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Channel\VersionChannels;
 use OCA\Versioniq\Service\Discovery\PublisherTrust;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
@@ -1332,7 +1333,7 @@ class InstallerService implements InstallerServiceInterface {
 		}
 
 		if ($run->request->pinChoice->overrideRange) {
-			$guard->recordOverride((string)($this->userSession->getUser()?->getUID() ?? ''), $target->appId, $level, $run->installedVersion, $target->version);
+			$guard->recordOverride((string)($this->userSession->getUser()?->getUID() ?? ''), $target->appId, $level, new AuditedVersions($run->installedVersion, $target->version, null));
 			return null;
 		}
 
