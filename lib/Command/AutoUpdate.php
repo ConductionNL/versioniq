@@ -39,6 +39,9 @@ class AutoUpdate extends Command {
 		parent::__construct();
 	}
 
+	/**
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/cli-commands/spec.md#requirement-dry-run-the-automatic-update-policy-from-the-cli
+	 */
 	protected function configure(): void {
 		$this
 			->setName('versioniq:auto-update')
