@@ -12,7 +12,9 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\Advisory;
 
+use OCA\Versioniq\Kernel\Contracts\AdvisoryResultStoreInterface;
 use OCA\Versioniq\Service\Settings\StoredSnapshot;
+use OCA\Versioniq\Service\Settings\SweepOutcome;
 use OCP\IAppConfig;
 use Psr\Log\LoggerInterface;
 
@@ -35,7 +37,7 @@ use Psr\Log\LoggerInterface;
  *
  * @psalm-api
  */
-class AdvisoryResultStore {
+class AdvisoryResultStore implements AdvisoryResultStoreInterface {
 	/**
 	 * App config key holding the JSON-encoded correlation snapshot; the unix
 	 * time of the last completed sweep is held under `advisory.results.checkedAt`
@@ -56,11 +58,11 @@ class AdvisoryResultStore {
 	 * never replaces a good one.
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
-	 * @param array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}> $correlations
+	 * @param array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, recommendedVersion: ?string, error: ?string, history?: list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool}>, fixStatus?: ?string}> $correlations
 	 */
 	public function save(array $correlations, int $checkedAt): void {
 		try {
-			$this->snapshot()->write($correlations, $checkedAt);
+			$this->snapshot()->writeSweep($correlations, $checkedAt);
 		} catch (\JsonException $error) {
 			// A snapshot that cannot be encoded must not clear the previous
 			// one: a stale answer is worth more than no answer, and the UI
@@ -72,12 +74,22 @@ class AdvisoryResultStore {
 	}
 
 	/**
+	 * Records a sweep that failed as a whole: the previous snapshot and its
+	 * `checkedAt` stay, the outcome says `failed` with the attempt's time as `failedAt`.
+	 *
+	 * @spec openspec/specs/security-advisory-correlation/spec.md#requirement-the-check-line-says-whether-the-last-sweep-succeeded
+	 */
+	public function saveFailure(int $failedAt): void {
+		$this->snapshot()->writeOutcome(SweepOutcome::FAILED, [], $failedAt);
+	}
+
+	/**
 	 * Reads the stored snapshot. Returns an empty map with a null `checkedAt`
 	 * when no sweep has completed yet — which is a real state on a fresh
 	 * install and must be distinguishable from "swept, found nothing".
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
-	 * @return array{advisories: array<string, mixed>, checkedAt: ?int}
+	 * @return array{advisories: array<string, mixed>, checkedAt: ?int, failedAt: ?int, status: ?string, errors: list<string>}
 	 */
 	public function read(): array {
 		try {
@@ -87,18 +99,12 @@ class AdvisoryResultStore {
 				'message' => $error->getMessage(),
 			]);
 
-			return ['advisories' => [], 'checkedAt' => null];
+			return ['advisories' => [], 'checkedAt' => null, 'failedAt' => null, 'status' => null, 'errors' => []];
 		}
 
-		if ($advisories === null) {
-			return ['advisories' => [], 'checkedAt' => null];
-		}
-
-		return [
-			'advisories' => $advisories,
-			'checkedAt' => $this->snapshot()->checkedAt(),
-		];
+		return ['advisories' => $advisories ?? []] + $this->snapshot()->outcome(map: $advisories);
 	}
+
 
 	/**
 	 * The snapshot under {@see KEY}, its sweep time under `KEY.checkedAt`.

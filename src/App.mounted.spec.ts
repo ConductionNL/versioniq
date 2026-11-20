@@ -37,7 +37,7 @@ function ocsFetch (input: RequestInfo | URL): Promise<Response> {
 	}))
 }
 
-const stubs = { CachePanel: true, SourcesPanel: true, TokensPanel: true, IntegrationsPanel: true, InstanceSettingsPanel: true, HistoryPanel: true, DiscoverPanel: true, AdvisoriesPanel: true, TrustedSourcesPanel: true, AutoUpdateOverview: true }
+const stubs = { CachePanel: true, SourcesPanel: true, TokensPanel: true, IntegrationsPanel: true, InstanceSettingsPanel: true, HistoryPanel: true, DiscoverPanel: true, AdvisoriesPanel: true, TrustedSourcesPanel: true, AutoUpdateOverview: true, ProposedUpdatesPanel: true }
 
 /**
  * Mount the page and wait for its first requests.
@@ -92,7 +92,7 @@ describe('App mount', () => {
 	it('asks for the update channel and the apps first, then the non-blocking lists', async () => {
 		const { vm, paths } = await mountPage()
 
-		expect(paths).toEqual(['/api/update-channel', '/api/apps', '/api/advisories', '/api/pins', '/api/policies', '/api/advisory/settings', '/api/updates'])
+		expect(paths).toEqual(['/api/update-channel', '/api/apps', '/api/advisories', '/api/pins', '/api/policies', '/api/advisory/settings', '/api/updates', '/api/channels'])
 		expect(vm.isLoading).toBe(false)
 		expect(vm.errorMessage).toBe('')
 	})

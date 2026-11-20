@@ -7,7 +7,7 @@
 	<description>> ⚠️ **Active development — not for production use yet.** This app is under active development. Although it may carry a stable release status, **please do not use it in production environments before 12 June 2026.** See [conduction.nl/apps](https://conduction.nl/apps) for release planning and what this app does.
 
 Versioniq gives Nextcloud administrators the ability to roll back apps to previous versions or install specific newer versions. Essential for debugging, testing compatibility, and recovering from broken updates.</description>
-	<version>1.6.7-unstable.20261114120000</version>
+	<version>1.6.8-unstable.20261118011217</version>
 	<licence>EUPL-1.2</licence>
 	<author mail="info@conduction.nl" homepage="https://conduction.nl">Conduction B.V.</author>
 	<namespace>Versioniq</namespace>
@@ -24,10 +24,14 @@ Versioniq gives Nextcloud administrators the ability to roll back apps to previo
 	<background-jobs>
 		<job>OCA\Versioniq\BackgroundJob\AdvisoryRefreshJob</job>
 		<job>OCA\Versioniq\BackgroundJob\PatExpiryWarningJob</job>
+		<job>OCA\Versioniq\BackgroundJob\ServerEolWarningJob</job>
 		<job>OCA\Versioniq\BackgroundJob\AutoUpdateJob</job>
 		<job>OCA\Versioniq\BackgroundJob\PruneAuditJob</job>
 		<job>OCA\Versioniq\BackgroundJob\PinReconcileJob</job>
 		<job>OCA\Versioniq\BackgroundJob\AvailabilityRefreshJob</job>
+		<job>OCA\Versioniq\BackgroundJob\ExternalChangeReconcileJob</job>
+		<job>OCA\Versioniq\BackgroundJob\ForceOverrideReconcileJob</job>
+		<job>OCA\Versioniq\BackgroundJob\LibraryAdvisoryJob</job>
 	</background-jobs>
 	<repair-steps>
 		<!-- THE app_versions -> versioniq RENAME IS A DATA MIGRATION.
@@ -127,12 +131,30 @@ Versioniq gives Nextcloud administrators the ability to roll back apps to previo
 		</install>
 	</repair-steps>
 	<commands>
+		<command>OCA\Versioniq\Command\CheckReadiness</command>
 		<command>OCA\Versioniq\Command\ListVersions</command>
 		<command>OCA\Versioniq\Command\InstallVersion</command>
 		<command>OCA\Versioniq\Command\ListUpdates</command>
+		<command>OCA\Versioniq\Command\AutoUpdate</command>
+		<command>OCA\Versioniq\Command\ExportSbom</command>
+		<command>OCA\Versioniq\Command\ListAdvisories</command>
+		<command>OCA\Versioniq\Command\SetChannel</command>
 	</commands>
 	<settings>
 		<admin>OCA\Versioniq\Settings\Admin</admin>
 		<admin-section>OCA\Versioniq\Sections\AdminSection</admin-section>
 	</settings>
+	<activity>
+		<settings>
+			<setting>OCA\Versioniq\Activity\Setting</setting>
+		</settings>
+		<providers>
+			<provider>OCA\Versioniq\Activity\Provider</provider>
+		</providers>
+	</activity>
+	<!-- Nextcloud 33 and later add versioniq_app_version to the server's /metrics
+	     (inventory-export-sbom-metrics D6); Nextcloud 32 ignores this entry. -->
+	<openmetrics>
+		<exporter>OCA\Versioniq\OpenMetrics\AppVersionMetricFamily</exporter>
+	</openmetrics>
 </info>

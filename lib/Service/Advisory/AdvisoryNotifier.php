@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Advisory;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\AdvisoryNotifierInterface;
 use OCA\Versioniq\Service\AdminNotificationServices;
 use OCA\Versioniq\Service\ResolvesAdminUids;
 use OCP\IAppConfig;
@@ -31,7 +32,7 @@ use Psr\Log\LoggerInterface;
  *
  * @psalm-api
  */
-class AdvisoryNotifier {
+class AdvisoryNotifier implements AdvisoryNotifierInterface {
 	use ResolvesAdminUids;
 
 	private const CONFIG_KEY = 'advisory.notified';
@@ -48,7 +49,7 @@ class AdvisoryNotifier {
 	 * version since the last run. Returns the number of notifications fired.
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
-	 * @param array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string}>, recommendedVersion: ?string, error: ?string}> $correlations
+	 * @param array<string, array{appId: string, installedVersion: ?string, state: string, advisories: list<array{id: string, severity: string, summary: string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, recommendedVersion: ?string, error: ?string, history?: list<array{id: string, severity: string, summary: string, cveIds: list<string>, publishedAt: ?string, url: ?string, affectsInstalled: bool}>, fixStatus?: ?string}> $correlations
 	 */
 	public function notifyNewAdvisories(array $correlations): int {
 		$alreadyNotified = $this->loadNotified();
@@ -132,26 +133,35 @@ class AdvisoryNotifier {
 	 * @return array<string, true>
 	 */
 	private function loadNotified(): array {
-		$raw = $this->appConfig->getValueString(Application::APP_ID, self::CONFIG_KEY, '');
-		if ($raw === '') {
-			return [];
-		}
-		try {
-			$decoded = json_decode($raw, true, 8, JSON_THROW_ON_ERROR);
-		} catch (\JsonException) {
-			return [];
-		}
-		if (!is_array($decoded)) {
-			return [];
-		}
 		$set = [];
-		foreach ($decoded as $key) {
+		foreach ($this->storedNotified() as $key) {
 			if (is_string($key) && $key !== '') {
 				$set[$key] = true;
 			}
 		}
 
 		return $set;
+	}
+
+	/**
+	 * The stored list of notified keys as decoded, unchecked; empty when none
+	 * is stored or it is not valid JSON.
+	 *
+	 * @return array<array-key, mixed>
+	 */
+	private function storedNotified(): array {
+		$raw = $this->appConfig->getValueString(Application::APP_ID, self::CONFIG_KEY, '');
+		if ($raw === '') {
+			return [];
+		}
+		try {
+			/** @var mixed $decoded */
+			$decoded = json_decode($raw, true, 8, JSON_THROW_ON_ERROR);
+		} catch (\JsonException) {
+			return [];
+		}
+
+		return is_array($decoded) ? $decoded : [];
 	}
 
 	/**

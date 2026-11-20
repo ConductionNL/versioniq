@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Settings;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Release\NotesTranslator;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\AppFramework\Services\IInitialState;
@@ -35,22 +36,35 @@ class Admin implements ISettings {
 	public const STATE_INTEGRIQ_INSTALLED = 'integriq-installed';
 
 	/**
+	 * The initial-state key that tells the page whether the instance can
+	 * machine-translate release notes; the Translate button shows only when
+	 * it is true (releases-notes-reach D3).
+	 */
+	public const STATE_NOTES_TRANSLATION = 'notes-translation-available';
+
+	/**
 	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-003-an-admin-reads-the-connections-on-an-integrations-tab
 	 */
 	public function __construct(
 		private IInitialState $initialState,
 		private IAppManager $appManager,
+		private NotesTranslator $notesTranslator,
 	) {
 	}
 
 	/**
 	 * @spec openspec/specs/version-management/spec.md
 	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-003-an-admin-reads-the-connections-on-an-integrations-tab
+	 * @spec openspec/changes/releases-notes-reach/specs/changelog-visibility/spec.md
 	 */
 	public function getForm(): TemplateResponse {
 		$this->initialState->provideInitialState(
 			self::STATE_INTEGRIQ_INSTALLED,
 			$this->appManager->isEnabledForUser('integriq'),
+		);
+		$this->initialState->provideLazyInitialState(
+			self::STATE_NOTES_TRANSLATION,
+			fn (): bool => $this->notesTranslator->isAvailable(),
 		);
 
 		return new TemplateResponse(Application::APP_ID, 'index', [], '');

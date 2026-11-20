@@ -10,6 +10,7 @@ vi.mock('@nextcloud/l10n', () => ({
 	t: (_app: string, text: string, vars: Record<string, unknown> = {}) =>
 		text.replace(/\{(\w+)\}/g, (_match: string, key: string) => String(vars[key] ?? '')),
 	n: (_app: string, one: string, many: string, count: number) => (count === 1 ? one : many),
+	getLanguage: () => 'en',
 }))
 vi.mock('@nextcloud/initial-state', () => ({
 	loadState: (_app: string, _key: string, fallback: unknown) => fallback,

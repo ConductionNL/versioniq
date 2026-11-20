@@ -15,8 +15,11 @@ namespace OCA\Versioniq\Service;
 use Exception;
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\InstallerServiceInterface;
+use OCA\Versioniq\Service\Channel\VersionChannels;
 use OCA\Versioniq\Service\Discovery\PublisherTrust;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
+use OCA\Versioniq\Service\Installer\DeclaredServerRange;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFailure;
 use OCA\Versioniq\Service\Installer\InstallRequest;
@@ -27,10 +30,12 @@ use OCA\Versioniq\Service\Installer\ReleaseInstall;
 use OCA\Versioniq\Service\Installer\ReleaseInstallers;
 use OCA\Versioniq\Service\Installer\ServerAccess;
 use OCA\Versioniq\Service\Installer\ShaMismatchException;
+use OCA\Versioniq\Service\Inventory\SbomArchive;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Release\ReleaseNotesReader;
 use OCA\Versioniq\Service\Source\AppStoreSource;
 use OCA\Versioniq\Service\Source\RetiredForgeException;
+use OCA\Versioniq\Service\Source\ForgeRangeStamper;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
@@ -53,9 +58,9 @@ use OCP\IUserSession;
  *
  * @psalm-api
  * @psalm-type AppLists = array{enabled: array<string>, versions: array<string, string>, core: array<string>, info: array<string, array<string, mixed>>}
- * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,isCore:bool,isShipped:bool,publisher:?string,marks:list<string>,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string,previous?:array{version:string,recordedAt:string,sourceId:?string}}}
+ * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,author:string,licence:string,links:array{website:?string,repository:?string,bugs:?string},isCore:bool,isShipped:bool,publisher:?string,marks:list<string>,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string,previous?:array{version:string,recordedAt:string,sourceId:?string}},installedKnownIssues:list<array<string,mixed>>,provenance:?array{kind:'versioniq'|'outside',sourceId:?string,version:string},forcedOn?:int,compatibilityOverridden?:true,serverTooNew?:true}
  */
-class InstallerService {
+class InstallerService implements InstallerServiceInterface {
 	/** Server-side changelog size cap; see "Version listings carry release notes". */
 	private const CHANGELOG_MAX_BYTES = 8192;
 	private const CHANGELOG_TRUNCATION_MARKER = ' …[truncated]';
@@ -78,6 +83,9 @@ class InstallerService {
 		private InstallState $state,
 		private IUserSession $userSession,
 		private ITimeFactory $timeFactory,
+		// Optional: keeps an SBOM of the state each real install produced (inventory-export-sbom-metrics D4).
+		private ?SbomArchive $sbomArchive = null,
+		private ?VersionChannels $channels = null,
 	) {
 	}
 
@@ -163,10 +171,40 @@ class InstallerService {
 		return [
 			'id' => $appId,
 			...self::appTexts($lists['info'][$appId] ?? [], $appId),
+			...self::appAbout($lists['info'][$appId] ?? []),
 			...$this->appStatus($appId, $lists, $binding),
 			'publisher' => PublisherTrust::publisherFromAuthors($lists['info'][$appId]['author'] ?? null),
 			'marks' => $this->cardMarks($appId, $binding),
+			...$this->forceStatus($appId, $lists),
 		];
+	}
+
+	/**
+	 * The card's compatibility override fields, each present only when it
+	 * applies: `forcedOn` (the major Versioniq forced the app on), or
+	 * `compatibilityOverridden` (someone else put it on `app_install_overwrite`),
+	 * and `serverTooNew` on a disabled app only its declared maximum keeps off,
+	 * which may be enabled anyway.
+	 *
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+	 * @param AppLists $lists
+	 * @return array{forcedOn?: int, compatibilityOverridden?: true, serverTooNew?: true}
+	 */
+	private function forceStatus(string $appId, array $lists): array {
+		$fields = [];
+		$override = $this->state->forceOverrides->get($appId);
+		if ($override !== null) {
+			$fields['forcedOn'] = $override->serverMajor;
+		} elseif ($this->state->forceOverrides->isOverridden($appId)) {
+			$fields['compatibilityOverridden'] = true;
+		}
+		if (self::appState($appId, $lists) === 'disabled'
+			&& DeclaredServerRange::serverTooNew($this->serverCoreVersion(), $lists['info'][$appId] ?? null)
+		) {
+			$fields['serverTooNew'] = true;
+		}
+
+		return $fields;
 	}
 
 	/**
@@ -202,6 +240,121 @@ class InstallerService {
 	}
 
 	/**
+	 * Who publishes the app, under which licence, and its declared links,
+	 * from the installed `info.xml` (inventory-app-details-card D1).
+	 *
+	 * @param array<string, mixed> $app The app's parsed info.
+	 *
+	 * @return array{author: string, licence: string, links: array{website: ?string, repository: ?string, bugs: ?string}}
+	 *
+	 * @spec openspec/changes/inventory-app-details-card/tasks.md#1-payload
+	 */
+	private static function appAbout(array $app): array {
+		return [
+			'author' => self::authorName(author: $app['author'] ?? null),
+			'licence' => self::licenceName(licence: $app['licence'] ?? ($app['license'] ?? null)),
+			'links' => [
+				'website' => self::webLink(value: $app['website'] ?? null),
+				'repository' => self::webLink(value: $app['repository'] ?? null),
+				'bugs' => self::webLink(value: $app['bugs'] ?? null),
+			],
+		];
+	}
+
+	/**
+	 * The authors' names joined with ", ": `info.xml` allows several
+	 * `author` elements with `mail` and `homepage` attributes, which arrive as
+	 * a string, an array with `@value`, or a list of either. Mail addresses
+	 * never reach the page (D2).
+	 *
+	 * @param mixed $author The parsed `author` value.
+	 *
+	 * @return string The names, or ''.
+	 *
+	 * @spec openspec/changes/inventory-app-details-card/tasks.md#1-payload
+	 */
+	private static function authorName(mixed $author): string {
+		if (is_string($author)) {
+			return trim($author);
+		}
+
+		if (!is_array($author)) {
+			return '';
+		}
+
+		if (array_key_exists('@value', $author)) {
+			return is_string($author['@value']) ? trim($author['@value']) : '';
+		}
+
+		$names = [];
+		foreach ($author as $key => $entry) {
+			if ($key === '@attributes') {
+				continue;
+			}
+
+			$name = self::authorName(author: $entry);
+			if ($name !== '' && !in_array($name, $names, true)) {
+				$names[] = $name;
+			}
+		}
+
+		return implode(', ', $names);
+	}
+
+	/**
+	 * The licence, or several joined with ", ".
+	 *
+	 * @param mixed $licence The parsed `licence` value.
+	 *
+	 * @return string The licence, or ''.
+	 */
+	private static function licenceName(mixed $licence): string {
+		if (is_string($licence)) {
+			return trim($licence);
+		}
+
+		if (!is_array($licence)) {
+			return '';
+		}
+
+		$names = array_values(array_filter(array_map(
+			static fn (mixed $entry): string => is_string($entry) ? trim($entry) : '',
+			$licence
+		)));
+
+		return implode(', ', array_unique($names));
+	}
+
+	/**
+	 * An http or https address, or null: any other scheme is dropped so the
+	 * card never renders a `javascript:` link (D3). A `repository` element
+	 * with a `type` attribute arrives as an array with `@value`.
+	 *
+	 * @param mixed $value The parsed value.
+	 *
+	 * @return ?string The address, or null.
+	 *
+	 * @spec openspec/changes/inventory-app-details-card/tasks.md#1-payload
+	 */
+	private static function webLink(mixed $value): ?string {
+		if (is_array($value) && array_key_exists('@value', $value)) {
+			$value = $value['@value'];
+		}
+
+		if (!is_string($value)) {
+			return null;
+		}
+
+		$url = trim($value);
+		$scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+		if (!in_array($scheme, ['http', 'https'], true) || filter_var($url, FILTER_VALIDATE_URL) === false) {
+			return null;
+		}
+
+		return $url;
+	}
+
+	/**
 	 * @param array<string, mixed> $app
 	 */
 	private static function trimmedText(array $app, string $key): string {
@@ -214,19 +367,39 @@ class InstallerService {
 	 *
 	 * @param AppLists $lists
 	 * @param ?SourceBinding $binding The app's source binding, read once per card.
-	 * @return array{isCore: bool, isShipped: bool, boundSourceId: ?string, manageable: bool, warning: ?string, installedVersion: ?string, state: 'enabled'|'disabled'|'notInstalled', lkg: ?array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}}
+	 * @return array{isCore: bool, isShipped: bool, boundSourceId: ?string, manageable: bool, warning: ?string, installedVersion: ?string, state: 'enabled'|'disabled'|'notInstalled', lkg: ?array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}, installedKnownIssues: list<array<string, mixed>>, provenance: ?array{kind: 'versioniq'|'outside', sourceId: ?string, version: string}}
 	 */
 	private function appStatus(string $appId, array $lists, ?SourceBinding $binding): array {
 		$install = $this->appInstallStatus($appId, $lists);
 
-		return [
+		$card = [
 			'isCore' => in_array($appId, $lists['core'], true),
 			'isShipped' => $this->server->appManager->isShipped($appId),
 			'boundSourceId' => $binding?->getId(),
 			...$install,
 			'state' => self::appState($appId, $lists),
 			'lkg' => $this->state->lkgStore->get($appId)?->toArray(),
+			'installedKnownIssues' => $this->installedKnownIssues($appId, $install['installedVersion']),
 		];
+		$card['provenance'] = self::provenance($card['installedVersion'], $card['lkg']);
+
+		return $card;
+	}
+
+	/**
+	 * The known issues an admin recorded against the installed version, for
+	 * the card's "Known issue in the installed version" notice
+	 * (releases-version-facts D4). None when nothing is installed.
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/changelog-visibility/spec.md#requirement-known-issues-of-a-version-are-shown-before-and-after-installing-it
+	 * @return list<array<string, mixed>>
+	 */
+	private function installedKnownIssues(string $appId, ?string $installedVersion): array {
+		if ($installedVersion === null || $this->state->knownIssues === null) {
+			return [];
+		}
+
+		return $this->state->knownIssues->forApp($appId)[$installedVersion] ?? [];
 	}
 
 	/**
@@ -244,6 +417,33 @@ class InstallerService {
 			'warning' => $env['warning'],
 			'installedVersion' => $installedVersion === '' ? null : $installedVersion,
 		];
+	}
+
+	/**
+	 * Where the installed version came from: the last install Versioniq
+	 * finalized when its record matches the installed version, else from
+	 * outside Versioniq; null when the app is not installed.
+	 *
+	 * @param array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}|null $lkg
+	 * @return array{kind: 'versioniq'|'outside', sourceId: ?string, version: string}|null
+	 * @spec openspec/specs/external-sources/spec.md#requirement-the-card-names-where-the-installed-version-came-from
+	 */
+	public static function provenance(?string $installedVersion, ?array $lkg): ?array {
+		return $installedVersion === null ? null : self::installedFrom($installedVersion, $lkg);
+	}
+
+	/**
+	 * Where an installed version came from; see {@see self::provenance()}.
+	 *
+	 * @param array{version: string, recordedAt: string, sourceId: ?string, previous?: array{version: string, recordedAt: string, sourceId: ?string}}|null $lkg
+	 * @return array{kind: 'versioniq'|'outside', sourceId: ?string, version: string}
+	 */
+	private static function installedFrom(string $installedVersion, ?array $lkg): array {
+		if ($lkg === null || $lkg['version'] !== $installedVersion) {
+			return ['kind' => 'outside', 'sourceId' => null, 'version' => $installedVersion];
+		}
+
+		return ['kind' => 'versioniq', 'sourceId' => $lkg['sourceId'], 'version' => $installedVersion];
 	}
 
 	/**
@@ -294,13 +494,15 @@ class InstallerService {
 
 	/**
 	 * Resolves the active source and lists versions for an app; see "Fetch Available Versions", "Explicit source
-	 * override" and "Version listings carry release notes".
+	 * override" and "Version listings carry release notes". With release channels wired, every entry carries
+	 * `preRelease`, `lts` and `onChannel`, and the envelope names the effective `channel`.
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @spec openspec/specs/changelog-visibility/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
 	 * @spec openspec/specs/artifact-cache/spec.md
-	 * @return array{installedVersion: ?string, availableVersions: list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool}>, versions: list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool}>, source: string, sourceId: string, statusCode: int, hasError: bool, error?: string}
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-an-admin-sets-a-release-channel-for-the-instance-and-per-app
+	 * @return array{installedVersion: ?string, availableVersions: list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool, preRelease?: bool, lts?: bool, onChannel?: bool}>, versions: list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool, preRelease?: bool, lts?: bool, onChannel?: bool}>, source: string, sourceId: string, statusCode: int, channel?: string, hasError: bool, error?: string}
 	 */
 	public function getAppVersions(string $appId, ?string $sourceOverride = null): array {
 		$appId = trim($appId);
@@ -331,6 +533,15 @@ class InstallerService {
 		$versions = $this->applyCachedOffline($versions, $appId);
 		/** @var list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool}> $versions */
 		$versions = $this->applyCachedServerCompatibility($versions, $appId);
+		$versions = $this->applyForgeRanges($versions, $binding);
+		$channel = [];
+		if ($this->channels !== null) {
+			// Stamped, not filtered: the picker reveals the rest and the CLI lists every version.
+			$stamped = $this->channels->stamp($appId, $versions);
+			/** @var list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool, preRelease?: bool, lts?: bool, onChannel?: bool}> $versions */
+			$versions = $stamped['versions'];
+			$channel = ['channel' => $stamped['channel']];
+		}
 
 		return [
 			'installedVersion' => $installedVersion,
@@ -339,7 +550,7 @@ class InstallerService {
 			'source' => $binding->kind,
 			'sourceId' => $binding->getId(),
 			'statusCode' => Http::STATUS_OK,
-		] + self::listingErrorFields($result);
+		] + $channel + self::listingErrorFields($result);
 	}
 
 	/**
@@ -369,11 +580,11 @@ class InstallerService {
 	 * server release) are never published to the App Store, so a store miss
 	 * for one is explained instead of surfacing a generic "not available".
 	 *
-	 * @return array{versions: list<array{version: string, changelog?: ?string, serverCompatible?: ?bool, releasedAt?: ?string}>, error: ?string}
+	 * @return array{versions: list<array{version: string, changelog?: ?string, serverCompatible?: ?bool, releasedAt?: ?string, sourcePreRelease?: true, sourceLts?: true}>, error: ?string}
 	 */
 	private function listSourceVersions(string $appId, SourceBinding $binding): array {
 		$result = $this->sources->sourceRegistry->get($binding)->listVersions($appId, $binding);
-		if ($result['error'] === 'App is not available in the Nextcloud App Store.'
+		if ($result['error'] === AppStoreSource::NOT_IN_STORE
 			&& $this->server->appManager->isShipped($appId)
 		) {
 			$result['error'] = 'This app ships with Nextcloud itself: its version follows the server release and it is not distributed via the App Store. Bind a forge source to manage it from a repository instead.';
@@ -458,8 +669,8 @@ class InstallerService {
 	 * through, so truncation behaviour is identical regardless of origin.
 	 *
 	 * @spec openspec/specs/changelog-visibility/spec.md
-	 * @param list<array{version:string, changelog?:?string, serverCompatible?:?bool, releasedAt?:?string}> $versions
-	 * @return list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string}>
+	 * @param list<array{version:string, changelog?:?string, serverCompatible?:?bool, releasedAt?:?string, sourcePreRelease?:true, sourceLts?:true}> $versions
+	 * @return list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string, sourcePreRelease?:true, sourceLts?:true}>
 	 */
 	private function applyChangelogTruncation(array $versions): array {
 		return array_map(
@@ -488,8 +699,8 @@ class InstallerService {
 	 * record; see "Recorded digests are binding-scoped and surfaced".
 	 *
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @param list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string}> $versions
-	 * @return list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string, recordedSha:?string}>
+	 * @param list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string, sourcePreRelease?:true, sourceLts?:true}> $versions
+	 * @return list<array{version:string, changelog:?string, serverCompatible?:?bool, releasedAt?:?string, sourcePreRelease?:true, sourceLts?:true, recordedSha:?string}>
 	 */
 	private function applyRecordedSha(array $versions, SourceBinding $binding): array {
 		return array_map(
@@ -531,7 +742,11 @@ class InstallerService {
 	 * (#435). A verdict the source already gave (the App Store's
 	 * platformVersionSpec) is kept; an uncached forge release stays unknown.
 	 *
+	 * An incompatible one also gets `serverTooNew`: whether only its maximum
+	 * keeps it out, so an admin may force it.
+	 *
 	 * @spec openspec/specs/version-management/spec.md
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
 	 * @param list<array<string, mixed>> $versions
 	 * @return list<array<string, mixed>>
 	 */
@@ -550,11 +765,35 @@ class InstallerService {
 				$spec = $this->state->artifactCache->platformSpecFor($appId, $version);
 				if ($spec !== null) {
 					$entry['serverCompatible'] = AppStoreSource::satisfiesPlatformSpec($serverVersion, $spec);
+					if ($entry['serverCompatible'] === false) {
+						$entry['serverTooNew'] = AppStoreSource::serverAboveMaximum($serverVersion, $spec) === true;
+					}
 				}
 
 				return $entry;
 			},
 			$versions
+		);
+	}
+
+	/**
+	 * Forge versions take the server and PHP range their info.xml declares at
+	 * the release tag, where no cached archive answers (inventory-upgrade-readiness D2).
+	 *
+	 * @param list<array<string, mixed>> $versions
+	 * @return list<array<string, mixed>>
+	 *
+	 * @spec openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness/spec.md#requirement-a-forge-releases-ranges-are-read-without-downloading-the-release
+	 */
+	private function applyForgeRanges(array $versions, SourceBinding $binding): array {
+		$stamper = $this->sources->forgeRanges;
+		if ($stamper === null) {
+			return $versions;
+		}
+
+		return ForgeRangeStamper::withVerdicts(
+			$stamper->stamp($versions, $binding),
+			['server' => $this->serverCoreVersion(), 'php' => PHP_VERSION]
 		);
 	}
 
@@ -967,13 +1206,21 @@ class InstallerService {
 	 */
 	private function installFromSource(ReleaseInstall $install): array {
 		$maintenanceWasSet = false;
+		$overrideAdded = false;
+		$installed = false;
 		try {
 			if ($this->shouldEnterMaintenance($install->run)) {
 				$maintenanceWasSet = true;
 				$this->server->configs->config->setSystemValue('maintenance', true);
 			}
+			$overrideAdded = $this->applyForceOverride($install->run);
+			$outcome = $this->installAndReport($install);
+			$installed = $outcome['statusCode'] === Http::STATUS_OK;
+			if ($installed) {
+				$this->recordForceOverride($install, $overrideAdded);
+			}
 
-			return $this->installAndReport($install);
+			return $outcome;
 		} catch (UntrustedSourceException $error) {
 			return $this->installEnvelope(Http::STATUS_FORBIDDEN, $this->briefPayload($install->run, $error->getMessage()));
 		} catch (ShaMismatchException $error) {
@@ -983,10 +1230,64 @@ class InstallerService {
 		} catch (Exception $error) {
 			return $this->classifiedFailureOutcome($install, $error);
 		} finally {
+			if ($overrideAdded && !$installed) {
+				$this->state->forceOverrides->remove($install->run->request->target->appId);
+			}
 			if ($maintenanceWasSet) {
 				$this->server->configs->config->setSystemValue('maintenance', false);
 			}
 		}
+	}
+
+	/**
+	 * For a real forced install, puts the app on `app_install_overwrite` before
+	 * the installer runs, so its compatibility check ignores the maximum.
+	 * Returns whether Versioniq added the entry. A dry run changes no config.
+	 *
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+	 */
+	private function applyForceOverride(InstallRun $run): bool {
+		$options = $run->request->options;
+		if (!$options->forceIncompatible || $options->dryRun) {
+			return false;
+		}
+
+		return $this->state->forceOverrides->apply($run->request->target->appId);
+	}
+
+	/**
+	 * After a successful real forced install, records the override with the
+	 * server major it was set on and writes its audit row.
+	 *
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+	 */
+	private function recordForceOverride(ReleaseInstall $install, bool $overrideAdded): void {
+		$run = $install->run;
+		if (!$run->request->options->forceIncompatible || $run->request->options->dryRun) {
+			return;
+		}
+		$major = $this->serverMajor();
+		if ($major === null) {
+			return;
+		}
+		$this->state->forceOverrides->record(
+			$run->request->target->appId,
+			$install->appVersion !== '' ? $install->appVersion : $run->request->target->version,
+			$major,
+			$this->userSession->getUser()?->getUID() ?? 'system',
+			$overrideAdded,
+		);
+	}
+
+	/**
+	 * The running server's major version, or null when unknown.
+	 *
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+	 */
+	public function serverMajor(): ?int {
+		$core = $this->serverCoreVersion();
+
+		return $core === '' ? null : (int)explode('.', $core)[0];
 	}
 
 	private function shouldEnterMaintenance(InstallRun $run): bool {
@@ -1016,9 +1317,25 @@ class InstallerService {
 			// After the pin is settled, so our own listener does not read a
 			// re-pinned install as drift.
 			$this->dispatchUpdateEvent($install);
+			$this->archiveSbom($appId);
 		}
 
 		return $this->installEnvelope(Http::STATUS_OK, $payload);
+	}
+
+	/**
+	 * Keeps an SBOM of the state the install produced. Never reaches the
+	 * install: the archive logs its own failures, and anything it still throws
+	 * stops here.
+	 *
+	 * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-every-update-leaves-an-sbom-of-the-state-it-produced
+	 */
+	private function archiveSbom(string $appId): void {
+		try {
+			$this->sbomArchive?->writeFor($appId);
+		} catch (\Throwable) {
+			// The archive already logged it; the install result stands.
+		}
 	}
 
 	/**
@@ -1030,7 +1347,8 @@ class InstallerService {
 	 */
 	private function runInstaller(ReleaseInstall $install): array {
 		if ($install->source->getInstallerKind() === SourceInterface::INSTALLER_SIGNED) {
-			$result = $this->installers->signedInstaller->installFromSelectedRelease($install->run->request->target->appId, $install->release, $install->run->request->options->dryRun);
+			$options = $install->run->request->options;
+			$result = $this->installers->signedInstaller->installFromSelectedRelease($install->run->request->target->appId, $install->release, $options->dryRun, $options->checkContext);
 			unset($result['integrityWarning'], $result['recordedShaMatched']);
 
 			return $result;
@@ -1050,7 +1368,8 @@ class InstallerService {
 	private function runExternalInstaller(ReleaseInstall $install): array {
 		$run = $install->run;
 		$target = $run->request->target;
-		$result = $this->installers->externalInstaller->installFromExternalRelease($target->appId, $target->version, $install->release, $run->binding, $run->request->options->dryRun, $run->request->options->acceptNewSha);
+		$options = $run->request->options;
+		$result = $this->installers->externalInstaller->installFromExternalRelease($target->appId, $target->version, $install->release, $run->binding, $options->dryRun, $options->acceptNewSha, $options->checkContext);
 		$run->binding = $result['binding'];
 
 		return $result;
@@ -1102,6 +1421,10 @@ class InstallerService {
 			// states when the download fell back to a locally cached artifact.
 			'servedFromCache' => (bool)($result['servedFromCache'] ?? false),
 		];
+		if ($run->request->options->forceIncompatible) {
+			// A forced dry run reports the flag and changes no config.
+			$payload['forceIncompatible'] = true;
+		}
 		if ($run->space !== null) {
 			// The progress shows the free space the pre-flight found (D2).
 			$payload['space'] = $run->space;
@@ -1115,8 +1438,10 @@ class InstallerService {
 	 * reported them (see "Recorded SHA-256 enforced on reinstall"), and the
 	 * migration diff, present only for a downgrade (see "Migration diff on
 	 * downgrade"): `null` means it could not be computed, `[]` that no schema
-	 * steps differ.
+	 * steps differ. A dry run adds the results of the update checks as
+	 * `checks`, for either installer kind.
 	 *
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
 	 * @param array<string, mixed> $result
 	 * @return array<string, mixed>
 	 */
@@ -1131,6 +1456,14 @@ class InstallerService {
 			/** @var list<string>|null $orphanedMigrations */
 			$orphanedMigrations = $result['orphanedMigrations'];
 			$fields['orphanedMigrations'] = $orphanedMigrations;
+		}
+		if (isset($result['checks']) && is_array($result['checks'])) {
+			$fields['checks'] = array_values($result['checks']);
+		}
+		if (array_key_exists('migrationPreview', $result)) {
+			/** @var array<string, mixed>|null $migrationPreview */
+			$migrationPreview = $result['migrationPreview'];
+			$fields['migrationPreview'] = $migrationPreview;
 		}
 
 		return $fields;
@@ -1294,13 +1627,7 @@ class InstallerService {
 		}
 		$pattern = self::forgePattern($forge, self::ownerRepoPath($owner, $repo));
 
-		$patterns = $this->state->trustedSources->getPatterns();
-		if (!in_array($pattern, $patterns, true)) {
-			$patterns[] = $pattern;
-			$this->state->trustedSources->setPatterns($patterns);
-		}
-
-		return $this->state->trustedSources->getPatterns();
+		return $this->state->trustedSources->trust($pattern);
 	}
 
 	/**
@@ -1310,13 +1637,7 @@ class InstallerService {
 	 * @return list<string> the updated pattern set
 	 */
 	public function removeTrustedPattern(string $pattern): array {
-		$patterns = array_values(array_filter(
-			$this->state->trustedSources->getPatterns(),
-			static fn (string $p): bool => $p !== $pattern,
-		));
-		$this->state->trustedSources->setPatterns($patterns);
-
-		return $this->state->trustedSources->getPatterns();
+		return $this->state->trustedSources->untrust($pattern);
 	}
 
 	/**

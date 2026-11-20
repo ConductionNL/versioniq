@@ -1,7 +1,26 @@
 // SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
 // SPDX-License-Identifier: EUPL-1.2
+import type { Locator, Page } from "@playwright/test";
+
 import { expect, test } from "@playwright/test";
-import { occ, openSettings, openTab, versionsLoaded } from "./helpers.ts";
+import { NC_ADMIN_PASS } from "../../playwright.config";
+import {
+	appConfigValue,
+	execInInstance,
+	FIXTURE_APP,
+	fixtureAvailable,
+	fixtureControl,
+	installFixture,
+	occ,
+	openSettings,
+	openTab,
+	resetFixture,
+	resetFixtureApp,
+	runJob,
+	sql,
+	sqlExec,
+	versionsLoaded,
+} from "./helpers.ts";
 
 /**
  * The advisory surface, driven through the UI.
@@ -212,5 +231,354 @@ test.describe("security advisories", () => {
 			jobs,
 			"AdvisoryRefreshJob must be registered as a background job — the advisory snapshot has no other writer",
 		).toContain("AdvisoryRefreshJob");
+	});
+});
+
+/**
+ * Advisory triage (advisories-triage 4.3 and 4.4): dismissing, reopening and
+ * assigning advisories, against advisories the fixture forge serves.
+ *
+ * The server advisory comes from the fixture forge too: `advisory.feed_base`
+ * points the Nextcloud advisory feed at a fixture repository, so the check
+ * reads a known advisory instead of the live GitHub feed.
+ *
+ * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md
+ */
+test.describe("advisory triage", () => {
+	const SERVER_ADVISORY = "GHSA-e2e0-tria-0001";
+	const APP_ADVISORY = "GHSA-e2e0-tria-0002";
+	const SECOND_ADMIN = "triage-e2e-admin";
+	const SECOND_PASS = "triageAdminPass123";
+
+	/** A GHSA-shaped record for one package and version range. */
+	function advisory(id: string, name: string, range: string, severity: string) {
+		return {
+			ghsa_id: id,
+			severity,
+			summary: `Fixture advisory ${id}`,
+			published_at: "2026-01-01T00:00:00Z",
+			vulnerabilities: [
+				{
+					package: { ecosystem: "other", name },
+					vulnerable_version_range: range,
+					patched_versions: "",
+					first_patched_version: null,
+				},
+			],
+		};
+	}
+
+	/**
+	 * Confirms the admin password when Nextcloud asks for it: dismiss, reopen
+	 * and assign are password-confirmed, and a session older than the
+	 * confirmation window gets the dialog.
+	 */
+	async function confirmPasswordIfAsked(page: Page, password: string) {
+		const field = page.locator(
+			'.dialog input[type="password"], [role="dialog"] input[type="password"]',
+		);
+		try {
+			await field.first().waitFor({ state: "visible", timeout: 3_000 });
+		} catch {
+			return;
+		}
+		await field.first().fill(password);
+		await field.first().press("Enter");
+		await expect(field.first()).toBeHidden();
+	}
+
+	/** The advisory item for an id inside a region of the Advisories tab. */
+	function item(region: Locator, id: string): Locator {
+		return region.getByTestId("advisory-item").filter({ hasText: id });
+	}
+
+	test.beforeEach(async ({ page }) => {
+		test.skip(!(await fixtureAvailable(page)), "forge fixture not running");
+		await resetFixtureApp(page);
+		await occ("config:app:delete", "versioniq", "advisory.triage");
+		await occ("config:app:delete", "versioniq", "advisory.feed_source");
+
+		// The app reaches the fixture at the forge web base bootstrap set.
+		const forgeBase = await appConfigValue(page, "forge.forgejo.web_base");
+		test.skip(!forgeBase, "forge.forgejo.web_base is not set");
+		await occ(
+			"config:app:set",
+			"versioniq",
+			"advisory.feed_base",
+			`--value=${forgeBase}/repos/nextcloud/security-advisories/security-advisories`,
+		);
+		await fixtureControl(page, "repo", {
+			repo: "nextcloud/security-advisories",
+			releases: [],
+			advisories: [advisory(SERVER_ADVISORY, "server", ">= 1.0.0", "moderate")],
+		});
+		await fixtureControl(page, "repo", {
+			repo: "fixtureowner/fixtureapp",
+			advisories: [advisory(APP_ADVISORY, FIXTURE_APP, "< 1.1.0", "high")],
+		});
+		await runJob("AdvisoryRefreshJob");
+	});
+
+	test.afterEach(async ({ page }) => {
+		await occ("config:app:delete", "versioniq", "advisory.feed_base");
+		await occ("config:app:delete", "versioniq", "advisory.triage");
+		await fixtureControl(page, "repo", {
+			repo: "fixtureowner/fixtureapp",
+			advisories: [],
+		}).catch(() => undefined);
+		await fixtureControl(page, "repo", {
+			repo: "nextcloud/security-advisories",
+			releases: [],
+			advisories: [],
+		}).catch(() => undefined);
+	});
+
+	// @e2e advisories-triage::an-admin-dismisses-and-reopens-a-server-advisory
+	test("an admin dismisses a server advisory as not used, sees it under Dismissed and reopens it", async ({
+		page,
+	}) => {
+		await openSettings(page);
+		const panel = await openTab(page, "Advisories");
+		const server = panel.getByTestId("advisories-server");
+
+		const details = server.locator("details").filter({ has: page.getByTestId("advisory-item") }).first();
+		if (!(await details.evaluate((el) => (el as HTMLDetailsElement).open))) {
+			await details.locator("summary").first().click();
+		}
+		await item(server, SERVER_ADVISORY).getByTestId("advisory-dismiss").click();
+
+		const dialog = page.getByTestId("dismiss-advisory-dialog");
+		await expect(dialog).toBeVisible();
+		await dialog.getByTestId("dismiss-reason-not_used").click();
+		await dialog.getByTestId("dismiss-comment").locator("textarea").fill("We do not use this component.");
+		await page.getByRole("button", { name: "Dismiss advisory" }).last().click();
+		await confirmPasswordIfAsked(page, NC_ADMIN_PASS);
+		await expect(dialog).toBeHidden();
+
+		const dismissed = server.getByTestId("advisories-dismissed");
+		await expect(dismissed).toBeVisible();
+		await dismissed.locator("summary").click();
+		const entry = dismissed.getByTestId("dismissed-item").filter({ hasText: SERVER_ADVISORY });
+		await expect(entry).toContainText("We do not use this component.");
+		await expect(entry).toContainText("Dismissed by admin");
+
+		await entry.getByTestId("advisory-reopen").click();
+		await confirmPasswordIfAsked(page, NC_ADMIN_PASS);
+		await expect(server.getByTestId("dismissed-item").filter({ hasText: SERVER_ADVISORY })).toHaveCount(0);
+		await expect(item(server, SERVER_ADVISORY).getByTestId("advisory-dismiss")).toBeVisible();
+	});
+
+	// @e2e advisories-triage::a-dismissal-lapses-on-a-version-change-and-an-assignee-sees-it
+	test("a dismissal lapses when the version changes, and an assigned admin sees the advisory as theirs", async ({
+		page,
+		browser,
+		baseURL,
+	}) => {
+		await openSettings(page);
+		let panel = await openTab(page, "Advisories");
+		let row = panel.getByTestId("advisories-app-row").filter({ hasText: FIXTURE_APP });
+		await item(row, APP_ADVISORY).getByTestId("advisory-dismiss").click();
+		const dialog = page.getByTestId("dismiss-advisory-dialog");
+		await dialog.getByTestId("dismiss-reason-tolerable_risk").click();
+		await page.getByRole("button", { name: "Dismiss advisory" }).last().click();
+		await confirmPasswordIfAsked(page, NC_ADMIN_PASS);
+		await expect(dialog).toBeHidden();
+		await expect(row.getByTestId("dismissed-item").filter({ hasText: APP_ADVISORY })).toHaveCount(1);
+
+		// 1.0.1 is still below 1.1.0, so still affected: the dismissal was for
+		// 1.0.0 and lapses with the version change.
+		const installed = await installFixture(page, "1.0.1");
+		expect(installed.status, JSON.stringify(installed.body)).toBe(0);
+		await runJob("AdvisoryRefreshJob");
+
+		await openSettings(page);
+		panel = await openTab(page, "Advisories");
+		row = panel.getByTestId("advisories-app-row").filter({ hasText: FIXTURE_APP });
+		await expect(row.getByTestId("dismissed-item").filter({ hasText: APP_ADVISORY })).toHaveCount(0);
+		await expect(item(row, APP_ADVISORY).getByTestId("advisory-dismiss")).toBeVisible();
+
+		// A second admin.
+		await occ("user:delete", SECOND_ADMIN);
+		await execInInstance(
+			["php", "occ", "user:add", "--password-from-env", SECOND_ADMIN],
+			{ env: { OC_PASS: SECOND_PASS } },
+		);
+		await occ("group:adduser", "admin", SECOND_ADMIN);
+		await sqlExec(`DELETE FROM oc_notifications WHERE app='versioniq' AND user='${SECOND_ADMIN}'`);
+
+		await item(row, APP_ADVISORY).getByTestId("advisory-assign").click();
+		const assign = page.getByTestId("assign-advisory-dialog");
+		await expect(assign).toBeVisible();
+		await assign.getByTestId("assign-id").locator("input").fill(SECOND_ADMIN);
+		await page.getByRole("button", { name: "Assign", exact: true }).last().click();
+		await confirmPasswordIfAsked(page, NC_ADMIN_PASS);
+		await expect(assign).toBeHidden();
+		await expect(item(row, APP_ADVISORY).getByTestId("advisory-owner")).toContainText(SECOND_ADMIN);
+
+		await expect
+			.poll(async () =>
+				sql(`SELECT subject FROM oc_notifications WHERE app='versioniq' AND user='${SECOND_ADMIN}'`),
+			)
+			.toContain("advisory_assigned");
+
+		// The assignee, in a context with an empty storage state.
+		const context = await browser.newContext({
+			baseURL,
+			storageState: { cookies: [], origins: [] },
+			ignoreHTTPSErrors: true,
+		});
+		try {
+			const theirs = await context.newPage();
+			await theirs.goto("/login");
+			await theirs.locator("#user").fill(SECOND_ADMIN);
+			await theirs.locator("#password").fill(SECOND_PASS);
+			await theirs.locator("button[type=submit]").click();
+			await theirs.waitForURL((url) => !url.pathname.includes("/login"));
+
+			await openSettings(theirs);
+			const mine = await openTab(theirs, "Advisories");
+			await mine.getByTestId("advisories-only-mine").locator("input").check({ force: true });
+			const theirRow = mine.getByTestId("advisories-app-row").filter({ hasText: FIXTURE_APP });
+			await expect(theirRow).toHaveCount(1);
+			await expect(item(theirRow, APP_ADVISORY)).toBeVisible();
+		} finally {
+			await context.close();
+			await occ("user:delete", SECOND_ADMIN);
+		}
+	});
+});
+
+/**
+ * NCSC-NL advisories, read from the fixture forge's CSAF directory.
+ *
+ * The forge serves a `changes.csv` and two documents about Nextcloud Server:
+ * NCSC-2099-0001 with a range covering any server version the CI runs, and
+ * NCSC-2099-0002 with `vers:unknown/*`. With the switch on, one sweep must put
+ * the first on the server block as affecting this version and the second with
+ * the "does not state which versions" line, because an unstated range is
+ * neither a yes nor a no and must not read as one.
+ *
+ * @spec openspec/changes/advisories-ncsc-feed/specs/security-advisory-correlation/spec.md
+ */
+test.describe("NCSC-NL advisories", () => {
+	const NCSC_STATE = [
+		"advisory.ncsc.cursor",
+		"advisory.ncsc.index",
+		"advisory.ncsc.caught_up",
+	];
+
+	async function setNcsc(
+		page: Page,
+		enabled: boolean,
+	) {
+		const res = await page.request.put(
+			"/ocs/v2.php/apps/versioniq/api/advisory/settings?format=json",
+			{
+				headers: {
+					"OCS-APIRequest": "true",
+					"Content-Type": "application/json",
+				},
+				data: { ncscEnabled: enabled ? "1" : "0" },
+			},
+		);
+		expect(res.ok(), "PUT /api/advisory/settings should answer 200").toBeTruthy();
+		expect((await res.json())?.ocs?.data?.ncscEnabled).toBe(enabled);
+	}
+
+	async function clearNcscState() {
+		for (const key of NCSC_STATE) {
+			await occ("config:app:delete", "versioniq", key);
+		}
+	}
+
+	test.beforeEach(async ({ page }) => {
+		test.skip(!(await fixtureAvailable(page)), "forge fixture not running");
+		await resetFixture(page);
+		// The base as the INSTANCE reaches the fixture, which differs between
+		// the local Docker network and the CI runner; both bootstraps store it
+		// as the forgejo web base. Set through occ, because the settings API
+		// accepts an https base only and the fixture speaks plain http.
+		const forgeBase = (
+			await occ("config:app:get", "versioniq", "forge.forgejo.web_base")
+		).trim();
+		expect(forgeBase, "the forge bootstrap stores its base").not.toBe("");
+		await occ(
+			"config:app:set",
+			"versioniq",
+			"advisory.ncsc_feed_base",
+			"--value",
+			`${forgeBase.replace(/\/+$/, "")}/csaf/v2/`,
+		);
+		// A cursor left by an earlier run would skip the fixture's documents.
+		await clearNcscState();
+	});
+
+	test.afterEach(async ({ page }) => {
+		await setNcsc(page, false);
+		await occ("config:app:delete", "versioniq", "advisory.ncsc_feed_base");
+		await clearNcscState();
+		// Leave a snapshot without the fixture's records for the specs after.
+		await runJob("AdvisoryRefreshJob");
+	});
+
+	test("switched on, a sweep shows the affected and the version-not-stated advisory on the server", async ({
+		page,
+	}) => {
+		await setNcsc(page, true);
+		await runJob("AdvisoryRefreshJob");
+
+		await openSettings(page);
+		await openTab(page, "Advisories");
+
+		const server = page.getByTestId("advisories-server");
+		await expect(server).toBeVisible();
+		// An affected NCSC-NL record makes this version vulnerable.
+		await expect(server).toContainText(
+			"This server version is affected by a published advisory.",
+		);
+
+		const details = server.locator("details").first();
+		if ((await details.getAttribute("open")) === null) {
+			await details.locator("summary").click();
+		}
+		const showAll = server.getByTestId("advisories-show-all");
+		if (await showAll.isVisible()) {
+			await showAll.click();
+		}
+
+		const affected = server.locator('[data-advisory="NCSC-2099-0001"]');
+		await expect(affected).toBeVisible();
+		await expect(affected).toHaveAttribute("data-source", "ncsc");
+		await expect(affected.getByTestId("advisory-source")).toHaveText("NCSC-NL");
+		await expect(affected.getByTestId("advisory-severity")).toHaveAttribute(
+			"data-severity",
+			"high",
+		);
+		await expect(affected.getByTestId("advisory-cves")).toContainText(
+			"CVE-2099-0001",
+		);
+		await expect(affected.getByTestId("advisory-ratings")).toBeVisible();
+		await expect(affected.getByTestId("advisory-not-stated")).toHaveCount(0);
+
+		const notStated = server.locator('[data-advisory="NCSC-2099-0002"]');
+		await expect(notStated).toBeVisible();
+		await expect(notStated).toHaveAttribute("data-source", "ncsc");
+		await expect(notStated.getByTestId("advisory-not-stated")).toHaveText(
+			"NCSC-NL does not state which versions are affected.",
+		);
+	});
+
+	test("switched off, the sweep does not read NCSC-NL", async ({ page }) => {
+		await setNcsc(page, false);
+		await runJob("AdvisoryRefreshJob");
+
+		await openSettings(page);
+		await openTab(page, "Advisories");
+		await expect(page.getByTestId("advisories-server")).toBeVisible();
+		await expect(page.locator('[data-source="ncsc"]')).toHaveCount(0);
+		// Nothing was read, so no cursor was written.
+		expect(
+			(await occ("config:app:get", "versioniq", "advisory.ncsc.cursor")).trim(),
+		).toBe("");
 	});
 });

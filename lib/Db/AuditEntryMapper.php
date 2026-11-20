@@ -45,14 +45,19 @@ class AuditEntryMapper extends QBMapper {
 		parent::__construct($db, self::TABLE_NAME, AuditEntry::class);
 	}
 
+	/** The origin filter that selects rows written before origins were recorded. */
+	public const ORIGIN_UNKNOWN = 'unknown';
+
 	/**
-	 * Newest-first page of audit entries, optionally filtered by app id;
-	 * see "Audit entries are immutable and admin-readable".
+	 * Newest-first page of audit entries, optionally filtered by app id and by
+	 * origin (`unknown` selects the rows that have none); see "Audit entries are
+	 * immutable and admin-readable".
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
+	 * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-every-audit-row-says-where-it-came-from
 	 * @return list<AuditEntry>
 	 */
-	public function findPage(?string $appId, int $limit, int $offset): array {
+	public function findPage(?string $appId, int $limit, int $offset, ?string $origin = null): array {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select('*')
 			->from($this->tableName)
@@ -61,11 +66,45 @@ class AuditEntryMapper extends QBMapper {
 			->setMaxResults($limit)
 			->setFirstResult($offset);
 
+		$conditions = [];
 		if ($appId !== null && $appId !== '') {
-			$qb->where($qb->expr()->eq('app_id', $qb->createNamedParameter($appId, IQueryBuilder::PARAM_STR)));
+			$conditions[] = $qb->expr()->eq('app_id', $qb->createNamedParameter($appId, IQueryBuilder::PARAM_STR));
+		}
+		if ($origin === self::ORIGIN_UNKNOWN) {
+			$conditions[] = $qb->expr()->isNull('origin');
+		} elseif ($origin !== null && $origin !== '') {
+			$conditions[] = $qb->expr()->eq('origin', $qb->createNamedParameter($origin, IQueryBuilder::PARAM_STR));
+		}
+		foreach ($conditions as $index => $condition) {
+			if ($index === 0) {
+				$qb->where($condition);
+			} else {
+				$qb->andWhere($condition);
+			}
 		}
 
 		return $this->findEntities($qb);
+	}
+
+	/**
+	 * The newest successful install row of an app, or null when it has none;
+	 * the row an SBOM copy is kept with (inventory-export-sbom-metrics D4).
+	 *
+	 * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-every-update-leaves-an-sbom-of-the-state-it-produced
+	 */
+	public function findLatestSuccessfulInstall(string $appId): ?AuditEntry {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')
+			->from($this->tableName)
+			->where($qb->expr()->eq('app_id', $qb->createNamedParameter($appId, IQueryBuilder::PARAM_STR)))
+			->andWhere($qb->expr()->eq('operation', $qb->createNamedParameter('install', IQueryBuilder::PARAM_STR)))
+			->andWhere($qb->expr()->eq('status', $qb->createNamedParameter('success', IQueryBuilder::PARAM_STR)))
+			->orderBy('id', 'DESC')
+			->setMaxResults(1);
+
+		$entries = $this->findEntities($qb);
+
+		return $entries[0] ?? null;
 	}
 
 	/**
@@ -131,6 +170,49 @@ class AuditEntryMapper extends QBMapper {
 		$entries = $this->findEntities($qb);
 
 		return $entries[0] ?? null;
+	}
+
+	/**
+	 * Entries created between two UTC moments (both inclusive), oldest
+	 * first, optionally for one app and one operation; uses the
+	 * `created_at` index. See audit-security-reports D5.
+	 *
+	 * @param string      $fromUtc   Lower bound, `Y-m-d H:i:s` UTC.
+	 * @param string|null $toUtc     Upper bound, `Y-m-d H:i:s` UTC, or null for none.
+	 * @param string|null $appId     Only this app, or null for all.
+	 * @param string|null $operation Only this operation, or null for all.
+	 * @param int         $limit       At most this many rows.
+	 * @param int         $offset      Skip this many rows first.
+	 * @param bool        $newestFirst Newest first instead of oldest first.
+	 *
+	 * @return list<AuditEntry>
+	 *
+	 * @spec openspec/changes/audit-security-reports/specs/audit-trail/spec.md
+	 */
+	public function findBetween(string $fromUtc, ?string $toUtc, ?string $appId, ?string $operation, int $limit, int $offset = 0, bool $newestFirst = false): array {
+		$direction = $newestFirst ? 'DESC' : 'ASC';
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')
+			->from($this->tableName)
+			->where($qb->expr()->gte('created_at', $qb->createNamedParameter($fromUtc, IQueryBuilder::PARAM_STR)))
+			->orderBy('created_at', $direction)
+			->addOrderBy('id', $direction)
+			->setMaxResults($limit)
+			->setFirstResult($offset);
+
+		if ($toUtc !== null) {
+			$qb->andWhere($qb->expr()->lte('created_at', $qb->createNamedParameter($toUtc, IQueryBuilder::PARAM_STR)));
+		}
+
+		if ($appId !== null && $appId !== '') {
+			$qb->andWhere($qb->expr()->eq('app_id', $qb->createNamedParameter($appId, IQueryBuilder::PARAM_STR)));
+		}
+
+		if ($operation !== null && $operation !== '') {
+			$qb->andWhere($qb->expr()->eq('operation', $qb->createNamedParameter($operation, IQueryBuilder::PARAM_STR)));
+		}
+
+		return $this->findEntities($qb);
 	}
 
 	/**

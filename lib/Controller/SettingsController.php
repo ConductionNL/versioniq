@@ -15,16 +15,17 @@ namespace OCA\Versioniq\Controller;
 use InvalidArgumentException;
 use OCA\Versioniq\Http\InstanceSettingsFields;
 use OCA\Versioniq\Http\RequestFieldsFrom;
-use OCA\Versioniq\Service\Audit\AuditedVersions;
-use OCA\Versioniq\Service\Audit\AuditLogger;
-use OCA\Versioniq\Service\Audit\AuditSubject;
-use OCA\Versioniq\Service\Settings\InstanceSettings;
+use OCA\Versioniq\Kernel\Contracts\InstanceSettingsInterface;
+use OCA\Versioniq\Service\Advisory\LocalFeedCopy;
+use OCA\Versioniq\Service\Audit\AdminChangeAuditInterface;
+use OCA\Versioniq\Service\Checks\CheckStore;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\Http\Response;
 use OCP\AppFramework\OCSController;
+use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IGroupManager;
 use OCP\IRequest;
 use OCP\IUserSession;
@@ -39,6 +40,10 @@ use OCP\IUserSession;
  * because pointing the App Store or GitHub at another host changes where
  * installs come from.
  *
+ * The update checks are read here too: the admin's verdict checks, without
+ * their tokens, and the operator's command checks from `config.php`, which
+ * the page only shows. PUT /api/update-checks replaces the verdict checks.
+ *
  * @psalm-suppress UnusedClass
  */
 class SettingsController extends OCSController {
@@ -47,10 +52,14 @@ class SettingsController extends OCSController {
 	public function __construct(
 		string $appName,
 		IRequest $request,
-		private InstanceSettings $settings,
-		private AuditLogger $auditLogger,
+		private InstanceSettingsInterface $settings,
+		private AdminChangeAuditInterface $auditLogger,
 		private IGroupManager $groupManager,
 		private IUserSession $userSession,
+		private CheckStore $checkStore,
+		// The offline advisory copy (sources-trust-audit-and-offline-feed).
+		private ?LocalFeedCopy $localFeedCopy = null,
+		private ?ITimeFactory $time = null,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -58,13 +67,14 @@ class SettingsController extends OCSController {
 	/**
 	 * Returns the instance settings with their defaults
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array<string, int|string|null>, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
-	 * 200: The settings, each override ('' when unset) next to its default
+	 * 200: The settings, each override ('' when unset) next to its default, and the update checks under updateChecks
 	 * 403: Caller is not an administrator
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/instance-settings')]
 	#[ApiRoute(verb: 'GET', url: '/api/v1/instance-settings', postfix: 'v1')]
@@ -73,13 +83,53 @@ class SettingsController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		return new DataResponse($this->settings->read());
+		return new DataResponse($this->settings->read() + ['updateChecks' => $this->checkStore->read()]);
+	}
+
+	/**
+	 * Replaces the verdict checks (password-confirmed); command checks are set in config.php only
+	 *
+	 * @param list<array<string, mixed>> $checks Each {id?, name, url, apps?, token?, clearToken?}; an id of a stored check keeps its token unless token or clearToken is sent
+	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 *
+	 * 200: The update checks after the change, without tokens
+	 * 400: A check is not acceptable (no name, not https, too many); nothing was changed
+	 * 403: Caller is not an administrator
+	 *
+	 * @spec openspec/specs/audit-trail/spec.md
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'PUT', url: '/api/update-checks')]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/update-checks', postfix: 'v1')]
+	public function updateUpdateChecks(array $checks = []): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		try {
+			$stored = $this->checkStore->saveVerdictChecks($checks);
+		} catch (InvalidArgumentException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
+
+		// Names only: an address can carry a query a CI server treats as a secret.
+		$this->auditLogger->recordAdminChange(
+			$this->userSession->getUser()?->getUID() ?? '',
+			AdminChangeAuditInterface::OPERATION_SETTINGS,
+			sprintf('Update checks changed: %d verdict check(s)%s', count($stored), $stored === [] ? '' : ': ' . implode(', ', array_map(
+				static fn (array $check): string => (string)($check['name'] ?? ''),
+				$stored,
+			))),
+		);
+
+		return new DataResponse($this->checkStore->read());
 	}
 
 	/**
 	 * Updates the instance settings (password-confirmed); an omitted field is left alone
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array<string, int|string|null>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array<string, bool|int|string|null>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: The settings after the change
 	 * 400: A value is out of range or not an acceptable URL; nothing was changed
@@ -116,17 +166,115 @@ class SettingsController extends OCSController {
 
 		$after = $this->settings->read();
 		if ($applied !== []) {
-			$this->auditLogger->record(
-				new AuditSubject($this->userSession->getUser()?->getUID() ?? '', 'versioniq', AuditLogger::OPERATION_SETTINGS),
-				new AuditedVersions(null, null, null),
-				AuditLogger::STATUS_SUCCESS,
+			$this->auditLogger->recordAdminChange(
+				$this->userSession->getUser()?->getUID() ?? '',
+				AdminChangeAuditInterface::OPERATION_SETTINGS,
 				'Settings changed: ' . implode(', ', array_map(
-					static fn (string $field): string => $field . '=' . (string)$after[$field],
+					static fn (string $field): string => $field . '=' . self::settingText($after[$field]),
 					$applied,
 				)),
 			);
 		}
 
 		return new DataResponse($after);
+	}
+
+	/**
+	 * Imports a local copy of the advisory feed (password-confirmed)
+	 *
+	 * The uploaded `file` must be a feed file in the format the feed address
+	 * serves. A file that does not parse is refused and the previous copy
+	 * stays in use. The import is audited as a settings change.
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{copiedAt: int, records: int}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 *
+	 * 200: The copy was stored
+	 * 400: No file was sent, or it is not a valid feed; the previous copy is kept
+	 * 403: Caller is not an administrator
+	 *
+	 * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/security-advisory-correlation/spec.md
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'POST', url: '/api/advisory/feed-copy')]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/advisory/feed-copy', postfix: 'v1')]
+	public function importAdvisoryFeedCopy(): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$copy = $this->importUploadedFeedCopy();
+		if ($copy instanceof DataResponse) {
+			return $copy;
+		}
+
+		$this->auditLogger->recordAdminChange(
+			$this->userSession->getUser()?->getUID() ?? '',
+			AdminChangeAuditInterface::OPERATION_SETTINGS,
+			'Advisory feed copy imported: ' . $copy['records'] . ' advisories',
+		);
+
+		return new DataResponse($copy);
+	}
+
+	/**
+	 * Imports the uploaded `file` as the local advisory copy: the stored copy's
+	 * summary, or the 400 that says why nothing was stored.
+	 *
+	 * @return array{copiedAt: int, records: int}|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>
+	 */
+	private function importUploadedFeedCopy(): array|DataResponse {
+		if ($this->localFeedCopy === null || $this->time === null) {
+			return new DataResponse(['message' => 'The local advisory copy is not available.'], Http::STATUS_BAD_REQUEST);
+		}
+
+		$content = $this->uploadedContent();
+		if ($content === null) {
+			return new DataResponse(['message' => 'Choose a feed file to import.'], Http::STATUS_BAD_REQUEST);
+		}
+
+		try {
+			return $this->localFeedCopy->import($content, $this->time->getTime());
+		} catch (InvalidArgumentException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
+	}
+
+	/**
+	 * The content of the uploaded `file`, or null when none arrived whole.
+	 */
+	private function uploadedContent(): ?string {
+		$path = $this->uploadedPath();
+		if ($path === null) {
+			return null;
+		}
+		$content = file_get_contents($path);
+
+		return is_string($content) ? $content : null;
+	}
+
+	/**
+	 * The readable temporary path of the uploaded `file`, or null when none arrived whole.
+	 */
+	private function uploadedPath(): ?string {
+		/** @var mixed $upload */
+		$upload = $this->request->getUploadedFile('file');
+		if (!is_array($upload) || ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+			return null;
+		}
+		/** @var mixed $path */
+		$path = $upload['tmp_name'] ?? null;
+
+		return is_string($path) && is_readable($path) ? $path : null;
+	}
+
+	/**
+	 * A setting's value as the audit message writes it: on/off for a switch.
+	 */
+	private static function settingText(bool|int|string|null $value): string {
+		if (is_bool($value)) {
+			return $value ? 'on' : 'off';
+		}
+
+		return (string)$value;
 	}
 }

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\Settings;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Release\NotesTranslator;
 use OCA\Versioniq\Settings\Admin;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Http\TemplateResponse;
@@ -17,13 +18,16 @@ use OCP\AppFramework\Services\IInitialState;
 use PHPUnit\Framework\TestCase;
 
 final class AdminTest extends TestCase {
-	private function admin(bool $integriqEnabled = false, ?IInitialState $initialState = null): Admin {
+	private function admin(bool $integriqEnabled = false, ?IInitialState $initialState = null, bool $translationAvailable = false): Admin {
 		$appManager = $this->createMock(IAppManager::class);
 		$appManager->method('isEnabledForUser')->willReturnCallback(
 			static fn (string $appId): bool => $appId === 'integriq' && $integriqEnabled,
 		);
 
-		return new Admin($initialState ?? $this->createMock(IInitialState::class), $appManager);
+		$notesTranslator = $this->createMock(NotesTranslator::class);
+		$notesTranslator->method('isAvailable')->willReturn($translationAvailable);
+
+		return new Admin($initialState ?? $this->createMock(IInitialState::class), $appManager, $notesTranslator);
 	}
 
 	public function testGetSectionIsAppId(): void {
@@ -57,6 +61,28 @@ final class AdminTest extends TestCase {
 			$initialState->expects($this->once())->method('provideInitialState')->with('integriq-installed', $enabled);
 
 			$this->admin($enabled, $initialState)->getForm();
+		}
+	}
+
+	/**
+	 * The Translate button on release notes shows only when the instance can
+	 * machine-translate; the page learns it from a lazy initial state, so the
+	 * provider is asked only when the page is rendered (releases-notes-reach D3).
+	 * @spec openspec/changes/releases-notes-reach/specs/changelog-visibility/spec.md
+	 */
+	public function testTheFormTellsThePageWhetherNotesCanBeTranslated(): void {
+		foreach ([true, false] as $available) {
+			$provided = [];
+			$initialState = $this->createMock(IInitialState::class);
+			$initialState->expects($this->once())->method('provideLazyInitialState')->willReturnCallback(
+				static function (string $key, \Closure $value) use (&$provided): void {
+					$provided[$key] = $value();
+				},
+			);
+
+			$this->admin(false, $initialState, $available)->getForm();
+
+			self::assertSame(['notes-translation-available' => $available], $provided);
 		}
 	}
 }
