@@ -12,6 +12,7 @@ namespace OCA\Versioniq\Tests\Unit\Service\Lifecycle;
 require_once __DIR__ . '/InMemoryAppConfig.php';
 
 use OCA\Versioniq\Service\Lifecycle\LifecycleSignals;
+use OCA\Versioniq\Service\Lifecycle\ServerEolFeed;
 use OCA\Versioniq\Service\Source\AppStoreSource;
 use OCA\Versioniq\Service\Source\ForgeReleaseSource;
 use OCA\Versioniq\Service\Source\SourceBinding;
@@ -110,5 +111,77 @@ final class LifecycleSignalsTest extends TestCase {
 
 	public function testWithoutTheSourcesNothingIsAsked(): void {
 		$this->assertNull($this->signals()->archived('deck'));
+	}
+
+	/**
+	 * Signals over one App Store app and one forge app, with an end-of-life
+	 * feed that lists `$majors` and keeps 31 and 32 maintained.
+	 *
+	 * @param array<int, string>|null $majors The feed's majors; null for a feed that is off.
+	 * @param list<int>|null $supported What the App Store says the app's releases support.
+	 * @param list<int>|null $asked Receives the majors the App Store was asked about.
+	 */
+	private function withFeed(?array $majors, ?array $supported, ?array &$asked = null): LifecycleSignals {
+		$feed = $this->createMock(ServerEolFeed::class);
+		$feed->method('majors')->willReturn($majors);
+		$feed->method('endOfSupport')->willReturnCallback(static fn (array $majors): ?bool => $majors === [] ? null : array_intersect($majors, [31, 32]) === []);
+
+		$appStore = $this->createMock(AppStoreSource::class);
+		$appStore->method('supportedMajors')->willReturnCallback(static function (string $appId, array $majors) use ($supported, &$asked): ?array {
+			$asked = $majors;
+
+			return $supported;
+		});
+		$forge = $this->createMock(ForgeReleaseSource::class);
+		$forge->expects($this->never())->method('isArchived');
+
+		$store = $this->createMock(SourceBindingStore::class);
+		$store->method('get')->willReturnCallback(static fn (string $appId): ?SourceBinding => match ($appId) {
+			'legacyapp' => SourceBinding::appStore(),
+			'deck' => SourceBinding::github('nextcloud', 'deck'),
+			default => null,
+		});
+		$registry = $this->createMock(SourceRegistry::class);
+		$registry->method('get')->willReturnCallback(
+			static fn (SourceBinding $binding): SourceInterface => $binding->kind === SourceBinding::KIND_APPSTORE ? $appStore : $forge
+		);
+
+		[$appConfig] = InMemoryAppConfig::for($this, []);
+
+		return new LifecycleSignals($appConfig, $this->createMock(ITimeFactory::class), new SourceLookup($registry, $store), $feed);
+	}
+
+	public function testAnAppWhoseReleasesOnlySupportPastMajorsIsOutOfSupport(): void {
+		$asked = null;
+		$signals = $this->withFeed([28 => '2025-01-01', 29 => '2025-04-01', 31 => '2027-01-01', 32 => ''], [28, 29], $asked);
+
+		$this->assertTrue($signals->endOfSupport('legacyapp'));
+		$this->assertSame([28, 29, 31, 32, 33, 34, 35], $asked, 'the feed\'s majors and the three after its newest are asked');
+	}
+
+	public function testAnAppWithAReleaseForAMaintainedMajorIsSupported(): void {
+		$this->assertFalse($this->withFeed([28 => '2025-01-01', 31 => '2027-01-01'], [28, 31])->endOfSupport('legacyapp'));
+	}
+
+	public function testAReleaseForAMajorNewerThanTheFeedListsIsSupported(): void {
+		$this->assertFalse($this->withFeed([28 => '2025-01-01', 29 => '2025-04-01'], [28, 30])->endOfSupport('legacyapp'));
+	}
+
+	public function testWithoutAFeedOrAStoreRangeEndOfSupportIsUnknown(): void {
+		$this->assertNull($this->withFeed(null, [28])->endOfSupport('legacyapp'), 'a feed that is off marks no app');
+		$this->assertNull($this->withFeed([], [28])->endOfSupport('legacyapp'), 'an empty feed marks no app');
+		$this->assertNull($this->withFeed([28 => '2025-01-01', 31 => ''], null)->endOfSupport('legacyapp'), 'releases without a range');
+		$this->assertNull($this->withFeed([28 => '2025-01-01', 31 => ''], [])->endOfSupport('legacyapp'), 'releases for no listed major');
+	}
+
+	public function testAForgeAppAndAnUnboundAppAreUnknown(): void {
+		$signals = $this->withFeed([28 => '2025-01-01', 31 => ''], [28]);
+
+		$this->assertNull($signals->endOfSupport('deck'));
+		$this->assertNull($signals->endOfSupport('unbound'));
+	}
+
+	public function testWithoutTheFeedNothingIsAsked(): void {
+		$this->assertNull($this->signals()->endOfSupport('legacyapp'));
 	}
 }

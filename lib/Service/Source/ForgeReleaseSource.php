@@ -171,7 +171,7 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 *
 	 * @param array<array-key, mixed> $releases
 	 * @param string $assetPattern The binding's asset pattern, for the download count.
-	 * @return list<array{version: string, changelog: ?string, changelogLanguage: null, releasedAt: ?string, downloads: ?int}>
+	 * @return list<array{version: string, changelog: ?string, changelogLanguage: null, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true}>
 	 */
 	private function versionEntries(array $releases, string $assetPattern): array {
 		$versions = [];
@@ -190,10 +190,31 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 				// A draft carries no published_at and stays null.
 				'releasedAt' => ReleaseDate::normalize($release['published_at'] ?? null),
 				'downloads' => self::assetDownloads($release['assets'] ?? null, $assetPattern),
-			];
+			] + self::publisherMarks($release, $tag);
 		}
 
 		return $versions;
+	}
+
+	/**
+	 * What the publisher said about the release itself: `sourcePreRelease` when
+	 * it is marked pre-release, `sourceLts` when its name or tag carries the
+	 * word LTS; absent otherwise (releases-channel-and-prereleases D1, D4).
+	 *
+	 * @param array<array-key, mixed> $release
+	 * @return array{sourcePreRelease?: true, sourceLts?: true}
+	 */
+	private static function publisherMarks(array $release, string $tag): array {
+		$marks = [];
+		if (($release['prerelease'] ?? false) === true) {
+			$marks['sourcePreRelease'] = true;
+		}
+		$name = isset($release['name']) && is_string($release['name']) ? $release['name'] : '';
+		if (preg_match('/\bLTS\b/i', $name . ' ' . $tag) === 1) {
+			$marks['sourceLts'] = true;
+		}
+
+		return $marks;
 	}
 
 	/**
@@ -415,11 +436,6 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * @return array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string}
 	 */
 	private function fetchAdvisories(Forge $forge, string $ownerRepo): array {
-		// No session user means a background job; the resolver then picks from
-		// tokens shared with admins instead of going anonymous (#430).
-		$uid = $this->pats->userSession->getUser()?->getUID();
-		$pat = $this->pats->patResolver->findFor($forge->id, $ownerRepo, $uid);
-
 		$endpoint = $forge->advisoriesEndpoint($ownerRepo);
 		if ($endpoint === null) {
 			// A forge without repository advisories is never read as "no
@@ -427,31 +443,106 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 			return ['ok' => false, 'error' => sprintf('%s publishes no repository security advisories.', $forge->id)];
 		}
 
-		if ($pat === null) {
-			return $this->performFetch(new ForgeCall($forge, $endpoint));
-		}
+		$call = new ForgeRequest($forge, $ownerRepo, $endpoint);
 
 		/** @var array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string} */
-		return $this->pats->patManager->useToken($pat, fn (string $token): array => $this->performFetch(new ForgeCall($forge, $endpoint, $token)));
+		return $this->authorized($call, fn (?string $token): array => $this->performFetch(new ForgeCall($forge, $call->url, $token)));
 	}
 
 	/**
 	 * @return array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string}
 	 */
 	private function fetchReleases(Forge $forge, string $ownerRepo): array {
-		// No session user means a background job; the resolver then picks from
-		// tokens shared with admins instead of going anonymous (#430).
-		$uid = $this->pats->userSession->getUser()?->getUID();
-		$pat = $this->pats->patResolver->findFor($forge->id, $ownerRepo, $uid);
-
-		$endpoint = $forge->releasesEndpoint($ownerRepo);
-
-		if ($pat === null) {
-			return $this->performFetch(new ForgeCall($forge, $endpoint));
-		}
+		$call = new ForgeRequest($forge, $ownerRepo, $forge->releasesEndpoint($ownerRepo));
 
 		/** @var array{ok: true, releases: array<int, mixed>}|array{ok: false, error: string} */
-		return $this->pats->patManager->useToken($pat, fn (string $token): array => $this->performFetch(new ForgeCall($forge, $endpoint, $token)));
+		return $this->authorized($call, fn (?string $token): array => $this->performFetch(new ForgeCall($forge, $call->url, $token)));
+	}
+
+	/**
+	 * Runs a forge request with the PAT that applies to the repository, or
+	 * anonymously when none does. No session user means a background job; the
+	 * resolver then picks from tokens shared with admins instead of going
+	 * anonymous (#430).
+	 *
+	 * @template T
+	 * @param callable(?string): T $fetch
+	 * @return T
+	 */
+	private function authorized(ForgeRequest $call, callable $fetch): mixed {
+		$uid = $this->pats->userSession->getUser()?->getUID();
+		$pat = $this->pats->patResolver->findFor($call->forge->id, $call->ownerRepo, $uid);
+		if ($pat === null) {
+			return $fetch(null);
+		}
+
+		return $this->pats->patManager->useToken($pat, fn (string $token): mixed => $fetch($token));
+	}
+
+	/**
+	 * The release's `appinfo/info.xml` at its tag (`v<version>`, else
+	 * `<version>`): '' when the forge has no such file at either tag or its
+	 * answer cannot be read, null when the request failed and may work later
+	 * (network, authentication, rate limit, server error).
+	 *
+	 * @spec openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness/spec.md#requirement-a-forge-releases-ranges-are-read-without-downloading-the-release
+	 */
+	public function infoXmlAtTag(SourceBinding $binding, string $version): ?string {
+		$ownerRepo = $binding->getOwnerRepo();
+		if ($ownerRepo === null) {
+			return '';
+		}
+
+		$forge = $this->forgeRegistry->get($binding->getForge());
+		foreach (self::tagCandidates($version) as $tag) {
+			$call = new ForgeRequest($forge, $ownerRepo, $forge->infoXmlEndpoint($ownerRepo, $tag));
+			/** @var string|null $content */
+			$content = $this->authorized($call, fn (?string $token): ?string => $this->fetchFile($call, $token));
+			if ($content !== '') {
+				return $content;
+			}
+		}
+
+		return '';
+	}
+
+	/**
+	 * The tags a version may be released under, most usual first.
+	 *
+	 * @return list<string>
+	 */
+	private static function tagCandidates(string $version): array {
+		return str_starts_with($version, 'v') ? [$version] : ['v' . $version, $version];
+	}
+
+	/**
+	 * One file from the forge's contents endpoint: its text, '' when absent
+	 * or unreadable, null when the request failed.
+	 */
+	private function fetchFile(ForgeRequest $call, ?string $token): ?string {
+		$response = $this->send($call, $token);
+		if (!$response instanceof IResponse) {
+			return null;
+		}
+
+		$status = $response->getStatusCode();
+		if ($status === 404) {
+			return '';
+		}
+
+		return $status === 200 ? self::fileContent((string)$response->getBody()) : null;
+	}
+
+	/** The decoded `content` of a contents answer, or '' when it carries none. */
+	private static function fileContent(string $body): string {
+		$decoded = json_decode($body, true);
+		if (!is_array($decoded) || !is_string($decoded['content'] ?? null)) {
+			return '';
+		}
+
+		$content = base64_decode($decoded['content']);
+
+		return $content === false ? '' : $content;
 	}
 
 	/**
@@ -462,21 +553,32 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 */
 	private function performFetch(ForgeCall $call): array {
 		$forge = $call->forge;
-		try {
-			$response = $this->clientService->newClient()->get($call->endpoint, $this->requestOptions($forge, $call->token));
-		} catch (Exception $error) {
-			$this->logger->warning('ForgeReleaseSource: fetch failed', [
-				'forge' => $forge->id,
-				'endpoint' => $call->endpoint,
-				'message' => $error->getMessage(),
-			]);
-
-			$this->connectionReports?->forgeAnswered($forge->id, $forge->apiBaseUrl, null);
-
-			return ['ok' => false, 'error' => $this->humanizeError($forge, $error->getMessage())];
+		$response = $this->send(new ForgeRequest($forge, '', $call->endpoint), $call->token);
+		if (!$response instanceof IResponse) {
+			return ['ok' => false, 'error' => $this->humanizeError($forge, $response)];
 		}
 
 		return $this->readReleaseList($forge, $response);
+	}
+
+	/**
+	 * One GET to the forge: the response, or the error message when the
+	 * request did not get one (logged, and reported to integriq).
+	 */
+	private function send(ForgeRequest $call, ?string $token): IResponse|string {
+		try {
+			return $this->clientService->newClient()->get($call->url, $this->requestOptions($call->forge, $token));
+		} catch (Exception $error) {
+			$this->logger->warning('ForgeReleaseSource: fetch failed', [
+				'forge' => $call->forge->id,
+				'endpoint' => $call->url,
+				'message' => $error->getMessage(),
+			]);
+
+			$this->connectionReports?->forgeAnswered($call->forge->id, $call->forge->apiBaseUrl, null);
+
+			return $error->getMessage();
+		}
 	}
 
 	/**
@@ -766,12 +868,12 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	}
 
 	/**
-	 * @param list<array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int}> $versions
-	 * @return list<array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int}>
+	 * @param list<array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true}> $versions
+	 * @return list<array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true}>
 	 */
 	private function dedupeAndSort(array $versions): array {
 		$seenAt = [];
-		/** @var list<array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int}> $unique */
+		/** @var list<array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true}> $unique */
 		$unique = [];
 		foreach ($versions as $entry) {
 			$index = $seenAt[$entry['version']] ?? null;
@@ -788,8 +890,8 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 		usort(
 			$unique,
 			/**
-			 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int} $a
-			 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int} $b
+			 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true} $a
+			 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true} $b
 			 */
 			static fn (array $a, array $b): int => version_compare($b['version'], $a['version'])
 		);
@@ -801,9 +903,9 @@ class ForgeReleaseSource implements SourceInterface, AdvisorySourceInterface {
 	 * The kept entry with its empty changelog and release date taken from a
 	 * duplicate.
 	 *
-	 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int} $kept
-	 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int} $entry
-	 * @return array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int}
+	 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true} $kept
+	 * @param array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true} $entry
+	 * @return array{version: string, changelog: ?string, releasedAt: ?string, downloads: ?int, sourcePreRelease?: true, sourceLts?: true}
 	 */
 	private static function backfill(array $kept, array $entry): array {
 		$kept['changelog'] ??= $entry['changelog'];

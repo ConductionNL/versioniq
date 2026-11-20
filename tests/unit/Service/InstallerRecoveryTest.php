@@ -9,8 +9,24 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Service;
 
+use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\ExternalReleaseInstallerService;
+use OCA\Versioniq\Service\Installer\ArchiveCheck;
+use OCA\Versioniq\Service\Installer\ExternalInstall;
+use OCA\Versioniq\Service\Installer\ExternalInstallOptions;
+use OCA\Versioniq\Service\Installer\ExternalInstallRequest;
+use OCA\Versioniq\Service\Installer\ExternalInstallRun;
+use OCA\Versioniq\Service\Installer\InstallBackup;
+use OCA\Versioniq\Service\Installer\InstallFinalizer;
+use OCA\Versioniq\Service\Installer\InstallSteps;
+use OCA\Versioniq\Service\Installer\MigrationDiffer;
+use OCA\Versioniq\Service\Installer\SignedInstall;
+use OCA\Versioniq\Service\Installer\StagedRelease;
 use OCA\Versioniq\Service\SelectedReleaseInstallerService;
+use OCA\Versioniq\Service\Source\SourceBinding;
+use OCA\Versioniq\Service\Source\TrustedSourceList;
+use OCP\App\IAppManager;
+use OCP\IAppConfig;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
@@ -101,6 +117,88 @@ final class InstallerRecoveryTest extends TestCase {
 		$this->invokePrivate($installerClass, 'rmdirr', [$dir]);
 
 		self::assertDirectoryDoesNotExist($dir);
+	}
+
+	/**
+	 * The signed installer backs the old app up while its folder is still in
+	 * place, with the installed version and enabled value, and the result
+	 * names the backup (safety-rollback-backup-and-preflight D3).
+	 *
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 */
+	public function testTheSignedInstallerKeepsABackupAndTheResultNamesIt(): void {
+		$appManager = $this->createMock(IAppManager::class);
+		$appManager->method('getAppVersion')->with('notes')->willReturn('1.0.0');
+		$appConfig = $this->createMock(IAppConfig::class);
+		$appConfig->method('getValueString')->with('notes', 'enabled', 'no')->willReturn('yes');
+		$savedServer = \OC::$server;
+		\OC::$server = new class([IAppManager::class => $appManager, IAppConfig::class => $appConfig]) {
+			public function __construct(private array $services) {
+			}
+
+			public function get(string $id): mixed {
+				return $this->services[$id];
+			}
+		};
+		$made = ['made' => true, 'sizeBytes' => 2048, 'keptUntil' => '2026-10-15'];
+		$backup = $this->createMock(InstallBackup::class);
+		$backup->expects($this->once())->method('make')->with('notes', $this->root . '/notes', '1.0.0', 'yes')->willReturn($made);
+
+		$reflection = new ReflectionClass(SelectedReleaseInstallerService::class);
+		$installer = $reflection->newInstanceWithoutConstructor();
+		$reflection->getProperty('installBackup')->setValue($installer, $backup);
+		// Built without its constructor: live progress (install-live-progress) is off.
+		$reflection->getProperty('progress')->setValue($installer, null);
+		try {
+			$reflection->getMethod('keepBackup')->invoke($installer, 'notes', $this->root . '/notes');
+		} finally {
+			\OC::$server = $savedServer;
+		}
+		$result = $reflection->getMethod('resultEnvelope')->invoke($installer, new SignedInstall('notes', ['version' => '1.1.0'], '1.0.0', 'yes'), 'notes');
+
+		$this->assertSame($made, $result['backup']);
+	}
+
+	public function testWithoutABackupServiceTheSignedResultHasNoBackup(): void {
+		$reflection = new ReflectionClass(SelectedReleaseInstallerService::class);
+		$installer = $reflection->newInstanceWithoutConstructor();
+		$reflection->getProperty('installBackup')->setValue($installer, null);
+		$reflection->getMethod('keepBackup')->invoke($installer, 'notes', $this->root . '/notes');
+		$result = $reflection->getMethod('resultEnvelope')->invoke($installer, new SignedInstall('notes', ['version' => '1.1.0'], '1.0.0', 'yes'), 'notes');
+
+		$this->assertArrayNotHasKey('backup', $result);
+	}
+
+	/**
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 */
+	public function testTheExternalInstallerKeepsABackupOfAnUpdateButNotOfAFreshInstall(): void {
+		mkdir($this->root . '/notes');
+		$made = ['made' => false, 'reason' => 'disabled'];
+		$backup = $this->createMock(InstallBackup::class);
+		$backup->expects($this->once())->method('make')->with('notes', $this->root . '/notes', '1.0.0', 'no')->willReturn($made);
+		$steps = new InstallSteps(
+			$this->createMock(TrustedSourceList::class),
+			$this->createMock(MigrationDiffer::class),
+			$this->createMock(InstallFinalizer::class),
+			$this->createMock(AuditLogger::class),
+			backup: $backup,
+		);
+		$reflection = new ReflectionClass(ExternalReleaseInstallerService::class);
+		$installer = $reflection->newInstanceWithoutConstructor();
+		$reflection->getProperty('steps')->setValue($installer, $steps);
+		$reflection->getProperty('progress')->setValue($installer, null);
+		$run = new ExternalInstallRun(new ExternalInstallRequest('notes', '1.1.0', [], new ExternalInstallOptions(false, false)), SourceBinding::appStore(), '1.0.0');
+		$run->previousEnabled = 'no';
+		$check = new ArchiveCheck('sha', true, null);
+
+		$reflection->getMethod('keepBackup')->invoke($installer, new ExternalInstall($run, $check, new StagedRelease($this->root . '/staged', [], $this->root . '/notes', $this->root . '/notes'), null));
+		$result = $reflection->getMethod('resultEnvelope')->invoke($installer, new ExternalInstall($run, $check, new StagedRelease($this->root . '/staged', [], $this->root . '/notes', $this->root . '/notes'), null), ['binding' => SourceBinding::appStore(), 'installedApp' => 'notes']);
+		$this->assertSame($made, $result['backup']);
+
+		$reflection->getMethod('keepBackup')->invoke($installer, new ExternalInstall($run, $check, new StagedRelease($this->root . '/staged', [], null, $this->root . '/fresh'), null));
+		$result = $reflection->getMethod('resultEnvelope')->invoke($installer, new ExternalInstall($run, $check, new StagedRelease($this->root . '/staged', [], null, $this->root . '/fresh'), null), ['binding' => SourceBinding::appStore(), 'installedApp' => 'notes']);
+		$this->assertArrayNotHasKey('backup', $result);
 	}
 
 	/**

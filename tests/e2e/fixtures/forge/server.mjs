@@ -1,6 +1,3 @@
-// SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
-// SPDX-License-Identifier: EUPL-1.2
-import { readdir, readFile } from "node:fs/promises";
 // Fixture forge — a Forgejo/Gitea-shaped HTTP double for Versioniq e2e tests.
 //
 // It answers the three endpoints ForgeReleaseSource / PatValidator hit
@@ -12,13 +9,21 @@ import { readdir, readFile } from "node:fs/promises";
 //
 // The app is pointed here by setting `forge.forgejo.api_base` /
 // `forge.forgejo.web_base` app config to this server's URL (see docs/e2e.md).
+import { existsSync, readFileSync } from "node:fs";
+// SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+// SPDX-License-Identifier: EUPL-1.2
+import { readdir, readFile } from "node:fs/promises";
 import { createServer } from "node:http";
+import { createServer as createTlsServer } from "node:https";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ARTIFACTS = join(HERE, "artifacts");
 const PORT = Number(process.env.PORT || 9099);
+// The https listener for the OSV double: `advisory.osv_api_base` is https only.
+const TLS_PORT = Number(process.env.TLS_PORT || 9443);
+const TLS_DIR = join(ARTIFACTS, "tls");
 // Advertised base the app downloads from — must match how the app reaches us.
 const PUBLIC_BASE = process.env.PUBLIC_BASE || `http://forge-fixture:${PORT}`;
 
@@ -49,6 +54,16 @@ const APPSTORE_CATALOG = [
 		name: { en: "Calendar" },
 		summary: { en: "A calendar app for Nextcloud" },
 		website: "https://github.com/nextcloud/calendar",
+		// discovery.spec asserts the publisher and the featured mark; the mail
+		// address must never reach the page.
+		authors: [
+			{
+				name: "Fixture Calendar Team",
+				mail: "calendar-team@example.test",
+				homepage: "",
+			},
+		],
+		isFeatured: true,
 		releases: [
 			{ version: "5.4.0", isNightly: false },
 			{ version: "5.3.0", isNightly: false },
@@ -112,11 +127,28 @@ function freshState() {
 				releases: structuredClone(DEFAULT_RELEASES),
 				advisories: [],
 			},
+			// A second app on the same release line.
+			"fixtureowner/fixtureapp2": {
+				releases: DEFAULT_RELEASES.filter((r) => r.tag !== "v0.9.0").map(
+					(r) => ({
+						...r,
+						asset: r.asset.replace("fixtureapp-", "fixtureapp2-"),
+					}),
+				),
+				advisories: [],
+			},
+			// The same releases as a GitLab project in a subgroup.
+			"fixturegroup/sub/fixtureapp": {
+				releases: structuredClone(DEFAULT_RELEASES),
+				advisories: [],
+			},
 		},
 		// artifact filename -> override filename actually served (rewrite/tamper)
 		assetOverride: {},
 		// artifact filename -> status code to force (e.g. 404 for a deleted asset)
 		assetStatus: {},
+		// The NCSC-NL CSAF directory: forced status on changes.csv, documents.
+		csaf: { status: null, documents: defaultCsaf() },
 	};
 }
 
@@ -158,13 +190,152 @@ function releaseJson(repo) {
 		}
 		return {
 			tag_name: r.tag,
-			name: r.tag,
+			name: r.name ?? r.tag,
 			// Release notes — mapped to the version's changelog by the app.
 			body:
 				r.body ?? `## ${r.tag}\n\n- Fixture release notes for ${r.tag}`,
 			assets,
+			// Publisher marks a spec can set through /control/repo.
+			...(r.prerelease !== undefined ? { prerelease: r.prerelease } : {}),
+			...(r.published_at !== undefined
+				? { published_at: r.published_at }
+				: {}),
 		};
 	});
+}
+
+// --- NCSC-NL CSAF directory (advisories-ncsc-feed) -----------------------
+// A small CSAF provider directory under /csaf/v2/: a `changes.csv` (newest
+// first) and the documents it lists. NcscAdvisoryFeed reads it once
+// `advisory.ncsc_feed_base` points here. The defaults are two documents about
+// Nextcloud Server: one whose range covers any server the CI runs (so the
+// server is affected) and one with `vers:unknown/*` (so NCSC-NL "does not
+// state which versions"). Times are relative to now so the feed's 365-day
+// first read always includes them. POST /control/csaf replaces the documents
+// or forces a status on `changes.csv`.
+function csafDocument(id, title, range, cve, severity, ratings) {
+	const vulnerability = {
+		cve,
+		product_status: { known_affected: ["CSAFPID-0001"] },
+	};
+	if (severity)
+		vulnerability.scores = [
+			{ products: ["CSAFPID-0001"], cvss_v3: { baseSeverity: severity } },
+		];
+	return {
+		document: {
+			category: "csaf_security_advisory",
+			csaf_version: "2.0",
+			title,
+			tracking: {
+				id,
+				initial_release_date: new Date(Date.now() - 86_400_000).toISOString(),
+				version: "1.00",
+			},
+			notes: [
+				{ category: "other", title: "Kans", text: ratings[0] },
+				{ category: "other", title: "Schade", text: ratings[1] },
+			],
+		},
+		product_tree: {
+			branches: [
+				{
+					category: "vendor",
+					name: "Nextcloud",
+					branches: [
+						{
+							category: "product_name",
+							name: "Nextcloud Server",
+							branches: [
+								{
+									category: "product_version_range",
+									name: range,
+									product: {
+										product_id: "CSAFPID-0001",
+										name: `Nextcloud Server ${range}`,
+									},
+								},
+							],
+						},
+					],
+				},
+			],
+		},
+		vulnerabilities: [vulnerability],
+	};
+}
+
+function defaultCsaf() {
+	return [
+		{
+			path: "2099/ncsc-2099-0001.json",
+			doc: csafDocument(
+				"NCSC-2099-0001",
+				"Kwetsbaarheid verholpen in Nextcloud Server",
+				"vers:generic/>=1.0.0|<999.0.0",
+				"CVE-2099-0001",
+				"HIGH",
+				["medium", "high"],
+			),
+		},
+		{
+			path: "2099/ncsc-2099-0002.json",
+			doc: csafDocument(
+				"NCSC-2099-0002",
+				"Kwetsbaarheid in Nextcloud Server zonder versies",
+				"vers:unknown/*",
+				"CVE-2099-0002",
+				null,
+				["low", "medium"],
+			),
+		},
+	];
+}
+
+function csafChanges(res) {
+	if (state.csaf.status) {
+		res.writeHead(state.csaf.status);
+		return res.end("forced");
+	}
+	// Newest first, as NCSC-NL publishes it; every line a minute apart.
+	const now = Date.now();
+	const body = state.csaf.documents
+		.map((d, i) => {
+			const changed = new Date(
+				now - 3_600_000 + i * 60_000,
+			).toISOString();
+			return `"${d.path}","${d.changed ?? changed}"`;
+		})
+		.reverse()
+		.join("\n");
+	res.writeHead(200, {
+		"content-type": "text/csv",
+		"content-length": Buffer.byteLength(body),
+	});
+	return res.end(body);
+}
+
+function csafApi(res, path) {
+	const m = path.match(/^\/csaf\/v2\/(.+)$/);
+	if (!m) return false;
+	if (m[1] === "changes.csv") {
+		csafChanges(res);
+		return true;
+	}
+	const found = state.csaf.documents.find((d) => d.path === m[1]);
+	if (found) json(res, 200, found.doc);
+	else json(res, 404, { message: "Not Found" });
+	return true;
+}
+
+async function controlCsaf(req, res) {
+	// { status?, documents?: [{ path, changed?, doc }] }
+	const b = await readBody(req);
+	state.csaf = {
+		status: b.status ?? null,
+		documents: b.documents ?? state.csaf.documents,
+	};
+	return json(res, 200, { ok: true, documents: state.csaf.documents.length });
 }
 
 // --- Control plane (test-only) -------------------------------------------
@@ -198,6 +369,7 @@ const CONTROL_ROUTES = {
 	},
 	"/control/repo": controlRepo,
 	"/control/asset": controlAsset,
+	"/control/csaf": controlCsaf,
 };
 
 // --- Forge API (Forgejo `/api/v1/...` and GitHub `/...` shapes) -----------
@@ -264,6 +436,119 @@ function forgeApi(req, res, path) {
 	return false;
 }
 
+// GitLab `/api/v4/projects/{url-encoded path}/releases`: `description` for the
+// notes, `released_at` for the date, and `assets.links[]` for the files.
+function gitlabApi(res, path) {
+	const m = path.match(/^\/api\/v4\/projects\/([^/]+)\/releases$/);
+	if (!m) return false;
+	const repo = state.repos[decodeURIComponent(m[1])];
+	const error = repoError(repo, { checkAuth: false, auth: "" });
+	if (error) {
+		json(res, ...error);
+		return true;
+	}
+	json(
+		res,
+		200,
+		releaseJson(repo).map((r) => ({
+			tag_name: r.tag_name,
+			name: r.name,
+			description: r.body,
+			released_at: r.published_at ?? null,
+			upcoming_release: false,
+			assets: {
+				links: r.assets.map((a) => ({
+					name: a.name,
+					url: a.browser_download_url,
+					direct_asset_url: a.browser_download_url,
+				})),
+			},
+		})),
+	);
+	return true;
+}
+
+// --- OSV double (advisories-bundled-libraries) -----------------------------
+//
+// Answers the two OSV endpoints OsvClient calls: `/v1/querybatch` (one result
+// per query, in order) and `/v1/vulns/{id}`. It knows one advisory, for the
+// `vendor/library` 2.4.3 that build-artifacts.sh bundles in the fixture app,
+// fixed in 2.4.5; every other library — including whatever the server's own
+// apps bundle — has none, so the finding the spec asserts is the only one.
+const OSV_RECORDS = {
+	"GHSA-fx00-0000-0001": {
+		id: "GHSA-fx00-0000-0001",
+		aliases: ["CVE-2099-0001"],
+		summary: "Fixture advisory for the bundled-library e2e spec",
+		database_specific: { severity: "HIGH" },
+		affected: [
+			{
+				package: { ecosystem: "Packagist", name: "vendor/library" },
+				ranges: [
+					{
+						type: "ECOSYSTEM",
+						events: [{ introduced: "0" }, { fixed: "2.4.5" }],
+					},
+				],
+			},
+		],
+	},
+};
+
+/** The record ids that affect one library version. */
+function osvIdsFor(name, version) {
+	return Object.values(OSV_RECORDS)
+		.filter((record) =>
+			record.affected.some(
+				(affected) =>
+					affected.package.ecosystem === "Packagist" &&
+					affected.package.name === String(name).toLowerCase() &&
+					affected.ranges.some((range) =>
+						range.events.some(
+							(event) =>
+								event.fixed !== undefined &&
+								compareVersions(version, event.fixed) < 0,
+						),
+					),
+			),
+		)
+		.map((record) => record.id);
+}
+
+/** Numeric dotted-version comparison; enough for the fixture's versions. */
+function compareVersions(a, b) {
+	const left = String(a).replace(/^v/, "").split(".").map(Number);
+	const right = String(b).replace(/^v/, "").split(".").map(Number);
+	for (let i = 0; i < Math.max(left.length, right.length); i++) {
+		const diff = (left[i] || 0) - (right[i] || 0);
+		if (diff !== 0) return diff;
+	}
+	return 0;
+}
+
+async function osvApi(req, res, path) {
+	if (path === "/v1/querybatch" && req.method === "POST") {
+		const body = await readBody(req);
+		const queries = Array.isArray(body.queries) ? body.queries : [];
+		const results = queries.map((query) => {
+			const ids = osvIdsFor(query?.package?.name ?? "", query?.version ?? "");
+			return ids.length
+				? { vulns: ids.map((id) => ({ id, modified: "2026-01-01T00:00:00Z" })) }
+				: {};
+		});
+		json(res, 200, { results });
+		return true;
+	}
+	const vuln = path.match(/^\/v1\/vulns\/([^/]+)$/);
+	if (vuln) {
+		const record = OSV_RECORDS[decodeURIComponent(vuln[1])];
+		if (record) json(res, 200, record);
+		else json(res, 404, { code: 5, message: "Bug not found." });
+		return true;
+	}
+	return false;
+}
+
 // --- Artifact download -----------------------------------------------------
 async function download(res, requested) {
 	const forced = state.assetStatus[requested];
@@ -315,6 +600,9 @@ async function route(req, res) {
 	const control = CONTROL_ROUTES[path];
 	if (control && req.method === "POST") return control(req, res);
 
+	if (csafApi(res, path)) return;
+	if (await osvApi(req, res, path)) return;
+	if (gitlabApi(res, path)) return;
 	if (forgeApi(req, res, path)) return;
 
 	const dl = path.match(/^\/dl\/(.+)$/);
@@ -329,14 +617,29 @@ async function route(req, res) {
 	res.end("not found");
 }
 
-const server = createServer(async (req, res) => {
+async function handle(req, res) {
 	try {
 		await route(req, res);
 	} catch (err) {
 		res.writeHead(500);
 		res.end(String(err));
 	}
-});
+}
+
+const server = createServer(handle);
+
+// The same routes over TLS, when build-artifacts.sh generated a certificate.
+if (existsSync(join(TLS_DIR, "fixture.crt"))) {
+	createTlsServer(
+		{
+			cert: readFileSync(join(TLS_DIR, "fixture.crt")),
+			key: readFileSync(join(TLS_DIR, "fixture.key")),
+		},
+		handle,
+	).listen(TLS_PORT, () => {
+		console.log(`forge-fixture https listening on :${TLS_PORT}`);
+	});
+}
 
 server.listen(PORT, async () => {
 	const names = await readdir(ARTIFACTS).catch(() => []);

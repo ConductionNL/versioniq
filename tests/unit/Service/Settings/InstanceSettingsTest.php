@@ -309,6 +309,41 @@ final class InstanceSettingsTest extends TestCase {
 	}
 
 	/**
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+	 */
+	public function testTheWaitingPeriodIsReadAndSavedThroughTheSettings(): void {
+		$store = $this->store();
+		self::assertSame(0, $store->read()['promotionMinDays']);
+		self::assertSame(90, $store->read()['promotionMinDaysMax']);
+
+		self::assertSame(['promotionMinDays'], $store->update(['promotionMinDays' => '14']));
+		self::assertSame(14, $store->read()['promotionMinDays']);
+		self::assertSame('14', $this->config[InstanceSettings::KEY_PROMOTION_MIN_DAYS]);
+
+		$store->update(['promotionMinDays' => '0']);
+		self::assertSame(0, $store->promotionMinDays());
+		self::assertArrayNotHasKey(InstanceSettings::KEY_PROMOTION_MIN_DAYS, $this->config);
+	}
+
+	/**
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+	 */
+	public function testTheWaitingPeriodRefuses91AndLeavesEverythingElse(): void {
+		$store = $this->store();
+		$store->update(['promotionMinDays' => '14']);
+		foreach (['91', '-1', 'two', ''] as $raw) {
+			try {
+				$store->update(['promotionMinDays' => $raw, 'artifactCacheKeep' => '7']);
+				self::fail('Accepted ' . $raw);
+			} catch (InvalidArgumentException $error) {
+				self::assertStringContainsString('between 0 and 90', $error->getMessage());
+			}
+		}
+		self::assertSame(14, $store->promotionMinDays());
+		self::assertArrayNotHasKey(\OCA\Versioniq\Service\Cache\ArtifactCache::CONFIG_KEEP, $this->config);
+	}
+
+	/**
 	 * Every rule of an address field, for the https-only GitHub API base and
 	 * the http-or-https advisory feed: the stored value, or the message.
 	 *
@@ -345,6 +380,23 @@ final class InstanceSettingsTest extends TestCase {
 			yield "$field port and path" => [$field, 'https://ghe.example.org:8443/api', 'https://ghe.example.org:8443/api'];
 			yield "$field unparseable" => [$field, 'https://', $refusal];
 		}
+	}
+
+	/**
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	public function testAutomaticReEnablingIsOffUntilSwitchedOnAndRefusesOtherValues(): void {
+		$store = $this->store();
+		self::assertFalse($store->read()['reactivateAuto']);
+
+		self::assertSame(['reactivateAuto'], $store->update(['reactivateAuto' => '1']));
+		self::assertTrue($store->read()['reactivateAuto']);
+		$store->update(['reactivateAuto' => 'false']);
+		self::assertFalse($store->read()['reactivateAuto']);
+
+		$this->expectException(InvalidArgumentException::class);
+		$this->expectExceptionMessage('Automatic re-enabling must be on or off.');
+		$store->update(['reactivateAuto' => 'maybe']);
 	}
 
 	/**
@@ -388,5 +440,21 @@ final class InstanceSettingsTest extends TestCase {
 	public function testThePageAndTheInstallerShareTheKey(): void {
 		self::assertSame(\OCA\Versioniq\Service\InstallerService::KEY_NOTIFY_USERS_ON_UPDATE, InstanceSettings::KEY_NOTIFY_USERS_ON_UPDATE);
 		self::assertSame('notify_users_on_update', InstanceSettings::KEY_NOTIFY_USERS_ON_UPDATE);
+	}
+
+	/**
+	 * @spec openspec/changes/advisories-bundled-libraries
+	 */
+	public function testTheOsvBaseDefaultsToThePublicApiAndMustBeHttps(): void {
+		$settings = $this->store()->read();
+		self::assertSame('', $settings['osvApiBase']);
+		self::assertSame('https://api.osv.dev', $settings['osvApiDefault']);
+
+		$store = $this->store();
+		self::assertSame(['osvApiBase'], $store->update(['osvApiBase' => 'https://osv.mirror.example/']));
+		self::assertSame('https://osv.mirror.example', $store->read()['osvApiBase']);
+
+		$this->expectException(InvalidArgumentException::class);
+		$this->store()->update(['osvApiBase' => 'http://osv.mirror.example']);
 	}
 }

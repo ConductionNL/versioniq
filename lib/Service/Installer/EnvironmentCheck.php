@@ -152,7 +152,7 @@ class EnvironmentCheck {
 	 *
 	 * @return array{fits: bool, appsFree: ?int, appsNeeded: int, tempFree: ?int, tempNeeded: int}
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+	 * @spec openspec/specs/migration-safety/spec.md
 	 */
 	public function hasSpaceFor(?string $appPath, ?int $packageBytes = null): array {
 		$bytes = ($packageBytes !== null && $packageBytes > 0) ? $packageBytes : self::DEFAULT_PACKAGE_BYTES;

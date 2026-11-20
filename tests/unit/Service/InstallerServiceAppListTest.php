@@ -167,6 +167,111 @@ final class InstallerServiceAppListTest extends TestCase {
 	public function testVersioniqItselfIsNeverListed(): void {
 		self::assertArrayNotHasKey('versioniq', $this->appsById());
 	}
+	/**
+	 * The card carries the publisher, licence and declared links from the
+	 * installed info.xml: authors joined without mail addresses, a missing
+	 * link as null, and only http or https links (inventory-app-details-card).
+	 */
+	public function testTheCardCarriesPublisherLicenceAndSafeLinks(): void {
+		\OC_App::$allApps = [
+			[
+				'id' => 'deck',
+				'name' => 'Deck',
+				'author' => 'Nextcloud',
+				'licence' => 'agpl',
+				'website' => 'https://github.com/nextcloud/deck',
+				'repository' => ['@attributes' => ['type' => 'git'], '@value' => 'https://github.com/nextcloud/deck.git'],
+				'bugs' => 'https://github.com/nextcloud/deck/issues',
+			],
+			[
+				'id' => 'calendar',
+				'name' => 'Calendar',
+				'author' => [
+					['@attributes' => ['mail' => 'georg@example.org', 'homepage' => 'https://example.org'], '@value' => 'Georg Ehrke'],
+					['@attributes' => ['mail' => 'thomas@example.org'], '@value' => 'Thomas Citharel'],
+					'Team Popcorn',
+				],
+				'licence' => ['agpl', 'mit'],
+				'website' => 'javascript:alert(1)',
+				'repository' => 'ftp://example.org/calendar',
+			],
+		];
+
+		try {
+			$apps = $this->appsById();
+		} finally {
+			\OC_App::$allApps = [];
+		}
+
+		self::assertSame('Nextcloud', $apps['deck']['author']);
+		self::assertSame('agpl', $apps['deck']['licence']);
+		self::assertSame(
+			[
+				'website' => 'https://github.com/nextcloud/deck',
+				'repository' => 'https://github.com/nextcloud/deck.git',
+				'bugs' => 'https://github.com/nextcloud/deck/issues',
+			],
+			$apps['deck']['links']
+		);
+
+		self::assertSame('Georg Ehrke, Thomas Citharel, Team Popcorn', $apps['calendar']['author']);
+		self::assertStringNotContainsString('@', $apps['calendar']['author']);
+		self::assertSame('agpl, mit', $apps['calendar']['licence']);
+		self::assertSame(['website' => null, 'repository' => null, 'bugs' => null], $apps['calendar']['links']);
+
+		// An app the server does not know (bound, not installed) has an empty card.
+		self::assertSame('', $apps['hermiq']['author']);
+		self::assertSame('', $apps['hermiq']['licence']);
+		self::assertSame(['website' => null, 'repository' => null, 'bugs' => null], $apps['hermiq']['links']);
+	}
+
+	/**
+	 * The card says when an app runs under an override: `forcedOn` for one
+	 * Versioniq set, `compatibilityOverridden` for one someone else set, and
+	 * `serverTooNew` on a disabled app only its maximum keeps off
+	 * (install-force-incompatible D5).
+	 */
+	public function testTheCardShowsTheOverridesAndWhatMayBeEnabledAnyway(): void {
+		$overrides = $this->createMock(\OCA\Versioniq\Service\Installer\ForceOverrideStore::class);
+		$overrides->method('get')->willReturnCallback(
+			static fn (string $appId): ?\OCA\Versioniq\Service\Installer\ForceOverride => $appId === 'deck'
+				? new \OCA\Versioniq\Service\Installer\ForceOverride('1.14.0', 33, 'alice', '2026-11-01T00:00:00+00:00', true)
+				: null
+		);
+		$overrides->method('isOverridden')->willReturnCallback(static fn (string $appId): bool => in_array($appId, ['deck', 'calendar'], true));
+		$config = $this->createMock(IConfig::class);
+		$config->method('getSystemValueString')->willReturnCallback(static fn (string $key, string $default = ''): string => $key === 'version' ? '33.0.2.1' : $default);
+		\OC_App::$allApps = [
+			['id' => 'deck', 'name' => 'Deck', 'dependencies' => ['nextcloud' => ['@attributes' => ['min-version' => '30', 'max-version' => '32']]]],
+			['id' => 'calendar', 'name' => 'Calendar', 'dependencies' => ['nextcloud' => ['@attributes' => ['min-version' => '30', 'max-version' => '32']]]],
+		];
+
+		try {
+			$apps = [];
+			$service = $this->buildByName(InstallerService::class, [
+				'appManager' => $this->appManager,
+				'config' => $config,
+				'appConfig' => $this->createMock(IAppConfig::class),
+				'bindingStore' => $this->bindingStore,
+				'failureClassifier' => new FailureClassifier($this->createMock(IFactory::class)),
+				'forceOverrides' => $overrides,
+			]);
+			foreach ($service->getInstalledApps() as $app) {
+				$apps[$app['id']] = $app;
+			}
+		} finally {
+			\OC_App::$allApps = [];
+		}
+
+		// Enabled, so never offered "Enable anyway", even though it declares 32.
+		self::assertSame(33, $apps['deck']['forcedOn']);
+		self::assertArrayNotHasKey('compatibilityOverridden', $apps['deck']);
+		self::assertArrayNotHasKey('serverTooNew', $apps['deck']);
+		self::assertTrue($apps['calendar']['compatibilityOverridden']);
+		self::assertTrue($apps['calendar']['serverTooNew']);
+		self::assertArrayNotHasKey('forcedOn', $apps['calendar']);
+		self::assertSame([], array_intersect(['forcedOn', 'compatibilityOverridden', 'serverTooNew'], array_keys($apps['hermiq'])));
+	}
 
 	/**
 	 * A version Versioniq put in place names that install's source; a version

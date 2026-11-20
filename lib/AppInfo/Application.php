@@ -12,10 +12,12 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\AppInfo;
 
+use OCA\Versioniq\Listener\AppDisabledListener;
 use OCA\Versioniq\Listener\AppUpdatedListener;
 use OCA\Versioniq\Listener\UserDeletedListener;
 use OCA\Versioniq\Middleware\ApiContractMiddleware;
 use OCA\Versioniq\Notification\Notifier;
+use OCP\App\Events\AppDisableEvent;
 use OCA\Versioniq\Service\Audit\AdminChangeAuditInterface;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\ContractBindings;
@@ -47,6 +49,7 @@ class Application extends App implements IBootstrap {
 	public function register(IRegistrationContext $context): void {
 		$context->registerEventListener(UserDeletedEvent::class, UserDeletedListener::class);
 		$context->registerEventListener(AppUpdateEvent::class, AppUpdatedListener::class);
+		$context->registerEventListener(AppDisableEvent::class, AppDisabledListener::class);
 		$context->registerNotifierService(Notifier::class);
 
 		// API-Version header and problem details on the JSON API (spec api-contract).

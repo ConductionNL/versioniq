@@ -29,6 +29,7 @@
 			CI executes in-container where doctrine resolves.
 		-->
 		<directory suffix="Test.php">unit/Service</directory>
+		<directory suffix="Test.php">unit/OpenMetrics</directory>
 		<directory suffix="Test.php">unit/Controller</directory>
 		<directory suffix="Test.php">unit/Db</directory>
 		<directory suffix="Test.php">unit/BackgroundJob</directory>
@@ -45,10 +46,13 @@
 		<directory suffix="Test.php">unit/Command</directory>
 		<directory suffix="Test.php">unit/Middleware</directory>
 		<directory suffix="Test.php">unit/Mcp</directory>
+		<directory suffix="Test.php">unit/Migration</directory>
+		<directory suffix="Test.php">unit/Activity</directory>
 	</testsuite>
 	<source>
 		<include>
 			<directory suffix=".php">../lib/Service</directory>
+			<directory suffix=".php">../lib/OpenMetrics</directory>
 			<directory suffix=".php">../lib/Controller</directory>
 			<directory suffix=".php">../lib/Db</directory>
 			<directory suffix=".php">../lib/BackgroundJob</directory>
@@ -60,6 +64,7 @@
 			<directory suffix=".php">../lib/Command</directory>
 			<directory suffix=".php">../lib/Middleware</directory>
 			<directory suffix=".php">../lib/Mcp</directory>
+			<directory suffix=".php">../lib/Activity</directory>
 		</include>
 	</source>
 </phpunit>

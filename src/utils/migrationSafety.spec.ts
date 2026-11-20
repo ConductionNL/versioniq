@@ -2,7 +2,7 @@
 // Covers "Migration diff on downgrade" and "Last-known-good version record":
 // @spec openspec/specs/migration-safety/spec.md
 import { describe, expect, it, vi } from 'vitest'
-import { lkgRollbackTargets, orphanedMigrationsSummary, shouldOfferLkgRollback } from './migrationSafety.ts'
+import { lkgRollbackTargets, migrationActionText, migrationPreviewTexts, orphanedMigrationsSummary, shouldOfferLkgRollback, sizeClassAdvice } from './migrationSafety.ts'
 
 function substitute (text: string, vars: Record<string, unknown> = {}) {
   return text.replace(/\{(\w+)\}/g, (_match: string, key: string) => String(vars[key] ?? ''))
@@ -72,7 +72,48 @@ describe('orphanedMigrationsSummary', () => {
 	})
 })
 
-// @spec openspec/changes/safety-rollback-backup-and-preflight/specs/migration-safety/spec.md
+// @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
+describe('sizeClassAdvice', () => {
+	it('gives the advice of each size class and never a duration in seconds', () => {
+		expect(sizeClassAdvice('new')).toBe('New table; fast')
+		expect(sizeClassAdvice('small')).toBe('Takes seconds')
+		expect(sizeClassAdvice('large')).toBe('May take minutes')
+		expect(sizeClassAdvice('very_large')).toBe('May take long; plan a maintenance window')
+		for (const sizeClass of ['new', 'small', 'large', 'very_large', 'unknown']) {
+			expect(sizeClassAdvice(sizeClass)).not.toMatch(/\d/)
+		}
+	})
+
+	it('reads an unknown or missing class as size unknown', () => {
+		expect(sizeClassAdvice('unknown')).toBe('Size unknown')
+		expect(sizeClassAdvice('')).toBe('Size unknown')
+	})
+})
+
+describe('migrationActionText', () => {
+	it('names what each migration attribute does', () => {
+		expect(migrationActionText('AddIndex')).toBe('adds an index')
+		expect(migrationActionText('CreateTable')).toBe('creates a table')
+		expect(migrationActionText('ModifyColumn')).toBe('changes a column')
+		expect(migrationActionText('DataCleansing')).toBe('cleans data')
+	})
+
+	it('shows an unknown attribute by its name rather than dropping it', () => {
+		expect(migrationActionText('RenameTable')).toBe('RenameTable')
+	})
+})
+
+describe('migrationPreviewTexts', () => {
+	it('holds the fixed panel texts', () => {
+		const texts = migrationPreviewTexts()
+
+		expect(texts.noChanges).toBe('No database changes')
+		expect(texts.dataStep).toBe('Moves data; the time depends on the amount of data.')
+		expect(texts.undescribed).toBe('This step does not describe what it changes.')
+	})
+})
+
+// @spec openspec/specs/migration-safety/spec.md
 describe('lkgRollbackTargets', () => {
 	const record = (version: string, previous?: string) => ({
 		version,

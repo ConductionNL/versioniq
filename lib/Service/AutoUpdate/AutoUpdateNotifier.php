@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\AutoUpdate;
 
+use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Kernel\Contracts\AutoUpdateNotifierInterface;
 use OCA\Versioniq\Service\AdminNotice;
 use OCA\Versioniq\Service\AdminNotificationServices;
@@ -32,6 +33,13 @@ use Psr\Log\LoggerInterface;
 class AutoUpdateNotifier implements AutoUpdateNotifierInterface {
 	use NotifiesAdmins;
 	use ResolvesAdminUids;
+
+	/** A group member that installed. */
+	public const OUTCOME_INSTALLED = 'installed';
+	/** A group member whose install failed; the group stopped there. */
+	public const OUTCOME_FAILED = 'failed';
+	/** A group member after a failure, left for the next run. */
+	public const OUTCOME_NOT_ATTEMPTED = 'not_attempted';
 
 	public function __construct(
 		private AdminNotificationServices $admin,
@@ -67,6 +75,66 @@ class AutoUpdateNotifier implements AutoUpdateNotifierInterface {
 			'category' => $category,
 			'hint' => $hint,
 		])->withObject('auto_update', $appId . ':' . $targetVersion));
+	}
+
+	/**
+	 * Announces a proposed update ahead of its window to every admin and every
+	 * member of the notice group, each once, with both versions, the planned
+	 * time and the release notes excerpt. The group gains no access by it:
+	 * the text carries the notes itself, not only the link.
+	 *
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
+	 */
+	public function notifyPlanned(ProposedUpdate $proposal, string $noticeGroup): void {
+		$notice = $this->notice('auto_update_planned', [
+			'app' => $proposal->appId,
+			'fromVersion' => $proposal->fromVersion,
+			'toVersion' => $proposal->toVersion,
+			'plannedFor' => $proposal->plannedFor ?? '',
+			'releaseNotes' => $proposal->releaseNotes,
+		])->withObject('auto_update_planned', $proposal->appId . ':' . $proposal->toVersion)
+			->withLink($this->admin->urlGenerator->linkToRouteAbsolute(
+				'settings.AdminSettings.index',
+				['section' => Application::APP_ID],
+			));
+
+		foreach ($this->plannedRecipients($noticeGroup) as $uid) {
+			$this->notifyAdmin($uid, $notice);
+		}
+	}
+
+	/**
+	 * The admins, then the notice group's members, each once.
+	 *
+	 * @return list<string>
+	 */
+	private function plannedRecipients(string $noticeGroup): array {
+		$uids = $this->adminUids();
+		if ($noticeGroup !== '') {
+			foreach ($this->admin->groupManager->get($noticeGroup)?->getUsers() ?? [] as $user) {
+				$uids[] = $user->getUID();
+			}
+		}
+
+		return array_values(array_unique($uids));
+	}
+
+	/**
+	 * Notifies admins once for a group run, listing every member with its
+	 * outcome; group members get no per-app notification (D3).
+	 *
+	 * @param list<array{appId: string, version: string, outcome: string}> $outcomes In install order.
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	public function notifyGroup(string $group, array $outcomes): void {
+		$this->notifyAdmins((new AdminNotice())
+			->withSubject('auto_update_group', ['group' => $group, 'members' => $outcomes])
+			->loggedAs('AutoUpdateNotifier: failed to raise notification', [
+				'group' => $group,
+				'subject' => 'auto_update_group',
+			])
+			->withObject('auto_update_group', $group));
 	}
 
 	/**

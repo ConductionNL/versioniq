@@ -87,7 +87,7 @@ final class Lkg {
 	 * The same record with another version before it; null drops it. A
 	 * previous record never carries one of its own, so the chain is one deep.
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/version-management/spec.md
+	 * @spec openspec/specs/version-management/spec.md
 	 */
 	public function withPrevious(?Lkg $previous): self {
 		return new self($this->version, $this->recordedAt, $this->sourceId, $previous?->withPrevious(null));
@@ -98,7 +98,7 @@ final class Lkg {
 	 * $version: this record becomes `previous` when the version changed, and
 	 * a reinstall of the same version keeps the `previous` it had.
 	 *
-	 * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/version-management/spec.md
+	 * @spec openspec/specs/version-management/spec.md
 	 */
 	public static function after(?Lkg $current, string $version, string $recordedAt, ?string $sourceId): self {
 		$previous = $current?->previous;
