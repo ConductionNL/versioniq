@@ -147,6 +147,8 @@ final class InstallerRecoveryTest extends TestCase {
 		$reflection = new ReflectionClass(SelectedReleaseInstallerService::class);
 		$installer = $reflection->newInstanceWithoutConstructor();
 		$reflection->getProperty('installBackup')->setValue($installer, $backup);
+		// Built without its constructor: live progress (install-live-progress) is off.
+		$reflection->getProperty('progress')->setValue($installer, null);
 		try {
 			$reflection->getMethod('keepBackup')->invoke($installer, 'notes', $this->root . '/notes');
 		} finally {
@@ -180,7 +182,7 @@ final class InstallerRecoveryTest extends TestCase {
 			$this->createMock(MigrationDiffer::class),
 			$this->createMock(InstallFinalizer::class),
 			$this->createMock(AuditLogger::class),
-			$backup,
+			backup: $backup,
 		);
 		$reflection = new ReflectionClass(ExternalReleaseInstallerService::class);
 		$installer = $reflection->newInstanceWithoutConstructor();
