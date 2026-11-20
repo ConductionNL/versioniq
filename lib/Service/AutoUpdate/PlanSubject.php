@@ -55,7 +55,9 @@ final class PlanSubject {
 	 * @spec openspec/changes/releases-minimum-age
 	 */
 	public function bypassAdvisoriesFor(string $version): array {
-		return ($this->age?->bypassed !== null && $version === $this->age->bypassed) ? $this->age->bypassAdvisories : [];
+		$age = $this->age;
+
+		return ($age !== null && $age->bypassed !== null && $version === $age->bypassed) ? $age->bypassAdvisories : [];
 	}
 
 	/**
