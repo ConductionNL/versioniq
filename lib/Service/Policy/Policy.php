@@ -45,6 +45,9 @@ final class Policy {
 		// Whether the job installs only a version an admin approved
 		// (autoupdate-proposed-updates, design D4). Absent reads as false.
 		public readonly bool $requireApproval = false,
+		// Whether a manual install outside the level needs an explicit override
+		// (pinning-ranges-and-skips). Absent reads as false.
+		public readonly bool $holdManual = false,
 	) {
 		if (!self::isValidLevel($level)) {
 			throw new InvalidArgumentException('Policy level must be one of: ' . implode(', ', self::VALID_LEVELS));
@@ -79,7 +82,18 @@ final class Policy {
 			'setBy' => $this->setBy,
 			'setAt' => $this->setAt,
 			'requireApproval' => $this->requireApproval,
+			'holdManual' => $this->holdManual,
 		];
+	}
+
+	/**
+	 * Whether Versioniq's own installs are held to this policy's level: the
+	 * switch is on and the level is `patch` or `minor`.
+	 *
+	 * @spec openspec/changes/pinning-ranges-and-skips/specs/auto-update-policies/spec.md#requirement-a-policy-can-hold-manual-installs-to-its-level
+	 */
+	public function holdsManualInstalls(): bool {
+		return $this->holdManual && in_array($this->level, [self::LEVEL_PATCH, self::LEVEL_MINOR], true);
 	}
 
 	/**
@@ -98,6 +112,7 @@ final class Policy {
 			throw new InvalidArgumentException('Policy payload missing required string fields');
 		}
 
-		return new self($level, $setBy, $setAt, ($payload['requireApproval'] ?? false) === true);
+		// A policy stored before pinning-ranges-and-skips has no holdManual: off.
+		return new self($level, $setBy, $setAt, ($payload['requireApproval'] ?? false) === true, ($payload['holdManual'] ?? false) === true);
 	}
 }

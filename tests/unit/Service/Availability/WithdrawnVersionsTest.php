@@ -62,7 +62,7 @@ final class WithdrawnVersionsTest extends TestCase {
 			return $this->listings['notes'];
 		});
 
-		return (new AvailabilityService($installer, $this->createMock(PinStore::class), new NullLogger(), $this->store()))->sweep(60.0)['notes'];
+		return (new AvailabilityService($installer, $this->createMock(PinStore::class), new NullLogger(), withdrawnVersions: $this->store()))->sweep(60.0)['notes'];
 	}
 
 	/**

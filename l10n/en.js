@@ -1027,7 +1027,20 @@ OC.L10N.register(
         "Paste the checksum the supplier gave you.": "Paste the checksum the supplier gave you.",
         "I accept the SHA-256 shown above": "I accept the SHA-256 shown above",
         "Could not read the archive.": "Could not read the archive.",
-        "Could not install the archive.": "Could not install the archive."
+        "Could not install the archive.": "Could not install the archive.",
+        "Also hold manual installs to this level": "Also hold manual installs to this level",
+        "Installs through Versioniq outside this level then ask for an explicit override. Nextcloud's own updater is not held.": "Installs through Versioniq outside this level then ask for an explicit override. Nextcloud's own updater is not held.",
+        "The update policy holds {appId} to {level} updates, and {version} is outside it. Installing it anyway is recorded in the history.": "The update policy holds {appId} to {level} updates, and {version} is outside it. Installing it anyway is recorded in the history.",
+        "{appId} is held to {level} updates": "{appId} is held to {level} updates",
+        "{version} of {appId} was skipped. Install it anyway?": "{version} of {appId} was skipped. Install it anyway?",
+        "{version} of {appId} was skipped: {reason}. Install it anyway?": "{version} of {appId} was skipped: {reason}. Install it anyway?",
+        "{version} was skipped": "{version} was skipped",
+        "Could not skip this version.": "Could not skip this version.",
+        "Could not unskip this version.": "Could not unskip this version.",
+        "Skip this version": "Skip this version",
+        "Skip {version}": "Skip {version}",
+        "Unskip": "Unskip",
+        "Why skip {version}? (optional)": "Why skip {version}? (optional)"
     },
     "nplurals=2; plural=(n != 1);"
 )

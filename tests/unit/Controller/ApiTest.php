@@ -38,6 +38,8 @@ use OCA\Versioniq\Service\Pat\PatExpiryEvaluator;
 use OCA\Versioniq\Service\Pat\PatManager;
 use OCA\Versioniq\Service\Pat\PatValidator;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Pin\SkipList;
+use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyStore;
 use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Service\Source\RetiredForgeException;
@@ -127,6 +129,7 @@ final class ApiTest extends TestCase {
 		?AutoUpdateSettingsStore $autoUpdateSettingsStore = null,
 		?ArtifactCache $artifactCache = null,
 		?AttemptLedger $attemptLedger = null,
+		?SkipList $skipList = null,
 		?KnownIssueStore $knownIssues = null,
 		?UpdateGroupStore $groupStore = null,
 	): ApiController {
@@ -162,6 +165,7 @@ final class ApiTest extends TestCase {
 			'artifactCache' => $artifactCache ?? $this->createMock(ArtifactCache::class),
 			'connectionReports' => null,
 			'attemptLedger' => $attemptLedger ?? $this->createMock(AttemptLedger::class),
+			'skipList' => $skipList,
 			'knownIssues' => $knownIssues,
 			'groupStore' => $groupStore ?? $this->createMock(UpdateGroupStore::class),
 		]);
@@ -823,7 +827,7 @@ final class ApiTest extends TestCase {
 		$installer = $this->createMock(InstallerService::class);
 		$installer->method('isManageableApp')->willReturnCallback(static fn (string $appId): bool => $appId !== 'notmanaged');
 
-		return $this->buildAdminController($installer, $request, null, null, null, 'admin', null, null, null, null, null, $groupStore);
+		return $this->buildAdminController($installer, $request, null, null, null, 'admin', null, null, null, null, groupStore: $groupStore);
 	}
 
 	public function testUpdateAutoUpdateGroupsIsForbiddenForANonAdmin(): void {
@@ -913,7 +917,7 @@ final class ApiTest extends TestCase {
 		]);
 
 		$installer = $this->createMock(InstallerService::class);
-		$response = $this->buildAdminController($installer, $this->paramsRequest([]), null, null, null, 'admin', null, $settingsStore, null, null, null, $groupStore)->policies();
+		$response = $this->buildAdminController($installer, $this->paramsRequest([]), null, null, null, 'admin', null, $settingsStore, null, null, groupStore: $groupStore)->policies();
 
 		$this->assertSame(200, $response->getStatus());
 		$this->assertSame([[
@@ -1242,6 +1246,64 @@ final class ApiTest extends TestCase {
 
 	public function testClearBindingForbiddenForNonAdmin(): void {
 		$this->assertSame(403, $this->buildController()->clearBinding('openregister')->getStatus());
+	}
+
+	// --- pinning-ranges-and-skips ---
+
+	/**
+	 * @param array<string, mixed> $params
+	 */
+	private function requestWith(array $params): IRequest {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(static fn (string $name, mixed $default = null): mixed => $params[$name] ?? $default);
+
+		return $request;
+	}
+
+	public function testSetPolicyStoresTheHoldManualSwitch(): void {
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->expects($this->once())->method('set')->with('openregister', $this->callback(static fn ($policy): bool => $policy->level === 'patch' && $policy->holdManual === true));
+
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith(['level' => 'patch', 'holdManual' => true]), null, null, null, 'admin', $policyStore)->setPolicy('openregister');
+
+		$this->assertTrue($response->getData()['policy']['holdManual']);
+	}
+
+	public function testSetPolicyWithoutTheSwitchKeepsTheStoredOne(): void {
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->method('get')->willReturn(new Policy('patch', 'admin', '2026-01-01T00:00:00+00:00', holdManual: true));
+		$policyStore->expects($this->once())->method('set')->with('openregister', $this->callback(static fn ($policy): bool => $policy->level === 'minor' && $policy->holdManual === true));
+
+		$this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith(['level' => 'minor']), null, null, null, 'admin', $policyStore)->setPolicy('openregister');
+	}
+
+	public function testSkipVersionStoresTheSkipWithItsReason(): void {
+		$skipList = $this->createMock(SkipList::class);
+		$skipList->expects($this->once())->method('skip')->with('openregister', '2.3.4', $this->callback(static fn (array $stamp): bool => $stamp['by'] === 'admin' && is_string($stamp['at'])), 'breaks the import')->willReturn(true);
+
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith(['reason' => 'breaks the import']), null, null, null, 'admin', null, null, null, null, $skipList)->skipVersion('openregister', '2.3.4');
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame(['appId' => 'openregister', 'version' => '2.3.4', 'skipped' => true], $response->getData());
+	}
+
+	public function testSkipVersionRefusesAnEmptyVersion(): void {
+		$skipList = $this->createMock(SkipList::class);
+		$skipList->expects($this->never())->method('skip');
+
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith([]), null, null, null, 'admin', null, null, null, null, $skipList)->skipVersion('openregister', ' ');
+
+		$this->assertSame(400, $response->getStatus());
+	}
+
+	public function testUnskipAndListTheSkips(): void {
+		$skipList = $this->createMock(SkipList::class);
+		$skipList->expects($this->once())->method('unskip')->with('openregister', '2.3.4', 'admin')->willReturn(true);
+		$skipList->method('entries')->willReturn([['version' => '2.3.5', 'skippedBy' => 'admin', 'skippedAt' => 'T', 'reason' => '']]);
+		$controller = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith([]), null, null, null, 'admin', null, null, null, null, $skipList);
+
+		$this->assertTrue($controller->unskipVersion('openregister', '2.3.4')->getData()['unskipped']);
+		$this->assertSame('2.3.5', $controller->skippedVersions('openregister')->getData()['skipped'][0]['version']);
 	}
 
 	/**

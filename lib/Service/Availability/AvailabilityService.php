@@ -15,6 +15,7 @@ use OCA\Versioniq\Kernel\Contracts\AvailabilityServiceInterface;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Lifecycle\LifecycleCard;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Pin\SkipList;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -53,6 +54,7 @@ class AvailabilityService implements AvailabilityServiceInterface {
 		private InstallerService $installerService,
 		private PinStore $pinStore,
 		private LoggerInterface $logger,
+		private ?SkipList $skipList = null,
 		private ?WithdrawnVersionStore $withdrawnVersions = null,
 		private ?LifecycleCard $lifecycle = null,
 	) {
@@ -213,10 +215,12 @@ class AvailabilityService implements AvailabilityServiceInterface {
 
 		$judged = $this->recordWithdrawals($appId, $error === null ? $versions : []);
 
-		$entry = $this->entry($check->withSource($sourceId), ['versions' => $versions, 'error' => $error]);
-		if (!$judged) {
-			$entry['installedWithdrawn'] = null;
-		}
+		$entry = $this->entry($check->withSource($sourceId), ['versions' => $this->withoutSkipped($appId, $versions), 'error' => $error]);
+		// Withdrawal is judged on the whole listing: a version an admin skipped
+		// is still listed by its publisher, so it is not withdrawn.
+		$entry['installedWithdrawn'] = $judged && $error === null
+			? $this->installedWithdrawn($check->installedVersion, $versions, $this->parse($check->installedVersion))
+			: null;
 
 		return $this->withSuccessor($appId, $this->withArchived($appId, $entry));
 	}
@@ -271,6 +275,26 @@ class AvailabilityService implements AvailabilityServiceInterface {
 		}
 
 		return $entry;
+	}
+
+	/**
+	 * The listed versions an admin did not skip: a skipped version is never
+	 * the pending update, and later versions are offered as usual.
+	 *
+	 * @spec openspec/changes/pinning-ranges-and-skips/specs/version-pinning/spec.md#requirement-an-admin-skips-one-version-and-keeps-later-ones
+	 * @param list<array<string, mixed>> $versions
+	 * @return list<array<string, mixed>>
+	 */
+	private function withoutSkipped(string $appId, array $versions): array {
+		$skipped = $this->skipList?->versions($appId) ?? [];
+		if ($skipped === []) {
+			return $versions;
+		}
+
+		return array_values(array_filter(
+			$versions,
+			static fn (array $entry): bool => !in_array(trim((string)($entry['version'] ?? '')), $skipped, true)
+		));
 	}
 
 	/**

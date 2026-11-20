@@ -14,7 +14,8 @@ namespace OCA\Versioniq\Service\Installer;
 
 /**
  * What an install request asks for the app's pin: an override of an existing
- * pin (`null`, `repin` or `unpin`) and whether to pin the installed version.
+ * pin (`null`, `repin` or `unpin`), whether to pin the installed version, and
+ * whether to install past a policy that holds manual installs to its level.
  *
  * @spec openspec/specs/version-pinning/spec.md
  */
@@ -22,6 +23,8 @@ final class PinChoice {
 	public function __construct(
 		public readonly ?string $overridePin,
 		public readonly bool $pinRequested,
+		// Install outside a policy that holds manual installs to its level (pinning-ranges-and-skips).
+		public readonly bool $overrideRange = false,
 	) {
 	}
 }

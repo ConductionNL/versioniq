@@ -225,7 +225,7 @@ final class AutoUpdatePlanner {
 			static fn (string $version): bool => $patchPolicy->regularHandling(PatchPolicy::kindOf($installedVersion, $version)) !== PatchPolicy::HANDLING_MANUAL
 				&& $run->isDue($installedVersion, $version),
 		));
-		$candidate = $this->install->candidateSelector->select($installedVersion, $allowed, $app->level);
+		$candidate = $this->install->candidateSelector->select($installedVersion, $allowed, $app->level, $this->skippedOf($app->appId));
 		if ($candidate === null) {
 			return new AutoUpdateMember($app->appId, $installedVersion, null, AutoUpdateMember::REASON_NO_CANDIDATE);
 		}
@@ -279,7 +279,19 @@ final class AutoUpdatePlanner {
 			return null;
 		}
 
-		return $this->install->candidateSelector->select($app->installedVersion, [$recommended], $app->level) === $recommended ? $recommended : null;
+		return $this->install->candidateSelector->select($app->installedVersion, [$recommended], $app->level, $this->skippedOf($app->appId)) === $recommended ? $recommended : null;
+	}
+
+	/**
+	 * The versions an admin skipped for the app: the job never chooses them
+	 * and the next qualifying version is chosen instead (pinning-ranges-and-skips D2).
+	 *
+	 * @return list<string>
+	 *
+	 * @spec openspec/changes/pinning-ranges-and-skips/specs/version-pinning/spec.md#requirement-an-admin-skips-one-version-and-keeps-later-ones
+	 */
+	private function skippedOf(string $appId): array {
+		return $this->stores->skipList?->versions($appId) ?? [];
 	}
 
 	/**

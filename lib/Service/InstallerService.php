@@ -16,6 +16,7 @@ use Exception;
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Kernel\Contracts\InstallerServiceInterface;
+use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Channel\VersionChannels;
 use OCA\Versioniq\Service\Discovery\PublisherTrust;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
@@ -1311,7 +1312,37 @@ class InstallerService implements InstallerServiceInterface {
 		}
 		$run->pin = $this->state->pinStore->get($run->request->target->appId);
 
-		return $this->pinRefusal($run) ?? $this->sameVersionOutcome($run) ?? $this->withdrawnRefusal($run) ?? $this->environmentRefusal($run);
+		return $this->pinRefusal($run) ?? $this->rangeRefusal($run) ?? $this->sameVersionOutcome($run) ?? $this->withdrawnRefusal($run) ?? $this->environmentRefusal($run);
+	}
+
+	/**
+	 * Refuses, after the pin guard, a real install of a newer version outside
+	 * the level of a policy that holds manual installs, with 409 and category
+	 * `outOfRange`, unless `overrideRange` is set; an override is audited.
+	 *
+	 * @spec openspec/changes/pinning-ranges-and-skips/specs/auto-update-policies/spec.md#requirement-a-policy-can-hold-manual-installs-to-its-level
+	 *
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 */
+	private function rangeRefusal(InstallRun $run): ?array {
+		$guard = $this->state->rangeGuard;
+		$target = $run->request->target;
+		$level = $guard?->refusingLevel($target->appId, $run->installedVersion, $target->version);
+		if ($guard === null || $level === null || $run->request->options->dryRun) {
+			return null;
+		}
+
+		if ($run->request->pinChoice->overrideRange) {
+			$guard->recordOverride((string)($this->userSession->getUser()?->getUID() ?? ''), $target->appId, $level, new AuditedVersions($run->installedVersion, $target->version, null));
+			return null;
+		}
+
+		return $this->installEnvelope(Http::STATUS_CONFLICT, $this->outcomePayload($run, [
+			'message' => sprintf('The update policy holds this app to %s updates, and %s is outside it. Pass overrideRange=1 to install it anyway.', $level, $target->version),
+			'category' => 'outOfRange',
+			'level' => $level,
+			'installStatus' => 'failed',
+		]) + $run->debugSuffix([]));
 	}
 
 	/**

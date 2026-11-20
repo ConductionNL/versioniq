@@ -12,14 +12,16 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\AutoUpdate;
 
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Pin\SkipList;
 use OCA\Versioniq\Service\Policy\PolicyStore;
 
 /**
  * The stored state automatic updates run on: the per-app policies, the pins
  * that hold an app back, the global settings (on/off, window, time zone) and
- * the ledger of versions already attempted, the update groups, and the security side (see
- * AutoUpdateSecurityStores), which the `security` level and the patch
- * policy read, and the proposed updates with their approvals and declines.
+ * the ledger of versions already attempted, the update groups, the versions
+ * an admin skipped, the security side (see AutoUpdateSecurityStores), which
+ * the `security` level and the patch policy read, and the proposed updates
+ * with their approvals and declines.
  *
  * @psalm-api
  */
@@ -34,6 +36,7 @@ final class AutoUpdateStores {
 		// Proposed updates and the admins' decisions on them; optional and
 		// last so existing callers keep working, the container always passes it.
 		public readonly ?ProposalStore $proposalStore = null,
+		public readonly ?SkipList $skipList = null,
 	) {
 	}
 }
