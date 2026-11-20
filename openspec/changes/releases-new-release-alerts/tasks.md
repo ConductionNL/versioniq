@@ -21,6 +21,7 @@
 - [x] 4.1 Add `src/components/AlertsPanel.vue` as an Alerts tab (scope, followed apps, targets with their last delivery and Send test), and "Follow releases" in `src/components/DiscoverPanel.vue`. Verify: `src/components/AlertsPanel.spec.ts` covers each part; `src/components/DiscoverPanel.spec.ts` covers Follow.
 - [x] 4.2 Add the new strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
 - [ ] 4.3 Add `tests/e2e/alerts.spec.ts`: the forge fixture publishes a newer release, the sweep runs with `occ background-job:execute --force-execute`, and the admin sees the notification and the feed item; a webhook target stored with `occ config:app:set versioniq webhook.fixture` (the form accepts https only; `tests/e2e/fixtures/forge/bootstrap.sh` sets the http forge addresses the same way) points at a new route on `tests/e2e/fixtures/forge/server.mjs`, which records the `new_release` delivery for the test to read.
+  - Written: `tests/e2e/alerts.spec.ts` (with a `/hooks/{name}` receiver and `/control/webhooks` on `tests/e2e/fixtures/forge/server.mjs`); waits for the Playwright job.
 
 ## 5. Close
 
