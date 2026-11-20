@@ -57,7 +57,10 @@ describe('the version picker Select button', () => {
 	})
 
 	it('names the version it selects and can be found by tests', () => {
-		const button = template.match(/<button[^>]*versionSelectButton[^>]*>/)
+		// The picker has more than one button with this class (Install anyway
+		// shares it); this one is the Select button.
+		const button = [...template.matchAll(/<button[^>]*versionSelectButton[^>]*>/g)]
+			.find((match) => match[0].includes('data-testid="version-select-button"'))
 		expect(button).not.toBeNull()
 		expect(button![0]).toContain(":aria-label=\"t('versioniq', 'Select version {version}', { version: version.version })\"")
 		expect(button![0]).toContain('data-testid="version-select-button"')
