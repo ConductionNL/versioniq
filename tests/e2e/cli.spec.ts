@@ -8,6 +8,7 @@ import {
 	fixtureAvailable,
 	fixtureControl,
 	resetFixtureApp,
+	sql,
 } from "./helpers.ts";
 
 /**
@@ -187,6 +188,51 @@ test.describe("occ CLI", () => {
 		expect(code).not.toBe(0);
 	});
 
+	// @e2e autoupdate-default-and-config-file::policies-export-and-import
+	test("exports the policies, and imports an edited level with --dry-run (no change) and without it (change and audit row)", async () => {
+		const file = "/tmp/versioniq-e2e-policies.json";
+		await occ(
+			"config:app:set",
+			"versioniq",
+			`policy.${FIXTURE_APP}`,
+			`--value=${JSON.stringify({ level: "patch", setBy: "e2e", setAt: "2026-01-01T00:00:00+00:00" })}`,
+		);
+		try {
+			const exported = await occ("versioniq:policies:export", file);
+			expect(exported.code, exported.stdout).toBe(0);
+
+			// Edit one level in the exported file, where the instance can read it.
+			const edit = await execInInstance([
+				"php",
+				"-r",
+				`$f=${JSON.stringify(file)};$j=json_decode(file_get_contents($f),true);$j["policies"][${JSON.stringify(FIXTURE_APP)}]="minor";file_put_contents($f,json_encode($j,JSON_PRETTY_PRINT));`,
+			]);
+			expect(edit.code, edit.stderr).toBe(0);
+
+			const before = Number((await sql("SELECT COALESCE(MAX(id), 0) FROM oc_app_versions_audit")) || 0);
+			const level = async () =>
+				JSON.parse((await occ("config:app:get", "versioniq", `policy.${FIXTURE_APP}`)).stdout.trim() || "{}").level;
+
+			const dryRun = await occ("versioniq:policies:import", file, "--dry-run");
+			expect(dryRun.code, dryRun.stdout).toBe(0);
+			expect(dryRun.stdout).toContain("patch -> minor");
+			expect(await level(), "a dry run writes nothing").toBe("patch");
+
+			const applied = await occ("versioniq:policies:import", file);
+			expect(applied.code, applied.stdout).toBe(0);
+			expect(applied.stdout).toContain("Applied");
+			expect(await level()).toBe("minor");
+			expect(
+				await sql(
+					`SELECT actor_uid, from_version, to_version FROM oc_app_versions_audit WHERE id > ${before} AND app_id = '${FIXTURE_APP}' AND operation = 'policy'`,
+				),
+			).toBe("occ\tpatch\tminor");
+		} finally {
+			await occ("config:app:delete", "versioniq", `policy.${FIXTURE_APP}`);
+			await execInInstance(["rm", "-f", file]);
+		}
+	});
+
 	// @e2e install-bulk-rollback::occ-takes-a-snapshot-and-checks-a-rollback
 	test("takes a named snapshot and checks a rollback to it without changing anything", async ({
 		page,
@@ -333,3 +379,4 @@ test.describe("occ versioniq:readiness", () => {
 		expect(code).toBe(1);
 	});
 });
+

@@ -2,16 +2,23 @@
 
 ## 1. Default level
 
-- [ ] 1.1 Add `auto_update_default_level` to `AutoUpdateSettingsStore` and the settings API, and `PolicyStore::effectiveLevelFor()`. Verify: `tests/unit/Service/Policy/PolicyStoreTest.php` for a stored level, a default and none.
+- [x] 1.1 Add `auto_update_default_level` to `AutoUpdateSettingsStore` and the settings API, and `PolicyStore::effectiveLevelFor()`. Verify: `tests/unit/Service/Policy/PolicyStoreTest.php` for a stored level, a default and none.
+  - Done: `PUT /api/auto-update/settings` takes `defaultLevel` (400 on an unknown level, nothing written), `GET /api/policies` and the settings answer carry `autoUpdateDefaultLevel`; `PolicyStore::effectiveLevelFor()` and `levelSourceFor()`.
 - [ ] 1.2 Make `AutoUpdateJob` visit every enabled manageable app with its effective level. Verify: `tests/unit/BackgroundJob/AutoUpdateJobTest.php`: with default none nothing changes; with default patch an app without a policy gets a patch update; a pinned app is still skipped; drive it once in `tests/e2e/jobs.spec.ts` with the `fixtureapp` fixture.
-- [ ] 1.3 Show own or default on each card, the reset action, and the default on the Automatic updates section with the count of apps that follow it. Verify: `PolicySelector.spec.ts` and `AutoUpdateOverview.spec.ts`.
+  - Unit part done: the job visits every stored policy and every enabled app without one at the default (`AutoUpdateJobTest::testWithTheDefaultAtNoneOnlyStoredPoliciesAreVisited`, `::testWithTheDefaultAtPatchAnAppWithoutAPolicyGetsAPatchUpdate`). Left open for the e2e run against a live instance.
+- [x] 1.3 Show own or default on each card, the reset action, and the default on the Automatic updates section with the count of apps that follow it. Verify: `PolicySelector.spec.ts` and `AutoUpdateOverview.spec.ts`.
+  - Done: `PolicySelector.vue` marks an own policy or the default and offers Reset to default (DELETE, so the app follows the default again); Off is stored as a policy of its own while the default is another level; the Automatic updates section sets the default level, and `AutoUpdateOverview.vue` says which level it is and how many apps follow it. Verified in `PolicySelector.spec.ts`, `AutoUpdateOverview.spec.ts`, `App.policyChange.spec.ts` and `App.pinAndSettings.spec.ts`.
 
 ## 2. File
 
-- [ ] 2.1 Add `PolicyFile` with the shape and validation of design D3. Verify: `tests/unit/Service/Policy/PolicyFileTest.php` with a valid file and one error per rule, each naming its JSON path.
+- [x] 2.1 Add `PolicyFile` with the shape and validation of design D3. Verify: `tests/unit/Service/Policy/PolicyFileTest.php` with a valid file and one error per rule, each naming its JSON path.
+  - Done: `lib/Service/Policy/PolicyFile.php` (read, parse, validate, encode) with `PolicyFileContents` and `PolicyFileException` (every problem as `<json path>: <reason>`); `PolicyFileTest` covers a valid file, a round trip and one error per rule. The import/export plan and apply live in `PolicyFileSync` (`PolicyFileSyncTest`).
 - [ ] 2.2 Add `occ versioniq:policies:export` and `occ versioniq:policies:import` with `--dry-run` and `--prune`, and register them. Verify: unit tests; `tests/e2e/cli.spec.ts` exports, edits one level, imports with `--dry-run` (no change) and without it (change and audit row).
-- [ ] 2.3 Add the file mode of design D4. Verify: unit tests that an invalid file makes the job do nothing, and that policy writes answer 409 in file mode; the page renders the read-only state (vitest).
+  - Unit part done: `lib/Command/ExportPolicies.php` (to a file or standard output) and `lib/Command/ImportPolicies.php` (`--dry-run`, `--prune`; refused while `config.php` names a policy file), registered in `appinfo/info.xml`; `tests/unit/Command/PolicyFileCommandsTest.php` exports, edits one level, imports with `--dry-run` (nothing written) and without it (the change and its audit row). Left open for the e2e run in `tests/e2e/cli.spec.ts` against a live instance.
+- [x] 2.3 Add the file mode of design D4. Verify: unit tests that an invalid file makes the job do nothing, and that policy writes answer 409 in file mode; the page renders the read-only state (vitest).
+  - Done: `PolicySource` reads the file `versioniq.policy_file` names; `AutoUpdateJob` uses it at every run and installs nothing, logging the file error with its JSON paths, when it cannot be used (`AutoUpdateJobTest::testABrokenPolicyFileInstallsNothingAndLogsTheErrorWithItsPath`); `GET /api/policies` answers the file's levels with `managedBy` and policy and settings writes answer 409 (`ApiTest::testPolicyAndSettingsWritesAnswer409NamingTheFileInFileMode`); the page shows the read-only state, the file path and its error (vitest).
 
 ## 3. Close
 
 - [ ] 3.1 Add strings to `l10n/en` and `l10n/nl` (verify `npm run check:l10n-js`), set the matrix rows `aut-global-default` and `aut-config-as-code` to `built` with evidence lines, then archive this change.
+  - Strings are in `l10n/en` and `l10n/nl` (`npm run check:l10n-js` passes) and the matrix rows `aut-global-default` and `aut-config-as-code` read `built` with evidence. Left: archiving the change, which waits for the e2e runs of 1.2 and 2.2.

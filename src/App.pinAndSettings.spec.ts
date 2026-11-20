@@ -206,6 +206,32 @@ describe('App automatic update settings', () => {
 		expect([vm.savedAutoUpdateEnabled, vm.savedAutoUpdateWindow]).toEqual(savedBefore)
 		expect(vm.isSavingAutoUpdateSettings).toBe(false)
 	})
+
+	// autoupdate-default-and-config-file: the default level travels only when it changed.
+	// @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
+	it('sends a changed default level and keeps the answer as saved', async () => {
+		const { vm, calls } = await mountPage({ '/api/auto-update/settings': { data: { autoUpdateEnabled: true, autoUpdateWindow: '01:00-05:00', autoUpdateDefaultLevel: 'minor' } } })
+		vm.autoUpdateEnabled = true
+		vm.autoUpdateWindowInput = '01:00-05:00'
+		vm.autoUpdateDefaultLevel = 'minor'
+
+		await vm.saveAutoUpdateSettings()
+		await flushPromises()
+
+		expect(calls[0].body).toEqual({ enabled: '1', window: '01:00-05:00', defaultLevel: 'minor' })
+		expect(calls[0].path).toContain('defaultLevel=minor')
+		expect([vm.autoUpdateDefaultLevel, vm.savedAutoUpdateDefaultLevel]).toEqual(['minor', 'minor'])
+	})
+
+	it('reads the default level and the policy file the server reports', async () => {
+		const { vm } = await mountPage({ '/api/policies': { data: { policies: [], autoUpdateDefaultLevel: 'patch', managedBy: { file: '/etc/policies.json', readAt: '', error: null } } } })
+
+		await (vm.loadPolicies as () => Promise<void>)()
+		await flushPromises()
+
+		expect([vm.autoUpdateDefaultLevel, vm.savedAutoUpdateDefaultLevel]).toEqual(['patch', 'patch'])
+		expect(vm.policyFile).toEqual({ file: '/etc/policies.json', readAt: '', error: null })
+	})
 })
 
 describe('App advisory settings', () => {

@@ -14,6 +14,7 @@ namespace OCA\Versioniq\Service\AutoUpdate;
 
 use OCA\Versioniq\Service\Policy\PatchPolicy;
 use OCA\Versioniq\Service\Policy\Policy;
+use OCA\Versioniq\Service\Policy\PolicyStore;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -46,29 +47,33 @@ final class AutoUpdatePlanner {
 	 *
 	 * @param array{rows: array<string, mixed>, fresh: bool} $advisories The run's advisory snapshot.
 	 * @param PatchPolicy|null $patchPolicy The patch policy; null reads as none.
+	 * @param array<string, string>|null $levels The level per app; null reads the stored policies.
 	 * @param \DateTimeImmutable|null $now The run's time; now when null.
 	 *
 	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
 	 * @spec openspec/changes/autoupdate-security-first/specs/auto-update-policies/spec.md#requirement-an-admin-records-a-patch-policy-and-security-fixes-go-first
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
 	 */
-	public function plan(array $advisories = ['rows' => [], 'fresh' => false], ?PatchPolicy $patchPolicy = null, ?\DateTimeImmutable $now = null): AutoUpdatePlan {
-		return $this->planRun(new PlanRun($advisories['rows'], $advisories['fresh'], $patchPolicy ?? PatchPolicy::none()), $now);
+	public function plan(array $advisories = ['rows' => [], 'fresh' => false], ?PatchPolicy $patchPolicy = null, ?array $levels = null, ?\DateTimeImmutable $now = null): AutoUpdatePlan {
+		return $this->planRun(new PlanRun($advisories['rows'], $advisories['fresh'], $patchPolicy ?? PatchPolicy::none()), $levels, $now);
 	}
 
 	/**
 	 * The plan of one run: its advisory snapshot, patch policy and the kinds the schedule lets run tonight.
 	 *
 	 * @param PlanRun $run The run.
+	 * @param array<string, string>|null $levels The level per app; null reads the stored policies.
 	 * @param \DateTimeImmutable|null $now The run's time; now when null.
 	 *
 	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
 	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
 	 */
-	public function planRun(PlanRun $run, ?\DateTimeImmutable $now = null): AutoUpdatePlan {
+	public function planRun(PlanRun $run, ?array $levels = null, ?\DateTimeImmutable $now = null): AutoUpdatePlan {
 		$planned = [];
-		foreach ($this->stores->policyStore->all() as $appId => $policy) {
-			if ($policy->level !== Policy::LEVEL_NONE) {
-				$planned[] = $this->planIsolated(new PlanTarget($appId, $policy->level), $run);
+		foreach ($levels ?? PolicyStore::levelsOf($this->stores->policyStore->all()) as $appId => $level) {
+			if ($level !== Policy::LEVEL_NONE) {
+				$planned[] = $this->planIsolated(new PlanTarget((string)$appId, $level), $run);
 			}
 		}
 

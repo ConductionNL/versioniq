@@ -1042,7 +1042,14 @@ OC.L10N.register(
         "Skip this version": "Deze versie overslaan",
         "Skip {version}": "{version} overslaan",
         "Unskip": "Niet meer overslaan",
-        "Why skip {version}? (optional)": "Waarom {version} overslaan? (optioneel)"
+        "Why skip {version}? (optional)": "Waarom {version} overslaan? (optioneel)",
+        "Follows the default level": "Volgt het standaardniveau",
+        "Own policy": "Eigen beleid",
+        "Reset to default": "Terugzetten naar de standaard",
+        "Default level for apps without their own policy": "Standaardniveau voor apps zonder eigen beleid",
+        "These policies are read from {file} and can only be changed there.": "Dit beleid wordt gelezen uit {file} en kan alleen daar worden gewijzigd.",
+        "The policy file cannot be used, so nothing is updated automatically: {error}": "Het beleidsbestand is niet bruikbaar, dus er wordt niets automatisch bijgewerkt: {error}",
+        "_%n app without its own policy follows the default level: {level}._::_%n apps without their own policy follow the default level: {level}._": ["%n app zonder eigen beleid volgt het standaardniveau: {level}.","%n apps zonder eigen beleid volgen het standaardniveau: {level}."]
     },
     "nplurals=2; plural=(n != 1);"
 )

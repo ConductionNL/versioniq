@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\AutoUpdate;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Policy\Policy;
 use OCP\IAppConfig;
 use OCP\IConfig;
 use Psr\Log\LoggerInterface;
@@ -28,6 +29,8 @@ use Psr\Log\LoggerInterface;
 class AutoUpdateSettingsStore {
 	public const CONFIG_ENABLED = 'auto_update_enabled';
 	public const CONFIG_WINDOW = 'auto_update_window';
+	/** The level every app without its own policy follows; `none` by default. */
+	public const CONFIG_DEFAULT_LEVEL = 'auto_update_default_level';
 	/** The per-kind weekday schedule ({@see AutoUpdateSchedule}), JSON; absent means every day. */
 	public const CONFIG_SCHEDULE = 'auto_update_schedule';
 	/** Opening key ({@see AutoUpdateWindow::openingKey()}) of the last window the job swept. */
@@ -161,6 +164,31 @@ class AutoUpdateSettingsStore {
 	 */
 	public function setWindow(string $window): void {
 		$this->config->setValueString(Application::APP_ID, self::CONFIG_WINDOW, $window);
+	}
+
+	/**
+	 * The level an app without its own policy follows: a stored valid level,
+	 * else `none`, so nothing changes until an admin sets it; see "Instance
+	 * default level".
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
+	 */
+	public function getDefaultLevel(): string {
+		$level = $this->config->getValueString(Application::APP_ID, self::CONFIG_DEFAULT_LEVEL, Policy::LEVEL_NONE);
+
+		return Policy::isValidLevel($level) ? $level : Policy::LEVEL_NONE;
+	}
+
+	/**
+	 * Stores the default level; refuses a level that is not one of the policy levels.
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
+	 * @throws \InvalidArgumentException When the level is not a policy level.
+	 */
+	public function setDefaultLevel(string $level): void {
+		if (!Policy::isValidLevel($level)) {
+			throw new \InvalidArgumentException('Default level must be one of: ' . implode(', ', Policy::VALID_LEVELS));
+		}
+
+		$this->config->setValueString(Application::APP_ID, self::CONFIG_DEFAULT_LEVEL, $level);
 	}
 
 	/**

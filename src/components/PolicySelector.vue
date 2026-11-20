@@ -17,6 +17,10 @@ const props = withDefaults(defineProps<{
 	autoUpdateEnabled: boolean
 	disabled?: boolean
 	blockedVersions?: BlockedVersion[]
+	/** Whether `level` is the app's own policy or the instance default it follows. */
+	source?: 'policy' | 'default'
+	/** The policies come from a policy file: nothing can be changed here. */
+	readOnly?: boolean
 	/** Whether automatic updates of this app wait for an admin's approval. */
 	requireApproval?: boolean
 	/** Whether manual installs outside the level ask for an explicit override (pinning-ranges-and-skips). */
@@ -27,6 +31,8 @@ const props = withDefaults(defineProps<{
 }>(), {
 	disabled: false,
 	blockedVersions: () => [],
+	source: 'policy',
+	readOnly: false,
 	requireApproval: false,
 	holdManual: false,
 	setBy: '',
@@ -36,6 +42,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
 	(event: 'change', appId: string, level: PolicyLevel): void
 	(event: 'retry', appId: string, version: string): void
+	(event: 'reset', appId: string): void
 	(event: 'approval', appId: string, requireApproval: boolean): void
 	(event: 'holdManual', appId: string, hold: boolean): void
 }>()
@@ -60,6 +67,8 @@ const selected = computed<SelectOption>({
 
 const isActive = computed(() => props.level !== 'none')
 
+/** An own policy can be dropped so the app follows the default again. */
+const canReset = computed(() => props.source === 'policy' && !props.readOnly)
 /**
  * "Set by {user} on {date}" for an active policy that records who set it, else ''.
  *
@@ -87,15 +96,29 @@ const canHoldManual = computed(() => props.level === 'patch' || props.level === 
 			:inputLabel="t('versioniq', 'Auto-update policy')"
 			:options="options"
 			:clearable="false"
-			:disabled="disabled"
+			:disabled="disabled || readOnly"
 			label="label" />
+		<span v-if="source === 'default'" :class="$style.badge" data-testid="policy-default-hint">
+			{{ t('versioniq', 'Follows the default level') }}
+		</span>
+		<span v-else :class="$style.badge" data-testid="policy-own-hint">
+			{{ t('versioniq', 'Own policy') }}
+			<NcButton
+				v-if="canReset"
+				variant="tertiary"
+				:disabled="disabled"
+				data-testid="policy-reset"
+				@click="emit('reset', appId)">
+				{{ t('versioniq', 'Reset to default') }}
+			</NcButton>
+		</span>
 		<span v-if="isActive" :class="$style.badge" data-testid="policy-active-badge">
 			{{ t('versioniq', 'Auto-update: {level}', { level: selected.label }) }}
 		</span>
 		<template v-if="canHoldManual">
 			<NcCheckboxRadioSwitch
 				:modelValue="holdManual"
-				:disabled="disabled"
+				:disabled="disabled || readOnly"
 				data-testid="policy-hold-manual"
 				@update:modelValue="(value: boolean) => emit('holdManual', appId, value)">
 				{{ t('versioniq', 'Also hold manual installs to this level') }}
@@ -114,7 +137,7 @@ const canHoldManual = computed(() => props.level === 'patch' || props.level === 
 			v-if="isActive"
 			data-testid="policy-require-approval"
 			:modelValue="requireApproval"
-			:disabled="disabled"
+			:disabled="disabled || readOnly"
 			@update:modelValue="emit('approval', appId, $event === true)">
 			{{ t('versioniq', 'Ask me before installing') }}
 		</NcCheckboxRadioSwitch>

@@ -5,12 +5,15 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import AutoUpdateOverview from './AutoUpdateOverview.vue'
 
-vi.mock('@nextcloud/l10n', () => ({
-	t: (_app: string, text: string, vars: Record<string, unknown> = {}) =>
-		text.replace(/\{(\w+)\}/g, (_match: string, key: string) => String(vars[key] ?? '')),
-	getDayNamesShort: () => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-	getFirstDay: () => 1,
-}))
+vi.mock('@nextcloud/l10n', () => {
+	const fill = (text: string, vars: Record<string, unknown>) => text.replace(/\{(\w+)\}/g, (_match: string, key: string) => String(vars[key] ?? ''))
+	return {
+		t: (_app: string, text: string, vars: Record<string, unknown> = {}) => fill(text, vars),
+		n: (_app: string, one: string, many: string, count: number, vars: Record<string, unknown> = {}) => fill(count === 1 ? one : many, vars).replace('%n', String(count)),
+		getDayNamesShort: () => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+		getFirstDay: () => 1,
+	}
+})
 vi.mock('@nextcloud/vue/components/NcButton', () => ({ default: { name: 'NcButton', emits: ['click'], template: '<button type="button" @click="$emit(\'click\')"><slot /></button>' } }))
 
 const policies = {
@@ -44,6 +47,35 @@ describe('AutoUpdateOverview', () => {
 		})
 
 		expect(wrapper.find('[data-testid="overview-disabled"]').exists()).toBe(true)
+	})
+
+	// autoupdate-default-and-config-file: the default and how many apps follow it.
+	// @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
+	it('says which default level the apps without a policy follow, and how many there are', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies, labels: {}, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'UTC', defaultLevel: 'patch', followingDefault: 12 },
+		})
+
+		expect(wrapper.find('[data-testid="overview-default"]').text()).toBe('12 apps without their own policy follow the default level: Patch.')
+		expect(wrapper.find('[data-testid="overview-managed-by"]').exists()).toBe(false)
+	})
+
+	it('names the policy file the policies are read from, and its error', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: {
+				policies: {},
+				labels: {},
+				autoUpdateEnabled: false,
+				window: '01:00-05:00',
+				timeZone: 'UTC',
+				followingDefault: 1,
+				managedBy: { file: '/etc/nextcloud/policies.json', readAt: '2026-11-14T10:00:00+00:00', error: '$.policies.deck: must be one of none, patch, minor, all' },
+			},
+		})
+
+		expect(wrapper.find('[data-testid="overview-managed-by"]').text()).toContain('/etc/nextcloud/policies.json')
+		expect(wrapper.find('[data-testid="overview-file-error"]').text()).toContain('$.policies.deck: must be one of')
+		expect(wrapper.find('[data-testid="overview-default"]').text()).toBe('1 app without its own policy follows the default level: Off.')
 	})
 
 	// @spec openspec/specs/auto-update-policies/spec.md#requirement-the-overview-lists-the-updates-that-are-pending-now

@@ -115,4 +115,39 @@ describe('App onPolicyChange', () => {
 		expect(result.calls).toEqual([])
 		expect(result.saving).toBe(true)
 	})
+
+	// autoupdate-default-and-config-file: with another default, Off is a policy of its own.
+	// @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
+	it('stores Off as a policy while the default is another level', async () => {
+		const calls: Call[] = []
+		vi.stubGlobal('fetch', vi.fn(policyFetch(calls, 'ok')))
+		const wrapper = mount(App, { global: { stubs } })
+		await flushPromises()
+		const vm = wrapper.vm as unknown as Record<string, unknown> & { onPolicyChange: (appId: string, level: string) => Promise<void>, policyLevelFor: (appId: string) => string, policySourceFor: (appId: string) => string }
+		vm.savedAutoUpdateDefaultLevel = 'patch'
+		vm.policies = {}
+		calls.length = 0
+
+		expect([vm.policyLevelFor('calendar'), vm.policySourceFor('calendar')]).toEqual(['patch', 'default'])
+		await vm.onPolicyChange('calendar', 'none')
+		await flushPromises()
+
+		expect(calls).toEqual([{ method: 'PUT', path: '/api/app/calendar/policy?level=none', body: { level: 'none' } }])
+	})
+
+	it('resets an app to the default with a DELETE', async () => {
+		const calls: Call[] = []
+		vi.stubGlobal('fetch', vi.fn(policyFetch(calls, 'ok')))
+		const wrapper = mount(App, { global: { stubs } })
+		await flushPromises()
+		const vm = wrapper.vm as unknown as Record<string, unknown> & { onPolicyReset: (appId: string) => Promise<void> }
+		vm.policies = { calendar: { appId: 'calendar', level: 'minor' } }
+		calls.length = 0
+
+		await vm.onPolicyReset('calendar')
+		await flushPromises()
+
+		expect(calls).toEqual([{ method: 'DELETE', path: '/api/app/calendar/policy', body: null }])
+		expect(vm.policies).toEqual({})
+	})
 })

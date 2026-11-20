@@ -38,6 +38,7 @@ use OCA\Versioniq\Service\Pat\PatExpiryEvaluator;
 use OCA\Versioniq\Service\Pat\PatManager;
 use OCA\Versioniq\Service\Pat\PatValidator;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Policy\PolicySource;
 use OCA\Versioniq\Service\Pin\SkipList;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyStore;
@@ -50,6 +51,7 @@ use OCA\Versioniq\Tests\Unit\Support\AuditRows;
 use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\IConfig;
 use OCP\IGroupManager;
 use OCP\IRequest;
 use OCP\IUser;
@@ -129,6 +131,7 @@ final class ApiTest extends TestCase {
 		?AutoUpdateSettingsStore $autoUpdateSettingsStore = null,
 		?ArtifactCache $artifactCache = null,
 		?AttemptLedger $attemptLedger = null,
+		?PolicySource $policySource = null,
 		?SkipList $skipList = null,
 		?KnownIssueStore $knownIssues = null,
 		?UpdateGroupStore $groupStore = null,
@@ -165,6 +168,7 @@ final class ApiTest extends TestCase {
 			'artifactCache' => $artifactCache ?? $this->createMock(ArtifactCache::class),
 			'connectionReports' => null,
 			'attemptLedger' => $attemptLedger ?? $this->createMock(AttemptLedger::class),
+			'policySource' => $policySource,
 			'skipList' => $skipList,
 			'knownIssues' => $knownIssues,
 			'groupStore' => $groupStore ?? $this->createMock(UpdateGroupStore::class),
@@ -827,7 +831,7 @@ final class ApiTest extends TestCase {
 		$installer = $this->createMock(InstallerService::class);
 		$installer->method('isManageableApp')->willReturnCallback(static fn (string $appId): bool => $appId !== 'notmanaged');
 
-		return $this->buildAdminController($installer, $request, null, null, null, 'admin', null, null, null, null, groupStore: $groupStore);
+		return $this->buildAdminController($installer, $request, groupStore: $groupStore);
 	}
 
 	public function testUpdateAutoUpdateGroupsIsForbiddenForANonAdmin(): void {
@@ -917,7 +921,7 @@ final class ApiTest extends TestCase {
 		]);
 
 		$installer = $this->createMock(InstallerService::class);
-		$response = $this->buildAdminController($installer, $this->paramsRequest([]), null, null, null, 'admin', null, $settingsStore, null, null, groupStore: $groupStore)->policies();
+		$response = $this->buildAdminController($installer, $this->paramsRequest([]), autoUpdateSettingsStore: $settingsStore, groupStore: $groupStore)->policies();
 
 		$this->assertSame(200, $response->getStatus());
 		$this->assertSame([[
@@ -989,6 +993,137 @@ final class ApiTest extends TestCase {
 		$this->assertSame(200, $response->getStatus());
 		$this->assertArrayHasKey('nextRuns', $response->getData());
 		$this->assertArrayHasKey('autoUpdateSchedule', $response->getData());
+	}
+
+	public function testUpdateAutoUpdateSettingsStoresTheDefaultLevel(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'defaultLevel' => 'patch',
+				default => $default,
+			}
+		);
+
+		$settingsStore = $this->settingsStoreMock();
+		$settingsStore->expects($this->once())->method('setDefaultLevel')->with('patch');
+		$settingsStore->expects($this->never())->method('setEnabled');
+		$settingsStore->expects($this->never())->method('setWindow');
+		$settingsStore->method('getDefaultLevel')->willReturn('patch');
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', null, $settingsStore)->updateAutoUpdateSettings();
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame('patch', $response->getData()['autoUpdateDefaultLevel']);
+	}
+
+	public function testUpdateAutoUpdateSettingsRejectsAnUnknownDefaultLevelAndWritesNothing(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'defaultLevel' => 'everything',
+				'window' => '22:00-04:00',
+				default => $default,
+			}
+		);
+
+		$settingsStore = $this->settingsStoreMock();
+		$settingsStore->expects($this->never())->method('setDefaultLevel');
+		$settingsStore->expects($this->never())->method('setWindow');
+		$settingsStore->expects($this->never())->method('setEnabled');
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', null, $settingsStore)->updateAutoUpdateSettings('1');
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertStringContainsString('defaultLevel must be one of', $response->getData()['message']);
+	}
+
+	/**
+	 * A PolicySource whose config.php names a temporary file holding $json.
+	 */
+	private function policyFileSource(string $json): PolicySource {
+		$path = (string)tempnam(sys_get_temp_dir(), 'vq-api');
+		file_put_contents($path, $json);
+		register_shutdown_function(static fn () => @unlink($path));
+		$config = $this->createMock(IConfig::class);
+		$config->method('getSystemValueString')->willReturn($path);
+
+		return new PolicySource($config, $this->createMock(PolicyStore::class), $this->settingsStoreMock());
+	}
+
+	/**
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
+	 */
+	public function testInFileModeThePoliciesComeFromTheFileAndNameIt(): void {
+		$source = $this->policyFileSource('{"schemaVersion":1,"autoUpdate":{"enabled":true,"defaultLevel":"patch"},"policies":{"openregister":"minor"}}');
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->expects($this->never())->method('all');
+
+		$installer = $this->createMock(InstallerService::class);
+		$data = $this->buildAdminController($installer, $this->createMock(IRequest::class), null, null, null, 'admin', $policyStore, null, null, null, $source)->policies()->getData();
+
+		$this->assertSame([['appId' => 'openregister', 'level' => 'minor', 'setBy' => 'file', 'setAt' => '2026-07-24T00:00:00+00:00', 'blockedVersions' => []]], $data['policies']);
+		$this->assertTrue($data['autoUpdateEnabled']);
+		$this->assertSame('01:00-05:00', $data['autoUpdateWindow']);
+		$this->assertSame('patch', $data['autoUpdateDefaultLevel']);
+		$this->assertSame($source->filePath(), $data['managedBy']['file']);
+		$this->assertNull($data['managedBy']['error']);
+	}
+
+	/**
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
+	 */
+	public function testABrokenPolicyFileIsShownWithItsErrorAndNothingOn(): void {
+		$source = $this->policyFileSource('{"schemaVersion":1,"policies":{"openregister":"weekly"}}');
+
+		$installer = $this->createMock(InstallerService::class);
+		$data = $this->buildAdminController($installer, $this->createMock(IRequest::class), null, null, null, 'admin', null, null, null, null, $source)->policies()->getData();
+
+		$this->assertSame([], $data['policies']);
+		$this->assertFalse($data['autoUpdateEnabled']);
+		$this->assertSame('$.policies.openregister: must be one of none, patch, minor, all, security', $data['managedBy']['error']);
+	}
+
+	/**
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
+	 */
+	public function testPolicyAndSettingsWritesAnswer409NamingTheFileInFileMode(): void {
+		$source = $this->policyFileSource('{"schemaVersion":1,"policies":{}}');
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => $name === 'level' ? 'patch' : $default
+		);
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->expects($this->never())->method('set');
+		$policyStore->expects($this->never())->method('clear');
+		$settingsStore = $this->settingsStoreMock();
+		$settingsStore->expects($this->never())->method('setEnabled');
+
+		$installer = $this->createMock(InstallerService::class);
+		$controller = $this->buildAdminController($installer, $request, null, null, null, 'admin', $policyStore, $settingsStore, null, null, $source);
+
+		foreach ([$controller->setPolicy('openregister'), $controller->clearPolicy('openregister'), $controller->updateAutoUpdateSettings('1')] as $response) {
+			$this->assertSame(409, $response->getStatus());
+			$this->assertStringContainsString((string)$source->filePath(), $response->getData()['message']);
+		}
+	}
+
+	public function testOutsideFileModeThePoliciesSayNoFileManagesThem(): void {
+		$installer = $this->createMock(InstallerService::class);
+		$data = $this->buildAdminController($installer, $this->createMock(IRequest::class))->policies()->getData();
+
+		$this->assertNull($data['managedBy']);
+	}
+
+	public function testPoliciesCarryTheDefaultLevel(): void {
+		$settingsStore = $this->settingsStoreMock();
+		$settingsStore->method('getDefaultLevel')->willReturn('minor');
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $this->createMock(IRequest::class), null, null, null, 'admin', $this->createMock(PolicyStore::class), $settingsStore)->policies();
+
+		$this->assertSame('minor', $response->getData()['autoUpdateDefaultLevel']);
 	}
 
 	// --- dryRun decoupled from debug (see MODIFIED "Debug Mode") ---
@@ -1281,7 +1416,7 @@ final class ApiTest extends TestCase {
 		$skipList = $this->createMock(SkipList::class);
 		$skipList->expects($this->once())->method('skip')->with('openregister', '2.3.4', $this->callback(static fn (array $stamp): bool => $stamp['by'] === 'admin' && is_string($stamp['at'])), 'breaks the import')->willReturn(true);
 
-		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith(['reason' => 'breaks the import']), null, null, null, 'admin', null, null, null, null, $skipList)->skipVersion('openregister', '2.3.4');
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith(['reason' => 'breaks the import']), null, null, null, 'admin', skipList: $skipList)->skipVersion('openregister', '2.3.4');
 
 		$this->assertSame(200, $response->getStatus());
 		$this->assertSame(['appId' => 'openregister', 'version' => '2.3.4', 'skipped' => true], $response->getData());
@@ -1291,7 +1426,7 @@ final class ApiTest extends TestCase {
 		$skipList = $this->createMock(SkipList::class);
 		$skipList->expects($this->never())->method('skip');
 
-		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith([]), null, null, null, 'admin', null, null, null, null, $skipList)->skipVersion('openregister', ' ');
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith([]), null, null, null, 'admin', skipList: $skipList)->skipVersion('openregister', ' ');
 
 		$this->assertSame(400, $response->getStatus());
 	}
@@ -1300,7 +1435,7 @@ final class ApiTest extends TestCase {
 		$skipList = $this->createMock(SkipList::class);
 		$skipList->expects($this->once())->method('unskip')->with('openregister', '2.3.4', 'admin')->willReturn(true);
 		$skipList->method('entries')->willReturn([['version' => '2.3.5', 'skippedBy' => 'admin', 'skippedAt' => 'T', 'reason' => '']]);
-		$controller = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith([]), null, null, null, 'admin', null, null, null, null, $skipList);
+		$controller = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith([]), null, null, null, 'admin', skipList: $skipList);
 
 		$this->assertTrue($controller->unskipVersion('openregister', '2.3.4')->getData()['unskipped']);
 		$this->assertSame('2.3.5', $controller->skippedVersions('openregister')->getData()['skipped'][0]['version']);

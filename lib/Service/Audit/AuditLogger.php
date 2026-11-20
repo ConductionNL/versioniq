@@ -45,6 +45,9 @@ class AuditLogger implements AdminChangeAuditInterface {
 	public const OPERATION_PIN = 'pin';
 	public const OPERATION_UNPIN = 'unpin';
 	public const OPERATION_PIN_DRIFT = 'pin_drift';
+	/** A per-app auto-update policy changed; the versions hold the old and new level. */
+	public const OPERATION_POLICY = 'policy';
+
 	// OPERATION_SETTINGS, OPERATION_PATCH_POLICY and OPERATION_INSTANCE_CONNECTION
 	// are AdminChangeAuditInterface's, and read as AuditLogger::OPERATION_* as before.
 	/** A version promoted from an earlier stage (install-multi-instance-promotion design D6). */

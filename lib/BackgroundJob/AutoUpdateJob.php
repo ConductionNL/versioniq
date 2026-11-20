@@ -35,6 +35,9 @@ use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Policy\PatchPolicy;
 use OCA\Versioniq\Service\Policy\Policy;
+use OCA\Versioniq\Service\Policy\PolicyFileContents;
+use OCA\Versioniq\Service\Policy\PolicyFileException;
+use OCA\Versioniq\Service\Policy\PolicyStore;
 use OCA\Versioniq\Service\Snapshot\SnapshotTaker;
 use OCP\AppFramework\Http;
 use OCP\BackgroundJob\TimedJob;
@@ -107,7 +110,12 @@ class AutoUpdateJob extends TimedJob {
 	 * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-every-audit-row-says-where-it-came-from
 	 */
 	private function runUpdates(): void {
-		if (!$this->stores->settingsStore->isEnabled()) {
+		$file = $this->fileContents();
+		if ($file === false) {
+			return;
+		}
+
+		if (!$this->isEnabled($file)) {
 			// Kill switch off — policies remain stored but inert; see "Global
 			// kill switch and window" ("Kill switch inert-but-stored").
 			return;
@@ -115,7 +123,7 @@ class AutoUpdateJob extends TimedJob {
 
 		$zoneName = $this->stores->settingsStore->getTimeZoneName();
 		$now = $this->time->getDateTime('now', new \DateTimeZone($zoneName !== '' ? $zoneName : 'UTC'));
-		$window = $this->stores->settingsStore->getWindow();
+		$window = $file?->window ?? $this->stores->settingsStore->getWindow();
 		if (!AutoUpdateWindow::isWithin($window, $now)) {
 			// Outside the configured window — see "Disabled or outside the
 			// window is a no-op".
@@ -132,17 +140,18 @@ class AutoUpdateJob extends TimedJob {
 
 		// The weekday is the one the window opened on (autoupdate-schedules, D3);
 		// with no kind due tonight, no source is asked at all (D4).
-		$this->runDue($this->stores->settingsStore->getSchedule()->dueKinds(AutoUpdateWindow::openedOn($window, $now)), $now);
+		$this->runDue($this->stores->settingsStore->getSchedule()->dueKinds(AutoUpdateWindow::openedOn($window, $now)), $file, $now);
 	}
 
 	/**
 	 * Plan and install tonight's run for the kinds the schedule lets run; nothing when none is due.
 	 *
 	 * @param list<string> $dueKinds
+	 * @param PolicyFileContents|null $file The policy file in file mode, else null.
 	 *
 	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
 	 */
-	private function runDue(array $dueKinds, \DateTimeInterface $now): void {
+	private function runDue(array $dueKinds, ?PolicyFileContents $file, \DateTimeInterface $now): void {
 		if ($dueKinds === []) {
 			return;
 		}
@@ -151,9 +160,12 @@ class AutoUpdateJob extends TimedJob {
 		// snapshot and the patch policy are read once per run
 		// (autoupdate-security-first D2, D3); no stored policy reads as
 		// today's behaviour, and security fixes are planned first (D4).
+		// The levels come from the policy file in file mode, else the stores,
+		// with every other enabled app at the instance default
+		// (autoupdate-default-and-config-file).
 		$advisories = $this->advisorySnapshot();
 		$run = new PlanRun($advisories['rows'], $advisories['fresh'], $this->stores->security->patchPolicyStore->read() ?? PatchPolicy::none());
-		$plan = (new AutoUpdatePlanner($this->stores, $this->install, $this->logger))->planRun($run->withDueKinds($dueKinds));
+		$plan = (new AutoUpdatePlanner($this->stores, $this->install, $this->logger))->planRun($run->withDueKinds($dueKinds), $this->levelsByApp($file));
 		$this->installPlanned($plan, $now);
 		$this->stores->security->securityHolds->replace($plan->securityHolds);
 	}
@@ -315,6 +327,68 @@ class AutoUpdateJob extends TimedJob {
 
 			return false;
 		}
+	}
+
+	/**
+	 * In file mode (design D4) the policy file, read afresh; null when the
+	 * stores are the source; false when the file cannot be used, which makes
+	 * the run do nothing rather than fall back to the stores.
+	 *
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
+	 */
+	private function fileContents(): PolicyFileContents|null|false {
+		$source = $this->stores->policySource;
+		$path = $source?->filePath();
+		if ($source === null || $path === null) {
+			return null;
+		}
+
+		try {
+			return $source->current();
+		} catch (PolicyFileException $error) {
+			$this->logger->error('AutoUpdateJob: the policy file cannot be used, so nothing is updated', [
+				'file' => $path,
+				'errors' => $error->errors,
+			]);
+			return false;
+		}
+	}
+
+	/** The kill switch: the file's in file mode (off when it does not say), else the stored one. */
+	private function isEnabled(?PolicyFileContents $file): bool {
+		if ($file !== null) {
+			return $file->enabled ?? false;
+		}
+
+		return $this->stores->settingsStore->isEnabled();
+	}
+
+	/**
+	 * The level to apply per app: every policy (stored, or the file's), then
+	 * every enabled app without one at the instance default. With the default
+	 * at none this is exactly the policies, as before; see "Instance default level".
+	 *
+	 * @return array<string, string>
+	 */
+	private function levelsByApp(?PolicyFileContents $file): array {
+		$levels = $file?->policies ?? PolicyStore::levelsOf($this->stores->policyStore->all());
+		$default = $this->defaultLevelFor($file);
+		if ($default === Policy::LEVEL_NONE) {
+			return $levels;
+		}
+
+		foreach ($this->install->appManager->getEnabledApps() as $appId) {
+			$levels[$appId] ??= $default;
+		}
+
+		return $levels;
+	}
+
+	/** The instance default level: the file's in file mode, else the stored one; anything invalid reads as none. */
+	private function defaultLevelFor(?PolicyFileContents $file): string {
+		$default = $file !== null ? ($file->defaultLevel ?? Policy::LEVEL_NONE) : $this->stores->settingsStore->getDefaultLevel();
+
+		return Policy::isValidLevel($default) ? $default : Policy::LEVEL_NONE;
 	}
 
 	/**

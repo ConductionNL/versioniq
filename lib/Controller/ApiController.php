@@ -45,6 +45,8 @@ use OCA\Versioniq\Service\Pat\NewPat;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Policy\PatchPolicy;
 use OCA\Versioniq\Service\Policy\Policy;
+use OCA\Versioniq\Service\Policy\PolicyFileContents;
+use OCA\Versioniq\Service\Policy\PolicyFileException;
 use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
@@ -1160,6 +1162,10 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
+		if ($this->autoUpdate->policySource?->filePath() !== null) {
+			return new DataResponse($this->filePolicies());
+		}
+
 		$policies = [];
 		foreach ($this->autoUpdate->policyStore->all() as $appId => $policy) {
 			$policies[] = $policy->toArray() + [
@@ -1170,24 +1176,16 @@ class ApiController extends OCSController {
 			];
 		}
 
-		return new DataResponse([
-			'policies' => $policies,
-			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
-			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
-			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
-			// Why the last run held a security fix back, whether the advisory
-			// snapshot is fresh enough for security installs, and the kinds
-			// the patch policy sets to by hand (autoupdate-security-first).
-			'securityHolds' => (object)$this->autoUpdate->security->securityHolds->read(),
-			'advisoriesFresh' => $this->advisoriesFresh(),
-			'manualKinds' => ($this->autoUpdate->security->patchPolicyStore->read() ?? PatchPolicy::none())->manualKinds(),
-			// Update groups, in their stored order, and the units a cap held
-			// back with the time each was first held (autoupdate-run-batching D2, D5).
-			'groups' => self::groupsPayload($this->autoUpdate->groupStore->all()),
-			'waiting' => (object)$this->autoUpdate->settingsStore->getDeferred(),
-			'noticeDays' => $this->autoUpdate->settingsStore->getNoticeDays(),
-			'noticeGroup' => $this->autoUpdate->settingsStore->getNoticeGroup(),
-		] + $this->autoUpdateCaps() + $this->scheduleView());
+		return new DataResponse(
+			['policies' => $policies] + $this->storedSettingsView() + ['managedBy' => null] + $this->securityView() + [
+				// Update groups, in their stored order, and the units a cap held
+				// back with the time each was first held (autoupdate-run-batching D2, D5).
+				'groups' => self::groupsPayload($this->autoUpdate->groupStore->all()),
+				'waiting' => (object)$this->autoUpdate->settingsStore->getDeferred(),
+				'noticeDays' => $this->autoUpdate->settingsStore->getNoticeDays(),
+				'noticeGroup' => $this->autoUpdate->settingsStore->getNoticeGroup(),
+			] + $this->autoUpdateCaps() + $this->scheduleView()
+		);
 	}
 
 	/**
@@ -1208,6 +1206,62 @@ class ApiController extends OCSController {
 		}
 
 		return ['autoUpdateSchedule' => $schedule->toArray(), 'nextRuns' => $nextRuns];
+	}
+
+	/**
+	 * The answer of GET /api/policies in file mode (design D4): the file's
+	 * settings and levels, read-only, and `managedBy` naming the file, when it
+	 * was read and why it cannot be used, if it cannot.
+	 *
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
+	 * @return array<string, mixed>
+	 */
+	private function filePolicies(): array {
+		$source = $this->autoUpdate->policySource;
+		$readAt = $this->access->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM);
+		$error = null;
+		$file = new PolicyFileContents(false, null, null, []);
+		try {
+			$file = $source?->current() ?? $file;
+		} catch (PolicyFileException $failure) {
+			$error = $failure->getMessage();
+		}
+
+		$policies = [];
+		foreach ($file->policies as $appId => $level) {
+			$policies[] = ['appId' => $appId, 'level' => $level, 'setBy' => 'file', 'setAt' => $readAt, 'blockedVersions' => $this->autoUpdate->attemptLedger->blockedVersions($appId)];
+		}
+
+		return [
+			'policies' => $policies,
+			'autoUpdateEnabled' => $file->enabled ?? false,
+			'autoUpdateWindow' => $file->window ?? AutoUpdateWindow::DEFAULT_WINDOW,
+			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
+			'autoUpdateDefaultLevel' => $file->defaultLevel ?? Policy::LEVEL_NONE,
+			'managedBy' => ['file' => $source?->filePath(), 'readAt' => $readAt, 'error' => $error],
+			'groups' => self::groupsPayload($this->autoUpdate->groupStore->all()),
+			'waiting' => (object)$this->autoUpdate->settingsStore->getDeferred(),
+			'noticeDays' => $this->autoUpdate->settingsStore->getNoticeDays(),
+			'noticeGroup' => $this->autoUpdate->settingsStore->getNoticeGroup(),
+		] + $this->securityView() + $this->autoUpdateCaps() + $this->scheduleView();
+	}
+
+	/**
+	 * 409 naming the policy file while `config.php` names one, else null: the
+	 * stores are not read then, so a write through the API would change nothing.
+	 *
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
+	 */
+	private function fileModeRefusal(): ?DataResponse {
+		$path = $this->autoUpdate->policySource?->filePath();
+		if ($path === null) {
+			return null;
+		}
+
+		return new DataResponse(
+			['message' => 'Automatic update policies are read from ' . $path . ' (versioniq.policy_file in config.php); change that file instead.'],
+			Http::STATUS_CONFLICT
+		);
 	}
 
 	/**
@@ -1333,11 +1387,12 @@ class ApiController extends OCSController {
 	 * @param string $appId The app to set a policy for
 	 * @param string|null $requireApproval `1`/`0`: install only versions an admin approved; OMIT to keep the current value
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{appId: string, policy: array<string, mixed>}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, policy: array<string, mixed>}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_CONFLICT, array{message: string}, array{}>
 	 *
 	 * 200: The stored policy
 	 * 400: The requested policy level is not recognised
 	 * 403: Caller is not an administrator
+	 * 409: The policies are read from the policy file config.php names
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
@@ -1349,6 +1404,11 @@ class ApiController extends OCSController {
 		$user = $this->adminUser();
 		if (!$user instanceof IUser) {
 			return $user;
+		}
+
+		$refusal = $this->fileModeRefusal();
+		if ($refusal !== null) {
+			return $refusal;
 		}
 
 		$level = $this->stringParam('level', '');
@@ -1390,10 +1450,11 @@ class ApiController extends OCSController {
 	 *
 	 * @param string $appId The app to clear the policy for
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{appId: string, cleared: bool}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, cleared: bool}, array{}>|DataResponse<Http::STATUS_FORBIDDEN|Http::STATUS_CONFLICT, array{message: string}, array{}>
 	 *
 	 * 200: The policy was cleared, or there was none to clear
 	 * 403: Caller is not an administrator
+	 * 409: The policies are read from the policy file config.php names
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 */
@@ -1403,6 +1464,11 @@ class ApiController extends OCSController {
 	public function clearPolicy(string $appId): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$refusal = $this->fileModeRefusal();
+		if ($refusal !== null) {
+			return $refusal;
 		}
 
 		$before = $this->reports->ruleAudit === null ? null : $this->autoUpdate->policyStore->get($appId)?->level;
@@ -1463,21 +1529,24 @@ class ApiController extends OCSController {
 	}
 
 	/**
-	 * Updates the global auto-update kill switch and/or maintenance window
-	 * (password-confirmed); rejects a malformed window with 400; see "Global
-	 * kill switch and window"
+	 * Updates the global auto-update kill switch, maintenance window and/or
+	 * default level (password-confirmed); rejects a malformed window or an
+	 * unknown default level with 400; see "Global kill switch and window"
+	 * and "Instance default level"
 	 *
 	 * @param string|null $enabled `1`/`0` to set the global kill switch; OMIT to leave it untouched
 	 * @param string|null $noticeDays Days a planned update is announced before it installs, 0 to 60 (0 is off); OMIT to leave it untouched
 	 * @param string|null $noticeGroup Group whose members are told of planned updates besides the admins, empty to clear; OMIT to leave it untouched
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_CONFLICT, array{message: string}, array{}>
 	 *
 	 * 200: The stored global settings
-	 * 400: The maintenance window is malformed, the notice period is outside 0 to 60 days, or the notice group does not exist
+	 * 400: The maintenance window is malformed, the default level is unknown, the notice period is outside 0 to 60 days, or the notice group does not exist
 	 * 403: Caller is not an administrator
+	 * 409: The settings are read from the policy file config.php names
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
 	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
@@ -1486,6 +1555,11 @@ class ApiController extends OCSController {
 	public function updateAutoUpdateSettings(?string $enabled = null, ?string $noticeDays = null, ?string $noticeGroup = null): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$refusal = $this->fileModeRefusal();
+		if ($refusal !== null) {
+			return $refusal;
 		}
 
 		// The null default is load-bearing, as it was with getParam() and no
@@ -1507,7 +1581,8 @@ class ApiController extends OCSController {
 		// one leaves the switch and the window as they were (autoupdate-schedules, D6).
 		/** @var mixed $scheduleParam */
 		$scheduleParam = $this->request->getParam('schedule');
-		$problem = $this->autoUpdateSettingsProblem($windowParam, $scheduleParam);
+		$defaultLevelParam = $this->stringParam('defaultLevel', '');
+		$problem = $this->autoUpdateSettingsProblem($windowParam, $scheduleParam) ?? $this->defaultLevelProblem($defaultLevelParam);
 		if ($problem !== null) {
 			return $problem;
 		}
@@ -1526,23 +1601,79 @@ class ApiController extends OCSController {
 
 		$before = $this->reports->ruleAudit === null ? [] : $this->autoUpdateRule();
 		$this->storeNotice($noticeDays, $noticeGroup);
-		if ($enabledParam !== null) {
-			$this->autoUpdate->settingsStore->setEnabled($this->readBinaryBool($enabledParam, $this->autoUpdate->settingsStore->isEnabled()));
-		}
-		if ($windowParam !== '') {
-			$this->autoUpdate->settingsStore->setWindow($windowParam);
+		$this->storeSwitchAndWindow($enabledParam, $windowParam);
+		if ($defaultLevelParam !== '') {
+			$this->autoUpdate->settingsStore->setDefaultLevel($defaultLevelParam);
 		}
 		$this->storeCaps($caps);
 		$this->storeSchedule($scheduleParam);
 		$this->reports->ruleAudit?->autoUpdateSettings($this->callerUid(), $before, $this->autoUpdateRule());
 
-		return new DataResponse([
-			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
-			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
-			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
+		return new DataResponse($this->storedSettingsView() + [
 			'noticeDays' => $this->autoUpdate->settingsStore->getNoticeDays(),
 			'noticeGroup' => $this->autoUpdate->settingsStore->getNoticeGroup(),
 		] + $this->autoUpdateCaps() + $this->scheduleView());
+	}
+
+	/**
+	 * Store the kill switch and window that were sent; one left out keeps its stored value.
+	 */
+	private function storeSwitchAndWindow(?string $enabledParam, string $windowParam): void {
+		$settings = $this->autoUpdate->settingsStore;
+		if ($enabledParam !== null) {
+			$settings->setEnabled($this->readBinaryBool($enabledParam, $settings->isEnabled()));
+		}
+		if ($windowParam !== '') {
+			$settings->setWindow($windowParam);
+		}
+	}
+
+	/**
+	 * 400 for a default level that is not a policy level; null for a valid or omitted one.
+	 *
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
+	 */
+	private function defaultLevelProblem(string $defaultLevelParam): ?DataResponse {
+		if ($defaultLevelParam === '' || Policy::isValidLevel($defaultLevelParam)) {
+			return null;
+		}
+
+		return new DataResponse(
+			['message' => 'defaultLevel must be one of: ' . implode(', ', Policy::VALID_LEVELS) . '.'],
+			Http::STATUS_BAD_REQUEST
+		);
+	}
+
+	/**
+	 * The stored kill switch, window, time zone and default level, as the page reads them.
+	 *
+	 * @return array{autoUpdateEnabled: bool, autoUpdateWindow: string, autoUpdateTimeZone: string, autoUpdateDefaultLevel: string}
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
+	 */
+	private function storedSettingsView(): array {
+		$settings = $this->autoUpdate->settingsStore;
+
+		return [
+			'autoUpdateEnabled' => $settings->isEnabled(),
+			'autoUpdateWindow' => $settings->getWindow(),
+			'autoUpdateTimeZone' => $settings->getTimeZoneName(),
+			'autoUpdateDefaultLevel' => $settings->getDefaultLevel(),
+		];
+	}
+
+	/**
+	 * Why the last run held a security fix back, whether the advisory snapshot
+	 * is fresh enough for security installs, and the kinds the patch policy
+	 * sets to by hand (autoupdate-security-first).
+	 *
+	 * @return array{securityHolds: object, advisoriesFresh: bool, manualKinds: list<string>}
+	 */
+	private function securityView(): array {
+		return [
+			'securityHolds' => (object)$this->autoUpdate->security->securityHolds->read(),
+			'advisoriesFresh' => $this->advisoriesFresh(),
+			'manualKinds' => ($this->autoUpdate->security->patchPolicyStore->read() ?? PatchPolicy::none())->manualKinds(),
+		];
 	}
 
 	/**

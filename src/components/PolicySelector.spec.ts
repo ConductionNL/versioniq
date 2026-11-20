@@ -107,6 +107,38 @@ describe('PolicySelector', () => {
 		expect(wrapper.find('[data-testid="policy-disabled-hint"]').text()).not.toContain('\u2014')
 	})
 
+	// autoupdate-default-and-config-file: own or default, reset, read-only file mode.
+	// @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
+	it('marks a level that follows the default and offers no reset', () => {
+		const wrapper = shallowMount(PolicySelector, {
+			props: { appId: 'calendar', level: 'patch', autoUpdateEnabled: true, source: 'default' },
+		})
+
+		expect(wrapper.find('[data-testid="policy-default-hint"]').exists()).toBe(true)
+		expect(wrapper.find('[data-testid="policy-own-hint"]').exists()).toBe(false)
+		expect(wrapper.find('[data-testid="policy-reset"]').exists()).toBe(false)
+		expect(wrapper.find('[data-testid="policy-active-badge"]').text()).toContain('Patch')
+	})
+
+	it('offers a reset to the default for an own policy', async () => {
+		const wrapper = shallowMount(PolicySelector, {
+			props: { appId: 'openregister', level: 'minor', autoUpdateEnabled: true, source: 'policy' },
+		})
+
+		expect(wrapper.find('[data-testid="policy-own-hint"]').exists()).toBe(true)
+		await wrapper.find('[data-testid="policy-reset"]').trigger('click')
+		expect(wrapper.emitted('reset')).toEqual([['openregister']])
+	})
+
+	it('is read-only while a policy file manages the policies', () => {
+		const wrapper = shallowMount(PolicySelector, {
+			props: { appId: 'openregister', level: 'minor', autoUpdateEnabled: true, source: 'policy', readOnly: true },
+		})
+
+		expect(wrapper.findComponent({ name: 'NcSelect' }).attributes('disabled')).toBe('true')
+		expect(wrapper.find('[data-testid="policy-reset"]').exists()).toBe(false)
+	})
+
 	// pinning-ranges-and-skips: "Also hold manual installs to this level"
 	// @spec openspec/changes/pinning-ranges-and-skips/specs/auto-update-policies/spec.md#requirement-a-policy-can-hold-manual-installs-to-its-level
 	it('offers the hold-manual switch for patch and minor only, with help text that leaves the platform updater out', () => {
