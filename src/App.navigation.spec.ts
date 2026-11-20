@@ -272,8 +272,9 @@ describe('App promotion rollback', () => {
 		await flushPromises()
 
 		expect(vm.currentTab).toBe('apps')
-		// The live install-progress poll runs beside the install request.
-		const paths = calls.map((call) => call.path).filter((path) => !path.startsWith('/api/install-progress/'))
+		// The live install-progress poll runs beside the install request, and
+		// the skip list (pinning-ranges-and-skips) loads with the versions.
+		const paths = calls.map((call) => call.path).filter((path) => !path.startsWith('/api/install-progress/') && !path.endsWith('/skips'))
 		expect(paths.slice(0, 2)).toEqual(['/api/app/openregister/versions', '/api/app/openregister/versions/2.3.0/install'])
 	})
 })

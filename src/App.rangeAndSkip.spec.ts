@@ -48,7 +48,7 @@ function stubFetch (installAnswers: unknown[]): Recorded[] {
 		} else if (url.includes('/policy') && init?.method === 'PUT') {
 			recorded.push({ url, method: init?.method, body: init?.body })
 			const sent = JSON.parse(String(init?.body))
-			body = ok({ appId: 'calendar', policy: { level: sent.level, setBy: 'admin', setAt: 'T', holdManual: sent.holdManual === true } })
+			body = ok({ appId: 'calendar', policy: { level: sent.level, setBy: 'admin', setAt: 'T', holdManual: sent.holdManual === '1' } })
 		}
 		return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }))
 	}))
@@ -132,7 +132,7 @@ describe('range guard and skipped versions', () => {
 		await vm.onHoldManualChange('calendar', true)
 
 		expect(writes).toHaveLength(1)
-		expect(JSON.parse(String(writes[0].body))).toEqual({ level: 'patch', holdManual: true })
+		expect(JSON.parse(String(writes[0].body))).toEqual({ level: 'patch', holdManual: '1' })
 		expect(vm.holdManualFor('calendar')).toBe(true)
 	})
 
