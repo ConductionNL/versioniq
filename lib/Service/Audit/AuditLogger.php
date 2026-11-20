@@ -61,6 +61,10 @@ class AuditLogger implements AdminChangeAuditInterface {
 	public const OPERATION_EXTERNAL_DISABLE = 'external_disable';
 	/** An app Versioniq enabled again after an update left it off (audit-external-changes). */
 	public const OPERATION_REACTIVATE = 'reactivate';
+	public const OPERATION_POLICY_SET = 'policy_set';
+	public const OPERATION_POLICY_CLEAR = 'policy_clear';
+	public const OPERATION_AUTO_UPDATE_SETTINGS = 'auto_update_settings';
+	public const OPERATION_ADVISORY_SETTINGS = 'advisory_settings';
 
 	private const OPERATION_PATTERN = '/^[a-z_]{1,32}$/';
 	private const MESSAGE_MAX_LENGTH = 4000;
@@ -70,6 +74,7 @@ class AuditLogger implements AdminChangeAuditInterface {
 		private ITimeFactory $timeFactory,
 		private LoggerInterface $logger,
 		private ?IEventDispatcher $eventDispatcher = null,
+		private ?ActivityPublisher $activity = null,
 	) {
 	}
 
@@ -109,6 +114,21 @@ class AuditLogger implements AdminChangeAuditInterface {
 		}
 
 		$this->forward($entry);
+		$this->publishActivity($entry);
+	}
+
+	/**
+	 * Publish the recorded change to the admins' activity stream (audit-attribution-and-forwarding D4);
+	 * a failure is logged and never reaches the operation.
+	 *
+	 * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-audit-rows-reach-the-platforms-audit-log-and-activity-stream
+	 */
+	private function publishActivity(AuditEntry $entry): void {
+		try {
+			$this->activity?->publish($entry);
+		} catch (\Throwable $error) {
+			$this->logger->warning('Versioniq: publishing an audit entry to the activity stream failed', ['exception' => $error]);
+		}
 	}
 
 	/**

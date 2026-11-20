@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Api;
 
 use OCA\Versioniq\Db\AuditEntryMapper;
+use OCA\Versioniq\Service\Audit\RuleChangeAuditor;
 use OCA\Versioniq\Service\Advisory\LibraryAdvisoryStore;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
 use OCA\Versioniq\Service\Readiness\ReadinessAccess;
@@ -32,6 +33,8 @@ final class ReportCollaborators {
 		// queued on (inventory-upgrade-readiness D4).
 		public readonly ?ReadinessAccess $readiness = null,
 		public readonly ?KnownIssueStore $knownIssues = null,
+		// Optional: audits changes to the update rules (audit-attribution-and-forwarding D2).
+		public readonly ?RuleChangeAuditor $ruleAudit = null,
 		// Optional: the bundled-library snapshot (advisories-bundled-libraries).
 		public readonly ?LibraryAdvisoryStore $libraryAdvisoryStore = null,
 	) {

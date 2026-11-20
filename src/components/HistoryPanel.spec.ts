@@ -18,6 +18,9 @@ vi.mock('@nextcloud/vue/components/NcButton', () => ({
 }))
 vi.mock('@nextcloud/vue/components/NcLoadingIcon', () => ({ default: { name: 'NcLoadingIcon', template: '<span />' } }))
 vi.mock('@nextcloud/vue/components/NcNoteCard', () => ({ default: { name: 'NcNoteCard', template: '<div><slot /></div>' } }))
+vi.mock('@nextcloud/vue/components/NcSelect', () => ({
+	default: { name: 'NcSelect', props: ['modelValue', 'options', 'inputLabel'], template: '<div />' },
+}))
 vi.mock('../ocs', () => ({
 	ocsGet: vi.fn(),
 }))

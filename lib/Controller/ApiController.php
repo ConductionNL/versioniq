@@ -14,6 +14,7 @@ namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
 use OCA\Versioniq\BackgroundJob\UpgradeReadinessJob;
+use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Db\Pat;
 use OCA\Versioniq\Http\InstallVersionFields;
 use OCA\Versioniq\Http\RequestFieldsFrom;
@@ -23,6 +24,7 @@ use OCA\Versioniq\Service\Advisory\FixStatus;
 use OCA\Versioniq\Service\Api\AccessCollaborators;
 use OCA\Versioniq\Service\Api\InstallCollaborators;
 use OCA\Versioniq\Service\Api\ReportCollaborators;
+use OCA\Versioniq\Service\Audit\AuditOrigin;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
@@ -60,6 +62,9 @@ use OCP\IUser;
 class ApiController extends OCSController {
 	/** The spellings readBinaryBool() understands. */
 	private const BINARY_FLAGS = ['1', 'true', '0', 'false'];
+
+	/** The origins `GET /api/audit?origin=` filters on; anything else lists every row. */
+	private const AUDIT_ORIGINS = [AuditOrigin::WEB, AuditOrigin::CLI, AuditOrigin::JOB, AuditOrigin::LISTENER, AuditEntryMapper::ORIGIN_UNKNOWN];
 
 	/**
 	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
@@ -1187,7 +1192,9 @@ class ApiController extends OCSController {
 			$this->access->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
 			$approval,
 		);
+		$before = $this->reports->ruleAudit === null ? null : $this->autoUpdate->policyStore->get($appId)?->level;
 		$this->autoUpdate->policyStore->set($appId, $policy);
+		$this->reports->ruleAudit?->policySet($user->getUID(), $appId, $before, $level);
 
 		return new DataResponse(['appId' => $appId, 'policy' => $policy->toArray()]);
 	}
@@ -1213,7 +1220,11 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
+		$before = $this->reports->ruleAudit === null ? null : $this->autoUpdate->policyStore->get($appId)?->level;
 		$this->autoUpdate->policyStore->clear($appId);
+		if ($before !== null) {
+			$this->reports->ruleAudit?->policyCleared($this->callerUid(), $appId, $before);
+		}
 
 		return new DataResponse(['appId' => $appId, 'cleared' => true]);
 	}
@@ -1327,8 +1338,9 @@ class ApiController extends OCSController {
 		if ($noticeRefusal !== null) {
 			return $noticeRefusal;
 		}
-		$this->storeNotice($noticeDays, $noticeGroup);
 
+		$before = $this->reports->ruleAudit === null ? [] : $this->autoUpdateRule();
+		$this->storeNotice($noticeDays, $noticeGroup);
 		if ($enabledParam !== null) {
 			$this->autoUpdate->settingsStore->setEnabled($this->readBinaryBool($enabledParam, $this->autoUpdate->settingsStore->isEnabled()));
 		}
@@ -1337,6 +1349,7 @@ class ApiController extends OCSController {
 		}
 		$this->storeCaps($caps);
 		$this->storeSchedule($scheduleParam);
+		$this->reports->ruleAudit?->autoUpdateSettings($this->callerUid(), $before, $this->autoUpdateRule());
 
 		return new DataResponse([
 			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
@@ -1470,6 +1483,7 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
+		$before = $this->reports->ruleAudit === null ? [] : $this->advisoryRule();
 		if ($intervalHours !== null && $intervalHours !== '') {
 			$refusal = $this->storeIntervalHours($intervalHours);
 			if ($refusal !== null) {
@@ -1483,8 +1497,42 @@ class ApiController extends OCSController {
 			$store = $this->reports->stores->advisorySettingsStore;
 			$store->setNcscEnabled($this->readBinaryBool($ncscEnabled === '' ? '0' : $ncscEnabled, $store->isNcscEnabled()));
 		}
+		$this->reports->ruleAudit?->advisorySettings($this->callerUid(), $before, $this->advisoryRule());
 
 		return $this->advisorySettingsResponse();
+	}
+
+	/**
+	 * The automatic update switch and window as they stand, for the rule audit.
+	 *
+	 * @return array{enabled: bool, window: string, maxPerRun: ?int, maxPerWeek: ?int}
+	 */
+	private function autoUpdateRule(): array {
+		return [
+			'enabled' => $this->autoUpdate->settingsStore->isEnabled(),
+			'window' => $this->autoUpdate->settingsStore->getWindow(),
+			'maxPerRun' => $this->autoUpdate->settingsStore->getMaxPerRun(),
+			'maxPerWeek' => $this->autoUpdate->settingsStore->getMaxPerWeek(),
+		];
+	}
+
+	/**
+	 * The advisory interval and switches as they stand, for the rule audit.
+	 *
+	 * @return array{intervalHours: int, digestEnabled: bool, ncscEnabled: bool, librariesEnabled: bool}
+	 */
+	private function advisoryRule(): array {
+		return [
+			'intervalHours' => $this->reports->stores->advisorySettingsStore->getIntervalHours(),
+			'digestEnabled' => $this->reports->stores->advisorySettingsStore->isDigestEnabled(),
+			'ncscEnabled' => $this->reports->stores->advisorySettingsStore->isNcscEnabled(),
+			'librariesEnabled' => $this->reports->stores->advisorySettingsStore->isLibraryCheckEnabled(),
+		];
+	}
+
+	/** The signed-in admin's uid, '' when there is none. */
+	private function callerUid(): string {
+		return $this->access->caller->userSession->getUser()?->getUID() ?? '';
 	}
 
 	/**
@@ -1874,7 +1922,10 @@ class ApiController extends OCSController {
 
 	/**
 	 * Lists audit entries, newest-first, admin-only, paginated and optionally
-	 * filtered by app id; see "Audit entries are immutable and admin-readable".
+	 * filtered by app id and by origin (`web`, `cli`, `job`, `listener`, or
+	 * `unknown` for rows written before origins were recorded); see "Audit
+	 * entries are immutable and admin-readable" and "Every audit row says where
+	 * it came from".
 	 * No mutation endpoint exists for this resource — the retention prune job
 	 * is the only deletion path.
 	 *
@@ -1897,7 +1948,10 @@ class ApiController extends OCSController {
 		$limit = max(1, min($limit, 200));
 		$offset = max(0, $this->intParam('offset', 0));
 
-		$entries = $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset);
+		$origin = $this->stringParam('origin', '');
+		$entries = in_array($origin, self::AUDIT_ORIGINS, true)
+			? $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset, $origin)
+			: $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset);
 
 		return new DataResponse([
 			'entries' => $this->withSbomFlags($entries),
