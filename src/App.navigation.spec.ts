@@ -207,7 +207,7 @@ describe('App panel hand-overs', () => {
 		await flushPromises()
 
 		expect([vm.currentTab, vm.appFilter, vm.selectedApp]).toEqual(['apps', 'deck', 'deck'])
-		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['GET /api/app/deck/versions', 'GET /api/app/deck/skips'])
+		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['GET /api/app/deck/versions', 'GET /api/app/deck/skips', 'GET /api/app/deck/outcomes/instances'])
 		expect([vm.installedVersion, vm.availableSource]).toEqual(['1.0.0', 'appstore'])
 	})
 
@@ -241,7 +241,7 @@ describe('App panel hand-overs', () => {
 		wrapper.findComponent({ name: 'SourcesPanel' }).vm.$emit('bound', 'deck')
 		await flushPromises()
 
-		expect(calls.map((call) => call.path)).toEqual(['/api/app/deck/versions', '/api/app/deck/skips'])
+		expect(calls.map((call) => call.path)).toEqual(['/api/app/deck/versions', '/api/app/deck/skips', '/api/app/deck/outcomes/instances'])
 		expect(vm.availableSource).toBe('github')
 		expect(vm.hasInstallResult).toBe(true)
 	})
@@ -273,8 +273,9 @@ describe('App promotion rollback', () => {
 
 		expect(vm.currentTab).toBe('apps')
 		// The live install-progress poll runs beside the install request, and
-		// the skip list (pinning-ranges-and-skips) loads with the versions.
-		const paths = calls.map((call) => call.path).filter((path) => !path.startsWith('/api/install-progress/') && !path.endsWith('/skips'))
+		// the skip list (pinning-ranges-and-skips) and the other instances'
+		// outcomes (releases-version-facts) load with the versions.
+		const paths = calls.map((call) => call.path).filter((path) => !path.startsWith('/api/install-progress/') && !path.endsWith('/skips') && !path.endsWith('/outcomes/instances'))
 		expect(paths.slice(0, 2)).toEqual(['/api/app/openregister/versions', '/api/app/openregister/versions/2.3.0/install'])
 	})
 })

@@ -19,7 +19,7 @@ import type {RestorePayload} from './utils/restoreOutcome.ts';
 import type {SkipEntry} from './utils/skips.ts';
 import type { SweepStatus } from './utils/sweepOutcome.ts'
 import type {BatchCandidate, BatchRow} from './utils/updateBatch.ts';
-import type {AdminKnownIssue, VersionOutcomes} from './utils/versionFacts.ts';
+import type {AdminKnownIssue, InstanceOutcomesRead, VersionOutcomes} from './utils/versionFacts.ts';
 
 import { loadState } from '@nextcloud/initial-state'
 import { n, t } from '@nextcloud/l10n'
@@ -100,7 +100,7 @@ import { fetchSkips } from './utils/skips.ts'
 import { sweepStateOf } from './utils/sweepOutcome.ts'
 import { batchOutcome, quickUpdateTarget, runUpdateBatch, updateAllCandidates } from './utils/updateBatch.ts'
 import { compareVersions, parseVersionCore } from './utils/versionCompare.ts'
-import { breakingBetween, breakingSentence } from './utils/versionFacts.ts'
+import { breakingBetween, breakingSentence, unreadableInstancesText } from './utils/versionFacts.ts'
 
 type AppOption = {
 	id: string
@@ -198,6 +198,9 @@ const isDowngradeConfirmOpen = ref(false)
 const isKnownIssueDialogOpen = ref(false)
 const knownIssueDialogVersion = ref('')
 const isRemovingKnownIssue = ref(false)
+// releases-version-facts task 2.3: the connected instances' outcomes of the
+// listed app, read after the version list renders; empty until then.
+const instanceOutcomeReads = ref<InstanceOutcomesRead[]>([])
 const downgradeConfirmFromVersion = ref('')
 const downgradeConfirmToVersion = ref('')
 const downgradeConfirmApp = ref('')
@@ -1597,6 +1600,7 @@ async function unpinApp (appId: string): Promise<void> {
  */
 function resetSelectedAppState (): void {
 	versions.value = []
+	instanceOutcomeReads.value = []
 	selectedVersion.value = ''
 	versionFilter.value = ''
 	hasCheckedVersions.value = false
@@ -1631,6 +1635,7 @@ async function checkVersions (preserveInstallResult = false): Promise<void> {
 
 	try {
 		applyVersionsPayload(await fetchVersionsPayload(appId))
+		void loadInstanceOutcomes(appId)
 		skips.value = await fetchSkips(appId)
 	} catch (error) {
 		errorMessage.value = error instanceof Error ? error.message : 'Could not fetch app versions.'
@@ -1639,6 +1644,34 @@ async function checkVersions (preserveInstallResult = false): Promise<void> {
 		isCheckingVersions.value = false
 	}
 }
+
+/**
+ * Read the connected instances' outcomes of an app once the version list has
+ * rendered. They are slow (up to the connection reader's 15 s each), so the
+ * list never waits for them; a refusal, an older server or an answer for an
+ * app no longer selected leaves the outcomes of this instance alone.
+ *
+ * @param appId the app whose versions are listed
+ * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+ */
+async function loadInstanceOutcomes (appId: string): Promise<void> {
+	await nextTick()
+	try {
+		const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/outcomes/instances`)), { headers: { ...ocsHeaders, Accept: 'application/json' } })
+		const payload = await unwrapOcsResponse<{ instances?: InstanceOutcomesRead[] }>(response)
+		if (selectedApp.value.trim() === appId) {
+			instanceOutcomeReads.value = Array.isArray(payload?.instances) ? payload.instances : []
+		}
+	} catch {
+		// Not an admin, an older server or no connections: the outcomes here stay.
+	}
+}
+
+const unreadableInstancesNote = computed(() => unreadableInstancesText(instanceOutcomeReads.value))
+const unreadableInstancesTitle = computed(() => instanceOutcomeReads.value
+	.filter((read) => read.outcomes === null)
+	.map((read) => `${read.label || read.id}: ${read.error ?? ''}`)
+	.join('\n'))
 
 type VersionsPayload = {
 	availableVersions?: AppVersion[]
@@ -1657,6 +1690,7 @@ type VersionsPayload = {
  */
 function resetVersionList (preserveInstallResult: boolean): void {
 	versions.value = []
+	instanceOutcomeReads.value = []
 	selectedVersion.value = ''
 	versionFilter.value = ''
 	hasCheckedVersions.value = false
@@ -4186,6 +4220,13 @@ watch(dryRunEnabled, () => {
 												:placeholder="t('versioniq', 'Filter versions')"
 												:class="$style.versionFilterInput"
 												:disabled="isInstallingVersion">
+											<p
+												v-if="unreadableInstancesNote"
+												:class="$style.instanceOutcomesNote"
+												:title="unreadableInstancesTitle"
+												data-testid="unreadable-instances-note">
+												{{ unreadableInstancesNote }}
+											</p>
 											<div :class="$style.versionListWrapper">
 												<transition-group
 													name="versionFade"
@@ -4252,6 +4293,7 @@ watch(dryRunEnabled, () => {
 															:entry="version"
 															:installedVersion="installedVersion"
 															:busy="isRemovingKnownIssue || isInstallingVersion"
+															:instanceReads="instanceOutcomeReads"
 															@add="openKnownIssueDialog"
 															@remove="removeKnownIssue" />
 														<VersionChangelog
@@ -4592,6 +4634,12 @@ watch(dryRunEnabled, () => {
 .versionChannelNotice {
 	width: 100%;
 	color: var(--color-warning-text);
+}
+
+.instanceOutcomesNote {
+	margin: 4px 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
 }
 
 .versionChannelTag {

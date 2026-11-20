@@ -9,8 +9,8 @@
 
 - [x] 2.1 Add `AuditEntryMapper::countOutcomesByVersion()` and `lib/Service/Release/InstallOutcomes.php`; stamp `outcomes` in `getAppVersions()`. Verify: `tests/unit/Service/Release/InstallOutcomesTest.php` counts success and failure rows per version and ignores other operations.
 - [x] 2.2 Add `GET /api/app/{appId}/outcomes`, admin-only. Verify: `tests/unit/Controller/ApiTest.php` asserts 403 for a non-admin and the counts for an admin.
-- [ ] 2.3 When `install-multi-instance-promotion` has landed, read each connection's outcomes in the picker after the list renders, and name an instance that failed. Verify: a vitest spec for the totals text with two instances and one unreadable instance.
-      (Left: install-multi-instance-promotion is merged only up to its manifest (its tasks 1.1-2.1); the remote reader this needs, its task 2.2 `RemoteInstanceReader`, is not built yet, so there is no stored connection to read another instance's outcomes through.)
+- [x] 2.3 When `install-multi-instance-promotion` has landed, read each connection's outcomes in the picker after the list renders, and name an instance that failed. Verify: a vitest spec for the totals text with two instances and one unreadable instance.
+      (Built: `RemoteInstanceReader::outcomes()` and `allOutcomes()` read `GET /ocs/v2.php/apps/versioniq/api/app/{appId}/outcomes` from every stored connection with its admin account, uncached, through the same request as the manifest read, with its 15 s timeout of the connection reader and no password in any log line; a 401/403, a 404 (older Versioniq), another status, an unreadable body or an unreachable instance gives that connection an error and does not stop the others. The admin-only `GET /api/app/{appId}/outcomes/instances` on `InstanceController` returns `{id, label, outcomes|null, error|null}` per connection (added to `openapi.json` by hand, since `composer openapi` stops on an unrelated extractor error). The picker asks for it once the version list has rendered and never waits for it; each row then reads "Installed 2 times on 2 instances, 1 failure" across this instance and the readable connections (`instanceTotalsText` in `src/utils/versionFacts.ts`), and one note above the list names every connection it could not read, with the reason in its tooltip. Tests: the outcomes cases in `RemoteInstanceReaderTest`, the outcomes cases in `InstanceControllerTest`, the "instance totals" block in `versionFacts.spec.ts` (two instances and one unreadable), `VersionFacts.spec.ts` and `App.versionDetail.spec.ts`.)
 
 ## 3. Release notes
 
@@ -28,4 +28,4 @@
 
 ## 5. Close
 
-- [ ] 5.1 Set the matrix rows `rel-release-date`, `rel-adoption`, `rel-breaking-flag` and `rel-known-issues` to `built` with evidence lines, then archive this change.
+- [x] 5.1 Set the matrix rows `rel-release-date`, `rel-adoption`, `rel-breaking-flag` and `rel-known-issues` to `built` with evidence lines, then archive this change.

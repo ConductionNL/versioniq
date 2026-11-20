@@ -672,7 +672,6 @@
         "Fixed advisories": "Opgeloste meldingen",
         "The export holds the first {limit} entries. Choose a shorter period for the rest.": "De export bevat de eerste {limit} regels. Kies een kortere periode voor de rest.",
         "Could not export the history.": "Kon de geschiedenis niet exporteren.",
-        "Unknown": "Onbekend",
         "Could not load the security report.": "Kon het beveiligingsrapport niet laden.",
         "Security report": "Beveiligingsrapport",
         "How fast advisories that affected this instance were fixed, per severity, against the patch policy deadlines.": "Hoe snel meldingen die deze installatie raakten zijn opgelost, per ernst, afgezet tegen de termijnen uit het patchbeleid.",
@@ -902,7 +901,6 @@
         "{succeeded} succeeded, {failed} failed, {skipped} skipped": "{succeeded} gelukt, {failed} mislukt, {skipped} overgeslagen",
         "Stop here": "Hier stoppen",
         "Continue with the rest": "Doorgaan met de rest",
-        "Check": "Controleren",
         "Run": "Uitvoeren",
         "Roll back to a snapshot": "Terugzetten naar een momentopname",
         "The newest snapshot on or before {date} was taken on {takenAt}.": "De nieuwste momentopname op of vóór {date} is gemaakt op {takenAt}.",
@@ -969,7 +967,6 @@
         "Command line": "Opdrachtregel",
         "Automatic": "Automatisch",
         "Drift check": "Afwijkingscontrole",
-        "Unknown": "Onbekend",
         "All origins": "Alle herkomsten",
         "Origin": "Herkomst",
         "Set by {user}": "Ingesteld door {user}",
@@ -1031,7 +1028,7 @@
         "No apps to show.": "Geen apps om te tonen.",
         "Could not save the connection.": "De verbinding kon niet worden opgeslagen.",
         "Save connection": "Verbinding opslaan",
-        "Use a dedicated admin account on that instance and an app password for it. The password is stored encrypted and is only used to read that instance's app versions.": "Gebruik een apart beheerdersaccount op die omgeving en een app-wachtwoord daarvoor. Het wachtwoord wordt versleuteld opgeslagen en alleen gebruikt om de appversies van die omgeving te lezen.",
+        "Use a dedicated admin account on that instance and an app password for it. The password is stored encrypted and is only used to read that instance's app versions and install outcomes.": "Gebruik een apart beheerdersaccount op die omgeving en een app-wachtwoord daarvoor. Het wachtwoord wordt versleuteld opgeslagen en alleen gebruikt om de appversies en installatieresultaten van die omgeving te lezen.",
         "Connection id (lowercase letters, digits and hyphens)": "Verbindings-id (kleine letters, cijfers en koppeltekens)",
         "Stage (such as test, acceptance or production)": "Fase (zoals test, acceptatie of productie)",
         "Place in the release chain (0 to 99, lower comes first)": "Plaats in de releaseketen (0 tot en met 99, lager komt eerst)",
@@ -1121,6 +1118,21 @@
         "{version} is released before the minimum age.": "{version} is vrijgegeven vóór de minimumleeftijd.",
         "Withdraw": "Intrekken",
         "Minimum age in days (empty uses {days})": "Minimumleeftijd in dagen (leeg gebruikt {days})",
+        "_Installed {count} time_::_Installed {count} times_": [
+            "{count} keer geïnstalleerd",
+            "{count} keer geïnstalleerd"
+        ],
+        "_{count} instance_::_{count} instances_": [
+            "{count} omgeving",
+            "{count} omgevingen"
+        ],
+        "{installs} on {instances}": "{installs} op {instances}",
+        "_{count} failed install_::_{count} failed installs_": [
+            "{count} mislukte installatie",
+            "{count} mislukte installaties"
+        ],
+        "Not counted, could not be read: {instances}": "Niet meegeteld, kon niet worden gelezen: {instances}",
+        "Use a dedicated admin account on that instance and an app password for it. The password is stored encrypted and is only used to read that instance's app versions.": "Gebruik een apart beheerdersaccount op die omgeving en een app-wachtwoord daarvoor. Het wachtwoord wordt versleuteld opgeslagen en alleen gebruikt om de appversies van die omgeving te lezen.",
         "Revoked certificates": "Ingetrokken certificaten",
         "Address of the code signing revocation list": "Adres van de intrekkingslijst voor code-ondertekening",
         "A newer list is used only when Nextcloud signed it. Leave the address empty to check only against the list this server shipped with.": "Een nieuwere lijst wordt alleen gebruikt als Nextcloud hem heeft ondertekend. Laat het adres leeg om alleen te controleren met de lijst die met deze server is meegeleverd.",
