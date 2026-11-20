@@ -62,7 +62,7 @@ final class AutoUpdateTest extends TestCase {
 
 		$planner = new AutoUpdateDryRunPlanner(
 			new AutoUpdateStores($policies, $this->createMock(PinStore::class), $settings, $this->ledger, new \OCA\Versioniq\Service\AutoUpdate\AutoUpdateSecurityStores($this->createMock(\OCA\Versioniq\Service\Advisory\AdvisoryResultStore::class), $this->createMock(\OCA\Versioniq\Service\Advisory\AdvisorySettingsStore::class), $this->createMock(\OCA\Versioniq\Service\Policy\PatchPolicyStore::class), $this->createMock(\OCA\Versioniq\Service\AutoUpdate\SecurityHoldStore::class)), $this->createMock(\OCA\Versioniq\Service\AutoUpdate\UpdateGroupStore::class), null),
-			new AutoUpdateInstall($this->installer, $apps, new CandidateSelector()),
+			new AutoUpdateInstall($this->installer, $apps, new CandidateSelector(), $this->createMock(\OCA\Versioniq\Service\Checks\CheckRunner::class), $this->createMock(\OCA\Versioniq\Service\Installer\FailureClassifier::class)),
 		);
 
 		return new CommandTester(new AutoUpdate($planner, $settings, $time));

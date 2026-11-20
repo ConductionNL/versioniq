@@ -70,7 +70,7 @@ final class AutoUpdateDryRunPlannerTest extends TestCase {
 	private function plan(array $policies, bool $withProposals = true): array {
 		$this->policies->method('all')->willReturn($policies);
 		$stores = new AutoUpdateStores($this->policies, $this->pins, $this->settings, $this->ledger, new \OCA\Versioniq\Service\AutoUpdate\AutoUpdateSecurityStores($this->createMock(\OCA\Versioniq\Service\Advisory\AdvisoryResultStore::class), $this->createMock(\OCA\Versioniq\Service\Advisory\AdvisorySettingsStore::class), $this->createMock(\OCA\Versioniq\Service\Policy\PatchPolicyStore::class), $this->createMock(\OCA\Versioniq\Service\AutoUpdate\SecurityHoldStore::class)), $this->createMock(\OCA\Versioniq\Service\AutoUpdate\UpdateGroupStore::class), $withProposals ? $this->proposals : null);
-		$planner = new AutoUpdateDryRunPlanner($stores, new AutoUpdateInstall($this->installer, $this->apps, new CandidateSelector()));
+		$planner = new AutoUpdateDryRunPlanner($stores, new AutoUpdateInstall($this->installer, $this->apps, new CandidateSelector(), $this->createMock(\OCA\Versioniq\Service\Checks\CheckRunner::class), $this->createMock(\OCA\Versioniq\Service\Installer\FailureClassifier::class)));
 
 		return $planner->plan(new \DateTimeImmutable(self::AT));
 	}
