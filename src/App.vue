@@ -61,6 +61,7 @@ import SourcesPanel from './components/SourcesPanel.vue'
 import SuccessorsPanel from './components/SuccessorsPanel.vue'
 import TokensPanel from './components/TokensPanel.vue'
 import TrustedSourcesPanel from './components/TrustedSourcesPanel.vue'
+import UpdateBadgeSkip from './components/UpdateBadgeSkip.vue'
 import UpdateGroupsPanel from './components/UpdateGroupsPanel.vue'
 import VersionChangelog from './components/VersionChangelog.vue'
 import VersionFacts from './components/VersionFacts.vue'
@@ -721,7 +722,7 @@ const leftDisabled = ref<Record<string, LeftDisabled>>({})
  * left it so, the installed version runs on this server.
  *
  * @param app The card's app.
- * @spec openspec/changes/audit-external-changes
+ * @spec openspec/changes/archive/2026-11-17-audit-external-changes
  */
 function offersEnable (app: AppOption): boolean {
 	return app.state === 'disabled' && leftDisabled.value[app.id]?.compatible !== false
@@ -1209,6 +1210,19 @@ async function onHoldManualChange (appId: string, hold: boolean): Promise<void> 
 async function reloadSkips (): Promise<void> {
 	if (selectedApp.value) {
 		skips.value = await fetchSkips(selectedApp.value)
+	}
+}
+
+/**
+ * After a skip or unskip from an app card's update badge, refreshes the
+ * version picker's marks when it shows that app.
+ *
+ * @param appId The app whose skip list changed.
+ * @spec openspec/changes/pinning-ranges-and-skips/specs/version-pinning/spec.md#requirement-an-admin-skips-one-version-and-keeps-later-ones
+ */
+async function onCardSkipChanged (appId: string): Promise<void> {
+	if (selectedApp.value === appId) {
+		await reloadSkips()
 	}
 }
 
@@ -3868,6 +3882,13 @@ watch(dryRunEnabled, () => {
 																{{ outsidePolicyLabel(pendingUpdates[app.id]?.linesBehind ?? 0) }}
 															</span>
 														</p>
+														<UpdateBadgeSkip
+															v-if="updateBadgeFor(app.id)?.kind === 'update' || updateBadgeFor(app.id)?.kind === 'pinned'"
+															:appId="app.id"
+															:version="pendingUpdates[app.id]?.newestCompatibleVersion ?? ''"
+															:disabled="isInstallingVersion"
+															@changed="onCardSkipChanged"
+															@error="(message: string) => { errorMessage = message }" />
 														<LifecycleBadge :lifecycle="pendingUpdates[app.id]?.lifecycle ?? null" />
 														<AppSourceBadges
 															:isShipped="app.isShipped === true"
