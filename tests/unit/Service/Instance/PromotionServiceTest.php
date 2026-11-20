@@ -147,7 +147,7 @@ final class PromotionServiceTest extends TestCase {
 		self::assertCount(1, $this->installs);
 		$request = $this->installs[0];
 		self::assertSame(['openregister', '2.4.1', 'github:ConductionNL/openregister'], [$request->target->appId, $request->target->version, $request->target->sourceOverride]);
-		self::assertSame(self::SHA, $request->options->expectedSha);
+		self::assertSame(self::SHA, $request->target->expectedSha);
 		self::assertFalse($request->options->allowDowngrade);
 		self::assertFalse($request->options->acceptNewSha);
 		self::assertSame(['id' => 'acceptance', 'name' => 'Acceptance', 'stage' => 'acceptance'], $result['payload']['promotedFrom']);
@@ -167,7 +167,7 @@ final class PromotionServiceTest extends TestCase {
 		$this->service()->promote('acceptance', 'openregister');
 
 		self::assertSame('appstore', $this->installs[0]->target->sourceOverride);
-		self::assertNull($this->installs[0]->options->expectedSha);
+		self::assertNull($this->installs[0]->target->expectedSha);
 	}
 
 	public function testADowngradeIsPlannedAsOneAndPassesTheAcknowledgementThrough(): void {

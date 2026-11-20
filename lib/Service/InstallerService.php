@@ -884,7 +884,7 @@ class InstallerService implements InstallerServiceInterface {
 	 * @return array{statusCode:int, payload:array<string, mixed>}|null
 	 */
 	private function expectedShaRefusal(InstallRun $run): ?array {
-		$expected = $run->request->options->expectedSha;
+		$expected = $run->request->target->expectedSha;
 		if ($expected === null || $run->binding->getId() === SourceBinding::KIND_APPSTORE) {
 			return null;
 		}
