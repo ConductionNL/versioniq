@@ -93,6 +93,34 @@ always-enabled app.
 | `7` | Incompatible with the current Nextcloud version |
 | `8` | Finalize failure — check the printed `installStatus` (`reverted` vs `installed-but-broken`) |
 | `9` | Untrusted source (not on the trusted-source allowlist) |
+| `12` | A dry run's update check failed (each check is printed with its outcome and detail) |
+
+### Update checks in a dry run
+
+A dry run validates the package like a real install (app id, version,
+server compatibility, dependencies including PHP version and extensions)
+and then runs the update checks that match the app: the verdict checks an
+admin sets on the Settings tab, and the command checks the server operator
+sets in `config.php`. Command checks cannot be set from the web page:
+
+```php
+'versioniq.update_checks' => [
+	[
+		'name' => 'Lint',
+		// Program and arguments, run without a shell. {appId}, {version},
+		// {fromVersion} and {path} (the unpacked package) are filled in.
+		'command' => ['/opt/checks/lint.sh', '{path}', '{version}'],
+		'apps' => ['openregister'],   // optional; without it every app
+		'timeout' => 30,              // seconds, default 60, at most 1800
+	],
+],
+```
+
+A command check passes on exit code 0 within its timeout; the last 2 KiB of
+its output are reported. From the web page a command check with a timeout
+above 60 s is skipped; `occ` and the nightly job run every check. When a
+check matches an app, the nightly job installs a version only after a dry
+run with its checks passed.
 
 ### Reproducible provisioning example
 

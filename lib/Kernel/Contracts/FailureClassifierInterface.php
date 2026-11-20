@@ -57,5 +57,11 @@ interface FailureClassifierInterface {
 	 */
 	public const CATEGORY_DOWNGRADE_GUARD = 'downgrade_guard';
 
+	/**
+	 * A dry run or an update check that must pass before an automatic install
+	 * failed, so the nightly job did not install the version; see "The
+	 * nightly job installs only after the attached checks pass".
+	 */
+	public const CATEGORY_CHECKS_FAILED = 'checks_failed';
 	public const CATEGORY_UNKNOWN = 'unknown';
 }
