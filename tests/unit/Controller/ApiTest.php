@@ -1416,7 +1416,7 @@ final class ApiTest extends TestCase {
 		$skipList = $this->createMock(SkipList::class);
 		$skipList->expects($this->once())->method('skip')->with('openregister', '2.3.4', $this->callback(static fn (array $stamp): bool => $stamp['by'] === 'admin' && is_string($stamp['at'])), 'breaks the import')->willReturn(true);
 
-		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith(['reason' => 'breaks the import']), null, null, null, 'admin', null, null, null, null, $skipList)->skipVersion('openregister', '2.3.4');
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith(['reason' => 'breaks the import']), null, null, null, 'admin', skipList: $skipList)->skipVersion('openregister', '2.3.4');
 
 		$this->assertSame(200, $response->getStatus());
 		$this->assertSame(['appId' => 'openregister', 'version' => '2.3.4', 'skipped' => true], $response->getData());
@@ -1426,7 +1426,7 @@ final class ApiTest extends TestCase {
 		$skipList = $this->createMock(SkipList::class);
 		$skipList->expects($this->never())->method('skip');
 
-		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith([]), null, null, null, 'admin', null, null, null, null, $skipList)->skipVersion('openregister', ' ');
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith([]), null, null, null, 'admin', skipList: $skipList)->skipVersion('openregister', ' ');
 
 		$this->assertSame(400, $response->getStatus());
 	}
@@ -1435,7 +1435,7 @@ final class ApiTest extends TestCase {
 		$skipList = $this->createMock(SkipList::class);
 		$skipList->expects($this->once())->method('unskip')->with('openregister', '2.3.4', 'admin')->willReturn(true);
 		$skipList->method('entries')->willReturn([['version' => '2.3.5', 'skippedBy' => 'admin', 'skippedAt' => 'T', 'reason' => '']]);
-		$controller = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith([]), null, null, null, 'admin', null, null, null, null, $skipList);
+		$controller = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith([]), null, null, null, 'admin', skipList: $skipList);
 
 		$this->assertTrue($controller->unskipVersion('openregister', '2.3.4')->getData()['unskipped']);
 		$this->assertSame('2.3.5', $controller->skippedVersions('openregister')->getData()['skipped'][0]['version']);
