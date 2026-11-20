@@ -24,7 +24,6 @@ use OCA\Versioniq\Service\Instance\PromotionOptions;
 use OCA\Versioniq\Service\Instance\PromotionRefusal;
 use OCA\Versioniq\Service\Instance\PromotionService;
 use OCA\Versioniq\Service\Instance\RemoteInstanceReader;
-use OCA\Versioniq\Service\Instance\RemoteOutcomesReader;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Http\Client\IClient;
@@ -49,7 +48,7 @@ use ReflectionMethod;
  * @uses \OCA\Versioniq\Service\Instance\InstanceConnection
  * @uses \OCA\Versioniq\Service\Instance\PromotionRefusal
  * @uses \OCA\Versioniq\Service\Instance\PromotionOptions
- * @uses \OCA\Versioniq\Service\Instance\RemoteOutcomesReader
+ * @uses \OCA\Versioniq\Service\Instance\RemoteInstanceReader
  */
 final class InstanceControllerTest extends TestCase {
 
@@ -88,7 +87,7 @@ final class InstanceControllerTest extends TestCase {
 		return $this->store = new InstanceConnectionStore($appConfig, $crypto, $time);
 	}
 
-	private function controller(bool $admin = true, ?ManifestBuilder $manifest = null, ?RemoteInstanceReader $reader = null, ?PromotionService $promotions = null, ?RemoteOutcomesReader $outcomes = null): InstanceController {
+	private function controller(bool $admin = true, ?ManifestBuilder $manifest = null, ?RemoteInstanceReader $reader = null, ?PromotionService $promotions = null): InstanceController {
 		$audit = $this->getMockBuilder(AuditLogger::class)->disableOriginalConstructor()->onlyMethods(['record'])->getMock();
 		$audit->method('record')->willReturnCallback(function (AuditSubject $subject, AuditedVersions $versions, string $status, ?string $message = null): void {
 			$this->audits[] = [$subject, $versions, $status, $message];
@@ -101,7 +100,7 @@ final class InstanceControllerTest extends TestCase {
 		$groups = $this->createMock(IGroupManager::class);
 		$groups->method('isAdmin')->with('alice')->willReturn($admin);
 
-		return new InstanceController('versioniq', $this->createMock(IRequest::class), $this->store(), $audit, $groups, $session, $manifest, $reader, $promotions, $outcomes);
+		return new InstanceController('versioniq', $this->createMock(IRequest::class), $this->store(), $audit, $groups, $session, $manifest, $reader, $promotions);
 	}
 
 	private function add(InstanceController $controller, string $id = 'acceptance', string $password = 'secret-app-password'): \OCP\AppFramework\Http\DataResponse {
@@ -331,7 +330,7 @@ final class InstanceControllerTest extends TestCase {
 
 	public function testOutcomesOfOtherInstancesAreForAdminsOnlyAndCarryNoCounts(): void {
 		$this->controller()->create('test', 'Test', 'test', 0, 'https://test.example.org', 'versioniq-reader', 'secret-app-password');
-		$response = $this->controller(admin: false, outcomes: $this->outcomesReader(['test.example.org' => [200, self::outcomesBody(['2.4.1' => ['succeeded' => 1, 'failed' => 0]])]]))->instanceOutcomes('openregister');
+		$response = $this->controller(admin: false, reader: $this->outcomesReader(['test.example.org' => [200, self::outcomesBody(['2.4.1' => ['succeeded' => 1, 'failed' => 0]])]]))->instanceOutcomes('openregister');
 
 		self::assertSame(403, $response->getStatus());
 		self::assertSame(['message' => 'Forbidden'], $response->getData());
@@ -343,7 +342,7 @@ final class InstanceControllerTest extends TestCase {
 		$admin->create('acceptance', 'Acceptance', 'acceptance', 1, 'https://acc.example.org', 'versioniq-reader', 'secret-app-password');
 		$admin->create('legacy', 'Legacy', 'legacy', 2, 'https://legacy.example.org', 'versioniq-reader', 'secret-app-password');
 
-		$response = $this->controller(outcomes: $this->outcomesReader([
+		$response = $this->controller(reader: $this->outcomesReader([
 			'test.example.org' => [200, self::outcomesBody(['2.4.1' => ['succeeded' => 1, 'failed' => 1]])],
 			'acc.example.org' => new \RuntimeException('Connection refused'),
 			'legacy.example.org' => [200, self::outcomesBody(['2.4.1' => ['succeeded' => 1, 'failed' => 0]])],
@@ -376,7 +375,7 @@ final class InstanceControllerTest extends TestCase {
 	 *
 	 * @param array<string, array{int, string}|\Throwable> $answers keyed by host
 	 */
-	private function outcomesReader(array $answers): RemoteOutcomesReader {
+	private function outcomesReader(array $answers): RemoteInstanceReader {
 		$client = $this->createMock(IClient::class);
 		$client->method('get')->willReturnCallback(function (string $url) use ($answers): IResponse {
 			$answer = $answers[(string)parse_url($url, PHP_URL_HOST)];
@@ -391,10 +390,12 @@ final class InstanceControllerTest extends TestCase {
 		$clients = $this->createMock(IClientService::class);
 		$clients->method('newClient')->willReturn($client);
 
-		return new RemoteOutcomesReader(
+		return new RemoteInstanceReader(
 			$this->store(),
 			$clients,
 			$this->createMock(IConfig::class),
+			$this->createMock(IAppConfig::class),
+			$this->createMock(ITimeFactory::class),
 			$this->createMock(\Psr\Log\LoggerInterface::class),
 		);
 	}

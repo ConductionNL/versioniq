@@ -21,7 +21,6 @@ use OCA\Versioniq\Service\Instance\PromotionOptions;
 use OCA\Versioniq\Service\Instance\PromotionRefusal;
 use OCA\Versioniq\Service\Instance\PromotionService;
 use OCA\Versioniq\Service\Instance\RemoteInstanceReader;
-use OCA\Versioniq\Service\Instance\RemoteOutcomesReader;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
@@ -53,7 +52,6 @@ class InstanceController extends OCSController {
 		private ?ManifestBuilderInterface $manifest = null,
 		private ?RemoteInstanceReader $reader = null,
 		private ?PromotionService $promotions = null,
-		private ?RemoteOutcomesReader $outcomes = null,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -153,13 +151,13 @@ class InstanceController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		if ($this->outcomes === null) {
+		if ($this->reader === null) {
 			return new DataResponse(['message' => 'Unavailable'], Http::STATUS_SERVICE_UNAVAILABLE);
 		}
 
 		$appId = trim($appId);
 
-		return new DataResponse(['appId' => $appId, 'instances' => $this->outcomes->readAll($appId)]);
+		return new DataResponse(['appId' => $appId, 'instances' => $this->reader->allOutcomes($appId)]);
 	}
 
 	/**
