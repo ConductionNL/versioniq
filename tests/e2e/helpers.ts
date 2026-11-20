@@ -16,6 +16,7 @@ export const SETTINGS_URL = "/index.php/settings/admin/versioniq";
 export type TabName =
 	| "Apps"
 	| "Advisories"
+	| "Upgrade readiness"
 	| "History"
 	| "Sources"
 	| "Tokens"

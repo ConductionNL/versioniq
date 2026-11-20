@@ -7,7 +7,8 @@
             "maxIntervalHours": 24,
             "digestEnabled": true,
             "ncscEnabled": false,
-            "ncscStatus": []
+            "ncscStatus": [],
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -33,7 +34,8 @@
             "maxIntervalHours": 24,
             "digestEnabled": true,
             "ncscEnabled": false,
-            "ncscStatus": []
+            "ncscStatus": [],
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -52,7 +54,8 @@
             "maxIntervalHours": 24,
             "digestEnabled": true,
             "ncscEnabled": false,
-            "ncscStatus": []
+            "ncscStatus": [],
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -92,7 +95,8 @@
             "maxIntervalHours": 24,
             "digestEnabled": true,
             "ncscEnabled": false,
-            "ncscStatus": []
+            "ncscStatus": [],
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -115,7 +119,8 @@
             "maxIntervalHours": 24,
             "digestEnabled": true,
             "ncscEnabled": false,
-            "ncscStatus": []
+            "ncscStatus": [],
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -138,7 +143,8 @@
             "maxIntervalHours": 24,
             "digestEnabled": true,
             "ncscEnabled": false,
-            "ncscStatus": []
+            "ncscStatus": [],
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -161,7 +167,8 @@
             "maxIntervalHours": 24,
             "digestEnabled": false,
             "ncscEnabled": false,
-            "ncscStatus": []
+            "ncscStatus": [],
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -187,7 +194,8 @@
             "maxIntervalHours": 24,
             "digestEnabled": true,
             "ncscEnabled": false,
-            "ncscStatus": []
+            "ncscStatus": [],
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -213,7 +221,8 @@
             "maxIntervalHours": 24,
             "digestEnabled": false,
             "ncscEnabled": false,
-            "ncscStatus": []
+            "ncscStatus": [],
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -239,7 +248,8 @@
             "maxIntervalHours": 24,
             "digestEnabled": true,
             "ncscEnabled": false,
-            "ncscStatus": []
+            "ncscStatus": [],
+            "librariesEnabled": false
         },
         "calls": [
             [
@@ -265,7 +275,8 @@
             "maxIntervalHours": 24,
             "digestEnabled": false,
             "ncscEnabled": false,
-            "ncscStatus": []
+            "ncscStatus": [],
+            "librariesEnabled": false
         },
         "calls": [
             [
