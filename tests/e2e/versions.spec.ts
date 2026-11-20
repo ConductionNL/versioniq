@@ -1,7 +1,19 @@
 // SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
 // SPDX-License-Identifier: EUPL-1.2
+import type { Page } from "@playwright/test";
+
 import { expect, test } from "@playwright/test";
-import { chooseApp, openSettings, versionsLoaded } from "./helpers.ts";
+import {
+	chooseApp,
+	execInInstance,
+	FIXTURE_APP,
+	fixtureAvailable,
+	fixtureControl,
+	openSettings,
+	resetFixture,
+	resetFixtureApp,
+	versionsLoaded,
+} from "./helpers.ts";
 
 /**
  * The core flow: list an app's versions, read release notes, and have the
@@ -170,6 +182,133 @@ test.describe("version listing and release notes", () => {
 		expect(body).not.toContain('"installed"');
 		expect(body.toLowerCase()).toMatch(
 			/downgrad|older|pin|confirm|password/,
+		);
+	});
+});
+
+/** The picker row of one version, by the version string it shows. */
+function versionRow(page: Page, version: string) {
+	return page
+		.locator("li")
+		.filter({ has: page.getByText(version, { exact: true }) })
+		.first();
+}
+
+async function setChannel(channel: string): Promise<void> {
+	const { code, stdout, stderr } = await execInInstance([
+		"php",
+		"occ",
+		"versioniq:channel",
+		FIXTURE_APP,
+		channel,
+	]);
+	expect(code, `versioniq:channel ${channel}: ${stdout}${stderr}`).toBe(0);
+}
+
+/**
+ * Publisher facts on a forge release: the pre-release mark against the app's
+ * channel, and the release date, breaking heading and known-issues section of
+ * its notes.
+ *
+ * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md
+ * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md
+ */
+test.describe("forge release facts in the picker", () => {
+	test.beforeEach(async ({ page }) => {
+		test.skip(!(await fixtureAvailable(page)), "forge fixture not running");
+		await resetFixtureApp(page);
+		await setChannel("default");
+	});
+
+	test.afterEach(async ({ page }) => {
+		await setChannel("default");
+		await resetFixture(page);
+	});
+
+	test("a pre-release is hidden, shown with the switch, and listed on the beta channel", async ({
+		page,
+	}) => {
+		await fixtureControl(page, "repo", {
+			repo: "fixtureowner/fixtureapp",
+			releases: [
+				{
+					tag: "v1.2.0",
+					asset: "fixtureapp-1.2.0.tar.gz",
+					sha: true,
+					prerelease: true,
+				},
+				{ tag: "v1.1.0", asset: "fixtureapp-1.1.0.tar.gz", sha: true },
+				{ tag: "v1.0.0", asset: "fixtureapp-1.0.0.tar.gz", sha: true },
+			],
+		});
+
+		await openSettings(page);
+		await chooseApp(page, FIXTURE_APP);
+		await versionsLoaded(page);
+		await expect(versionRow(page, "1.1.0")).toBeVisible();
+		await expect(versionRow(page, "1.2.0")).toHaveCount(0);
+
+		await page.getByTestId("show-all-versions").check();
+		const shown = versionRow(page, "1.2.0");
+		await expect(shown).toBeVisible();
+		await expect(shown.getByTestId("version-channel-tag")).toBeVisible();
+
+		await setChannel("beta");
+		await openSettings(page);
+		await chooseApp(page, FIXTURE_APP);
+		await versionsLoaded(page);
+		await expect(page.getByTestId("show-all-versions")).not.toBeChecked();
+		const listed = versionRow(page, "1.2.0");
+		await expect(listed).toBeVisible();
+		await expect(listed.getByTestId("version-channel-tag")).toHaveCount(0);
+	});
+
+	test("a release shows its date, the breaking badge and its known issues", async ({
+		page,
+	}) => {
+		await fixtureControl(page, "repo", {
+			repo: "fixtureowner/fixtureapp",
+			releases: [
+				{
+					tag: "v1.1.0",
+					asset: "fixtureapp-1.1.0.tar.gz",
+					sha: true,
+					published_at: "2026-03-02T10:00:00Z",
+					body: [
+						"## v1.1.0",
+						"",
+						"## Breaking changes",
+						"",
+						"- The export endpoint moved.",
+						"",
+						"## Known issues",
+						"",
+						"- Exports over 2 GB stop halfway.",
+						"",
+						"## Fixes",
+						"",
+						"- Faster start.",
+					].join("\n"),
+				},
+				{ tag: "v1.0.0", asset: "fixtureapp-1.0.0.tar.gz", sha: true },
+			],
+		});
+
+		await openSettings(page);
+		await chooseApp(page, FIXTURE_APP);
+		await versionsLoaded(page);
+		const row = versionRow(page, "1.1.0");
+		await expect(row).toBeVisible();
+		await expect(row.getByTestId("release-date")).toHaveAttribute(
+			"datetime",
+			/^2026-03-02/,
+		);
+		await expect(row.getByTestId("fact-breaking")).toBeVisible();
+		await expect(row.getByTestId("fact-notes-issues")).toContainText(
+			"Exports over 2 GB stop halfway.",
+		);
+		await expect(row.getByTestId("fact-notes-issues")).not.toContainText(
+			"Faster start.",
 		);
 	});
 });

@@ -176,4 +176,75 @@ test.describe("occ CLI", () => {
 		const { code } = await occ("versioniq:install", "versioniq", "1.0.0");
 		expect(code).not.toBe(0);
 	});
+
+	// @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md
+	test("versioniq:channel puts one app on beta and refuses a typo", async () => {
+		try {
+			const set = await occ("versioniq:channel", FIXTURE_APP, "beta");
+			expect(set.code, set.stdout).toBe(0);
+			const listed = await occ(
+				"versioniq:versions",
+				FIXTURE_APP,
+				`--source=${FIXTURE_SOURCE}`,
+				"--json",
+			);
+			expect(lastJson(listed.stdout).channel).toBe("beta");
+
+			const typo = await occ("versioniq:channel", FIXTURE_APP, "betta");
+			expect(typo.code).not.toBe(0);
+			const after = await occ(
+				"versioniq:versions",
+				FIXTURE_APP,
+				`--source=${FIXTURE_SOURCE}`,
+				"--json",
+			);
+			expect(lastJson(after.stdout).channel).toBe("beta");
+		} finally {
+			await occ("versioniq:channel", FIXTURE_APP, "default");
+		}
+	});
+});
+
+/**
+ * `versioniq:readiness`: the upgrade readiness report on the CLI. It needs no
+ * forge fixture, so it sits outside the fixture-gated block above.
+ *
+ * @spec openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness/spec.md
+ */
+test.describe("occ versioniq:readiness", () => {
+	test("prints the report as JSON with one verdict per installed app", async () => {
+		const { code, stdout } = await occ(
+			"versioniq:readiness",
+			"--server=99",
+			"--php=8.4",
+			"--json",
+		);
+		expect(code).toBe(0);
+		const report = lastJson(stdout);
+		expect(report.server).toBe("99");
+		expect(report.php).toBe("8.4");
+		expect(Array.isArray(report.apps)).toBe(true);
+		expect(report.apps.length).toBeGreaterThan(0);
+		for (const app of report.apps) {
+			expect(typeof app.id).toBe("string");
+			expect(typeof app.installedVersion).toBe("string");
+			expect([
+				"shipped",
+				"ready",
+				"updateFirst",
+				"blocked",
+				"unknown",
+			]).toContain(app.verdict);
+		}
+	});
+
+	test("exits 1 for a target that is not a version", async () => {
+		const { code } = await occ(
+			"versioniq:readiness",
+			"--server=next",
+			"--php=8.4",
+			"--json",
+		);
+		expect(code).toBe(1);
+	});
 });

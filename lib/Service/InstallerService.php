@@ -29,10 +29,12 @@ use OCA\Versioniq\Service\Installer\ReleaseInstall;
 use OCA\Versioniq\Service\Installer\ReleaseInstallers;
 use OCA\Versioniq\Service\Installer\ServerAccess;
 use OCA\Versioniq\Service\Installer\ShaMismatchException;
+use OCA\Versioniq\Service\Inventory\SbomArchive;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Release\ReleaseNotesReader;
 use OCA\Versioniq\Service\Source\AppStoreSource;
 use OCA\Versioniq\Service\Source\RetiredForgeException;
+use OCA\Versioniq\Service\Source\ForgeRangeStamper;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
@@ -80,6 +82,8 @@ class InstallerService implements InstallerServiceInterface {
 		private InstallState $state,
 		private IUserSession $userSession,
 		private ITimeFactory $timeFactory,
+		// Optional: keeps an SBOM of the state each real install produced (inventory-export-sbom-metrics D4).
+		private ?SbomArchive $sbomArchive = null,
 		private ?VersionChannels $channels = null,
 	) {
 	}
@@ -499,6 +503,7 @@ class InstallerService implements InstallerServiceInterface {
 		$versions = $this->applyCachedOffline($versions, $appId);
 		/** @var list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool}> $versions */
 		$versions = $this->applyCachedServerCompatibility($versions, $appId);
+		$versions = $this->applyForgeRanges($versions, $binding);
 		$channel = [];
 		if ($this->channels !== null) {
 			// Stamped, not filtered: the picker reveals the rest and the CLI lists every version.
@@ -731,6 +736,27 @@ class InstallerService implements InstallerServiceInterface {
 				return $entry;
 			},
 			$versions
+		);
+	}
+
+	/**
+	 * Forge versions take the server and PHP range their info.xml declares at
+	 * the release tag, where no cached archive answers (inventory-upgrade-readiness D2).
+	 *
+	 * @param list<array<string, mixed>> $versions
+	 * @return list<array<string, mixed>>
+	 *
+	 * @spec openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness/spec.md#requirement-a-forge-releases-ranges-are-read-without-downloading-the-release
+	 */
+	private function applyForgeRanges(array $versions, SourceBinding $binding): array {
+		$stamper = $this->sources->forgeRanges;
+		if ($stamper === null) {
+			return $versions;
+		}
+
+		return ForgeRangeStamper::withVerdicts(
+			$stamper->stamp($versions, $binding),
+			['server' => $this->serverCoreVersion(), 'php' => PHP_VERSION]
 		);
 	}
 
@@ -1192,9 +1218,25 @@ class InstallerService implements InstallerServiceInterface {
 			// After the pin is settled, so our own listener does not read a
 			// re-pinned install as drift.
 			$this->dispatchUpdateEvent($install);
+			$this->archiveSbom($appId);
 		}
 
 		return $this->installEnvelope(Http::STATUS_OK, $payload);
+	}
+
+	/**
+	 * Keeps an SBOM of the state the install produced. Never reaches the
+	 * install: the archive logs its own failures, and anything it still throws
+	 * stops here.
+	 *
+	 * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-every-update-leaves-an-sbom-of-the-state-it-produced
+	 */
+	private function archiveSbom(string $appId): void {
+		try {
+			$this->sbomArchive?->writeFor($appId);
+		} catch (\Throwable) {
+			// The archive already logged it; the install result stands.
+		}
 	}
 
 	/**
@@ -1307,6 +1349,11 @@ class InstallerService implements InstallerServiceInterface {
 			/** @var list<string>|null $orphanedMigrations */
 			$orphanedMigrations = $result['orphanedMigrations'];
 			$fields['orphanedMigrations'] = $orphanedMigrations;
+		}
+		if (array_key_exists('migrationPreview', $result)) {
+			/** @var array<string, mixed>|null $migrationPreview */
+			$migrationPreview = $result['migrationPreview'];
+			$fields['migrationPreview'] = $migrationPreview;
 		}
 
 		return $fields;

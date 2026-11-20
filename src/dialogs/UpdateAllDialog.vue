@@ -104,7 +104,12 @@ const buttons = computed(() => [
 		label: props.running ? t('versioniq', 'Stop after this install') : t('versioniq', 'Close'),
 		variant: 'tertiary' as const,
 		disabled: stopping.value && props.running,
-		callback: close,
+		// NcDialog closes itself after a callback that does not return false;
+		// close() decides whether the dialog closes or the run stops.
+		callback: () => {
+			close()
+			return false
+		},
 	},
 	...(hasRun.value
 		? []
@@ -112,7 +117,10 @@ const buttons = computed(() => [
 				label: n('versioniq', 'Update %n app', 'Update %n apps', selected.value.length),
 				variant: 'primary' as const,
 				disabled: selected.value.length === 0 || props.running,
-				callback: () => emit('start', selected.value),
+				callback: () => {
+					emit('start', selected.value)
+					return false
+				},
 			}]),
 ])
 </script>

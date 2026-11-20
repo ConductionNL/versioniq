@@ -53,6 +53,12 @@ foreach (['ConnectionStatusReportedEvent', 'ConnectionRefreshRequestedEvent'] as
 
 unset($integriqStubEvent);
 
+// OCP's DownloadResponse builds its Content-Disposition with Symfony's
+// HeaderUtils, which the server ships and this run does not.
+if (!class_exists('\\Symfony\\Component\\HttpFoundation\\HeaderUtils')) {
+	require_once __DIR__ . '/stubs/Symfony/HeaderUtils.php';
+}
+
 // OpenRegister's MCP provider contract (admin-mcp-assistant D1): the real
 // interface when OpenRegister is installed alongside, the stub otherwise.
 if (!interface_exists('\\OCA\\OpenRegister\\Mcp\\IMcpToolProvider')) {

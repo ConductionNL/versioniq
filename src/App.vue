@@ -8,10 +8,11 @@ import type { UpdateGroupView } from './components/UpdateGroupsPanel.vue'
 import type { PinRecord } from './dialogs/PinDialog.vue'
 import type {AdvisoryCorrelation, AdvisoryTriageMap, Compliance, NcscStatus} from './utils/advisories.ts';
 import type { AutoUpdateSchedule as AutoUpdateScheduleValue, UpdateKind } from './utils/autoUpdateSchedule.ts'
+import type { LibraryCheck } from './utils/bundledLibraries.ts'
 import type { ReleaseChannel } from './utils/channelFilter.ts'
 import type { LeftDisabled } from './utils/externalChanges.ts'
 import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
-import type {LkgRecord} from './utils/migrationSafety.ts';
+import type {LkgRecord, MigrationPreview} from './utils/migrationSafety.ts';
 import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
 import type { SweepStatus } from './utils/sweepOutcome.ts'
 import type {BatchCandidate, BatchRow} from './utils/updateBatch.ts';
@@ -38,11 +39,14 @@ import InstallResultNotices from './components/InstallResultNotices.vue'
 import InstanceSettingsPanel from './components/InstanceSettingsPanel.vue'
 import IntegrationsPanel from './components/IntegrationsPanel.vue'
 import LifecycleBadge from './components/LifecycleBadge.vue'
+import MigrationPreviewPanel from './components/MigrationPreviewPanel.vue'
 import PatchPolicyPanel from './components/PatchPolicyPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
 import PublisherMark from './components/PublisherMark.vue'
+import ReadinessPanel from './components/ReadinessPanel.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
+import SbomExportMenu from './components/SbomExportMenu.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
 import SourceOverrideField from './components/SourceOverrideField.vue'
 import SourcesPanel from './components/SourcesPanel.vue'
@@ -66,6 +70,7 @@ import { advisoryAnchor, advisoryBadgeText, applyTriage, complianceSentence } fr
 import { advisoryFreshnessLabel as advisoryFreshnessLabelFor } from './utils/advisoryFreshness.ts'
 import { defaultSchedule, scheduleFrom } from './utils/autoUpdateSchedule.ts'
 import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow.ts'
+import { BUNDLED_LIBRARIES_ANCHOR, hasLibraryFindings, librariesFreshnessLabel as librariesFreshnessLabelFor } from './utils/bundledLibraries.ts'
 import { buildChangelogRange } from './utils/changelog.ts'
 import { channelLabel, noLtsLinesMarked, offChannelTags, pickerVersions } from './utils/channelFilter.ts'
 import { tabForHash } from './utils/connectionRegistry.ts'
@@ -111,6 +116,7 @@ type AppVersion = {
 	recordedSha?: string | null
 	cachedOffline?: boolean
 	serverCompatible?: boolean | null
+	phpCompatible?: boolean | null
 	releasedAt?: string | null
 	preRelease?: boolean
 	lts?: boolean
@@ -177,6 +183,14 @@ let downgradeResolve: ((value: boolean) => void) | null = null
 // Migration diff for the downgrade dialog — fetched via a dry-run preview
 // before the dialog opens; see "Migration diff on downgrade".
 const downgradeOrphanedMigrations = ref<string[] | null>(null)
+// The database changes of the selected upgrade: undefined until "Preview
+// database changes" is picked, null when the target could not be read.
+// @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
+const migrationPreview = ref<MigrationPreview | null | undefined>(undefined)
+const isPreviewingMigrations = ref(false)
+watch([() => selectedApp.value, () => selectedVersion.value], () => {
+	migrationPreview.value = undefined
+})
 // Suppresses the safe-mode auto-clear watcher while "Roll back to last
 // known good" programmatically selects a (necessarily older) version.
 const suppressSafeModeAutoClear = ref(false)
@@ -315,6 +329,7 @@ const tabs = [
 	{ id: 'apps' },
 	{ id: 'advisories' },
 	{ id: 'alerts' },
+	{ id: 'readiness' },
 	{ id: 'history' },
 	{ id: 'sources' },
 	{ id: 'tokens' },
@@ -337,6 +352,7 @@ function tabLabel (id: string): string {
 	apps: t('versioniq', 'Apps'),
 	advisories: t('versioniq', 'Advisories'),
 	alerts: t('versioniq', 'Alerts'),
+	readiness: t('versioniq', 'Upgrade readiness'),
 	history: t('versioniq', 'History'),
 	sources: t('versioniq', 'Sources'),
 	tokens: t('versioniq', 'Tokens'),
@@ -708,6 +724,10 @@ async function onReplaced (): Promise<void> {
  */
 // Unix seconds of the last completed sweep; null means none has completed.
 const advisoriesCheckedAt = ref<number | null>(null)
+// The bundled-library check, kept apart from the app advisories (advisories-bundled-libraries).
+const libraryChecks = ref<Record<string, LibraryCheck>>({})
+const librariesCheckedAt = ref<number | null>(null)
+
 const advisoriesStatus = ref<SweepStatus | null>(null)
 const advisoriesErrors = ref<string[]>([])
 // The instance's one patch compliance status (advisories-per-app-detail D4).
@@ -721,10 +741,14 @@ const advisoriesUnavailable = ref(false)
 async function loadAdvisories (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/advisories')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ advisories: Record<string, AdvisoryCorrelation>, checkedAt: number | null, status?: SweepStatus | null, errors?: string[], compliance?: Compliance, triage?: AdvisoryTriageMap }>(response)
+		const payload = await unwrapOcsResponse<{ advisories: Record<string, AdvisoryCorrelation>, checkedAt: number | null, status?: SweepStatus | null, errors?: string[], compliance?: Compliance, triage?: AdvisoryTriageMap, libraries?: Record<string, LibraryCheck>, librariesCheckedAt?: number | null }>(response)
 		advisories.value = payload.advisories || {}
 		advisoryTriage.value = payload.triage && !Array.isArray(payload.triage) ? payload.triage : {}
 		advisoriesCheckedAt.value = payload.checkedAt ?? null
+		// An empty snapshot is encoded as a JSON list, not an object.
+		libraryChecks.value = payload.libraries && !Array.isArray(payload.libraries) ? payload.libraries : {}
+		librariesCheckedAt.value = payload.librariesCheckedAt ?? null
+
 		const sweep = sweepStateOf(payload)
 		advisoriesStatus.value = sweep.status
 		advisoriesErrors.value = sweep.errors
@@ -736,6 +760,8 @@ async function loadAdvisories (): Promise<void> {
 		advisories.value = {}
 		advisoryTriage.value = {}
 		advisoriesCheckedAt.value = null
+		libraryChecks.value = {}
+		librariesCheckedAt.value = null
 		advisoryCompliance.value = null
 		advisoriesUnavailable.value = true
 	}
@@ -790,6 +816,8 @@ const outsidePolicyFor = (appId: string): boolean => isOutsidePolicy(pendingUpda
 // range changes, and then rejects values the server would have accepted.
 const advisoryIntervalInput = ref('6')
 const advisoryDigestEnabled = ref(true)
+const advisoryLibrariesEnabled = ref(false)
+const advisorySavedLibraries = ref(false)
 const advisoryMinInterval = ref(1)
 const advisoryMaxInterval = ref(24)
 const advisorySavedInterval = ref('6')
@@ -815,6 +843,7 @@ const isAdvisoryIntervalValid = computed((): boolean => {
 const isAdvisorySettingsDirty = computed((): boolean =>
 	advisoryIntervalInput.value.trim() !== advisorySavedInterval.value
 	|| advisoryDigestEnabled.value !== advisorySavedDigest.value
+	|| advisoryLibrariesEnabled.value !== advisorySavedLibraries.value
 	|| advisoryNcscEnabled.value !== advisorySavedNcsc.value)
 
 /**
@@ -841,17 +870,31 @@ function applyNcscSettings (payload: { ncscEnabled?: boolean, ncscStatus?: { rea
 async function loadAdvisorySettings (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/advisory/settings')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ intervalHours: number, minIntervalHours: number, maxIntervalHours: number, digestEnabled: boolean, ncscEnabled?: boolean, ncscStatus?: { readUpTo: string | null, caughtUp: boolean } }>(response)
+		const payload = await unwrapOcsResponse<{ intervalHours: number, minIntervalHours: number, maxIntervalHours: number, digestEnabled: boolean, librariesEnabled?: boolean, ncscEnabled?: boolean, ncscStatus?: { readUpTo: string | null, caughtUp: boolean } }>(response)
 		applyNcscSettings(payload)
 		advisoryMinInterval.value = payload.minIntervalHours
 		advisoryMaxInterval.value = payload.maxIntervalHours
-		advisoryIntervalInput.value = String(payload.intervalHours)
-		advisorySavedInterval.value = String(payload.intervalHours)
-		advisoryDigestEnabled.value = payload.digestEnabled
-		advisorySavedDigest.value = payload.digestEnabled
+		applyAdvisorySettings(payload)
 	} catch {
 		// Non-fatal: the settings control simply keeps its defaults.
 	}
+}
+
+/**
+ * Shows the stored advisory settings in the controls and remembers them as saved.
+ *
+ * @param payload The settings the server answered with.
+ * @param payload.intervalHours The check interval in hours.
+ * @param payload.digestEnabled Whether the digest is sent.
+ * @param payload.librariesEnabled Whether bundled libraries are checked.
+ */
+function applyAdvisorySettings (payload: { intervalHours: number, digestEnabled: boolean, librariesEnabled?: boolean }): void {
+	advisoryIntervalInput.value = String(payload.intervalHours)
+	advisorySavedInterval.value = String(payload.intervalHours)
+	advisoryDigestEnabled.value = payload.digestEnabled
+	advisorySavedDigest.value = payload.digestEnabled
+	advisoryLibrariesEnabled.value = payload.librariesEnabled === true
+	advisorySavedLibraries.value = payload.librariesEnabled === true
 }
 
 /**
@@ -870,15 +913,13 @@ async function saveAdvisorySettings (): Promise<void> {
 				// '1'/'0' rather than a JSON boolean: PHP casts a JSON `false`
 				// to '' and the server would read that as "unspecified".
 				digestEnabled: advisoryDigestEnabled.value ? '1' : '0',
+				librariesEnabled: advisoryLibrariesEnabled.value ? '1' : '0',
 				ncscEnabled: advisoryNcscEnabled.value ? '1' : '0',
 			}),
 		})
-		const payload = await unwrapOcsResponse<{ intervalHours: number, digestEnabled: boolean, ncscEnabled?: boolean, ncscStatus?: { readUpTo: string | null, caughtUp: boolean } }>(response)
+		const payload = await unwrapOcsResponse<{ intervalHours: number, digestEnabled: boolean, librariesEnabled?: boolean, ncscEnabled?: boolean, ncscStatus?: { readUpTo: string | null, caughtUp: boolean } }>(response)
 		applyNcscSettings(payload)
-		advisoryIntervalInput.value = String(payload.intervalHours)
-		advisorySavedInterval.value = String(payload.intervalHours)
-		advisoryDigestEnabled.value = payload.digestEnabled
-		advisorySavedDigest.value = payload.digestEnabled
+		applyAdvisorySettings(payload)
 		advisorySettingsNotice.value = t('versioniq', 'Advisory settings saved.')
 	} catch (error) {
 		advisorySettingsError.value = error instanceof Error ? error.message : String(error)
@@ -912,6 +953,10 @@ function advisoryFor (appId: string): AdvisoryCorrelation | null {
 	const row = advisories.value[appId]
 	return row ? applyTriage({ ...row, appId: row.appId || appId }, advisoryTriage.value) : null
 }
+
+const librariesFreshnessLabel = computed((): string => librariesFreshnessLabelFor(librariesCheckedAt.value, Date.now() / 1000))
+const hasLibraryAdvisory = (appId: string): boolean => hasLibraryFindings(libraryChecks.value[appId])
+const libraryAdvisoryHref = `#${BUNDLED_LIBRARIES_ANCHOR}`
 
 // Badge shown next to a version with a recorded SHA-256 on the binding — see
 // "Recorded digests are binding-scoped and surfaced". After a reinstall that
@@ -1957,6 +2002,31 @@ function versionRangeText (summary: VersionRangeInfo | null): string {
 	return `${summary.direction === 'upgrade' ? 'Upgrade' : 'Downgrade'} crosses ${summary.major} major and ${summary.minor} minor version step${summary.minor === 1 ? '' : 's'}.`
 }
 
+/**
+ * Runs an upgrade dry run and keeps its database changes for the panel;
+ * nothing is installed (safety-upgrade-migration-preview, design D5).
+ *
+ * @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
+ */
+async function previewMigrations (): Promise<void> {
+	const appId = selectedApp.value
+	const version = selectedVersion.value
+	if (!appId || !version || isPreviewingMigrations.value) {
+		return
+	}
+	isPreviewingMigrations.value = true
+	try {
+		const { payload } = await requestInstall({ appId, version, forceDryRun: true })
+		if (selectedApp.value === appId && selectedVersion.value === version) {
+			migrationPreview.value = payload.migrationPreview ?? null
+		}
+	} catch {
+		migrationPreview.value = null
+	} finally {
+		isPreviewingMigrations.value = false
+	}
+}
+
 // Previews the migration diff for a downgrade via a dry-run install request
 // before the confirmation dialog opens, so the dialog can name the exact
 // migrations the target lacks instead of only warning generically; see
@@ -2046,6 +2116,7 @@ type InstallApiPayload = {
 	actualSha?: string
 	recordedShaMatched?: boolean
 	orphanedMigrations?: string[] | null
+	migrationPreview?: MigrationPreview | null
 	integrityWarning?: string | null
 	space?: { appsFree: number | null, tempFree: number | null } | null
 	servedFromCache?: boolean
@@ -3087,6 +3158,14 @@ watch(dryRunEnabled, () => {
 								</label>
 								<label :class="$style.safeMode">
 									<input
+										v-model="advisoryLibrariesEnabled"
+										type="checkbox"
+										data-testid="advisory-libraries-enabled"
+										:disabled="isSavingAdvisorySettings">
+									<span>{{ t('versioniq', 'Check libraries bundled in apps against OSV (sends library names and versions to osv.dev)') }}</span>
+								</label>
+								<label :class="$style.safeMode">
+									<input
 										v-model="advisoryNcscEnabled"
 										type="checkbox"
 										data-testid="advisory-ncsc-enabled"
@@ -3204,6 +3283,14 @@ watch(dryRunEnabled, () => {
 																:title="advisoryFor(app.id)?.error ?? ''">
 																{{ t('versioniq', 'Advisories not checked') }}
 															</span>
+															<a
+																v-if="hasLibraryAdvisory(app.id)"
+																:href="libraryAdvisoryHref"
+																:class="$style.advisoryBadge"
+																data-testid="library-advisory-badge"
+																@click.stop>
+																{{ t('versioniq', 'Library advisory') }}
+															</a>
 														</div>
 														<p :class="$style.appCardMeta">
 															{{ app.id }}
@@ -3444,6 +3531,17 @@ watch(dryRunEnabled, () => {
 											{{ t('versioniq', 'Downgrade path detected.') }}
 										</p>
 										<ChangelogRangePanel :entries="changelogRange" />
+										<NcButton
+											v-if="selectedVersionRange?.direction === 'upgrade'"
+											variant="secondary"
+											data-testid="preview-migrations"
+											:disabled="isPreviewingMigrations || isInstallingVersion"
+											@click="previewMigrations">
+											{{ isPreviewingMigrations ? t('versioniq', 'Previewing database changes…') : t('versioniq', 'Preview database changes') }}
+										</NcButton>
+										<MigrationPreviewPanel
+											v-if="selectedVersionRange?.direction === 'upgrade' && migrationPreview !== undefined"
+											:preview="migrationPreview" />
 										<AppAboutCard v-if="selectedAppOption" :app="selectedAppOption" />
 									</div>
 									<template v-if="appDetailTab === 'versions'">
@@ -3494,7 +3592,7 @@ watch(dryRunEnabled, () => {
 														<div :class="$style.versionItemMain">
 															<span>{{ version.version }}</span>
 															<ReleaseDate :releasedAt="version.releasedAt ?? null" />
-															<ServerCompatBadge :serverCompatible="version.serverCompatible ?? null" />
+															<ServerCompatBadge :serverCompatible="version.serverCompatible ?? null" :phpCompatible="version.phpCompatible ?? null" />
 															<span
 																v-for="tag in offChannelTags(version, versionChannel)"
 																:key="tag"
@@ -3689,6 +3787,10 @@ watch(dryRunEnabled, () => {
 						</div>
 					</main>
 				</div>
+				<ReadinessPanel v-if="currentTab === 'readiness'"
+					id="readiness-panel"
+					role="tabpanel"
+					aria-labelledby="readiness-tab" />
 				<AdvisoriesPanel v-if="currentTab === 'advisories'"
 					id="advisories-panel"
 					role="tabpanel"
@@ -3698,15 +3800,20 @@ watch(dryRunEnabled, () => {
 					:triage="advisoryTriage"
 					:freshnessLabel="advisoryFreshnessLabel"
 					:ncscStatus="ncscPanelStatus"
+					:libraries="libraryChecks"
+					:librariesFreshnessLabel="librariesFreshnessLabel"
 					@update:triage="(triage: AdvisoryTriageMap) => (advisoryTriage = triage)" />
 				<AlertsPanel v-if="currentTab === 'alerts'"
 					id="alerts-panel"
 					role="tabpanel"
 					aria-labelledby="alerts-tab" />
-				<HistoryPanel v-if="currentTab === 'history'"
+				<div v-if="currentTab === 'history'"
 					id="history-panel"
 					role="tabpanel"
-					aria-labelledby="history-tab" />
+					aria-labelledby="history-tab">
+					<SbomExportMenu />
+					<HistoryPanel />
+				</div>
 				<SourcesPanel v-show="currentTab === 'sources'"
 					id="sources-panel"
 					role="tabpanel"

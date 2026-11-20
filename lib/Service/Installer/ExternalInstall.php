@@ -21,12 +21,14 @@ namespace OCA\Versioniq\Service\Installer;
 final class ExternalInstall {
 	/**
 	 * @param list<string>|null $orphanedMigrations
+	 * @param array<string, mixed>|null $migrationPreview The database changes of an upgrade dry run, null when not built or unreadable.
 	 */
 	public function __construct(
 		public readonly ExternalInstallRun $run,
 		public readonly ArchiveCheck $check,
 		public readonly StagedRelease $staged,
 		public readonly ?array $orphanedMigrations,
+		public readonly ?array $migrationPreview = null,
 	) {
 	}
 }
