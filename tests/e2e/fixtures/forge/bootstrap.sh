@@ -41,30 +41,21 @@ occ security:certificates:import /tmp/forge-fixture.crt >/dev/null
 occ config:app:set versioniq trusted_sources \
 	--value='["github:ConductionNL/*","codeberg:Conduction/*","forgejo:fixtureowner/*","github:fixtureowner/*"]' >/dev/null
 
-# Install a baseline fixture app (1.0.0) and bind it to the fixture source.
-tmp="$(mktemp -d)"; tar -C "$tmp" -xzf "$HERE/artifacts/fixtureapp-1.0.0.tar.gz"
-docker exec "$CT" rm -rf /var/www/html/custom_apps/fixtureapp
-docker cp "$tmp/fixtureapp" "$CT":/var/www/html/custom_apps/fixtureapp >/dev/null
-docker exec -u root "$CT" chown -R www-data:www-data /var/www/html/custom_apps/fixtureapp
-rm -rf "$tmp"
-# Pin the stored version to the baseline the files carry, so re-running after a
-# prior install-under-test does not leave the app in a "needs upgrade" state.
-occ config:app:set fixtureapp installed_version --value=1.0.0 >/dev/null
-occ app:enable fixtureapp >/dev/null
-occ maintenance:mode --off >/dev/null 2>&1 || true
-occ config:app:set versioniq source.fixtureapp \
-	--value='{"kind":"github-release","forge":"forgejo","owner":"fixtureowner","repo":"fixtureapp","assetPattern":"*.tar.gz"}' >/dev/null
+# Install the baseline fixture apps (1.0.0) and bind each to its fixture source.
+# fixtureapp2 carries the same release line, for update groups and run limits.
+for app in fixtureapp fixtureapp2; do
+	tmp="$(mktemp -d)"; tar -C "$tmp" -xzf "$HERE/artifacts/$app-1.0.0.tar.gz"
+	docker exec "$CT" rm -rf "/var/www/html/custom_apps/$app"
+	docker cp "$tmp/$app" "$CT":"/var/www/html/custom_apps/$app" >/dev/null
+	docker exec -u root "$CT" chown -R www-data:www-data "/var/www/html/custom_apps/$app"
+	rm -rf "$tmp"
+	# Pin the stored version to the baseline the files carry, so re-running after a
+	# prior install-under-test does not leave the app in a "needs upgrade" state.
+	occ config:app:set "$app" installed_version --value=1.0.0 >/dev/null
+	occ app:enable "$app" >/dev/null
+	occ maintenance:mode --off >/dev/null 2>&1 || true
+	occ config:app:set versioniq "source.$app" \
+		--value="{\"kind\":\"github-release\",\"forge\":\"forgejo\",\"owner\":\"fixtureowner\",\"repo\":\"$app\",\"assetPattern\":\"*.tar.gz\"}" >/dev/null
+done
 
-# A second fixture app on the same release line, installed and bound the same way.
-tmp="$(mktemp -d)"; tar -C "$tmp" -xzf "$HERE/artifacts/fixtureapp2-1.0.0.tar.gz"
-docker exec "$CT" rm -rf /var/www/html/custom_apps/fixtureapp2
-docker cp "$tmp/fixtureapp2" "$CT":/var/www/html/custom_apps/fixtureapp2 >/dev/null
-docker exec -u root "$CT" chown -R www-data:www-data /var/www/html/custom_apps/fixtureapp2
-rm -rf "$tmp"
-occ config:app:set fixtureapp2 installed_version --value=1.0.0 >/dev/null
-occ app:enable fixtureapp2 >/dev/null
-occ maintenance:mode --off >/dev/null 2>&1 || true
-occ config:app:set versioniq source.fixtureapp2 \
-	--value='{"kind":"github-release","forge":"forgejo","owner":"fixtureowner","repo":"fixtureapp2","assetPattern":"*.tar.gz"}' >/dev/null
-
-echo "forge fixture bootstrapped for $CT (fixtureapp bound to forgejo:fixtureowner/fixtureapp)"
+echo "forge fixture bootstrapped for $CT (fixtureapp and fixtureapp2 bound to forgejo:fixtureowner/*)"

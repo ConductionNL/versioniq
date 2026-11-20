@@ -3,6 +3,7 @@
 import { t } from '@nextcloud/l10n'
 import { computed } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 
 export type PolicyLevel = 'none' | 'patch' | 'minor' | 'all' | 'security'
@@ -16,14 +17,23 @@ const props = withDefaults(defineProps<{
 	autoUpdateEnabled: boolean
 	disabled?: boolean
 	blockedVersions?: BlockedVersion[]
+	/** Whether automatic updates of this app wait for an admin's approval. */
+	requireApproval?: boolean
+	/** Who set the policy, and when (ISO 8601); shown beside an active policy (audit-attribution-and-forwarding D2). */
+	setBy?: string
+	setAt?: string
 }>(), {
 	disabled: false,
 	blockedVersions: () => [],
+	requireApproval: false,
+	setBy: '',
+	setAt: '',
 })
 
 const emit = defineEmits<{
 	(event: 'change', appId: string, level: PolicyLevel): void
 	(event: 'retry', appId: string, version: string): void
+	(event: 'approval', appId: string, requireApproval: boolean): void
 }>()
 
 type SelectOption = { id: PolicyLevel, label: string }
@@ -45,10 +55,26 @@ const selected = computed<SelectOption>({
 })
 
 const isActive = computed(() => props.level !== 'none')
+
+/**
+ * "Set by {user} on {date}" for an active policy that records who set it, else ''.
+ *
+ * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-changes-to-the-update-rules-are-audited
+ */
+const setByText = computed(() => {
+	if (!isActive.value || props.setBy === '') {
+		return ''
+	}
+	const when = new Date(props.setAt)
+	const date = Number.isNaN(when.getTime()) ? props.setAt : when.toLocaleDateString()
+	return date === ''
+		? t('versioniq', 'Set by {user}', { user: props.setBy })
+		: t('versioniq', 'Set by {user} on {date}', { user: props.setBy, date })
+})
 </script>
 
 <template>
-	<div :class="$style.wrapper" data-testid="policy-selector">
+	<div :class="$style.wrapper" data-testid="policy-selector" :title="setByText || undefined">
 		<NcSelect
 			v-model="selected"
 			data-testid="policy-select"
@@ -60,9 +86,20 @@ const isActive = computed(() => props.level !== 'none')
 		<span v-if="isActive" :class="$style.badge" data-testid="policy-active-badge">
 			{{ t('versioniq', 'Auto-update: {level}', { level: selected.label }) }}
 		</span>
+		<span v-if="setByText" :class="$style.badge" data-testid="policy-set-by">
+			{{ setByText }}
+		</span>
 		<span v-if="isActive && !autoUpdateEnabled" :class="$style.disabledHint" data-testid="policy-disabled-hint">
 			{{ t('versioniq', 'Automation is disabled. Enable it in settings to take effect.') }}
 		</span>
+		<NcCheckboxRadioSwitch
+			v-if="isActive"
+			data-testid="policy-require-approval"
+			:modelValue="requireApproval"
+			:disabled="disabled"
+			@update:modelValue="emit('approval', appId, $event === true)">
+			{{ t('versioniq', 'Ask me before installing') }}
+		</NcCheckboxRadioSwitch>
 		<div v-if="blockedVersions.length > 0" :class="$style.blocked" data-testid="policy-blocked-versions">
 			<span :class="$style.blockedHint">
 				{{ t('versioniq', 'Automatic updates skip these versions because an earlier attempt failed:') }}

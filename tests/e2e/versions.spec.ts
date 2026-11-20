@@ -127,6 +127,41 @@ test.describe("version listing and release notes", () => {
 		await page.getByRole("checkbox", { name: /Safe mode/ }).check();
 	});
 
+	test("a keyboard user tabs to a version's Select button and sees it with a focus ring", async ({
+		page,
+	}) => {
+		// WCAG 2.1.1: the button used to be `visibility: hidden` until the row
+		// was hovered, which also took it out of the tab order.
+		await openSettings(page);
+		await chooseApp(page, APP);
+		await versionsLoaded(page);
+		const safeMode = page.getByRole("checkbox", { name: /Safe mode/ });
+		await safeMode.uncheck();
+		await expect(page.getByTestId("version-select-button").first()).toBeAttached({
+			timeout: 45_000,
+		});
+
+		// Walk the tab order from the safe-mode switch, mouse untouched.
+		await page.mouse.move(0, 0);
+		await safeMode.focus();
+		let reached = false;
+		for (let step = 0; step < 80 && reached === false; step++) {
+			await page.keyboard.press("Tab");
+			reached = await page.evaluate(
+				() => document.activeElement?.getAttribute("data-testid") === "version-select-button",
+			);
+		}
+		expect(reached, "the Select button is in the tab order").toBe(true);
+
+		const focused = page.locator('[data-testid="version-select-button"]:focus');
+		await expect(focused).toBeVisible();
+		await expect(focused).toHaveCSS("opacity", "1");
+		await expect(focused).not.toHaveCSS("outline-style", "none");
+		await expect(focused).toHaveAttribute("aria-label", /^Select version /);
+
+		await safeMode.check();
+	});
+
 	test("safe mode is on by default and blocks downgrades", async ({
 		page,
 	}) => {

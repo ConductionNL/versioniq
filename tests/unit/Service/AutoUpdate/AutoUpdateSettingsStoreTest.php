@@ -117,6 +117,31 @@ final class AutoUpdateSettingsStoreTest extends TestCase {
 		$this->assertFalse($store->hasSweptWindow('01:00-05:00@2026-07-24'));
 	}
 
+	public function testNoticeDaysAreClampedToTheSupportedRange(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getValueInt')
+			->with(Application::APP_ID, AutoUpdateSettingsStore::CONFIG_NOTICE_DAYS, 0)
+			->willReturnOnConsecutiveCalls(14, 99, -3);
+		$store = new AutoUpdateSettingsStore($config);
+
+		$this->assertSame(14, $store->getNoticeDays());
+		$this->assertSame(60, $store->getNoticeDays());
+		$this->assertSame(0, $store->getNoticeDays());
+	}
+
+	public function testNoticeSettingsAreWrittenUnderTheirKeys(): void {
+		$config = $this->createMock(IAppConfig::class);
+		$config->expects($this->once())->method('setValueInt')->with(Application::APP_ID, 'auto_update.notice_days', 14);
+		$config->expects($this->once())->method('setValueString')->with(Application::APP_ID, 'auto_update.notice_group', 'functioneel-beheer');
+		$config->method('getValueString')->willReturn('functioneel-beheer');
+		$store = new AutoUpdateSettingsStore($config);
+
+		$store->setNoticeDays(14);
+		$store->setNoticeGroup('functioneel-beheer');
+
+		$this->assertSame('functioneel-beheer', $store->getNoticeGroup());
+	}
+
 	public function testCapsReadAsNullWhenAbsentOrOutOfRange(): void {
 		$config = $this->createMock(IAppConfig::class);
 		$config->method('getValueInt')->willReturnCallback(static fn (string $app, string $key): int => match ($key) {

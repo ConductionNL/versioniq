@@ -16,7 +16,8 @@ use OCA\Versioniq\Service\Checks\CheckRunner;
 
 /**
  * The flags of one install request: debug output, dry run, accepting a new
- * recorded SHA-256, acknowledging a downgrade, and where the request runs
+ * recorded SHA-256, acknowledging a downgrade, forcing a version past its
+ * declared maximum (`app_install_overwrite`), and where the request runs
  * (`web` or `cli`), which decides the update checks a dry run runs.
  *
  * @spec openspec/specs/version-management/spec.md
@@ -28,6 +29,7 @@ final class InstallOptions {
 		public readonly bool $dryRun,
 		public readonly bool $acceptNewSha,
 		public readonly bool $allowDowngrade,
+		public readonly bool $forceIncompatible = false,
 		public readonly string $checkContext = CheckRunner::CONTEXT_WEB,
 	) {
 	}

@@ -43,10 +43,12 @@ import MigrationPreviewPanel from './components/MigrationPreviewPanel.vue'
 import PatchPolicyPanel from './components/PatchPolicyPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
+import ProposedUpdatesPanel from './components/ProposedUpdatesPanel.vue'
 import PublisherMark from './components/PublisherMark.vue'
 import ReadinessPanel from './components/ReadinessPanel.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
 import SbomExportMenu from './components/SbomExportMenu.vue'
+import SecurityReportPanel from './components/SecurityReportPanel.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
 import SourceOverrideField from './components/SourceOverrideField.vue'
 import SourcesPanel from './components/SourcesPanel.vue'
@@ -58,6 +60,7 @@ import VersionChangelog from './components/VersionChangelog.vue'
 import VersionFacts from './components/VersionFacts.vue'
 import DowngradeConfirmDialog from './dialogs/DowngradeConfirmDialog.vue'
 import EnableAppDialog from './dialogs/EnableAppDialog.vue'
+import ForceIncompatibleDialog from './dialogs/ForceIncompatibleDialog.vue'
 import KnownIssueDialog from './dialogs/KnownIssueDialog.vue'
 import PinDialog from './dialogs/PinDialog.vue'
 import PinOverrideDialog from './dialogs/PinOverrideDialog.vue'
@@ -103,6 +106,9 @@ type AppOption = {
 	installedVersion?: string | null
 	state?: 'enabled' | 'disabled' | 'notInstalled'
 	lkg?: LkgRecord | null
+	forcedOn?: number
+	compatibilityOverridden?: boolean
+	serverTooNew?: boolean
 	installedKnownIssues?: AdminKnownIssue[]
 	provenance?: Provenance | null
 	publisher?: string | null
@@ -116,6 +122,7 @@ type AppVersion = {
 	recordedSha?: string | null
 	cachedOffline?: boolean
 	serverCompatible?: boolean | null
+	serverTooNew?: boolean
 	phpCompatible?: boolean | null
 	releasedAt?: string | null
 	preRelease?: boolean
@@ -288,7 +295,7 @@ let shaMismatchResolve: ((accept: boolean) => void) | null = null
 // execution through the standard installer", "Global kill switch and
 // window"). Policies and the two global settings are fetched together from
 // GET /api/policies, mirroring the `pins`/`advisories` per-appId map pattern.
-type PolicyRecord = { appId: string, level: PolicyLevel, setBy: string, setAt: string, blockedVersions?: BlockedVersion[] }
+type PolicyRecord = { appId: string, level: PolicyLevel, setBy: string, setAt: string, requireApproval?: boolean, blockedVersions?: BlockedVersion[] }
 const policies = ref<Record<string, PolicyRecord>>({})
 const isSavingPolicy = ref(false)
 const autoUpdateEnabled = ref(false)
@@ -1083,6 +1090,7 @@ const policyLevelFor = (appId: string): PolicyLevel => policies.value[appId]?.le
 // A group only plans apps with a policy, so those are the ones it can hold.
 const groupableApps = computed(() => Object.values(policies.value).filter((policy) => policy.level !== 'none').map((policy) => policy.appId))
 const blockedVersionsFor = (appId: string): BlockedVersion[] => policies.value[appId]?.blockedVersions ?? []
+const requireApprovalFor = (appId: string): boolean => policies.value[appId]?.requireApproval === true
 
 /**
  * Clears a failed automatic-update attempt so the next run inside the window
@@ -1140,12 +1148,15 @@ async function clearPolicy (appId: string): Promise<void> {
  *
  * @param appId The app whose policy is set.
  * @param level The policy level to set.
+ * @param requireApproval Whether its automatic updates wait for approval; omitted keeps the stored choice.
  */
-async function setPolicy (appId: string, level: PolicyLevel): Promise<void> {
-	const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/policy`, { level })), {
+async function setPolicy (appId: string, level: PolicyLevel, requireApproval?: boolean): Promise<void> {
+	// Omitting requireApproval keeps what the server stored for the app.
+	const fields: Record<string, string> = requireApproval === undefined ? { level } : { level, requireApproval: requireApproval ? '1' : '0' }
+	const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/policy`, fields)), {
 		method: 'PUT',
 		headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
-		body: JSON.stringify({ level }),
+		body: JSON.stringify(fields),
 	})
 	const payload = await unwrapOcsResponse<{ appId: string, policy: PolicyRecord }>(response)
 	policies.value = { ...policies.value, [appId]: { ...payload.policy, appId } }
@@ -1169,6 +1180,28 @@ async function onPolicyChange (appId: string, level: PolicyLevel): Promise<void>
 		} else {
 			await setPolicy(appId, level)
 		}
+	} catch (e) {
+		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not update the auto-update policy.')
+	} finally {
+		isSavingPolicy.value = false
+	}
+}
+
+/**
+ * Turn the approval step for an app's automatic updates on or off.
+ *
+ * @param appId The app whose policy changes.
+ * @param requireApproval Whether its automatic updates wait for an admin's approval.
+ */
+async function onApprovalChange (appId: string, requireApproval: boolean): Promise<void> {
+	if (isSavingPolicy.value) {
+		return
+	}
+	isSavingPolicy.value = true
+	errorMessage.value = ''
+	try {
+		await ensurePasswordConfirmation()
+		await setPolicy(appId, policyLevelFor(appId), requireApproval)
 	} catch (e) {
 		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not update the auto-update policy.')
 	} finally {
@@ -2129,6 +2162,7 @@ type InstallRequest = {
 	pinRequested?: boolean
 	acceptNewSha?: boolean
 	allowDowngrade?: boolean
+	forceIncompatible?: boolean
 	forceDryRun?: boolean
 }
 
@@ -2136,6 +2170,7 @@ const INSTALL_FLAG_PARAMS: Array<[keyof InstallRequest, string]> = [
 	['pinRequested', 'pin'],
 	['acceptNewSha', 'acceptNewSha'],
 	['allowDowngrade', 'allowDowngrade'],
+	['forceIncompatible', 'forceIncompatible'],
 ]
 
 /**
@@ -2329,6 +2364,7 @@ type InstallTarget = {
 	fromVersion: string
 	toVersion: string
 	allowDowngrade: boolean
+	forceIncompatible?: boolean
 }
 
 /**
@@ -2554,7 +2590,7 @@ async function runInstall (target: InstallTarget): Promise<void> {
 	startInstall(target)
 	try {
 		await ensurePasswordConfirmation()
-		await applyInstallResponse(await requestInstallWithRetries({ appId: target.appId, version: target.toVersion, allowDowngrade: target.allowDowngrade }))
+		await applyInstallResponse(await requestInstallWithRetries({ appId: target.appId, version: target.toVersion, allowDowngrade: target.allowDowngrade, forceIncompatible: target.forceIncompatible }))
 	} catch (error) {
 		showInstallError(error, target)
 	} finally {
@@ -2577,6 +2613,107 @@ async function performInstall (): Promise<void> {
 		return
 	}
 	await runInstall(target)
+}
+
+// "Install anyway" and "Enable anyway" (install-force-incompatible): the
+// dialog explains the override; the password is asked after it, as for every
+// install.
+const isForceDialogOpen = ref(false)
+const forceDialogAppId = ref('')
+const forceDialogVersion = ref('')
+const forceDialogMode = ref<'install' | 'enable'>('install')
+let forceResolve: ((accept: boolean) => void) | null = null
+
+/**
+ * Opens the force dialog and settles with the admin's choice.
+ *
+ * @param appId The app to force.
+ * @param version The version to force.
+ * @param mode Install a version, or enable the installed one.
+ * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+ */
+function confirmForce (appId: string, version: string, mode: 'install' | 'enable'): Promise<boolean> {
+	forceResolve?.(false)
+	forceDialogAppId.value = appId
+	forceDialogVersion.value = version
+	forceDialogMode.value = mode
+	return new Promise<boolean>((resolve) => {
+		forceResolve = resolve
+		isForceDialogOpen.value = true
+	})
+}
+
+/**
+ * The single exit from the force dialog.
+ *
+ * @param accept Whether the admin chose to force.
+ */
+function onForceResolved (accept: boolean): void {
+	isForceDialogOpen.value = false
+	forceResolve?.(accept)
+	forceResolve = null
+}
+
+/**
+ * Installs a version past its declared maximum, after the admin confirmed the
+ * override and, for a downgrade, the downgrade.
+ *
+ * @param version The version only its maximum keeps off this server.
+ * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+ */
+async function installAnyway (version: string): Promise<void> {
+	if (!selectedApp.value || isInstallingVersion.value) {
+		return
+	}
+	selectedVersion.value = version
+	const target = selectedInstallTarget()
+	if (!(await confirmForce(target.appId, version, 'install'))) {
+		return
+	}
+	if (target.allowDowngrade && !(await confirmDowngrade(target.appId, target.fromVersion, target.toVersion))) {
+		return
+	}
+	await runInstall({ ...target, forceIncompatible: true })
+}
+
+/**
+ * Enables a disabled app only its declared maximum keeps off this server.
+ *
+ * @param app The app's card.
+ * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+ */
+async function enableAnyway (app: AppOption): Promise<void> {
+	if (isEnablingApp.value || !(await confirmForce(app.id, app.installedVersion ?? '', 'enable'))) {
+		return
+	}
+	isEnablingApp.value = true
+	errorMessage.value = ''
+	try {
+		await ensurePasswordConfirmation()
+		const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(app.id)}/force-enable`)), {
+			method: 'POST',
+			headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
+		})
+		await unwrapOcsResponse(response)
+		await loadApps()
+	} catch (error) {
+		errorMessage.value = error instanceof Error ? error.message : t('versioniq', 'Could not enable the app.')
+	} finally {
+		isEnablingApp.value = false
+	}
+}
+
+/**
+ * The card's override notice, or '' when the app runs under none.
+ *
+ * @param app The app's card.
+ * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+ */
+function overrideNotice (app: AppOption): string {
+	if (app.forcedOn) {
+		return t('versioniq', 'Forced to run on Nextcloud {major}. Lifted at the next major upgrade.', { major: String(app.forcedOn) })
+	}
+	return app.compatibilityOverridden ? t('versioniq', 'Nextcloud\'s compatibility check is overridden for this app.') : ''
 }
 
 // "Roll back to last known good" — pure client routing through the standard
@@ -2970,6 +3107,13 @@ watch(dryRunEnabled, () => {
 				:error="enableAppError"
 				@update:open="isEnableDialogOpen = $event"
 				@confirm="onEnableConfirmed" />
+			<ForceIncompatibleDialog
+				:open="isForceDialogOpen"
+				:appId="forceDialogAppId"
+				:version="forceDialogVersion"
+				:mode="forceDialogMode"
+				@update:open="isForceDialogOpen = $event"
+				@resolve="onForceResolved" />
 			<ShaMismatchDialog
 				:open="isShaMismatchDialogOpen"
 				:appId="shaMismatchAppId"
@@ -3126,6 +3270,7 @@ watch(dryRunEnabled, () => {
 									:maxPerRun="maxPerRun"
 									:maxPerWeek="maxPerWeek"
 									@saved="loadPolicies" />
+								<ProposedUpdatesPanel :labels="appLabels" />
 
 								<h3 id="section-advisories" :class="$style.advisorySettingsHeading">{{ t('versioniq', 'Security advisory checks') }}</h3>
 								<p :class="$style.hint">
@@ -3378,6 +3523,12 @@ watch(dryRunEnabled, () => {
 													:class="[$style.appCardWarning, { [$style.appCardWarningBlocking]: app.manageable === false }]">
 													⚠ {{ app.warning }}
 												</p>
+												<p
+													v-if="overrideNotice(app)"
+													:class="$style.appCardWarning"
+													data-testid="app-override-notice">
+													{{ overrideNotice(app) }}
+												</p>
 												<PolicySelector
 													v-if="!app.isCore"
 													:appId="app.id"
@@ -3385,7 +3536,11 @@ watch(dryRunEnabled, () => {
 													:autoUpdateEnabled="autoUpdateEnabled"
 													:disabled="isSavingPolicy"
 													:blockedVersions="blockedVersionsFor(app.id)"
+													:requireApproval="requireApprovalFor(app.id)"
+													:setBy="policies[app.id]?.setBy ?? ''"
+													:setAt="policies[app.id]?.setAt ?? ''"
 													@change="onPolicyChange"
+													@approval="onApprovalChange"
 													@retry="onRetryAttempt" />
 												<ChannelSelector
 													v-if="!app.isCore"
@@ -3422,6 +3577,15 @@ watch(dryRunEnabled, () => {
 												:disabled="isInstallingVersion || isEnablingApp"
 												@click="openEnableDialog(app.id)">
 												{{ t('versioniq', 'Enable') }}
+											</button>
+											<button
+												v-if="app.state === 'disabled' && app.serverTooNew"
+												type="button"
+												:class="$style.appCardButton"
+												data-testid="app-enable-anyway-button"
+												:disabled="isInstallingVersion || isEnablingApp"
+												@click="enableAnyway(app)">
+												{{ t('versioniq', 'Enable anyway') }}
 											</button>
 											<template v-if="!app.isCore">
 												<button
@@ -3592,7 +3756,7 @@ watch(dryRunEnabled, () => {
 														<div :class="$style.versionItemMain">
 															<span>{{ version.version }}</span>
 															<ReleaseDate :releasedAt="version.releasedAt ?? null" />
-															<ServerCompatBadge :serverCompatible="version.serverCompatible ?? null" :phpCompatible="version.phpCompatible ?? null" />
+															<ServerCompatBadge :serverCompatible="version.serverCompatible ?? null" :serverTooNew="version.serverTooNew ?? null" :phpCompatible="version.phpCompatible ?? null" />
 															<span
 																v-for="tag in offChannelTags(version, versionChannel)"
 																:key="tag"
@@ -3614,9 +3778,20 @@ watch(dryRunEnabled, () => {
 																{{ recordedShaBadgeLabel(version.version) }}
 															</span>
 															<button
+																v-if="version.serverCompatible === false && version.serverTooNew === true"
+																type="button"
+																:class="$style.versionSelectButton"
+																data-testid="install-anyway-button"
+																:disabled="isInstallingVersion"
+																@click="installAnyway(version.version)">
+																{{ t('versioniq', 'Install anyway') }}
+															</button>
+															<button
 																v-if="selectedVersion !== version.version"
 																type="button"
 																:class="$style.versionSelectButton"
+																:aria-label="t('versioniq', 'Select version {version}', { version: version.version })"
+																data-testid="version-select-button"
 																:disabled="isInstallingVersion"
 																@click="onSelectVersion(version.version)">
 																{{ t('versioniq', 'Select') }}
@@ -3814,6 +3989,8 @@ watch(dryRunEnabled, () => {
 					aria-labelledby="history-tab">
 					<SbomExportMenu />
 					<HistoryPanel />
+					<!-- audit-security-reports D6: the remediation report under the history. -->
+					<SecurityReportPanel />
 				</div>
 				<SourcesPanel v-show="currentTab === 'sources'"
 					id="sources-panel"
@@ -4521,7 +4698,9 @@ watch(dryRunEnabled, () => {
 .versionSelectButton {
 	line-height: 1.1;
 	margin: 2px 0;
-	visibility: hidden;
+	/* Faded, never hidden through the visibility property: a hidden button
+	   leaves the tab order, so keyboard users could not reach it and the
+	   :focus-visible reveal below never fired (WCAG 2.1.1). */
 	opacity: 0;
 	transition: opacity 0.12s ease;
 	padding: 3px 10px;
@@ -4532,6 +4711,13 @@ watch(dryRunEnabled, () => {
 	font-size: 12px;
 }
 
+/* A touch screen has no hover: the button is always shown there. */
+@media (hover: none) {
+	.versionSelectButton {
+		opacity: 1;
+	}
+}
+
 /* ORDER MATTERS HERE, and it is not cosmetic. `.versionItem:hover
    .versionSelectButton` (0,2,0) outranks the single-class pseudo rules below
    it, so with those written first the descending order let the hover-descendant
@@ -4540,16 +4726,17 @@ watch(dryRunEnabled, () => {
    keyboard affordance reachable — stylelint's no-descending-specificity is
    pointing at a real accessibility bug, not at tidiness. */
 .versionSelectButton:focus-visible {
-	visibility: visible;
 	opacity: 1;
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: 2px;
 }
 
 .versionSelectButton:hover {
 	filter: brightness(1.05);
 }
 
-.versionItem:hover .versionSelectButton {
-	visibility: visible;
+.versionItem:hover .versionSelectButton,
+.versionItem:focus-within .versionSelectButton {
 	opacity: 1;
 }
 

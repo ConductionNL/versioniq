@@ -1,15 +1,20 @@
 // SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
 // SPDX-License-Identifier: EUPL-1.2
 import { expect, test } from "@playwright/test";
+import { NC_ADMIN_PASS } from "../../playwright.config";
 import {
 	appConfigValue,
+	chooseApp,
+	execInInstance,
 	FIXTURE_APP,
 	FIXTURE_SOURCE,
 	fixtureAvailable,
 	fixtureControl,
 	installFixture,
+	occ,
 	openSettings,
 	resetFixtureApp,
+	versionsLoaded,
 } from "./helpers.ts";
 
 /**
@@ -206,3 +211,99 @@ test.describe("forge installs (fixture-backed)", () => {
 		).toBeVisible({ timeout: 45_000 });
 	});
 });
+
+/**
+ * Installing past a version's declared maximum (install-force-incompatible 4.4).
+ *
+ * Release 1.0.2 of the fixture app declares Nextcloud 28-30, below every
+ * server the suite runs on. A plain install is refused; "Install anyway"
+ * installs it through `app_install_overwrite`, and the card says so.
+ *
+ * A forge release publishes no Nextcloud range, so the picker only knows a
+ * version is too old for this server once its artifact is cached: the test
+ * seeds the cache with one forced install from occ and moves back to 1.0.0
+ * before driving the page.
+ *
+ * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+ */
+test.describe("installing past the declared maximum", () => {
+	const RELEASES = [
+		{ tag: "v1.0.2", asset: "fixtureapp-1.0.2-maxold.tar.gz", sha: true },
+		{ tag: "v1.0.1", asset: "fixtureapp-1.0.1.tar.gz", sha: true },
+		{ tag: "v1.0.0", asset: "fixtureapp-1.0.0.tar.gz", sha: true },
+	];
+
+	/** Takes fixtureapp off app_install_overwrite and drops Versioniq's record of it. */
+	async function clearOverride() {
+		await execInInstance([
+			"php",
+			"-r",
+			"require 'lib/base.php'; $c = \\OC::$server->get(\\OCP\\IConfig::class); $list = $c->getSystemValue('app_install_overwrite', []); $c->setSystemValue('app_install_overwrite', array_values(array_diff(is_array($list) ? $list : [], ['" + FIXTURE_APP + "'])));",
+		]);
+		await occ("config:app:delete", "versioniq", `force_incompatible.${FIXTURE_APP}`);
+	}
+
+	const installed = async () =>
+		(await occ("config:app:get", FIXTURE_APP, "installed_version")).trim();
+
+	test.beforeEach(async ({ page }) => {
+		test.skip(!(await fixtureAvailable(page)), "forge fixture not running");
+		await clearOverride();
+		await resetFixtureApp(page);
+		await fixtureControl(page, "repo", { repo: "fixtureowner/fixtureapp", releases: RELEASES });
+	});
+
+	test.afterEach(async ({ page }) => {
+		await clearOverride();
+		await resetFixtureApp(page);
+	});
+
+	// @e2e install-force-incompatible::install-anyway-past-the-maximum
+	test("a version past its declared maximum is refused, installs with Install anyway, and the card says so", async ({
+		page,
+	}) => {
+		// The refusal: a plain install of 1.0.2 does not change the version.
+		const refused = await installFixture(page, "1.0.2");
+		expect(refused.status, JSON.stringify(refused.body)).toBe(7);
+		expect(await installed()).toBe("1.0.0");
+
+		// Seed the artifact cache with one forced install, then move back.
+		const seeded = await installFixture(page, "1.0.2", { forceIncompatible: true });
+		expect(seeded.status, JSON.stringify(seeded.body)).toBe(0);
+		await installFixture(page, "1.0.0", { allowDowngrade: true });
+		await clearOverride();
+		expect(await installed()).toBe("1.0.0");
+
+		await openSettings(page);
+		await chooseApp(page, FIXTURE_APP);
+		expect(await versionsLoaded(page), "the fixture versions load").toBe(true);
+
+		await page.getByTestId("install-anyway-button").first().click();
+		const dialog = page.getByRole("dialog").filter({ has: page.getByTestId("force-warning") });
+		await expect(dialog.getByTestId("force-warning")).toContainText("app_install_overwrite");
+		await dialog.getByRole("button", { name: "Install anyway", exact: true }).click();
+		const password = page.locator('[role="dialog"] input[type="password"]').first();
+		if (await password.waitFor({ state: "visible", timeout: 3_000 }).then(() => true, () => false)) {
+			await password.fill(NC_ADMIN_PASS);
+			await password.press("Enter");
+		}
+
+		await expect.poll(installed, { timeout: 60_000 }).toBe("1.0.2");
+		expect(
+			await occ("config:system:get", "app_install_overwrite"),
+			"fixtureapp is on the compatibility override",
+		).toContain(FIXTURE_APP);
+
+		await openSettings(page);
+		await page
+			.getByRole("tablist", { name: "Versioniq sections" })
+			.getByRole("tab", { name: "Apps", exact: true })
+			.click();
+		const card = page
+			.locator("article")
+			.filter({ has: page.getByText(FIXTURE_APP, { exact: true }) })
+			.first();
+		await expect(card.getByTestId("app-override-notice")).toContainText("Forced to run on Nextcloud");
+	});
+});
+

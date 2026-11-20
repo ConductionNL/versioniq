@@ -112,32 +112,23 @@ occ config:app:set versioniq trusted_sources \
 
 # Install the baseline fixture app (1.0.0) and bind it to the fixture source, so
 # the install/downgrade specs have a real app to move between versions.
-tmp="$(mktemp -d)"
-tar -C "${tmp}" -xzf "${FX}/artifacts/fixtureapp-1.0.0.tar.gz"
-rm -rf "${NC_ROOT}/apps/fixtureapp"
-cp -r "${tmp}/fixtureapp" "${NC_ROOT}/apps/fixtureapp"
-rm -rf "${tmp}"
+# fixtureapp2 carries the same release line, for update groups and run limits.
+for app in fixtureapp fixtureapp2; do
+	tmp="$(mktemp -d)"
+	tar -C "${tmp}" -xzf "${FX}/artifacts/${app}-1.0.0.tar.gz"
+	rm -rf "${NC_ROOT}/apps/${app}"
+	cp -r "${tmp}/${app}" "${NC_ROOT}/apps/${app}"
+	rm -rf "${tmp}"
 
-# Pin the STORED version to what the files carry. Without this, re-running after
-# an install-under-test leaves the app flagged as needing an upgrade, and every
-# later spec fails on maintenance state rather than on its subject.
-occ config:app:set fixtureapp installed_version --value=1.0.0 > /dev/null
-occ app:enable fixtureapp > /dev/null
-occ maintenance:mode --off > /dev/null 2>&1 || true
-occ config:app:set versioniq source.fixtureapp \
-	--value='{"kind":"github-release","forge":"forgejo","owner":"fixtureowner","repo":"fixtureapp","assetPattern":"*.tar.gz"}' > /dev/null
-
-# A second fixture app on the same release line, installed and bound the same way.
-tmp="$(mktemp -d)"
-tar -C "${tmp}" -xzf "${FX}/artifacts/fixtureapp2-1.0.0.tar.gz"
-rm -rf "${NC_ROOT}/apps/fixtureapp2"
-cp -r "${tmp}/fixtureapp2" "${NC_ROOT}/apps/fixtureapp2"
-rm -rf "${tmp}"
-occ config:app:set fixtureapp2 installed_version --value=1.0.0 > /dev/null
-occ app:enable fixtureapp2 > /dev/null
-occ maintenance:mode --off > /dev/null 2>&1 || true
-occ config:app:set versioniq source.fixtureapp2 \
-	--value='{"kind":"github-release","forge":"forgejo","owner":"fixtureowner","repo":"fixtureapp2","assetPattern":"*.tar.gz"}' > /dev/null
+	# Pin the STORED version to what the files carry. Without this, re-running after
+	# an install-under-test leaves the app flagged as needing an upgrade, and every
+	# later spec fails on maintenance state rather than on its subject.
+	occ config:app:set "${app}" installed_version --value=1.0.0 > /dev/null
+	occ app:enable "${app}" > /dev/null
+	occ maintenance:mode --off > /dev/null 2>&1 || true
+	occ config:app:set versioniq "source.${app}" \
+		--value="{\"kind\":\"github-release\",\"forge\":\"forgejo\",\"owner\":\"fixtureowner\",\"repo\":\"${app}\",\"assetPattern\":\"*.tar.gz\"}" > /dev/null
+done
 
 # PROVE THE APP CAN SEE THE FIXTURE, not merely that both are running. The specs
 # probe /health directly from the browser context, which says nothing about

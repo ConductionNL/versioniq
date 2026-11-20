@@ -5,11 +5,14 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import {
 	appConfigValue,
+	execInInstance,
 	FIXTURE_APP,
+	FIXTURE_APP2,
 	fixtureAvailable,
 	fixtureControl,
 	installFixture,
 	occ,
+	resetFixture,
 	resetFixtureApp,
 	runJob,
 	sql,
@@ -111,6 +114,44 @@ test.describe("background jobs", () => {
 			"SELECT subject FROM oc_notifications WHERE app='versioniq'",
 		);
 		expect(subj).toContain("auto_update_success");
+	});
+
+	// @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md
+	test("an install the job made is recorded with origin job, and the origin filter finds it", async ({
+		page,
+	}) => {
+		expect(await installed()).toBe("1.0.0");
+		await sqlExec(
+			`DELETE FROM oc_app_versions_audit WHERE app_id='${FIXTURE_APP}'`,
+		);
+		await setPolicy(page, "patch");
+		await occ("config:app:set", "versioniq", "auto_update_enabled", "--value", "1");
+		await occ("config:app:set", "versioniq", "auto_update_window", "--value", "00:00-23:59");
+
+		await runJob("AutoUpdateJob");
+		expect(await installed()).toBe("1.0.1");
+
+		const audit = async (query: string) => {
+			const response = await page.request.get(
+				`/ocs/v2.php/apps/versioniq/api/audit?format=json&appId=${FIXTURE_APP}${query}`,
+				{ headers: { "OCS-APIRequest": "true" } },
+			);
+			expect(response.status()).toBe(200);
+			const body = await response.json();
+			return body.ocs.data.entries as Array<{ operation: string; toVersion: string | null; origin: string | null }>;
+		};
+
+		const installs = (await audit("")).filter((entry) => entry.operation === "install" && entry.toVersion === "1.0.1");
+		expect(installs.length, "the job's install writes one audit row").toBe(1);
+		expect(installs[0].origin, "recorded as the nightly job, not as the admin page or occ").toBe("job");
+
+		const byJob = await audit("&origin=job");
+		expect(byJob.some((entry) => entry.toVersion === "1.0.1")).toBe(true);
+		expect(byJob.every((entry) => entry.origin === "job"), "the origin filter returns only job rows").toBe(true);
+		expect(
+			(await audit("&origin=cli")).some((entry) => entry.operation === "install" && entry.toVersion === "1.0.1"),
+			"and a cli filter does not return the job's install",
+		).toBe(false);
 	});
 
 	// @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
@@ -667,6 +708,350 @@ test.describe("security fixes in the auto-update job", () => {
 
 		await runJob("AutoUpdateJob");
 		expect(await installed(), "the security fix, not the 1.1.0 minor").toBe("1.0.1");
+	});
+});
+
+/**
+ * The hourly reconcile job records version changes and disables that no
+ * Versioniq event reported.
+ *
+ * @spec openspec/changes/audit-external-changes/specs/audit-trail/spec.md
+ */
+test.describe("external changes", () => {
+	const HOURLY_TRIGGER =
+		"found by the hourly check: no update event was seen";
+
+	test.beforeEach(async ({ page }) => {
+		test.skip(!(await fixtureAvailable(page)), "forge fixture not running");
+		await resetFixtureApp(page);
+	});
+
+	test.afterEach(async ({ page }) => {
+		await occ("app:enable", FIXTURE_APP);
+		await resetFixtureApp(page);
+	});
+
+	async function auditRows(after: number, operation: string): Promise<string[]> {
+		return (
+			await sql(
+				`SELECT from_version, to_version, message FROM oc_app_versions_audit WHERE id > ${after} AND app_id = '${FIXTURE_APP}' AND operation = '${operation}' ORDER BY id`,
+			)
+		)
+			.split("\n")
+			.filter((line) => line.trim() !== "");
+	}
+
+	test("an unreported update and a disable are recorded, and the app stays disabled", async ({
+		page,
+	}) => {
+		await installFixture(page, "1.0.1");
+		// A baseline first, then a stale record for the fixture app: as if it
+		// was at 1.0.0 when last seen and something outside Versioniq moved it.
+		await runJob("ExternalChangeReconcileJob");
+		const seen = JSON.parse(
+			(await occ("config:app:get", "versioniq", "external.seen")) || "{}",
+		);
+		expect(seen.apps?.[FIXTURE_APP]?.version, "baseline").toBe("1.0.1");
+		seen.apps[FIXTURE_APP].version = "1.0.0";
+		await occ(
+			"config:app:set",
+			"versioniq",
+			"external.seen",
+			"--value",
+			JSON.stringify(seen),
+		);
+		const start = Number(
+			(await sql("SELECT COALESCE(MAX(id), 0) FROM oc_app_versions_audit")) ||
+				"0",
+		);
+
+		await runJob("ExternalChangeReconcileJob");
+		expect(await auditRows(start, "external_update")).toEqual([
+			`1.0.0\t1.0.1\t${HOURLY_TRIGGER}`,
+		]);
+
+		await occ("app:disable", FIXTURE_APP);
+		await runJob("ExternalChangeReconcileJob");
+		expect(await auditRows(start, "external_disable")).toHaveLength(1);
+		expect(
+			(await occ("config:app:get", FIXTURE_APP, "enabled")).trim(),
+			"the job leaves a deliberately disabled app off",
+		).toBe("no");
+	});
+});
+
+/**
+ * The automatic update job and the admins' decisions on proposed updates
+ * (autoupdate-proposed-updates, task 4.5): an approved version installs, an
+ * approval of another version does not, a declined version is skipped, and a
+ * notice period announces the update to the admin and the notice group and
+ * holds it until its planned opening.
+ *
+ * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
+ */
+test.describe("background jobs: proposed updates", () => {
+	const OCS = { "OCS-APIRequest": "true", "Content-Type": "application/json" };
+	const NOTICE_USER = "notice-e2e-user";
+	const NOTICE_GROUP = "notice-e2e-group";
+	const installed = async () =>
+		(await occ("config:app:get", FIXTURE_APP, "installed_version")).trim();
+
+	async function policy(page: Page, requireApproval: boolean): Promise<void> {
+		const put = await page.request.put(
+			`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/policy?format=json`,
+			{ headers: OCS, data: { level: "patch", requireApproval: requireApproval ? "1" : "0" } },
+		);
+		expect(put.ok(), "setting the policy should succeed").toBeTruthy();
+	}
+
+	async function decide(page: Page, action: "approve" | "decline", version: string): Promise<void> {
+		const post = await page.request.post(
+			`/ocs/v2.php/apps/versioniq/api/auto-update/proposals/${FIXTURE_APP}/${action}?format=json`,
+			{ headers: OCS, data: { version } },
+		);
+		expect(post.ok(), `${action} ${version} should succeed`).toBeTruthy();
+	}
+
+	async function openTheWindow(): Promise<void> {
+		await occ("config:app:set", "versioniq", "auto_update_enabled", "--value", "1");
+		await occ("config:app:set", "versioniq", "auto_update_window", "--value", "00:00-23:59");
+		await occ("config:app:delete", "versioniq", "auto_update_last_swept_window");
+	}
+
+	test.beforeEach(async ({ page }) => {
+		test.skip(!(await fixtureAvailable(page)), "forge fixture not running");
+		await resetFixtureApp(page);
+	});
+
+	test.afterEach(async ({ page }) => {
+		for (const key of [
+			"auto_update_enabled",
+			"auto_update_window",
+			"auto_update_last_swept_window",
+			"auto_update.proposals",
+			"auto_update.proposal_decisions",
+			"auto_update.notice_days",
+			"auto_update.notice_group",
+			`auto_attempt.${FIXTURE_APP}`,
+		]) {
+			await occ("config:app:delete", "versioniq", key);
+		}
+		await page.request
+			.delete(`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/policy?format=json`, { headers: OCS })
+			.catch(() => undefined);
+		await occ("user:delete", NOTICE_USER);
+		await occ("group:delete", NOTICE_GROUP);
+		await resetFixture(page);
+	});
+
+	test("an approved 1.0.1 installs", async ({ page }) => {
+		// @e2e auto-update-policies::an-approved-version-installs
+		await policy(page, true);
+		await runJob("AvailabilityRefreshJob");
+		await decide(page, "approve", "1.0.1");
+		await openTheWindow();
+
+		await runJob("AutoUpdateJob");
+
+		expect(await installed()).toBe("1.0.1");
+	});
+
+	test("after approving 1.0.1 a newer 1.0.2 installs nothing", async ({ page }) => {
+		// @e2e auto-update-policies::approval-is-for-the-exact-version
+		await policy(page, true);
+		await runJob("AvailabilityRefreshJob");
+		await decide(page, "approve", "1.0.1");
+		await fixtureControl(page, "repo", {
+			repo: "fixtureowner/fixtureapp",
+			releases: [{ tag: "v1.0.2", asset: "fixtureapp-1.0.2.tar.gz", sha: true }],
+		});
+		await openTheWindow();
+
+		await runJob("AutoUpdateJob");
+
+		// The plan now selects 1.0.2, which nobody approved.
+		expect(await installed()).toBe("1.0.0");
+	});
+
+	test("a declined 1.0.1 is skipped", async ({ page }) => {
+		// @e2e auto-update-policies::a-declined-version-is-skipped
+		await policy(page, false);
+		await runJob("AvailabilityRefreshJob");
+		await decide(page, "decline", "1.0.1");
+		await openTheWindow();
+
+		await runJob("AutoUpdateJob");
+
+		expect(await installed()).toBe("1.0.0");
+	});
+
+	test("a notice period announces the update to the admin and the notice group, and holds it", async ({
+		page,
+	}) => {
+		// @e2e auto-update-policies::a-notice-period-announces-and-holds-the-update
+		await occ("user:delete", NOTICE_USER);
+		await execInInstance(
+			["php", "occ", "user:add", "--password-from-env", NOTICE_USER],
+			{ env: { OC_PASS: "noticeUserPass123" } },
+		);
+		await occ("group:add", NOTICE_GROUP);
+		await occ("group:adduser", NOTICE_GROUP, NOTICE_USER);
+		await occ("config:app:set", "versioniq", "auto_update.notice_days", "--value", "14", "--type=integer");
+		await occ("config:app:set", "versioniq", "auto_update.notice_group", "--value", NOTICE_GROUP);
+		await sqlExec("DELETE FROM oc_notifications WHERE app='versioniq'");
+		await policy(page, false);
+
+		await runJob("AvailabilityRefreshJob");
+
+		const planned = await sql(
+			"SELECT user FROM oc_notifications WHERE app='versioniq' AND subject='auto_update_planned'",
+		);
+		expect(planned).toContain("admin");
+		expect(planned).toContain(NOTICE_USER);
+
+		await openTheWindow();
+		await runJob("AutoUpdateJob");
+
+		expect(await installed()).toBe("1.0.0");
+	});
+});
+
+/**
+ * Update groups and run limits in the auto-update job
+ * (autoupdate-run-batching 4.5), with both fixture apps on 1.0.0 and a patch
+ * policy, so each has 1.0.1 as its candidate.
+ *
+ * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+ */
+test.describe("update groups and run limits in the auto-update job", () => {
+	const OCS = { "OCS-APIRequest": "true", "Content-Type": "application/json" };
+	const APPS = [FIXTURE_APP, FIXTURE_APP2];
+
+	const installedOf = async (appId: string) =>
+		(await occ("config:app:get", appId, "installed_version")).trim();
+
+	async function setGroups(page: Page, groups: Array<{ name: string; apps: string[] }>) {
+		const res = await page.request.put(
+			"/ocs/v2.php/apps/versioniq/api/auto-update/groups?format=json",
+			{ headers: OCS, data: { groups } },
+		);
+		expect(res.ok(), `PUT groups: ${res.status()} ${await res.text()}`).toBe(true);
+	}
+
+	async function enableAutomation() {
+		await occ("config:app:set", "versioniq", "auto_update_enabled", "--value", "1");
+		await occ("config:app:set", "versioniq", "auto_update_window", "--value", "00:00-23:59");
+	}
+
+	/** Lets the next job run sweep the same window again. */
+	async function allowAnotherRun() {
+		await occ("config:app:delete", "versioniq", "auto_update_last_swept_window");
+	}
+
+	/** The highest audit id now, so a run's own installs can be read after it. */
+	async function lastAuditId(): Promise<number> {
+		return Number((await sql("SELECT COALESCE(MAX(id), 0) FROM oc_app_versions_audit")) || 0);
+	}
+
+	/** The apps installed after an audit id, in the order they were installed. */
+	async function installedAfter(id: number): Promise<string[]> {
+		const rows = await sql(
+			`SELECT app_id FROM oc_app_versions_audit WHERE id > ${id} AND operation = 'install' AND status = 'success' AND app_id IN ('${FIXTURE_APP}', '${FIXTURE_APP2}') ORDER BY id`,
+		);
+		return rows.split("\n").map((row) => row.trim()).filter((row) => row !== "");
+	}
+
+	test.beforeEach(async ({ page }) => {
+		test.skip(!(await fixtureAvailable(page)), "forge fixture not running");
+		await resetFixtureApp(page, FIXTURE_APP);
+		await resetFixtureApp(page, FIXTURE_APP2);
+		await setGroups(page, []);
+		await occ("config:app:delete", "versioniq", "auto_update.max_per_run");
+		for (const appId of APPS) {
+			await occ("config:app:delete", "versioniq", `auto_attempt.${appId}`);
+			const res = await page.request.put(
+				`/ocs/v2.php/apps/versioniq/api/app/${appId}/policy?format=json`,
+				{ headers: OCS, data: { level: "patch" } },
+			);
+			expect(res.ok(), `PUT policy ${appId}: ${res.status()}`).toBe(true);
+		}
+		await enableAutomation();
+		await allowAnotherRun();
+	});
+
+	test.afterEach(async ({ page }) => {
+		await page.request
+			.put("/ocs/v2.php/apps/versioniq/api/auto-update/groups?format=json", {
+				headers: OCS,
+				data: { groups: [] },
+			})
+			.catch(() => undefined);
+		await occ("config:app:delete", "versioniq", "auto_update.max_per_run");
+		await occ("config:app:delete", "versioniq", "auto_update_enabled");
+		await occ("config:app:delete", "versioniq", "auto_update_window");
+		await allowAnotherRun();
+		for (const appId of APPS) {
+			await occ("config:app:delete", "versioniq", `auto_attempt.${appId}`);
+			for (const path of ["policy", "pin"]) {
+				await page.request
+					.delete(`/ocs/v2.php/apps/versioniq/api/app/${appId}/${path}?format=json`, {
+						headers: { "OCS-APIRequest": "true" },
+					})
+					.catch(() => undefined);
+			}
+		}
+	});
+
+	// @e2e auto-update-policies::a-group-installs-in-order
+	test("a group installs both members, in the group's order", async ({ page }) => {
+		// fixtureapp2 first: not the alphabetical order, so the order is the group's.
+		await setGroups(page, [{ name: "Fixture pair", apps: [FIXTURE_APP2, FIXTURE_APP] }]);
+		const before = await lastAuditId();
+
+		await runJob("AutoUpdateJob");
+
+		expect(await installedOf(FIXTURE_APP2)).toBe("1.0.1");
+		expect(await installedOf(FIXTURE_APP)).toBe("1.0.1");
+		expect(await installedAfter(before)).toEqual([FIXTURE_APP2, FIXTURE_APP]);
+	});
+
+	// @e2e auto-update-policies::a-failed-member-stops-the-group
+	test("a failed first member leaves the second untouched", async ({ page }) => {
+		await setGroups(page, [{ name: "Fixture pair", apps: [FIXTURE_APP2, FIXTURE_APP] }]);
+		await fixtureControl(page, "asset", { asset: "fixtureapp2-1.0.1.tar.gz", status: 404 });
+
+		await runJob("AutoUpdateJob");
+
+		expect(await installedOf(FIXTURE_APP2), "the failed member").toBe("1.0.0");
+		expect(await installedOf(FIXTURE_APP), "the member after it is not attempted").toBe("1.0.0");
+	});
+
+	// @e2e auto-update-policies::a-pinned-member-holds-the-group
+	test("a pin on one member holds the whole group", async ({ page }) => {
+		await setGroups(page, [{ name: "Fixture pair", apps: [FIXTURE_APP, FIXTURE_APP2] }]);
+		const pin = await page.request.put(
+			`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP2}/pin?format=json`,
+			{ headers: OCS, data: {} },
+		);
+		expect(pin.ok(), `PUT pin: ${pin.status()}`).toBe(true);
+
+		await runJob("AutoUpdateJob");
+
+		expect(await installedOf(FIXTURE_APP), "held by its pinned group member").toBe("1.0.0");
+		expect(await installedOf(FIXTURE_APP2), "pinned").toBe("1.0.0");
+	});
+
+	// @e2e auto-update-policies::a-run-limit-defers-the-rest
+	test("with a per-run limit of 1 and no group, one app installs and the next run installs the other", async () => {
+		await occ("config:app:set", "versioniq", "auto_update.max_per_run", "--value", "1");
+
+		await runJob("AutoUpdateJob");
+		const first = await Promise.all(APPS.map(installedOf));
+		expect(first.filter((version) => version === "1.0.1"), `after run 1: ${first.join(", ")}`).toHaveLength(1);
+
+		await allowAnotherRun();
+		await runJob("AutoUpdateJob");
+		expect(await Promise.all(APPS.map(installedOf))).toEqual(["1.0.1", "1.0.1"]);
 	});
 });
 
