@@ -25,5 +25,5 @@
 
 ## 4. Close
 
-- [ ] 4.1 Add strings to `l10n/en` and `l10n/nl` (verify `npm run check:l10n-js`), set the matrix rows `rel-withdrawn-versions`, `saf-revoked-certificate` and `adv-malicious-package` to `built` with evidence lines, then archive this change.
+- [x] 4.1 Add strings to `l10n/en` and `l10n/nl` (verify `npm run check:l10n-js`), set the matrix rows `rel-withdrawn-versions`, `saf-revoked-certificate` and `adv-malicious-package` to `built` with evidence lines, then archive this change.
   - Strings are in: the badge, settings and notification strings are in `l10n/en.json` and `l10n/nl.json`, `l10n/*.js` rebuilt, `npm run check:l10n-js` and `scripts/check-l10n-keys.cjs` pass. The matrix rows and the archive are left.
