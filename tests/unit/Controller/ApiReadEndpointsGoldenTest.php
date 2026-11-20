@@ -29,6 +29,7 @@ use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyStore;
+use OCA\Versioniq\Service\Safety\RevokedCertificateStore;
 use OCA\Versioniq\Tests\Unit\Service\Installer\InstallerGoldenSupport;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\App\IAppManager;
@@ -183,7 +184,10 @@ final class ApiReadEndpointsGoldenTest extends TestCase {
 		$groupManager->method('isAdmin')->willReturnCallback(static fn (string $uid): bool => $uid === 'admin');
 
 		$installer = $this->createMock(InstallerService::class);
-		$installer->method('getInstalledApps')->willReturn([['id' => 'notes', 'version' => '4.1.0']]);
+		$installer->method('getInstalledApps')->willReturn([['id' => 'notes', 'version' => '4.1.0'], ['id' => 'badapp', 'version' => '1.4.0']]);
+		// safety-withdrawn-and-revoked D2: the recheck found badapp's certificate revoked.
+		$revoked = $this->createMock(RevokedCertificateStore::class);
+		$revoked->method('isRevoked')->willReturnCallback(static fn (string $appId): bool => $appId === 'badapp');
 
 		$advisoryResults = $this->createMock(AdvisoryResultStore::class);
 		$advisoryResults->method('read')->willReturn(['advisories' => ['notes' => ['state' => 'advisory-available']], 'checkedAt' => 1_700_000_000, 'status' => 'ok', 'errors' => []]);
@@ -264,6 +268,7 @@ final class ApiReadEndpointsGoldenTest extends TestCase {
 			'pinStore' => $pins,
 			'policyStore' => $policies,
 			'serverVersion' => $this->serverVersion('stable'),
+			'revokedCertificates' => $revoked,
 		]);
 	}
 }
