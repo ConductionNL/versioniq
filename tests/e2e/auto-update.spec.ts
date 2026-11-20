@@ -1,7 +1,17 @@
 // SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
 // SPDX-License-Identifier: EUPL-1.2
+import type { Page } from "@playwright/test";
+
 import { expect, test } from "@playwright/test";
-import { appConfigValue, occ, openSettings, openTab } from "./helpers.ts";
+import {
+	appConfigValue,
+	FIXTURE_APP,
+	FIXTURE_APP2,
+	fixtureAvailable,
+	occ,
+	openSettings,
+	openTab,
+} from "./helpers.ts";
 
 /**
  * Per-app auto-update policies and the global kill switch / window.
@@ -259,5 +269,90 @@ test.describe("auto-update policies", () => {
 					.catch(() => undefined);
 			}
 		}
+	});
+});
+
+/**
+ * Update groups and run limits (autoupdate-run-batching 4.3), set through the
+ * UI. Only apps with an auto-update policy can be grouped, so both fixture
+ * apps get a patch policy first.
+ *
+ * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+ */
+test.describe("update groups and run limits", () => {
+	const OCS = { "OCS-APIRequest": "true", "Content-Type": "application/json" };
+
+	async function policy(page: Page, appId: string, level: string | null) {
+		const url = `/ocs/v2.php/apps/versioniq/api/app/${appId}/policy?format=json`;
+		if (level === null) {
+			await page.request.delete(url, { headers: OCS }).catch(() => undefined);
+			return;
+		}
+		const res = await page.request.put(url, { headers: OCS, data: { level } });
+		expect(res.ok(), `PUT policy ${appId}: ${res.status()}`).toBe(true);
+	}
+
+	async function clearGroupsAndLimits(page: Page) {
+		await page.request
+			.put("/ocs/v2.php/apps/versioniq/api/auto-update/groups?format=json", {
+				headers: OCS,
+				data: { groups: [] },
+			})
+			.catch(() => undefined);
+		await occ("config:app:delete", "versioniq", "auto_update.max_per_run");
+		await occ("config:app:delete", "versioniq", "auto_update.max_per_week");
+	}
+
+	test.beforeEach(async ({ page }) => {
+		test.skip(!(await fixtureAvailable(page)), "forge fixture not running");
+		await clearGroupsAndLimits(page);
+		await policy(page, FIXTURE_APP, "patch");
+		await policy(page, FIXTURE_APP2, "patch");
+	});
+
+	test.afterEach(async ({ page }) => {
+		await clearGroupsAndLimits(page);
+		await policy(page, FIXTURE_APP, null);
+		await policy(page, FIXTURE_APP2, null);
+	});
+
+	// @e2e auto-update-policies::an-admin-groups-two-apps-and-limits-a-run
+	test("an admin creates a group of two apps and a per-run limit of 3, and both survive a reload", async ({
+		page,
+	}) => {
+		await openSettings(page);
+		await openTab(page, "Apps");
+		const panel = page.getByTestId("update-groups-panel");
+		await expect(panel).toBeVisible();
+		await expect(panel.getByTestId("update-groups-none")).toBeVisible();
+
+		await panel.getByTestId("update-group-new-name").fill("Fixture pair");
+		const select = panel.getByTestId("update-group-new-apps");
+		for (const label of ["Forge Fixture App", "Forge Fixture App Two"]) {
+			await select.locator("input").click();
+			await select.locator("input").fill(label);
+			await page.getByRole("option", { name: label, exact: true }).click();
+		}
+		await panel.getByTestId("update-group-add").click();
+		await panel.getByTestId("update-groups-save").click();
+		await expect
+			.poll(async () => appConfigValue(page, "auto_update.groups"))
+			.toContain(FIXTURE_APP2);
+
+		await panel.getByTestId("update-limit-run").fill("3");
+		await panel.getByTestId("update-limits-save").click();
+		await expect
+			.poll(async () => appConfigValue(page, "auto_update.max_per_run"))
+			.toBe("3");
+
+		await page.reload({ waitUntil: "domcontentloaded" });
+		await openTab(page, "Apps");
+		const reloaded = page.getByTestId("update-groups-panel");
+		const group = reloaded.getByTestId("update-group");
+		await expect(group).toHaveCount(1);
+		await expect(group.getByTestId("update-group-name")).toHaveText("Fixture pair");
+		const members = group.getByTestId("update-group-app").locator("span");
+		await expect(members).toHaveText(["Forge Fixture App", "Forge Fixture App Two"]);
+		await expect(reloaded.getByTestId("update-limit-run")).toHaveValue("3");
 	});
 });

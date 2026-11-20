@@ -19,6 +19,7 @@
 - [x] 3.3 Add the `ncsc` row to `lib/Settings/connections.json` and report each read. Verify: `tests/unit/Service/Connection/ConnectionReportServiceTest.php` asserts the report with read and matched counts.
 - [x] 3.4 Add the new strings to `l10n/en.json` and `l10n/nl.json`. Verify: `npm run check:l10n-js`.
 - [ ] 3.5 Serve a CSAF directory from the fixture forge (`tests/e2e/fixtures/forge/server.mjs`: a `changes.csv` and documents about Nextcloud Server, one with a version range covering the CI server and one with `vers:unknown/*`, switchable through `/control`) and extend `tests/e2e/advisories.spec.ts`: switch NCSC-NL on, `runJob("AdvisoryRefreshJob")`, and see the affected advisory and the "does not state which versions" advisory in the Nextcloud server block. Verify: the spec passes in the Playwright job.
+  - Written: the forge serves `/csaf/v2/changes.csv` and two Nextcloud Server documents (`NCSC-2099-0001` affected, `NCSC-2099-0002` `vers:unknown/*`), switchable through `POST /control/csaf`; `tests/e2e/advisories.spec.ts` has the "NCSC-NL advisories" block. Left unticked until the Playwright job has run it.
 
 ## 4. Close
 

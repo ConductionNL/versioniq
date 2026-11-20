@@ -19,6 +19,7 @@ use OCA\Versioniq\Kernel\Contracts\InstanceSettingsInterface;
 use OCA\Versioniq\Service\Advisory\LocalFeedCopy;
 use OCA\Versioniq\Service\Advisory\NcscAdvisoryFeed;
 use OCA\Versioniq\Service\Advisory\NextcloudAdvisoryFeed;
+use OCA\Versioniq\Service\Advisory\OsvClient;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Lifecycle\ServerEolFeed;
@@ -47,6 +48,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 	public const KEY_GITHUB_API_BASE = 'forge.github.api_base';
 	public const KEY_GITHUB_WEB_BASE = 'forge.github.web_base';
 	public const KEY_ADVISORY_FEED = 'advisory.feed_base';
+	public const KEY_OSV_API_BASE = 'advisory.osv_api_base';
 	/** How many release lines an app may fall behind; absent means off (inventory-pending-updates D3). */
 	public const KEY_MAX_LINES_BEHIND = 'update.max_lines_behind';
 	/** Whether apps an update left disabled are enabled again when they run (audit-external-changes). */
@@ -77,6 +79,8 @@ class InstanceSettings implements InstanceSettingsInterface {
 		'advisoryFeedUrl' => [self::KEY_ADVISORY_FEED, false],
 		// The NCSC-NL CSAF directory (advisories-ncsc-feed), https only.
 		'ncscFeedUrl' => [NcscAdvisoryFeed::CONFIG_BASE, true],
+		// Library names leave the server, so only https (advisories-bundled-libraries).
+		'osvApiBase' => [self::KEY_OSV_API_BASE, true],
 	];
 
 	public function __construct(
@@ -90,7 +94,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, eolFeedUrl: string, eolFeedOff: bool, eolFeedDefault: string, ncscFeedUrl: string, ncscFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, reactivateAuto: bool, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int, notifyUsersOnUpdate: bool}
+	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, eolFeedUrl: string, eolFeedOff: bool, eolFeedDefault: string, ncscFeedUrl: string, ncscFeedDefault: string, osvApiBase: string, osvApiDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, reactivateAuto: bool, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int, notifyUsersOnUpdate: bool}
 	 */
 	public function read(): array {
 		$retention = $this->config->getValueInt(Application::APP_ID, PruneAuditJob::CONFIG_KEY_RETENTION_DAYS, PruneAuditJob::DEFAULT_RETENTION_DAYS);
@@ -116,6 +120,8 @@ class InstanceSettings implements InstanceSettingsInterface {
 			'eolFeedDefault' => ServerEolFeed::DEFAULT_FEED_URL,
 			'ncscFeedUrl' => $this->stored(NcscAdvisoryFeed::CONFIG_BASE),
 			'ncscFeedDefault' => NcscAdvisoryFeed::DEFAULT_BASE,
+			'osvApiBase' => $this->stored(self::KEY_OSV_API_BASE),
+			'osvApiDefault' => OsvClient::DEFAULT_API_BASE,
 			'maxLinesBehind' => $this->maxLinesBehind(),
 			'maxLinesBehindMax' => self::MAX_LINES_BEHIND,
 			'reactivateAuto' => $this->config->getValueBool(Application::APP_ID, self::KEY_REACTIVATE_AUTO, false),

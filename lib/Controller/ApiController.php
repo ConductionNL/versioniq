@@ -13,6 +13,8 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
+use OCA\Versioniq\BackgroundJob\UpgradeReadinessJob;
+use OCA\Versioniq\Db\AuditEntryMapper;
 use OCA\Versioniq\Db\Pat;
 use OCA\Versioniq\Http\InstallVersionFields;
 use OCA\Versioniq\Http\RequestFieldsFrom;
@@ -20,8 +22,11 @@ use OCA\Versioniq\Kernel\Contracts\AdvisorySettingsStoreInterface;
 use OCA\Versioniq\Service\Advisory\ComplianceStatus;
 use OCA\Versioniq\Service\Advisory\FixStatus;
 use OCA\Versioniq\Service\Api\AccessCollaborators;
+use OCA\Versioniq\Service\Audit\AuditPeriod;
+use OCA\Versioniq\Service\Audit\AuditPeriodQuery;
 use OCA\Versioniq\Service\Api\InstallCollaborators;
 use OCA\Versioniq\Service\Api\ReportCollaborators;
+use OCA\Versioniq\Service\Audit\AuditOrigin;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
@@ -59,6 +64,9 @@ use OCP\IUser;
 class ApiController extends OCSController {
 	/** The spellings readBinaryBool() understands. */
 	private const BINARY_FLAGS = ['1', 'true', '0', 'false'];
+
+	/** The origins `GET /api/audit?origin=` filters on; anything else lists every row. */
+	private const AUDIT_ORIGINS = [AuditOrigin::WEB, AuditOrigin::CLI, AuditOrigin::JOB, AuditOrigin::LISTENER, AuditEntryMapper::ORIGIN_UNKNOWN];
 
 	/**
 	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
@@ -126,7 +134,7 @@ class ApiController extends OCSController {
 	 * `triage` is the stored dismissals and owners, keyed `{appId}|{advisoryId}`,
 	 * applied by the page; the snapshot itself stays raw (advisories-triage D1).
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{advisories: array<string, mixed>, checkedAt: ?int, status: ?string, errors: list<string>, compliance: array<string, mixed>, triage: array<string, mixed>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{advisories: array<string, mixed>, checkedAt: ?int, status: ?string, errors: list<string>, compliance: array<string, mixed>, triage: array<string, mixed>, libraries: array<string, mixed>, librariesCheckedAt: ?int}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Stored advisory correlation returned
 	 * 403: Caller is not an administrator
@@ -143,6 +151,10 @@ class ApiController extends OCSController {
 		}
 
 		$snapshot = $this->reports->stores->advisoryResultStore->read();
+		// Kept beside, never merged into, the app advisories: a library
+		// finding has no app version known to fix it.
+		$libraries = $this->reports->libraryAdvisoryStore?->read() ?? ['libraries' => [], 'checkedAt' => null];
+
 		// A pin is read now, not at sweep time: it can change between sweeps.
 		$rows = FixStatus::withPins($snapshot['advisories'], $this->autoUpdate->pinStore->all());
 
@@ -159,6 +171,8 @@ class ApiController extends OCSController {
 				$this->access->caller->timeFactory->getDateTime('now')->getTimestamp(),
 			),
 			'triage' => $this->reports->stores->advisoryTriageStore?->read() ?? [],
+			'libraries' => $libraries['libraries'],
+			'librariesCheckedAt' => $libraries['checkedAt'],
 		]);
 	}
 
@@ -195,6 +209,83 @@ class ApiController extends OCSController {
 			'errors' => $snapshot['errors'],
 			'maxLinesBehind' => $this->reports->stores->instanceSettings?->maxLinesBehind(),
 		]);
+	}
+
+	/**
+	 * Returns the last upgrade readiness report (admin-only, read-only) with
+	 * its time and targets, and the PHP version this server runs, the default
+	 * PHP target of a new check. Reads what UpgradeReadinessJob stored and
+	 * never lists versions (issue #160).
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{report: ?array<string, mixed>, checkedAt: ?int, php: string}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 *
+	 * 200: Stored readiness report returned
+	 * 403: Caller is not an administrator
+	 *
+	 * @spec openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness/spec.md#requirement-an-admin-checks-every-installed-app-against-a-target-server-major-and-php-version
+	 */
+	#[ApiRoute(verb: 'GET', url: '/api/readiness')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/readiness', postfix: 'v1')]
+	public function readiness(): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$stored = $this->reports->readiness?->readinessResultStore->read() ?? ['report' => null, 'checkedAt' => null];
+
+		return new DataResponse([
+			'report' => $stored['report'],
+			'checkedAt' => $stored['checkedAt'],
+			'php' => PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION,
+		]);
+	}
+
+	/**
+	 * Queues an upgrade readiness check against a target server major and PHP
+	 * version (admin-only, password-confirmed). The check runs in
+	 * UpgradeReadinessJob; GET /api/readiness reads its report.
+	 *
+	 * @param string $server The target Nextcloud major, such as `33`
+	 * @param string $php The target PHP version, such as `8.4`
+	 * @return DataResponse<Http::STATUS_ACCEPTED, array{queued: bool, server: string, php: string}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_SERVICE_UNAVAILABLE, array{message: string}, array{}>
+	 *
+	 * 202: Check queued
+	 * 400: A target is not a server major or a PHP version
+	 * 403: Caller is not an administrator
+	 * 503: Background jobs are not available
+	 *
+	 * @spec openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness/spec.md#requirement-an-admin-checks-every-installed-app-against-a-target-server-major-and-php-version
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'POST', url: '/api/readiness')]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/readiness', postfix: 'v1')]
+	public function startReadiness(string $server = '', string $php = ''): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$targets = UpgradeReadinessJob::targets(['server' => $server, 'php' => $php]);
+		if ($targets === null || !self::validTargets($targets)) {
+			return new DataResponse(['message' => 'Give a server major such as 33 and a PHP version such as 8.4'], Http::STATUS_BAD_REQUEST);
+		}
+		$jobList = $this->reports->readiness?->jobList;
+		if ($jobList === null) {
+			return new DataResponse(['message' => 'Background jobs are not available'], Http::STATUS_SERVICE_UNAVAILABLE);
+		}
+
+		$jobList->add(UpgradeReadinessJob::class, $targets);
+
+		return new DataResponse(['queued' => true] + $targets, Http::STATUS_ACCEPTED);
+	}
+
+	/**
+	 * Whether the targets read as a server major and a PHP version.
+	 *
+	 * @param array{server: string, php: string} $targets
+	 */
+	private static function validTargets(array $targets): bool {
+		return preg_match('/^\d{1,3}$/', $targets['server']) === 1
+			&& preg_match('/^\d+\.\d+(\.\d+)?$/', $targets['php']) === 1;
 	}
 
 	/**
@@ -649,6 +740,7 @@ class ApiController extends OCSController {
 	 * @spec openspec/specs/external-sources/spec.md
 	 * @spec openspec/specs/migration-safety/spec.md
 	 * @spec openspec/specs/cli-commands/spec.md
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'POST', url: '/api/app/{appId}/versions/{version}/install')]
@@ -775,10 +867,11 @@ class ApiController extends OCSController {
 		$pinRequested = $this->readBinaryBool($fields->pin, false);
 		$acceptNewShaFlag = $this->readBinaryBool($fields->acceptNewSha, false);
 		$allowDowngradeFlag = $this->readBinaryBool($fields->allowDowngrade, false);
+		$forceIncompatibleFlag = $this->readBinaryBool($fields->forceIncompatible, false);
 
 		return new InstallRequest(
 			$target,
-			new InstallOptions($includeDebug, $dryRunFlag ?? $includeDebug, $acceptNewShaFlag, $allowDowngradeFlag),
+			new InstallOptions($includeDebug, $dryRunFlag ?? $includeDebug, $acceptNewShaFlag, $allowDowngradeFlag, $forceIncompatibleFlag),
 			new PinChoice($overridePin, $pinRequested),
 		);
 	}
@@ -814,6 +907,40 @@ class ApiController extends OCSController {
 			$payload,
 			$this->toHttpStatus($result['statusCode'] ?? Http::STATUS_INTERNAL_SERVER_ERROR, Http::STATUS_INTERNAL_SERVER_ERROR)
 		);
+	}
+
+	/**
+	 * "Enable anyway": enables a disabled app whose installed version only its
+	 * declared maximum keeps off this server, through `app_install_overwrite`
+	 * (admin-only, password-confirmed). A failed enable removes the entry again
+	 * when Versioniq added it.
+	 *
+	 * @param string $appId The app to enable
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_FORBIDDEN|Http::STATUS_NOT_FOUND|Http::STATUS_CONFLICT, array<string, mixed>, array{}>
+	 *
+	 * 200: The app is enabled and the override recorded
+	 * 403: Caller is not an administrator, or the app ships with the server
+	 * 404: The app is not installed
+	 * 409: The app is enabled already, an override cannot help it, or Nextcloud refused to enable it
+	 *
+	 * @psalm-suppress InvalidReturnType Status passthrough from ForceEnabler.
+	 *
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'POST', url: '/api/app/{appId}/force-enable')]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/app/{appId}/force-enable', postfix: 'v1')]
+	public function forceEnable(string $appId): DataResponse {
+		$user = $this->adminUser();
+		if (!$user instanceof IUser) {
+			return $user;
+		}
+
+		$result = $this->install->forceEnabler->enable(trim($appId), $user->getUID());
+
+		/** @psalm-suppress InvalidReturnStatement, ArgumentTypeCoercion Status passthrough. */
+		return new DataResponse($result['payload'], $result['statusCode']);
 	}
 
 	/**
@@ -1016,6 +1143,8 @@ class ApiController extends OCSController {
 			// back with the time each was first held (autoupdate-run-batching D2, D5).
 			'groups' => self::groupsPayload($this->autoUpdate->groupStore->all()),
 			'waiting' => (object)$this->autoUpdate->settingsStore->getDeferred(),
+			'noticeDays' => $this->autoUpdate->settingsStore->getNoticeDays(),
+			'noticeGroup' => $this->autoUpdate->settingsStore->getNoticeGroup(),
 		] + $this->autoUpdateCaps() + $this->scheduleView());
 	}
 
@@ -1056,10 +1185,12 @@ class ApiController extends OCSController {
 	}
 
 	/**
-	 * Sets an app's auto-update policy level (password-confirmed); rejects an
-	 * unknown level with 400; see "Per-app update policy"
+	 * Sets an app's auto-update policy level and whether its automatic updates
+	 * need approval (password-confirmed); rejects an unknown level with 400;
+	 * see "Per-app update policy"
 	 *
 	 * @param string $appId The app to set a policy for
+	 * @param string|null $requireApproval `1`/`0`: install only versions an admin approved; OMIT to keep the current value
 	 *
 	 * @return DataResponse<Http::STATUS_OK, array{appId: string, policy: array<string, mixed>}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
@@ -1068,11 +1199,12 @@ class ApiController extends OCSController {
 	 * 403: Caller is not an administrator
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PUT', url: '/api/app/{appId}/policy')]
 	#[ApiRoute(verb: 'PUT', url: '/api/v1/app/{appId}/policy', postfix: 'v1')]
-	public function setPolicy(string $appId): DataResponse {
+	public function setPolicy(string $appId, ?string $requireApproval = null): DataResponse {
 		$user = $this->adminUser();
 		if (!$user instanceof IUser) {
 			return $user;
@@ -1086,12 +1218,21 @@ class ApiController extends OCSController {
 			);
 		}
 
+		// An omitted requireApproval keeps what the app's policy had, so a
+		// level change from an older client never drops the approval step.
+		$approval = $this->readBinaryBool(
+			$requireApproval === '' ? '0' : $requireApproval,
+			$this->autoUpdate->policyStore->get($appId)?->requireApproval ?? false,
+		);
 		$policy = new Policy(
 			$level,
 			$user->getUID(),
 			$this->access->caller->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
+			$approval,
 		);
+		$before = $this->reports->ruleAudit === null ? null : $this->autoUpdate->policyStore->get($appId)?->level;
 		$this->autoUpdate->policyStore->set($appId, $policy);
+		$this->reports->ruleAudit?->policySet($user->getUID(), $appId, $before, $level);
 
 		return new DataResponse(['appId' => $appId, 'policy' => $policy->toArray()]);
 	}
@@ -1117,7 +1258,11 @@ class ApiController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
+		$before = $this->reports->ruleAudit === null ? null : $this->autoUpdate->policyStore->get($appId)?->level;
 		$this->autoUpdate->policyStore->clear($appId);
+		if ($before !== null) {
+			$this->reports->ruleAudit?->policyCleared($this->callerUid(), $appId, $before);
+		}
 
 		return new DataResponse(['appId' => $appId, 'cleared' => true]);
 	}
@@ -1176,19 +1321,22 @@ class ApiController extends OCSController {
 	 * kill switch and window"
 	 *
 	 * @param string|null $enabled `1`/`0` to set the global kill switch; OMIT to leave it untouched
+	 * @param string|null $noticeDays Days a planned update is announced before it installs, 0 to 60 (0 is off); OMIT to leave it untouched
+	 * @param string|null $noticeGroup Group whose members are told of planned updates besides the admins, empty to clear; OMIT to leave it untouched
 	 *
 	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: The stored global settings
-	 * 400: The maintenance window is malformed
+	 * 400: The maintenance window is malformed, the notice period is outside 0 to 60 days, or the notice group does not exist
 	 * 403: Caller is not an administrator
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
 	 */
 	#[PasswordConfirmationRequired(strict: false)]
 	#[ApiRoute(verb: 'PUT', url: '/api/auto-update/settings')]
 	#[ApiRoute(verb: 'PUT', url: '/api/v1/auto-update/settings', postfix: 'v1')]
-	public function updateAutoUpdateSettings(?string $enabled = null): DataResponse {
+	public function updateAutoUpdateSettings(?string $enabled = null, ?string $noticeDays = null, ?string $noticeGroup = null): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
@@ -1224,6 +1372,13 @@ class ApiController extends OCSController {
 			return $caps;
 		}
 
+		$noticeRefusal = $this->noticeRefusal($noticeDays, $noticeGroup);
+		if ($noticeRefusal !== null) {
+			return $noticeRefusal;
+		}
+
+		$before = $this->reports->ruleAudit === null ? [] : $this->autoUpdateRule();
+		$this->storeNotice($noticeDays, $noticeGroup);
 		if ($enabledParam !== null) {
 			$this->autoUpdate->settingsStore->setEnabled($this->readBinaryBool($enabledParam, $this->autoUpdate->settingsStore->isEnabled()));
 		}
@@ -1232,11 +1387,14 @@ class ApiController extends OCSController {
 		}
 		$this->storeCaps($caps);
 		$this->storeSchedule($scheduleParam);
+		$this->reports->ruleAudit?->autoUpdateSettings($this->callerUid(), $before, $this->autoUpdateRule());
 
 		return new DataResponse([
 			'autoUpdateEnabled' => $this->autoUpdate->settingsStore->isEnabled(),
 			'autoUpdateWindow' => $this->autoUpdate->settingsStore->getWindow(),
 			'autoUpdateTimeZone' => $this->autoUpdate->settingsStore->getTimeZoneName(),
+			'noticeDays' => $this->autoUpdate->settingsStore->getNoticeDays(),
+			'noticeGroup' => $this->autoUpdate->settingsStore->getNoticeGroup(),
 		] + $this->autoUpdateCaps() + $this->scheduleView());
 	}
 
@@ -1273,6 +1431,44 @@ class ApiController extends OCSController {
 	}
 
 	/**
+	 * The 400 for a notice period outside 0..60 days or a notice group that
+	 * does not exist; null when both are acceptable or omitted. Nothing is
+	 * stored when either is refused.
+	 *
+	 * @return DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>|null
+	 */
+	private function noticeRefusal(?string $days, ?string $group): ?DataResponse {
+		if ($days !== null && trim($days) !== '' && !self::isNoticeDays($days)) {
+			return new DataResponse(
+				['message' => 'noticeDays must be a whole number from 0 to ' . AutoUpdateSettingsStore::MAX_NOTICE_DAYS . '.'],
+				Http::STATUS_BAD_REQUEST
+			);
+		}
+		if ($group !== null && trim($group) !== '' && !$this->access->caller->groupManager->groupExists(trim($group))) {
+			return new DataResponse(['message' => 'noticeGroup is not an existing group.'], Http::STATUS_BAD_REQUEST);
+		}
+
+		return null;
+	}
+
+	private static function isNoticeDays(string $days): bool {
+		return preg_match('/^\d{1,2}$/', trim($days)) === 1 && (int)trim($days) <= AutoUpdateSettingsStore::MAX_NOTICE_DAYS;
+	}
+
+	/**
+	 * Stores the notice period and group when the request carries them; an
+	 * empty group clears it.
+	 */
+	private function storeNotice(?string $days, ?string $group): void {
+		if ($days !== null && trim($days) !== '') {
+			$this->autoUpdate->settingsStore->setNoticeDays((int)trim($days));
+		}
+		if ($group !== null) {
+			$this->autoUpdate->settingsStore->setNoticeGroup(trim($group));
+		}
+	}
+
+	/**
 	 * Returns the advisory check settings: how often the sweep runs and
 	 * whether the weekly digest is sent (admin-only).
 	 *
@@ -1280,7 +1476,7 @@ class ApiController extends OCSController {
 	 * hardcode the range in order to build a control will drift from the
 	 * server the first time the range changes.
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, ncscEnabled: bool, ncscStatus: array{readUpTo: ?string, caughtUp: bool}}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, ncscEnabled: bool, ncscStatus: array{readUpTo: ?string, caughtUp: bool}, librariesEnabled: bool}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Advisory settings returned
 	 * 403: Caller is not an administrator
@@ -1308,7 +1504,8 @@ class ApiController extends OCSController {
 	 * @param ?string $intervalHours How often the sweep runs, in hours. Omitted leaves it unchanged.
 	 * @param ?string $digestEnabled Whether the weekly digest is sent ('1'/'0'). Omitted leaves it unchanged.
 	 * @param ?string $ncscEnabled Whether the sweep also reads NCSC-NL's advisories ('1'/'0'). Omitted leaves it unchanged.
-	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, ncscEnabled: bool, ncscStatus: array{readUpTo: ?string, caughtUp: bool}}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @param ?string $librariesEnabled Whether bundled libraries are checked against OSV ('1'/'0'). Omitted leaves it unchanged.
+	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, ncscEnabled: bool, ncscStatus: array{readUpTo: ?string, caughtUp: bool}, librariesEnabled: bool}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Advisory settings updated
 	 * 400: intervalHours outside the supported range
@@ -1319,11 +1516,12 @@ class ApiController extends OCSController {
 	#[ApiRoute(verb: 'PUT', url: '/api/advisory/settings')]
 	#[ApiRoute(verb: 'PUT', url: '/api/v1/advisory/settings', postfix: 'v1')]
 	#[PasswordConfirmationRequired]
-	public function updateAdvisorySettings(?string $intervalHours = null, ?string $digestEnabled = null, ?string $ncscEnabled = null): DataResponse {
+	public function updateAdvisorySettings(?string $intervalHours = null, ?string $digestEnabled = null, ?string $ncscEnabled = null, ?string $librariesEnabled = null): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
+		$before = $this->reports->ruleAudit === null ? [] : $this->advisoryRule();
 		if ($intervalHours !== null && $intervalHours !== '') {
 			$refusal = $this->storeIntervalHours($intervalHours);
 			if ($refusal !== null) {
@@ -1331,18 +1529,75 @@ class ApiController extends OCSController {
 			}
 		}
 
-		// Same empty-string-is-an-explicit-false handling as the auto-update
-		// kill switch above: PHP casts a JSON `false` to "", not "0".
-		if ($digestEnabled !== null) {
-			$this->storeDigestEnabled($digestEnabled);
-		}
+		$this->storeAdvisoryFlags($digestEnabled, $librariesEnabled);
 
 		if ($ncscEnabled !== null) {
 			$store = $this->reports->stores->advisorySettingsStore;
 			$store->setNcscEnabled($this->readBinaryBool($ncscEnabled === '' ? '0' : $ncscEnabled, $store->isNcscEnabled()));
 		}
+		$this->reports->ruleAudit?->advisorySettings($this->callerUid(), $before, $this->advisoryRule());
 
 		return $this->advisorySettingsResponse();
+	}
+
+	/**
+	 * The automatic update switch and window as they stand, for the rule audit.
+	 *
+	 * @return array{enabled: bool, window: string, maxPerRun: ?int, maxPerWeek: ?int}
+	 */
+	private function autoUpdateRule(): array {
+		return [
+			'enabled' => $this->autoUpdate->settingsStore->isEnabled(),
+			'window' => $this->autoUpdate->settingsStore->getWindow(),
+			'maxPerRun' => $this->autoUpdate->settingsStore->getMaxPerRun(),
+			'maxPerWeek' => $this->autoUpdate->settingsStore->getMaxPerWeek(),
+		];
+	}
+
+	/**
+	 * The advisory interval and switches as they stand, for the rule audit.
+	 *
+	 * @return array{intervalHours: int, digestEnabled: bool, ncscEnabled: bool, librariesEnabled: bool}
+	 */
+	private function advisoryRule(): array {
+		return [
+			'intervalHours' => $this->reports->stores->advisorySettingsStore->getIntervalHours(),
+			'digestEnabled' => $this->reports->stores->advisorySettingsStore->isDigestEnabled(),
+			'ncscEnabled' => $this->reports->stores->advisorySettingsStore->isNcscEnabled(),
+			'librariesEnabled' => $this->reports->stores->advisorySettingsStore->isLibraryCheckEnabled(),
+		];
+	}
+
+	/** The signed-in admin's uid, '' when there is none. */
+	private function callerUid(): string {
+		return $this->access->caller->userSession->getUser()?->getUID() ?? '';
+	}
+
+	/**
+	 * Stores the two advisory switches that were sent: the weekly digest and
+	 * the bundled-library check (advisories-bundled-libraries). An omitted one
+	 * is left as it is. Same empty-string-is-an-explicit-false handling as the
+	 * auto-update kill switch: PHP casts a JSON `false` to "", not "0".
+	 */
+	private function storeAdvisoryFlags(?string $digestEnabled, ?string $librariesEnabled): void {
+		if ($digestEnabled !== null) {
+			$this->storeDigestEnabled($digestEnabled);
+		}
+
+		if ($librariesEnabled !== null) {
+			$this->storeLibrariesEnabled($librariesEnabled);
+		}
+	}
+
+	/**
+	 * Stores the bundled-library check switch; an empty string is an explicit
+	 * false, and an unknown value keeps the current one.
+	 */
+	private function storeLibrariesEnabled(string $librariesEnabled): void {
+		$librariesParam = ($librariesEnabled === '') ? '0' : $librariesEnabled;
+		$this->reports->stores->advisorySettingsStore->setLibraryCheckEnabled(
+			$this->readBinaryBool($librariesParam, $this->reports->stores->advisorySettingsStore->isLibraryCheckEnabled()),
+		);
 	}
 
 	/**
@@ -1397,7 +1652,7 @@ class ApiController extends OCSController {
 	/**
 	 * The advisory check settings as stored, with the supported interval range.
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, ncscEnabled: bool, ncscStatus: array{readUpTo: ?string, caughtUp: bool}}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, ncscEnabled: bool, ncscStatus: array{readUpTo: ?string, caughtUp: bool}, librariesEnabled: bool}, array{}>
 	 */
 	private function advisorySettingsResponse(): DataResponse {
 		return new DataResponse([
@@ -1408,6 +1663,7 @@ class ApiController extends OCSController {
 			// advisories-ncsc-feed: the NCSC-NL switch, and how far its read got.
 			'ncscEnabled' => $this->reports->stores->advisorySettingsStore->isNcscEnabled(),
 			'ncscStatus' => $this->reports->stores->advisorySettingsStore->ncscStatus(),
+			'librariesEnabled' => $this->reports->stores->advisorySettingsStore->isLibraryCheckEnabled(),
 		]);
 	}
 
@@ -1704,7 +1960,10 @@ class ApiController extends OCSController {
 
 	/**
 	 * Lists audit entries, newest-first, admin-only, paginated and optionally
-	 * filtered by app id; see "Audit entries are immutable and admin-readable".
+	 * filtered by app id and by origin (`web`, `cli`, `job`, `listener`, or
+	 * `unknown` for rows written before origins were recorded); see "Audit
+	 * entries are immutable and admin-readable" and "Every audit row says where
+	 * it came from".
 	 * No mutation endpoint exists for this resource — the retention prune job
 	 * is the only deletion path.
 	 *
@@ -1727,13 +1986,68 @@ class ApiController extends OCSController {
 		$limit = max(1, min($limit, 200));
 		$offset = max(0, $this->intParam('offset', 0));
 
-		$entries = $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset);
+		$origin = $this->stringParam('origin', '');
+		$from = $this->stringParam('from', '');
+		$to = $this->stringParam('to', '');
+		$operation = $this->stringParam('operation', '');
+		$securityOnly = $this->readBinaryBool($this->request->getParam('securityOnly'), false);
+		if ($from === '' && $to === '' && $operation === '' && $securityOnly === false) {
+			$entries = in_array($origin, self::AUDIT_ORIGINS, true)
+				? $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset, $origin)
+				: $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset);
 
-		return new DataResponse([
-			'entries' => $entries,
-			'limit' => $limit,
-			'offset' => $offset,
-		]);
+			return new DataResponse([
+				'entries' => $this->withSbomFlags($entries),
+				'limit' => $limit,
+				'offset' => $offset,
+			]);
+		}
+
+		// audit-security-reports D5: a period in the admin's time zone, a
+		// single operation, and the security updates only.
+		try {
+			$period = AuditPeriod::fromDays($from, $to, $this->stringParam('timeZone', ''));
+		} catch (InvalidArgumentException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
+
+		$result = (new AuditPeriodQuery($this->reports->auditEntryMapper))->page(
+			$period,
+			['appId' => $appId, 'operation' => $operation, 'securityOnly' => $securityOnly],
+			['limit' => $limit, 'offset' => $offset],
+		);
+		$result['entries'] = $this->withSbomFlags($result['entries']);
+
+		return new DataResponse($result);
+	}
+
+	/**
+	 * The history rows with `sbomAvailable` on each install row: whether an SBOM
+	 * of the state it produced was kept (inventory-export-sbom-metrics D4).
+	 * Without the archive the rows go out as before.
+	 *
+	 * @param list<\OCA\Versioniq\Db\AuditEntry|array<string, mixed>> $entries
+	 *
+	 * @return list<mixed>
+	 *
+	 * @spec openspec/changes/inventory-export-sbom-metrics/specs/inventory-export/spec.md#requirement-every-update-leaves-an-sbom-of-the-state-it-produced
+	 */
+	private function withSbomFlags(array $entries): array {
+		$archive = $this->install->sbomArchive;
+		if ($archive === null) {
+			return $entries;
+		}
+
+		$stored = $archive->storedIds();
+
+		return array_map(static function ($entry) use ($stored) {
+			$row = is_array($entry) ? $entry : $entry->jsonSerialize();
+			if (($row['operation'] ?? null) === 'install') {
+				$row['sbomAvailable'] = isset($stored[$row['id'] ?? -1]);
+			}
+
+			return $row;
+		}, $entries);
 	}
 
 	/**

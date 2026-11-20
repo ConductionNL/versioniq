@@ -1,16 +1,20 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
+import type { UpdateChecks } from './UpdateChecksPanel.vue'
+
 import { t } from '@nextcloud/l10n'
 import { computed, onMounted, ref } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
+import UpdateChecksPanel from './UpdateChecksPanel.vue'
 import { ocsGet, ocsWrite } from '../ocs.ts'
 import { feedCopyState, importFeedCopy } from '../utils/advisoryFeedCopy.ts'
 
 /**
  * The instance settings that were reachable only through `occ config:app:set`
  * (#438 item 7): audit retention, artifact cache size, a store mirror, GitHub
- * Enterprise and an internal advisory feed mirror.
+ * Enterprise and an internal advisory feed mirror; and the update checks,
+ * which GET carries under `updateChecks` and which save on their own.
  *
  * @spec openspec/specs/audit-trail/spec.md
  * @spec openspec/specs/external-sources/spec.md
@@ -31,8 +35,11 @@ type Settings = {
 	advisoryFeedDefault: string
 	ncscFeedUrl: string
 	ncscFeedDefault: string
+	osvApiBase?: string
+	osvApiDefault?: string
 	maxLinesBehind: number | null
 	maxLinesBehindMax: number
+	updateChecks?: UpdateChecks
 	reactivateAuto?: boolean
 	advisoryFeedSource?: string
 	advisoryFeedCopiedAt?: number | null
@@ -51,6 +58,7 @@ const form = ref({
 	githubWebBase: '',
 	advisoryFeedUrl: '',
 	ncscFeedUrl: '',
+	osvApiBase: '',
 	maxLinesBehind: '',
 	reactivateAuto: false,
 	advisoryFeedSource: 'remote',
@@ -65,7 +73,8 @@ const notice = ref('')
  * @spec openspec/specs/external-sources/spec.md
  */
 function fill (settings: Settings): void {
-	loaded.value = settings
+	// PUT /api/instance-settings answers without the update checks; keep the ones loaded.
+	loaded.value = { ...settings, updateChecks: settings.updateChecks ?? loaded.value?.updateChecks }
 	form.value = {
 		auditRetentionDays: String(settings.auditRetentionDays),
 		artifactCacheKeep: String(settings.artifactCacheKeep),
@@ -74,6 +83,7 @@ function fill (settings: Settings): void {
 		githubWebBase: settings.githubWebBase,
 		advisoryFeedUrl: settings.advisoryFeedUrl,
 		ncscFeedUrl: settings.ncscFeedUrl ?? '',
+		osvApiBase: settings.osvApiBase ?? '',
 		maxLinesBehind: settings.maxLinesBehind === null || settings.maxLinesBehind === undefined ? '' : String(settings.maxLinesBehind),
 		reactivateAuto: settings.reactivateAuto === true,
 		advisoryFeedSource: settings.advisoryFeedSource === 'local' ? 'local' : 'remote',
@@ -318,6 +328,17 @@ onMounted(load)
 				</NcNoteCard>
 			</div>
 
+			<label :class="$style.field" for="setting-osv-api">
+				<span>{{ t('versioniq', 'OSV API address for the library check (https, a mirror)') }}</span>
+				<input
+					id="setting-osv-api"
+					v-model="form.osvApiBase"
+					type="url"
+					:placeholder="loaded.osvApiDefault"
+					data-testid="setting-osv-api">
+				<span :class="$style.hint">{{ t('versioniq', 'Default: {url}', { url: loaded.osvApiDefault ?? '' }) }}</span>
+			</label>
+
 			<p v-if="notice" :class="$style.notice" data-testid="instance-settings-notice">
 				{{ notice }}
 			</p>
@@ -328,6 +349,8 @@ onMounted(load)
 				@click="save">
 				{{ t('versioniq', 'Save') }}
 			</NcButton>
+
+			<UpdateChecksPanel v-if="loaded.updateChecks" :checks="loaded.updateChecks" />
 		</template>
 	</section>
 </template>
