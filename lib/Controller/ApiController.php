@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Controller;
 
 use InvalidArgumentException;
+use OCA\Versioniq\BackgroundJob\UpgradeReadinessJob;
 use OCA\Versioniq\Db\Pat;
 use OCA\Versioniq\Http\InstallVersionFields;
 use OCA\Versioniq\Http\RequestFieldsFrom;
@@ -128,7 +129,7 @@ class ApiController extends OCSController {
 	 * `triage` is the stored dismissals and owners, keyed `{appId}|{advisoryId}`,
 	 * applied by the page; the snapshot itself stays raw (advisories-triage D1).
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{advisories: array<string, mixed>, checkedAt: ?int, status: ?string, errors: list<string>, compliance: array<string, mixed>, triage: array<string, mixed>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{advisories: array<string, mixed>, checkedAt: ?int, status: ?string, errors: list<string>, compliance: array<string, mixed>, triage: array<string, mixed>, libraries: array<string, mixed>, librariesCheckedAt: ?int}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Stored advisory correlation returned
 	 * 403: Caller is not an administrator
@@ -145,6 +146,10 @@ class ApiController extends OCSController {
 		}
 
 		$snapshot = $this->reports->stores->advisoryResultStore->read();
+		// Kept beside, never merged into, the app advisories: a library
+		// finding has no app version known to fix it.
+		$libraries = $this->reports->libraryAdvisoryStore?->read() ?? ['libraries' => [], 'checkedAt' => null];
+
 		// A pin is read now, not at sweep time: it can change between sweeps.
 		$rows = FixStatus::withPins($snapshot['advisories'], $this->autoUpdate->pinStore->all());
 
@@ -161,6 +166,8 @@ class ApiController extends OCSController {
 				$this->access->caller->timeFactory->getDateTime('now')->getTimestamp(),
 			),
 			'triage' => $this->reports->stores->advisoryTriageStore?->read() ?? [],
+			'libraries' => $libraries['libraries'],
+			'librariesCheckedAt' => $libraries['checkedAt'],
 		]);
 	}
 
@@ -197,6 +204,83 @@ class ApiController extends OCSController {
 			'errors' => $snapshot['errors'],
 			'maxLinesBehind' => $this->reports->stores->instanceSettings?->maxLinesBehind(),
 		]);
+	}
+
+	/**
+	 * Returns the last upgrade readiness report (admin-only, read-only) with
+	 * its time and targets, and the PHP version this server runs, the default
+	 * PHP target of a new check. Reads what UpgradeReadinessJob stored and
+	 * never lists versions (issue #160).
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{report: ?array<string, mixed>, checkedAt: ?int, php: string}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 *
+	 * 200: Stored readiness report returned
+	 * 403: Caller is not an administrator
+	 *
+	 * @spec openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness/spec.md#requirement-an-admin-checks-every-installed-app-against-a-target-server-major-and-php-version
+	 */
+	#[ApiRoute(verb: 'GET', url: '/api/readiness')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/readiness', postfix: 'v1')]
+	public function readiness(): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$stored = $this->reports->readiness?->readinessResultStore->read() ?? ['report' => null, 'checkedAt' => null];
+
+		return new DataResponse([
+			'report' => $stored['report'],
+			'checkedAt' => $stored['checkedAt'],
+			'php' => PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION,
+		]);
+	}
+
+	/**
+	 * Queues an upgrade readiness check against a target server major and PHP
+	 * version (admin-only, password-confirmed). The check runs in
+	 * UpgradeReadinessJob; GET /api/readiness reads its report.
+	 *
+	 * @param string $server The target Nextcloud major, such as `33`
+	 * @param string $php The target PHP version, such as `8.4`
+	 * @return DataResponse<Http::STATUS_ACCEPTED, array{queued: bool, server: string, php: string}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_SERVICE_UNAVAILABLE, array{message: string}, array{}>
+	 *
+	 * 202: Check queued
+	 * 400: A target is not a server major or a PHP version
+	 * 403: Caller is not an administrator
+	 * 503: Background jobs are not available
+	 *
+	 * @spec openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness/spec.md#requirement-an-admin-checks-every-installed-app-against-a-target-server-major-and-php-version
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'POST', url: '/api/readiness')]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/readiness', postfix: 'v1')]
+	public function startReadiness(string $server = '', string $php = ''): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		$targets = UpgradeReadinessJob::targets(['server' => $server, 'php' => $php]);
+		if ($targets === null || !self::validTargets($targets)) {
+			return new DataResponse(['message' => 'Give a server major such as 33 and a PHP version such as 8.4'], Http::STATUS_BAD_REQUEST);
+		}
+		$jobList = $this->reports->readiness?->jobList;
+		if ($jobList === null) {
+			return new DataResponse(['message' => 'Background jobs are not available'], Http::STATUS_SERVICE_UNAVAILABLE);
+		}
+
+		$jobList->add(UpgradeReadinessJob::class, $targets);
+
+		return new DataResponse(['queued' => true] + $targets, Http::STATUS_ACCEPTED);
+	}
+
+	/**
+	 * Whether the targets read as a server major and a PHP version.
+	 *
+	 * @param array{server: string, php: string} $targets
+	 */
+	private static function validTargets(array $targets): bool {
+		return preg_match('/^\d{1,3}$/', $targets['server']) === 1
+			&& preg_match('/^\d+\.\d+(\.\d+)?$/', $targets['php']) === 1;
 	}
 
 	/**
@@ -1282,7 +1366,7 @@ class ApiController extends OCSController {
 	 * hardcode the range in order to build a control will drift from the
 	 * server the first time the range changes.
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, ncscEnabled: bool, ncscStatus: array{readUpTo: ?string, caughtUp: bool}}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, ncscEnabled: bool, ncscStatus: array{readUpTo: ?string, caughtUp: bool}, librariesEnabled: bool}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Advisory settings returned
 	 * 403: Caller is not an administrator
@@ -1310,7 +1394,8 @@ class ApiController extends OCSController {
 	 * @param ?string $intervalHours How often the sweep runs, in hours. Omitted leaves it unchanged.
 	 * @param ?string $digestEnabled Whether the weekly digest is sent ('1'/'0'). Omitted leaves it unchanged.
 	 * @param ?string $ncscEnabled Whether the sweep also reads NCSC-NL's advisories ('1'/'0'). Omitted leaves it unchanged.
-	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, ncscEnabled: bool, ncscStatus: array{readUpTo: ?string, caughtUp: bool}}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @param ?string $librariesEnabled Whether bundled libraries are checked against OSV ('1'/'0'). Omitted leaves it unchanged.
+	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, ncscEnabled: bool, ncscStatus: array{readUpTo: ?string, caughtUp: bool}, librariesEnabled: bool}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST, array{message: string}, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
 	 * 200: Advisory settings updated
 	 * 400: intervalHours outside the supported range
@@ -1321,7 +1406,7 @@ class ApiController extends OCSController {
 	#[ApiRoute(verb: 'PUT', url: '/api/advisory/settings')]
 	#[ApiRoute(verb: 'PUT', url: '/api/v1/advisory/settings', postfix: 'v1')]
 	#[PasswordConfirmationRequired]
-	public function updateAdvisorySettings(?string $intervalHours = null, ?string $digestEnabled = null, ?string $ncscEnabled = null): DataResponse {
+	public function updateAdvisorySettings(?string $intervalHours = null, ?string $digestEnabled = null, ?string $ncscEnabled = null, ?string $librariesEnabled = null): DataResponse {
 		if (!$this->isAdmin()) {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
@@ -1333,11 +1418,7 @@ class ApiController extends OCSController {
 			}
 		}
 
-		// Same empty-string-is-an-explicit-false handling as the auto-update
-		// kill switch above: PHP casts a JSON `false` to "", not "0".
-		if ($digestEnabled !== null) {
-			$this->storeDigestEnabled($digestEnabled);
-		}
+		$this->storeAdvisoryFlags($digestEnabled, $librariesEnabled);
 
 		if ($ncscEnabled !== null) {
 			$store = $this->reports->stores->advisorySettingsStore;
@@ -1345,6 +1426,33 @@ class ApiController extends OCSController {
 		}
 
 		return $this->advisorySettingsResponse();
+	}
+
+	/**
+	 * Stores the two advisory switches that were sent: the weekly digest and
+	 * the bundled-library check (advisories-bundled-libraries). An omitted one
+	 * is left as it is. Same empty-string-is-an-explicit-false handling as the
+	 * auto-update kill switch: PHP casts a JSON `false` to "", not "0".
+	 */
+	private function storeAdvisoryFlags(?string $digestEnabled, ?string $librariesEnabled): void {
+		if ($digestEnabled !== null) {
+			$this->storeDigestEnabled($digestEnabled);
+		}
+
+		if ($librariesEnabled !== null) {
+			$this->storeLibrariesEnabled($librariesEnabled);
+		}
+	}
+
+	/**
+	 * Stores the bundled-library check switch; an empty string is an explicit
+	 * false, and an unknown value keeps the current one.
+	 */
+	private function storeLibrariesEnabled(string $librariesEnabled): void {
+		$librariesParam = ($librariesEnabled === '') ? '0' : $librariesEnabled;
+		$this->reports->stores->advisorySettingsStore->setLibraryCheckEnabled(
+			$this->readBinaryBool($librariesParam, $this->reports->stores->advisorySettingsStore->isLibraryCheckEnabled()),
+		);
 	}
 
 	/**
@@ -1399,7 +1507,7 @@ class ApiController extends OCSController {
 	/**
 	 * The advisory check settings as stored, with the supported interval range.
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, ncscEnabled: bool, ncscStatus: array{readUpTo: ?string, caughtUp: bool}}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array{intervalHours: int, minIntervalHours: int, maxIntervalHours: int, digestEnabled: bool, ncscEnabled: bool, ncscStatus: array{readUpTo: ?string, caughtUp: bool}, librariesEnabled: bool}, array{}>
 	 */
 	private function advisorySettingsResponse(): DataResponse {
 		return new DataResponse([
@@ -1410,6 +1518,7 @@ class ApiController extends OCSController {
 			// advisories-ncsc-feed: the NCSC-NL switch, and how far its read got.
 			'ncscEnabled' => $this->reports->stores->advisorySettingsStore->isNcscEnabled(),
 			'ncscStatus' => $this->reports->stores->advisorySettingsStore->ncscStatus(),
+			'librariesEnabled' => $this->reports->stores->advisorySettingsStore->isLibraryCheckEnabled(),
 		]);
 	}
 

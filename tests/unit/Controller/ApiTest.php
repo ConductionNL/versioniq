@@ -1351,7 +1351,7 @@ final class ApiTest extends TestCase {
 		$data = $response->getData();
 		$this->assertSame(['notes' => ['state' => 'advisory-available', 'heldByPin' => false]], $data['advisories']);
 		$this->assertSame(1_700_000_000, $data['checkedAt']);
-		$this->assertSame(['advisories', 'checkedAt', 'status', 'errors', 'compliance', 'triage'], array_keys($data));
+		$this->assertSame(['advisories', 'checkedAt', 'status', 'errors', 'compliance', 'triage', 'libraries', 'librariesCheckedAt'], array_keys($data));
 		$this->assertSame('ok', $data['status']);
 		$this->assertSame([], $data['errors']);
 		$this->assertSame($triage, $data['triage']);
