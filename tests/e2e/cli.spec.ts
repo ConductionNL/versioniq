@@ -204,3 +204,47 @@ test.describe("occ CLI", () => {
 		}
 	});
 });
+
+/**
+ * `versioniq:readiness`: the upgrade readiness report on the CLI. It needs no
+ * forge fixture, so it sits outside the fixture-gated block above.
+ *
+ * @spec openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness/spec.md
+ */
+test.describe("occ versioniq:readiness", () => {
+	test("prints the report as JSON with one verdict per installed app", async () => {
+		const { code, stdout } = await occ(
+			"versioniq:readiness",
+			"--server=99",
+			"--php=8.4",
+			"--json",
+		);
+		expect(code).toBe(0);
+		const report = lastJson(stdout);
+		expect(report.server).toBe("99");
+		expect(report.php).toBe("8.4");
+		expect(Array.isArray(report.apps)).toBe(true);
+		expect(report.apps.length).toBeGreaterThan(0);
+		for (const app of report.apps) {
+			expect(typeof app.id).toBe("string");
+			expect(typeof app.installedVersion).toBe("string");
+			expect([
+				"shipped",
+				"ready",
+				"updateFirst",
+				"blocked",
+				"unknown",
+			]).toContain(app.verdict);
+		}
+	});
+
+	test("exits 1 for a target that is not a version", async () => {
+		const { code } = await occ(
+			"versioniq:readiness",
+			"--server=next",
+			"--php=8.4",
+			"--json",
+		);
+		expect(code).toBe(1);
+	});
+});
