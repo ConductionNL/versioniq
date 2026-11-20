@@ -20,9 +20,11 @@ use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
 use OCA\Versioniq\Service\AutoUpdate\SecurityHoldStore;
+use OCA\Versioniq\Service\Checks\CheckRunner;
 use OCA\Versioniq\Service\AutoUpdate\UpdateGroup;
 use OCA\Versioniq\Service\AutoUpdate\UpdateGroupStore;
 use OCA\Versioniq\Service\InstallerService;
+use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\PatchPolicyStore;
@@ -71,7 +73,7 @@ final class AutoUpdatePlannerTest extends TestCase {
 				),
 				$this->groups,
 			),
-			new AutoUpdateInstall($this->installer, $this->apps, new CandidateSelector()),
+			new AutoUpdateInstall($this->installer, $this->apps, new CandidateSelector(), $this->createMock(CheckRunner::class), $this->createMock(FailureClassifier::class)),
 			$this->logger,
 		);
 	}

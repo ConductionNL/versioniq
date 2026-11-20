@@ -1,0 +1,10 @@
+{
+    "packages": [
+        {"name": "vendor/library", "version": "2.4.3", "version_normalized": "2.4.3.0", "type": "library"},
+        {"name": "vendor/tagged", "version": "v1.2.0", "version_normalized": "1.2.0.0", "type": "library"},
+        {"name": "vendor/branch", "version": "dev-main", "version_normalized": "dev-main", "type": "library"},
+        {"name": "vendor/test-tool", "version": "9.6.0", "version_normalized": "9.6.0.0", "type": "library"}
+    ],
+    "dev": true,
+    "dev-package-names": ["vendor/test-tool"]
+}

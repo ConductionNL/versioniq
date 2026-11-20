@@ -34,8 +34,11 @@ const settings = {
 	advisoryFeedDefault: 'https://api.github.com/repos/nextcloud/security-advisories/security-advisories',
 	ncscFeedUrl: '',
 	ncscFeedDefault: 'https://advisories.ncsc.nl/csaf/v2/',
+	osvApiBase: '',
+	osvApiDefault: 'https://api.osv.dev',
 	maxLinesBehind: null,
 	maxLinesBehindMax: 10,
+	allowUnsignedUpload: false,
 	notifyUsersOnUpdate: true,
 }
 
@@ -75,6 +78,37 @@ describe('InstanceSettingsPanel', () => {
 		expect(wrapper.find('[data-testid="instance-settings-notice"]').exists()).toBe(true)
 	})
 
+	// install-manual-upload task 2.3
+	// @spec openspec/changes/install-manual-upload/tasks.md#task-2.3
+	it('shows the unsigned-upload switch off by default and saves it as true', async () => {
+		mockedGet.mockResolvedValue({ payload: settings })
+		mockedWrite.mockResolvedValue({ payload: { ...settings, allowUnsignedUpload: true } })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		const box = wrapper.find('[data-testid="setting-allow-unsigned-upload"]')
+		expect((box.element as HTMLInputElement).checked).toBe(false)
+		expect(wrapper.text()).toContain('runs whatever code it contains')
+
+		await box.setValue(true)
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		expect(mockedWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/instance-settings', expect.objectContaining({
+			allowUnsignedUpload: 'true',
+		}))
+		expect((wrapper.find('[data-testid="setting-allow-unsigned-upload"]').element as HTMLInputElement).checked).toBe(true)
+	})
+
+	it('shows the switch on when the server has it on', async () => {
+		mockedGet.mockResolvedValue({ payload: { ...settings, allowUnsignedUpload: true } })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+
+		expect((wrapper.find('[data-testid="setting-allow-unsigned-upload"]').element as HTMLInputElement).checked).toBe(true)
+	})
+
 	// @spec openspec/changes/audit-external-changes
 	it('shows automatic re-enabling off and sends it when switched on', async () => {
 		mockedGet.mockResolvedValue({ payload: { ...settings, reactivateAuto: false } })
@@ -92,6 +126,25 @@ describe('InstanceSettingsPanel', () => {
 
 		expect(mockedWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/instance-settings', expect.objectContaining({ reactivateAuto: 'true' }))
 		expect((wrapper.find('[data-testid="setting-reactivate-auto"]').element as HTMLInputElement).checked).toBe(true)
+	})
+
+	// @spec openspec/changes/advisories-bundled-libraries
+	it('shows the OSV default and sends the OSV address override', async () => {
+		mockedGet.mockResolvedValue({ payload: settings })
+		mockedWrite.mockResolvedValue({ payload: { ...settings, osvApiBase: 'https://osv.mirror.example' } })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		expect(wrapper.find('[data-testid="setting-osv-api"]').attributes('placeholder')).toBe('https://api.osv.dev')
+		expect(wrapper.text()).toContain('Default: https://api.osv.dev')
+		await wrapper.find('[data-testid="setting-osv-api"]').setValue(' https://osv.mirror.example ')
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		expect(mockedWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/instance-settings', expect.objectContaining({
+			osvApiBase: 'https://osv.mirror.example',
+		}))
+		expect((wrapper.find('[data-testid="setting-osv-api"]').element as HTMLInputElement).value).toBe('https://osv.mirror.example')
 	})
 
 	it('shows the server message when a value is refused', async () => {
@@ -121,6 +174,54 @@ describe('InstanceSettingsPanel', () => {
 
 		expect(mockedWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/instance-settings', expect.objectContaining({ maxLinesBehind: '1' }))
 		expect((wrapper.find('[data-testid="setting-max-lines-behind"]').element as HTMLInputElement).value).toBe('1')
+	})
+	// install-multi-instance-promotion D7: the waiting period, 0 to 90.
+	// @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+	it('saves a waiting period of 14 days', async () => {
+		mockedGet.mockResolvedValue({ payload: { ...settings, promotionMinDays: 0, promotionMinDaysMax: 90 } })
+		mockedWrite.mockResolvedValue({ payload: { ...settings, promotionMinDays: 14, promotionMinDaysMax: 90 } })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		expect((wrapper.find('[data-testid="setting-promotion-min-days"]').element as HTMLInputElement).value).toBe('0')
+		await wrapper.find('[data-testid="setting-promotion-min-days"]').setValue('14')
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		expect(mockedWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/instance-settings', expect.objectContaining({ promotionMinDays: '14' }))
+		expect((wrapper.find('[data-testid="setting-promotion-min-days"]').element as HTMLInputElement).value).toBe('14')
+		expect(wrapper.find('[data-testid="instance-settings-notice"]').exists()).toBe(true)
+	})
+
+	// @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+	it('rejects a waiting period of 91 days without saving', async () => {
+		mockedGet.mockResolvedValue({ payload: { ...settings, promotionMinDays: 14, promotionMinDaysMax: 90 } })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		await wrapper.find('[data-testid="setting-promotion-min-days"]').setValue('91')
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		expect(mockedWrite).not.toHaveBeenCalled()
+		expect(wrapper.find('[data-testid="instance-settings-error"]').text()).toContain('from 0 to 90 days')
+	})
+
+	// @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
+	it('shows the update checks the settings carry and keeps them after a save', async () => {
+		const updateChecks = { verdict: [], command: [{ name: 'Lint', command: ['/opt/lint'], apps: [], timeout: 30 }], maxVerdict: 10, commandConfigKey: 'versioniq.update_checks' }
+		mockedGet.mockResolvedValue({ payload: { ...settings, updateChecks } })
+		mockedWrite.mockResolvedValue({ payload: settings })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		expect(wrapper.find('[data-testid="update-checks-panel"]').exists()).toBe(true)
+		expect(wrapper.text()).toContain('/opt/lint')
+
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		expect(wrapper.find('[data-testid="update-checks-panel"]').exists()).toBe(true)
 	})
 
 	// releases-notes-reach 1.2: telling users about Versioniq's updates, on by default.

@@ -243,7 +243,7 @@ describe('App advisory settings', () => {
 		await vm.saveAdvisorySettings()
 		await flushPromises()
 
-		expect(calls).toEqual([{ method: 'PUT', path: '/api/advisory/settings', body: { intervalHours: '12', digestEnabled: '0', ncscEnabled: '0' } }])
+		expect(calls).toEqual([{ method: 'PUT', path: '/api/advisory/settings', body: { intervalHours: '12', digestEnabled: '0', librariesEnabled: '0', ncscEnabled: '0' } }])
 		expect([vm.advisoryIntervalInput, vm.advisorySavedInterval]).toEqual(['12', '12'])
 		expect([vm.advisoryDigestEnabled, vm.advisorySavedDigest]).toEqual([false, false])
 		expect(vm.advisorySettingsNotice).toBe('Advisory settings saved.')
@@ -258,7 +258,7 @@ describe('App advisory settings', () => {
 		await vm.saveAdvisorySettings()
 		await flushPromises()
 
-		expect(calls[0].body).toEqual({ intervalHours: '24', digestEnabled: '1', ncscEnabled: '0' })
+		expect(calls[0].body).toEqual({ intervalHours: '24', digestEnabled: '1', librariesEnabled: '0', ncscEnabled: '0' })
 		expect(vm.advisorySavedDigest).toBe(true)
 	})
 
@@ -273,9 +273,25 @@ describe('App advisory settings', () => {
 		await vm.saveAdvisorySettings()
 		await flushPromises()
 
-		expect(calls[0].body).toEqual({ intervalHours: '6', digestEnabled: '1', ncscEnabled: '1' })
+		expect(calls[0].body).toEqual({ intervalHours: '6', digestEnabled: '1', librariesEnabled: '0', ncscEnabled: '1' })
 		expect(vm.advisorySavedNcsc).toBe(true)
 		expect(vm.ncscPanelStatus).toEqual({ enabled: true, ...status })
+	})
+
+	it('sends the bundled-library switch as 1/0 and keeps what the server answers', async () => {
+		const { vm, calls } = await mountPage({ '/api/advisory/settings': { data: { intervalHours: 6, digestEnabled: true, librariesEnabled: true } } })
+		expect(vm.advisoryLibrariesEnabled).toBe(false)
+		vm.advisoryIntervalInput = '6'
+		vm.advisoryDigestEnabled = true
+		vm.advisoryLibrariesEnabled = true
+		expect(vm.isAdvisorySettingsDirty).toBe(true)
+
+		await vm.saveAdvisorySettings()
+		await flushPromises()
+
+		expect(calls[0].body).toEqual({ intervalHours: '6', digestEnabled: '1', librariesEnabled: '1', ncscEnabled: '0' })
+		expect([vm.advisoryLibrariesEnabled, vm.advisorySavedLibraries]).toEqual([true, true])
+		expect(vm.isAdvisorySettingsDirty).toBe(false)
 	})
 
 	it('shows the refusal and does not mark anything saved', async () => {

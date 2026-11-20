@@ -44,6 +44,9 @@ final class InstanceSettingsFields extends RequestFields {
 	/** @var string|null NCSC-NL CSAF directory URL, https only; blank uses the one NCSC-NL publishes */
 	public ?string $ncscFeedUrl = null;
 
+	/** @var string|null OSV API base URL (https); blank uses api.osv.dev */
+	public ?string $osvApiBase = null;
+
 	/** @var string|null Release lines an app may fall behind, 0 to 10; blank turns the check off */
 	public ?string $maxLinesBehind = null;
 
@@ -55,6 +58,12 @@ final class InstanceSettingsFields extends RequestFields {
 
 	/** @var string|null Where advisories are read from: remote (the feed address) or local (the imported copy) */
 	public ?string $advisoryFeedSource = null;
+
+	/** @var string|null Whether an archive upload the App Store does not sign may be installed: true or false */
+	public ?string $allowUnsignedUpload = null;
+
+	/** @var string|null Days a version runs on the earlier stage before it may be promoted, 0 to 90; 0 turns the check off */
+	public ?string $promotionMinDays = null;
 
 	/** @var string|null Whether an update through Versioniq tells the app's users: true or false */
 	public ?string $notifyUsersOnUpdate = null;

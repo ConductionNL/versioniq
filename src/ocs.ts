@@ -9,7 +9,7 @@ export const ocsHeaders: HeadersInit = { 'OCS-APIRequest': 'true' }
 
 /**
  *
- * @param path
+ * @param path The OCS path.
  */
 export function apiUrl (path: string): string {
 	const oc = window.OC as unknown as { webroot?: string }
@@ -19,7 +19,7 @@ export function apiUrl (path: string): string {
 
 /**
  *
- * @param path
+ * @param path The OCS path.
  * @param query
  */
 export function withOcsJson (path: string, query: Record<string, string | number | boolean> = {}): string {
@@ -99,7 +99,7 @@ export async function ensurePasswordConfirmation (): Promise<void> {
  * caller — a request cancelled via `signal` rejects with the fetch
  * implementation's standard AbortError.
  *
- * @param path
+ * @param path The OCS path.
  * @param query
  * @param signal
  */
@@ -116,8 +116,8 @@ export async function ocsGet <T>(path: string, query: Record<string, string | nu
  * confirmation, with a JSON body. Returns the unwrapped payload (+ error).
  *
  * @param method
- * @param path
- * @param body
+ * @param path The OCS path.
+ * @param body The JSON body.
  */
 export async function ocsWrite <T>(method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
 	path: string,
@@ -133,11 +133,12 @@ export async function ocsWrite <T>(method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
 
 /**
  * POST to an OCS endpoint that needs no password confirmation, with a JSON
- * body. Returns the unwrapped payload (+ error). The OCS-APIRequest header is
- * the request's CSRF proof, as for every OCS call.
+ * body (a read the server performs on request, such as refreshing remote
+ * manifests). Returns the unwrapped payload (+ error). The OCS-APIRequest
+ * header is the request's CSRF proof, as for every OCS call.
  *
- * @param path
- * @param body
+ * @param path The OCS path.
+ * @param body The JSON body.
  */
 export async function ocsPost <T>(path: string, body: Record<string, unknown> = {}): Promise<OcsResult<T>> {
 	const response = await fetch(apiUrl(withOcsJson(path)), {

@@ -20,6 +20,9 @@ use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\Checks\CheckRunner;
+use OCA\Versioniq\Service\Installer\FailureClassifier;
+use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\AutoUpdate\UpdateGroup;
 use OCA\Versioniq\Service\AutoUpdate\UpdateGroupStore;
 use OCA\Versioniq\Service\InstallerService;
@@ -28,11 +31,15 @@ use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicySource;
 use OCA\Versioniq\Service\Policy\PolicyStore;
+use OCA\Versioniq\Service\Snapshot\InstanceSnapshot;
+use OCA\Versioniq\Service\Snapshot\SnapshotTaker;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IConfig;
+use OCP\IL10N;
+use OCP\L10N\IFactory;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use ReflectionMethod;
@@ -615,12 +622,161 @@ final class AutoUpdateJobTest extends TestCase {
 		$this->assertSame(['openregister'], $asked);
 	}
 
+	// --- the gate of safety-update-checks (3.1) ---
+
+	/**
+	 * openregister 2.3.0 on policy patch, the source offers 2.3.4, inside the window.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function gatedMocks(bool $checkMatches): array {
+		$mocks = $this->mocks();
+		$mocks['settingsStore']->method('isEnabled')->willReturn(true);
+		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$mocks['policyStore']->method('all')->willReturn([
+			'openregister' => new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00'),
+		]);
+		$mocks['pinStore']->method('get')->willReturn(null);
+		$mocks['installerService']->method('isManageableApp')->willReturn(true);
+		$mocks['appManager']->method('getAppVersion')->willReturn('2.3.0');
+		$mocks['installerService']->method('getAppVersions')->willReturn([
+			'availableVersions' => [['version' => '2.3.4']],
+			'hasError' => false,
+		]);
+		$mocks['candidateSelector']->method('select')->willReturn('2.3.4');
+		$mocks['attemptLedger']->method('hasAttempted')->willReturn(false);
+		$mocks['checkRunner'] = $this->createMock(CheckRunner::class);
+		$mocks['checkRunner']->method('matches')->with('openregister')->willReturn($checkMatches);
+
+		$l = $this->createMock(IL10N::class);
+		$l->method('t')->willReturnCallback(static fn (string $text, array $parameters = []): string => vsprintf($text, $parameters));
+		$factory = $this->createMock(IFactory::class);
+		$factory->method('get')->willReturn($l);
+		$mocks['failureClassifier'] = new FailureClassifier($factory);
+
+		return $mocks;
+	}
+
 	/**
 	 * @param array<string, mixed> $mocks
 	 * @return array<string, mixed>
 	 */
 	private function named(array $mocks): array {
 		return ['time' => $this->timeFactory()] + $mocks;
+	}
+
+	/**
+	 * @param array<string, mixed> $mocks
+	 */
+	private function buildGatedJob(array $mocks): AutoUpdateJob {
+		return $this->buildByName(AutoUpdateJob::class, [
+			'time' => $this->timeFactory(),
+			'policyStore' => $mocks['policyStore'],
+			'pinStore' => $mocks['pinStore'],
+			'installerService' => $mocks['installerService'],
+			'appManager' => $mocks['appManager'],
+			'candidateSelector' => $mocks['candidateSelector'],
+			'attemptLedger' => $mocks['attemptLedger'],
+			'settingsStore' => $mocks['settingsStore'],
+			'notifier' => $mocks['notifier'],
+			'logger' => $mocks['logger'],
+			'groupStore' => $mocks['groupStore'],
+			'checkRunner' => $mocks['checkRunner'],
+			'failureClassifier' => $mocks['failureClassifier'],
+		]);
+	}
+
+	/**
+	 * @spec openspec/changes/safety-update-checks/specs/auto-update-policies/spec.md#requirement-the-nightly-job-installs-only-after-the-attached-checks-pass
+	 */
+	public function testWithoutAMatchingCheckOneRealInstallRunsAndNoDryRun(): void {
+		$mocks = $this->gatedMocks(false);
+		$mocks['installerService']->expects($this->once())
+			->method('installAppVersion')
+			->with(...InstallArgs::expected('openregister', '2.3.4', false, null, null, false, false, false, false))
+			->willReturn(['statusCode' => 200, 'payload' => ['installedVersion' => '2.3.4']]);
+		$mocks['notifier']->expects($this->once())->method('notifySuccess')->with('openregister', '2.3.0', '2.3.4');
+
+		$this->runJob($this->buildGatedJob($mocks));
+	}
+
+	/**
+	 * A failed verdict holds the night's update.
+	 *
+	 * @spec openspec/changes/safety-update-checks/specs/auto-update-policies/spec.md#requirement-the-nightly-job-installs-only-after-the-attached-checks-pass
+	 */
+	public function testAFailedCheckBlocksTheVersionRecordsAndNotifies(): void {
+		$mocks = $this->gatedMocks(true);
+		$requests = [];
+		$mocks['installerService']->expects($this->once())
+			->method('installAppVersion')
+			->willReturnCallback(function (InstallRequest $request) use (&$requests): array {
+				$requests[] = $request;
+
+				return ['statusCode' => 200, 'payload' => ['dryRun' => true, 'checks' => [
+					['name' => 'Lint', 'kind' => 'command', 'outcome' => 'passed', 'passed' => true, 'detail' => 'Exit code 0.'],
+					['name' => 'Staging tests', 'kind' => 'verdict', 'outcome' => 'failed', 'passed' => false, 'detail' => 'HTTP 500'],
+				]]];
+			});
+		$mocks['attemptLedger']->expects($this->once())
+			->method('record')
+			->with('openregister', '2.3.4', AttemptLedger::OUTCOME_FAILURE, $this->isType('string'));
+		$mocks['notifier']->expects($this->never())->method('notifySuccess');
+		$mocks['notifier']->expects($this->once())
+			->method('notifyFailure')
+			->with('openregister', '2.3.4', FailureClassifier::CATEGORY_CHECKS_FAILED, $this->callback(
+				static fn (string $hint): bool => str_contains($hint, '"Staging tests"') && str_contains($hint, 'HTTP 500'),
+			));
+
+		$this->runJob($this->buildGatedJob($mocks));
+
+		self::assertCount(1, $requests, 'the version was installed after a failed check');
+		self::assertTrue($requests[0]->options->dryRun);
+		self::assertSame(CheckRunner::CONTEXT_CLI, $requests[0]->options->checkContext);
+	}
+
+	/**
+	 * @spec openspec/changes/safety-update-checks/specs/auto-update-policies/spec.md#requirement-the-nightly-job-installs-only-after-the-attached-checks-pass
+	 */
+	public function testAFailedDryRunBlocksTheVersionToo(): void {
+		$mocks = $this->gatedMocks(true);
+		$mocks['installerService']->expects($this->once())
+			->method('installAppVersion')
+			->willReturn(['statusCode' => 422, 'payload' => ['message' => 'App "OpenRegister" cannot be installed because it is not compatible with this version of the server.', 'category' => 'incompatible']]);
+		$mocks['attemptLedger']->expects($this->once())->method('record')->with('openregister', '2.3.4', AttemptLedger::OUTCOME_FAILURE, $this->isType('string'));
+		$mocks['notifier']->expects($this->once())
+			->method('notifyFailure')
+			->with('openregister', '2.3.4', FailureClassifier::CATEGORY_CHECKS_FAILED, $this->stringContains('not compatible'));
+
+		$this->runJob($this->buildGatedJob($mocks));
+	}
+
+	/**
+	 * Passing checks let the update through: a dry run, then the real install.
+	 *
+	 * @spec openspec/changes/safety-update-checks/specs/auto-update-policies/spec.md#requirement-the-nightly-job-installs-only-after-the-attached-checks-pass
+	 */
+	public function testPassingChecksRunADryRunThenTheInstall(): void {
+		$mocks = $this->gatedMocks(true);
+		$dryRuns = [];
+		$mocks['installerService']->expects($this->exactly(2))
+			->method('installAppVersion')
+			->willReturnCallback(function (InstallRequest $request) use (&$dryRuns): array {
+				$dryRuns[] = $request->options->dryRun;
+
+				return $request->options->dryRun
+					? ['statusCode' => 200, 'payload' => ['dryRun' => true, 'checks' => [
+						['name' => 'Staging tests', 'kind' => 'verdict', 'outcome' => 'passed', 'passed' => true, 'detail' => 'HTTP 200'],
+					]]]
+					: ['statusCode' => 200, 'payload' => ['installedVersion' => '2.3.4']];
+			});
+		$mocks['attemptLedger']->expects($this->once())->method('record')->with('openregister', '2.3.4', AttemptLedger::OUTCOME_SUCCESS, $this->isType('string'));
+		$mocks['notifier']->expects($this->once())->method('notifySuccess')->with('openregister', '2.3.0', '2.3.4');
+		$mocks['notifier']->expects($this->never())->method('notifyFailure');
+
+		$this->runJob($this->buildGatedJob($mocks));
+
+		self::assertSame([true, false], $dryRuns);
 	}
 
 	/**
@@ -768,5 +924,86 @@ final class AutoUpdateJobTest extends TestCase {
 		$store = $this->createMock(AutoUpdateSettingsStore::class);
 		$store->method('getSchedule')->willReturn(AutoUpdateSchedule::everyDay());
 		return $store;
+	}
+	/**
+	 * Two apps with a qualifying candidate each; the installs succeed.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function twoAppSweep(): array {
+		$mocks = $this->mocks();
+		$mocks['settingsStore']->method('isEnabled')->willReturn(true);
+		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$mocks['policyStore']->method('all')->willReturn([
+			'openregister' => new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00'),
+			'opencatalogi' => new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00'),
+		]);
+		$mocks['pinStore']->method('get')->willReturn(null);
+		$mocks['installerService']->method('isManageableApp')->willReturn(true);
+		$mocks['appManager']->method('getAppVersion')->willReturn('2.3.0');
+		$mocks['installerService']->method('getAppVersions')->willReturn([
+			'availableVersions' => [['version' => '2.3.4']],
+			'hasError' => false,
+		]);
+		$mocks['attemptLedger']->method('hasAttempted')->willReturn(false);
+
+		return $mocks;
+	}
+
+	/**
+	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
+	 */
+	public function testOneSnapshotIsTakenBeforeTheFirstInstallOfASweep(): void {
+		$mocks = $this->twoAppSweep();
+		$mocks['candidateSelector']->method('select')->willReturn('2.3.4');
+		$events = [];
+		$mocks['installerService']->method('installAppVersion')->willReturnCallback(function () use (&$events): array {
+			$events[] = 'install';
+
+			return ['statusCode' => 200, 'payload' => ['installedVersion' => '2.3.4']];
+		});
+		$taker = $this->createMock(SnapshotTaker::class);
+		$taker->expects($this->once())->method('take')->with('before_auto_update', 'system')
+			->willReturnCallback(function () use (&$events): InstanceSnapshot {
+				$events[] = 'snapshot';
+
+				return new InstanceSnapshot(['id' => 's1', 'takenAt' => '2026-07-23T02:00:00+00:00', 'takenBy' => 'system', 'reason' => 'before_auto_update'], []);
+			});
+
+		$job = $this->buildByName(AutoUpdateJob::class, $this->named($mocks) + ['snapshotTaker' => $taker]);
+		$this->runJob($job);
+
+		$this->assertSame(['snapshot', 'install', 'install'], $events);
+	}
+
+	/**
+	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
+	 */
+	public function testASweepThatInstallsNothingTakesNoSnapshot(): void {
+		$mocks = $this->twoAppSweep();
+		$mocks['candidateSelector']->method('select')->willReturn(null);
+		$mocks['installerService']->expects($this->never())->method('installAppVersion');
+		$taker = $this->createMock(SnapshotTaker::class);
+		$taker->expects($this->never())->method('take');
+
+		$job = $this->buildByName(AutoUpdateJob::class, $this->named($mocks) + ['snapshotTaker' => $taker]);
+		$this->runJob($job);
+	}
+
+	/**
+	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
+	 */
+	public function testAFailingSnapshotDoesNotStopTheSweep(): void {
+		$mocks = $this->twoAppSweep();
+		$mocks['candidateSelector']->method('select')->willReturn('2.3.4');
+		$mocks['installerService']->expects($this->exactly(2))->method('installAppVersion')
+			->willReturn(['statusCode' => 200, 'payload' => ['installedVersion' => '2.3.4']]);
+		$mocks['logger']->expects($this->once())->method('warning')
+			->with('AutoUpdateJob: the snapshot before the sweep failed', ['message' => 'config down']);
+		$taker = $this->createMock(SnapshotTaker::class);
+		$taker->expects($this->once())->method('take')->willThrowException(new \RuntimeException('config down'));
+
+		$job = $this->buildByName(AutoUpdateJob::class, $this->named($mocks) + ['snapshotTaker' => $taker]);
+		$this->runJob($job);
 	}
 }

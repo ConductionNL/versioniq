@@ -32,7 +32,16 @@ describe('withSourceOverride', () => {
 		expect(withSourceOverride({ dryRun: '0' }, '   ')).toEqual({ dryRun: '0' })
 	})
 
-	// @spec openspec/changes/safety-rollback-backup-and-preflight/specs/version-management/spec.md
+	// @spec openspec/specs/version-management/spec.md
+	// @spec openspec/specs/migration-safety/spec.md
+	it('keeps the backup the installer reported, and leaves out a malformed one', () => {
+		expect(normalizeInstallResult({ backup: { made: true, sizeBytes: 10, keptUntil: '2026-10-15' } }).backup).toEqual({ made: true, sizeBytes: 10, keptUntil: '2026-10-15' })
+		expect(normalizeInstallResult({ backup: { made: false, reason: 'failed', message: 'disk full' } }).backup).toEqual({ made: false, reason: 'failed', message: 'disk full' })
+		expect(normalizeInstallResult({ backup: { made: false, reason: 'disabled' } }).backup).toEqual({ made: false, reason: 'disabled' })
+		expect(normalizeInstallResult({ backup: { made: true, sizeBytes: 'big' } } as never)).not.toHaveProperty('backup')
+		expect(normalizeInstallResult({})).not.toHaveProperty('backup')
+	})
+
 	it('keeps the free space the pre-flight found, and leaves it out without one', () => {
 		expect(normalizeInstallResult({ space: { appsFree: 9000, tempFree: null } }).space).toEqual({ appsFree: 9000, tempFree: null })
 		expect(normalizeInstallResult({ space: { appsFree: 'x' } } as never).space).toEqual({ appsFree: null, tempFree: null })

@@ -3,6 +3,7 @@
 import { t } from '@nextcloud/l10n'
 import { computed } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 
 export type PolicyLevel = 'none' | 'patch' | 'minor' | 'all' | 'security'
@@ -20,17 +21,30 @@ const props = withDefaults(defineProps<{
 	source?: 'policy' | 'default'
 	/** The policies come from a policy file: nothing can be changed here. */
 	readOnly?: boolean
+	/** Whether automatic updates of this app wait for an admin's approval. */
+	requireApproval?: boolean
+	/** Whether manual installs outside the level ask for an explicit override (pinning-ranges-and-skips). */
+	holdManual?: boolean
+	/** Who set the policy, and when (ISO 8601); shown beside an active policy (audit-attribution-and-forwarding D2). */
+	setBy?: string
+	setAt?: string
 }>(), {
 	disabled: false,
 	blockedVersions: () => [],
 	source: 'policy',
 	readOnly: false,
+	requireApproval: false,
+	holdManual: false,
+	setBy: '',
+	setAt: '',
 })
 
 const emit = defineEmits<{
 	(event: 'change', appId: string, level: PolicyLevel): void
 	(event: 'retry', appId: string, version: string): void
 	(event: 'reset', appId: string): void
+	(event: 'approval', appId: string, requireApproval: boolean): void
+	(event: 'holdManual', appId: string, hold: boolean): void
 }>()
 
 type SelectOption = { id: PolicyLevel, label: string }
@@ -55,10 +69,27 @@ const isActive = computed(() => props.level !== 'none')
 
 /** An own policy can be dropped so the app follows the default again. */
 const canReset = computed(() => props.source === 'policy' && !props.readOnly)
+/**
+ * "Set by {user} on {date}" for an active policy that records who set it, else ''.
+ *
+ * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-changes-to-the-update-rules-are-audited
+ */
+const setByText = computed(() => {
+	if (!isActive.value || props.setBy === '') {
+		return ''
+	}
+	const when = new Date(props.setAt)
+	const date = Number.isNaN(when.getTime()) ? props.setAt : when.toLocaleDateString()
+	return date === ''
+		? t('versioniq', 'Set by {user}', { user: props.setBy })
+		: t('versioniq', 'Set by {user} on {date}', { user: props.setBy, date })
+})
+/** Only Patch and Minor have a range to hold manual installs to (pinning-ranges-and-skips). */
+const canHoldManual = computed(() => props.level === 'patch' || props.level === 'minor')
 </script>
 
 <template>
-	<div :class="$style.wrapper" data-testid="policy-selector">
+	<div :class="$style.wrapper" data-testid="policy-selector" :title="setByText || undefined">
 		<NcSelect
 			v-model="selected"
 			data-testid="policy-select"
@@ -84,9 +115,32 @@ const canReset = computed(() => props.source === 'policy' && !props.readOnly)
 		<span v-if="isActive" :class="$style.badge" data-testid="policy-active-badge">
 			{{ t('versioniq', 'Auto-update: {level}', { level: selected.label }) }}
 		</span>
+		<template v-if="canHoldManual">
+			<NcCheckboxRadioSwitch
+				:modelValue="holdManual"
+				:disabled="disabled || readOnly"
+				data-testid="policy-hold-manual"
+				@update:modelValue="(value: boolean) => emit('holdManual', appId, value)">
+				{{ t('versioniq', 'Also hold manual installs to this level') }}
+			</NcCheckboxRadioSwitch>
+			<span :class="$style.badge">
+				{{ t('versioniq', 'Installs through Versioniq outside this level then ask for an explicit override. Nextcloud\'s own updater is not held.') }}
+			</span>
+		</template>
+		<span v-if="setByText" :class="$style.badge" data-testid="policy-set-by">
+			{{ setByText }}
+		</span>
 		<span v-if="isActive && !autoUpdateEnabled" :class="$style.disabledHint" data-testid="policy-disabled-hint">
 			{{ t('versioniq', 'Automation is disabled. Enable it in settings to take effect.') }}
 		</span>
+		<NcCheckboxRadioSwitch
+			v-if="isActive"
+			data-testid="policy-require-approval"
+			:modelValue="requireApproval"
+			:disabled="disabled || readOnly"
+			@update:modelValue="emit('approval', appId, $event === true)">
+			{{ t('versioniq', 'Ask me before installing') }}
+		</NcCheckboxRadioSwitch>
 		<div v-if="blockedVersions.length > 0" :class="$style.blocked" data-testid="policy-blocked-versions">
 			<span :class="$style.blockedHint">
 				{{ t('versioniq', 'Automatic updates skip these versions because an earlier attempt failed:') }}

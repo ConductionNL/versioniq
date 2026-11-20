@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Controller;
 
+require_once __DIR__ . '/../Support/AuditRows.php';
+
 require_once __DIR__ . '/../Support/InstallArgs.php';
 
 require_once __DIR__ . '/../Support/BuildsByParameterName.php';
@@ -28,6 +30,8 @@ use OCA\Versioniq\Service\AutoUpdate\UpdateGroup;
 use OCA\Versioniq\Service\AutoUpdate\UpdateGroupStore;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
+use OCA\Versioniq\Service\Installer\AppRestorer;
+use OCA\Versioniq\Service\Installer\NoBackupException;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pat\PatDeeplinkBuilder;
 use OCA\Versioniq\Service\Pat\PatExpiryEvaluator;
@@ -35,12 +39,15 @@ use OCA\Versioniq\Service\Pat\PatManager;
 use OCA\Versioniq\Service\Pat\PatValidator;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\PolicySource;
+use OCA\Versioniq\Service\Pin\SkipList;
+use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyStore;
 use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCA\Versioniq\Tests\Unit\Support\DispatchesLikeNextcloud;
+use OCA\Versioniq\Tests\Unit\Support\AuditRows;
 use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -125,6 +132,7 @@ final class ApiTest extends TestCase {
 		?ArtifactCache $artifactCache = null,
 		?AttemptLedger $attemptLedger = null,
 		?PolicySource $policySource = null,
+		?SkipList $skipList = null,
 		?KnownIssueStore $knownIssues = null,
 		?UpdateGroupStore $groupStore = null,
 	): ApiController {
@@ -161,6 +169,7 @@ final class ApiTest extends TestCase {
 			'connectionReports' => null,
 			'attemptLedger' => $attemptLedger ?? $this->createMock(AttemptLedger::class),
 			'policySource' => $policySource,
+			'skipList' => $skipList,
 			'knownIssues' => $knownIssues,
 			'groupStore' => $groupStore ?? $this->createMock(UpdateGroupStore::class),
 		]);
@@ -431,6 +440,8 @@ final class ApiTest extends TestCase {
 			'createdAt' => '2026-07-23 12:00:00',
 			// A row from before origins were recorded: unknown.
 			'origin' => null,
+			// audit-security-reports D2: null for an entry about no advisory.
+			'advisories' => null,
 		], $entry->jsonSerialize());
 	}
 
@@ -1372,6 +1383,127 @@ final class ApiTest extends TestCase {
 		$this->assertSame(403, $this->buildController()->clearBinding('openregister')->getStatus());
 	}
 
+	// --- pinning-ranges-and-skips ---
+
+	/**
+	 * @param array<string, mixed> $params
+	 */
+	private function requestWith(array $params): IRequest {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(static fn (string $name, mixed $default = null): mixed => $params[$name] ?? $default);
+
+		return $request;
+	}
+
+	public function testSetPolicyStoresTheHoldManualSwitch(): void {
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->expects($this->once())->method('set')->with('openregister', $this->callback(static fn ($policy): bool => $policy->level === 'patch' && $policy->holdManual === true));
+
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith(['level' => 'patch', 'holdManual' => true]), null, null, null, 'admin', $policyStore)->setPolicy('openregister');
+
+		$this->assertTrue($response->getData()['policy']['holdManual']);
+	}
+
+	public function testSetPolicyWithoutTheSwitchKeepsTheStoredOne(): void {
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->method('get')->willReturn(new Policy('patch', 'admin', '2026-01-01T00:00:00+00:00', holdManual: true));
+		$policyStore->expects($this->once())->method('set')->with('openregister', $this->callback(static fn ($policy): bool => $policy->level === 'minor' && $policy->holdManual === true));
+
+		$this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith(['level' => 'minor']), null, null, null, 'admin', $policyStore)->setPolicy('openregister');
+	}
+
+	public function testSkipVersionStoresTheSkipWithItsReason(): void {
+		$skipList = $this->createMock(SkipList::class);
+		$skipList->expects($this->once())->method('skip')->with('openregister', '2.3.4', $this->callback(static fn (array $stamp): bool => $stamp['by'] === 'admin' && is_string($stamp['at'])), 'breaks the import')->willReturn(true);
+
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith(['reason' => 'breaks the import']), null, null, null, 'admin', null, null, null, null, $skipList)->skipVersion('openregister', '2.3.4');
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame(['appId' => 'openregister', 'version' => '2.3.4', 'skipped' => true], $response->getData());
+	}
+
+	public function testSkipVersionRefusesAnEmptyVersion(): void {
+		$skipList = $this->createMock(SkipList::class);
+		$skipList->expects($this->never())->method('skip');
+
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith([]), null, null, null, 'admin', null, null, null, null, $skipList)->skipVersion('openregister', ' ');
+
+		$this->assertSame(400, $response->getStatus());
+	}
+
+	public function testUnskipAndListTheSkips(): void {
+		$skipList = $this->createMock(SkipList::class);
+		$skipList->expects($this->once())->method('unskip')->with('openregister', '2.3.4', 'admin')->willReturn(true);
+		$skipList->method('entries')->willReturn([['version' => '2.3.5', 'skippedBy' => 'admin', 'skippedAt' => 'T', 'reason' => '']]);
+		$controller = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith([]), null, null, null, 'admin', null, null, null, null, $skipList);
+
+		$this->assertTrue($controller->unskipVersion('openregister', '2.3.4')->getData()['unskipped']);
+		$this->assertSame('2.3.5', $controller->skippedVersions('openregister')->getData()['skipped'][0]['version']);
+	}
+
+	/**
+	 * A request that answers the named parameters and the default otherwise.
+	 */
+	private function auditRequest(array $params): IRequest {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => $params[$name] ?? $default
+		);
+		return $request;
+	}
+
+	public function testAuditLogCutsAPeriodInTheAdminsTimeZone(): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->never())->method('findPage');
+		$mapper->expects($this->once())
+			->method('findBetween')
+			->with('2026-10-31 23:00:00', '2026-11-30 22:59:59', 'fixtureapp', 'install', 50, 0, true)
+			->willReturn([AuditRows::entry(2, '2026-11-02 09:00:00', 'install', ['to' => '1.0.1'])]);
+
+		$request = $this->auditRequest(['from' => '2026-11-01', 'to' => '2026-11-30', 'timeZone' => 'Europe/Amsterdam', 'appId' => 'fixtureapp', 'operation' => 'install']);
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $request, $mapper)->auditLog();
+
+		$this->assertSame(200, $response->getStatus());
+		$data = $response->getData();
+		$this->assertSame([2], array_column($data['entries'], 'id'));
+		$this->assertNull($data['total']);
+	}
+
+	public function testAuditLogSecurityOnlyNamesTheFixedAdvisoryAndLeavesOutAnUnresolvedInstall(): void {
+		$advisory = [['id' => 'GHSA-1', 'severity' => 'high']];
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->once())
+			->method('findBetween')
+			->with('2026-11-14 00:00:00', null, null, null, 20000)
+			->willReturn([
+				AuditRows::entry(1, '2026-11-14 08:00:00', 'install', ['appId' => 'other', 'to' => '2.0.0']),
+				AuditRows::entry(2, '2026-11-14 09:00:00', 'install', ['from' => '1.0.0', 'to' => '1.0.1']),
+				AuditRows::entry(3, '2026-11-14 22:00:00', 'install', ['appId' => 'late', 'to' => '3.0.0']),
+				AuditRows::entry(4, '2026-11-15 00:10:00', 'advisory_resolved', ['from' => '1.0.0', 'to' => '1.0.1', 'message' => 'update', 'advisories' => $advisory]),
+				AuditRows::entry(5, '2026-11-15 00:20:00', 'advisory_resolved', ['appId' => 'late', 'to' => '3.0.0', 'message' => 'update', 'advisories' => [['id' => 'GHSA-3', 'severity' => 'low']]]),
+			]);
+
+		$request = $this->auditRequest(['from' => '2026-11-14', 'to' => '2026-11-14', 'securityOnly' => 'true']);
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $request, $mapper)->auditLog();
+
+		$data = $response->getData();
+		$this->assertSame(2, $data['total']);
+		$this->assertSame([3, 2], array_column($data['entries'], 'id'));
+		$this->assertSame($advisory, $data['entries'][1]['fixedAdvisories']);
+		$this->assertSame('1.0.1', $data['entries'][1]['toVersion']);
+	}
+
+	public function testAuditLogRefusesABadPeriod(): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->never())->method('findBetween');
+
+		$request = $this->auditRequest(['from' => '2026-13-01']);
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $request, $mapper)->auditLog();
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertSame(['message' => 'Dates are YYYY-MM-DD.'], $response->getData());
+	}
+
 	/**
 	 * A settings-store double whose schedule is the default every-day schedule.
 	 *
@@ -1418,9 +1550,82 @@ final class ApiTest extends TestCase {
 		$data = $response->getData();
 		$this->assertSame(['notes' => ['state' => 'advisory-available', 'heldByPin' => false]], $data['advisories']);
 		$this->assertSame(1_700_000_000, $data['checkedAt']);
-		$this->assertSame(['advisories', 'checkedAt', 'status', 'errors', 'compliance', 'triage'], array_keys($data));
+		$this->assertSame(['advisories', 'checkedAt', 'status', 'errors', 'compliance', 'triage', 'libraries', 'librariesCheckedAt'], array_keys($data));
 		$this->assertSame('ok', $data['status']);
 		$this->assertSame([], $data['errors']);
 		$this->assertSame($triage, $data['triage']);
+	}
+
+	/**
+	 * POST /api/apps/{appId}/restore puts the app back from its backup
+	 * (safety-rollback-backup-and-preflight D4).
+	 *
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
+	 */
+	public function testRestoreAppReturnsWhatWasRestored(): void {
+		$restored = ['appId' => 'dossiq', 'version' => '0.4.48', 'enabled' => 'yes', 'tables' => 2, 'rows' => 5, 'backupCreatedAt' => '2026-10-01T00:00:00+00:00'];
+		$restorer = $this->createMock(AppRestorer::class);
+		$restorer->expects($this->once())->method('restore')->with('dossiq')->willReturn($restored);
+
+		$response = $this->restoreController($restorer, true)->restoreApp('dossiq');
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame($restored, $response->getData());
+	}
+
+	public function testRestoreAppWithoutABackupIsRefusedAndPointsToARollback(): void {
+		$restorer = $this->createMock(AppRestorer::class);
+		$restorer->method('restore')->willThrowException(new NoBackupException('There is no backup to restore dossiq from. Roll back to an earlier version instead.'));
+
+		$response = $this->restoreController($restorer, true)->restoreApp('dossiq');
+
+		$this->assertSame(409, $response->getStatus());
+		$this->assertSame(['message' => 'There is no backup to restore dossiq from. Roll back to an earlier version instead.', 'code' => 'no_backup'], $response->getData());
+	}
+
+	public function testRestoreAppRefusesANonAdminBeforeRestoring(): void {
+		$restorer = $this->createMock(AppRestorer::class);
+		$restorer->expects($this->never())->method('restore');
+
+		$response = $this->restoreController($restorer, false)->restoreApp('dossiq');
+
+		$this->assertSame(403, $response->getStatus());
+	}
+
+	public function testRestoreAppReportsAFailedRestore(): void {
+		$restorer = $this->createMock(AppRestorer::class);
+		$restorer->method('restore')->willThrowException(new \RuntimeException('Could not unpack the app folder backup.'));
+
+		$response = $this->restoreController($restorer, true)->restoreApp('dossiq');
+
+		$this->assertSame(500, $response->getStatus());
+		$this->assertSame(['message' => 'The restore failed: Could not unpack the app folder backup.'], $response->getData());
+	}
+
+	public function testTheRestoreRouteRequiresPasswordConfirmation(): void {
+		$method = new ReflectionMethod(ApiController::class, 'restoreApp');
+		$attributes = array_map(static fn ($attribute): string => $attribute->getName(), $method->getAttributes());
+
+		$this->assertContains(\OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired::class, $attributes);
+	}
+
+	private function restoreController(AppRestorer $restorer, bool $isAdmin): ApiController {
+		$user = $this->createMock(IUser::class);
+		$user->method('getUID')->willReturn('admin');
+		$session = $this->createMock(IUserSession::class);
+		$session->method('getUser')->willReturn($user);
+		$groupManager = $this->createMock(IGroupManager::class);
+		$groupManager->method('isAdmin')->with('admin')->willReturn($isAdmin);
+
+		return $this->buildByName(ApiController::class, [
+			'appName' => 'versioniq',
+			'request' => $this->createMock(IRequest::class),
+			'groupManager' => $groupManager,
+			'userSession' => $session,
+			'serverVersion' => $this->fakeServerVersion(),
+			'timeFactory' => $this->fakeTimeFactory(),
+			'restorer' => $restorer,
+			'connectionReports' => null,
+		]);
 	}
 }
