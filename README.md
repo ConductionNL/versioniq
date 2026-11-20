@@ -4,7 +4,7 @@
 
 # Versioniq
 
-A template to get started with Nextcloud app development.
+A template to get started with Nextcloud app development. Versioniq is available in the [Nextcloud App Store](https://apps.nextcloud.com/apps/versioniq).
 
 ## Test coverage
 

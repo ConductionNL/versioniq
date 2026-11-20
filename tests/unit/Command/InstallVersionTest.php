@@ -13,10 +13,15 @@ require_once __DIR__ . '/../Support/InstallArgs.php';
 
 use OCA\Versioniq\Command\InstallVersion;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
+use OCA\Versioniq\Service\Installer\InstallProgress;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\AppFramework\Http;
+use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\ICache;
+use OCP\ICacheFactory;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Tester\CommandTester;
 
 final class InstallVersionTest extends TestCase {
@@ -289,5 +294,156 @@ final class InstallVersionTest extends TestCase {
 		$exitCode = $tester->execute(['appId' => 'someapp', 'version' => '1.0.0']);
 
 		self::assertSame($expectedExitCode, $exitCode);
+	}
+	/**
+	 * @return array<string, mixed>
+	 */
+	private static function previewPayload(?array $preview): array {
+		return [
+			'appId' => 'openregister',
+			'fromVersion' => '2.3.0',
+			'toVersion' => '2.4.0',
+			'message' => 'Dry run mode: no changes were applied.',
+			'updateType' => 'upgrade',
+			'dryRun' => true,
+			'migrationPreview' => $preview,
+		];
+	}
+
+	private static function preview(): array {
+		return [
+			'steps' => [
+				[
+					'name' => 'Version2040Date20260201000000',
+					'actions' => [['attribute' => 'AddIndex', 'table' => 'openregister_objects', 'name' => '', 'description' => '']],
+					'tables' => [['name' => 'openregister_objects', 'rows' => 4200000, 'sizeClass' => 'very_large']],
+					'dataStep' => false,
+					'describes' => true,
+				],
+				[
+					'name' => 'Version2050Date20260301000000',
+					'actions' => [['attribute' => 'CreateTable', 'table' => 'openregister_tags', 'name' => '', 'description' => '']],
+					'tables' => [['name' => 'openregister_tags', 'rows' => null, 'sizeClass' => 'new']],
+					'dataStep' => true,
+					'describes' => true,
+				],
+				['name' => 'Version2060Date20260401000000', 'actions' => [], 'tables' => [], 'dataStep' => false, 'describes' => false],
+			],
+			'repairSteps' => ['OCA\\OpenRegister\\Repair\\SeedDefaults'],
+			'estimated' => false,
+		];
+	}
+
+	private function runWith(array $payload, array $options): CommandTester {
+		$installer = $this->createMock(InstallerService::class);
+		$installer->method('isManageableApp')->willReturn(true);
+		$installer->method('installAppVersion')->willReturn(['statusCode' => Http::STATUS_OK, 'payload' => $payload]);
+		$tester = new CommandTester(new InstallVersion($installer));
+		$exitCode = $tester->execute(['appId' => 'openregister', 'version' => '2.4.0', '--dry-run' => true] + $options);
+		self::assertSame(0, $exitCode);
+
+		return $tester;
+	}
+
+	public function testAnUpgradeDryRunPrintsTheMigrationPreviewAsATable(): void {
+		$display = $this->runWith(self::previewPayload(self::preview()), [])->getDisplay();
+
+		self::assertStringContainsString('Database changes:', $display);
+		self::assertMatchesRegularExpression('/Version2040Date20260201000000\s*\|\s*adds an index\s*\|\s*openregister_objects\s*\|\s*4,200,000\s*\|\s*May take long; plan a maintenance window\./', $display);
+		self::assertMatchesRegularExpression('/openregister_tags\s*\|\s*\|\s*New table; fast\. Moves data; the time depends on the amount of data\./', $display);
+		self::assertStringContainsString('This step does not describe what it changes.', $display);
+		self::assertStringContainsString('Repair steps after the migrations: OCA\\OpenRegister\\Repair\\SeedDefaults', $display);
+		self::assertDoesNotMatchRegularExpression('/\d+\s*(s|sec|seconds)\b/', $display);
+	}
+
+	public function testAnUpgradeWithoutStepsSaysThereAreNoDatabaseChanges(): void {
+		$preview = ['steps' => [], 'repairSteps' => [], 'estimated' => true];
+		$display = $this->runWith(self::previewPayload($preview), [])->getDisplay();
+
+		self::assertStringContainsString('No database changes (estimate: the migrations table could not be read).', $display);
+		self::assertStringNotContainsString('Repair steps', $display);
+	}
+
+	public function testAnUnreadableTargetIsReported(): void {
+		$display = $this->runWith(self::previewPayload(null), [])->getDisplay();
+
+		self::assertStringContainsString('Database changes: the target could not be read.', $display);
+	}
+
+	public function testTheJsonOutputCarriesTheMigrationPreview(): void {
+		$display = $this->runWith(self::previewPayload(self::preview()), ['--json' => true])->getDisplay();
+
+		/** @var array<string, mixed> $decoded */
+		$decoded = json_decode($display, true, 512, JSON_THROW_ON_ERROR);
+		self::assertSame(self::preview(), $decoded['migrationPreview']);
+	}
+
+	public function testAPayloadWithoutAPreviewPrintsNone(): void {
+		$payload = self::previewPayload(null);
+		unset($payload['migrationPreview']);
+		$display = $this->runWith($payload, [])->getDisplay();
+
+		self::assertStringNotContainsString('Database changes', $display);
+	}
+
+	/**
+	 * A real reporter fed by the installer the way both installers feed it.
+	 */
+	private function reporter(): InstallProgress {
+		$factory = $this->createMock(ICacheFactory::class);
+		$factory->method('createDistributed')->willReturn($this->createMock(ICache::class));
+
+		return new InstallProgress($factory, $this->createMock(ITimeFactory::class), $this->createMock(LoggerInterface::class));
+	}
+
+	/**
+	 * @spec openspec/changes/install-live-progress/specs/cli-commands/spec.md
+	 */
+	public function testEachStageIsPrintedInOrderBeforeTheOutcome(): void {
+		$progress = $this->reporter();
+		$installer = $this->createMock(InstallerService::class);
+		$installer->method('isManageableApp')->willReturn(true);
+		$installer->method('installAppVersion')->willReturnCallback(static function () use ($progress): array {
+			foreach (['downloading', 'downloading', 'downloaded', 'signature-verified', 'archive-extracted', 'migrations', 'finalize'] as $stage) {
+				$progress->stage($stage);
+			}
+
+			return ['statusCode' => Http::STATUS_OK, 'payload' => ['status' => 'installed', 'message' => 'App installed.']];
+		});
+
+		$tester = new CommandTester(new InstallVersion($installer, $progress));
+		self::assertSame(0, $tester->execute(['appId' => 'openregister', 'version' => '2.4.1'], ['capture_stderr_separately' => true]));
+
+		self::assertSame(
+			['downloading', 'downloaded', 'signature-verified', 'archive-extracted', 'migrations', 'finalize', 'App installed.'],
+			array_slice(array_values(array_filter(explode("\n", $tester->getDisplay()))), 0, 7)
+		);
+	}
+
+	/**
+	 * @spec openspec/changes/install-live-progress/specs/cli-commands/spec.md
+	 */
+	public function testWithJsonNoStageIsPrintedAndTheListenerIsRemoved(): void {
+		$progress = $this->reporter();
+		$installer = $this->createMock(InstallerService::class);
+		$installer->method('isManageableApp')->willReturn(true);
+		$installer->method('installAppVersion')->willReturnCallback(static function () use ($progress): array {
+			$progress->stage('downloaded');
+
+			return ['statusCode' => Http::STATUS_OK, 'payload' => ['status' => 'installed']];
+		});
+
+		$tester = new CommandTester(new InstallVersion($installer, $progress));
+		$tester->execute(['appId' => 'openregister', 'version' => '2.4.1', '--json' => true]);
+
+		self::assertSame(1, substr_count(trim($tester->getDisplay()), "\n") + 1, 'only the single JSON document');
+		self::assertJson(trim($tester->getDisplay()));
+
+		$heard = [];
+		$progress->listen(static function (string $stage) use (&$heard): void {
+			$heard[] = $stage;
+		});
+		$progress->stage('after');
+		self::assertSame(['after'], $heard, 'the command removed its listener, so a new one hears only what follows');
 	}
 }

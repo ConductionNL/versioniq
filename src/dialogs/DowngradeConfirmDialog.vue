@@ -24,6 +24,8 @@ const props = defineProps<{
 	toVersion: string
 	/** Pre-formatted range summary; empty string hides the row. */
 	rangeText: string
+	/** The releases marked as breaking in the range (releases-version-facts D3); empty hides the row. */
+	breakingText?: string
 	orphanedMigrations: string[] | null
 	/** True while an install is in flight — both buttons are disabled. */
 	busy: boolean
@@ -75,6 +77,9 @@ const buttons = computed(() => [
 		</p>
 		<p v-if="rangeText" :class="$style.versionRangeSummary">
 			<strong>{{ t('versioniq', 'Downgrade info:') }}</strong> {{ rangeText }}
+		</p>
+		<p v-if="breakingText" :class="$style.versionRangeSummary" data-testid="downgrade-breaking">
+			{{ breakingText }}
 		</p>
 		<p :class="$style.versionItemDegradeMessage">
 			{{ t('versioniq', 'Downgrading files cannot undo database migrations already applied by the installed version.') }}

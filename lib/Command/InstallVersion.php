@@ -15,6 +15,7 @@ namespace OCA\Versioniq\Command;
 use OCA\Versioniq\Kernel\Contracts\FailureClassifierInterface;
 use OCA\Versioniq\Kernel\Contracts\InstallerServiceInterface;
 use OCA\Versioniq\Service\Installer\InstallOptions;
+use OCA\Versioniq\Service\Installer\InstallProgress;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\PinChoice;
@@ -61,6 +62,8 @@ class InstallVersion extends Command {
 
 	public function __construct(
 		private InstallerServiceInterface $installerService,
+		/** install-live-progress: prints each stage as it starts; null in hand-built tests. */
+		private ?InstallProgress $progress = null,
 	) {
 		parent::__construct();
 	}
@@ -119,11 +122,11 @@ class InstallVersion extends Command {
 		$allowDowngrade = (bool)$input->getOption('allow-downgrade');
 		$acceptNewSha = (bool)$input->getOption('accept-new-sha');
 
-		$result = $this->installerService->installAppVersion(new InstallRequest(
+		$result = $this->installWithProgress(new InstallRequest(
 			new InstallTarget($appId, $version, $sourceOverride),
 			new InstallOptions(false, $dryRun, $acceptNewSha, $allowDowngrade),
 			new PinChoice(null, false),
-		));
+		), $output, $json);
 
 		$statusCode = $result['statusCode'] ?? Http::STATUS_INTERNAL_SERVER_ERROR;
 		/** @var array<string, mixed> $payload */
@@ -141,19 +144,59 @@ class InstallVersion extends Command {
 		return $exitCode;
 	}
 
+	/**
+	 * Run the install, printing each stage as it starts unless the output is
+	 * JSON (install-live-progress).
+	 *
+	 * @return array<string, mixed> The installer's result.
+	 *
+	 * @spec openspec/changes/install-live-progress/specs/cli-commands/spec.md
+	 */
+	private function installWithProgress(InstallRequest $request, OutputInterface $output, bool $json): array {
+		if (!$json) {
+			$this->progress?->listen(static function (string $stage) use ($output): void {
+				$output->writeln(sprintf('<comment>%s</comment>', $stage));
+			});
+		}
+		try {
+			return $this->installerService->installAppVersion($request);
+		} finally {
+			$this->progress?->listen(null);
+		}
+	}
+
 	private function renderHuman(OutputInterface $output, int $exitCode, array $payload): void {
 		if ($exitCode === self::EXIT_OK) {
-			$output->writeln(sprintf('<info>%s</info>', $payload['message'] ?? 'App installed.'));
-			if (isset($payload['toVersion'])) {
-				$output->writeln(sprintf('Version: %s', $payload['toVersion']));
-			}
-			if (isset($payload['updateType'])) {
-				$output->writeln(sprintf('Update type: %s', $payload['updateType']));
+			self::renderInstalled($output, $payload);
+			if (array_key_exists('migrationPreview', $payload)) {
+				MigrationPreviewOutput::render($output, is_array($payload['migrationPreview']) ? $payload['migrationPreview'] : null);
 			}
 
 			return;
 		}
 
+		$this->renderFailure($output, $exitCode, $payload);
+	}
+
+	/**
+	 * The success lines: the message, then the version and update type when
+	 * the outcome names them.
+	 */
+	private static function renderInstalled(OutputInterface $output, array $payload): void {
+		$output->writeln(sprintf('<info>%s</info>', $payload['message'] ?? 'App installed.'));
+		if (isset($payload['toVersion'])) {
+			$output->writeln(sprintf('Version: %s', $payload['toVersion']));
+		}
+		if (isset($payload['updateType'])) {
+			$output->writeln(sprintf('Update type: %s', $payload['updateType']));
+		}
+	}
+
+	/**
+	 * The failure lines on the error output: the message, the hint, and the
+	 * install status after a failed finalize.
+	 */
+	private function renderFailure(OutputInterface $output, int $exitCode, array $payload): void {
 		$error = $this->errorOutput($output);
 		$error->writeln(sprintf('<error>%s</error>', $payload['message'] ?? 'Install failed.'));
 		if (isset($payload['hint']) && is_string($payload['hint']) && $payload['hint'] !== '') {
@@ -194,24 +237,34 @@ class InstallVersion extends Command {
 
 		/** @var mixed $category */
 		$category = $payload['category'] ?? null;
-		if (is_string($category)) {
-			$mapped = match ($category) {
-				FailureClassifierInterface::CATEGORY_DOWNGRADE_GUARD => self::EXIT_DOWNGRADE_REFUSED,
-				FailureClassifierInterface::CATEGORY_PREFLIGHT_PERMISSION => self::EXIT_PREFLIGHT_PERMISSION,
-				FailureClassifierInterface::CATEGORY_DOWNLOAD => self::EXIT_DOWNLOAD,
-				FailureClassifierInterface::CATEGORY_CHECKSUM_MISMATCH,
-				FailureClassifierInterface::CATEGORY_SHA_MISMATCH,
-				FailureClassifierInterface::CATEGORY_APPID_MISMATCH,
-				FailureClassifierInterface::CATEGORY_VERSION_MISMATCH => self::EXIT_INTEGRITY,
-				FailureClassifierInterface::CATEGORY_INCOMPATIBLE => self::EXIT_INCOMPATIBLE,
-				FailureClassifierInterface::CATEGORY_FINALIZE => self::EXIT_FINALIZE,
-				default => null,
-			};
-			if ($mapped !== null) {
-				return $mapped;
-			}
-		}
+		$mapped = is_string($category) ? self::exitCodeForCategory($category) : null;
 
+		return $mapped ?? self::exitCodeForStatus($statusCode);
+	}
+
+	/**
+	 * The documented exit code of a failure category, or null for a category
+	 * without one of its own.
+	 */
+	private static function exitCodeForCategory(string $category): ?int {
+		return match ($category) {
+			FailureClassifierInterface::CATEGORY_DOWNGRADE_GUARD => self::EXIT_DOWNGRADE_REFUSED,
+			FailureClassifierInterface::CATEGORY_PREFLIGHT_PERMISSION => self::EXIT_PREFLIGHT_PERMISSION,
+			FailureClassifierInterface::CATEGORY_DOWNLOAD => self::EXIT_DOWNLOAD,
+			FailureClassifierInterface::CATEGORY_CHECKSUM_MISMATCH,
+			FailureClassifierInterface::CATEGORY_SHA_MISMATCH,
+			FailureClassifierInterface::CATEGORY_APPID_MISMATCH,
+			FailureClassifierInterface::CATEGORY_VERSION_MISMATCH => self::EXIT_INTEGRITY,
+			FailureClassifierInterface::CATEGORY_INCOMPATIBLE => self::EXIT_INCOMPATIBLE,
+			FailureClassifierInterface::CATEGORY_FINALIZE => self::EXIT_FINALIZE,
+			default => null,
+		};
+	}
+
+	/**
+	 * The exit code an HTTP status maps to when its category named none.
+	 */
+	private static function exitCodeForStatus(int $statusCode): int {
 		if ($statusCode === Http::STATUS_FORBIDDEN) {
 			return self::EXIT_UNTRUSTED_SOURCE;
 		}

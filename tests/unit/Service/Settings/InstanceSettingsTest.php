@@ -47,6 +47,15 @@ final class InstanceSettingsTest extends TestCase {
 				return true;
 			},
 		);
+		$appConfig->method('getValueBool')->willReturnCallback(
+			fn (string $app, string $key, bool $default = false): bool => (bool)($this->config[$key] ?? $default),
+		);
+		$appConfig->method('setValueBool')->willReturnCallback(
+			function (string $app, string $key, bool $value): bool {
+				$this->config[$key] = $value;
+				return true;
+			},
+		);
 		$appConfig->method('deleteKey')->willReturnCallback(
 			function (string $app, string $key): void {
 				unset($this->config[$key]);
@@ -294,5 +303,81 @@ final class InstanceSettingsTest extends TestCase {
 			yield "$field port and path" => [$field, 'https://ghe.example.org:8443/api', 'https://ghe.example.org:8443/api'];
 			yield "$field unparseable" => [$field, 'https://', $refusal];
 		}
+	}
+
+	/**
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	public function testAutomaticReEnablingIsOffUntilSwitchedOnAndRefusesOtherValues(): void {
+		$store = $this->store();
+		self::assertFalse($store->read()['reactivateAuto']);
+
+		self::assertSame(['reactivateAuto'], $store->update(['reactivateAuto' => '1']));
+		self::assertTrue($store->read()['reactivateAuto']);
+		$store->update(['reactivateAuto' => 'false']);
+		self::assertFalse($store->read()['reactivateAuto']);
+
+		$this->expectException(InvalidArgumentException::class);
+		$this->expectExceptionMessage('Automatic re-enabling must be on or off.');
+		$store->update(['reactivateAuto' => 'maybe']);
+	}
+
+	/**
+	 * releases-notes-reach 1.2: telling users about Versioniq's updates is on
+	 * until the admin switches it off; anything but on or off is refused and
+	 * writes nothing.
+	 *
+	 * @spec openspec/changes/releases-notes-reach/tasks.md#task-1.2
+	 */
+	public function testTheUserNoticeSwitchIsOnByDefaultAndCanBeTurnedOff(): void {
+		$store = $this->store();
+		self::assertTrue($store->read()['notifyUsersOnUpdate']);
+
+		self::assertSame(['notifyUsersOnUpdate'], $store->update(['notifyUsersOnUpdate' => 'false']));
+		self::assertFalse($store->read()['notifyUsersOnUpdate']);
+		self::assertFalse($this->config[InstanceSettings::KEY_NOTIFY_USERS_ON_UPDATE]);
+
+		$store->update(['notifyUsersOnUpdate' => 'true']);
+		self::assertTrue($store->read()['notifyUsersOnUpdate']);
+	}
+
+	/**
+	 * @spec openspec/changes/releases-notes-reach/tasks.md#task-1.2
+	 */
+	public function testAnUnclearUserNoticeValueIsRefusedAndNothingIsWritten(): void {
+		try {
+			$this->store()->update(['artifactCacheKeep' => '5', 'notifyUsersOnUpdate' => 'maybe']);
+			self::fail('An unclear value must be refused.');
+		} catch (InvalidArgumentException $error) {
+			self::assertSame('Telling users about updates must be on or off.', $error->getMessage());
+		}
+
+		self::assertSame([], $this->config);
+	}
+
+	/**
+	 * The installer reads the same key the page writes.
+	 *
+	 * @spec openspec/changes/releases-notes-reach/tasks.md#task-1.2
+	 */
+	public function testThePageAndTheInstallerShareTheKey(): void {
+		self::assertSame(\OCA\Versioniq\Service\InstallerService::KEY_NOTIFY_USERS_ON_UPDATE, InstanceSettings::KEY_NOTIFY_USERS_ON_UPDATE);
+		self::assertSame('notify_users_on_update', InstanceSettings::KEY_NOTIFY_USERS_ON_UPDATE);
+	}
+
+	/**
+	 * @spec openspec/changes/advisories-bundled-libraries
+	 */
+	public function testTheOsvBaseDefaultsToThePublicApiAndMustBeHttps(): void {
+		$settings = $this->store()->read();
+		self::assertSame('', $settings['osvApiBase']);
+		self::assertSame('https://api.osv.dev', $settings['osvApiDefault']);
+
+		$store = $this->store();
+		self::assertSame(['osvApiBase'], $store->update(['osvApiBase' => 'https://osv.mirror.example/']));
+		self::assertSame('https://osv.mirror.example', $store->read()['osvApiBase']);
+
+		$this->expectException(InvalidArgumentException::class);
+		$this->store()->update(['osvApiBase' => 'http://osv.mirror.example']);
 	}
 }

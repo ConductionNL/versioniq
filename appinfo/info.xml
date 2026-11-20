@@ -29,6 +29,8 @@ Versioniq gives Nextcloud administrators the ability to roll back apps to previo
 		<job>OCA\Versioniq\BackgroundJob\PruneAuditJob</job>
 		<job>OCA\Versioniq\BackgroundJob\PinReconcileJob</job>
 		<job>OCA\Versioniq\BackgroundJob\AvailabilityRefreshJob</job>
+		<job>OCA\Versioniq\BackgroundJob\ExternalChangeReconcileJob</job>
+		<job>OCA\Versioniq\BackgroundJob\LibraryAdvisoryJob</job>
 	</background-jobs>
 	<repair-steps>
 		<!-- THE app_versions -> versioniq RENAME IS A DATA MIGRATION.
@@ -128,13 +130,21 @@ Versioniq gives Nextcloud administrators the ability to roll back apps to previo
 		</install>
 	</repair-steps>
 	<commands>
+		<command>OCA\Versioniq\Command\CheckReadiness</command>
 		<command>OCA\Versioniq\Command\ListVersions</command>
 		<command>OCA\Versioniq\Command\InstallVersion</command>
 		<command>OCA\Versioniq\Command\ListUpdates</command>
+		<command>OCA\Versioniq\Command\ExportSbom</command>
 		<command>OCA\Versioniq\Command\ListAdvisories</command>
+		<command>OCA\Versioniq\Command\SetChannel</command>
 	</commands>
 	<settings>
 		<admin>OCA\Versioniq\Settings\Admin</admin>
 		<admin-section>OCA\Versioniq\Sections\AdminSection</admin-section>
 	</settings>
+	<!-- Nextcloud 33 and later add versioniq_app_version to the server's /metrics
+	     (inventory-export-sbom-metrics D6); Nextcloud 32 ignores this entry. -->
+	<openmetrics>
+		<exporter>OCA\Versioniq\OpenMetrics\AppVersionMetricFamily</exporter>
+	</openmetrics>
 </info>

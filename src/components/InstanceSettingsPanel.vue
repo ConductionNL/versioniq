@@ -31,11 +31,15 @@ type Settings = {
 	advisoryFeedDefault: string
 	ncscFeedUrl: string
 	ncscFeedDefault: string
+	osvApiBase?: string
+	osvApiDefault?: string
 	maxLinesBehind: number | null
 	maxLinesBehindMax: number
+	reactivateAuto?: boolean
 	advisoryFeedSource?: string
 	advisoryFeedCopiedAt?: number | null
 	advisoryFeedCopyMaxAgeDays?: number
+	notifyUsersOnUpdate?: boolean
 }
 
 const ENDPOINT = '/ocs/v2.php/apps/versioniq/api/instance-settings'
@@ -49,8 +53,11 @@ const form = ref({
 	githubWebBase: '',
 	advisoryFeedUrl: '',
 	ncscFeedUrl: '',
+	osvApiBase: '',
 	maxLinesBehind: '',
+	reactivateAuto: false,
 	advisoryFeedSource: 'remote',
+	notifyUsersOnUpdate: true,
 })
 const saving = ref(false)
 const error = ref('')
@@ -70,8 +77,12 @@ function fill (settings: Settings): void {
 		githubWebBase: settings.githubWebBase,
 		advisoryFeedUrl: settings.advisoryFeedUrl,
 		ncscFeedUrl: settings.ncscFeedUrl ?? '',
+		osvApiBase: settings.osvApiBase ?? '',
 		maxLinesBehind: settings.maxLinesBehind === null || settings.maxLinesBehind === undefined ? '' : String(settings.maxLinesBehind),
+		reactivateAuto: settings.reactivateAuto === true,
 		advisoryFeedSource: settings.advisoryFeedSource === 'local' ? 'local' : 'remote',
+		// On unless the admin switched it off (releases-notes-reach 1.2).
+		notifyUsersOnUpdate: settings.notifyUsersOnUpdate !== false,
 	}
 }
 
@@ -199,6 +210,26 @@ onMounted(load)
 					data-testid="setting-max-lines-behind">
 				<span :class="$style.hint">{{ t('versioniq', 'An app further behind is flagged on the Apps tab. 1 means the newest release or the one before it.') }}</span>
 			</label>
+			<label :class="$style.field" for="setting-notify-users-on-update">
+				<span>
+					<input
+						id="setting-notify-users-on-update"
+						v-model="form.notifyUsersOnUpdate"
+						type="checkbox"
+						data-testid="setting-notify-users-on-update">
+					{{ t('versioniq', 'Tell an app\'s users what changed after Versioniq updates it') }}
+				</span>
+				<span :class="$style.hint">{{ t('versioniq', 'They get the same notice as after an update from the Apps page. A dry run never sends it.') }}</span>
+			</label>
+
+			<label :class="$style.checkboxField" for="setting-reactivate-auto">
+				<input
+					id="setting-reactivate-auto"
+					v-model="form.reactivateAuto"
+					type="checkbox"
+					data-testid="setting-reactivate-auto">
+				<span>{{ t('versioniq', 'Enable an app again when an update left it disabled and it runs on this server') }}</span>
+			</label>
 
 			<h4>{{ t('versioniq', 'Sources and mirrors') }}</h4>
 			<p :class="$style.hint">
@@ -291,6 +322,17 @@ onMounted(load)
 				</NcNoteCard>
 			</div>
 
+			<label :class="$style.field" for="setting-osv-api">
+				<span>{{ t('versioniq', 'OSV API address for the library check (https, a mirror)') }}</span>
+				<input
+					id="setting-osv-api"
+					v-model="form.osvApiBase"
+					type="url"
+					:placeholder="loaded.osvApiDefault"
+					data-testid="setting-osv-api">
+				<span :class="$style.hint">{{ t('versioniq', 'Default: {url}', { url: loaded.osvApiDefault ?? '' }) }}</span>
+			</label>
+
 			<p v-if="notice" :class="$style.notice" data-testid="instance-settings-notice">
 				{{ notice }}
 			</p>
@@ -318,6 +360,12 @@ onMounted(load)
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
+}
+
+.checkboxField {
+	display: flex;
+	gap: 8px;
+	align-items: center;
 }
 
 .hint {

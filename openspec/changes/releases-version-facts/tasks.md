@@ -10,6 +10,7 @@
 - [x] 2.1 Add `AuditEntryMapper::countOutcomesByVersion()` and `lib/Service/Release/InstallOutcomes.php`; stamp `outcomes` in `getAppVersions()`. Verify: `tests/unit/Service/Release/InstallOutcomesTest.php` counts success and failure rows per version and ignores other operations.
 - [x] 2.2 Add `GET /api/app/{appId}/outcomes`, admin-only. Verify: `tests/unit/Controller/ApiTest.php` asserts 403 for a non-admin and the counts for an admin.
 - [ ] 2.3 When `install-multi-instance-promotion` has landed, read each connection's outcomes in the picker after the list renders, and name an instance that failed. Verify: a vitest spec for the totals text with two instances and one unreadable instance.
+      (Left: install-multi-instance-promotion is merged only up to its manifest (its tasks 1.1-2.1); the remote reader this needs, its task 2.2 `RemoteInstanceReader`, is not built yet, so there is no stored connection to read another instance's outcomes through.)
 
 ## 3. Release notes
 
@@ -18,10 +19,12 @@
 
 ## 4. Page and CLI
 
-- [ ] 4.1 Add `src/components/VersionFacts.vue` to each picker row (date, downloads, outcomes, "Breaking", "Major version", known issues) and `src/dialogs/KnownIssueDialog.vue`; add the breaking sentence to the range summary and the downgrade dialog; add the card notice. Verify: `src/components/VersionFacts.spec.ts` covers each fact present and absent; a vitest spec covers the range sentence.
+- [x] 4.1 Add `src/components/VersionFacts.vue` to each picker row (date, downloads, outcomes, "Breaking", "Major version", known issues) and `src/dialogs/KnownIssueDialog.vue`; add the breaking sentence to the range summary and the downgrade dialog; add the card notice. Verify: `src/components/VersionFacts.spec.ts` covers each fact present and absent; a vitest spec covers the range sentence.
+      (Built: `src/components/VersionFacts.vue` on every picker row, with the downloads, the outcomes here, the "Major version" and "Breaking" badges, and "Known issues": the publisher's section from the notes as plain text and the admin notes, each with its workaround, https link and a remove button; `src/dialogs/KnownIssueDialog.vue` adds a note through the password-confirmed endpoint. The range summary and the downgrade dialog say "Includes releases marked as breaking: …" (`src/utils/versionFacts.ts`). The app card says "Known issue in the installed version", with the workarounds in its tooltip, from the new `installedKnownIssues` on each app card. Specs: `VersionFacts.spec.ts`, `versionFacts.spec.ts`, `KnownIssueDialog.spec.ts`, the breaking row in `DowngradeConfirmDialog.spec.ts`, the card notice in `App.appCard.spec.ts`, and the range sentence, removal and dialog wiring in `App.versionDetail.spec.ts`; the installed-version notes in `InstallerServiceAppListGoldenTest`.)
 - [x] 4.2 Add the "Released" column and the new JSON keys to `lib/Command/ListVersions.php`. Verify: `tests/unit/Command/ListVersionsTest.php`.
-- [ ] 4.3 Add the new strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
-- [ ] 4.4 Extend `tests/e2e/versions.spec.ts`: the forge fixture serves a release with `published_at`, a breaking heading and a known-issues section; assert the date, the badge and the section.
+- [x] 4.3 Add the new strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
+      (Built: 25 strings in `l10n/en.json` and `l10n/nl.json`, `.js` rebuilt; `check:l10n-js` and `check-l10n-keys` pass.)
+- [x] 4.4 Extend `tests/e2e/versions.spec.ts`: the forge fixture serves a release with `published_at`, a breaking heading and a known-issues section; assert the date, the badge and the section.
 
 ## 5. Close
 
