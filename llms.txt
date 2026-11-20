@@ -1,0 +1,57 @@
+# Versioniq
+
+> Nextcloud app that lets administrators install any earlier or newer version of an app that is already installed: roll back after a broken update, pin a version, or install from GitHub releases.
+
+Versioniq is an admin-only Nextcloud app with a PHP backend in `lib/` and a Vue frontend in `src/`. Features are specified in OpenSpec before they are built; the capability specs below describe what the app does today.
+
+## Start here
+
+- [AGENTS.md](AGENTS.md): setup, build, test and lint commands, OpenSpec flow and conventions for coding agents
+- [README.md](README.md): what the app is, test coverage, and how to run it with Docker or Helm
+- [CONTRIBUTING.md](CONTRIBUTING.md): branches, reviews, quality checks and commit message rules
+- [Architecture decisions](docs/adr/README.md): index of the decisions this app has made
+
+## Docs
+
+- [Introduction](docs/intro.md): overview of the app and its features
+- [CLI commands](docs/cli.md): the occ commands for listing versions and installing a specific version
+- [End-to-end tests](docs/e2e.md): setting up a disposable instance and running the Playwright suite
+- [Local demo](docs/Installation/demo-environment.md): running a demo stack with Docker Compose
+- [Open Versioniq for the first time](docs/tutorials/admin/01-admin-settings.md): admin tutorial
+- [Roll back an app](docs/tutorials/admin/02-rollback.md): admin tutorial
+- [Install versions from GitHub or Codeberg](docs/tutorials/admin/03-github-source.md): admin tutorial
+- [Who is Versioniq for?](docs/tutorials/user/01-first-launch.md): user tutorial
+
+## API
+
+- [OpenAPI document](openapi.json): the app's OCS API, generated with `composer openapi`
+- [API contract spec](openspec/specs/api-contract/spec.md): versioning and design rules every endpoint follows
+- [Admin API spec](openspec/specs/admin-api/spec.md): everything on the admin page is also available through the API
+
+## Specs
+
+- [Version management](openspec/specs/version-management/spec.md): listing and installing versions of installed apps
+- [External sources](openspec/specs/external-sources/spec.md): installing from GitHub releases and other sources outside the App Store
+- [Version pinning](openspec/specs/version-pinning/spec.md): holding an app at a chosen version and detecting drift
+- [Audit trail](openspec/specs/audit-trail/spec.md): the record of every version operation
+- [Security advisory correlation](openspec/specs/security-advisory-correlation/spec.md): which installed versions are affected by published advisories
+- [Pending updates](openspec/specs/pending-updates/spec.md): which apps have a newer version and how far behind they are
+- [Auto-update policies](openspec/specs/auto-update-policies/spec.md): per-app update policies run by a background job
+- [Release channels](openspec/specs/release-channels/spec.md): stable, pre-release and long-term support releases per app
+- [Migration safety](openspec/specs/migration-safety/spec.md): guarding downgrades against forward-only schema migrations
+- [Artifact cache](openspec/specs/artifact-cache/spec.md): keeping verified archives for rollback
+- [Personal access tokens](openspec/specs/pat-management/spec.md): encrypted token storage for private repositories
+- [App discovery](openspec/specs/app-discovery/spec.md): searching for apps across sources
+- [Changelog visibility](openspec/specs/changelog-visibility/spec.md): release notes for each version
+- [CLI commands](openspec/specs/cli-commands/spec.md): the occ command layer
+- [Admin integrations](openspec/specs/admin-integrations/spec.md): the app's outside connections and their status
+- [Interface language](openspec/specs/interface-language/spec.md): translatable strings and the Dutch catalogue
+- [Platform properties](openspec/specs/platform-properties/spec.md): runs inside Nextcloud with no hosted service behind it
+- [Source license headers](openspec/specs/source-license-headers/spec.md): EUPL-1.2 headers on PHP sources
+
+## Optional
+
+- [OpenSpec config](openspec/config.yaml): project context and rules for proposals, specs, design and tasks
+- [Open changes](openspec/changes/): proposed changes with proposal, design, tasks and delta specs
+- [Changelog](CHANGELOG.md): release history
+- [Security policy](SECURITY.md): how to report a vulnerability
