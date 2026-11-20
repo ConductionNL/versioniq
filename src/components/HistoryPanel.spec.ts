@@ -20,6 +20,9 @@ vi.mock('@nextcloud/l10n', () => ({
 vi.mock('@nextcloud/vue/components/NcButton', () => ({ default: { name: 'NcButton', emits: ['click'], template: '<button @click="$emit(\'click\')"><slot /></button>' } }))
 vi.mock('@nextcloud/vue/components/NcLoadingIcon', () => ({ default: { name: 'NcLoadingIcon', template: '<div />' } }))
 vi.mock('@nextcloud/vue/components/NcNoteCard', () => ({ default: { name: 'NcNoteCard', template: '<div><slot /></div>' } }))
+vi.mock('@nextcloud/vue/components/NcSelect', () => ({
+	default: { name: 'NcSelect', props: ['modelValue', 'options', 'inputLabel'], template: '<div />' },
+}))
 vi.mock('../ocs', () => ({ ocsGet: vi.fn() }))
 vi.mock('../utils/auditExport.ts', async (importOriginal) => ({
 	...(await importOriginal<Record<string, unknown>>()),

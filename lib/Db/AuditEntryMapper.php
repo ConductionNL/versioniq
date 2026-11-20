@@ -45,14 +45,19 @@ class AuditEntryMapper extends QBMapper {
 		parent::__construct($db, self::TABLE_NAME, AuditEntry::class);
 	}
 
+	/** The origin filter that selects rows written before origins were recorded. */
+	public const ORIGIN_UNKNOWN = 'unknown';
+
 	/**
-	 * Newest-first page of audit entries, optionally filtered by app id;
-	 * see "Audit entries are immutable and admin-readable".
+	 * Newest-first page of audit entries, optionally filtered by app id and by
+	 * origin (`unknown` selects the rows that have none); see "Audit entries are
+	 * immutable and admin-readable".
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
+	 * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-every-audit-row-says-where-it-came-from
 	 * @return list<AuditEntry>
 	 */
-	public function findPage(?string $appId, int $limit, int $offset): array {
+	public function findPage(?string $appId, int $limit, int $offset, ?string $origin = null): array {
 		$qb = $this->db->getQueryBuilder();
 		$qb->select('*')
 			->from($this->tableName)
@@ -61,8 +66,21 @@ class AuditEntryMapper extends QBMapper {
 			->setMaxResults($limit)
 			->setFirstResult($offset);
 
+		$conditions = [];
 		if ($appId !== null && $appId !== '') {
-			$qb->where($qb->expr()->eq('app_id', $qb->createNamedParameter($appId, IQueryBuilder::PARAM_STR)));
+			$conditions[] = $qb->expr()->eq('app_id', $qb->createNamedParameter($appId, IQueryBuilder::PARAM_STR));
+		}
+		if ($origin === self::ORIGIN_UNKNOWN) {
+			$conditions[] = $qb->expr()->isNull('origin');
+		} elseif ($origin !== null && $origin !== '') {
+			$conditions[] = $qb->expr()->eq('origin', $qb->createNamedParameter($origin, IQueryBuilder::PARAM_STR));
+		}
+		foreach ($conditions as $index => $condition) {
+			if ($index === 0) {
+				$qb->where($condition);
+			} else {
+				$qb->andWhere($condition);
+			}
 		}
 
 		return $this->findEntities($qb);

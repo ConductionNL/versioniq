@@ -2,15 +2,18 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
 import type {ExportEntry} from '../utils/auditExport.ts';
+import type { OriginFilter } from '../utils/auditOrigin.ts'
 
 import { t } from '@nextcloud/l10n'
 import { computed, ref, watch } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
+import NcSelect from '@nextcloud/vue/components/NcSelect'
 import { ocsGet } from '../ocs.ts'
 import { collectAll, download, EXPORT_LIMIT, toCsv, toJson } from '../utils/auditExport.ts'
 import { labelCarriesMessage, operationLabel } from '../utils/auditOperations.ts'
+import { originFilterOptions, originLabel } from '../utils/auditOrigin.ts'
 import { errorMessage } from '../utils/errorMessage.ts'
 import { historyMessage } from '../utils/externalChanges.ts'
 import { downloadSbom, SBOM_PATH } from '../utils/sbomDownload.ts'
@@ -29,6 +32,8 @@ type AuditEntry = {
 	message: string | null
 	createdAt: string
 	fixedAdvisories?: Array<{ id: string, severity: string }>
+	/** Where the row came from; null on rows from before origins were recorded. */
+	origin?: string | null
 }
 
 // Optional appId scopes this instance to a single app's history (the
@@ -61,6 +66,15 @@ const timeZone = (() => {
 		return ''
 	}
 })()
+// The origin filter (audit-attribution-and-forwarding task 1.3): '' lists every row.
+const originOptions = computed(() => originFilterOptions())
+const originFilter = ref<OriginFilter>('')
+const selectedOrigin = computed({
+	get: () => originOptions.value.find((option) => option.id === originFilter.value) ?? originOptions.value[0],
+	set: (option: { id: OriginFilter } | null) => {
+		originFilter.value = option?.id ?? ''
+	},
+})
 
 /**
  *
@@ -126,6 +140,9 @@ function pageQuery (reset: boolean): Record<string, string | number> {
 	}
 	if (props.appId) {
 		query.appId = props.appId
+	}
+	if (originFilter.value !== '') {
+		query.origin = originFilter.value
 	}
 	return { ...query, ...filterQuery() }
 }
@@ -232,7 +249,7 @@ function loadMore (): void {
 	void load(false)
 }
 
-watch(() => props.appId, () => {
+watch([() => props.appId, originFilter], () => {
 	void load(true)
 }, { immediate: true })
 
@@ -255,6 +272,13 @@ const isEmpty = computed(() => hasLoadedOnce.value && !isLoading.value && entrie
 		</p>
 
 		<div :class="$style.filters" data-testid="history-filters">
+			<NcSelect
+				v-model="selectedOrigin"
+				data-testid="history-origin-filter"
+				:inputLabel="t('versioniq', 'Origin')"
+				:options="originOptions"
+				:clearable="false"
+				label="label" />
 			<label :class="$style.filter">
 				<span>{{ t('versioniq', 'From') }}</span>
 				<input v-model="fromDate" type="date" data-testid="history-from">
@@ -305,6 +329,7 @@ const isEmpty = computed(() => hasLoadedOnce.value && !isLoading.value && entrie
 						     1.3.1 Info and Relationships). -->
 						<th scope="col">{{ t('versioniq', 'When') }}</th>
 						<th scope="col">{{ t('versioniq', 'Who') }}</th>
+						<th scope="col">{{ t('versioniq', 'Origin') }}</th>
 						<th v-if="!appId" scope="col">
 							{{ t('versioniq', 'App') }}
 						</th>
@@ -324,9 +349,13 @@ const isEmpty = computed(() => hasLoadedOnce.value && !isLoading.value && entrie
 						data-testid="history-row"
 						:data-operation="entry.operation"
 						:data-app-id="entry.appId"
+						:data-origin="entry.origin || 'unknown'"
 						:class="[$style.row, { [$style.rowFailure]: isFailure(entry) }]">
 						<td>{{ formatWhen(entry.createdAt) }}</td>
 						<td>{{ entry.actorUid }}</td>
+						<td data-testid="history-origin">
+							{{ originLabel(entry.origin) }}
+						</td>
 						<td v-if="!appId">
 							{{ entry.appId }}
 						</td>
@@ -371,6 +400,8 @@ const isEmpty = computed(() => hasLoadedOnce.value && !isLoading.value && entrie
 
 <style module>
 .panel { display: flex; flex-direction: column; gap: 12px; }
+
+.filters { max-width: 280px; }
 
 .hint { color: var(--color-text-maxcontrast); font-size: 13px; margin: 0; }
 
