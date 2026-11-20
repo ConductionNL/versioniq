@@ -18,12 +18,14 @@ use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
+use OCA\Versioniq\Service\Checks\CheckRunner;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCA\Versioniq\Service\Installer\AppsRoot;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallProgress;
 use OCA\Versioniq\Service\Installer\InstalledFolder;
 use OCA\Versioniq\Service\Installer\InstallFailure;
+use OCA\Versioniq\Service\Installer\InstallBackup;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
 use OCA\Versioniq\Service\Installer\MigrationDiffer;
 use OCA\Versioniq\Service\Installer\MigrationPreview;
@@ -78,6 +80,19 @@ class SelectedReleaseInstallerService {
 	/** Whether the last install's archive was served from {@see ArtifactCache} after a download failure; see "Cached fallback with full re-verification". */
 	private bool $servedFromCache = false;
 
+	/**
+	 * The backup the last install made before replacing the folder, for the result; null when none was attempted.
+	 *
+	 * @var array<string, mixed>|null
+	 */
+	private ?array $lastBackup = null;
+
+	/** The unpacked app folder of the last dry run, validated and still in the temporary folder; the checks run on it. */
+	private ?string $lastUnpackedRoot = null;
+
+	/**
+	 * @param ?CheckRunner $checkRunner Runs the update checks in a dry run; without one a dry run reports no checks.
+	 */
 	public function __construct(
 		private InstallFinalizer $finalizer,
 		private AuditLogger $auditLogger,
@@ -86,6 +101,9 @@ class SelectedReleaseInstallerService {
 		private ArtifactCache $artifactCache,
 		private ?MigrationPreview $preview = null,
 		private ?InstallProgress $progress = null,
+		private ?CheckRunner $checkRunner = null,
+		// Optional: the backup kept before the folder is replaced (safety-rollback-backup-and-preflight D3).
+		private ?InstallBackup $installBackup = null,
 	) {
 	}
 
@@ -122,6 +140,8 @@ class SelectedReleaseInstallerService {
 		$this->lastArchivePath = null;
 		$this->lastArchiveMeta = null;
 		$this->servedFromCache = false;
+		$this->lastBackup = null;
+		$this->lastUnpackedRoot = null;
 	}
 
 	/**
@@ -359,14 +379,20 @@ class SelectedReleaseInstallerService {
 	/**
 	 * Installs one selected App Store release through the signed (code-signing) path; see "Install Specific Version".
 	 *
+	 * A dry run validates the package like a real install and then runs the
+	 * update checks that match the app, in `$checkContext` (`web` or `cli`);
+	 * their results come back as `checks`.
+	 *
 	 * @spec openspec/specs/version-management/spec.md
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
 	 * @param string $appId
 	 * @param array<string, mixed> $release
 	 * @param bool $dryRun
+	 * @param string $checkContext Where the request runs, {@see CheckRunner::CONTEXT_WEB} or {@see CheckRunner::CONTEXT_CLI}.
 	 * @return array<string, mixed>
 	 * @throws Exception
 	 */
-	public function installFromSelectedRelease(string $appId, array $release, bool $dryRun = false): array {
+	public function installFromSelectedRelease(string $appId, array $release, bool $dryRun = false, string $checkContext = CheckRunner::CONTEXT_WEB): array {
 		$this->resetDebug();
 		$this->addDebug('requested-install', [
 			'appId' => $appId,
@@ -382,7 +408,7 @@ class SelectedReleaseInstallerService {
 		try {
 			$backupDestination = $this->replaceWithSelectedRelease($appId, $release, $dryRun);
 
-			return $dryRun ? $this->dryRunResult($install) : $this->finishInstall($install, $backupDestination);
+			return $dryRun ? $this->dryRunResult($install, $checkContext) : $this->finishInstall($install, $backupDestination);
 		} catch (\Throwable $error) {
 			// Best-effort audit write on the failure path, before the exception
 			// propagates up to the caller's error mapping; see "Failed install
@@ -412,15 +438,37 @@ class SelectedReleaseInstallerService {
 	}
 
 	/**
+	 * The dry-run envelope, with the results of the update checks run on the
+	 * unpacked package.
+	 *
 	 * @return array<string, mixed>
 	 */
-	private function dryRunResult(SignedInstall $install): array {
+	private function dryRunResult(SignedInstall $install, string $checkContext): array {
+		$checks = $this->runChecks($install, $checkContext);
 		$this->addDebug('result', [
 			'status' => 'dry-run',
 			'message' => 'Skipping installAppLastSteps and post-install writes.',
 		]);
 
-		return $this->resultEnvelope($install, null);
+		return $this->resultEnvelope($install, null) + ['checks' => $checks];
+	}
+
+	/**
+	 * Runs the update checks that match the app on the unpacked package of the
+	 * dry run, while it is still in the temporary folder.
+	 *
+	 * @return list<array{name: string, kind: string, outcome: string, passed: bool, detail: string}>
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
+	 */
+	private function runChecks(SignedInstall $install, string $checkContext): array {
+		$version = $install->requestedVersion();
+		if ($this->checkRunner === null || $this->lastUnpackedRoot === null || $version === null) {
+			return [];
+		}
+		$checks = $this->checkRunner->run($install->appId, $install->installedVersion, $version, $this->lastUnpackedRoot, $checkContext);
+		$this->addDebug('checks', ['count' => count($checks), 'failed' => CheckRunner::firstFailure($checks)['name'] ?? null]);
+
+		return $checks;
 	}
 
 	/**
@@ -462,23 +510,40 @@ class SelectedReleaseInstallerService {
 	 * is a clean revert: the previous version is intact.
 	 */
 	private function validateInstalledInfo(SignedInstall $install, InstalledFolder $folder): void {
-		$appManager = $this->getAppManager();
-		$l = $this->getL10n()->get('core');
 		$appId = $install->appId;
 
 		try {
-			$info = $appManager->getAppInfoByPath($folder->appPath . '/appinfo/info.xml', $l->getLanguageCode());
-			if (!is_array($info) || ($info['id'] ?? null) !== $appId) {
-				throw $this->unreadableInfo($appId, $l);
-			}
-			/** @var array<string, mixed> $info */
-			$this->assertInstallable($info, $l);
+			$info = $this->validatedInfo($appId, $folder->appPath);
 		} catch (Exception $validationError) {
 			$this->restoreFromBackup($folder->appPath, $folder->backup);
 			throw InstallFailure::reverted($validationError->getMessage(), FailureClassifier::STAGE_INFO_VALIDATED, $validationError);
 		}
 
 		$folder->info = $info;
+	}
+
+	/**
+	 * The `info.xml` validation a real install runs, on any app folder: the app
+	 * manager reads it and it names the app, the app is compatible with this
+	 * server and its dependencies (PHP version and extensions included) are
+	 * met. A real install calls it on the installed path after the swap, a dry
+	 * run on the unpacked package, so a dry run that passes means these
+	 * checks pass.
+	 *
+	 * @return array<string, mixed> The app's info.
+	 * @throws Exception when one of the checks fails
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-a-dry-run-validates-the-package-like-a-real-install
+	 */
+	private function validatedInfo(string $appId, string $appPath): array {
+		$l = $this->getL10n()->get('core');
+		$info = $this->getAppManager()->getAppInfoByPath($appPath . '/appinfo/info.xml', $l->getLanguageCode());
+		if (!is_array($info) || ($info['id'] ?? null) !== $appId) {
+			throw $this->unreadableInfo($appId, $l);
+		}
+		/** @var array<string, mixed> $info */
+		$this->assertInstallable($info, $l);
+
+		return $info;
 	}
 
 	/**
@@ -574,7 +639,8 @@ class SelectedReleaseInstallerService {
 			'dryRun' => $installedApp === null,
 			'debug' => $this->debug,
 			'servedFromCache' => $this->servedFromCache,
-		] + $this->migrationFields();
+		] + $this->migrationFields()
+			+ ($this->lastBackup !== null ? ['backup' => $this->lastBackup] : []);
 	}
 
 	/**
@@ -586,6 +652,26 @@ class SelectedReleaseInstallerService {
 	private function migrationFields(): array {
 		return ($this->isDowngradeInstall ? ['orphanedMigrations' => $this->orphanedMigrations] : [])
 			+ ($this->isUpgradePreview ? ['migrationPreview' => $this->migrationPreview] : []);
+	}
+
+	/**
+	 * Keeps a restorable backup of the old app while its folder is still in
+	 * place (its migration classes load from there), before anything is
+	 * replaced; the old version and enabled value are still the installed ones.
+	 *
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 */
+	private function keepBackup(string $appId, string $oldFolder): void {
+		if ($this->installBackup === null) {
+			return;
+		}
+		try {
+			$version = $this->getAppManager()->getAppVersion($appId);
+		} catch (Exception) {
+			$version = '';
+		}
+		$this->lastBackup = $this->installBackup->make($appId, $oldFolder, $version, $this->getAppConfig()->getValueString($appId, 'enabled', 'no'));
+		$this->addDebug('backup', $this->lastBackup);
 	}
 
 	/**
@@ -638,8 +724,13 @@ class SelectedReleaseInstallerService {
 		$this->diffDowngrade($run, $target);
 		$this->previewUpgrade($run, $target, $dryRun);
 
+		if (!$dryRun && $target->previousPath !== null) {
+			$this->keepBackup($appId, $target->previousPath);
+		}
 		$backupDestination = $this->backupExistingFolder($target->destination, $dryRun, $target->previousPath !== null);
 		if ($dryRun) {
+			$this->validateUnpackedRelease($appId, $target->root);
+
 			return null;
 		}
 		$this->copyIntoPlace($target, $backupDestination);
@@ -647,6 +738,19 @@ class SelectedReleaseInstallerService {
 		// Backup is intentionally retained until finalize() succeeds; the caller
 		// owns its deletion (success) or restore (finalize-phase failure).
 		return $backupDestination;
+	}
+
+	/**
+	 * A dry run validates the unpacked package like a real install validates
+	 * the installed one, and changes nothing either way; see design D1.
+	 *
+	 * @throws Exception when the package would not pass the installer's own checks
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-a-dry-run-validates-the-package-like-a-real-install
+	 */
+	private function validateUnpackedRelease(string $appId, string $unpackedRoot): void {
+		$info = $this->validatedInfo($appId, $unpackedRoot);
+		$this->addDebug(FailureClassifier::STAGE_INFO_VALIDATED, ['appId' => $appId, 'version' => $info['version'] ?? null]);
+		$this->lastUnpackedRoot = $unpackedRoot;
 	}
 
 	private function allocateTempArchive(): TempArchive {

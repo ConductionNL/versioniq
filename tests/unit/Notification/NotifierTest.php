@@ -102,6 +102,37 @@ final class NotifierTest extends TestCase {
 		$this->assertSame($notification, $result);
 	}
 
+	public function testAutoUpdatePlannedCarriesThePlannedDateAndTheReleaseNotes(): void {
+		$notification = $this->createMock(INotification::class);
+		$notification->method('getApp')->willReturn(Application::APP_ID);
+		$notification->method('getSubject')->willReturn('auto_update_planned');
+		$notification->method('getSubjectParameters')->willReturn([
+			'app' => 'forms',
+			'fromVersion' => '4.3.0',
+			'toVersion' => '4.4.0',
+			'plannedFor' => '2026-10-16T01:00:00+00:00',
+			'releaseNotes' => 'Adds conditional questions.',
+		]);
+		$notification->expects($this->once())->method('setParsedSubject')->with('Update planned for forms')->willReturnSelf();
+		$notification->expects($this->once())->method('setParsedMessage')->with(
+			"forms will be updated from 4.3.0 to 4.4.0 on or after 2026-10-16T01:00:00+00:00.\n\nRelease notes:\nAdds conditional questions."
+		)->willReturnSelf();
+
+		(new Notifier($this->l10nFactory()))->prepare($notification, 'en');
+	}
+
+	public function testAutoUpdatePlannedWithoutNotesOrDateStillRenders(): void {
+		$notification = $this->createMock(INotification::class);
+		$notification->method('getApp')->willReturn(Application::APP_ID);
+		$notification->method('getSubject')->willReturn('auto_update_planned');
+		$notification->method('getSubjectParameters')->willReturn(['app' => 'forms', 'fromVersion' => '4.3.0', 'toVersion' => '4.4.0']);
+		$notification->expects($this->once())->method('setParsedSubject')->willReturnSelf();
+		$notification->expects($this->once())->method('setParsedMessage')
+			->with('forms will be updated from 4.3.0 to 4.4.0 at a coming update window.')->willReturnSelf();
+
+		(new Notifier($this->l10nFactory()))->prepare($notification, 'en');
+	}
+
 	public function testAutoUpdateFailureIsParsed(): void {
 		$notifier = new Notifier($this->l10nFactory());
 
@@ -227,7 +258,7 @@ final class NotifierTest extends TestCase {
 
 	public function testTheSubjectScanFindsTheKnownSenders(): void {
 		$found = array_keys(self::sentSubjects());
-		foreach (['advisory_assigned', 'advisory_digest', 'auto_update_failure', 'auto_update_success', 'pat_expired', 'pat_expiring', 'pin_drift', 'pinned_to_vulnerable'] as $expected) {
+		foreach (['advisory_assigned', 'advisory_digest', 'auto_update_failure', 'auto_update_planned', 'auto_update_success', 'force_lifted', 'pat_expired', 'pat_expiring', 'pin_drift', 'pinned_to_vulnerable'] as $expected) {
 			$this->assertContains($expected, $found);
 		}
 	}
@@ -239,6 +270,28 @@ final class NotifierTest extends TestCase {
 		$result = $notifier->prepare($this->notification($subject, []), 'en');
 
 		$this->assertInstanceOf(INotification::class, $result);
+	}
+
+	/**
+	 * @return array<string, array{0: string, 1: string}>
+	 */
+	public static function liftCases(): array {
+		return [
+			'disabled' => ['1', 'hermiq was forced to run past its declared maximum. After the upgrade to Nextcloud 34 the override is lifted, and hermiq is disabled because its version does not declare support for Nextcloud 34. Update it, or choose "Enable anyway" again.'],
+			'kept enabled' => ['0', 'hermiq was forced to run past its declared maximum. After the upgrade to Nextcloud 34 the override is lifted; hermiq now runs under Nextcloud\'s own compatibility check.'],
+		];
+	}
+
+	#[DataProvider('liftCases')]
+	public function testForceLiftedNamesTheAppTheMajorAndWhetherItWasDisabled(string $disabled, string $message): void {
+		$notification = $this->createMock(INotification::class);
+		$notification->method('getApp')->willReturn(Application::APP_ID);
+		$notification->method('getSubject')->willReturn('force_lifted');
+		$notification->method('getSubjectParameters')->willReturn(['app' => 'hermiq', 'major' => '34', 'disabled' => $disabled]);
+		$notification->expects($this->once())->method('setParsedSubject')->with('Compatibility override lifted for hermiq')->willReturnSelf();
+		$notification->expects($this->once())->method('setParsedMessage')->with($message)->willReturnSelf();
+
+		(new Notifier($this->l10nFactory()))->prepare($notification, 'en');
 	}
 
 	/**

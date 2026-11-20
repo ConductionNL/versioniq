@@ -43,6 +43,9 @@ final class AutoUpdateMember {
 	 * @param string|null $candidate        The version it would move to.
 	 * @param string|null $reason           Why it will not install, or null when it will.
 	 * @param string|null $group            The update group it moves with, by name, or null.
+	 * @param bool        $nextWindowFix    A security fix the patch policy installs at the next
+	 *                                      window, so a notice period does not hold it back
+	 *                                      (autoupdate-proposed-updates D5).
 	 */
 	public function __construct(
 		public readonly string $appId,
@@ -50,7 +53,17 @@ final class AutoUpdateMember {
 		public readonly ?string $candidate,
 		public readonly ?string $reason,
 		public readonly ?string $group = null,
+		public readonly bool $nextWindowFix = false,
 	) {
+	}
+
+	/**
+	 * This member as a security fix the patch policy installs at the next window.
+	 *
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
+	 */
+	public function asNextWindowFix(): self {
+		return new self($this->appId, $this->installedVersion, $this->candidate, $this->reason, $this->group, true);
 	}
 
 	/**
@@ -59,7 +72,7 @@ final class AutoUpdateMember {
 	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
 	 */
 	public function withReason(?string $reason): self {
-		return new self($this->appId, $this->installedVersion, $this->candidate, $reason, $this->group);
+		return new self($this->appId, $this->installedVersion, $this->candidate, $reason, $this->group, $this->nextWindowFix);
 	}
 
 	/**
@@ -68,7 +81,7 @@ final class AutoUpdateMember {
 	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
 	 */
 	public function inGroup(string $group): self {
-		return new self($this->appId, $this->installedVersion, $this->candidate, $this->reason, $group);
+		return new self($this->appId, $this->installedVersion, $this->candidate, $this->reason, $group, $this->nextWindowFix);
 	}
 
 	/**

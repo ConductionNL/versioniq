@@ -19,6 +19,7 @@ use OCA\Versioniq\Kernel\Contracts\InstanceSettingsInterface;
 use OCA\Versioniq\Service\Advisory\LocalFeedCopy;
 use OCA\Versioniq\Service\Advisory\NcscAdvisoryFeed;
 use OCA\Versioniq\Service\Advisory\NextcloudAdvisoryFeed;
+use OCA\Versioniq\Service\Advisory\OsvClient;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Lifecycle\ServerEolFeed;
@@ -47,6 +48,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 	public const KEY_GITHUB_API_BASE = 'forge.github.api_base';
 	public const KEY_GITHUB_WEB_BASE = 'forge.github.web_base';
 	public const KEY_ADVISORY_FEED = 'advisory.feed_base';
+	public const KEY_OSV_API_BASE = 'advisory.osv_api_base';
 	/** How many release lines an app may fall behind; absent means off (inventory-pending-updates D3). */
 	public const KEY_MAX_LINES_BEHIND = 'update.max_lines_behind';
 	/** Whether apps an update left disabled are enabled again when they run (audit-external-changes). */
@@ -61,6 +63,11 @@ class InstanceSettings implements InstanceSettingsInterface {
 	public const KEY_NOTIFY_USERS_ON_UPDATE = InstallerService::KEY_NOTIFY_USERS_ON_UPDATE;
 
 	public const MAX_LINES_BEHIND = 10;
+
+	/** Days a version must run on the earlier stage before it may be promoted; 0 is off. */
+	public const KEY_PROMOTION_MIN_DAYS = 'promotion.min_days';
+
+	public const MAX_PROMOTION_MIN_DAYS = 90;
 
 	/** Ten years: longer is a history nobody reads, and the table keeps growing. */
 	public const MAX_RETENTION_DAYS = 3650;
@@ -77,6 +84,8 @@ class InstanceSettings implements InstanceSettingsInterface {
 		'advisoryFeedUrl' => [self::KEY_ADVISORY_FEED, false],
 		// The NCSC-NL CSAF directory (advisories-ncsc-feed), https only.
 		'ncscFeedUrl' => [NcscAdvisoryFeed::CONFIG_BASE, true],
+		// Library names leave the server, so only https (advisories-bundled-libraries).
+		'osvApiBase' => [self::KEY_OSV_API_BASE, true],
 	];
 
 	public function __construct(
@@ -90,7 +99,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, eolFeedUrl: string, eolFeedOff: bool, eolFeedDefault: string, ncscFeedUrl: string, ncscFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, reactivateAuto: bool, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int, notifyUsersOnUpdate: bool}
+	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, eolFeedUrl: string, eolFeedOff: bool, eolFeedDefault: string, ncscFeedUrl: string, ncscFeedDefault: string, osvApiBase: string, osvApiDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, reactivateAuto: bool, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int, notifyUsersOnUpdate: bool}
 	 */
 	public function read(): array {
 		$retention = $this->config->getValueInt(Application::APP_ID, PruneAuditJob::CONFIG_KEY_RETENTION_DAYS, PruneAuditJob::DEFAULT_RETENTION_DAYS);
@@ -116,8 +125,12 @@ class InstanceSettings implements InstanceSettingsInterface {
 			'eolFeedDefault' => ServerEolFeed::DEFAULT_FEED_URL,
 			'ncscFeedUrl' => $this->stored(NcscAdvisoryFeed::CONFIG_BASE),
 			'ncscFeedDefault' => NcscAdvisoryFeed::DEFAULT_BASE,
+			'osvApiBase' => $this->stored(self::KEY_OSV_API_BASE),
+			'osvApiDefault' => OsvClient::DEFAULT_API_BASE,
 			'maxLinesBehind' => $this->maxLinesBehind(),
 			'maxLinesBehindMax' => self::MAX_LINES_BEHIND,
+			'promotionMinDays' => $this->promotionMinDays(),
+			'promotionMinDaysMax' => self::MAX_PROMOTION_MIN_DAYS,
 			'reactivateAuto' => $this->config->getValueBool(Application::APP_ID, self::KEY_REACTIVATE_AUTO, false),
 			'githubSearchEnabled' => $this->config->getValueString(Application::APP_ID, self::KEY_GITHUB_SEARCH, 'false') === 'true',
 			...$this->feedSource(),
@@ -131,6 +144,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
 	 * @param array<string, string> $fields
 	 * @return list<string> The names of the fields that were applied
 	 * @throws InvalidArgumentException when any field is out of range or not an acceptable URL
@@ -139,8 +153,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 		// Every field is validated before anything is written, so a refusal
 		// leaves the stored settings as they were.
 		$ints = $this->validatedInts($fields);
-		$lagLimit = $this->validatedLagLimit($fields);
-		$urls = $this->validatedUrls($fields);
+		$cleared = [...$this->validatedLagLimit($fields), ...$this->validatedWaitDays($fields), ...$this->validatedUrls($fields)];
 		$reactivate = self::validatedSwitch($fields, 'reactivateAuto', 'Automatic re-enabling');
 		$githubSearch = self::validatedSwitch($fields, 'githubSearchEnabled', 'GitHub search');
 		$notify = self::validatedSwitch($fields, 'notifyUsersOnUpdate', 'Telling users about updates');
@@ -157,10 +170,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 		if ($feedSource !== null) {
 			$this->config->setValueString(Application::APP_ID, NextcloudAdvisoryFeed::CONFIG_FEED_SOURCE, $feedSource);
 		}
-		if ($lagLimit !== null) {
-			$this->storeOrClear(self::KEY_MAX_LINES_BEHIND, $lagLimit);
-		}
-		foreach ($urls as $key => $value) {
+		foreach ($cleared as $key => $value) {
 			$this->storeOrClear($key, $value);
 		}
 		if ($reactivate !== null) {
@@ -183,7 +193,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 	 */
 	private static function appliedFields(array $fields): array {
 		return array_values(array_filter(
-			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', 'notifyUsersOnUpdate', ...array_keys(self::URL_FIELDS), 'reactivateAuto', 'githubSearchEnabled', 'advisoryFeedSource', 'eolFeedUrl'],
+			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', 'promotionMinDays', 'notifyUsersOnUpdate', ...array_keys(self::URL_FIELDS), 'reactivateAuto', 'githubSearchEnabled', 'advisoryFeedSource', 'eolFeedUrl'],
 			static fn (string $field): bool => isset($fields[$field]),
 		));
 	}
@@ -279,19 +289,38 @@ class InstanceSettings implements InstanceSettingsInterface {
 	}
 
 	/**
-	 * The lag limit to store, '' to clear it, or null when it is not given.
+	 * The lag limit to store by config key, '' to clear it; empty when it is not given.
 	 *
 	 * @param array<string, string> $fields
+	 * @return array<string, string>
 	 * @throws InvalidArgumentException when the value is out of range
 	 */
-	private function validatedLagLimit(array $fields): ?string {
+	private function validatedLagLimit(array $fields): array {
 		if (!isset($fields['maxLinesBehind'])) {
-			return null;
+			return [];
 		}
 
-		return trim($fields['maxLinesBehind']) === ''
+		return [self::KEY_MAX_LINES_BEHIND => trim($fields['maxLinesBehind']) === ''
 			? ''
-			: (string)$this->intInRange($fields['maxLinesBehind'], 0, self::MAX_LINES_BEHIND, 'The number of releases an app may fall behind');
+			: (string)$this->intInRange($fields['maxLinesBehind'], 0, self::MAX_LINES_BEHIND, 'The number of releases an app may fall behind')];
+	}
+
+	/**
+	 * The waiting period among $fields, by config key; '' (for 0) switches it off.
+	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+	 * @param array<string, string> $fields
+	 * @return array<string, string>
+	 * @throws InvalidArgumentException when the value is outside 0 to 90
+	 */
+	private function validatedWaitDays(array $fields): array {
+		if (!isset($fields['promotionMinDays'])) {
+			return [];
+		}
+
+		$days = $this->intInRange($fields['promotionMinDays'], 0, self::MAX_PROMOTION_MIN_DAYS, 'The waiting period');
+
+		return [self::KEY_PROMOTION_MIN_DAYS => $days === 0 ? '' : (string)$days];
 	}
 
 	/**
@@ -335,6 +364,35 @@ class InstanceSettings implements InstanceSettingsInterface {
 		}
 
 		return min((int)$raw, self::MAX_LINES_BEHIND);
+	}
+
+	/**
+	 * How many days a version must run on the earlier stage before it may be
+	 * promoted, 0 to 90; 0 (also for an unset or damaged value) is off.
+	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+	 */
+	public function promotionMinDays(): int {
+		$raw = $this->stored(self::KEY_PROMOTION_MIN_DAYS);
+		if (preg_match('/^\d+$/', $raw) !== 1) {
+			return 0;
+		}
+
+		return min((int)$raw, self::MAX_PROMOTION_MIN_DAYS);
+	}
+
+	/**
+	 * Store the waiting period; 0 switches it off.
+	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+	 * @throws InvalidArgumentException when the value is outside 0 to 90
+	 */
+	public function setPromotionMinDays(int $days): void {
+		if ($days < 0 || $days > self::MAX_PROMOTION_MIN_DAYS) {
+			throw new InvalidArgumentException(sprintf('The waiting period must be between 0 and %d days.', self::MAX_PROMOTION_MIN_DAYS));
+		}
+
+		$this->storeOrClear(self::KEY_PROMOTION_MIN_DAYS, $days === 0 ? '' : (string)$days);
 	}
 
 	/** Address parts a configured base URL must not carry. */

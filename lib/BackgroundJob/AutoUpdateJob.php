@@ -24,7 +24,10 @@ use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanner;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateWindow;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\Checks\CheckRunner;
+use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\AutoUpdate\PlanRun;
+use OCA\Versioniq\Service\AutoUpdate\ProposedUpdate;
 use OCA\Versioniq\Service\AutoUpdate\SecurityCandidate;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
@@ -48,7 +51,10 @@ use Psr\Log\LoggerInterface;
  * unless that exact (appId, version) was already attempted — installs it
  * through {@see \OCA\Versioniq\Service\InstallerService::installAppVersion()}, the same verified
  * path (signature/integrity checks, backup/restore, structured outcomes,
- * audit trail) as every other install in this app. Every attempt is recorded
+ * audit trail) as every other install in this app. When an update check
+ * matches the app, a dry run with those checks runs first and the version is
+ * installed only when it and every check pass; see "The nightly job installs
+ * only after the attached checks pass". Every attempt is recorded
  * in the {@see AttemptLedgerInterface} (never-retry) and reported via
  * {@see AutoUpdateNotifierInterface} (success or failure — a no-op app is never
  * notified).
@@ -126,7 +132,7 @@ class AutoUpdateJob extends TimedJob {
 
 		// The weekday is the one the window opened on (autoupdate-schedules, D3);
 		// with no kind due tonight, no source is asked at all (D4).
-		$this->runDue($this->stores->settingsStore->getSchedule()->dueKinds(AutoUpdateWindow::openedOn($window, $now)));
+		$this->runDue($this->stores->settingsStore->getSchedule()->dueKinds(AutoUpdateWindow::openedOn($window, $now)), $now);
 	}
 
 	/**
@@ -136,7 +142,7 @@ class AutoUpdateJob extends TimedJob {
 	 *
 	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
 	 */
-	private function runDue(array $dueKinds): void {
+	private function runDue(array $dueKinds, \DateTimeInterface $now): void {
 		if ($dueKinds === []) {
 			return;
 		}
@@ -148,8 +154,51 @@ class AutoUpdateJob extends TimedJob {
 		$advisories = $this->advisorySnapshot();
 		$run = new PlanRun($advisories['rows'], $advisories['fresh'], $this->stores->security->patchPolicyStore->read() ?? PatchPolicy::none());
 		$plan = (new AutoUpdatePlanner($this->stores, $this->install, $this->logger))->planRun($run->withDueKinds($dueKinds));
-		$this->installPlanned($plan);
+		$this->installPlanned($plan, $now);
 		$this->stores->security->securityHolds->replace($plan->securityHolds);
+	}
+
+	/**
+	 * Whether an admin's decision or the notice period holds this version
+	 * back, checked in the order of design D6: a declined version is skipped;
+	 * with a notice period the version must be the stored proposal and its
+	 * planned time must have come, unless it is a `next_window` security fix;
+	 * an app that requires approval installs only the exact version an admin
+	 * approved. Without notice, approval or
+	 * declines nothing is held back.
+	 *
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
+	 */
+	private function isHeldBack(AutoUpdateMember $member, \DateTimeInterface $now): bool {
+		$appId = $member->appId;
+		$candidate = (string)$member->candidate;
+		$proposals = $this->stores->proposalStore;
+		if ($proposals === null) {
+			return false;
+		}
+		$policy = $this->stores->policyStore->get($appId);
+		if ($proposals->declineOf($appId, $candidate) !== null) {
+			return true;
+		}
+		// A security fix the patch policy installs at the next window skips the
+		// notice period; a decline and approval still apply (D5).
+		if (!$member->nextWindowFix && $this->stores->settingsStore->getNoticeDays() > 0 && !$this->noticeHasPassed($proposals->proposalFor($appId), $candidate, $now)) {
+			return true;
+		}
+
+		return $policy !== null && $policy->requireApproval && !$proposals->isApproved($appId, $candidate);
+	}
+
+	/**
+	 * Whether this version was announced as the app's proposal and the
+	 * opening it was planned for has come.
+	 */
+	private function noticeHasPassed(?ProposedUpdate $proposal, string $candidate, \DateTimeInterface $now): bool {
+		if ($proposal === null || $proposal->toVersion !== $candidate || $proposal->plannedFor === null) {
+			return false;
+		}
+
+		return new \DateTimeImmutable($proposal->plannedFor) <= $now;
 	}
 
 	/**
@@ -184,13 +233,13 @@ class AutoUpdateJob extends TimedJob {
 	 *
 	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
 	 */
-	private function installPlanned(AutoUpdatePlan $plan): void {
+	private function installPlanned(AutoUpdatePlan $plan, \DateTimeInterface $now): void {
 		/** @var array<string, list<array{appId: string, version: string, outcome: string}>> $groupOutcomes */
 		$groupOutcomes = [];
 		/** @var array<string, true> $stopped */
 		$stopped = [];
 		foreach ($plan->installable() as $member) {
-			$outcome = $this->runMember($member, $stopped);
+			$outcome = $this->runMember($member, $stopped, $now);
 			if ($outcome !== null) {
 				$groupOutcomes[(string)$member->group][] = $outcome;
 			}
@@ -209,13 +258,21 @@ class AutoUpdateJob extends TimedJob {
 	 *
 	 * @return array{appId: string, version: string, outcome: string}|null Null for an app in no group.
 	 */
-	private function runMember(AutoUpdateMember $member, array &$stopped): ?array {
+	private function runMember(AutoUpdateMember $member, array &$stopped, \DateTimeInterface $now): ?array {
 		$group = $member->group;
+		$heldBack = $this->isHeldBack($member, $now);
 		if ($group === null) {
-			$this->installMember($member);
+			if (!$heldBack) {
+				$this->installMember($member);
+			}
 			return null;
 		}
 
+		// A held-back member stops its group like a failure, so the group keeps
+		// its order; nothing is written to the ledger and it plans again next run.
+		if ($heldBack) {
+			$stopped[$group] = true;
+		}
 		if (isset($stopped[$group])) {
 			return self::groupOutcome($member, AutoUpdateNotifier::OUTCOME_NOT_ATTEMPTED);
 		}
@@ -262,10 +319,25 @@ class AutoUpdateJob extends TimedJob {
 
 	/**
 	 * Installs the target and records the attempt; whether it installed.
-	 * The per-app notification is sent only when $notify is set: a group
-	 * member is reported in its group's notification.
+	 * When an update check matches the app, a dry run with its checks runs
+	 * first; a failed dry run or check blocks the version like a failed
+	 * install. The per-app notification is sent only when $notify is set: a
+	 * group member is reported in its group's notification.
+	 *
+	 * @spec openspec/specs/auto-update-policies/spec.md
+	 * @spec openspec/changes/safety-update-checks/specs/auto-update-policies/spec.md#requirement-the-nightly-job-installs-only-after-the-attached-checks-pass
 	 */
 	private function attemptInstall(InstallTarget $target, string $installedVersion, bool $notify = true): bool {
+		$blocked = $this->install->checkRunner->matches($target->appId) ? $this->gateHint($target) : null;
+		if ($blocked !== null) {
+			$this->stores->attemptLedger->record($target->appId, $target->version, AttemptLedgerInterface::OUTCOME_FAILURE, $this->now());
+			if ($notify) {
+				$this->notifier->notifyFailure($target->appId, $target->version, FailureClassifier::CATEGORY_CHECKS_FAILED, $blocked);
+			}
+
+			return false;
+		}
+
 		[$installed, $payload] = $this->installAndRecord($target);
 		if ($notify && $installed) {
 			$this->notifier->notifySuccess($target->appId, $installedVersion, self::versionInstalled($payload, $target));
@@ -286,11 +358,11 @@ class AutoUpdateJob extends TimedJob {
 		$this->snapshotBeforeFirstInstall();
 		$installResult = $this->install->installerService->installAppVersion(new InstallRequest(
 			$target,
-			new InstallOptions(false, false, false, false),
+			new InstallOptions(false, false, false, false, checkContext: CheckRunner::CONTEXT_CLI),
 			new PinChoice(null, false),
 		));
 
-		$at = $this->time->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM);
+		$at = $this->now();
 		$statusCode = $installResult['statusCode'] ?? Http::STATUS_INTERNAL_SERVER_ERROR;
 		$payload = $installResult['payload'] ?? [];
 		$installed = $statusCode >= Http::STATUS_OK && $statusCode < Http::STATUS_MULTIPLE_CHOICES;
@@ -298,6 +370,13 @@ class AutoUpdateJob extends TimedJob {
 		$this->stores->attemptLedger->record($target->appId, $target->version, $outcome, $at);
 
 		return [$installed, $payload];
+	}
+
+	/**
+	 * The current time in UTC, as the ledger records it.
+	 */
+	private function now(): string {
+		return $this->time->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM);
 	}
 
 	/**
@@ -341,5 +420,39 @@ class AutoUpdateJob extends TimedJob {
 		} catch (\Throwable $error) {
 			$this->logger->warning('AutoUpdateJob: the snapshot before the sweep failed', ['message' => $error->getMessage()]);
 		}
+	}
+
+	/**
+	 * Runs a dry run of the candidate with every matching check, as from the
+	 * command line, and returns the hint naming what failed, or null when the
+	 * dry run and every check passed.
+	 *
+	 * @spec openspec/changes/safety-update-checks/specs/auto-update-policies/spec.md#requirement-the-nightly-job-installs-only-after-the-attached-checks-pass
+	 */
+	private function gateHint(InstallTarget $target): ?string {
+		$dryRun = $this->install->installerService->installAppVersion(new InstallRequest(
+			$target,
+			new InstallOptions(false, true, false, false, checkContext: CheckRunner::CONTEXT_CLI),
+			new PinChoice(null, false),
+		));
+		$statusCode = $dryRun['statusCode'];
+		$payload = $dryRun['payload'];
+		if ($statusCode < Http::STATUS_OK || $statusCode >= Http::STATUS_MULTIPLE_CHOICES) {
+			$message = is_string($payload['message'] ?? null) ? $payload['message'] : 'The dry run failed.';
+
+			return $this->install->failureClassifier->dryRunFailedHint($message);
+		}
+
+		$failure = CheckRunner::firstFailure(is_array($payload['checks'] ?? null) ? $payload['checks'] : []);
+		if ($failure === null) {
+			return null;
+		}
+		$this->logger->info('AutoUpdateJob: an update check held back a version', [
+			'appId' => $target->appId,
+			'version' => $target->version,
+			'check' => $failure['name'],
+		]);
+
+		return $this->install->failureClassifier->checksFailedHint($failure['name'], $failure['detail']);
 	}
 }

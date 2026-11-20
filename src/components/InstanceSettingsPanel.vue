@@ -1,19 +1,24 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
+import type { UpdateChecks } from './UpdateChecksPanel.vue'
+
 import { t } from '@nextcloud/l10n'
 import { computed, onMounted, ref } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
+import UpdateChecksPanel from './UpdateChecksPanel.vue'
 import { ocsGet, ocsWrite } from '../ocs.ts'
 import { feedCopyState, importFeedCopy } from '../utils/advisoryFeedCopy.ts'
 
 /**
  * The instance settings that were reachable only through `occ config:app:set`
  * (#438 item 7): audit retention, artifact cache size, a store mirror, GitHub
- * Enterprise and an internal advisory feed mirror.
+ * Enterprise and an internal advisory feed mirror; and the update checks,
+ * which GET carries under `updateChecks` and which save on their own.
  *
  * @spec openspec/specs/audit-trail/spec.md
  * @spec openspec/specs/external-sources/spec.md
+ * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
  */
 type Settings = {
 	auditRetentionDays: number
@@ -31,8 +36,13 @@ type Settings = {
 	advisoryFeedDefault: string
 	ncscFeedUrl: string
 	ncscFeedDefault: string
+	osvApiBase?: string
+	osvApiDefault?: string
 	maxLinesBehind: number | null
 	maxLinesBehindMax: number
+	promotionMinDays?: number
+	promotionMinDaysMax?: number
+	updateChecks?: UpdateChecks
 	reactivateAuto?: boolean
 	advisoryFeedSource?: string
 	advisoryFeedCopiedAt?: number | null
@@ -51,7 +61,9 @@ const form = ref({
 	githubWebBase: '',
 	advisoryFeedUrl: '',
 	ncscFeedUrl: '',
+	osvApiBase: '',
 	maxLinesBehind: '',
+	promotionMinDays: '',
 	reactivateAuto: false,
 	advisoryFeedSource: 'remote',
 	notifyUsersOnUpdate: true,
@@ -61,11 +73,21 @@ const error = ref('')
 const notice = ref('')
 
 /**
+ * A number as the form shows it, '' when it is not set.
+ *
+ * @param value The number, or null or undefined when it is not set.
+ */
+function optionalNumberText (value: number | null | undefined): string {
+	return value === null || value === undefined ? '' : String(value)
+}
+
+/**
  * @param settings The settings from the server.
  * @spec openspec/specs/external-sources/spec.md
  */
 function fill (settings: Settings): void {
-	loaded.value = settings
+	// PUT /api/instance-settings answers without the update checks; keep the ones loaded.
+	loaded.value = { ...settings, updateChecks: settings.updateChecks ?? loaded.value?.updateChecks }
 	form.value = {
 		auditRetentionDays: String(settings.auditRetentionDays),
 		artifactCacheKeep: String(settings.artifactCacheKeep),
@@ -74,7 +96,9 @@ function fill (settings: Settings): void {
 		githubWebBase: settings.githubWebBase,
 		advisoryFeedUrl: settings.advisoryFeedUrl,
 		ncscFeedUrl: settings.ncscFeedUrl ?? '',
-		maxLinesBehind: settings.maxLinesBehind === null || settings.maxLinesBehind === undefined ? '' : String(settings.maxLinesBehind),
+		osvApiBase: settings.osvApiBase ?? '',
+		maxLinesBehind: optionalNumberText(settings.maxLinesBehind),
+		promotionMinDays: String(settings.promotionMinDays ?? 0),
 		reactivateAuto: settings.reactivateAuto === true,
 		advisoryFeedSource: settings.advisoryFeedSource === 'local' ? 'local' : 'remote',
 		// On unless the admin switched it off (releases-notes-reach 1.2).
@@ -122,6 +146,20 @@ async function importCopy (event: Event): Promise<void> {
 }
 
 /**
+ * The waiting period's refusal, or '' when it is a whole number from 0 to the maximum.
+ *
+ * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+ */
+function waitingPeriodError (): string {
+	const max = loaded.value?.promotionMinDaysMax ?? 90
+	const raw = String(form.value.promotionMinDays).trim()
+	if (/^\d+$/.test(raw) && Number(raw) <= max) {
+		return ''
+	}
+	return t('versioniq', 'The waiting period must be a whole number from 0 to {max} days.', { max })
+}
+
+/**
  * @spec openspec/specs/external-sources/spec.md
  */
 async function load (): Promise<void> {
@@ -142,9 +180,12 @@ async function load (): Promise<void> {
  * @spec openspec/specs/external-sources/spec.md
  */
 async function save (): Promise<void> {
-	saving.value = true
-	error.value = ''
 	notice.value = ''
+	error.value = waitingPeriodError()
+	if (error.value !== '') {
+		return
+	}
+	saving.value = true
 	try {
 		const body = Object.fromEntries(Object.entries(form.value).map(([key, value]) => [key, String(value).trim()]))
 		const { payload, error: apiError } = await ocsWrite<Settings>('PUT', ENDPOINT, body)
@@ -225,6 +266,19 @@ onMounted(load)
 					type="checkbox"
 					data-testid="setting-reactivate-auto">
 				<span>{{ t('versioniq', 'Enable an app again when an update left it disabled and it runs on this server') }}</span>
+			</label>
+
+			<h4>{{ t('versioniq', 'Promotion') }}</h4>
+			<label :class="$style.field" for="setting-promotion-min-days">
+				<span>{{ t('versioniq', 'Days a version must run on the earlier stage before it may be promoted (0 to {max}, 0 turns the check off)', { max: loaded.promotionMinDaysMax ?? 90 }) }}</span>
+				<input
+					id="setting-promotion-min-days"
+					v-model="form.promotionMinDays"
+					type="number"
+					min="0"
+					:max="loaded.promotionMinDaysMax ?? 90"
+					data-testid="setting-promotion-min-days">
+				<span :class="$style.hint">{{ t('versioniq', 'A version whose running time on the earlier stage is unknown also waits, unless the promotion is overridden.') }}</span>
 			</label>
 
 			<h4>{{ t('versioniq', 'Sources and mirrors') }}</h4>
@@ -318,6 +372,17 @@ onMounted(load)
 				</NcNoteCard>
 			</div>
 
+			<label :class="$style.field" for="setting-osv-api">
+				<span>{{ t('versioniq', 'OSV API address for the library check (https, a mirror)') }}</span>
+				<input
+					id="setting-osv-api"
+					v-model="form.osvApiBase"
+					type="url"
+					:placeholder="loaded.osvApiDefault"
+					data-testid="setting-osv-api">
+				<span :class="$style.hint">{{ t('versioniq', 'Default: {url}', { url: loaded.osvApiDefault ?? '' }) }}</span>
+			</label>
+
 			<p v-if="notice" :class="$style.notice" data-testid="instance-settings-notice">
 				{{ notice }}
 			</p>
@@ -328,6 +393,8 @@ onMounted(load)
 				@click="save">
 				{{ t('versioniq', 'Save') }}
 			</NcButton>
+
+			<UpdateChecksPanel v-if="loaded.updateChecks" :checks="loaded.updateChecks" />
 		</template>
 	</section>
 </template>

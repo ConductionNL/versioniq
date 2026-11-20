@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Command;
 
+use OCA\Versioniq\Service\Checks\CheckRunner;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCP\AppFramework\Http;
 
@@ -37,6 +38,8 @@ final class InstallExitCode {
 	public const INCOMPATIBLE = 7;
 	public const FINALIZE = 8;
 	public const UNTRUSTED_SOURCE = 9;
+	/** An update check failed in a dry run (see "Admins and operators attach checks that every dry run runs"). */
+	public const CHECKS_FAILED = 12;
 
 	/**
 	 * Maps the structured outcome from `InstallerService::installAppVersion()`
@@ -48,7 +51,9 @@ final class InstallExitCode {
 	 */
 	public static function for(int $statusCode, array $payload): int {
 		if ($statusCode === Http::STATUS_OK) {
-			return self::OK;
+			return CheckRunner::firstFailure(is_array($payload['checks'] ?? null) ? $payload['checks'] : []) === null
+				? self::OK
+				: self::CHECKS_FAILED;
 		}
 
 		/** @var mixed $category */
@@ -73,6 +78,7 @@ final class InstallExitCode {
 			FailureClassifier::CATEGORY_VERSION_MISMATCH => self::INTEGRITY,
 			FailureClassifier::CATEGORY_INCOMPATIBLE => self::INCOMPATIBLE,
 			FailureClassifier::CATEGORY_FINALIZE => self::FINALIZE,
+			FailureClassifier::CATEGORY_CHECKS_FAILED => self::CHECKS_FAILED,
 			default => null,
 		};
 	}

@@ -35,6 +35,8 @@ const settings = {
 	advisoryFeedDefault: 'https://api.github.com/repos/nextcloud/security-advisories/security-advisories',
 	ncscFeedUrl: '',
 	ncscFeedDefault: 'https://advisories.ncsc.nl/csaf/v2/',
+	osvApiBase: '',
+	osvApiDefault: 'https://api.osv.dev',
 	maxLinesBehind: 2,
 	maxLinesBehindMax: 10,
 }
@@ -130,7 +132,9 @@ describe('InstanceSettingsPanel saving', () => {
 			githubWebBase: '',
 			advisoryFeedUrl: 'https://mirror.example.org/feed',
 			ncscFeedUrl: 'https://csaf.example.org/v2',
+			osvApiBase: '',
 			maxLinesBehind: '',
+			promotionMinDays: '0',
 			reactivateAuto: 'false',
 			advisoryFeedSource: 'remote',
 			notifyUsersOnUpdate: 'true',
