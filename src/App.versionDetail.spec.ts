@@ -258,8 +258,56 @@ describe('App version list', () => {
 		await flushPromises()
 
 		expect(vm.sourceOverride).toBe('github:acme/deck')
-		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['GET /api/app/deck/versions', 'GET /api/app/deck/skips'])
+		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['GET /api/app/deck/versions', 'GET /api/app/deck/skips', 'GET /api/app/deck/outcomes/instances'])
 		expect(Object.values(calls[0].query)).toContain('github:acme/deck')
+	})
+
+	it('reads the other instances\' outcomes after the list and names the one it could not read', async () => {
+		const reads = [
+			{ id: 'test', label: 'Test', outcomes: { '1.4.0': { succeeded: 1, failed: 1 } }, error: null },
+			{ id: 'legacy', label: 'Legacy', outcomes: null, error: 'The instance could not be reached.' },
+		]
+		const { wrapper, vm, calls } = await openDeck({ '/api/app/deck/outcomes/instances': { data: { appId: 'deck', instances: reads } } })
+
+		await vm.checkVersions()
+		await flushPromises()
+
+		expect(calls.map((call) => call.path)).toEqual(['/api/app/deck/versions', '/api/app/deck/skips', '/api/app/deck/outcomes/instances'])
+		const note = wrapper.find('[data-testid="unreadable-instances-note"]')
+		expect(note.text()).toBe('Not counted, could not be read: Legacy')
+		expect(note.attributes('title')).toBe('Legacy: The instance could not be reached.')
+		expect(wrapper.findAllComponents({ name: 'VersionFacts' })[0].props('instanceReads')).toEqual(reads)
+	})
+
+	it('keeps the outcomes here and shows no note when the other instances cannot be asked', async () => {
+		const { wrapper, vm } = await openDeck({ '/api/app/deck/outcomes/instances': refused('Forbidden') })
+
+		await vm.checkVersions()
+		await flushPromises()
+
+		expect(vm.instanceOutcomeReads).toEqual([])
+		expect(wrapper.find('[data-testid="unreadable-instances-note"]').exists()).toBe(false)
+	})
+
+	it('drops an outcomes answer that arrives after another app was chosen', async () => {
+		let page: Page | null = null
+		let switchApp = false
+		page = await openDeck({
+			'/api/app/deck/outcomes/instances': () => {
+				if (switchApp) {
+					page!.vm.selectedApp = 'mail'
+				}
+				return { data: { instances: [{ id: 'legacy', label: 'Legacy', outcomes: null, error: 'x' }] } }
+			},
+		})
+		expect(page.vm.instanceOutcomeReads).toHaveLength(1)
+
+		switchApp = true
+		await page.vm.checkVersions()
+		await flushPromises()
+
+		expect(page.vm.selectedApp).toBe('mail')
+		expect(page.vm.instanceOutcomeReads).toEqual([])
 	})
 
 	it('shows the error and no source when listing the versions fails', async () => {
@@ -339,7 +387,7 @@ describe('App detail pin', () => {
 		wrapper.findComponent({ name: 'PinDriftBanner' }).vm.$emit('repinRequested', 'deck', '1.4.0')
 		await flushPromises()
 
-		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['POST /api/app/deck/versions/1.4.0/install', 'GET /api/pins', 'GET /api/app/deck/versions', 'GET /api/app/deck/skips'])
+		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['POST /api/app/deck/versions/1.4.0/install', 'GET /api/pins', 'GET /api/app/deck/versions', 'GET /api/app/deck/skips', 'GET /api/app/deck/outcomes/instances'])
 		expect(calls[0].query).toEqual({ debug: '0', dryRun: '0', targetVersion: '1.4.0' })
 		expect([vm.isInstallingVersion, vm.errorMessage]).toEqual([false, ''])
 	})
