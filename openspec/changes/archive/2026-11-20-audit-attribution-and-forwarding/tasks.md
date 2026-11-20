@@ -25,6 +25,6 @@
 
 ## 4. Close
 
-- [ ] 4.1 Add strings to `l10n/en` and `l10n/nl` (verify `npm run check:l10n-js`), set the matrix rows `aud-auto-attributed`, `aud-log-policy`, `aud-siem` and `aud-activity-stream` to `built` with evidence lines, then archive this change.
+- [x] 4.1 Add strings to `l10n/en` and `l10n/nl` (verify `npm run check:l10n-js`), set the matrix rows `aud-auto-attributed`, `aud-log-policy`, `aud-siem` and `aud-activity-stream` to `built` with evidence lines, then archive this change.
   - Strings are in `l10n/en.json` and `l10n/nl.json` and the catalogues are rebuilt (`npm run check:l10n-js` and `check-l10n-keys` pass). The four matrix rows read `built` with current evidence lines. Left unticked until the change is archived after merge.
   - Strings for the origin column and filter, the policy setter and the activity provider are in `l10n/en` and `l10n/nl` (`npm run check:l10n-js` passes), and the four matrix rows are `built` with evidence lines. Left: archiving the change, which follows the merge.

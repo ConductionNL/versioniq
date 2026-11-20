@@ -27,7 +27,7 @@
 
 ## 5. Close
 
-- [ ] 5.1 Add strings to `l10n/en` and `l10n/nl` (verify `npm run check:l10n-js`), set the matrix rows `inv-export-inventory`, `inv-sbom-per-update` and `inv-metrics-endpoint` to `built` with evidence lines, then archive this change.
+- [x] 5.1 Add strings to `l10n/en` and `l10n/nl` (verify `npm run check:l10n-js`), set the matrix rows `inv-export-inventory`, `inv-sbom-per-update` and `inv-metrics-endpoint` to `built` with evidence lines, then archive this change.
   - Strings for the export menu and the row link are in `l10n/en` and `l10n/nl` (`npm run check:l10n-js` passes), and the three matrix rows are `built` with evidence lines. Left: archiving the change, after the merge.
 
 ## Build notes
