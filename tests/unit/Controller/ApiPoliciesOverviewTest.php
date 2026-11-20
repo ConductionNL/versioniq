@@ -120,7 +120,7 @@ final class ApiPoliciesOverviewTest extends TestCase {
 	public function testEachAppCarriesItsPlanAndTheSnapshotTime(): void {
 		$policies = $this->createMock(PolicyStore::class);
 		$policies->method('all')->willReturn([
-			'openregister' => new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00', 7),
+			'openregister' => new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00', minAgeDays: 7),
 			'deck' => new Policy(Policy::LEVEL_MINOR, 'admin', '2026-07-01T00:00:00+00:00'),
 		]);
 		$plan = ['state' => 'planned', 'installedVersion' => '2.3.0', 'minAgeDays' => 7, 'next' => '2.3.1', 'heldBack' => [

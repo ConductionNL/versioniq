@@ -1040,7 +1040,7 @@ final class AutoUpdateJobTest extends TestCase {
 	 * (releases-minimum-age task 2.2).
 	 */
 	public function testAVersionHeldBackByTheMinimumAgeIsNotInstalled(): void {
-		$mocks = $this->openWindowWithOneApp(new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00', 5));
+		$mocks = $this->openWindowWithOneApp(new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00', minAgeDays: 5));
 		$mocks['planner'] = $this->createMock(MinimumAgePlanner::class);
 		$mocks['planner']->expects($this->once())->method('plan')
 			->with('openregister', '2.3.0', [['version' => '2.3.4', 'releasedAt' => '2026-07-22T09:00:00+00:00']], Policy::LEVEL_PATCH, 5)
@@ -1079,7 +1079,7 @@ final class AutoUpdateJobTest extends TestCase {
 		$auditMessage = null;
 		$mocks['installerService']->expects($this->once())->method('installAppVersion')
 			->willReturnCallback(static function () use (&$auditMessage): array {
-				$auditMessage = AuditNote::append('Installed 2.3.4');
+				$auditMessage = AuditNote::applyTo('Installed 2.3.4');
 				return ['statusCode' => 200, 'payload' => ['installedVersion' => '2.3.4']];
 			});
 		$mocks['notifier']->expects($this->once())->method('notifySuccess')
@@ -1087,8 +1087,8 @@ final class AutoUpdateJobTest extends TestCase {
 
 		$this->runJob($this->buildPlannedJob($mocks));
 
-		$this->assertSame('Installed 2.3.4 (security fix, installed before the minimum age: GHSA-1, GHSA-2)', $auditMessage);
-		$this->assertSame('after', AuditNote::append('after'), 'the note ends with the install');
+		$this->assertSame('Security fix, installed before the minimum age: GHSA-1, GHSA-2: Installed 2.3.4', $auditMessage);
+		$this->assertSame('after', AuditNote::applyTo('after'), 'the note ends with the install');
 	}
 
 	/**
@@ -1109,7 +1109,7 @@ final class AutoUpdateJobTest extends TestCase {
 		$auditMessage = 'unset';
 		$mocks['installerService']->method('installAppVersion')
 			->willReturnCallback(static function () use (&$auditMessage): array {
-				$auditMessage = AuditNote::append(null);
+				$auditMessage = AuditNote::applyTo(null);
 				return ['statusCode' => 200, 'payload' => ['installedVersion' => '2.3.4']];
 			});
 		$mocks['notifier']->expects($this->once())->method('notifySuccess')->with('openregister', '2.3.0', '2.3.4', []);

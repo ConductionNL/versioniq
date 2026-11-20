@@ -78,6 +78,7 @@ final class AutoUpdatePlanJobTest extends TestCase {
 					$this->createMock(PatchPolicyStore::class),
 					$this->createMock(SecurityHoldStore::class),
 				),
+				$this->createMock(\OCA\Versioniq\Service\AutoUpdate\UpdateGroupStore::class),
 			),
 			new AutoUpdateInstall($this->installer, $this->apps, new CandidateSelector(), $this->createMock(\OCA\Versioniq\Service\Checks\CheckRunner::class), $this->createMock(\OCA\Versioniq\Service\Installer\FailureClassifier::class), $this->planner),
 			$this->store,
@@ -92,7 +93,7 @@ final class AutoUpdatePlanJobTest extends TestCase {
 	}
 
 	private static function policy(string $level, ?int $minAgeDays = null): Policy {
-		return new Policy($level, 'admin', '2026-11-01T00:00:00+00:00', $minAgeDays);
+		return new Policy($level, 'admin', '2026-11-01T00:00:00+00:00', minAgeDays: $minAgeDays);
 	}
 
 	/**

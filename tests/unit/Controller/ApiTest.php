@@ -1698,7 +1698,7 @@ final class ApiTest extends TestCase {
 			}
 		);
 
-		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore = $this->settingsStoreMock();
 		$settingsStore->expects($this->once())->method('setMinAgeDays')->with(7);
 		$settingsStore->method('getMinAgeDays')->willReturn(7);
 

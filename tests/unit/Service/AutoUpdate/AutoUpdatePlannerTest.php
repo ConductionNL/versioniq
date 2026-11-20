@@ -193,7 +193,7 @@ final class AutoUpdatePlannerTest extends TestCase {
 		]);
 		$this->ledger->method('hasAttempted')->willReturn(false);
 
-		$installable = $this->planner()->plan(['rows' => [], 'fresh' => false], null, new \DateTimeImmutable('2026-11-14T12:00:00+00:00'))->installable();
+		$installable = $this->planner()->plan(['rows' => [], 'fresh' => false], null, now: new \DateTimeImmutable('2026-11-14T12:00:00+00:00'))->installable();
 
 		$this->assertCount(1, $installable);
 		$this->assertSame('1.1.0', $installable[0]->candidate);
