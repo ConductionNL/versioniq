@@ -11,6 +11,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Service\AutoUpdate;
 
+use OCA\Versioniq\Service\Checks\CheckRunner;
+use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\InstallerService;
 use OCP\App\IAppManager;
 
@@ -18,7 +20,9 @@ use OCP\App\IAppManager;
  * What an automatic update finds and installs a version with: the installer
  * service lists the available versions, says whether versioniq may manage the
  * app and installs the chosen one; the app manager reports the installed
- * version; the selector chooses the candidate for the app's policy level.
+ * version; the selector chooses the candidate for the app's policy level; the
+ * check runner says whether update checks gate the app, and the classifier
+ * words the hint when one held the version back.
  *
  * @psalm-api
  */
@@ -27,6 +31,8 @@ final class AutoUpdateInstall {
 		public readonly InstallerService $installerService,
 		public readonly IAppManager $appManager,
 		public readonly CandidateSelector $candidateSelector,
+		public readonly CheckRunner $checkRunner,
+		public readonly FailureClassifier $failureClassifier,
 	) {
 	}
 }
