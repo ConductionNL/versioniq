@@ -68,7 +68,8 @@ final class ApiPoliciesOverviewTest extends TestCase {
 		$autoUpdateSettings = $this->createMock(AutoUpdateSettingsStore::class);
 		$autoUpdateSettings->method('getSchedule')->willReturn(AutoUpdateSchedule::everyDay());
 
-		$controller = $this->buildByName(ApiController::class, [
+		// What a test passes in $extra replaces the default of the same name.
+		$controller = $this->buildByName(ApiController::class, $extra + [
 			'appName' => 'versioniq',
 			'request' => $this->createMock(IRequest::class),
 			'groupManager' => $groups,
@@ -83,7 +84,7 @@ final class ApiPoliciesOverviewTest extends TestCase {
 			'connectionReports' => null,
 			// ServerVersion is `readonly` and cannot be mocked.
 			'serverVersion' => (new \ReflectionClass(ServerVersion::class))->newInstanceWithoutConstructor(),
-		] + $extra);
+		]);
 		$response = $controller->policies();
 		$this->assertSame(200, $response->getStatus());
 
@@ -133,6 +134,7 @@ final class ApiPoliciesOverviewTest extends TestCase {
 			static fn (string $appId): ?array => $appId === 'openregister' ? ['version' => '2.3.2', 'by' => 'alice', 'at' => '2026-07-21T00:00:00+00:00'] : null
 		);
 		$settings = $this->createMock(AutoUpdateSettingsStore::class);
+		$settings->method('getSchedule')->willReturn(AutoUpdateSchedule::everyDay());
 		$settings->method('getMinAgeDays')->willReturn(3);
 
 		$data = $this->policies(null, null, [], ['policyStore' => $policies, 'planStore' => $planStore, 'minAgeExceptions' => $exceptions, 'settingsStore' => $settings]);
