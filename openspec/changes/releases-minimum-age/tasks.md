@@ -23,6 +23,7 @@
 - [x] 3.3 Add the new strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
   - Built: 14 strings in `l10n/en.json` and `l10n/nl.json`, `.js` regenerated; the earlier note string now reads "Beveiligingsupdate" like the rest of the Dutch UI. `npm run check:l10n-js` and `check-l10n-keys` pass.
 - [ ] 3.4 Extend `tests/e2e/auto-update.spec.ts`: set a minimum age, run the plan job with `occ background-job:execute --force-execute` as `tests/e2e/jobs.spec.ts` does, and assert the held version and its date in the overview.
+  - Written: the "the minimum age in the plan" block in `tests/e2e/auto-update.spec.ts` (fixture releases dated 10 and 2 days ago, a 7-day minimum age, `runJob("AutoUpdatePlanJob")`, and the next update and held version with its date in the overview); waits for the Playwright job.
 
 ## 4. Close
 

@@ -152,6 +152,8 @@ function freshState() {
 		csaf: { status: null, documents: defaultCsaf() },
 		// Webhook deliveries received on /hooks/{name}, oldest first.
 		webhooks: [],
+		// Versions /verdicts/{appId}/{version} answers 200 for; any other is 404.
+		verdictsPassed: ["1.0.1"],
 	};
 }
 
@@ -400,6 +402,30 @@ async function controlWebhooks(req, res) {
 	return json(res, 200, { ok: true, deliveries });
 }
 
+// --- Update-check verdicts (safety-update-checks) ------------------------
+// A verdict check stored with the address `{base}/verdicts/{appId}/{version}`
+// asks this route whether a version passed its tests. It answers 200 for a
+// version in `state.verdictsPassed` and 404 for any other, the way a CI system
+// answers for a build it has no green run of. POST /control/verdicts
+// `{ passed: [...] }` replaces the passing versions.
+function verdictApi(res, path) {
+	const m = path.match(/^\/verdicts\/([A-Za-z0-9_-]+)\/([^/]+)$/);
+	if (!m) return false;
+	const version = decodeURIComponent(m[2]);
+	if (state.verdictsPassed.includes(version)) {
+		json(res, 200, { app: m[1], version, verdict: "passed" });
+	} else {
+		json(res, 404, { app: m[1], version, verdict: "unknown" });
+	}
+	return true;
+}
+
+async function controlVerdicts(req, res) {
+	const b = await readBody(req);
+	if (Array.isArray(b.passed)) state.verdictsPassed = b.passed.map(String);
+	return json(res, 200, { ok: true, passed: state.verdictsPassed });
+}
+
 const CONTROL_ROUTES = {
 	"/control/reset": (_req, res) => {
 		state = freshState();
@@ -409,6 +435,7 @@ const CONTROL_ROUTES = {
 	"/control/asset": controlAsset,
 	"/control/csaf": controlCsaf,
 	"/control/webhooks": controlWebhooks,
+	"/control/verdicts": controlVerdicts,
 };
 
 // --- Forge API (Forgejo `/api/v1/...` and GitHub `/...` shapes) -----------
@@ -640,6 +667,7 @@ async function route(req, res) {
 	if (control && req.method === "POST") return control(req, res);
 
 	if (csafApi(res, path)) return;
+	if (verdictApi(res, path)) return;
 	if (await osvApi(req, res, path)) return;
 	if (gitlabApi(res, path)) return;
 	if (forgeApi(req, res, path)) return;
