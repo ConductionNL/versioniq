@@ -113,6 +113,44 @@ test.describe("background jobs", () => {
 		expect(subj).toContain("auto_update_success");
 	});
 
+	// @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md
+	test("an install the job made is recorded with origin job, and the origin filter finds it", async ({
+		page,
+	}) => {
+		expect(await installed()).toBe("1.0.0");
+		await sqlExec(
+			`DELETE FROM oc_app_versions_audit WHERE app_id='${FIXTURE_APP}'`,
+		);
+		await setPolicy(page, "patch");
+		await occ("config:app:set", "versioniq", "auto_update_enabled", "--value", "1");
+		await occ("config:app:set", "versioniq", "auto_update_window", "--value", "00:00-23:59");
+
+		await runJob("AutoUpdateJob");
+		expect(await installed()).toBe("1.0.1");
+
+		const audit = async (query: string) => {
+			const response = await page.request.get(
+				`/ocs/v2.php/apps/versioniq/api/audit?format=json&appId=${FIXTURE_APP}${query}`,
+				{ headers: { "OCS-APIRequest": "true" } },
+			);
+			expect(response.status()).toBe(200);
+			const body = await response.json();
+			return body.ocs.data.entries as Array<{ operation: string; toVersion: string | null; origin: string | null }>;
+		};
+
+		const installs = (await audit("")).filter((entry) => entry.operation === "install" && entry.toVersion === "1.0.1");
+		expect(installs.length, "the job's install writes one audit row").toBe(1);
+		expect(installs[0].origin, "recorded as the nightly job, not as the admin page or occ").toBe("job");
+
+		const byJob = await audit("&origin=job");
+		expect(byJob.some((entry) => entry.toVersion === "1.0.1")).toBe(true);
+		expect(byJob.every((entry) => entry.origin === "job"), "the origin filter returns only job rows").toBe(true);
+		expect(
+			(await audit("&origin=cli")).some((entry) => entry.operation === "install" && entry.toVersion === "1.0.1"),
+			"and a cli filter does not return the job's install",
+		).toBe(false);
+	});
+
 	// @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
 	test("a schedule installs only on its days, and per kind", async ({
 		page,

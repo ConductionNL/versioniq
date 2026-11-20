@@ -104,4 +104,38 @@ describe('PolicySelector', () => {
 
 		expect(wrapper.find('[data-testid="policy-disabled-hint"]').text()).not.toContain('\u2014')
 	})
+	// audit-attribution-and-forwarding D2: who set the policy and when.
+	// @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-changes-to-the-update-rules-are-audited
+	it('shows who set an active policy and when', () => {
+		const setAt = '2026-11-14T10:00:00+00:00'
+		const wrapper = shallowMount(PolicySelector, {
+			props: { appId: 'openregister', level: 'minor', autoUpdateEnabled: true, setBy: 'alice', setAt },
+		})
+
+		const line = wrapper.find('[data-testid="policy-set-by"]')
+		const expected = `Set by alice on ${new Date(setAt).toLocaleDateString()}`
+		expect(line.text()).toBe(expected)
+		expect(wrapper.find('[data-testid="policy-selector"]').attributes('title')).toBe(expected)
+	})
+
+	it('shows no setter for an inactive policy or one that names nobody', () => {
+		const off = shallowMount(PolicySelector, {
+			props: { appId: 'openregister', level: 'none', autoUpdateEnabled: true, setBy: 'alice', setAt: '2026-11-14T10:00:00+00:00' },
+		})
+		const nobody = shallowMount(PolicySelector, {
+			props: { appId: 'openregister', level: 'patch', autoUpdateEnabled: true },
+		})
+
+		expect(off.find('[data-testid="policy-set-by"]').exists()).toBe(false)
+		expect(off.find('[data-testid="policy-selector"]').attributes('title')).toBeUndefined()
+		expect(nobody.find('[data-testid="policy-set-by"]').exists()).toBe(false)
+	})
+
+	it('names the setter alone when the time is missing', () => {
+		const wrapper = shallowMount(PolicySelector, {
+			props: { appId: 'openregister', level: 'all', autoUpdateEnabled: true, setBy: 'bob', setAt: '' },
+		})
+
+		expect(wrapper.find('[data-testid="policy-set-by"]').text()).toBe('Set by bob')
+	})
 })

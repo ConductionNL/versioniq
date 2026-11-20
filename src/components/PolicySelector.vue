@@ -16,9 +16,14 @@ const props = withDefaults(defineProps<{
 	autoUpdateEnabled: boolean
 	disabled?: boolean
 	blockedVersions?: BlockedVersion[]
+	/** Who set the policy, and when (ISO 8601); shown beside an active policy (audit-attribution-and-forwarding D2). */
+	setBy?: string
+	setAt?: string
 }>(), {
 	disabled: false,
 	blockedVersions: () => [],
+	setBy: '',
+	setAt: '',
 })
 
 const emit = defineEmits<{
@@ -45,10 +50,26 @@ const selected = computed<SelectOption>({
 })
 
 const isActive = computed(() => props.level !== 'none')
+
+/**
+ * "Set by {user} on {date}" for an active policy that records who set it, else ''.
+ *
+ * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-changes-to-the-update-rules-are-audited
+ */
+const setByText = computed(() => {
+	if (!isActive.value || props.setBy === '') {
+		return ''
+	}
+	const when = new Date(props.setAt)
+	const date = Number.isNaN(when.getTime()) ? props.setAt : when.toLocaleDateString()
+	return date === ''
+		? t('versioniq', 'Set by {user}', { user: props.setBy })
+		: t('versioniq', 'Set by {user} on {date}', { user: props.setBy, date })
+})
 </script>
 
 <template>
-	<div :class="$style.wrapper" data-testid="policy-selector">
+	<div :class="$style.wrapper" data-testid="policy-selector" :title="setByText || undefined">
 		<NcSelect
 			v-model="selected"
 			data-testid="policy-select"
@@ -59,6 +80,9 @@ const isActive = computed(() => props.level !== 'none')
 			label="label" />
 		<span v-if="isActive" :class="$style.badge" data-testid="policy-active-badge">
 			{{ t('versioniq', 'Auto-update: {level}', { level: selected.label }) }}
+		</span>
+		<span v-if="setByText" :class="$style.badge" data-testid="policy-set-by">
+			{{ setByText }}
 		</span>
 		<span v-if="isActive && !autoUpdateEnabled" :class="$style.disabledHint" data-testid="policy-disabled-hint">
 			{{ t('versioniq', 'Automation is disabled. Enable it in settings to take effect.') }}

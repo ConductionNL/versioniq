@@ -3385,6 +3385,8 @@ watch(dryRunEnabled, () => {
 													:autoUpdateEnabled="autoUpdateEnabled"
 													:disabled="isSavingPolicy"
 													:blockedVersions="blockedVersionsFor(app.id)"
+													:setBy="policies[app.id]?.setBy ?? ''"
+													:setAt="policies[app.id]?.setAt ?? ''"
 													@change="onPolicyChange"
 													@retry="onRetryAttempt" />
 												<ChannelSelector

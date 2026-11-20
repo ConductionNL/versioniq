@@ -142,6 +142,14 @@ Versioniq gives Nextcloud administrators the ability to roll back apps to previo
 		<admin>OCA\Versioniq\Settings\Admin</admin>
 		<admin-section>OCA\Versioniq\Sections\AdminSection</admin-section>
 	</settings>
+	<activity>
+		<settings>
+			<setting>OCA\Versioniq\Activity\Setting</setting>
+		</settings>
+		<providers>
+			<provider>OCA\Versioniq\Activity\Provider</provider>
+		</providers>
+	</activity>
 	<!-- Nextcloud 33 and later add versioniq_app_version to the server's /metrics
 	     (inventory-export-sbom-metrics D6); Nextcloud 32 ignores this entry. -->
 	<openmetrics>
