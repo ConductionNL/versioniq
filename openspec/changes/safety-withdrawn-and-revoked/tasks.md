@@ -11,12 +11,14 @@
   - Done: `InstalledCertificateCheck` reads the `certificate` from `appinfo/signature.json` of every installed, not shipped, App Store app; `RevokedAppResponder` records the serial in `RevokedCertificateStore` (`revoked.<appId>`), notifies once per app and serial, and with `safety.disable_revoked` on disables the app once with a `revoked_disable` audit row. `CertificateRecheckJob` (daily, in `info.xml`) refreshes the list first. Every card of `GET /api/apps` carries `certificateRevoked`; the Notifier renders `certificate_revoked` in the D4 wording. Tests: `CertificateRecheckJobTest`, `NotifierCertificateRevokedTest`, the `apps` case of `ApiReadEndpointsGoldenTest`.
 - [x] 2.2 Add `safety.crl_url` and `safety.disable_revoked` to `InstanceSettings` and the Settings tab. Verify: `InstanceSettingsPanel.spec.ts`.
   - Done: `InstanceSettings` reads and writes `crlUrl` (the address in effect; an empty one is kept and switches fetching off, the default is not stored) and `disableRevoked`, validated before anything is written; `InstanceSettingsPanel.vue` shows both under "Revoked certificates" and sends them only when the server reports them. Tests: `InstanceSettingsTest`, `InstanceSettingsPanel.spec.ts`.
-- [ ] 2.3 Show the "Certificate revoked" badge with the wording of design D4. Verify: a vitest spec for the badge.
+- [x] 2.3 Show the "Certificate revoked" badge with the wording of design D4. Verify: a vitest spec for the badge.
+  - Done: `SafetyBadges.vue` shows "Certificate revoked" on the card when `certificateRevoked` is set, the D4 text as its tooltip. Tests: `SafetyBadges.spec.ts`, `App.safetyBadges.spec.ts`.
 
 ## 3. Withdrawn versions
 
-- [ ] 3.1 Add `installedWithdrawn` to the availability sweep and the card badge. Verify: a unit test where a failed listing never marks a version withdrawn.
-  - Sweep half done: `WithdrawnVersionStore` and `installedWithdrawn` on every swept row (null when the listing failed or named no versions); `tests/unit/Service/Availability/WithdrawnVersionsTest.php`. The card badge is left.
+- [x] 3.1 Add `installedWithdrawn` to the availability sweep and the card badge. Verify: a unit test where a failed listing never marks a version withdrawn.
+  - Sweep half done: `WithdrawnVersionStore` and `installedWithdrawn` on every swept row (null when the listing failed or named no versions); `tests/unit/Service/Availability/WithdrawnVersionsTest.php`.
+  - Card badge done: `SafetyBadges.vue` shows "Version withdrawn by the publisher" when the snapshot row of `GET /api/updates` has `installedWithdrawn: true` (nothing for null). Tests: `SafetyBadges.spec.ts`, `App.safetyBadges.spec.ts`.
 - [x] 3.2 Refuse a withdrawn target in `installAppVersion()` with category `withdrawn`. Verify: `tests/unit/Service/InstallerServiceTest.php` with a stale catalogue that still lists the version; `tests/e2e/withdrawn.spec.ts` removes a release from the forge fixture and sees the badge.
   - Done in code: `InstallerService::withdrawnRefusal()` answers 409 with category `withdrawn` before any source is asked; cases in `InstallerServiceInstallGoldenTest`. The e2e `withdrawn.spec.ts` is left.
 

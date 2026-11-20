@@ -53,6 +53,7 @@ import PublisherMark from './components/PublisherMark.vue'
 import ReadinessPanel from './components/ReadinessPanel.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
 import RollbackPanel from './components/RollbackPanel.vue'
+import SafetyBadges from './components/SafetyBadges.vue'
 import SbomExportMenu from './components/SbomExportMenu.vue'
 import SecurityReportPanel from './components/SecurityReportPanel.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
@@ -124,6 +125,8 @@ type AppOption = {
 	provenance?: Provenance | null
 	publisher?: string | null
 	marks?: string[]
+	// safety-withdrawn-and-revoked D2: the daily recheck found its signing certificate revoked.
+	certificateRevoked?: boolean
 }
 
 type AppVersion = {
@@ -3869,6 +3872,7 @@ watch(dryRunEnabled, () => {
 															</span>
 														</p>
 														<LifecycleBadge :lifecycle="pendingUpdates[app.id]?.lifecycle ?? null" />
+														<SafetyBadges :certificateRevoked="app.certificateRevoked === true" :installedWithdrawn="pendingUpdates[app.id]?.installedWithdrawn ?? null" />
 														<AppSourceBadges
 															:isShipped="app.isShipped === true"
 															:isCore="app.isCore"
