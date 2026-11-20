@@ -29,3 +29,10 @@ paths = [
   '''(^|/)tests/unit/Service/Pat/PatManagerTest\.php$''',
   '''(^|/)tests/unit/Service/Pat/PatValidatorTest\.php$''',
 ]
+
+[[allowlists]]
+description = "Unit test fixture: a made-up upload token ('abcdefghij0123456789...'), not a credential."
+targetRules = ["generic-api-key"]
+paths = [
+  '''(^|/)tests/unit/Service/InstallerServiceUploadTest\.php$''',
+]
