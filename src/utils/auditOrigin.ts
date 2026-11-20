@@ -19,6 +19,7 @@ export type OriginFilter = AuditOrigin | typeof UNKNOWN_ORIGIN | ''
  * The label of one row's origin.
  *
  * @param origin the row's origin, null on rows from before origins were recorded
+ * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-every-audit-row-says-where-it-came-from
  */
 export function originLabel (origin: string | null | undefined): string {
 	switch (origin) {
@@ -37,6 +38,8 @@ export function originLabel (origin: string | null | undefined): string {
 
 /**
  * The choices of the History tab's origin filter; the first lists every row.
+ *
+ * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-every-audit-row-says-where-it-came-from
  */
 export function originFilterOptions (): Array<{ id: OriginFilter, label: string }> {
 	return [

@@ -58,6 +58,8 @@ class ActivityPublisher {
 
 	/**
 	 * The activity subject for a successful version change, or null for anything else.
+	 *
+	 * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-audit-rows-reach-the-platforms-audit-log-and-activity-stream
 	 */
 	public static function subjectOf(AuditEntry $entry): ?string {
 		if ($entry->getStatus() !== AuditLogger::STATUS_SUCCESS) {
