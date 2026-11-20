@@ -42,6 +42,16 @@ test.describe("occ CLI", () => {
 		await resetFixtureApp(page);
 	});
 
+	test("versioniq:instances --json prints this instance's column with the fixture app", async () => {
+		const { code, stdout } = await occ("versioniq:instances", "--json");
+		expect(code).toBe(0);
+		const columns = lastJson(stdout).instances as Array<{ id: string; apps: Record<string, string> }>;
+		expect(Array.isArray(columns)).toBe(true);
+		const self = columns.find((column) => column.id === "self");
+		expect(self, "the first column is this instance").toBeTruthy();
+		expect(self?.apps[FIXTURE_APP]).toBe("1.0.0");
+	});
+
 	test("lists versions in human-readable form", async () => {
 		const { code, stdout } = await occ(
 			"versioniq:versions",

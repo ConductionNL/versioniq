@@ -37,6 +37,7 @@ import HistoryPanel from './components/HistoryPanel.vue'
 import InstallProgress from './components/InstallProgress.vue'
 import InstallResultNotices from './components/InstallResultNotices.vue'
 import InstanceSettingsPanel from './components/InstanceSettingsPanel.vue'
+import InstancesPanel from './components/InstancesPanel.vue'
 import IntegrationsPanel from './components/IntegrationsPanel.vue'
 import LifecycleBadge from './components/LifecycleBadge.vue'
 import MigrationPreviewPanel from './components/MigrationPreviewPanel.vue'
@@ -343,6 +344,7 @@ const tabs = [
 	{ id: 'trusted' },
 	{ id: 'discover' },
 	{ id: 'cache' },
+	{ id: 'instances' },
 	{ id: 'settings' },
 	...(integriqInstalled ? [{ id: 'integrations' }] : []),
 ]
@@ -366,6 +368,7 @@ function tabLabel (id: string): string {
 	trusted: t('versioniq', 'Trusted sources'),
 	discover: t('versioniq', 'Discover'),
 	cache: t('versioniq', 'Artifact cache'),
+	instances: t('versioniq', 'Instances'),
 	settings: t('versioniq', 'Settings'),
 	integrations: t('versioniq', 'Integrations'),
 }[id] ?? id
@@ -2747,6 +2750,21 @@ async function rollbackToLastKnownGood (appId: string, version: string): Promise
 	}
 }
 
+/**
+ * The rollback a promotion result offers: back on the Apps tab, through the
+ * same last-known-good flow, so the downgrade dialog and its migration diff
+ * apply (install-multi-instance-promotion D6).
+ *
+ * @param target The app and the version it ran before the promotion.
+ * @param target.appId The app.
+ * @param target.version The version it ran before.
+ * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-promotes-the-exact-package-an-earlier-stage-runs
+ */
+async function rollbackFromPromotion (target: { appId: string, version: string }): Promise<void> {
+	currentTab.value = 'apps'
+	await rollbackToLastKnownGood(target.appId, target.version)
+}
+
 // One-click updates (install-one-click-updates). Every action goes through
 // runInstall() / requestInstallWithRetries(), the same guarded path as the
 // picker: no override flags are sent, so a pinned app answers 409 and the
@@ -4018,6 +4036,11 @@ watch(dryRunEnabled, () => {
 					id="cache-panel"
 					role="tabpanel"
 					aria-labelledby="cache-tab" />
+				<InstancesPanel v-if="currentTab === 'instances'"
+					id="instances-panel"
+					role="tabpanel"
+					aria-labelledby="instances-tab"
+					@rollback="rollbackFromPromotion" />
 				<div v-if="currentTab === 'settings'"
 					id="settings-panel"
 					role="tabpanel"

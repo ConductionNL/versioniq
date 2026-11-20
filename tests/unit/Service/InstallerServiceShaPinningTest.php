@@ -16,6 +16,10 @@ require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 use OCA\Versioniq\Service\ExternalReleaseInstallerService;
 use OCA\Versioniq\Service\Installer\EnvironmentCheck;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
+use OCA\Versioniq\Service\Installer\InstallOptions;
+use OCA\Versioniq\Service\Installer\InstallRequest;
+use OCA\Versioniq\Service\Installer\InstallTarget;
+use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Installer\ShaMismatchException;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pin\PinStore;
@@ -232,5 +236,92 @@ final class InstallerServiceShaPinningTest extends TestCase {
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 		self::assertArrayNotHasKey('recordedShaMatched', $result['payload']);
+	}
+
+	/**
+	 * A promotion's install request for openregister 2.5.0, carrying the earlier stage's digest.
+	 */
+	private static function promotion(string $expectedSha): InstallRequest {
+		return new InstallRequest(
+			new InstallTarget('openregister', '2.5.0', null, $expectedSha),
+			new InstallOptions(false, false, false, false),
+			new PinChoice(null, false),
+		);
+	}
+
+	/**
+	 * The binding store answers $binding for every app.
+	 */
+	private function bindingIs(SourceBinding $binding): void {
+		$this->bindingStore = $this->createMock(SourceBindingStore::class);
+		$this->bindingStore->method('get')->willReturn($binding);
+	}
+
+	/** @return array<string, mixed> an installed result echoing the binding the installer was given */
+	private function installedWith(SourceBinding $binding): array {
+		return [
+			'status' => 'installed',
+			'installedVersionBefore' => '1.0.0',
+			'installedApp' => 'openregister',
+			'integrityWarning' => null,
+			'dryRun' => false,
+			'debug' => [],
+			'binding' => $binding,
+			'recordedShaMatched' => true,
+		];
+	}
+
+	public function testAMatchingExpectedDigestInstallsWithTheRecordedBinding(): void {
+		$this->bindingIs($this->binding->withRecordedSha('2.5.0', self::SHA_A));
+		$given = [];
+		$this->externalInstaller->expects(self::once())->method('installFromExternalRelease')
+			->willReturnCallback(function (string $appId, string $version, array $release, SourceBinding $binding) use (&$given): array {
+				$given[] = $binding->getRecordedSha('2.5.0');
+				return $this->installedWith($binding);
+			});
+
+		$result = $this->service()->installAppVersion(self::promotion(strtoupper(self::SHA_A)));
+
+		self::assertSame(Http::STATUS_OK, $result['statusCode']);
+		self::assertSame([self::SHA_A], $given);
+	}
+
+	public function testADifferentRecordedDigestIsRefusedBeforeAnyDownload(): void {
+		$this->bindingIs($this->binding->withRecordedSha('2.5.0', self::SHA_B));
+		$this->externalInstaller->expects(self::never())->method('installFromExternalRelease');
+		$this->bindingStore->expects(self::never())->method('set');
+
+		$result = $this->service()->installAppVersion(self::promotion(self::SHA_A));
+
+		self::assertSame(Http::STATUS_CONFLICT, $result['statusCode']);
+		self::assertSame('sha_differs', $result['payload']['code']);
+		self::assertSame('The two instances installed different packages for 2.5.0.', $result['payload']['message']);
+		self::assertSame(self::SHA_A, $result['payload']['expectedSha']);
+		self::assertSame(self::SHA_B, $result['payload']['recordedSha']);
+	}
+
+	public function testWithoutARecordedDigestTheExpectedOneIsAddedAndEnforcedByTheInstaller(): void {
+		$given = [];
+		$this->externalInstaller->expects(self::once())->method('installFromExternalRelease')
+			->willReturnCallback(function (string $appId, string $version, array $release, SourceBinding $binding, bool $dryRun, bool $acceptNewSha) use (&$given): array {
+				$given[] = [$binding->getRecordedSha('2.5.0'), $acceptNewSha];
+				throw new ShaMismatchException('openregister', '2.5.0', self::SHA_A, self::SHA_B);
+			});
+		$this->bindingStore->expects(self::never())->method('set');
+
+		$result = $this->service()->installAppVersion(self::promotion(self::SHA_A));
+
+		self::assertSame([[self::SHA_A, false]], $given);
+		self::assertSame(Http::STATUS_UNPROCESSABLE_ENTITY, $result['statusCode']);
+		self::assertSame('sha_mismatch', $result['payload']['code']);
+	}
+
+	public function testAMalformedExpectedDigestIsRefused(): void {
+		$this->externalInstaller->expects(self::never())->method('installFromExternalRelease');
+
+		$result = $this->service()->installAppVersion(self::promotion('not-a-digest'));
+
+		self::assertSame(Http::STATUS_BAD_REQUEST, $result['statusCode']);
+		self::assertSame('Recorded SHA-256 must be a 64-character hex digest.', $result['payload']['message']);
 	}
 }

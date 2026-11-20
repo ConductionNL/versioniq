@@ -849,7 +849,7 @@ class InstallerService implements InstallerServiceInterface {
 		$target = $request->target;
 
 		return $this->runInstall(new InstallRequest(
-			new InstallTarget(trim($target->appId), trim($target->version), $target->sourceOverride),
+			new InstallTarget(trim($target->appId), trim($target->version), $target->sourceOverride, $target->expectedSha),
 			$request->options,
 			$request->pinChoice,
 		));
@@ -871,6 +871,51 @@ class InstallerService implements InstallerServiceInterface {
 		}
 
 		return $this->installRunRefusal($run) ?? $this->installRelease($run);
+	}
+
+	/**
+	 * A promotion carries the SHA-256 the earlier stage recorded. A forge
+	 * binding that recorded another digest for this version refuses before
+	 * any download; one that recorded none takes the expected digest, so the
+	 * external installer's recorded-digest check refuses a different package.
+	 * An App Store install is identified by app id and version and ignores it.
+	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-promotes-the-exact-package-an-earlier-stage-runs
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null
+	 */
+	private function expectedShaRefusal(InstallRun $run): ?array {
+		$expected = $run->request->target->expectedSha;
+		if ($expected === null || $run->binding->getId() === SourceBinding::KIND_APPSTORE) {
+			return null;
+		}
+
+		$version = $run->request->target->version;
+		$recorded = $run->binding->getRecordedSha($version);
+		if ($recorded === null) {
+			return $this->adoptExpectedSha($run, $expected);
+		}
+
+		return hash_equals($recorded, strtolower($expected)) ? null : $this->installEnvelope(
+			Http::STATUS_CONFLICT,
+			['code' => 'sha_differs', 'expectedSha' => strtolower($expected), 'recordedSha' => $recorded]
+				+ $this->briefPayload($run, sprintf('The two instances installed different packages for %s.', $version)),
+		);
+	}
+
+	/**
+	 * A binding that recorded no digest for the version takes the expected one.
+	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-promotes-the-exact-package-an-earlier-stage-runs
+	 * @return array{statusCode:int, payload:array<string, mixed>}|null A 400 when the digest is not acceptable
+	 */
+	private function adoptExpectedSha(InstallRun $run, string $expected): ?array {
+		try {
+			$run->binding = $run->binding->withRecordedSha($run->request->target->version, $expected);
+		} catch (InvalidArgumentException $error) {
+			return $this->installEnvelope(Http::STATUS_BAD_REQUEST, $this->briefPayload($run, $error->getMessage()));
+		}
+
+		return null;
 	}
 
 	/**
@@ -994,7 +1039,7 @@ class InstallerService implements InstallerServiceInterface {
 	 * @return array{statusCode:int, payload:array<string, mixed>}|null
 	 */
 	private function installRunRefusal(InstallRun $run): ?array {
-		$refusal = $this->downgradeRefusal($run);
+		$refusal = $this->expectedShaRefusal($run) ?? $this->downgradeRefusal($run);
 		if ($refusal !== null) {
 			return $refusal;
 		}

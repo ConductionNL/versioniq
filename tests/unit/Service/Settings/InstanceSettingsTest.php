@@ -267,6 +267,41 @@ final class InstanceSettingsTest extends TestCase {
 	}
 
 	/**
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+	 */
+	public function testTheWaitingPeriodIsReadAndSavedThroughTheSettings(): void {
+		$store = $this->store();
+		self::assertSame(0, $store->read()['promotionMinDays']);
+		self::assertSame(90, $store->read()['promotionMinDaysMax']);
+
+		self::assertSame(['promotionMinDays'], $store->update(['promotionMinDays' => '14']));
+		self::assertSame(14, $store->read()['promotionMinDays']);
+		self::assertSame('14', $this->config[InstanceSettings::KEY_PROMOTION_MIN_DAYS]);
+
+		$store->update(['promotionMinDays' => '0']);
+		self::assertSame(0, $store->promotionMinDays());
+		self::assertArrayNotHasKey(InstanceSettings::KEY_PROMOTION_MIN_DAYS, $this->config);
+	}
+
+	/**
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+	 */
+	public function testTheWaitingPeriodRefuses91AndLeavesEverythingElse(): void {
+		$store = $this->store();
+		$store->update(['promotionMinDays' => '14']);
+		foreach (['91', '-1', 'two', ''] as $raw) {
+			try {
+				$store->update(['promotionMinDays' => $raw, 'artifactCacheKeep' => '7']);
+				self::fail('Accepted ' . $raw);
+			} catch (InvalidArgumentException $error) {
+				self::assertStringContainsString('between 0 and 90', $error->getMessage());
+			}
+		}
+		self::assertSame(14, $store->promotionMinDays());
+		self::assertArrayNotHasKey(\OCA\Versioniq\Service\Cache\ArtifactCache::CONFIG_KEEP, $this->config);
+	}
+
+	/**
 	 * Every rule of an address field, for the https-only GitHub API base and
 	 * the http-or-https advisory feed: the stored value, or the message.
 	 *

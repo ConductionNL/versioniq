@@ -138,7 +138,7 @@ class InstallVersion extends Command {
 		$statusCode = $result['statusCode'] ?? Http::STATUS_INTERNAL_SERVER_ERROR;
 		/** @var array<string, mixed> $payload */
 		$payload = $result['payload'] ?? [];
-		$exitCode = $this->exitCodeFor($statusCode, $payload);
+		$exitCode = self::exitCodeFor($statusCode, $payload);
 
 		if ($json) {
 			$output->writeln(json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
@@ -270,9 +270,10 @@ class InstallVersion extends Command {
 	 * this command (see execute()), so a 403 reaching here can only be the
 	 * trusted-source allowlist guard — see "CLI trust context".
 	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/cli-commands/spec.md#requirement-compare-instances-and-promote-versions-from-the-cli
 	 * @param array<string, mixed> $payload
 	 */
-	private function exitCodeFor(int $statusCode, array $payload): int {
+	public static function exitCodeFor(int $statusCode, array $payload): int {
 		if ($statusCode === Http::STATUS_OK) {
 			return CheckRunner::firstFailure(is_array($payload['checks'] ?? null) ? $payload['checks'] : []) === null
 				? self::EXIT_OK

@@ -45,6 +45,8 @@ class AuditLogger implements AdminChangeAuditInterface {
 	public const OPERATION_PIN_DRIFT = 'pin_drift';
 	// OPERATION_SETTINGS, OPERATION_PATCH_POLICY and OPERATION_INSTANCE_CONNECTION
 	// are AdminChangeAuditInterface's, and read as AuditLogger::OPERATION_* as before.
+	/** A version promoted from an earlier stage (install-multi-instance-promotion design D6). */
+	public const OPERATION_PROMOTE = 'promote';
 
 	/** An advisory dismissed with a reason (advisories-triage). */
 	public const OPERATION_ADVISORY_DISMISS = 'advisory_dismiss';
