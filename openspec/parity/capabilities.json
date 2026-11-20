@@ -1008,7 +1008,7 @@
 					"canvas": "design-system",
 					"board": "VqInstellingen"
 				},
-				"requirement": "openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness :: An admin checks every installed app against a target server major and PHP version"
+				"requirement": "openspec/specs/upgrade-readiness :: An admin checks every installed app against a target server major and PHP version"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1080,7 +1080,7 @@
 					"canvas": "design-system",
 					"board": "VqApps"
 				},
-				"requirement": "openspec/changes/inventory-export-sbom-metrics/specs/inventory-export :: An admin exports the inventory as an SBOM"
+				"requirement": "openspec/specs/inventory-export :: An admin exports the inventory as an SBOM"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1107,9 +1107,9 @@
 			"osv-scanner": "yes",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "specified",
-				"evidence": "looked in lib/Service/Source/AppStoreSource.php and lib/Notification/Notifier.php:63-154",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/Lifecycle/LifecycleSignals.php:139 (removedFromStore, archived, noReleaseFor12Months in the availability sweep), src/components/LifecycleBadge.vue (strongest signal on the card)",
+				"reachedOn": "Apps tab (life cycle badge on the app card)",
 				"owner": "ConductionNL/versioniq",
 				"change": "inventory-lifecycle-signals",
 				"screen": {
@@ -1117,8 +1117,8 @@
 					"board": "VqApps"
 				},
 				"requirement": [
-					"openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals :: Abandoned and unsupported apps are flagged on their card",
-					"openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals :: An admin replaces an app with its successor in one action"
+					"openspec/specs/lifecycle-signals :: Abandoned and unsupported apps are flagged on their card",
+					"openspec/specs/lifecycle-signals :: An admin replaces an app with its successor in one action"
 				]
 			},
 			"provider": "versioniq",
@@ -1436,16 +1436,16 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/Source/AppStoreSource.php:608 (entries carry only version and changelog), src/App.vue:2330-2360",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/Source/AppStoreSource.php:758 (releasedAt from created), lib/Service/Source/ForgeReleaseSource.php:174 (published_at), src/components/VersionFacts.vue (date on every picker row)",
+				"reachedOn": "Version picker (every version row); occ versioniq:versions Released column",
 				"owner": "ConductionNL/versioniq",
 				"change": "releases-version-facts",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
 				},
-				"requirement": "openspec/changes/releases-version-facts/specs/version-management :: Every version carries its release date"
+				"requirement": "openspec/specs/version-management :: Every version carries its release date"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1508,16 +1508,16 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "looked in lib/Service/Source and src/App.vue",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/Source/ForgeReleaseSource.php:192 (asset download_count), lib/Db/AuditEntryMapper.php:119 (install outcomes per version), lib/Service/Instance/RemoteInstanceReader.php:104 (outcomes of connected instances), src/utils/versionFacts.ts (totals text)",
+				"reachedOn": "Version picker (downloads, install outcomes here and on connected instances)",
 				"owner": "ConductionNL/versioniq",
 				"change": "releases-version-facts",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
 				},
-				"requirement": "openspec/changes/releases-version-facts/specs/version-management :: Every version shows how widely it runs and how installs of it went"
+				"requirement": "openspec/specs/version-management :: Every version shows how widely it runs and how installs of it went"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1544,16 +1544,16 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "specified",
-				"evidence": "src/App.vue:1400, src/App.vue:2297, src/dialogs/DowngradeConfirmDialog.vue:76",
-				"reachedOn": "Apps tab (after selecting a version)",
+				"state": "built",
+				"evidence": "lib/Service/Release/ReleaseNotesReader.php:42 (isBreaking: headings and Conventional Commits footer), src/components/VersionFacts.vue (Breaking and Major version badges), src/dialogs/DowngradeConfirmDialog.vue (breaking sentence)",
+				"reachedOn": "Version picker, range summary and downgrade dialog",
 				"owner": "ConductionNL/versioniq",
 				"change": "releases-version-facts",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
 				},
-				"requirement": "openspec/changes/releases-version-facts/specs/changelog-visibility :: A version its publisher marks as breaking is flagged"
+				"requirement": "openspec/specs/changelog-visibility :: A version its publisher marks as breaking is flagged"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1693,16 +1693,16 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "unknown",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/Source/AppStoreSource.php:100, lib/Service/Source/ForgeReleaseSource.php:89",
-				"reachedOn": "Apps tab versions list",
+				"state": "built",
+				"evidence": "lib/Service/Availability/WithdrawnVersionStore.php:30 (installedWithdrawn from the sweep, never on a failed listing), lib/Service/InstallerService.php:1369 (withdrawn target refused, category withdrawn), src/components/SafetyBadges.vue (Version withdrawn by the publisher)",
+				"reachedOn": "Apps tab (card badge); version picker and occ versioniq:install (refusal)",
 				"owner": "ConductionNL/versioniq",
 				"change": "safety-withdrawn-and-revoked",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
 				},
-				"requirement": "openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked :: A withdrawn installed version is marked and never reinstalled by accident"
+				"requirement": "openspec/specs/withdrawn-and-revoked :: A withdrawn installed version is marked and never reinstalled by accident"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2415,16 +2415,16 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "no deprecation or successor handling in lib/Service/InstallerService.php or lib/Service/Source/AppStoreSource.php",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/Lifecycle/AppReplacer.php:57 (successor installed first, then the old app disabled, replace audit row), lib/Controller/LifecycleController.php:186 (POST /api/app/{appId}/replace, password-confirmed), src/dialogs/ReplaceAppDialog.vue",
+				"reachedOn": "Apps tab (Replace with {successor} on the app card)",
 				"owner": "ConductionNL/versioniq",
 				"change": "inventory-lifecycle-signals",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
 				},
-				"requirement": "openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals :: An admin replaces an app with its successor in one action"
+				"requirement": "openspec/specs/lifecycle-signals :: An admin replaces an app with its successor in one action"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3378,7 +3378,7 @@
 					"canvas": "design-system",
 					"board": "VqApps"
 				},
-				"requirement": "openspec/specs/version-pinning :: Drift response — notify and offer re-pin [MVP]"
+				"requirement": "openspec/specs/version-pinning :: Drift response \u2014 notify and offer re-pin [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3405,9 +3405,9 @@
 			"osv-scanner": "yes",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/Policy/Policy.php:30, lib/Service/AutoUpdate/CandidateSelector.php:66, src/components/PolicySelector.vue:24, src/App.vue:2194",
-				"reachedOn": "Apps tab (per-app 'Auto-update' selector); background job AutoUpdateJob",
+				"state": "built",
+				"evidence": "lib/Service/Policy/Policy.php:50 (holdManual), lib/Service/InstallerService.php:1342 (outOfRange refusal, overrideRange audited), src/components/PolicySelector.vue",
+				"reachedOn": "Apps tab (per-app Auto-update selector, Hold manual installs switch); version picker",
 				"owner": "ConductionNL/versioniq",
 				"change": "pinning-ranges-and-skips",
 				"screen": {
@@ -3416,7 +3416,7 @@
 				},
 				"requirement": [
 					"openspec/specs/auto-update-policies :: Nightly policy execution through the standard installer [MVP]",
-					"openspec/changes/pinning-ranges-and-skips/specs/auto-update-policies :: A policy can hold manual installs to its level"
+					"openspec/specs/auto-update-policies :: A policy can hold manual installs to its level"
 				]
 			},
 			"provider": "versioniq",
@@ -3444,16 +3444,16 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/AutoUpdate/AttemptLedger.php:49 (automatic never-retry only), src/App.vue (no skip control)",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/Pin/SkipList.php:98 (skip with reason, cap, audited), lib/Service/AutoUpdate/CandidateSelector.php:44 (skipped versions dropped), src/components/VersionSkipControl.vue, src/components/UpdateBadgeSkip.vue",
+				"reachedOn": "Version picker and the card update badge (Skip / Unskip)",
 				"owner": "ConductionNL/versioniq",
 				"change": "pinning-ranges-and-skips",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
 				},
-				"requirement": "openspec/changes/pinning-ranges-and-skips/specs/version-pinning :: An admin skips one version and keeps later ones"
+				"requirement": "openspec/specs/version-pinning :: An admin skips one version and keeps later ones"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3698,7 +3698,7 @@
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
 				},
-				"requirement": "openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies :: Per-app update policy [MVP]"
+				"requirement": "openspec/specs/auto-update-policies :: Per-app update policy [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4131,7 +4131,7 @@
 					"board": "VqAutomatischeUpdates",
 					"drawn": "redrawn to the spec in design-system #1180 (decision 405): occ versioniq:policies:export and import (JSON), read-only policy file from config.php"
 				},
-				"requirement": "openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies :: Policies can be kept in a file"
+				"requirement": "openspec/specs/auto-update-policies :: Policies can be kept in a file"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5476,9 +5476,9 @@
 			"osv-scanner": "yes",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/Advisory/AdvisoryPackageMap.php:86 matches security advisories only; no malware feed is read",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/BackgroundJob/CertificateRecheckJob.php:30 with lib/Service/Safety/InstalledCertificateCheck.php:33 (certificate_revoked notification for an installed app), lib/Service/Advisory/LibraryAdvisorySweep.php with lib/Service/Advisory/OsvClient.php (OSV findings, including malicious-package entries, for bundled libraries)",
+				"reachedOn": "admin notifications; Apps tab card badge; Advisories tab (bundled libraries)",
 				"owner": "ConductionNL/versioniq",
 				"change": "safety-withdrawn-and-revoked",
 				"screen": {
@@ -5486,7 +5486,7 @@
 					"board": "VqBeveiligingsadviezen"
 				},
 				"requirement": [
-					"openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked :: Installed apps are rechecked against a current revocation list",
+					"openspec/specs/withdrawn-and-revoked :: Installed apps are rechecked against a current revocation list",
 					"openspec/changes/advisories-bundled-libraries/specs/security-advisory-correlation :: Libraries bundled inside installed apps are checked against OSV"
 				],
 				"plan": [
@@ -6558,7 +6558,7 @@
 					"canvas": "design-system",
 					"board": "VqInstellingen"
 				},
-				"requirement": "openspec/changes/audit-attribution-and-forwarding/specs/audit-trail :: Audit rows reach the platform's audit log and activity stream"
+				"requirement": "openspec/specs/audit-trail :: Audit rows reach the platform's audit log and activity stream"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6594,7 +6594,7 @@
 					"canvas": "design-system",
 					"board": "VqHistorie"
 				},
-				"requirement": "openspec/changes/audit-attribution-and-forwarding/specs/audit-trail :: Every audit row says where it came from"
+				"requirement": "openspec/specs/audit-trail :: Every audit row says where it came from"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6630,7 +6630,7 @@
 					"canvas": "design-system",
 					"board": "VqInstellingen"
 				},
-				"requirement": "openspec/changes/audit-attribution-and-forwarding/specs/audit-trail :: Audit rows reach the platform's audit log and activity stream"
+				"requirement": "openspec/specs/audit-trail :: Audit rows reach the platform's audit log and activity stream"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7392,7 +7392,7 @@
 					"canvas": "design-system",
 					"board": "VqInstellingen"
 				},
-				"requirement": "openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness :: An admin checks every installed app against a target server major and PHP version"
+				"requirement": "openspec/specs/upgrade-readiness :: An admin checks every installed app against a target server major and PHP version"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7463,7 +7463,7 @@
 					"board": "VqInstellingen",
 					"drawn": "redrawn to the spec in design-system #1180 (decision 405): the server's /metrics with versioniq_app_version"
 				},
-				"requirement": "openspec/changes/inventory-export-sbom-metrics/specs/inventory-export :: Installed app versions are exposed as OpenMetrics"
+				"requirement": "openspec/specs/inventory-export :: Installed app versions are exposed as OpenMetrics"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7492,16 +7492,16 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/SelectedReleaseInstallerService.php:135, lib/Service/SelectedReleaseInstallerService.php:174, lib/Service/SelectedReleaseInstallerService.php:176",
-				"reachedOn": "Apps tab (any App Store install); occ versioniq:install",
+				"state": "built",
+				"evidence": "lib/Service/Safety/RevocationList.php:95 (newest signed CRL, shipped or fetched), lib/Service/SelectedReleaseInstallerService.php (install refused on a revoked certificate), lib/BackgroundJob/CertificateRecheckJob.php:30 (daily recheck of installed apps, optional disable), src/components/SafetyBadges.vue (Certificate revoked)",
+				"reachedOn": "Apps tab (any App Store install, card badge); admin notifications; Settings tab (revocation list address, disable switch)",
 				"owner": "ConductionNL/versioniq",
 				"change": "safety-withdrawn-and-revoked",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
 				},
-				"requirement": "openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked :: Installed apps are rechecked against a current revocation list"
+				"requirement": "openspec/specs/withdrawn-and-revoked :: Installed apps are rechecked against a current revocation list"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7927,7 +7927,7 @@
 					"canvas": "design-system",
 					"board": "VqHistorie"
 				},
-				"requirement": "openspec/changes/audit-attribution-and-forwarding/specs/audit-trail :: Changes to the update rules are audited"
+				"requirement": "openspec/specs/audit-trail :: Changes to the update rules are audited"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -8227,7 +8227,7 @@
 					"canvas": "design-system",
 					"board": "VqInstellingen"
 				},
-				"requirement": "openspec/changes/inventory-export-sbom-metrics/specs/inventory-export :: Every update leaves an SBOM of the state it produced"
+				"requirement": "openspec/specs/inventory-export :: Every update leaves an SBOM of the state it produced"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -8294,9 +8294,9 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "grep end of life, eol, end of support in lib and src: no hits; lib/Notification/Notifier.php:135, lib/Notification/Notifier.php:154 (no support-end subject)",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/Lifecycle/ServerEolFeed.php:138 (endOfSupport from the end-of-life feed), lib/Service/Lifecycle/LifecycleSignals.php:63, lib/BackgroundJob/ServerEolWarningJob.php (server_eol notification at 90 and 30 days)",
+				"reachedOn": "Apps tab (life cycle badge); Advisories tab (server end-of-life date); admin notifications",
 				"owner": "ConductionNL/versioniq",
 				"change": "inventory-lifecycle-signals",
 				"screen": {
@@ -8304,8 +8304,8 @@
 					"board": "VqApps"
 				},
 				"requirement": [
-					"openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals :: Abandoned and unsupported apps are flagged on their card",
-					"openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals :: Admins are warned before the server leaves support"
+					"openspec/specs/lifecycle-signals :: Abandoned and unsupported apps are flagged on their card",
+					"openspec/specs/lifecycle-signals :: Admins are warned before the server leaves support"
 				]
 			},
 			"provider": "versioniq",
@@ -8365,7 +8365,7 @@
 			"name": "Roll a version out through test and acceptance instances first, and promote exactly that tested version to production, with rollback.",
 			"origin": "tender",
 			"originUrl": "https://www.tenderned.nl/aankondigingen/overzicht/416836",
-			"originNote": "SHN Cliënt- en Casusondersteuning, requirement 89061, eis: controlled rollout of changes through the OTAP chain including rollback; also tender 408309 requirement 133821, eis: releases on a test or acceptance environment two weeks ahead.",
+			"originNote": "SHN Cli\u00ebnt- en Casusondersteuning, requirement 89061, eis: controlled rollout of changes through the OTAP chain including rollback; also tender 408309 requirement 133821, eis: releases on a test or acceptance environment two weeks ahead.",
 			"versioniq": "no",
 			"nextcloud": "no",
 			"renovate": "partial",
@@ -8411,16 +8411,16 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/Source/AppStoreSource.php:578 (version and changelog only), src/components/VersionChangelog.vue:18",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/Release/ReleaseNotesReader.php:68 (knownIssues section), lib/Service/Release/KnownIssueStore.php:77 (admin notes, https links, 20 per app), src/dialogs/KnownIssueDialog.vue",
+				"reachedOn": "Version picker (Known issues) and the app card notice",
 				"owner": "ConductionNL/versioniq",
 				"change": "releases-version-facts",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
 				},
-				"requirement": "openspec/changes/releases-version-facts/specs/changelog-visibility :: Known issues of a version are shown before and after installing it"
+				"requirement": "openspec/specs/changelog-visibility :: Known issues of a version are shown before and after installing it"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",

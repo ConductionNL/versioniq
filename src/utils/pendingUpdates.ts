@@ -18,6 +18,8 @@ export type PendingUpdate = {
 	error: string | null
 	lifecycle?: LifecycleSignals
 	successor?: SuccessorOffer
+	// safety-withdrawn-and-revoked D3: a successful listing no longer contains the installed version; null when not known.
+	installedWithdrawn?: boolean | null
 }
 
 /** The successor the sweep found offered for an app, with the newest version of it this server can run. */

@@ -1,7 +1,8 @@
 <!--
 SPDX-License-Identifier: EUPL-1.2
 The facts of one version in the picker (releases-version-facts): its downloads,
-how installs of it went here, the "Major version" and "Breaking" badges, and
+how installs of it went here, or across the connected instances once they are
+read, the "Major version" and "Breaking" badges, and
 its known issues: the publisher's section from the notes, shown as plain text,
 and the notes admins recorded, each removable. Presentational: App.vue owns
 the writes and reacts to `add` and `remove`.
@@ -9,12 +10,13 @@ the writes and reacts to `add` and `remove`.
 @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
 -->
 <script setup lang="ts">
-import type {VersionFactsEntry} from '../utils/versionFacts.ts';
+import type {InstanceOutcomesRead, VersionFactsEntry} from '../utils/versionFacts.ts';
 
 import { t } from '@nextcloud/l10n'
 import { computed } from 'vue'
 import {
 		downloadsText,
+	instanceTotalsText,
 	isMajorStep,
 	outcomesText} from '../utils/versionFacts.ts'
 
@@ -23,6 +25,11 @@ const props = defineProps<{
 	installedVersion: string
 	/** True while a write is in flight; the buttons are disabled. */
 	busy?: boolean
+	/**
+	 * The connected instances' outcomes, once read; with at least one, the
+	 * outcomes line shows the totals across them and this instance.
+	 */
+	instanceReads?: InstanceOutcomesRead[]
 }>()
 
 const emit = defineEmits<{
@@ -31,7 +38,9 @@ const emit = defineEmits<{
 }>()
 
 const downloads = computed(() => downloadsText(props.entry.downloads))
-const outcomes = computed(() => outcomesText(props.entry.outcomes))
+const outcomes = computed(() => (props.instanceReads?.length
+	? instanceTotalsText(props.entry.version, props.entry.outcomes, props.instanceReads)
+	: outcomesText(props.entry.outcomes)))
 const major = computed(() => isMajorStep(props.entry.version, props.installedVersion))
 const notesIssues = computed(() => (props.entry.knownIssues ?? '').trim())
 const adminIssues = computed(() => props.entry.adminKnownIssues ?? [])

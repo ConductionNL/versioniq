@@ -133,4 +133,62 @@ final class AppReplacerTest extends TestCase {
 		$this->assertSame(500, $outcome['statusCode']);
 		$this->assertFalse($outcome['payload']['replaced']);
 	}
+
+	/**
+	 * A successful replace leaves exactly two audit rows, in order: the
+	 * successor's `install` row, then the old app's `replace` row. The install
+	 * row is written inside the install path (recordInstallAudit, pinned by
+	 * InstallerAuditHookTest), which is not unit-reachable end to end; the
+	 * installer double writes it into the same log the same way.
+	 */
+	public function testASuccessfulReplaceWritesTwoAuditRows(): void {
+		/** @var list<array{string, string, string}> $rows */
+		$rows = [];
+		$this->audit->method('record')->willReturnCallback(static function (AuditSubject $subject, AuditedVersions $versions, string $status) use (&$rows): void {
+			$rows[] = [$subject->appId, $subject->operation, $status];
+		});
+		$this->successors->method('offerFor')->willReturn(self::OFFER);
+		$this->installer->method('installAppVersion')->willReturnCallback(function (InstallRequest $request): array {
+			$this->audit->record(
+				new AuditSubject('admin', $request->target->appId, AuditLogger::OPERATION_INSTALL),
+				new AuditedVersions(null, $request->target->version, $request->target->sourceOverride),
+				AuditLogger::STATUS_SUCCESS,
+			);
+
+			return ['statusCode' => 200, 'payload' => []];
+		});
+
+		$outcome = $this->replacer()->replace(new AuditSubject('admin', 'oldname', AppReplacer::OPERATION_REPLACE), 'newname');
+
+		$this->assertTrue($outcome['payload']['replaced']);
+		$this->assertSame([
+			['newname', AuditLogger::OPERATION_INSTALL, AuditLogger::STATUS_SUCCESS],
+			['oldname', AppReplacer::OPERATION_REPLACE, AuditLogger::STATUS_SUCCESS],
+		], $rows);
+	}
+
+	public function testAFailedSuccessorInstallWritesNoReplaceRow(): void {
+		/** @var list<string> $operations */
+		$operations = [];
+		$this->audit->method('record')->willReturnCallback(static function (AuditSubject $subject) use (&$operations): void {
+			$operations[] = $subject->operation;
+		});
+		$this->successors->method('offerFor')->willReturn(self::OFFER);
+		$this->installer->method('installAppVersion')->willReturnCallback(function (InstallRequest $request): array {
+			$this->audit->record(
+				new AuditSubject('admin', $request->target->appId, AuditLogger::OPERATION_INSTALL),
+				new AuditedVersions(null, $request->target->version, $request->target->sourceOverride),
+				AuditLogger::STATUS_FAILURE,
+				'SHA-256 mismatch',
+			);
+
+			return ['statusCode' => 409, 'payload' => ['message' => 'SHA-256 mismatch']];
+		});
+		$this->appManager->expects($this->never())->method('disableApp');
+
+		$outcome = $this->replacer()->replace(new AuditSubject('admin', 'oldname', AppReplacer::OPERATION_REPLACE), 'newname');
+
+		$this->assertFalse($outcome['payload']['replaced']);
+		$this->assertSame([AuditLogger::OPERATION_INSTALL], $operations);
+	}
 }

@@ -89,6 +89,9 @@ class AuditLogger implements AdminChangeAuditInterface {
 	/** An install outside a policy that holds manual installs went ahead on an explicit override. */
 	public const OPERATION_RANGE_OVERRIDE = 'range_override';
 
+	/** An app disabled because Nextcloud revoked its signing certificate (safety-withdrawn-and-revoked D2). */
+	public const OPERATION_REVOKED_DISABLE = 'revoked_disable';
+
 	private const OPERATION_PATTERN = '/^[a-z_]{1,32}$/';
 	private const MESSAGE_MAX_LENGTH = 4000;
 

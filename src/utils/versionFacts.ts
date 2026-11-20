@@ -123,3 +123,86 @@ export function outcomesText (outcomes: VersionOutcomes | null | undefined): str
 		failures: n('versioniq', '{count} failure', '{count} failures', failed, { count: failed }),
 	})
 }
+
+/**
+ * One connected instance's answer to the outcomes read: its counts per
+ * version, or why they could not be read.
+ */
+export type InstanceOutcomesRead = {
+	id: string
+	label: string
+	outcomes: Record<string, VersionOutcomes> | null
+	error: string | null
+}
+
+/**
+ * The successful installs, failures and instances that ran the version, across
+ * this instance and every connected instance that could be read.
+ *
+ * @param version The version.
+ * @param here This instance's counts of the version, or null.
+ * @param reads The connected instances' answers.
+ * @return The totals.
+ * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+ */
+export function instanceTotals (version: string, here: VersionOutcomes | null | undefined, reads: InstanceOutcomesRead[]): { installs: number, failures: number, instances: number } {
+	const counts = [here, ...reads.map((read) => read.outcomes?.[version])]
+	let installs = 0
+	let failures = 0
+	let instances = 0
+	for (const count of counts) {
+		const succeeded = Math.max(0, count?.succeeded ?? 0)
+		installs += succeeded
+		failures += Math.max(0, count?.failed ?? 0)
+		instances += succeeded > 0 ? 1 : 0
+	}
+
+	return { installs, failures, instances }
+}
+
+/**
+ * "Installed 4 times on 3 instances, 1 failure": the version across this
+ * instance and the connected ones that could be read, or '' when it was never
+ * installed on any of them.
+ *
+ * @param version The version.
+ * @param here This instance's counts of the version, or null.
+ * @param reads The connected instances' answers.
+ * @return The text.
+ * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+ */
+export function instanceTotalsText (version: string, here: VersionOutcomes | null | undefined, reads: InstanceOutcomesRead[]): string {
+	const { installs, failures, instances } = instanceTotals(version, here, reads)
+	if (installs === 0) {
+		return failures === 0 ? '' : n('versioniq', '{count} failed install', '{count} failed installs', failures, { count: failures })
+	}
+	const installed = t('versioniq', '{installs} on {instances}', {
+		installs: n('versioniq', 'Installed {count} time', 'Installed {count} times', installs, { count: installs }),
+		instances: n('versioniq', '{count} instance', '{count} instances', instances, { count: instances }),
+	})
+	if (failures === 0) {
+		return installed
+	}
+
+	return t('versioniq', '{installed}, {failures}', {
+		installed,
+		failures: n('versioniq', '{count} failure', '{count} failures', failures, { count: failures }),
+	})
+}
+
+/**
+ * The note naming every connected instance whose outcomes could not be read,
+ * or '' when every one answered.
+ *
+ * @param reads The connected instances' answers.
+ * @return The note.
+ * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+ */
+export function unreadableInstancesText (reads: InstanceOutcomesRead[]): string {
+	const labels = reads.filter((read) => read.outcomes === null).map((read) => read.label || read.id)
+	if (labels.length === 0) {
+		return ''
+	}
+
+	return t('versioniq', 'Not counted, could not be read: {instances}', { instances: labels.join(', ') })
+}

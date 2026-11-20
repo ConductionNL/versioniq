@@ -22,7 +22,8 @@ use Throwable;
 
 /**
  * Reads another instance's manifest and keeps the last answer
- * (install-multi-instance-promotion design D4).
+ * (install-multi-instance-promotion design D4), and reads how installs of an
+ * app went there (releases-version-facts design D2).
  *
  * One `GET` per read, with the connection's admin account in Basic
  * authentication; the decrypted password lives only inside that call and never
@@ -34,12 +35,15 @@ use Throwable;
  */
 class RemoteInstanceReader {
 	public const MANIFEST_PATH = '/ocs/v2.php/apps/versioniq/api/instance/manifest';
+	public const OUTCOMES_PATH = '/ocs/v2.php/apps/versioniq/api/app/%s/outcomes';
 	public const TIMEOUT_SECONDS = 15;
 
 	public const ERROR_NOT_ADMIN = 'This account is not an admin on that instance.';
 	public const ERROR_OLDER_VERSIONIQ = 'This instance runs an older Versioniq without instance support.';
 	public const ERROR_UNREACHABLE = 'The instance could not be reached.';
 	public const ERROR_UNREADABLE = 'The instance did not answer with a manifest.';
+	public const ERROR_NO_OUTCOMES = 'This instance runs an older Versioniq without install outcomes.';
+	public const ERROR_UNREADABLE_OUTCOMES = 'The instance did not answer with install outcomes.';
 
 	public function __construct(
 		private InstanceConnectionStore $store,
@@ -91,37 +95,136 @@ class RemoteInstanceReader {
 	}
 
 	/**
+	 * How installs of one app went on every connection, in chain order; a
+	 * connection that cannot be read carries its error and does not stop the others.
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+	 * @return list<array{id: string, label: string, outcomes: ?array<string, array{succeeded: int, failed: int}>, error: ?string}>
+	 */
+	public function allOutcomes(string $appId): array {
+		return array_map(fn (InstanceConnection $connection): array => $this->outcomes($connection, $appId), $this->store->all());
+	}
+
+	/**
+	 * How installs of one app went on one connection, read now and not cached,
+	 * or why they could not be read.
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+	 * @return array{id: string, label: string, outcomes: ?array<string, array{succeeded: int, failed: int}>, error: ?string}
+	 */
+	public function outcomes(InstanceConnection $connection, string $appId): array {
+		$response = $this->send($connection, sprintf(self::OUTCOMES_PATH, rawurlencode($appId)));
+		$answer = $response === null ? ['error' => self::ERROR_UNREACHABLE] : self::outcomesAnswer($response);
+
+		return [
+			'id' => $connection->id,
+			'label' => $connection->name !== '' ? $connection->name : $connection->id,
+			'outcomes' => $answer['outcomes'] ?? null,
+			'error' => $answer['error'] ?? null,
+		];
+	}
+
+	/**
 	 * One request to the remote manifest endpoint.
 	 *
 	 * @return array{manifest: array<string, mixed>}|array{error: string}
 	 */
 	private function read(InstanceConnection $connection): array {
-		try {
-			$response = $this->store->withPassword($connection, fn (#[\SensitiveParameter] string $password): IResponse => $this->request($connection, $password));
-		} catch (Throwable $error) {
-			$this->logger->warning('RemoteInstanceReader: manifest read failed', [
-				'connection' => $connection->id,
-				'baseUrl' => $connection->baseUrl,
-				'exception' => $error::class,
-			]);
+		$response = $this->send($connection, self::MANIFEST_PATH);
 
-			return ['error' => self::ERROR_UNREACHABLE];
-		}
-
-		return self::answer($response);
+		return $response === null ? ['error' => self::ERROR_UNREACHABLE] : self::answer($response);
 	}
 
 	/**
-	 * The GET of the remote manifest endpoint with the connection's credential.
+	 * One GET of a remote path with the connection's credential; null when it
+	 * throws, which is logged without the password.
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
 	 */
-	private function request(InstanceConnection $connection, #[\SensitiveParameter] string $password): IResponse {
-		return $this->clientService->newClient()->get(rtrim($connection->baseUrl, '/') . self::MANIFEST_PATH, [
-			'auth' => [$connection->username, $password],
+	private function send(InstanceConnection $connection, string $path): ?IResponse {
+		try {
+			return $this->store->withPassword($connection, fn (#[\SensitiveParameter] string $password): IResponse => $this->clientService->newClient()->get(
+				rtrim($connection->baseUrl, '/') . $path,
+				$this->requestOptions($connection->username, $password),
+			));
+		} catch (Throwable $error) {
+			$this->logger->warning('RemoteInstanceReader: read failed', [
+				'connection' => $connection->id,
+				'baseUrl' => $connection->baseUrl,
+				'path' => $path,
+				'exception' => $error::class,
+			]);
+
+			return null;
+		}
+	}
+
+	/**
+	 * The options of an authenticated OCS GET.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function requestOptions(string $username, #[\SensitiveParameter] string $password): array {
+		return [
+			'auth' => [$username, $password],
 			'headers' => ['OCS-APIREQUEST' => 'true', 'Accept' => 'application/json'],
 			'timeout' => self::TIMEOUT_SECONDS,
 			'http_errors' => false,
 			'nextcloud' => ['allow_local_address' => $this->systemConfig->getSystemValueBool('allow_local_remote_servers', false)],
-		]);
+		];
+	}
+
+	/**
+	 * The outcomes in an answer, or why there are none.
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+	 * @return array{outcomes: array<string, array{succeeded: int, failed: int}>}|array{error: string}
+	 */
+	private static function outcomesAnswer(IResponse $response): array {
+		$status = $response->getStatusCode();
+		$error = $status === 404 ? self::ERROR_NO_OUTCOMES : self::statusError($status);
+		if ($error !== null) {
+			return ['error' => $error];
+		}
+
+		$outcomes = self::outcomesOf((string)$response->getBody());
+
+		return $outcomes === null ? ['error' => self::ERROR_UNREADABLE_OUTCOMES] : ['outcomes' => $outcomes];
+	}
+
+	/**
+	 * The per-version counts an OCS answer body carries, or null when it carries
+	 * no outcomes map. Counts that are not whole positive numbers read as zero.
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+	 * @return array<string, array{succeeded: int, failed: int}>|null
+	 */
+	private static function outcomesOf(string $body): ?array {
+		/** @var mixed $decoded */
+		$decoded = json_decode($body, true);
+		/** @var mixed $ocs */
+		$ocs = is_array($decoded) ? ($decoded['ocs'] ?? null) : null;
+		/** @var mixed $data */
+		$data = is_array($ocs) ? ($ocs['data'] ?? null) : null;
+		/** @var mixed $outcomes */
+		$outcomes = is_array($data) ? ($data['outcomes'] ?? null) : null;
+		if (!is_array($outcomes)) {
+			return null;
+		}
+
+		$counts = [];
+		/** @var mixed $entry */
+		foreach ($outcomes as $version => $entry) {
+			if (is_array($entry)) {
+				$counts[(string)$version] = ['succeeded' => self::count($entry['succeeded'] ?? 0), 'failed' => self::count($entry['failed'] ?? 0)];
+			}
+		}
+
+		return $counts;
+	}
+
+	private static function count(mixed $value): int {
+		return is_int($value) && $value > 0 ? $value : 0;
 	}
 
 	/**

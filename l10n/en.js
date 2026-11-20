@@ -982,7 +982,7 @@ OC.L10N.register(
         "No apps to show.": "No apps to show.",
         "Could not save the connection.": "Could not save the connection.",
         "Save connection": "Save connection",
-        "Use a dedicated admin account on that instance and an app password for it. The password is stored encrypted and is only used to read that instance's app versions.": "Use a dedicated admin account on that instance and an app password for it. The password is stored encrypted and is only used to read that instance's app versions.",
+        "Use a dedicated admin account on that instance and an app password for it. The password is stored encrypted and is only used to read that instance's app versions and install outcomes.": "Use a dedicated admin account on that instance and an app password for it. The password is stored encrypted and is only used to read that instance's app versions and install outcomes.",
         "Connection id (lowercase letters, digits and hyphens)": "Connection id (lowercase letters, digits and hyphens)",
         "Stage (such as test, acceptance or production)": "Stage (such as test, acceptance or production)",
         "Place in the release chain (0 to 99, lower comes first)": "Place in the release chain (0 to 99, lower comes first)",
@@ -1059,7 +1059,23 @@ OC.L10N.register(
         "Release now": "Release now",
         "{version} is released before the minimum age.": "{version} is released before the minimum age.",
         "Withdraw": "Withdraw",
-        "Minimum age in days (empty uses {days})": "Minimum age in days (empty uses {days})"
+        "Minimum age in days (empty uses {days})": "Minimum age in days (empty uses {days})",
+        "_Installed {count} time_::_Installed {count} times_": ["Installed {count} time","Installed {count} times"],
+        "_{count} instance_::_{count} instances_": ["{count} instance","{count} instances"],
+        "{installs} on {instances}": "{installs} on {instances}",
+        "_{count} failed install_::_{count} failed installs_": ["{count} failed install","{count} failed installs"],
+        "Not counted, could not be read: {instances}": "Not counted, could not be read: {instances}",
+        "Use a dedicated admin account on that instance and an app password for it. The password is stored encrypted and is only used to read that instance's app versions.": "Use a dedicated admin account on that instance and an app password for it. The password is stored encrypted and is only used to read that instance's app versions.",
+        "Revoked certificates": "Revoked certificates",
+        "Address of the code signing revocation list": "Address of the code signing revocation list",
+        "A newer list is used only when Nextcloud signed it. Leave the address empty to check only against the list this server shipped with.": "A newer list is used only when Nextcloud signed it. Leave the address empty to check only against the list this server shipped with.",
+        "Disable an app automatically when Nextcloud revokes its signing certificate": "Disable an app automatically when Nextcloud revokes its signing certificate",
+        "Every admin is notified either way. The app can be enabled again on its card.": "Every admin is notified either way. The app can be enabled again on its card.",
+        "Nextcloud revoked the signing certificate of this app. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.": "Nextcloud revoked the signing certificate of this app. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.",
+        "Certificate revoked": "Certificate revoked",
+        "Version withdrawn by the publisher": "Version withdrawn by the publisher",
+        "Certificate revoked: %s": "Certificate revoked: %s",
+        "%s was disabled automatically.": "%s was disabled automatically."
     },
     "nplurals=2; plural=(n != 1);"
 )

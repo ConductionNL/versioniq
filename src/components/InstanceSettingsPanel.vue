@@ -19,6 +19,7 @@ import { feedCopyState, importFeedCopy } from '../utils/advisoryFeedCopy.ts'
  * @spec openspec/specs/audit-trail/spec.md
  * @spec openspec/specs/external-sources/spec.md
  * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+ * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
  */
 type Settings = {
 	auditRetentionDays: number
@@ -49,9 +50,15 @@ type Settings = {
 	advisoryFeedCopyMaxAgeDays?: number
 	allowUnsignedUpload: boolean
 	notifyUsersOnUpdate?: boolean
+	crlUrl?: string
+	crlUrlDefault?: string
+	disableRevoked?: boolean
 }
 
 const ENDPOINT = '/ocs/v2.php/apps/versioniq/api/instance-settings'
+
+// Sent only when the server reported them: an empty address would switch the revocation list off.
+const SAFETY_FIELDS = ['crlUrl', 'disableRevoked']
 
 const loaded = ref<Settings | null>(null)
 const form = ref({
@@ -69,6 +76,8 @@ const form = ref({
 	advisoryFeedSource: 'remote',
 	allowUnsignedUpload: false,
 	notifyUsersOnUpdate: true,
+	crlUrl: '',
+	disableRevoked: false,
 })
 const saving = ref(false)
 const error = ref('')
@@ -106,6 +115,10 @@ function fill (settings: Settings): void {
 		allowUnsignedUpload: settings.allowUnsignedUpload === true,
 		// On unless the admin switched it off (releases-notes-reach 1.2).
 		notifyUsersOnUpdate: settings.notifyUsersOnUpdate !== false,
+		// The address in effect; emptied, it switches fetching off (safety-withdrawn-and-revoked D1).
+		crlUrl: settings.crlUrl ?? '',
+		// Off unless the admin switched it on (D2).
+		disableRevoked: settings.disableRevoked === true,
 	}
 }
 
@@ -190,7 +203,9 @@ async function save (): Promise<void> {
 	}
 	saving.value = true
 	try {
-		const body = Object.fromEntries(Object.entries(form.value).map(([key, value]) => [key, String(value).trim()]))
+		const body = Object.fromEntries(Object.entries(form.value)
+			.filter(([key]) => !SAFETY_FIELDS.includes(key) || loaded.value?.crlUrl !== undefined)
+			.map(([key, value]) => [key, String(value).trim()]))
 		const { payload, error: apiError } = await ocsWrite<Settings>('PUT', ENDPOINT, body)
 		if (apiError) {
 			error.value = apiError
@@ -295,6 +310,30 @@ onMounted(load)
 			</label>
 			<p :class="$style.hint">
 				{{ t('versioniq', 'An archive the App Store does not sign runs whatever code it contains. Leave this off unless you install such archives and check them yourself.') }}
+			</p>
+
+			<h4>{{ t('versioniq', 'Revoked certificates') }}</h4>
+			<label :class="$style.field" for="setting-crl-url">
+				<span>{{ t('versioniq', 'Address of the code signing revocation list') }}</span>
+				<input
+					id="setting-crl-url"
+					v-model="form.crlUrl"
+					type="url"
+					:placeholder="loaded.crlUrlDefault"
+					data-testid="setting-crl-url">
+				<span :class="$style.hint">{{ t('versioniq', 'Default: {url}', { url: loaded.crlUrlDefault ?? '' }) }}</span>
+				<span :class="$style.hint">{{ t('versioniq', 'A newer list is used only when Nextcloud signed it. Leave the address empty to check only against the list this server shipped with.') }}</span>
+			</label>
+			<label :class="$style.checkboxField" for="setting-disable-revoked">
+				<input
+					id="setting-disable-revoked"
+					v-model="form.disableRevoked"
+					type="checkbox"
+					data-testid="setting-disable-revoked">
+				<span>{{ t('versioniq', 'Disable an app automatically when Nextcloud revokes its signing certificate') }}</span>
+			</label>
+			<p :class="$style.hint">
+				{{ t('versioniq', 'Every admin is notified either way. The app can be enabled again on its card.') }}
 			</p>
 
 			<h4>{{ t('versioniq', 'Sources and mirrors') }}</h4>

@@ -26,7 +26,7 @@ interface InstanceSettingsInterface {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, eolFeedUrl: string, eolFeedOff: bool, eolFeedDefault: string, ncscFeedUrl: string, ncscFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int}
+	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, eolFeedUrl: string, eolFeedOff: bool, eolFeedDefault: string, ncscFeedUrl: string, ncscFeedDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int, crlUrl: string, crlUrlDefault: string, disableRevoked: bool}
 	 */
 	public function read(): array;
 

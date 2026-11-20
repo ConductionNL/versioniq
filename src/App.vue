@@ -19,7 +19,7 @@ import type {RestorePayload} from './utils/restoreOutcome.ts';
 import type {SkipEntry} from './utils/skips.ts';
 import type { SweepStatus } from './utils/sweepOutcome.ts'
 import type {BatchCandidate, BatchRow} from './utils/updateBatch.ts';
-import type {AdminKnownIssue, VersionOutcomes} from './utils/versionFacts.ts';
+import type {AdminKnownIssue, InstanceOutcomesRead, VersionOutcomes} from './utils/versionFacts.ts';
 
 import { loadState } from '@nextcloud/initial-state'
 import { n, t } from '@nextcloud/l10n'
@@ -53,6 +53,7 @@ import PublisherMark from './components/PublisherMark.vue'
 import ReadinessPanel from './components/ReadinessPanel.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
 import RollbackPanel from './components/RollbackPanel.vue'
+import SafetyBadges from './components/SafetyBadges.vue'
 import SbomExportMenu from './components/SbomExportMenu.vue'
 import SecurityReportPanel from './components/SecurityReportPanel.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
@@ -61,6 +62,7 @@ import SourcesPanel from './components/SourcesPanel.vue'
 import SuccessorsPanel from './components/SuccessorsPanel.vue'
 import TokensPanel from './components/TokensPanel.vue'
 import TrustedSourcesPanel from './components/TrustedSourcesPanel.vue'
+import UpdateBadgeSkip from './components/UpdateBadgeSkip.vue'
 import UpdateGroupsPanel from './components/UpdateGroupsPanel.vue'
 import VersionChangelog from './components/VersionChangelog.vue'
 import VersionFacts from './components/VersionFacts.vue'
@@ -98,7 +100,7 @@ import { fetchSkips } from './utils/skips.ts'
 import { sweepStateOf } from './utils/sweepOutcome.ts'
 import { batchOutcome, quickUpdateTarget, runUpdateBatch, updateAllCandidates } from './utils/updateBatch.ts'
 import { compareVersions, parseVersionCore } from './utils/versionCompare.ts'
-import { breakingBetween, breakingSentence } from './utils/versionFacts.ts'
+import { breakingBetween, breakingSentence, unreadableInstancesText } from './utils/versionFacts.ts'
 
 type AppOption = {
 	id: string
@@ -124,6 +126,8 @@ type AppOption = {
 	provenance?: Provenance | null
 	publisher?: string | null
 	marks?: string[]
+	// safety-withdrawn-and-revoked D2: the daily recheck found its signing certificate revoked.
+	certificateRevoked?: boolean
 }
 
 type AppVersion = {
@@ -194,6 +198,9 @@ const isDowngradeConfirmOpen = ref(false)
 const isKnownIssueDialogOpen = ref(false)
 const knownIssueDialogVersion = ref('')
 const isRemovingKnownIssue = ref(false)
+// releases-version-facts task 2.3: the connected instances' outcomes of the
+// listed app, read after the version list renders; empty until then.
+const instanceOutcomeReads = ref<InstanceOutcomesRead[]>([])
 const downgradeConfirmFromVersion = ref('')
 const downgradeConfirmToVersion = ref('')
 const downgradeConfirmApp = ref('')
@@ -721,7 +728,7 @@ const leftDisabled = ref<Record<string, LeftDisabled>>({})
  * left it so, the installed version runs on this server.
  *
  * @param app The card's app.
- * @spec openspec/changes/audit-external-changes
+ * @spec openspec/changes/archive/2026-11-17-audit-external-changes
  */
 function offersEnable (app: AppOption): boolean {
 	return app.state === 'disabled' && leftDisabled.value[app.id]?.compatible !== false
@@ -1213,6 +1220,19 @@ async function reloadSkips (): Promise<void> {
 }
 
 /**
+ * After a skip or unskip from an app card's update badge, refreshes the
+ * version picker's marks when it shows that app.
+ *
+ * @param appId The app whose skip list changed.
+ * @spec openspec/changes/pinning-ranges-and-skips/specs/version-pinning/spec.md#requirement-an-admin-skips-one-version-and-keeps-later-ones
+ */
+async function onCardSkipChanged (appId: string): Promise<void> {
+	if (selectedApp.value === appId) {
+		await reloadSkips()
+	}
+}
+
+/**
  * Asks once before an install a rule would hold back.
  *
  * @param title The dialog title.
@@ -1580,6 +1600,7 @@ async function unpinApp (appId: string): Promise<void> {
  */
 function resetSelectedAppState (): void {
 	versions.value = []
+	instanceOutcomeReads.value = []
 	selectedVersion.value = ''
 	versionFilter.value = ''
 	hasCheckedVersions.value = false
@@ -1614,6 +1635,7 @@ async function checkVersions (preserveInstallResult = false): Promise<void> {
 
 	try {
 		applyVersionsPayload(await fetchVersionsPayload(appId))
+		void loadInstanceOutcomes(appId)
 		skips.value = await fetchSkips(appId)
 	} catch (error) {
 		errorMessage.value = error instanceof Error ? error.message : 'Could not fetch app versions.'
@@ -1622,6 +1644,34 @@ async function checkVersions (preserveInstallResult = false): Promise<void> {
 		isCheckingVersions.value = false
 	}
 }
+
+/**
+ * Read the connected instances' outcomes of an app once the version list has
+ * rendered. They are slow (up to the connection reader's 15 s each), so the
+ * list never waits for them; a refusal, an older server or an answer for an
+ * app no longer selected leaves the outcomes of this instance alone.
+ *
+ * @param appId the app whose versions are listed
+ * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+ */
+async function loadInstanceOutcomes (appId: string): Promise<void> {
+	await nextTick()
+	try {
+		const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/outcomes/instances`)), { headers: { ...ocsHeaders, Accept: 'application/json' } })
+		const payload = await unwrapOcsResponse<{ instances?: InstanceOutcomesRead[] }>(response)
+		if (selectedApp.value.trim() === appId) {
+			instanceOutcomeReads.value = Array.isArray(payload?.instances) ? payload.instances : []
+		}
+	} catch {
+		// Not an admin, an older server or no connections: the outcomes here stay.
+	}
+}
+
+const unreadableInstancesNote = computed(() => unreadableInstancesText(instanceOutcomeReads.value))
+const unreadableInstancesTitle = computed(() => instanceOutcomeReads.value
+	.filter((read) => read.outcomes === null)
+	.map((read) => `${read.label || read.id}: ${read.error ?? ''}`)
+	.join('\n'))
 
 type VersionsPayload = {
 	availableVersions?: AppVersion[]
@@ -1640,6 +1690,7 @@ type VersionsPayload = {
  */
 function resetVersionList (preserveInstallResult: boolean): void {
 	versions.value = []
+	instanceOutcomeReads.value = []
 	selectedVersion.value = ''
 	versionFilter.value = ''
 	hasCheckedVersions.value = false
@@ -3868,7 +3919,15 @@ watch(dryRunEnabled, () => {
 																{{ outsidePolicyLabel(pendingUpdates[app.id]?.linesBehind ?? 0) }}
 															</span>
 														</p>
+														<UpdateBadgeSkip
+															v-if="updateBadgeFor(app.id)?.kind === 'update' || updateBadgeFor(app.id)?.kind === 'pinned'"
+															:appId="app.id"
+															:version="pendingUpdates[app.id]?.newestCompatibleVersion ?? ''"
+															:disabled="isInstallingVersion"
+															@changed="onCardSkipChanged"
+															@error="(message: string) => { errorMessage = message }" />
 														<LifecycleBadge :lifecycle="pendingUpdates[app.id]?.lifecycle ?? null" />
+														<SafetyBadges :certificateRevoked="app.certificateRevoked === true" :installedWithdrawn="pendingUpdates[app.id]?.installedWithdrawn ?? null" />
 														<AppSourceBadges
 															:isShipped="app.isShipped === true"
 															:isCore="app.isCore"
@@ -4161,6 +4220,13 @@ watch(dryRunEnabled, () => {
 												:placeholder="t('versioniq', 'Filter versions')"
 												:class="$style.versionFilterInput"
 												:disabled="isInstallingVersion">
+											<p
+												v-if="unreadableInstancesNote"
+												:class="$style.instanceOutcomesNote"
+												:title="unreadableInstancesTitle"
+												data-testid="unreadable-instances-note">
+												{{ unreadableInstancesNote }}
+											</p>
 											<div :class="$style.versionListWrapper">
 												<transition-group
 													name="versionFade"
@@ -4227,6 +4293,7 @@ watch(dryRunEnabled, () => {
 															:entry="version"
 															:installedVersion="installedVersion"
 															:busy="isRemovingKnownIssue || isInstallingVersion"
+															:instanceReads="instanceOutcomeReads"
 															@add="openKnownIssueDialog"
 															@remove="removeKnownIssue" />
 														<VersionChangelog
@@ -4567,6 +4634,12 @@ watch(dryRunEnabled, () => {
 .versionChannelNotice {
 	width: 100%;
 	color: var(--color-warning-text);
+}
+
+.instanceOutcomesNote {
+	margin: 4px 0;
+	color: var(--color-text-maxcontrast);
+	font-size: 12px;
 }
 
 .versionChannelTag {

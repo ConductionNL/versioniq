@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: EUPL-1.2
 import { expect, test } from "@playwright/test";
 import {
+	appConfigValue,
 	execInInstance,
 	FIXTURE_APP,
 	FIXTURE_SOURCE,
 	fixtureAvailable,
 	fixtureControl,
 	resetFixtureApp,
+	runJob,
 	sql,
 } from "./helpers.ts";
 
@@ -332,6 +334,45 @@ test.describe("occ CLI", () => {
 					headers: { "OCS-APIRequest": "true" },
 				})
 				.catch(() => undefined);
+		}
+	});
+
+	// @spec openspec/changes/advisories-per-app-detail/specs/cli-commands/spec.md#requirement-read-advisories-and-the-compliance-status-from-the-cli
+	test("versioniq:advisories --check exits 0 on a compliant instance and 2 once the snapshot is gone", async ({ page }) => {
+		// @e2e cli-commands::a-monitoring-script-checks-compliance
+		// @e2e cli-commands::never-checked-is-not-success
+		const forgeBase = await appConfigValue(page, "forge.forgejo.web_base");
+		test.skip(!forgeBase, "forge.forgejo.web_base is not set");
+		// Point the server feed at the fixture and give neither the server nor
+		// the fixture app an advisory, so a fresh sweep finds nothing affected.
+		await occ(
+			"config:app:set",
+			"versioniq",
+			"advisory.feed_base",
+			`--value=${forgeBase}/repos/nextcloud/security-advisories/security-advisories`,
+		);
+		await fixtureControl(page, "repo", { repo: "nextcloud/security-advisories", releases: [], advisories: [] });
+		await fixtureControl(page, "repo", { repo: "fixtureowner/fixtureapp", advisories: [] });
+		try {
+			await runJob("AdvisoryRefreshJob");
+
+			const compliant = await occ("versioniq:advisories", "--check");
+			expect(compliant.code, compliant.stdout).toBe(0);
+			expect(compliant.stdout.trimStart()).toMatch(/^Compliant/);
+
+			const json = await occ("versioniq:advisories", "--json");
+			expect(json.code).toBe(0);
+			const decoded = lastJson(json.stdout);
+			expect(Object.keys(decoded)).toEqual(["compliance", "checkedAt", "targets"]);
+			expect(decoded.compliance.status).toBe("compliant");
+
+			// Without a stored snapshot nothing has been checked: unknown, not success.
+			await occ("config:app:delete", "versioniq", "advisory.results");
+			const never = await occ("versioniq:advisories", "--check");
+			expect(never.code, never.stdout).toBe(2);
+			expect(never.stdout.trimStart()).toMatch(/^Unknown: no advisory check has completed yet\./);
+		} finally {
+			await occ("config:app:delete", "versioniq", "advisory.feed_base");
 		}
 	});
 });

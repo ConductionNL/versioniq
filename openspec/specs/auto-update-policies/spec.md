@@ -16,7 +16,7 @@ Turn Versioniq from a repair tool into bounded, observable update automation: pe
 
 ### Requirement: Per-app update policy [MVP]
 
-Admins MUST be able to set, read, and clear a per-app policy `level` ∈ `none|patch|minor|all` via `GET /api/policies`, `PUT /api/app/{appId}/policy`, `DELETE /api/app/{appId}/policy`; writes MUST require password confirmation and MUST record `setBy`/`setAt`. Policy MUST be persisted as `policy.{appId}` app config JSON. Absent policy means `none`. Non-admins MUST receive 403.
+Admins MUST be able to set, read, and clear a per-app policy `level` ∈ `none|patch|minor|all` via `GET /api/policies`, `PUT /api/app/{appId}/policy`, `DELETE /api/app/{appId}/policy`; writes MUST require password confirmation and MUST record `setBy`/`setAt`. Policy MUST be persisted as `policy.{appId}` app config JSON. Absent policy means the instance default level, which is `none` unless an admin set another. `GET /api/policies` MUST return, per app, whether its level is its own or the default. Non-admins MUST receive 403.
 
 #### Scenario: Set a patch policy
 
@@ -33,7 +33,12 @@ Admins MUST be able to set, read, and clear a per-app policy `level` ∈ `none|p
 - WHEN `PUT .../policy` is called with `{level: "yolo"}`
 - THEN the response MUST be 400 and no policy MUST be written
 
----
+#### Scenario: An app without a policy follows the default
+
+- GIVEN the instance default level is `patch` and `calendar` has no stored policy
+- WHEN the admin opens the Apps tab
+- THEN the `calendar` card MUST show level patch marked as the default
+- AND the nightly job MUST treat `calendar` as a patch policy
 
 ### Requirement: Nightly policy execution through the standard installer [MVP]
 
@@ -151,3 +156,33 @@ The automatic updates overview MUST list, for every app with a policy, the newer
 - **WHEN** the admin opens the automatic updates tab
 - **THEN** Dossiq 0.4.50 MUST be listed as scheduled for the next window
 - **AND** Decidiq 0.10.1 MUST be listed as held by the pin
+
+### Requirement: A policy can hold manual installs to its level
+
+A per-app policy MUST carry a switch that holds Versioniq's own install path to the policy's level. With the switch on and the level `patch` or `minor`, a real install of a newer version outside the level MUST be refused with 409 and category `outOfRange`, unless the request carries an explicit range override, which MUST be audited. The switch MUST NOT claim to hold Nextcloud's own updater, and its help text MUST say so. A stored policy without the switch MUST read as off.
+
+#### Scenario: A manual major upgrade is held back
+
+- **GIVEN** `openregister` 2.3.0 has policy `patch` with "Also hold manual installs to this level" on
+- **WHEN** an admin picks 3.0.0 in the version picker and clicks Install
+- **THEN** the install MUST be refused with category `outOfRange`, naming the patch level
+- **AND** confirming the override MUST install 3.0.0 and write a `range_override` audit row
+
+### Requirement: Policies can be kept in a file
+
+`occ versioniq:policies:export` MUST write the kill switch, the window, the default level and every per-app policy to a JSON file with `schemaVersion` 1. `occ versioniq:policies:import <file>` MUST validate the file, report every problem with its JSON path, and apply it through the same stores as the API with one audit row per changed policy; `--dry-run` MUST only print the difference, and `--prune` MUST remove stored per-app policies the file does not name. When `config.php` names a policy file, the nightly job MUST read its policies from that file at every run, MUST do nothing when the file is invalid, the page MUST show the policies read-only with the file's path, and policy writes through the API MUST answer 409.
+
+#### Scenario: An admin reviews a policy change before applying it
+
+- GIVEN an exported policy file in which the admin changed `openregister` from `patch` to `minor`
+- WHEN the admin runs `occ versioniq:policies:import policies.json --dry-run`
+- THEN the command MUST print that `openregister` goes from patch to minor
+- AND no policy MUST change until the admin runs it without `--dry-run`
+
+#### Scenario: A broken file stops automatic updates instead of guessing
+
+- GIVEN `config.php` names a policy file that contains the level `weekly`
+- WHEN the nightly job runs inside the window
+- THEN it MUST install nothing and log the file error with its JSON path
+- AND the Automatic updates section MUST show the error
+

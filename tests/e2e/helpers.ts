@@ -803,3 +803,57 @@ export async function resetFixtureApp(
 	}
 	await awaitWebInstanceSettled(page);
 }
+
+/**
+ * Force-executes every queued row of one job class, oldest first, and returns
+ * how many ran.
+ *
+ * `runJob` insists on exactly one row, which is right for a TimedJob that is
+ * registered once. A QueuedJob is different: the platform adds one row per
+ * piece of work (a webhook delivery per target and alert, an "app updated"
+ * notice per app), so zero, one or several rows are all real states and the
+ * caller asserts on the count it expects.
+ *
+ * The pattern is matched exactly like `runJob` matches, including the doubled
+ * backslashes, so it stays portable across sqlite, pgsql and mysql. Pass the
+ * namespace too (`UpdateNotification`, `Versioniq`): another app's job is a
+ * legitimate target here, the platform's own updatenotification job included.
+ *
+ * @param namespace The app namespace under `OCA\`, e.g. `Versioniq`.
+ * @param className The short class name, e.g. `WebhookDeliveryJob`.
+ */
+export async function runQueuedJobs(
+	namespace: string,
+	className: string,
+): Promise<number> {
+	const ids = (
+		await sql(
+			`SELECT id FROM oc_jobs WHERE class LIKE 'OCA\\\\${namespace}\\\\%${className}' ORDER BY id`,
+		)
+	)
+		.split("\n")
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0);
+
+	for (const id of ids) {
+		await occ("background-job:execute", id, "--force-execute");
+	}
+
+	return ids.length;
+}
+
+/**
+ * Removes every queued row of one job class without running it, so a test
+ * starts from no leftover work of an earlier test or an earlier run.
+ *
+ * @param namespace The app namespace under `OCA\`, e.g. `Versioniq`.
+ * @param className The short class name, e.g. `WebhookDeliveryJob`.
+ */
+export async function dropQueuedJobs(
+	namespace: string,
+	className: string,
+): Promise<void> {
+	await sqlExec(
+		`DELETE FROM oc_jobs WHERE class LIKE 'OCA\\\\${namespace}\\\\%${className}'`,
+	);
+}
