@@ -2,7 +2,8 @@
 
 ## 1. Revocation list
 
-- [ ] 1.1 Add `RevocationList` (shipped list, fetched list with signature and CRL number check, daily refetch, empty address switches it off) and make `verifyCertificate()` read from it. Verify: `tests/unit/Service/Safety/RevocationListTest.php` with a valid newer list, a list with a bad signature (ignored) and an older list (ignored).
+- [x] 1.1 Add `RevocationList` (shipped list, fetched list with signature and CRL number check, daily refetch, empty address switches it off) and make `verifyCertificate()` read from it. Verify: `tests/unit/Service/Safety/RevocationListTest.php` with a valid newer list, a list with a bad signature (ignored) and an older list (ignored).
+  - Done: `RevocationList` (`current()`, `refreshIfDue()`, `url()`; address `safety.crl_url`, default the `root.crl` in the server repository, kept in app data `codesigning`) reads lists through `CrlDocument`, which checks the signature with OpenSSL against `root.crt` and compares CRL numbers. `SelectedReleaseInstallerService::verifyCertificate()` takes its list from it. `RevocationListTest` signs real lists with keys OpenSSL makes in the test (`tests/unit/Support/CodeSigningFixtures.php`): newer list kept, bad signature, older list, list without a number, empty address, once a day, failed fetch, and an install checking against the same list.
 
 ## 2. Recheck installed apps
 

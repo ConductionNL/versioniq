@@ -22,11 +22,11 @@ use OCA\Versioniq\Service\Checks\CheckRunner;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
 use OCA\Versioniq\Service\Installer\AppsRoot;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
-use OCA\Versioniq\Service\Installer\InstallProgress;
+use OCA\Versioniq\Service\Installer\InstallBackup;
 use OCA\Versioniq\Service\Installer\InstalledFolder;
 use OCA\Versioniq\Service\Installer\InstallFailure;
-use OCA\Versioniq\Service\Installer\InstallBackup;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
+use OCA\Versioniq\Service\Installer\InstallProgress;
 use OCA\Versioniq\Service\Installer\LocalArchive;
 use OCA\Versioniq\Service\Installer\MigrationDiffer;
 use OCA\Versioniq\Service\Installer\MigrationPreview;
@@ -36,6 +36,7 @@ use OCA\Versioniq\Service\Installer\SignedInstall;
 use OCA\Versioniq\Service\Installer\SignedRelease;
 use OCA\Versioniq\Service\Installer\SignedReleaseRun;
 use OCA\Versioniq\Service\Installer\TempArchive;
+use OCA\Versioniq\Service\Safety\RevocationList;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceInterface;
 use OCP\App\AppPathNotFoundException;
@@ -108,6 +109,8 @@ class SelectedReleaseInstallerService {
 		private ?CheckRunner $checkRunner = null,
 		// Optional: the backup kept before the folder is replaced (safety-rollback-backup-and-preflight D3).
 		private ?InstallBackup $installBackup = null,
+		// Optional: the revocation list the daily recheck reads too (safety-withdrawn-and-revoked D1); without it the shipped list applies.
+		private ?RevocationList $revocationList = null,
 	) {
 	}
 
@@ -198,9 +201,10 @@ class SelectedReleaseInstallerService {
 	 * @param string $appId
 	 * @param string $certificate
 	 * @throws Exception
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
 	 */
 	private function verifyCertificate(string $appId, string $certificate): void {
-		[$rootCrt, $rootCrl] = self::codeSigningRoots();
+		[$rootCrt, $rootCrl] = $this->codeSigningLists();
 		$x509 = $this->newX509();
 		$rootCrtList = $this->splitCerts($rootCrt);
 		foreach ($rootCrtList as $rootCertificate) {
@@ -226,6 +230,24 @@ class SelectedReleaseInstallerService {
 		self::assertIssuedTo($appId, $certificate);
 
 		$this->addDebug('certificate-validated', ['appId' => $appId, 'serial' => $serial]);
+	}
+
+	/**
+	 * The code-signing root certificates and the revocation list to check
+	 * against: the newest trusted one {@see RevocationList} holds, so install
+	 * and the daily recheck never disagree; the server's shipped pair when
+	 * there is no RevocationList.
+	 *
+	 * @return array{0: string, 1: string}
+	 * @throws Exception when either cannot be read
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
+	 */
+	private function codeSigningLists(): array {
+		if ($this->revocationList === null) {
+			return self::codeSigningRoots();
+		}
+
+		return [$this->revocationList->rootCertificates(), $this->revocationList->current()->pem];
 	}
 
 	/**
