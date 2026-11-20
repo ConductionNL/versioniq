@@ -46,6 +46,8 @@ final class AgeQuery {
 
 	/**
 	 * The moment ages are measured at: the run's, else now.
+	 *
+	 * @spec openspec/changes/releases-minimum-age
 	 */
 	public function now(): \DateTimeImmutable {
 		return $this->target->now ?? new \DateTimeImmutable('now', new \DateTimeZone('UTC'));

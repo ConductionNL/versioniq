@@ -119,6 +119,8 @@ final class AutoUpdateMember {
 	 * The advisories of a security fix installed before the minimum age; [] for any other install.
 	 *
 	 * @return list<string>
+	 *
+	 * @spec openspec/changes/releases-minimum-age
 	 */
 	public function securityAdvisories(): array {
 		return $this->securityAdvisories;
