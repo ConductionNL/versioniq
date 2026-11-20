@@ -1031,7 +1031,7 @@
         "No apps to show.": "Geen apps om te tonen.",
         "Could not save the connection.": "De verbinding kon niet worden opgeslagen.",
         "Save connection": "Verbinding opslaan",
-        "Use a dedicated admin account on that instance and an app password for it. The password is stored encrypted and is only used to read that instance's app versions.": "Gebruik een apart beheerdersaccount op die omgeving en een app-wachtwoord daarvoor. Het wachtwoord wordt versleuteld opgeslagen en alleen gebruikt om de appversies van die omgeving te lezen.",
+        "Use a dedicated admin account on that instance and an app password for it. The password is stored encrypted and is only used to read that instance's app versions and install outcomes.": "Gebruik een apart beheerdersaccount op die omgeving en een app-wachtwoord daarvoor. Het wachtwoord wordt versleuteld opgeslagen en alleen gebruikt om de appversies en installatieresultaten van die omgeving te lezen.",
         "Connection id (lowercase letters, digits and hyphens)": "Verbindings-id (kleine letters, cijfers en koppeltekens)",
         "Stage (such as test, acceptance or production)": "Fase (zoals test, acceptatie of productie)",
         "Place in the release chain (0 to 99, lower comes first)": "Plaats in de releaseketen (0 tot en met 99, lager komt eerst)",
@@ -1120,7 +1120,21 @@
         "Release now": "Nu vrijgeven",
         "{version} is released before the minimum age.": "{version} is vrijgegeven vóór de minimumleeftijd.",
         "Withdraw": "Intrekken",
-        "Minimum age in days (empty uses {days})": "Minimumleeftijd in dagen (leeg gebruikt {days})"
+        "Minimum age in days (empty uses {days})": "Minimumleeftijd in dagen (leeg gebruikt {days})",
+        "_Installed {count} time_::_Installed {count} times_": [
+            "{count} keer geïnstalleerd",
+            "{count} keer geïnstalleerd"
+        ],
+        "_{count} instance_::_{count} instances_": [
+            "{count} omgeving",
+            "{count} omgevingen"
+        ],
+        "{installs} on {instances}": "{installs} op {instances}",
+        "_{count} failed install_::_{count} failed installs_": [
+            "{count} mislukte installatie",
+            "{count} mislukte installaties"
+        ],
+        "Not counted, could not be read: {instances}": "Niet meegeteld, kon niet worden gelezen: {instances}"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);",
     "plurals": null

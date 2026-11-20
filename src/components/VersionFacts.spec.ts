@@ -65,6 +65,22 @@ describe('VersionFacts', () => {
 		expect(wrapper.find('[data-testid="fact-outcomes"]').text()).toBe('Installed 1 time here')
 	})
 
+	it('shows the totals across this instance and the connected ones once they are read', () => {
+		const instanceReads = [
+			{ id: 'test', label: 'Test', outcomes: { '2.4.0': { succeeded: 1, failed: 0 } }, error: null },
+			{ id: 'legacy', label: 'Legacy', outcomes: null, error: 'The instance could not be reached.' },
+		]
+		const wrapper = mount(VersionFacts, { props: { entry: full, installedVersion: '2.4.0', instanceReads } })
+
+		expect(wrapper.find('[data-testid="fact-outcomes"]').text()).toBe('Installed 3 times on 2 instances, 1 failure')
+	})
+
+	it('keeps the outcomes here while no connection was read', () => {
+		const wrapper = mount(VersionFacts, { props: { entry: full, installedVersion: '2.4.0', instanceReads: [] } })
+
+		expect(wrapper.find('[data-testid="fact-outcomes"]').text()).toBe('Installed 3 times here, 1 failure')
+	})
+
 	it('shows the publisher section alone when no admin note exists', () => {
 		const wrapper = mount(VersionFacts, { props: { entry: { version: '1.4.0', knownIssues: '  Known: x  ' }, installedVersion: '1.4.0' } })
 

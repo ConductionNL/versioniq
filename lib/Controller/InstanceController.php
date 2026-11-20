@@ -21,6 +21,7 @@ use OCA\Versioniq\Service\Instance\PromotionOptions;
 use OCA\Versioniq\Service\Instance\PromotionRefusal;
 use OCA\Versioniq\Service\Instance\PromotionService;
 use OCA\Versioniq\Service\Instance\RemoteInstanceReader;
+use OCA\Versioniq\Service\Instance\RemoteOutcomesReader;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
@@ -52,6 +53,7 @@ class InstanceController extends OCSController {
 		private ?ManifestBuilderInterface $manifest = null,
 		private ?RemoteInstanceReader $reader = null,
 		private ?PromotionService $promotions = null,
+		private ?RemoteOutcomesReader $outcomes = null,
 	) {
 		parent::__construct($appName, $request);
 	}
@@ -130,6 +132,34 @@ class InstanceController extends OCSController {
 		}
 
 		return new DataResponse($this->manifest->build());
+	}
+
+	/**
+	 * How installs of each version of an app went on every connected instance, read now; one that fails carries its error and does not stop the others
+	 *
+	 * @param string $appId The app to count install outcomes for
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, instances: list<array{id: string, label: string, outcomes: ?array<string, array{succeeded: int, failed: int}>, error: ?string}>}, array{}>|DataResponse<Http::STATUS_FORBIDDEN|Http::STATUS_SERVICE_UNAVAILABLE, array{message: string}, array{}>
+	 *
+	 * 200: Per connection, its successful and failed installs per version, or why they could not be read
+	 * 403: Caller is not an administrator
+	 * 503: Remote reads are not available on this instance
+	 *
+	 * @spec openspec/changes/releases-version-facts/specs/version-management/spec.md#requirement-every-version-shows-how-widely-it-runs-and-how-installs-of-it-went
+	 */
+	#[ApiRoute(verb: 'GET', url: '/api/app/{appId}/outcomes/instances')]
+	#[ApiRoute(verb: 'GET', url: '/api/v1/app/{appId}/outcomes/instances', postfix: 'v1')]
+	public function instanceOutcomes(string $appId): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		if ($this->outcomes === null) {
+			return new DataResponse(['message' => 'Unavailable'], Http::STATUS_SERVICE_UNAVAILABLE);
+		}
+
+		$appId = trim($appId);
+
+		return new DataResponse(['appId' => $appId, 'instances' => $this->outcomes->readAll($appId)]);
 	}
 
 	/**

@@ -17,16 +17,21 @@ use OCA\Versioniq\Controller\InstanceController;
 use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Audit\AuditSubject;
-use OCA\Versioniq\Service\Instance\InstanceConnectionStore;
 use OCA\Versioniq\Service\Instance\InstanceConnection;
+use OCA\Versioniq\Service\Instance\InstanceConnectionStore;
 use OCA\Versioniq\Service\Instance\ManifestBuilder;
-use OCA\Versioniq\Service\Instance\PromotionRefusal;
 use OCA\Versioniq\Service\Instance\PromotionOptions;
+use OCA\Versioniq\Service\Instance\PromotionRefusal;
 use OCA\Versioniq\Service\Instance\PromotionService;
 use OCA\Versioniq\Service\Instance\RemoteInstanceReader;
+use OCA\Versioniq\Service\Instance\RemoteOutcomesReader;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
 use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\Http\Client\IClient;
+use OCP\Http\Client\IClientService;
+use OCP\Http\Client\IResponse;
 use OCP\IAppConfig;
+use OCP\IConfig;
 use OCP\IGroupManager;
 use OCP\IRequest;
 use OCP\IUser;
@@ -44,6 +49,7 @@ use ReflectionMethod;
  * @uses \OCA\Versioniq\Service\Instance\InstanceConnection
  * @uses \OCA\Versioniq\Service\Instance\PromotionRefusal
  * @uses \OCA\Versioniq\Service\Instance\PromotionOptions
+ * @uses \OCA\Versioniq\Service\Instance\RemoteOutcomesReader
  */
 final class InstanceControllerTest extends TestCase {
 
@@ -53,7 +59,16 @@ final class InstanceControllerTest extends TestCase {
 	/** @var list<array{0: AuditSubject, 1: AuditedVersions, 2: string, 3: ?string}> */
 	private array $audits = [];
 
-	private function controller(bool $admin = true, ?ManifestBuilder $manifest = null, ?RemoteInstanceReader $reader = null, ?PromotionService $promotions = null): InstanceController {
+	private ?InstanceConnectionStore $store = null;
+
+	/**
+	 * The connection store over the test's in-memory app config, one per test.
+	 */
+	private function store(): InstanceConnectionStore {
+		if ($this->store !== null) {
+			return $this->store;
+		}
+
 		$appConfig = $this->createMock(IAppConfig::class);
 		$appConfig->method('getKeys')->willReturnCallback(fn (): array => array_keys($this->config));
 		$appConfig->method('getValueString')->willReturnCallback(fn (string $app, string $key, string $default = ''): string => $this->config[$key] ?? $default);
@@ -66,9 +81,14 @@ final class InstanceControllerTest extends TestCase {
 		});
 		$crypto = $this->createMock(ICrypto::class);
 		$crypto->method('encrypt')->willReturnCallback(static fn (string $plain): string => 'cipher:' . md5($plain));
+		$crypto->method('decrypt')->willReturn('secret-app-password');
 		$time = $this->createMock(ITimeFactory::class);
 		$time->method('getDateTime')->willReturn(new DateTime('2026-11-14T08:00:00+00:00'));
 
+		return $this->store = new InstanceConnectionStore($appConfig, $crypto, $time);
+	}
+
+	private function controller(bool $admin = true, ?ManifestBuilder $manifest = null, ?RemoteInstanceReader $reader = null, ?PromotionService $promotions = null, ?RemoteOutcomesReader $outcomes = null): InstanceController {
 		$audit = $this->getMockBuilder(AuditLogger::class)->disableOriginalConstructor()->onlyMethods(['record'])->getMock();
 		$audit->method('record')->willReturnCallback(function (AuditSubject $subject, AuditedVersions $versions, string $status, ?string $message = null): void {
 			$this->audits[] = [$subject, $versions, $status, $message];
@@ -81,7 +101,7 @@ final class InstanceControllerTest extends TestCase {
 		$groups = $this->createMock(IGroupManager::class);
 		$groups->method('isAdmin')->with('alice')->willReturn($admin);
 
-		return new InstanceController('versioniq', $this->createMock(IRequest::class), new InstanceConnectionStore($appConfig, $crypto, $time), $audit, $groups, $session, $manifest, $reader, $promotions);
+		return new InstanceController('versioniq', $this->createMock(IRequest::class), $this->store(), $audit, $groups, $session, $manifest, $reader, $promotions, $outcomes);
 	}
 
 	private function add(InstanceController $controller, string $id = 'acceptance', string $password = 'secret-app-password'): \OCP\AppFramework\Http\DataResponse {
@@ -307,5 +327,75 @@ final class InstanceControllerTest extends TestCase {
 
 		self::assertSame(503, $controller->promote('openregister', 'acceptance')->getStatus());
 		self::assertSame(503, $controller->promotionPlan('openregister', 'acceptance')->getStatus());
+	}
+
+	public function testOutcomesOfOtherInstancesAreForAdminsOnlyAndCarryNoCounts(): void {
+		$this->controller()->create('test', 'Test', 'test', 0, 'https://test.example.org', 'versioniq-reader', 'secret-app-password');
+		$response = $this->controller(admin: false, outcomes: $this->outcomesReader(['test.example.org' => [200, self::outcomesBody(['2.4.1' => ['succeeded' => 1, 'failed' => 0]])]]))->instanceOutcomes('openregister');
+
+		self::assertSame(403, $response->getStatus());
+		self::assertSame(['message' => 'Forbidden'], $response->getData());
+	}
+
+	public function testOneUnreadableInstanceDoesNotStopTheOthersAndNoAnswerCarriesThePassword(): void {
+		$admin = $this->controller();
+		$admin->create('test', 'Test', 'test', 0, 'https://test.example.org', 'versioniq-reader', 'secret-app-password');
+		$admin->create('acceptance', 'Acceptance', 'acceptance', 1, 'https://acc.example.org', 'versioniq-reader', 'secret-app-password');
+		$admin->create('legacy', 'Legacy', 'legacy', 2, 'https://legacy.example.org', 'versioniq-reader', 'secret-app-password');
+
+		$response = $this->controller(outcomes: $this->outcomesReader([
+			'test.example.org' => [200, self::outcomesBody(['2.4.1' => ['succeeded' => 1, 'failed' => 1]])],
+			'acc.example.org' => new \RuntimeException('Connection refused'),
+			'legacy.example.org' => [200, self::outcomesBody(['2.4.1' => ['succeeded' => 1, 'failed' => 0]])],
+		]))->instanceOutcomes(' openregister ');
+
+		self::assertSame(200, $response->getStatus());
+		$data = $response->getData();
+		self::assertSame('openregister', $data['appId']);
+		self::assertSame(['test', 'acceptance', 'legacy'], array_column($data['instances'], 'id'));
+		self::assertSame(['2.4.1' => ['succeeded' => 1, 'failed' => 1]], $data['instances'][0]['outcomes']);
+		self::assertSame(['Acceptance', null, 'The instance could not be reached.'], [$data['instances'][1]['label'], $data['instances'][1]['outcomes'], $data['instances'][1]['error']]);
+		self::assertSame(['2.4.1' => ['succeeded' => 1, 'failed' => 0]], $data['instances'][2]['outcomes']);
+		self::assertStringNotContainsString('secret-app-password', (string)json_encode($data));
+	}
+
+	public function testWithoutAnOutcomesReaderTheRouteIsUnavailable(): void {
+		self::assertSame(503, $this->controller()->instanceOutcomes('openregister')->getStatus());
+	}
+
+	/**
+	 * @param array<string, mixed> $outcomes
+	 */
+	private static function outcomesBody(array $outcomes): string {
+		return (string)json_encode(['ocs' => ['data' => ['appId' => 'openregister', 'outcomes' => $outcomes]]]);
+	}
+
+	/**
+	 * An outcomes reader over the controller's own store whose remotes answer per
+	 * host: [status, body], or a Throwable for an instance that cannot be reached.
+	 *
+	 * @param array<string, array{int, string}|\Throwable> $answers keyed by host
+	 */
+	private function outcomesReader(array $answers): RemoteOutcomesReader {
+		$client = $this->createMock(IClient::class);
+		$client->method('get')->willReturnCallback(function (string $url) use ($answers): IResponse {
+			$answer = $answers[(string)parse_url($url, PHP_URL_HOST)];
+			if ($answer instanceof \Throwable) {
+				throw $answer;
+			}
+			$response = $this->createMock(IResponse::class);
+			$response->method('getStatusCode')->willReturn($answer[0]);
+			$response->method('getBody')->willReturn($answer[1]);
+			return $response;
+		});
+		$clients = $this->createMock(IClientService::class);
+		$clients->method('newClient')->willReturn($client);
+
+		return new RemoteOutcomesReader(
+			$this->store(),
+			$clients,
+			$this->createMock(IConfig::class),
+			$this->createMock(\Psr\Log\LoggerInterface::class),
+		);
 	}
 }

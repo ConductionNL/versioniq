@@ -649,7 +649,8 @@
 		"available versions, preserve false": {
 			"urls": [
 				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json",
-				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/skips?format=json"
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/skips?format=json",
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/outcomes/instances?format=json"
 			],
 			"during": true,
 			"versions": [
@@ -671,7 +672,8 @@
 		"available versions, preserve true": {
 			"urls": [
 				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json",
-				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/skips?format=json"
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/skips?format=json",
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/outcomes/instances?format=json"
 			],
 			"during": true,
 			"versions": [
@@ -699,7 +701,8 @@
 		"versions only, preserve false": {
 			"urls": [
 				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json",
-				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/skips?format=json"
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/skips?format=json",
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/outcomes/instances?format=json"
 			],
 			"during": true,
 			"versions": [
@@ -721,7 +724,8 @@
 		"versions only, preserve true": {
 			"urls": [
 				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json",
-				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/skips?format=json"
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/skips?format=json",
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/outcomes/instances?format=json"
 			],
 			"during": true,
 			"versions": [
@@ -749,7 +753,8 @@
 		"nothing, preserve false": {
 			"urls": [
 				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json",
-				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/skips?format=json"
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/skips?format=json",
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/outcomes/instances?format=json"
 			],
 			"during": true,
 			"versions": [],
@@ -767,7 +772,8 @@
 		"nothing, preserve true": {
 			"urls": [
 				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json",
-				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/skips?format=json"
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/skips?format=json",
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/outcomes/instances?format=json"
 			],
 			"during": true,
 			"versions": [],
@@ -791,7 +797,8 @@
 		"with error, preserve false": {
 			"urls": [
 				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json",
-				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/skips?format=json"
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/skips?format=json",
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/outcomes/instances?format=json"
 			],
 			"during": true,
 			"versions": [],
@@ -809,7 +816,8 @@
 		"with error, preserve true": {
 			"urls": [
 				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/versions?format=json",
-				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/skips?format=json"
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/skips?format=json",
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/calendar/outcomes/instances?format=json"
 			],
 			"during": true,
 			"versions": [],
@@ -953,7 +961,8 @@
 		"source override": {
 			"urls": [
 				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/notes/versions?source=github%3Aacme%2Fnotes&format=json",
-				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/notes/skips?format=json"
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/notes/skips?format=json",
+				"http://localhost:3000/ocs/v2.php/apps/versioniq/api/app/notes/outcomes/instances?format=json"
 			],
 			"during": true,
 			"versions": [

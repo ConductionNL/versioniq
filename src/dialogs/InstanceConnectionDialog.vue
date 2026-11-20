@@ -132,7 +132,7 @@ function set (field: keyof typeof form.value, value: string): void {
 		@update:open="(value: boolean) => emit('update:open', value)">
 		<div :class="$style.body" data-testid="instance-connection-dialog">
 			<NcNoteCard type="info">
-				{{ t('versioniq', 'Use a dedicated admin account on that instance and an app password for it. The password is stored encrypted and is only used to read that instance\'s app versions.') }}
+				{{ t('versioniq', 'Use a dedicated admin account on that instance and an app password for it. The password is stored encrypted and is only used to read that instance\'s app versions and install outcomes.') }}
 			</NcNoteCard>
 			<NcTextField v-if="!editing"
 				:modelValue="form.id"
