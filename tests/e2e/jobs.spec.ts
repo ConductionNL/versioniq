@@ -7,6 +7,7 @@ import {
 	appConfigValue,
 	execInInstance,
 	FIXTURE_APP,
+	FIXTURE_APP2,
 	fixtureAvailable,
 	fixtureControl,
 	installFixture,
@@ -912,5 +913,213 @@ test.describe("background jobs: proposed updates", () => {
 		await runJob("AutoUpdateJob");
 
 		expect(await installed()).toBe("1.0.0");
+	});
+});
+
+/**
+ * Update groups and run limits in the auto-update job
+ * (autoupdate-run-batching 4.5), with both fixture apps on 1.0.0 and a patch
+ * policy, so each has 1.0.1 as its candidate.
+ *
+ * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+ */
+test.describe("update groups and run limits in the auto-update job", () => {
+	const OCS = { "OCS-APIRequest": "true", "Content-Type": "application/json" };
+	const APPS = [FIXTURE_APP, FIXTURE_APP2];
+
+	const installedOf = async (appId: string) =>
+		(await occ("config:app:get", appId, "installed_version")).trim();
+
+	async function setGroups(page: Page, groups: Array<{ name: string; apps: string[] }>) {
+		const res = await page.request.put(
+			"/ocs/v2.php/apps/versioniq/api/auto-update/groups?format=json",
+			{ headers: OCS, data: { groups } },
+		);
+		expect(res.ok(), `PUT groups: ${res.status()} ${await res.text()}`).toBe(true);
+	}
+
+	async function enableAutomation() {
+		await occ("config:app:set", "versioniq", "auto_update_enabled", "--value", "1");
+		await occ("config:app:set", "versioniq", "auto_update_window", "--value", "00:00-23:59");
+	}
+
+	/** Lets the next job run sweep the same window again. */
+	async function allowAnotherRun() {
+		await occ("config:app:delete", "versioniq", "auto_update_last_swept_window");
+	}
+
+	/** The highest audit id now, so a run's own installs can be read after it. */
+	async function lastAuditId(): Promise<number> {
+		return Number((await sql("SELECT COALESCE(MAX(id), 0) FROM oc_app_versions_audit")) || 0);
+	}
+
+	/** The apps installed after an audit id, in the order they were installed. */
+	async function installedAfter(id: number): Promise<string[]> {
+		const rows = await sql(
+			`SELECT app_id FROM oc_app_versions_audit WHERE id > ${id} AND operation = 'install' AND status = 'success' AND app_id IN ('${FIXTURE_APP}', '${FIXTURE_APP2}') ORDER BY id`,
+		);
+		return rows.split("\n").map((row) => row.trim()).filter((row) => row !== "");
+	}
+
+	test.beforeEach(async ({ page }) => {
+		test.skip(!(await fixtureAvailable(page)), "forge fixture not running");
+		await resetFixtureApp(page, FIXTURE_APP);
+		await resetFixtureApp(page, FIXTURE_APP2);
+		await setGroups(page, []);
+		await occ("config:app:delete", "versioniq", "auto_update.max_per_run");
+		for (const appId of APPS) {
+			await occ("config:app:delete", "versioniq", `auto_attempt.${appId}`);
+			const res = await page.request.put(
+				`/ocs/v2.php/apps/versioniq/api/app/${appId}/policy?format=json`,
+				{ headers: OCS, data: { level: "patch" } },
+			);
+			expect(res.ok(), `PUT policy ${appId}: ${res.status()}`).toBe(true);
+		}
+		await enableAutomation();
+		await allowAnotherRun();
+	});
+
+	test.afterEach(async ({ page }) => {
+		await page.request
+			.put("/ocs/v2.php/apps/versioniq/api/auto-update/groups?format=json", {
+				headers: OCS,
+				data: { groups: [] },
+			})
+			.catch(() => undefined);
+		await occ("config:app:delete", "versioniq", "auto_update.max_per_run");
+		await occ("config:app:delete", "versioniq", "auto_update_enabled");
+		await occ("config:app:delete", "versioniq", "auto_update_window");
+		await allowAnotherRun();
+		for (const appId of APPS) {
+			await occ("config:app:delete", "versioniq", `auto_attempt.${appId}`);
+			for (const path of ["policy", "pin"]) {
+				await page.request
+					.delete(`/ocs/v2.php/apps/versioniq/api/app/${appId}/${path}?format=json`, {
+						headers: { "OCS-APIRequest": "true" },
+					})
+					.catch(() => undefined);
+			}
+		}
+	});
+
+	// @e2e auto-update-policies::a-group-installs-in-order
+	test("a group installs both members, in the group's order", async ({ page }) => {
+		// fixtureapp2 first: not the alphabetical order, so the order is the group's.
+		await setGroups(page, [{ name: "Fixture pair", apps: [FIXTURE_APP2, FIXTURE_APP] }]);
+		const before = await lastAuditId();
+
+		await runJob("AutoUpdateJob");
+
+		expect(await installedOf(FIXTURE_APP2)).toBe("1.0.1");
+		expect(await installedOf(FIXTURE_APP)).toBe("1.0.1");
+		expect(await installedAfter(before)).toEqual([FIXTURE_APP2, FIXTURE_APP]);
+	});
+
+	// @e2e auto-update-policies::a-failed-member-stops-the-group
+	test("a failed first member leaves the second untouched", async ({ page }) => {
+		await setGroups(page, [{ name: "Fixture pair", apps: [FIXTURE_APP2, FIXTURE_APP] }]);
+		await fixtureControl(page, "asset", { asset: "fixtureapp2-1.0.1.tar.gz", status: 404 });
+
+		await runJob("AutoUpdateJob");
+
+		expect(await installedOf(FIXTURE_APP2), "the failed member").toBe("1.0.0");
+		expect(await installedOf(FIXTURE_APP), "the member after it is not attempted").toBe("1.0.0");
+	});
+
+	// @e2e auto-update-policies::a-pinned-member-holds-the-group
+	test("a pin on one member holds the whole group", async ({ page }) => {
+		await setGroups(page, [{ name: "Fixture pair", apps: [FIXTURE_APP, FIXTURE_APP2] }]);
+		const pin = await page.request.put(
+			`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP2}/pin?format=json`,
+			{ headers: OCS, data: {} },
+		);
+		expect(pin.ok(), `PUT pin: ${pin.status()}`).toBe(true);
+
+		await runJob("AutoUpdateJob");
+
+		expect(await installedOf(FIXTURE_APP), "held by its pinned group member").toBe("1.0.0");
+		expect(await installedOf(FIXTURE_APP2), "pinned").toBe("1.0.0");
+	});
+
+	// @e2e auto-update-policies::a-run-limit-defers-the-rest
+	test("with a per-run limit of 1 and no group, one app installs and the next run installs the other", async () => {
+		await occ("config:app:set", "versioniq", "auto_update.max_per_run", "--value", "1");
+
+		await runJob("AutoUpdateJob");
+		const first = await Promise.all(APPS.map(installedOf));
+		expect(first.filter((version) => version === "1.0.1"), `after run 1: ${first.join(", ")}`).toHaveLength(1);
+
+		await allowAnotherRun();
+		await runJob("AutoUpdateJob");
+		expect(await Promise.all(APPS.map(installedOf))).toEqual(["1.0.1", "1.0.1"]);
+	});
+});
+
+/**
+ * The hourly reconcile job records version changes and disables that no
+ * Versioniq event reported.
+ *
+ * @spec openspec/changes/audit-external-changes/specs/audit-trail/spec.md
+ */
+test.describe("external changes", () => {
+	const HOURLY_TRIGGER =
+		"found by the hourly check: no update event was seen";
+
+	test.beforeEach(async ({ page }) => {
+		test.skip(!(await fixtureAvailable(page)), "forge fixture not running");
+		await resetFixtureApp(page);
+	});
+
+	test.afterEach(async ({ page }) => {
+		await occ("app:enable", FIXTURE_APP);
+		await resetFixtureApp(page);
+	});
+
+	async function auditRows(after: number, operation: string): Promise<string[]> {
+		return (
+			await sql(
+				`SELECT from_version, to_version, message FROM oc_app_versions_audit WHERE id > ${after} AND app_id = '${FIXTURE_APP}' AND operation = '${operation}' ORDER BY id`,
+			)
+		)
+			.split("\n")
+			.filter((line) => line.trim() !== "");
+	}
+
+	test("an unreported update and a disable are recorded, and the app stays disabled", async ({
+		page,
+	}) => {
+		await installFixture(page, "1.0.1");
+		// A baseline first, then a stale record for the fixture app: as if it
+		// was at 1.0.0 when last seen and something outside Versioniq moved it.
+		await runJob("ExternalChangeReconcileJob");
+		const seen = JSON.parse(
+			(await occ("config:app:get", "versioniq", "external.seen")) || "{}",
+		);
+		expect(seen.apps?.[FIXTURE_APP]?.version, "baseline").toBe("1.0.1");
+		seen.apps[FIXTURE_APP].version = "1.0.0";
+		await occ(
+			"config:app:set",
+			"versioniq",
+			"external.seen",
+			"--value",
+			JSON.stringify(seen),
+		);
+		const start = Number(
+			(await sql("SELECT COALESCE(MAX(id), 0) FROM oc_app_versions_audit")) ||
+				"0",
+		);
+
+		await runJob("ExternalChangeReconcileJob");
+		expect(await auditRows(start, "external_update")).toEqual([
+			`1.0.0\t1.0.1\t${HOURLY_TRIGGER}`,
+		]);
+
+		await occ("app:disable", FIXTURE_APP);
+		await runJob("ExternalChangeReconcileJob");
+		expect(await auditRows(start, "external_disable")).toHaveLength(1);
+		expect(
+			(await occ("config:app:get", FIXTURE_APP, "enabled")).trim(),
+			"the job leaves a deliberately disabled app off",
+		).toBe("no");
 	});
 });
