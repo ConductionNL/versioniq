@@ -68,7 +68,7 @@ Feature work is specified in `openspec/` before it is built (`openspec/config.ya
 
 ## Architecture decisions
 
-Decisions are recorded in the `## Decisions` sections of each change's `design.md`, under `openspec/changes/` and `openspec/changes/archive/`.
+Architecturally significant decisions are recorded as ADRs in `docs/adr/` (index in `docs/adr/README.md`). Per-change decisions live in the `## Decisions` sections of each change's `design.md`, under `openspec/changes/` and `openspec/changes/archive/`.
 
 ## Conventions
 
