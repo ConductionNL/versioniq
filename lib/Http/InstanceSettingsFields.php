@@ -68,6 +68,12 @@ final class InstanceSettingsFields extends RequestFields {
 	/** @var string|null Whether an update through Versioniq tells the app's users: true or false */
 	public ?string $notifyUsersOnUpdate = null;
 
+	/** @var string|null Address a newer code-signing revocation list is fetched from; blank switches fetching off */
+	public ?string $crlUrl = null;
+
+	/** @var string|null Whether an app whose signing certificate is revoked is disabled automatically: true or false */
+	public ?string $disableRevoked = null;
+
 	/**
 	 * The fields that were sent, by name, in declaration order.
 	 *

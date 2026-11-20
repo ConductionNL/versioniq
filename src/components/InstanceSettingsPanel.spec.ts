@@ -252,4 +252,45 @@ describe('InstanceSettingsPanel', () => {
 		expect(notifyUsersOnUpdate).toBe(true)
 		expect((wrapper.find('[data-testid="setting-notify-users-on-update"]').element as HTMLInputElement).checked).toBe(true)
 	})
+
+	// safety-withdrawn-and-revoked 2.2
+	// @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
+	it('shows the revocation list address in effect and automatic disabling off, and saves both', async () => {
+		const crl = { crlUrl: 'https://raw.githubusercontent.com/nextcloud/server/master/resources/codesigning/root.crl', crlUrlDefault: 'https://raw.githubusercontent.com/nextcloud/server/master/resources/codesigning/root.crl', disableRevoked: false }
+		mockedGet.mockResolvedValue({ payload: { ...settings, ...crl } })
+		mockedWrite.mockResolvedValue({ payload: { ...settings, ...crl, crlUrl: '', disableRevoked: true } })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		expect((wrapper.find('[data-testid="setting-crl-url"]').element as HTMLInputElement).value).toBe(crl.crlUrl)
+		const box = wrapper.find('[data-testid="setting-disable-revoked"]')
+		expect((box.element as HTMLInputElement).checked).toBe(false)
+		expect(wrapper.text()).toContain('Leave the address empty to check only against the list this server shipped with.')
+
+		await wrapper.find('[data-testid="setting-crl-url"]').setValue('')
+		await box.setValue(true)
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		expect(mockedWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/instance-settings', expect.objectContaining({
+			crlUrl: '',
+			disableRevoked: 'true',
+		}))
+		expect((wrapper.find('[data-testid="setting-crl-url"]').element as HTMLInputElement).value).toBe('')
+		expect((wrapper.find('[data-testid="setting-disable-revoked"]').element as HTMLInputElement).checked).toBe(true)
+	})
+
+	it('leaves the revocation list settings out when the server does not report them', async () => {
+		mockedGet.mockResolvedValue({ payload: settings })
+		mockedWrite.mockResolvedValue({ payload: settings })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		const body = mockedWrite.mock.calls[0][2] as Record<string, string>
+		expect(body).not.toHaveProperty('crlUrl')
+		expect(body).not.toHaveProperty('disableRevoked')
+	})
 })

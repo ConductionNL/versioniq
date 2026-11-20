@@ -9,7 +9,8 @@
 
 - [x] 2.1 Add `InstalledCertificateCheck` and `CertificateRecheckJob`, register the job, add `certificateRevoked` to `GET /api/apps`, and the `certificate_revoked` subject. Verify: `tests/unit/BackgroundJob/CertificateRecheckJobTest.php` (one notification per app and serial, shipped apps skipped, disable only with the switch on, audit row on disable).
   - Done: `InstalledCertificateCheck` reads the `certificate` from `appinfo/signature.json` of every installed, not shipped, App Store app; `RevokedAppResponder` records the serial in `RevokedCertificateStore` (`revoked.<appId>`), notifies once per app and serial, and with `safety.disable_revoked` on disables the app once with a `revoked_disable` audit row. `CertificateRecheckJob` (daily, in `info.xml`) refreshes the list first. Every card of `GET /api/apps` carries `certificateRevoked`; the Notifier renders `certificate_revoked` in the D4 wording. Tests: `CertificateRecheckJobTest`, `NotifierCertificateRevokedTest`, the `apps` case of `ApiReadEndpointsGoldenTest`.
-- [ ] 2.2 Add `safety.crl_url` and `safety.disable_revoked` to `InstanceSettings` and the Settings tab. Verify: `InstanceSettingsPanel.spec.ts`.
+- [x] 2.2 Add `safety.crl_url` and `safety.disable_revoked` to `InstanceSettings` and the Settings tab. Verify: `InstanceSettingsPanel.spec.ts`.
+  - Done: `InstanceSettings` reads and writes `crlUrl` (the address in effect; an empty one is kept and switches fetching off, the default is not stored) and `disableRevoked`, validated before anything is written; `InstanceSettingsPanel.vue` shows both under "Revoked certificates" and sends them only when the server reports them. Tests: `InstanceSettingsTest`, `InstanceSettingsPanel.spec.ts`.
 - [ ] 2.3 Show the "Certificate revoked" badge with the wording of design D4. Verify: a vitest spec for the badge.
 
 ## 3. Withdrawn versions

@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\Service\Settings;
 
 use InvalidArgumentException;
+use OCA\Versioniq\Service\Safety\RevocationList;
+use OCA\Versioniq\Service\Safety\RevokedAppResponder;
 use OCA\Versioniq\Service\Settings\InstanceSettings;
 use OCP\IAppConfig;
 use PHPUnit\Framework\TestCase;
@@ -29,6 +31,7 @@ final class InstanceSettingsTest extends TestCase {
 
 	private function store(): InstanceSettings {
 		$appConfig = $this->createMock(IAppConfig::class);
+		$appConfig->method('hasKey')->willReturnCallback(fn (string $app, string $key): bool => array_key_exists($key, $this->config));
 		$appConfig->method('getValueString')->willReturnCallback(
 			fn (string $app, string $key, string $default = ''): string => (string)($this->config[$key] ?? $default),
 		);
@@ -63,6 +66,44 @@ final class InstanceSettingsTest extends TestCase {
 		);
 
 		return new InstanceSettings($appConfig);
+	}
+
+	/**
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
+	 */
+	public function testTheRevocationListAddressDefaultsAndAnEmptyOneSwitchesFetchingOff(): void {
+		$settings = $this->store()->read();
+		self::assertSame(RevocationList::DEFAULT_URL, $settings['crlUrl']);
+		self::assertSame(RevocationList::DEFAULT_URL, $settings['crlUrlDefault']);
+		self::assertFalse($settings['disableRevoked']);
+
+		self::assertSame(['crlUrl', 'disableRevoked'], $this->store()->update(['crlUrl' => ' ', 'disableRevoked' => 'true']));
+		self::assertSame('', $this->config[RevocationList::KEY_URL], 'kept, so the list is not fetched');
+		self::assertTrue($this->config[RevokedAppResponder::KEY_DISABLE]);
+		self::assertSame('', $this->store()->read()['crlUrl']);
+		self::assertTrue($this->store()->read()['disableRevoked']);
+
+		$this->store()->update(['crlUrl' => 'https://mirror.example.org/root.crl', 'disableRevoked' => '0']);
+		self::assertSame('https://mirror.example.org/root.crl', $this->store()->read()['crlUrl']);
+		self::assertFalse($this->store()->read()['disableRevoked']);
+
+		$this->store()->update(['crlUrl' => RevocationList::DEFAULT_URL]);
+		self::assertArrayNotHasKey(RevocationList::KEY_URL, $this->config, 'the default is not stored');
+	}
+
+	/**
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
+	 */
+	public function testABadRevocationListAddressOrSwitchChangesNothing(): void {
+		foreach ([['crlUrl' => 'ftp://example.org/root.crl'], ['crlUrl' => 'https://example.org/root.crl', 'disableRevoked' => 'maybe']] as $fields) {
+			try {
+				$this->store()->update($fields + ['auditRetentionDays' => '400']);
+				self::fail('refused');
+			} catch (InvalidArgumentException) {
+			}
+		}
+
+		self::assertSame([], $this->config);
 	}
 
 	public function testDefaultsWhenNothingIsSet(): void {

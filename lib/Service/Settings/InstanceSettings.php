@@ -23,6 +23,8 @@ use OCA\Versioniq\Service\Advisory\OsvClient;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Lifecycle\ServerEolFeed;
+use OCA\Versioniq\Service\Safety\RevocationList;
+use OCA\Versioniq\Service\Safety\RevokedAppResponder;
 use OCA\Versioniq\Service\Source\AppStoreSource;
 use OCA\Versioniq\Service\Source\ForgeRegistry;
 use OCP\IAppConfig;
@@ -101,7 +103,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, eolFeedUrl: string, eolFeedOff: bool, eolFeedDefault: string, ncscFeedUrl: string, ncscFeedDefault: string, osvApiBase: string, osvApiDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, reactivateAuto: bool, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int, notifyUsersOnUpdate: bool, allowUnsignedUpload: bool}
+	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, eolFeedUrl: string, eolFeedOff: bool, eolFeedDefault: string, ncscFeedUrl: string, ncscFeedDefault: string, osvApiBase: string, osvApiDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, reactivateAuto: bool, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int, notifyUsersOnUpdate: bool, allowUnsignedUpload: bool, crlUrl: string, crlUrlDefault: string, disableRevoked: bool}
 	 */
 	public function read(): array {
 		$retention = $this->config->getValueInt(Application::APP_ID, PruneAuditJob::CONFIG_KEY_RETENTION_DAYS, PruneAuditJob::DEFAULT_RETENTION_DAYS);
@@ -138,7 +140,64 @@ class InstanceSettings implements InstanceSettingsInterface {
 			...$this->feedSource(),
 			'allowUnsignedUpload' => $this->allowsUnsignedUpload(),
 			'notifyUsersOnUpdate' => $this->config->getValueBool(Application::APP_ID, self::KEY_NOTIFY_USERS_ON_UPDATE, true),
+			...$this->safety(),
 		];
+	}
+
+	/**
+	 * The revocation list address in effect ('' while fetching is off), its
+	 * default, and whether apps with a revoked certificate are disabled.
+	 *
+	 * @return array{crlUrl: string, crlUrlDefault: string, disableRevoked: bool}
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
+	 */
+	private function safety(): array {
+		return [
+			'crlUrl' => $this->config->hasKey(Application::APP_ID, RevocationList::KEY_URL) ? $this->stored(RevocationList::KEY_URL) : RevocationList::DEFAULT_URL,
+			'crlUrlDefault' => RevocationList::DEFAULT_URL,
+			'disableRevoked' => $this->config->getValueBool(Application::APP_ID, RevokedAppResponder::KEY_DISABLE, false),
+		];
+	}
+
+	/**
+	 * The sent revocation list address and disable switch, validated: the
+	 * address as stored ('' switches fetching off), the switch as a bool.
+	 *
+	 * @param array<string, string> $fields
+	 * @return array{crlUrl?: string, disableRevoked?: bool}
+	 * @throws InvalidArgumentException when the address or the switch is not acceptable
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
+	 */
+	private function validatedSafety(array $fields): array {
+		$safety = [];
+		if (isset($fields['crlUrl'])) {
+			$safety['crlUrl'] = $this->url($fields['crlUrl'], false);
+		}
+		$disable = self::validatedSwitch($fields, 'disableRevoked', 'Disabling apps with a revoked certificate');
+		if ($disable !== null) {
+			$safety['disableRevoked'] = $disable === 'true';
+		}
+
+		return $safety;
+	}
+
+	/**
+	 * Stores what {@see validatedSafety()} returned. An empty address is kept:
+	 * it switches fetching off instead of falling back to the default.
+	 *
+	 * @param array{crlUrl?: string, disableRevoked?: bool} $safety
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
+	 */
+	private function storeSafety(array $safety): void {
+		if (isset($safety['crlUrl']) && $safety['crlUrl'] === RevocationList::DEFAULT_URL) {
+			// The default is not stored, so a later default applies.
+			$this->config->deleteKey(Application::APP_ID, RevocationList::KEY_URL);
+		} elseif (isset($safety['crlUrl'])) {
+			$this->config->setValueString(Application::APP_ID, RevocationList::KEY_URL, $safety['crlUrl']);
+		}
+		if (isset($safety['disableRevoked'])) {
+			$this->config->setValueBool(Application::APP_ID, RevokedAppResponder::KEY_DISABLE, $safety['disableRevoked']);
+		}
 	}
 
 	/**
@@ -148,6 +207,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
 	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
 	 * @param array<string, string> $fields
 	 * @return list<string> The names of the fields that were applied
 	 * @throws InvalidArgumentException when any field is out of range or not an acceptable URL
@@ -163,8 +223,10 @@ class InstanceSettings implements InstanceSettingsInterface {
 		$feedSource = self::validatedFeedSource($fields);
 		$unsigned = self::validatedSwitch($fields, 'allowUnsignedUpload', 'Allow unsigned uploads');
 		$eolFeed = isset($fields['eolFeedUrl']) ? $this->url($fields['eolFeedUrl'], false) : null;
+		$safety = $this->validatedSafety($fields);
 
 		$this->storeInts($ints);
+		$this->storeSafety($safety);
 		if ($githubSearch !== null) {
 			$this->config->setValueString(Application::APP_ID, self::KEY_GITHUB_SEARCH, $githubSearch);
 		}
@@ -200,7 +262,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 	 */
 	private static function appliedFields(array $fields): array {
 		return array_values(array_filter(
-			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', 'promotionMinDays', 'notifyUsersOnUpdate', ...array_keys(self::URL_FIELDS), 'reactivateAuto', 'githubSearchEnabled', 'advisoryFeedSource', 'eolFeedUrl', 'allowUnsignedUpload'],
+			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', 'promotionMinDays', 'notifyUsersOnUpdate', ...array_keys(self::URL_FIELDS), 'reactivateAuto', 'githubSearchEnabled', 'advisoryFeedSource', 'eolFeedUrl', 'allowUnsignedUpload', 'crlUrl', 'disableRevoked'],
 			static fn (string $field): bool => isset($fields[$field]),
 		));
 	}
