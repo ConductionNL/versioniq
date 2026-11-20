@@ -1693,16 +1693,16 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "unknown",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/Source/AppStoreSource.php:100, lib/Service/Source/ForgeReleaseSource.php:89",
-				"reachedOn": "Apps tab versions list",
+				"state": "built",
+				"evidence": "lib/Service/Availability/WithdrawnVersionStore.php:30 (installedWithdrawn from the sweep, never on a failed listing), lib/Service/InstallerService.php:1369 (withdrawn target refused, category withdrawn), src/components/SafetyBadges.vue (Version withdrawn by the publisher)",
+				"reachedOn": "Apps tab (card badge); version picker and occ versioniq:install (refusal)",
 				"owner": "ConductionNL/versioniq",
 				"change": "safety-withdrawn-and-revoked",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
 				},
-				"requirement": "openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked :: A withdrawn installed version is marked and never reinstalled by accident"
+				"requirement": "openspec/specs/withdrawn-and-revoked :: A withdrawn installed version is marked and never reinstalled by accident"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5476,9 +5476,9 @@
 			"osv-scanner": "yes",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/Advisory/AdvisoryPackageMap.php:86 matches security advisories only; no malware feed is read",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/BackgroundJob/CertificateRecheckJob.php:30 with lib/Service/Safety/InstalledCertificateCheck.php:33 (certificate_revoked notification for an installed app), lib/Service/Advisory/LibraryAdvisorySweep.php with lib/Service/Advisory/OsvClient.php (OSV findings, including malicious-package entries, for bundled libraries)",
+				"reachedOn": "admin notifications; Apps tab card badge; Advisories tab (bundled libraries)",
 				"owner": "ConductionNL/versioniq",
 				"change": "safety-withdrawn-and-revoked",
 				"screen": {
@@ -5486,7 +5486,7 @@
 					"board": "VqBeveiligingsadviezen"
 				},
 				"requirement": [
-					"openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked :: Installed apps are rechecked against a current revocation list",
+					"openspec/specs/withdrawn-and-revoked :: Installed apps are rechecked against a current revocation list",
 					"openspec/changes/advisories-bundled-libraries/specs/security-advisory-correlation :: Libraries bundled inside installed apps are checked against OSV"
 				],
 				"plan": [
@@ -7492,16 +7492,16 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/SelectedReleaseInstallerService.php:135, lib/Service/SelectedReleaseInstallerService.php:174, lib/Service/SelectedReleaseInstallerService.php:176",
-				"reachedOn": "Apps tab (any App Store install); occ versioniq:install",
+				"state": "built",
+				"evidence": "lib/Service/Safety/RevocationList.php:95 (newest signed CRL, shipped or fetched), lib/Service/SelectedReleaseInstallerService.php (install refused on a revoked certificate), lib/BackgroundJob/CertificateRecheckJob.php:30 (daily recheck of installed apps, optional disable), src/components/SafetyBadges.vue (Certificate revoked)",
+				"reachedOn": "Apps tab (any App Store install, card badge); admin notifications; Settings tab (revocation list address, disable switch)",
 				"owner": "ConductionNL/versioniq",
 				"change": "safety-withdrawn-and-revoked",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
 				},
-				"requirement": "openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked :: Installed apps are rechecked against a current revocation list"
+				"requirement": "openspec/specs/withdrawn-and-revoked :: Installed apps are rechecked against a current revocation list"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
