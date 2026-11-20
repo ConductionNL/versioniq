@@ -1118,6 +1118,16 @@
         "Release now": "Release now",
         "{version} is released before the minimum age.": "{version} is released before the minimum age.",
         "Withdraw": "Withdraw",
-        "Minimum age in days (empty uses {days})": "Minimum age in days (empty uses {days})"
+        "Minimum age in days (empty uses {days})": "Minimum age in days (empty uses {days})",
+        "Revoked certificates": "Revoked certificates",
+        "Address of the code signing revocation list": "Address of the code signing revocation list",
+        "A newer list is used only when Nextcloud signed it. Leave the address empty to check only against the list this server shipped with.": "A newer list is used only when Nextcloud signed it. Leave the address empty to check only against the list this server shipped with.",
+        "Disable an app automatically when Nextcloud revokes its signing certificate": "Disable an app automatically when Nextcloud revokes its signing certificate",
+        "Every admin is notified either way. The app can be enabled again on its card.": "Every admin is notified either way. The app can be enabled again on its card.",
+        "Nextcloud revoked the signing certificate of this app. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.": "Nextcloud revoked the signing certificate of this app. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.",
+        "Certificate revoked": "Certificate revoked",
+        "Version withdrawn by the publisher": "Version withdrawn by the publisher",
+        "Certificate revoked: %s": "Certificate revoked: %s",
+        "%s was disabled automatically.": "%s was disabled automatically."
     }
 }

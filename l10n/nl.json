@@ -1120,7 +1120,17 @@
         "Release now": "Nu vrijgeven",
         "{version} is released before the minimum age.": "{version} is vrijgegeven vóór de minimumleeftijd.",
         "Withdraw": "Intrekken",
-        "Minimum age in days (empty uses {days})": "Minimumleeftijd in dagen (leeg gebruikt {days})"
+        "Minimum age in days (empty uses {days})": "Minimumleeftijd in dagen (leeg gebruikt {days})",
+        "Revoked certificates": "Ingetrokken certificaten",
+        "Address of the code signing revocation list": "Adres van de intrekkingslijst voor code-ondertekening",
+        "A newer list is used only when Nextcloud signed it. Leave the address empty to check only against the list this server shipped with.": "Een nieuwere lijst wordt alleen gebruikt als Nextcloud hem heeft ondertekend. Laat het adres leeg om alleen te controleren met de lijst die met deze server is meegeleverd.",
+        "Disable an app automatically when Nextcloud revokes its signing certificate": "Een app automatisch uitschakelen als Nextcloud zijn ondertekeningscertificaat intrekt",
+        "Every admin is notified either way. The app can be enabled again on its card.": "Elke beheerder krijgt hoe dan ook een melding. Je kunt de app op zijn kaart weer inschakelen.",
+        "Nextcloud revoked the signing certificate of this app. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.": "Nextcloud heeft het ondertekeningscertificaat van deze app ingetrokken. Nextcloud trekt een certificaat in om een app terug te trekken waarvan het weet dat hij gecompromitteerd of kwaadaardig is.",
+        "Certificate revoked": "Certificaat ingetrokken",
+        "Version withdrawn by the publisher": "Versie teruggetrokken door de uitgever",
+        "Certificate revoked: %s": "Certificaat ingetrokken: %s",
+        "%s was disabled automatically.": "%s is automatisch uitgeschakeld."
     },
     "pluralForm": "nplurals=2; plural=(n != 1);",
     "plurals": null
