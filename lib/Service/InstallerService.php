@@ -849,7 +849,7 @@ class InstallerService implements InstallerServiceInterface {
 		$target = $request->target;
 
 		return $this->runInstall(new InstallRequest(
-			new InstallTarget(trim($target->appId), trim($target->version), $target->sourceOverride),
+			new InstallTarget(trim($target->appId), trim($target->version), $target->sourceOverride, $target->expectedSha),
 			$request->options,
 			$request->pinChoice,
 		));
