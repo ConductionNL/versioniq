@@ -28,4 +28,4 @@
 
 ## 5. Close
 
-- [ ] 5.1 Set the matrix rows `rel-release-date`, `rel-adoption`, `rel-breaking-flag` and `rel-known-issues` to `built` with evidence lines, then archive this change.
+- [x] 5.1 Set the matrix rows `rel-release-date`, `rel-adoption`, `rel-breaking-flag` and `rel-known-issues` to `built` with evidence lines, then archive this change.
