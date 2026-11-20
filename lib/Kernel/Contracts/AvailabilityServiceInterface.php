@@ -29,4 +29,14 @@ interface AvailabilityServiceInterface {
 	 * @param list<array{appId: string, sourceId: ?string}> $followed Followed apps that join the sweep when not installed (releases-new-release-alerts D3).
 	 */
 	public function sweep(float $budgetSeconds, array $followed = []): array;
+
+	/**
+	 * The version lists the last {@see sweep()} fetched, per app: the installed
+	 * version and the listed versions, or null versions when the source failed
+	 * or the sweep ran out of time before the app.
+	 *
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
+	 * @return array<string, array{installedVersion: string, versions: list<array<string, mixed>>|null}>
+	 */
+	public function lastListings(): array;
 }

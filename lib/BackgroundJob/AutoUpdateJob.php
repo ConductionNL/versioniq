@@ -27,6 +27,7 @@ use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
 use OCA\Versioniq\Service\Checks\CheckRunner;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\AutoUpdate\PlanRun;
+use OCA\Versioniq\Service\AutoUpdate\ProposedUpdate;
 use OCA\Versioniq\Service\AutoUpdate\SecurityCandidate;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
@@ -125,7 +126,7 @@ class AutoUpdateJob extends TimedJob {
 
 		// The weekday is the one the window opened on (autoupdate-schedules, D3);
 		// with no kind due tonight, no source is asked at all (D4).
-		$this->runDue($this->stores->settingsStore->getSchedule()->dueKinds(AutoUpdateWindow::openedOn($window, $now)));
+		$this->runDue($this->stores->settingsStore->getSchedule()->dueKinds(AutoUpdateWindow::openedOn($window, $now)), $now);
 	}
 
 	/**
@@ -135,7 +136,7 @@ class AutoUpdateJob extends TimedJob {
 	 *
 	 * @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
 	 */
-	private function runDue(array $dueKinds): void {
+	private function runDue(array $dueKinds, \DateTimeInterface $now): void {
 		if ($dueKinds === []) {
 			return;
 		}
@@ -147,8 +148,51 @@ class AutoUpdateJob extends TimedJob {
 		$advisories = $this->advisorySnapshot();
 		$run = new PlanRun($advisories['rows'], $advisories['fresh'], $this->stores->security->patchPolicyStore->read() ?? PatchPolicy::none());
 		$plan = (new AutoUpdatePlanner($this->stores, $this->install, $this->logger))->planRun($run->withDueKinds($dueKinds));
-		$this->installPlanned($plan);
+		$this->installPlanned($plan, $now);
 		$this->stores->security->securityHolds->replace($plan->securityHolds);
+	}
+
+	/**
+	 * Whether an admin's decision or the notice period holds this version
+	 * back, checked in the order of design D6: a declined version is skipped;
+	 * with a notice period the version must be the stored proposal and its
+	 * planned time must have come, unless it is a `next_window` security fix;
+	 * an app that requires approval installs only the exact version an admin
+	 * approved. Without notice, approval or
+	 * declines nothing is held back.
+	 *
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
+	 */
+	private function isHeldBack(AutoUpdateMember $member, \DateTimeInterface $now): bool {
+		$appId = $member->appId;
+		$candidate = (string)$member->candidate;
+		$proposals = $this->stores->proposalStore;
+		if ($proposals === null) {
+			return false;
+		}
+		$policy = $this->stores->policyStore->get($appId);
+		if ($proposals->declineOf($appId, $candidate) !== null) {
+			return true;
+		}
+		// A security fix the patch policy installs at the next window skips the
+		// notice period; a decline and approval still apply (D5).
+		if (!$member->nextWindowFix && $this->stores->settingsStore->getNoticeDays() > 0 && !$this->noticeHasPassed($proposals->proposalFor($appId), $candidate, $now)) {
+			return true;
+		}
+
+		return $policy !== null && $policy->requireApproval && !$proposals->isApproved($appId, $candidate);
+	}
+
+	/**
+	 * Whether this version was announced as the app's proposal and the
+	 * opening it was planned for has come.
+	 */
+	private function noticeHasPassed(?ProposedUpdate $proposal, string $candidate, \DateTimeInterface $now): bool {
+		if ($proposal === null || $proposal->toVersion !== $candidate || $proposal->plannedFor === null) {
+			return false;
+		}
+
+		return new \DateTimeImmutable($proposal->plannedFor) <= $now;
 	}
 
 	/**
@@ -183,13 +227,13 @@ class AutoUpdateJob extends TimedJob {
 	 *
 	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
 	 */
-	private function installPlanned(AutoUpdatePlan $plan): void {
+	private function installPlanned(AutoUpdatePlan $plan, \DateTimeInterface $now): void {
 		/** @var array<string, list<array{appId: string, version: string, outcome: string}>> $groupOutcomes */
 		$groupOutcomes = [];
 		/** @var array<string, true> $stopped */
 		$stopped = [];
 		foreach ($plan->installable() as $member) {
-			$outcome = $this->runMember($member, $stopped);
+			$outcome = $this->runMember($member, $stopped, $now);
 			if ($outcome !== null) {
 				$groupOutcomes[(string)$member->group][] = $outcome;
 			}
@@ -208,13 +252,21 @@ class AutoUpdateJob extends TimedJob {
 	 *
 	 * @return array{appId: string, version: string, outcome: string}|null Null for an app in no group.
 	 */
-	private function runMember(AutoUpdateMember $member, array &$stopped): ?array {
+	private function runMember(AutoUpdateMember $member, array &$stopped, \DateTimeInterface $now): ?array {
 		$group = $member->group;
+		$heldBack = $this->isHeldBack($member, $now);
 		if ($group === null) {
-			$this->installMember($member);
+			if (!$heldBack) {
+				$this->installMember($member);
+			}
 			return null;
 		}
 
+		// A held-back member stops its group like a failure, so the group keeps
+		// its order; nothing is written to the ledger and it plans again next run.
+		if ($heldBack) {
+			$stopped[$group] = true;
+		}
 		if (isset($stopped[$group])) {
 			return self::groupOutcome($member, AutoUpdateNotifier::OUTCOME_NOT_ATTEMPTED);
 		}
