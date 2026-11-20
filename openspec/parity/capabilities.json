@@ -3698,7 +3698,7 @@
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
 				},
-				"requirement": "openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies :: Per-app update policy [MVP]"
+				"requirement": "openspec/specs/auto-update-policies :: Per-app update policy [MVP]"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4131,7 +4131,7 @@
 					"board": "VqAutomatischeUpdates",
 					"drawn": "redrawn to the spec in design-system #1180 (decision 405): occ versioniq:policies:export and import (JSON), read-only policy file from config.php"
 				},
-				"requirement": "openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies :: Policies can be kept in a file"
+				"requirement": "openspec/specs/auto-update-policies :: Policies can be kept in a file"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
