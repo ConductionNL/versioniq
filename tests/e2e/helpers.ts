@@ -449,7 +449,7 @@ export async function awaitWebInstanceSettled(page: Page): Promise<void> {
 export async function installFixture(
 	page: Page,
 	version: string,
-	opts: { allowDowngrade?: boolean; acceptNewSha?: boolean; appId?: string } = {},
+	opts: { allowDowngrade?: boolean; acceptNewSha?: boolean; forceIncompatible?: boolean; appId?: string } = {},
 ): Promise<{ status: number; body: any }> {
 	const appId = opts.appId ?? FIXTURE_APP;
 	const args = [
@@ -463,6 +463,7 @@ export async function installFixture(
 	];
 	if (opts.allowDowngrade) args.push("--allow-downgrade");
 	if (opts.acceptNewSha) args.push("--accept-new-sha");
+	if (opts.forceIncompatible) args.push("--force-incompatible");
 
 	// A non-zero exit (guard refused, integrity failure, …) still emits the
 	// structured outcome on stdout — surface it with the exit code.

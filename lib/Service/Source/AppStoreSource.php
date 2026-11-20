@@ -36,7 +36,7 @@ use UnexpectedValueException;
  * to `SelectedReleaseInstallerService`, not the external installer.
  *
  * @psalm-api
- * @psalm-type VersionEntry = array{version: string, changelog: ?string, changelogLanguage: ?string, serverCompatible: ?bool, releasedAt: ?string, downloads: null, platformSpec?: ?string, phpSpec?: ?string, phpCompatible?: ?bool, sourcePreRelease?: true}
+ * @psalm-type VersionEntry = array{version: string, changelog: ?string, changelogLanguage: ?string, serverCompatible: ?bool, releasedAt: ?string, downloads: null, platformSpec?: ?string, phpSpec?: ?string, phpCompatible?: ?bool, sourcePreRelease?: true, serverTooNew?: bool}
  */
 class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppStoreSourceInterface {
 	public const DEFAULT_API_BASE = 'https://garm3.nextcloud.com/api/v1';
@@ -760,6 +760,9 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 			'downloads' => null,
 			...self::rangeFields($release),
 		];
+		if ($entry['serverCompatible'] === false && is_string($spec)) {
+			$entry['serverTooNew'] = self::serverAboveMaximum($serverVersion, $spec) === true;
+		}
 		// The store marks a nightly build itself; an absent flag is not a nightly,
 		// and the version-suffix rule still applies (releases-channel-and-prereleases D1).
 		if (($release['isNightly'] ?? false) === true) {
@@ -828,7 +831,12 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 			$known['changelogLanguage'] = $entry['changelogLanguage'];
 		}
 		$known['changelog'] ??= $entry['changelog'];
-		$known['serverCompatible'] ??= $entry['serverCompatible'];
+		if ($known['serverCompatible'] === null && $entry['serverCompatible'] !== null) {
+			$known['serverCompatible'] = $entry['serverCompatible'];
+			if (isset($entry['serverTooNew'])) {
+				$known['serverTooNew'] = $entry['serverTooNew'];
+			}
+		}
 		$known['releasedAt'] ??= $entry['releasedAt'];
 		foreach (['platformSpec', 'phpSpec', 'phpCompatible'] as $key) {
 			$known[$key] ??= $entry[$key] ?? null;
@@ -884,6 +892,56 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppSto
 		}
 
 		return $satisfied;
+	}
+
+	/**
+	 * Whether the server is kept out of a `platformVersionSpec` only by its
+	 * maximum: every lower bound holds and an upper bound does not. That is
+	 * the one case the platform's `app_install_overwrite` can lift; a version
+	 * that needs a newer server cannot be forced. An exact bound (`==`) counts
+	 * as both. Null when the spec or the server version cannot be read.
+	 *
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+	 */
+	public static function serverAboveMaximum(string $serverVersion, string $spec): ?bool {
+		$spec = trim($spec);
+		if ($serverVersion === '' || $spec === '') {
+			return null;
+		}
+		if ($spec === '*') {
+			return false;
+		}
+
+		$lowerHolds = true;
+		$upperFails = false;
+		foreach (preg_split('/\s+/', $spec) ?: [] as $constraint) {
+			if (preg_match('/^(>=|<=|>|<|==|=)?(\d+(?:\.\d+)*)$/', $constraint, $match) !== 1) {
+				return null;
+			}
+			$comparison = self::compareToBound($serverVersion, $match[2]);
+			[$lower, $upper] = match ($match[1]) {
+				'>=' => [$comparison >= 0, true],
+				'>' => [$comparison > 0, true],
+				'<=' => [true, $comparison <= 0],
+				'<' => [true, $comparison < 0],
+				default => [$comparison >= 0, $comparison <= 0],
+			};
+			$lowerHolds = $lowerHolds && $lower;
+			$upperFails = $upperFails || !$upper;
+		}
+
+		return $lowerHolds && $upperFails;
+	}
+
+	/**
+	 * The server version compared to a bound at the bound's own precision, so
+	 * a 31.0.4 server compares equal to `31`: -1, 0 or 1.
+	 */
+	private static function compareToBound(string $serverVersion, string $bound): int {
+		$precision = count(explode('.', $bound));
+		$server = implode('.', array_pad(array_slice(explode('.', $serverVersion), 0, $precision), $precision, '0'));
+
+		return version_compare($server, $bound);
 	}
 
 	/**

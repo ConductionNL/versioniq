@@ -60,6 +60,7 @@ import VersionChangelog from './components/VersionChangelog.vue'
 import VersionFacts from './components/VersionFacts.vue'
 import DowngradeConfirmDialog from './dialogs/DowngradeConfirmDialog.vue'
 import EnableAppDialog from './dialogs/EnableAppDialog.vue'
+import ForceIncompatibleDialog from './dialogs/ForceIncompatibleDialog.vue'
 import KnownIssueDialog from './dialogs/KnownIssueDialog.vue'
 import PinDialog from './dialogs/PinDialog.vue'
 import PinOverrideDialog from './dialogs/PinOverrideDialog.vue'
@@ -105,6 +106,9 @@ type AppOption = {
 	installedVersion?: string | null
 	state?: 'enabled' | 'disabled' | 'notInstalled'
 	lkg?: LkgRecord | null
+	forcedOn?: number
+	compatibilityOverridden?: boolean
+	serverTooNew?: boolean
 	installedKnownIssues?: AdminKnownIssue[]
 	provenance?: Provenance | null
 	publisher?: string | null
@@ -118,6 +122,7 @@ type AppVersion = {
 	recordedSha?: string | null
 	cachedOffline?: boolean
 	serverCompatible?: boolean | null
+	serverTooNew?: boolean
 	phpCompatible?: boolean | null
 	releasedAt?: string | null
 	preRelease?: boolean
@@ -2157,6 +2162,7 @@ type InstallRequest = {
 	pinRequested?: boolean
 	acceptNewSha?: boolean
 	allowDowngrade?: boolean
+	forceIncompatible?: boolean
 	forceDryRun?: boolean
 }
 
@@ -2164,6 +2170,7 @@ const INSTALL_FLAG_PARAMS: Array<[keyof InstallRequest, string]> = [
 	['pinRequested', 'pin'],
 	['acceptNewSha', 'acceptNewSha'],
 	['allowDowngrade', 'allowDowngrade'],
+	['forceIncompatible', 'forceIncompatible'],
 ]
 
 /**
@@ -2357,6 +2364,7 @@ type InstallTarget = {
 	fromVersion: string
 	toVersion: string
 	allowDowngrade: boolean
+	forceIncompatible?: boolean
 }
 
 /**
@@ -2582,7 +2590,7 @@ async function runInstall (target: InstallTarget): Promise<void> {
 	startInstall(target)
 	try {
 		await ensurePasswordConfirmation()
-		await applyInstallResponse(await requestInstallWithRetries({ appId: target.appId, version: target.toVersion, allowDowngrade: target.allowDowngrade }))
+		await applyInstallResponse(await requestInstallWithRetries({ appId: target.appId, version: target.toVersion, allowDowngrade: target.allowDowngrade, forceIncompatible: target.forceIncompatible }))
 	} catch (error) {
 		showInstallError(error, target)
 	} finally {
@@ -2605,6 +2613,107 @@ async function performInstall (): Promise<void> {
 		return
 	}
 	await runInstall(target)
+}
+
+// "Install anyway" and "Enable anyway" (install-force-incompatible): the
+// dialog explains the override; the password is asked after it, as for every
+// install.
+const isForceDialogOpen = ref(false)
+const forceDialogAppId = ref('')
+const forceDialogVersion = ref('')
+const forceDialogMode = ref<'install' | 'enable'>('install')
+let forceResolve: ((accept: boolean) => void) | null = null
+
+/**
+ * Opens the force dialog and settles with the admin's choice.
+ *
+ * @param appId The app to force.
+ * @param version The version to force.
+ * @param mode Install a version, or enable the installed one.
+ * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+ */
+function confirmForce (appId: string, version: string, mode: 'install' | 'enable'): Promise<boolean> {
+	forceResolve?.(false)
+	forceDialogAppId.value = appId
+	forceDialogVersion.value = version
+	forceDialogMode.value = mode
+	return new Promise<boolean>((resolve) => {
+		forceResolve = resolve
+		isForceDialogOpen.value = true
+	})
+}
+
+/**
+ * The single exit from the force dialog.
+ *
+ * @param accept Whether the admin chose to force.
+ */
+function onForceResolved (accept: boolean): void {
+	isForceDialogOpen.value = false
+	forceResolve?.(accept)
+	forceResolve = null
+}
+
+/**
+ * Installs a version past its declared maximum, after the admin confirmed the
+ * override and, for a downgrade, the downgrade.
+ *
+ * @param version The version only its maximum keeps off this server.
+ * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+ */
+async function installAnyway (version: string): Promise<void> {
+	if (!selectedApp.value || isInstallingVersion.value) {
+		return
+	}
+	selectedVersion.value = version
+	const target = selectedInstallTarget()
+	if (!(await confirmForce(target.appId, version, 'install'))) {
+		return
+	}
+	if (target.allowDowngrade && !(await confirmDowngrade(target.appId, target.fromVersion, target.toVersion))) {
+		return
+	}
+	await runInstall({ ...target, forceIncompatible: true })
+}
+
+/**
+ * Enables a disabled app only its declared maximum keeps off this server.
+ *
+ * @param app The app's card.
+ * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+ */
+async function enableAnyway (app: AppOption): Promise<void> {
+	if (isEnablingApp.value || !(await confirmForce(app.id, app.installedVersion ?? '', 'enable'))) {
+		return
+	}
+	isEnablingApp.value = true
+	errorMessage.value = ''
+	try {
+		await ensurePasswordConfirmation()
+		const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(app.id)}/force-enable`)), {
+			method: 'POST',
+			headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
+		})
+		await unwrapOcsResponse(response)
+		await loadApps()
+	} catch (error) {
+		errorMessage.value = error instanceof Error ? error.message : t('versioniq', 'Could not enable the app.')
+	} finally {
+		isEnablingApp.value = false
+	}
+}
+
+/**
+ * The card's override notice, or '' when the app runs under none.
+ *
+ * @param app The app's card.
+ * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+ */
+function overrideNotice (app: AppOption): string {
+	if (app.forcedOn) {
+		return t('versioniq', 'Forced to run on Nextcloud {major}. Lifted at the next major upgrade.', { major: String(app.forcedOn) })
+	}
+	return app.compatibilityOverridden ? t('versioniq', 'Nextcloud\'s compatibility check is overridden for this app.') : ''
 }
 
 // "Roll back to last known good" — pure client routing through the standard
@@ -2998,6 +3107,13 @@ watch(dryRunEnabled, () => {
 				:error="enableAppError"
 				@update:open="isEnableDialogOpen = $event"
 				@confirm="onEnableConfirmed" />
+			<ForceIncompatibleDialog
+				:open="isForceDialogOpen"
+				:appId="forceDialogAppId"
+				:version="forceDialogVersion"
+				:mode="forceDialogMode"
+				@update:open="isForceDialogOpen = $event"
+				@resolve="onForceResolved" />
 			<ShaMismatchDialog
 				:open="isShaMismatchDialogOpen"
 				:appId="shaMismatchAppId"
@@ -3407,6 +3523,12 @@ watch(dryRunEnabled, () => {
 													:class="[$style.appCardWarning, { [$style.appCardWarningBlocking]: app.manageable === false }]">
 													⚠ {{ app.warning }}
 												</p>
+												<p
+													v-if="overrideNotice(app)"
+													:class="$style.appCardWarning"
+													data-testid="app-override-notice">
+													{{ overrideNotice(app) }}
+												</p>
 												<PolicySelector
 													v-if="!app.isCore"
 													:appId="app.id"
@@ -3455,6 +3577,15 @@ watch(dryRunEnabled, () => {
 												:disabled="isInstallingVersion || isEnablingApp"
 												@click="openEnableDialog(app.id)">
 												{{ t('versioniq', 'Enable') }}
+											</button>
+											<button
+												v-if="app.state === 'disabled' && app.serverTooNew"
+												type="button"
+												:class="$style.appCardButton"
+												data-testid="app-enable-anyway-button"
+												:disabled="isInstallingVersion || isEnablingApp"
+												@click="enableAnyway(app)">
+												{{ t('versioniq', 'Enable anyway') }}
 											</button>
 											<template v-if="!app.isCore">
 												<button
@@ -3625,7 +3756,7 @@ watch(dryRunEnabled, () => {
 														<div :class="$style.versionItemMain">
 															<span>{{ version.version }}</span>
 															<ReleaseDate :releasedAt="version.releasedAt ?? null" />
-															<ServerCompatBadge :serverCompatible="version.serverCompatible ?? null" :phpCompatible="version.phpCompatible ?? null" />
+															<ServerCompatBadge :serverCompatible="version.serverCompatible ?? null" :serverTooNew="version.serverTooNew ?? null" :phpCompatible="version.phpCompatible ?? null" />
 															<span
 																v-for="tag in offChannelTags(version, versionChannel)"
 																:key="tag"
@@ -3646,6 +3777,15 @@ watch(dryRunEnabled, () => {
 																:title="version.recordedSha">
 																{{ recordedShaBadgeLabel(version.version) }}
 															</span>
+															<button
+																v-if="version.serverCompatible === false && version.serverTooNew === true"
+																type="button"
+																:class="$style.versionSelectButton"
+																data-testid="install-anyway-button"
+																:disabled="isInstallingVersion"
+																@click="installAnyway(version.version)">
+																{{ t('versioniq', 'Install anyway') }}
+															</button>
 															<button
 																v-if="selectedVersion !== version.version"
 																type="button"

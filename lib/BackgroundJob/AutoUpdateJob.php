@@ -351,7 +351,7 @@ class AutoUpdateJob extends TimedJob {
 	private function installAndRecord(InstallTarget $target): array {
 		$installResult = $this->install->installerService->installAppVersion(new InstallRequest(
 			$target,
-			new InstallOptions(false, false, false, false, CheckRunner::CONTEXT_CLI),
+			new InstallOptions(false, false, false, false, checkContext: CheckRunner::CONTEXT_CLI),
 			new PinChoice(null, false),
 		));
 
@@ -406,7 +406,7 @@ class AutoUpdateJob extends TimedJob {
 	private function gateHint(InstallTarget $target): ?string {
 		$dryRun = $this->install->installerService->installAppVersion(new InstallRequest(
 			$target,
-			new InstallOptions(false, true, false, false, CheckRunner::CONTEXT_CLI),
+			new InstallOptions(false, true, false, false, checkContext: CheckRunner::CONTEXT_CLI),
 			new PinChoice(null, false),
 		));
 		$statusCode = $dryRun['statusCode'];

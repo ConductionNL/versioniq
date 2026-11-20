@@ -8,7 +8,7 @@ OUT="${1:?usage: build-artifacts.sh <outdir>}"
 mkdir -p "$OUT"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 
-infoxml() { # appid version
+infoxml() { # appid version [min-version max-version]
   local ns=ForgeFixtureApp name="Forge Fixture App"
   [ "$1" = fixtureapp2 ] && ns=ForgeFixtureAppTwo name="Forge Fixture App Two"
   cat <<XML
@@ -25,7 +25,7 @@ infoxml() { # appid version
 	<category>tools</category>
 	<bugs>https://example.test/issues</bugs>
 	<dependencies>
-		<nextcloud min-version="31" max-version="35"/>
+		<nextcloud min-version="${3:-31}" max-version="${4:-35}"/>
 	</dependencies>
 </info>
 XML
@@ -90,6 +90,13 @@ make fixtureapp2-1.0.0.tar.gz fixtureapp2 1.0.0
 make fixtureapp2-1.0.1.tar.gz fixtureapp2 1.0.1
 make fixtureapp2-1.1.0.tar.gz fixtureapp2 1.1.0
 make fixtureapp2-1.2.0.tar.gz fixtureapp2 1.2.0
+# 1.0.2 declares Nextcloud 28-30 only: a maximum below every server the suite
+# runs on, so it is refused unless forced (install-force-incompatible). It is
+# not in the default release set; the spec that needs it adds it.
+rm -rf "$tmp/build"; mkdir -p "$tmp/build/fixtureapp/appinfo"
+infoxml fixtureapp 1.0.2 28 30 > "$tmp/build/fixtureapp/appinfo/info.xml"
+tar -C "$tmp/build" -czf "$OUT/fixtureapp-1.0.2-maxold.tar.gz" fixtureapp
+( cd "$OUT" && sha256sum fixtureapp-1.0.2-maxold.tar.gz | awk '{print $1}' > fixtureapp-1.0.2-maxold.tar.gz.sha256 )
 # TOFU tamper: same tag 1.0.1, different bytes (simulates a rewritten release).
 make fixtureapp-1.0.1-tampered.tar.gz fixtureapp 1.0.1 tampered
 # Integrity failures: appId mismatch, version mismatch (tag says 1.0.1, info says 9.9.9).

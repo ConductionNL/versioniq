@@ -730,7 +730,7 @@ final class InstallerServiceTest extends TestCase {
 
 		$result = $this->service()->installAppVersion(new InstallRequest(
 			new InstallTarget('someapp', '2.0.0', 'github:acme/someapp'),
-			new InstallOptions(false, true, false, false, CheckRunner::CONTEXT_CLI),
+			new InstallOptions(false, true, false, false, checkContext: CheckRunner::CONTEXT_CLI),
 			new PinChoice(null, false),
 		));
 

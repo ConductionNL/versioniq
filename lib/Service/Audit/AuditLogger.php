@@ -55,6 +55,8 @@ class AuditLogger implements AdminChangeAuditInterface {
 	/** An advisory assigned to an owner, or unassigned (advisories-triage). */
 	public const OPERATION_ADVISORY_ASSIGN = 'advisory_assign';
 
+	/** An `app_install_overwrite` override set, or lifted after a major upgrade. */
+	public const OPERATION_FORCE_INCOMPATIBLE = 'force_incompatible';
 	/** A version change Versioniq did not make (audit-external-changes). */
 	public const OPERATION_EXTERNAL_UPDATE = 'external_update';
 	/** An app switched off without a version change (audit-external-changes). */
