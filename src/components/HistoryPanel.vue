@@ -373,7 +373,9 @@ const isEmpty = computed(() => hasLoadedOnce.value && !isLoading.value && entrie
 .panel { display: flex; flex-direction: column; gap: 12px; }
 
 .hint { color: var(--color-text-maxcontrast); font-size: 13px; margin: 0; }
+
 .filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 16px; }
+
 .filter { display: flex; align-items: center; gap: 6px; }
 
 .loading { display: flex; align-items: center; gap: 8px; color: var(--color-text-maxcontrast); }
