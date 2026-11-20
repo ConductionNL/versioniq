@@ -18,6 +18,8 @@ use OCA\Versioniq\Service\Lifecycle\AppReplacer;
 use OCA\Versioniq\Service\Lifecycle\LifecycleServices;
 use OCA\Versioniq\Service\Lifecycle\ServerEolFeed;
 use OCA\Versioniq\Service\Lifecycle\SuccessorList;
+use OCP\AppFramework\Http\Attribute\ApiRoute;
+use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IGroupManager;
 use OCP\IRequest;
@@ -126,5 +128,13 @@ final class LifecycleControllerTest extends TestCase {
 
 		$this->assertSame(200, $response->getStatus());
 		$this->assertSame(['statusCode' => 409, 'replaced' => false, 'message' => 'The successor could not be installed; the old app stays enabled.'], $response->getData());
+	}
+
+	public function testReplaceAsksForThePasswordAndAnswersOnBothPaths(): void {
+		$method = new \ReflectionMethod(LifecycleController::class, 'replace');
+
+		$this->assertCount(1, $method->getAttributes(PasswordConfirmationRequired::class));
+		$urls = array_map(static fn (\ReflectionAttribute $route): mixed => $route->getArguments()['url'] ?? null, $method->getAttributes(ApiRoute::class));
+		$this->assertSame(['/api/app/{appId}/replace', '/api/v1/app/{appId}/replace'], $urls);
 	}
 }
