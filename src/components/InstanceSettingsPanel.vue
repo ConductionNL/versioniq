@@ -47,6 +47,7 @@ type Settings = {
 	advisoryFeedSource?: string
 	advisoryFeedCopiedAt?: number | null
 	advisoryFeedCopyMaxAgeDays?: number
+	allowUnsignedUpload: boolean
 	notifyUsersOnUpdate?: boolean
 }
 
@@ -66,6 +67,7 @@ const form = ref({
 	promotionMinDays: '',
 	reactivateAuto: false,
 	advisoryFeedSource: 'remote',
+	allowUnsignedUpload: false,
 	notifyUsersOnUpdate: true,
 })
 const saving = ref(false)
@@ -101,6 +103,7 @@ function fill (settings: Settings): void {
 		promotionMinDays: String(settings.promotionMinDays ?? 0),
 		reactivateAuto: settings.reactivateAuto === true,
 		advisoryFeedSource: settings.advisoryFeedSource === 'local' ? 'local' : 'remote',
+		allowUnsignedUpload: settings.allowUnsignedUpload === true,
 		// On unless the admin switched it off (releases-notes-reach 1.2).
 		notifyUsersOnUpdate: settings.notifyUsersOnUpdate !== false,
 	}
@@ -280,6 +283,19 @@ onMounted(load)
 					data-testid="setting-promotion-min-days">
 				<span :class="$style.hint">{{ t('versioniq', 'A version whose running time on the earlier stage is unknown also waits, unless the promotion is overridden.') }}</span>
 			</label>
+
+			<h4>{{ t('versioniq', 'Installing from a file') }}</h4>
+			<label :class="$style.checkboxField" for="setting-allow-unsigned-upload">
+				<input
+					id="setting-allow-unsigned-upload"
+					v-model="form.allowUnsignedUpload"
+					type="checkbox"
+					data-testid="setting-allow-unsigned-upload">
+				<span>{{ t('versioniq', 'Allow unsigned uploads') }}</span>
+			</label>
+			<p :class="$style.hint">
+				{{ t('versioniq', 'An archive the App Store does not sign runs whatever code it contains. Leave this off unless you install such archives and check them yourself.') }}
+			</p>
 
 			<h4>{{ t('versioniq', 'Sources and mirrors') }}</h4>
 			<p :class="$style.hint">

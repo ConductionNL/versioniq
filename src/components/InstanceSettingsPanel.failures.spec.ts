@@ -137,6 +137,7 @@ describe('InstanceSettingsPanel saving', () => {
 			promotionMinDays: '0',
 			reactivateAuto: 'false',
 			advisoryFeedSource: 'remote',
+			allowUnsignedUpload: 'false',
 			notifyUsersOnUpdate: 'true',
 		})
 		expect(wrapper.find('[data-testid="instance-settings-notice"]').text()).toBe('Settings saved.')

@@ -55,6 +55,8 @@ class InstanceSettings implements InstanceSettingsInterface {
 	public const KEY_REACTIVATE_AUTO = 'reactivate.auto';
 	/** Whether Discover also searches public GitHub; read by GithubSearchDiscovery (sources-trust-audit-and-offline-feed). */
 	public const KEY_GITHUB_SEARCH = 'discovery.github_search_enabled';
+	/** Whether an archive the App Store does not sign may be installed from an upload; off unless an admin turns it on (install-manual-upload D4). */
+	public const KEY_ALLOW_UNSIGNED_UPLOAD = 'install.allow_unsigned_upload';
 
 	/**
 	 * Whether an update through Versioniq tells the app's users, as the
@@ -99,7 +101,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
-	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, eolFeedUrl: string, eolFeedOff: bool, eolFeedDefault: string, ncscFeedUrl: string, ncscFeedDefault: string, osvApiBase: string, osvApiDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, reactivateAuto: bool, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int, notifyUsersOnUpdate: bool}
+	 * @return array{auditRetentionDays: int, auditRetentionMinDays: int, auditRetentionMaxDays: int, artifactCacheKeep: int, artifactCacheKeepMax: int, appStoreApiBase: string, appStoreApiDefault: string, githubApiBase: string, githubApiDefault: string, githubWebBase: string, githubWebDefault: string, advisoryFeedUrl: string, advisoryFeedDefault: string, eolFeedUrl: string, eolFeedOff: bool, eolFeedDefault: string, ncscFeedUrl: string, ncscFeedDefault: string, osvApiBase: string, osvApiDefault: string, maxLinesBehind: ?int, maxLinesBehindMax: int, reactivateAuto: bool, githubSearchEnabled: bool, advisoryFeedSource: string, advisoryFeedCopiedAt: ?int, advisoryFeedCopyMaxAgeDays: int, notifyUsersOnUpdate: bool, allowUnsignedUpload: bool}
 	 */
 	public function read(): array {
 		$retention = $this->config->getValueInt(Application::APP_ID, PruneAuditJob::CONFIG_KEY_RETENTION_DAYS, PruneAuditJob::DEFAULT_RETENTION_DAYS);
@@ -134,6 +136,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 			'reactivateAuto' => $this->config->getValueBool(Application::APP_ID, self::KEY_REACTIVATE_AUTO, false),
 			'githubSearchEnabled' => $this->config->getValueString(Application::APP_ID, self::KEY_GITHUB_SEARCH, 'false') === 'true',
 			...$this->feedSource(),
+			'allowUnsignedUpload' => $this->allowsUnsignedUpload(),
 			'notifyUsersOnUpdate' => $this->config->getValueBool(Application::APP_ID, self::KEY_NOTIFY_USERS_ON_UPDATE, true),
 		];
 	}
@@ -158,6 +161,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 		$githubSearch = self::validatedSwitch($fields, 'githubSearchEnabled', 'GitHub search');
 		$notify = self::validatedSwitch($fields, 'notifyUsersOnUpdate', 'Telling users about updates');
 		$feedSource = self::validatedFeedSource($fields);
+		$unsigned = self::validatedSwitch($fields, 'allowUnsignedUpload', 'Allow unsigned uploads');
 		$eolFeed = isset($fields['eolFeedUrl']) ? $this->url($fields['eolFeedUrl'], false) : null;
 
 		$this->storeInts($ints);
@@ -169,6 +173,9 @@ class InstanceSettings implements InstanceSettingsInterface {
 		}
 		if ($feedSource !== null) {
 			$this->config->setValueString(Application::APP_ID, NextcloudAdvisoryFeed::CONFIG_FEED_SOURCE, $feedSource);
+		}
+		if ($unsigned !== null) {
+			$this->config->setValueBool(Application::APP_ID, self::KEY_ALLOW_UNSIGNED_UPLOAD, $unsigned === 'true');
 		}
 		foreach ($cleared as $key => $value) {
 			$this->storeOrClear($key, $value);
@@ -193,7 +200,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 	 */
 	private static function appliedFields(array $fields): array {
 		return array_values(array_filter(
-			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', 'promotionMinDays', 'notifyUsersOnUpdate', ...array_keys(self::URL_FIELDS), 'reactivateAuto', 'githubSearchEnabled', 'advisoryFeedSource', 'eolFeedUrl'],
+			['auditRetentionDays', 'artifactCacheKeep', 'maxLinesBehind', 'promotionMinDays', 'notifyUsersOnUpdate', ...array_keys(self::URL_FIELDS), 'reactivateAuto', 'githubSearchEnabled', 'advisoryFeedSource', 'eolFeedUrl', 'allowUnsignedUpload'],
 			static fn (string $field): bool => isset($fields[$field]),
 		));
 	}
@@ -286,6 +293,15 @@ class InstanceSettings implements InstanceSettingsInterface {
 		}
 
 		return $ints;
+	}
+
+	/**
+	 * Whether an admin allowed installing an archive upload the App Store does not sign.
+	 *
+	 * @spec openspec/changes/install-manual-upload/tasks.md#task-2.3
+	 */
+	public function allowsUnsignedUpload(): bool {
+		return $this->config->getValueBool(Application::APP_ID, self::KEY_ALLOW_UNSIGNED_UPLOAD, false);
 	}
 
 	/**

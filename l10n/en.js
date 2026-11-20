@@ -1007,7 +1007,27 @@ OC.L10N.register(
         "{appId} {version} is installed, promoted from {name}.": "{appId} {version} is installed, promoted from {name}.",
         "_Read {count} day ago_::_Read {count} days ago_": ["Read {count} day ago","Read {count} days ago"],
         "_It is not known since when {name} runs {version}, so the waiting period of {count} day is not met._::_It is not known since when {name} runs {version}, so the waiting period of {count} days is not met._": ["It is not known since when {name} runs {version}, so the waiting period of {count} day is not met.","It is not known since when {name} runs {version}, so the waiting period of {count} days is not met."],
-        "_{version} has not run on {name} long enough: {count} day of the waiting period is left._::_{version} has not run on {name} long enough: {count} days of the waiting period are left._": ["{version} has not run on {name} long enough: {count} day of the waiting period is left.","{version} has not run on {name} long enough: {count} days of the waiting period are left."]
+        "_{version} has not run on {name} long enough: {count} day of the waiting period is left._::_{version} has not run on {name} long enough: {count} days of the waiting period are left._": ["{version} has not run on {name} long enough: {count} day of the waiting period is left.","{version} has not run on {name} long enough: {count} days of the waiting period are left."],
+        "Installing from a file": "Installing from a file",
+        "Allow unsigned uploads": "Allow unsigned uploads",
+        "An archive the App Store does not sign runs whatever code it contains. Leave this off unless you install such archives and check them yourself.": "An archive the App Store does not sign runs whatever code it contains. Leave this off unless you install such archives and check them yourself.",
+        "Install from a file": "Install from a file",
+        "Pick a .tar.gz app archive. Versioniq reads its app id, version and SHA-256 and shows them before anything is installed.": "Pick a .tar.gz app archive. Versioniq reads its app id, version and SHA-256 and shows them before anything is installed.",
+        "App archive": "App archive",
+        "Read archive": "Read archive",
+        "Install {appId} {version}": "Install {appId} {version}",
+        "Version": "Version",
+        "SHA-256": "SHA-256",
+        "Signature": "Signature",
+        "Signed by the App Store": "Signed by the App Store",
+        "Not signed by the App Store": "Not signed by the App Store",
+        "This archive is {archiveApp}, not {app}.": "This archive is {archiveApp}, not {app}.",
+        "An archive the App Store does not sign runs whatever code it contains. It installs only when \"Allow unsigned uploads\" is on in the Settings tab.": "An archive the App Store does not sign runs whatever code it contains. It installs only when \"Allow unsigned uploads\" is on in the Settings tab.",
+        "Expected SHA-256": "Expected SHA-256",
+        "Paste the checksum the supplier gave you.": "Paste the checksum the supplier gave you.",
+        "I accept the SHA-256 shown above": "I accept the SHA-256 shown above",
+        "Could not read the archive.": "Could not read the archive.",
+        "Could not install the archive.": "Could not install the archive."
     },
     "nplurals=2; plural=(n != 1);"
 )

@@ -71,6 +71,7 @@ import QuickUpdateDialog from './dialogs/QuickUpdateDialog.vue'
 import ReplaceAppDialog from './dialogs/ReplaceAppDialog.vue'
 import ShaMismatchDialog from './dialogs/ShaMismatchDialog.vue'
 import UpdateAllDialog from './dialogs/UpdateAllDialog.vue'
+import UploadInstallDialog from './dialogs/UploadInstallDialog.vue'
 import { ocsWrite } from './ocs.ts'
 import { advisoryAnchor, advisoryBadgeText, applyTriage, complianceSentence } from './utils/advisories.ts'
 import { advisoryFreshnessLabel as advisoryFreshnessLabelFor } from './utils/advisoryFreshness.ts'
@@ -650,6 +651,8 @@ async function checkUpdateChannel (): Promise<void> {
 // for the password that endpoint's strict confirmation requires.
 const enableDialogAppId = ref('')
 const isEnableDialogOpen = ref(false)
+// Install from a file (install-manual-upload task 3.1).
+const isUploadDialogOpen = ref(false)
 const isEnablingApp = ref(false)
 const enableAppError = ref('')
 
@@ -2573,6 +2576,19 @@ function showInstallFailure (result: InstallResult, metaMessage: string): void {
 }
 
 /**
+ * After an install from an uploaded archive: reloads the selected app's
+ * versions, the pins and the app list, keeping the app selected so its
+ * History shows the new row.
+ *
+ * @spec openspec/changes/install-manual-upload/tasks.md#task-3.1
+ */
+async function onUploadInstalled (): Promise<void> {
+	await checkVersions()
+	await loadPins()
+	await loadApps()
+}
+
+/**
  * Clears the selection after a successful install and reloads the versions,
  * the pins and the app list, so a disabled or not-installed app shows its new
  * state.
@@ -3171,6 +3187,11 @@ watch(dryRunEnabled, () => {
 				:error="enableAppError"
 				@update:open="isEnableDialogOpen = $event"
 				@confirm="onEnableConfirmed" />
+			<UploadInstallDialog
+				:open="isUploadDialogOpen"
+				:appId="selectedApp"
+				@update:open="isUploadDialogOpen = $event"
+				@installed="onUploadInstalled" />
 			<ForceIncompatibleDialog
 				:open="isForceDialogOpen"
 				:appId="forceDialogAppId"
@@ -3796,6 +3817,15 @@ watch(dryRunEnabled, () => {
 												{{ t('versioniq', 'No long-term support lines are marked for this app') }}
 											</p>
 										</div>
+										<button
+											v-if="selectedApp"
+											type="button"
+											:class="$style.changeAppButton"
+											data-testid="upload-install-button"
+											:disabled="isInstallingVersion"
+											@click="isUploadDialogOpen = true">
+											{{ t('versioniq', 'Install from a file') }}
+										</button>
 										<div v-if="versions.length > 0" :class="$style.versionListContainer">
 											<!-- aria-label, not a placeholder. A placeholder is not an
 											     accessible name: it is announced inconsistently and

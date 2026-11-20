@@ -1009,7 +1009,27 @@ OC.L10N.register(
         "{appId} {version} is installed, promoted from {name}.": "{appId} {version} is geïnstalleerd, gepromoveerd vanaf {name}.",
         "_Read {count} day ago_::_Read {count} days ago_": ["{count} dag geleden gelezen","{count} dagen geleden gelezen"],
         "_It is not known since when {name} runs {version}, so the waiting period of {count} day is not met._::_It is not known since when {name} runs {version}, so the waiting period of {count} days is not met._": ["Het is niet bekend sinds wanneer {name} {version} draait, dus aan de wachttijd van {count} dag is niet voldaan.","Het is niet bekend sinds wanneer {name} {version} draait, dus aan de wachttijd van {count} dagen is niet voldaan."],
-        "_{version} has not run on {name} long enough: {count} day of the waiting period is left._::_{version} has not run on {name} long enough: {count} days of the waiting period are left._": ["{version} draait nog niet lang genoeg op {name}: er is nog {count} dag van de wachttijd over.","{version} draait nog niet lang genoeg op {name}: er zijn nog {count} dagen van de wachttijd over."]
+        "_{version} has not run on {name} long enough: {count} day of the waiting period is left._::_{version} has not run on {name} long enough: {count} days of the waiting period are left._": ["{version} draait nog niet lang genoeg op {name}: er is nog {count} dag van de wachttijd over.","{version} draait nog niet lang genoeg op {name}: er zijn nog {count} dagen van de wachttijd over."],
+        "Installing from a file": "Installeren vanuit een bestand",
+        "Allow unsigned uploads": "Niet-ondertekende uploads toestaan",
+        "An archive the App Store does not sign runs whatever code it contains. Leave this off unless you install such archives and check them yourself.": "Een archief dat de App Store niet ondertekent, voert alle code uit die erin zit. Laat dit uit, tenzij je zulke archieven installeert en ze zelf controleert.",
+        "Install from a file": "Installeren vanuit een bestand",
+        "Pick a .tar.gz app archive. Versioniq reads its app id, version and SHA-256 and shows them before anything is installed.": "Kies een .tar.gz-app-archief. Versioniq leest de app-id, de versie en de SHA-256 ervan en toont die voordat er iets wordt geïnstalleerd.",
+        "App archive": "App-archief",
+        "Read archive": "Archief lezen",
+        "Install {appId} {version}": "{appId} {version} installeren",
+        "Version": "Versie",
+        "SHA-256": "SHA-256",
+        "Signature": "Handtekening",
+        "Signed by the App Store": "Ondertekend door de App Store",
+        "Not signed by the App Store": "Niet ondertekend door de App Store",
+        "This archive is {archiveApp}, not {app}.": "Dit archief is {archiveApp}, niet {app}.",
+        "An archive the App Store does not sign runs whatever code it contains. It installs only when \"Allow unsigned uploads\" is on in the Settings tab.": "Een archief dat de App Store niet ondertekent, voert alle code uit die erin zit. Het wordt alleen geïnstalleerd als \"Niet-ondertekende uploads toestaan\" aan staat op het tabblad Instellingen.",
+        "Expected SHA-256": "Verwachte SHA-256",
+        "Paste the checksum the supplier gave you.": "Plak de controlesom die je van de leverancier hebt gekregen.",
+        "I accept the SHA-256 shown above": "Ik accepteer de SHA-256 hierboven",
+        "Could not read the archive.": "Het archief kon niet worden gelezen.",
+        "Could not install the archive.": "Het archief kon niet worden geïnstalleerd."
     },
     "nplurals=2; plural=(n != 1);"
 )
