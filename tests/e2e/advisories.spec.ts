@@ -14,6 +14,7 @@ import {
 	occ,
 	openSettings,
 	openTab,
+	resetFixture,
 	resetFixtureApp,
 	runJob,
 	sql,
@@ -444,5 +445,140 @@ test.describe("advisory triage", () => {
 			await context.close();
 			await occ("user:delete", SECOND_ADMIN);
 		}
+	});
+});
+
+/**
+ * NCSC-NL advisories, read from the fixture forge's CSAF directory.
+ *
+ * The forge serves a `changes.csv` and two documents about Nextcloud Server:
+ * NCSC-2099-0001 with a range covering any server version the CI runs, and
+ * NCSC-2099-0002 with `vers:unknown/*`. With the switch on, one sweep must put
+ * the first on the server block as affecting this version and the second with
+ * the "does not state which versions" line, because an unstated range is
+ * neither a yes nor a no and must not read as one.
+ *
+ * @spec openspec/changes/advisories-ncsc-feed/specs/security-advisory-correlation/spec.md
+ */
+test.describe("NCSC-NL advisories", () => {
+	const NCSC_STATE = [
+		"advisory.ncsc.cursor",
+		"advisory.ncsc.index",
+		"advisory.ncsc.caught_up",
+	];
+
+	async function setNcsc(
+		page: Page,
+		enabled: boolean,
+	) {
+		const res = await page.request.put(
+			"/ocs/v2.php/apps/versioniq/api/advisory/settings?format=json",
+			{
+				headers: {
+					"OCS-APIRequest": "true",
+					"Content-Type": "application/json",
+				},
+				data: { ncscEnabled: enabled ? "1" : "0" },
+			},
+		);
+		expect(res.ok(), "PUT /api/advisory/settings should answer 200").toBeTruthy();
+		expect((await res.json())?.ocs?.data?.ncscEnabled).toBe(enabled);
+	}
+
+	async function clearNcscState() {
+		for (const key of NCSC_STATE) {
+			await occ("config:app:delete", "versioniq", key);
+		}
+	}
+
+	test.beforeEach(async ({ page }) => {
+		test.skip(!(await fixtureAvailable(page)), "forge fixture not running");
+		await resetFixture(page);
+		// The base as the INSTANCE reaches the fixture, which differs between
+		// the local Docker network and the CI runner; both bootstraps store it
+		// as the forgejo web base. Set through occ, because the settings API
+		// accepts an https base only and the fixture speaks plain http.
+		const forgeBase = (
+			await occ("config:app:get", "versioniq", "forge.forgejo.web_base")
+		).trim();
+		expect(forgeBase, "the forge bootstrap stores its base").not.toBe("");
+		await occ(
+			"config:app:set",
+			"versioniq",
+			"advisory.ncsc_feed_base",
+			"--value",
+			`${forgeBase.replace(/\/+$/, "")}/csaf/v2/`,
+		);
+		// A cursor left by an earlier run would skip the fixture's documents.
+		await clearNcscState();
+	});
+
+	test.afterEach(async ({ page }) => {
+		await setNcsc(page, false);
+		await occ("config:app:delete", "versioniq", "advisory.ncsc_feed_base");
+		await clearNcscState();
+		// Leave a snapshot without the fixture's records for the specs after.
+		await runJob("AdvisoryRefreshJob");
+	});
+
+	test("switched on, a sweep shows the affected and the version-not-stated advisory on the server", async ({
+		page,
+	}) => {
+		await setNcsc(page, true);
+		await runJob("AdvisoryRefreshJob");
+
+		await openSettings(page);
+		await openTab(page, "Advisories");
+
+		const server = page.getByTestId("advisories-server");
+		await expect(server).toBeVisible();
+		// An affected NCSC-NL record makes this version vulnerable.
+		await expect(server).toContainText(
+			"This server version is affected by a published advisory.",
+		);
+
+		const details = server.locator("details").first();
+		if ((await details.getAttribute("open")) === null) {
+			await details.locator("summary").click();
+		}
+		const showAll = server.getByTestId("advisories-show-all");
+		if (await showAll.isVisible()) {
+			await showAll.click();
+		}
+
+		const affected = server.locator('[data-advisory="NCSC-2099-0001"]');
+		await expect(affected).toBeVisible();
+		await expect(affected).toHaveAttribute("data-source", "ncsc");
+		await expect(affected.getByTestId("advisory-source")).toHaveText("NCSC-NL");
+		await expect(affected.getByTestId("advisory-severity")).toHaveAttribute(
+			"data-severity",
+			"high",
+		);
+		await expect(affected.getByTestId("advisory-cves")).toContainText(
+			"CVE-2099-0001",
+		);
+		await expect(affected.getByTestId("advisory-ratings")).toBeVisible();
+		await expect(affected.getByTestId("advisory-not-stated")).toHaveCount(0);
+
+		const notStated = server.locator('[data-advisory="NCSC-2099-0002"]');
+		await expect(notStated).toBeVisible();
+		await expect(notStated).toHaveAttribute("data-source", "ncsc");
+		await expect(notStated.getByTestId("advisory-not-stated")).toHaveText(
+			"NCSC-NL does not state which versions are affected.",
+		);
+	});
+
+	test("switched off, the sweep does not read NCSC-NL", async ({ page }) => {
+		await setNcsc(page, false);
+		await runJob("AdvisoryRefreshJob");
+
+		await openSettings(page);
+		await openTab(page, "Advisories");
+		await expect(page.getByTestId("advisories-server")).toBeVisible();
+		await expect(page.locator('[data-source="ncsc"]')).toHaveCount(0);
+		// Nothing was read, so no cursor was written.
+		expect(
+			(await occ("config:app:get", "versioniq", "advisory.ncsc.cursor")).trim(),
+		).toBe("");
 	});
 });

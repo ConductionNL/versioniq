@@ -3714,6 +3714,7 @@ watch(dryRunEnabled, () => {
 									<InstallResultNotices
 										:integrityWarning="lastInstallResult.integrityWarning ?? null"
 										:servedFromCache="lastInstallResult.servedFromCache === true"
+										:checks="lastInstallResult.checks ?? []"
 										:space="lastInstallResult.space ?? null" />
 									<p v-if="installedAppNeedsEnabling" :class="$style.resultHint" data-testid="install-enable-hint">
 										{{ t('versioniq', 'This app is installed but not enabled.') }}
