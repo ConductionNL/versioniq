@@ -16,6 +16,7 @@ const base = (appId: string): string => `/ocs/v2.php/apps/versioniq/api/app/${en
  * The skip list of an app by version; an unreadable list reads as none.
  *
  * @param appId The app.
+ * @spec openspec/changes/pinning-ranges-and-skips/specs/version-pinning/spec.md#requirement-an-admin-skips-one-version-and-keeps-later-ones
  */
 export async function fetchSkips (appId: string): Promise<Record<string, SkipEntry>> {
 	try {
@@ -35,6 +36,7 @@ export async function fetchSkips (appId: string): Promise<Record<string, SkipEnt
  * @param appId The app.
  * @param version The version to skip.
  * @param reason Why, shown in the version picker.
+ * @spec openspec/changes/pinning-ranges-and-skips/specs/version-pinning/spec.md#requirement-an-admin-skips-one-version-and-keeps-later-ones
  */
 export async function skipVersion (appId: string, version: string, reason: string): Promise<void> {
 	const { error } = await ocsWrite('PUT', `${base(appId)}/skip/${encodeURIComponent(version)}`, { reason: reason.trim() })
@@ -48,6 +50,7 @@ export async function skipVersion (appId: string, version: string, reason: strin
  *
  * @param appId The app.
  * @param version The version.
+ * @spec openspec/changes/pinning-ranges-and-skips/specs/version-pinning/spec.md#requirement-an-admin-skips-one-version-and-keeps-later-ones
  */
 export async function unskipVersion (appId: string, version: string): Promise<void> {
 	const { error } = await ocsWrite('DELETE', `${base(appId)}/skip/${encodeURIComponent(version)}`)
