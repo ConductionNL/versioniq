@@ -814,6 +814,8 @@ final class InstallerServiceTest extends TestCase {
 
 		self::assertSame(Http::STATUS_CONFLICT, $result['statusCode']);
 		self::assertSame('pinned', $result['payload']['category']);
+	}
+
 	// --- update checks in a dry run (safety-update-checks 2.3) ---
 
 	private const CHECKS = [
