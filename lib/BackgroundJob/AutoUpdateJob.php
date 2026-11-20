@@ -321,7 +321,7 @@ class AutoUpdateJob extends TimedJob {
 				new InstallTarget($member->appId, (string)$member->candidate, null),
 				(string)$member->installedVersion,
 				$member->group === null,
-				$member->securityAdvisories
+				$member->securityAdvisories()
 			);
 		} catch (\Throwable $error) {
 			// Per-app isolation — see "the job MUST proceed to the next app

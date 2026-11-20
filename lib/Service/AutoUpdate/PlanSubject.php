@@ -20,23 +20,42 @@ namespace OCA\Versioniq\Service\AutoUpdate;
  * @spec openspec/changes/releases-minimum-age
  */
 final class PlanSubject {
+	/** The minimum age's verdict; null holds nothing back (releases-minimum-age D3). */
+	private ?AgeVerdict $age = null;
+
 	/**
 	 * @param list<string> $available The versions the app's source offers.
-	 * @param list<string>|null $eligible The in-level versions past the minimum age, an
-	 *                                    admin's exception and a security fix let through
-	 *                                    early (releases-minimum-age D3); null holds nothing.
-	 * @param string|null $bypassed The security fix let through before the minimum age.
-	 * @param list<string> $bypassAdvisories The advisory ids behind that fix.
 	 */
 	public function __construct(
 		public readonly string $appId,
 		public readonly string $level,
 		public readonly string $installedVersion,
 		public readonly array $available,
-		public readonly ?array $eligible = null,
-		public readonly ?string $bypassed = null,
-		public readonly array $bypassAdvisories = [],
 	) {
+	}
+
+	/**
+	 * This subject with the minimum age's verdict on its versions.
+	 *
+	 * @spec openspec/changes/releases-minimum-age
+	 */
+	public function withAge(AgeVerdict $age): self {
+		$copy = clone $this;
+		$copy->age = $age;
+
+		return $copy;
+	}
+
+	/**
+	 * The advisory ids of a security fix let through before the minimum age
+	 * when $version is that fix; [] for any other version.
+	 *
+	 * @return list<string>
+	 *
+	 * @spec openspec/changes/releases-minimum-age
+	 */
+	public function bypassAdvisoriesFor(string $version): array {
+		return ($this->age?->bypassed !== null && $version === $this->age->bypassed) ? $this->age->bypassAdvisories : [];
 	}
 
 	/**
@@ -47,6 +66,6 @@ final class PlanSubject {
 	 * @spec openspec/changes/releases-minimum-age
 	 */
 	public function installable(): array {
-		return $this->eligible ?? $this->available;
+		return $this->age?->eligible ?? $this->available;
 	}
 }

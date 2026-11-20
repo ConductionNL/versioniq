@@ -13,6 +13,7 @@ use OCA\Versioniq\BackgroundJob\AutoUpdatePlanJob;
 use OCA\Versioniq\BackgroundJob\JobRuntime;
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
+use OCA\Versioniq\Service\AutoUpdate\AgeQuery;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanStore;
@@ -121,8 +122,8 @@ final class AutoUpdatePlanJobTest extends TestCase {
 		$held = ['version' => '1.1.0', 'releasedAt' => '2026-11-13T00:00:00+00:00', 'eligibleAt' => '2026-11-20T00:00:00+00:00', 'reason' => 'minimum_age'];
 		$calls = [];
 		$this->planner->method('plan')->willReturnCallback(
-			static function (string $appId, string $installed, array $entries, string $level, int $minAgeDays, \DateTimeImmutable $now) use (&$calls, $held): array {
-				$calls[] = [$appId, $installed, $entries, $level, $minAgeDays, $now->format(DATE_ATOM)];
+			static function (AgeQuery $query) use (&$calls, $held): array {
+				$calls[] = [$query->target->appId, $query->installedVersion, array_values($query->byVersion), $query->target->level, $query->target->minAgeDays, $query->now()->format(DATE_ATOM)];
 				return self::agePlan('1.0.1', [$held]);
 			}
 		);

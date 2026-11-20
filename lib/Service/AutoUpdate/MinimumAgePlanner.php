@@ -53,27 +53,29 @@ class MinimumAgePlanner {
 	/**
 	 * The plan for one app.
 	 *
-	 * @param list<array{version: string, releasedAt?: ?string}> $entries The versions the app's source lists
-	 * @param string $level The policy level
-	 * @param int $minAgeDays The effective minimum age in days (the policy's, else the instance value)
+	 * The query carries the app with its level and effective minimum age in
+	 * days (the policy's, else the instance value), the installed version and
+	 * the versions the app's source lists.
+	 *
 	 * @return Plan
 	 *
 	 * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
 	 */
-	public function plan(string $appId, string $installedVersion, array $entries, string $level, int $minAgeDays, \DateTimeImmutable $now): array {
-		$byVersion = [];
-		foreach ($entries as $entry) {
-			$byVersion[$entry['version']] = $entry;
-		}
+	public function plan(AgeQuery $query): array {
+		$appId = $query->target->appId;
+		$installedVersion = $query->installedVersion;
+		$level = $query->target->level;
+		$minAgeDays = $query->target->minAgeDays;
+		$now = $query->now();
 
-		$exception = $this->liveException($appId, $installedVersion, $byVersion, $minAgeDays, $now);
+		$exception = $this->liveException($query);
 		$security = $this->securityFix($appId);
 
 		$eligible = [];
 		$heldBack = [];
 		$bypassed = null;
 		$excepted = null;
-		foreach ($byVersion as $version => $entry) {
+		foreach ($query->byVersion as $version => $entry) {
 			$version = (string)$version;
 			if ($this->candidateSelector->select($installedVersion, [$version], $level) !== $version) {
 				continue;
@@ -107,7 +109,7 @@ class MinimumAgePlanner {
 		return [
 			'next' => $next,
 			'heldBack' => $heldBack,
-			'securityBypass' => $this->securityBypass($security, $bypassed, $next, $installedVersion, $byVersion, $level),
+			'securityBypass' => $this->securityBypass($query, ['security' => $security, 'bypassed' => $bypassed, 'next' => $next]),
 			'exception' => $excepted,
 			'eligible' => $eligible,
 			'bypassed' => $bypassed,
@@ -118,9 +120,11 @@ class MinimumAgePlanner {
 	 * The app's exception version while it still has work to do; one that
 	 * has done its work is removed here, with an audit row saying why.
 	 *
-	 * @param array<string, array{version: string, releasedAt?: ?string}> $byVersion
 	 */
-	private function liveException(string $appId, string $installedVersion, array $byVersion, int $minAgeDays, \DateTimeImmutable $now): ?string {
+	private function liveException(AgeQuery $query): ?string {
+		$appId = $query->target->appId;
+		$installedVersion = $query->installedVersion;
+		$byVersion = $query->byVersion;
 		$stored = $this->exceptions->get($appId);
 		if ($stored === null) {
 			return null;
@@ -130,7 +134,7 @@ class MinimumAgePlanner {
 		$reason = match (true) {
 			version_compare($installedVersion, $version, '>=') => 'version ' . $installedVersion . ' is installed',
 			!isset($byVersion[$version]) => 'the source no longer lists it',
-			!$this->minimumAgeRule->isHeld($appId, $byVersion[$version], $minAgeDays, $now) => 'it reached the minimum age',
+			!$this->minimumAgeRule->isHeld($appId, $byVersion[$version], $query->target->minAgeDays, $query->now()) => 'it reached the minimum age',
 			default => null,
 		};
 		if ($reason === null) {
@@ -181,20 +185,22 @@ class MinimumAgePlanner {
 	 * or a listed, newer fix the level does not reach, so the plan says why
 	 * it is not installed.
 	 *
-	 * @param array{version: string, advisories: list<string>}|null $security
-	 * @param array<string, mixed> $byVersion
+	 * @param array{security: array{version: string, advisories: list<string>}|null, bypassed: ?string, next: ?string} $found
+	 *        The fix the advisories recommend, the fix let through early and the version the run takes.
 	 * @return array{version: string, advisories: list<string>, reason: string}|null
 	 */
-	private function securityBypass(?array $security, ?string $bypassed, ?string $next, string $installedVersion, array $byVersion, string $level): ?array {
+	private function securityBypass(AgeQuery $query, array $found): ?array {
+		$security = $found['security'];
 		if ($security === null) {
 			return null;
 		}
-		if ($bypassed !== null && $bypassed === $next) {
+		if ($found['bypassed'] !== null && $found['bypassed'] === $found['next']) {
 			return $security + ['reason' => self::REASON_SECURITY_FIX];
 		}
 		$version = $security['version'];
-		$inLevel = $this->candidateSelector->select($installedVersion, [$version], $level) === $version;
-		if (!$inLevel && isset($byVersion[$version]) && version_compare($version, $installedVersion, '>')) {
+		$installedVersion = $query->installedVersion;
+		$inLevel = $this->candidateSelector->select($installedVersion, [$version], $query->target->level) === $version;
+		if (!$inLevel && isset($query->byVersion[$version]) && version_compare($version, $installedVersion, '>')) {
 			return $security + ['reason' => self::REASON_OUTSIDE_LEVEL];
 		}
 

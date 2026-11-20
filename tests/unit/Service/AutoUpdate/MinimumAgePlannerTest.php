@@ -13,6 +13,8 @@ use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Audit\AuditSubject;
+use OCA\Versioniq\Service\AutoUpdate\AgeQuery;
+use OCA\Versioniq\Service\AutoUpdate\PlanTarget;
 use OCA\Versioniq\Service\AutoUpdate\MinimumAgePlanner;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
 use OCA\Versioniq\Service\AutoUpdate\FirstSeenStore;
@@ -90,7 +92,7 @@ final class MinimumAgePlannerTest extends TestCase {
 	 * @return array<string, mixed>
 	 */
 	private function plan(array $ages, string $level = 'minor', int $minAgeDays = 7, string $installed = '1.0.0'): array {
-		return $this->planner()->plan('deck', $installed, self::entries($ages), $level, $minAgeDays, new \DateTimeImmutable(self::NOW));
+		return $this->planner()->plan(AgeQuery::of(new PlanTarget('deck', $level, $minAgeDays, new \DateTimeImmutable(self::NOW)), $installed, self::entries($ages)));
 	}
 
 	private function vulnerable(string $recommended): void {

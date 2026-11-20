@@ -197,7 +197,7 @@ final class AutoUpdatePlannerTest extends TestCase {
 
 		$this->assertCount(1, $installable);
 		$this->assertSame('1.1.0', $installable[0]->candidate);
-		$this->assertSame([], $installable[0]->securityAdvisories);
+		$this->assertSame([], $installable[0]->securityAdvisories());
 	}
 
 	public function testAPinnedOrUnmanageableAppIsNeverLookedUp(): void {

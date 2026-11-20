@@ -15,6 +15,7 @@ require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 
 use OCA\Versioniq\BackgroundJob\AutoUpdateJob;
 use OCA\Versioniq\Service\Audit\AuditNote;
+use OCA\Versioniq\Service\AutoUpdate\AgeQuery;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
@@ -1023,12 +1024,12 @@ final class AutoUpdateJobTest extends TestCase {
 	private function planThroughTheSelector(array $mocks): void {
 		$selector = $mocks['candidateSelector'];
 		$mocks['planner']->method('plan')->willReturnCallback(
-			static fn (string $appId, string $installed, array $entries, string $level): array => [
-				'next' => $selector->select($installed, array_column($entries, 'version'), $level),
+			static fn (AgeQuery $query): array => [
+				'next' => $selector->select($query->installedVersion, array_keys($query->byVersion), $query->target->level),
 				'heldBack' => [],
 				'securityBypass' => null,
 				'exception' => null,
-				'eligible' => array_column($entries, 'version'),
+				'eligible' => array_keys($query->byVersion),
 				'bypassed' => null,
 			]
 		);
@@ -1043,7 +1044,9 @@ final class AutoUpdateJobTest extends TestCase {
 		$mocks = $this->openWindowWithOneApp(new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00', minAgeDays: 5));
 		$mocks['planner'] = $this->createMock(MinimumAgePlanner::class);
 		$mocks['planner']->expects($this->once())->method('plan')
-			->with('openregister', '2.3.0', [['version' => '2.3.4', 'releasedAt' => '2026-07-22T09:00:00+00:00']], Policy::LEVEL_PATCH, 5)
+			->with($this->callback(static fn (AgeQuery $query): bool => $query->target->appId === 'openregister' && $query->installedVersion === '2.3.0'
+				&& $query->byVersion === ['2.3.4' => ['version' => '2.3.4', 'releasedAt' => '2026-07-22T09:00:00+00:00']]
+				&& $query->target->level === Policy::LEVEL_PATCH && $query->target->minAgeDays === 5))
 			->willReturn([
 				'next' => null,
 				'heldBack' => [['version' => '2.3.4', 'releasedAt' => '2026-07-22T09:00:00+00:00', 'eligibleAt' => '2026-07-27T09:00:00+00:00', 'reason' => 'minimum_age']],
@@ -1067,7 +1070,8 @@ final class AutoUpdateJobTest extends TestCase {
 		$mocks['settingsStore']->method('getMinAgeDays')->willReturn(7);
 		$mocks['planner'] = $this->createMock(MinimumAgePlanner::class);
 		$mocks['planner']->expects($this->once())->method('plan')
-			->with('openregister', '2.3.0', $this->anything(), Policy::LEVEL_PATCH, 7)
+			->with($this->callback(static fn (AgeQuery $query): bool => $query->target->appId === 'openregister' && $query->installedVersion === '2.3.0'
+				&& $query->target->level === Policy::LEVEL_PATCH && $query->target->minAgeDays === 7))
 			->willReturn([
 				'next' => '2.3.4',
 				'heldBack' => [],

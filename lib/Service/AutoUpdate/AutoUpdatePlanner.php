@@ -190,18 +190,11 @@ final class AutoUpdatePlanner {
 			return new PlanSubject($target->appId, $target->level, $installedVersion, $available);
 		}
 
-		$agePlan = $this->install->planner->plan(
-			$target->appId,
-			$installedVersion,
-			$entries,
-			$target->level,
-			$target->minAgeDays,
-			$target->now ?? new \DateTimeImmutable('now', new \DateTimeZone('UTC'))
-		);
+		$agePlan = $this->install->planner->plan(AgeQuery::of($target, $installedVersion, $entries));
 		$bypass = $agePlan['securityBypass'];
 		$advisories = ($bypass !== null && $bypass['reason'] === MinimumAgePlanner::REASON_SECURITY_FIX) ? $bypass['advisories'] : [];
 
-		return new PlanSubject($target->appId, $target->level, $installedVersion, $available, $agePlan['eligible'], $agePlan['bypassed'], $advisories);
+		return (new PlanSubject($target->appId, $target->level, $installedVersion, $available))->withAge(new AgeVerdict($agePlan['eligible'], $agePlan['bypassed'], $advisories));
 	}
 
 	/**
@@ -297,9 +290,7 @@ final class AutoUpdatePlanner {
 			return new AutoUpdateMember($app->appId, $app->installedVersion, $version, AutoUpdateMember::REASON_BLOCKED);
 		}
 
-		$advisories = ($app->bypassed !== null && $version === $app->bypassed) ? $app->bypassAdvisories : [];
-
-		return new AutoUpdateMember($app->appId, $app->installedVersion, $version, null, securityAdvisories: $advisories);
+		return (new AutoUpdateMember($app->appId, $app->installedVersion, $version, null))->withSecurityAdvisories($app->bypassAdvisoriesFor($version));
 	}
 
 	/**

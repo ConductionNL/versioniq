@@ -10,9 +10,11 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\BackgroundJob;
 
+use OCA\Versioniq\Service\AutoUpdate\AgeQuery;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdatePlanStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
+use OCA\Versioniq\Service\AutoUpdate\PlanTarget;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCP\BackgroundJob\TimedJob;
 use Psr\Log\LoggerInterface;
@@ -70,7 +72,7 @@ class AutoUpdatePlanJob extends TimedJob {
 				$this->logger->warning('AutoUpdatePlanJob: the time budget ran out; the remaining apps were not planned', ['next' => $appId]);
 				break;
 			}
-			$entry = $this->planIsolated((string)$appId, $policy, $policy->minAgeDays ?? $instanceMinAge, $now);
+			$entry = $this->planIsolated(new PlanTarget((string)$appId, $policy->level, $policy->minAgeDays ?? $instanceMinAge, $now));
 			if ($entry !== null) {
 				$plans[(string)$appId] = $entry;
 			}
@@ -87,20 +89,22 @@ class AutoUpdatePlanJob extends TimedJob {
 	 *
 	 * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
 	 */
-	private function planIsolated(string $appId, Policy $policy, int $minAgeDays, \DateTimeImmutable $now): ?array {
+	private function planIsolated(PlanTarget $target): ?array {
 		try {
-			return $this->planApp($appId, $policy, $minAgeDays, $now);
+			return $this->planApp($target);
 		} catch (\Throwable $error) {
-			$this->logger->warning('AutoUpdatePlanJob: failed to plan an app', ['appId' => $appId, 'message' => $error->getMessage()]);
+			$this->logger->warning('AutoUpdatePlanJob: failed to plan an app', ['appId' => $target->appId, 'message' => $error->getMessage()]);
 
-			return self::entry(self::STATE_FAILED, $minAgeDays);
+			return self::entry(self::STATE_FAILED, $target->minAgeDays);
 		}
 	}
 
 	/**
 	 * @return array<string, mixed>|null
 	 */
-	private function planApp(string $appId, Policy $policy, int $minAgeDays, \DateTimeImmutable $now): ?array {
+	private function planApp(PlanTarget $target): ?array {
+		$appId = $target->appId;
+		$minAgeDays = $target->minAgeDays;
 		if ($this->stores->pinStore->get($appId) !== null) {
 			// A pinned app never updates, so its source is not asked.
 			return self::entry(self::STATE_PINNED, $minAgeDays);
@@ -126,7 +130,7 @@ class AutoUpdatePlanJob extends TimedJob {
 			return self::entry(self::STATE_FAILED, $minAgeDays, $installed);
 		}
 
-		$plan = $this->install->planner->plan($appId, $installed, $entries, $policy->level, $minAgeDays, $now);
+		$plan = $this->install->planner->plan(AgeQuery::of($target, $installed, $entries));
 
 		return array_replace(self::entry(self::STATE_PLANNED, $minAgeDays, $installed), [
 			'next' => $plan['next'],
