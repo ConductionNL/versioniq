@@ -5,10 +5,15 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import AutoUpdateOverview from './AutoUpdateOverview.vue'
 
-vi.mock('@nextcloud/l10n', () => ({
-	t: (_app: string, text: string, vars: Record<string, unknown> = {}) =>
-		text.replace(/\{(\w+)\}/g, (_match: string, key: string) => String(vars[key] ?? '')),
-}))
+vi.mock('@nextcloud/l10n', () => {
+	const fill = (text: string, vars: Record<string, unknown>) => text.replace(/\{(\w+)\}/g, (_match: string, key: string) => String(vars[key] ?? ''))
+	return {
+		t: (_app: string, text: string, vars: Record<string, unknown> = {}) => fill(text, vars),
+		n: (_app: string, one: string, many: string, count: number, vars: Record<string, unknown> = {}) => fill(count === 1 ? one : many, vars).replace('%n', String(count)),
+		getDayNamesShort: () => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+		getFirstDay: () => 1,
+	}
+})
 vi.mock('@nextcloud/vue/components/NcButton', () => ({ default: { name: 'NcButton', emits: ['click'], template: '<button type="button" @click="$emit(\'click\')"><slot /></button>' } }))
 
 const policies = {
@@ -42,6 +47,35 @@ describe('AutoUpdateOverview', () => {
 		})
 
 		expect(wrapper.find('[data-testid="overview-disabled"]').exists()).toBe(true)
+	})
+
+	// autoupdate-default-and-config-file: the default and how many apps follow it.
+	// @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md
+	it('says which default level the apps without a policy follow, and how many there are', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies, labels: {}, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'UTC', defaultLevel: 'patch', followingDefault: 12 },
+		})
+
+		expect(wrapper.find('[data-testid="overview-default"]').text()).toBe('12 apps without their own policy follow the default level: Patch.')
+		expect(wrapper.find('[data-testid="overview-managed-by"]').exists()).toBe(false)
+	})
+
+	it('names the policy file the policies are read from, and its error', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: {
+				policies: {},
+				labels: {},
+				autoUpdateEnabled: false,
+				window: '01:00-05:00',
+				timeZone: 'UTC',
+				followingDefault: 1,
+				managedBy: { file: '/etc/nextcloud/policies.json', readAt: '2026-11-14T10:00:00+00:00', error: '$.policies.deck: must be one of none, patch, minor, all' },
+			},
+		})
+
+		expect(wrapper.find('[data-testid="overview-managed-by"]').text()).toContain('/etc/nextcloud/policies.json')
+		expect(wrapper.find('[data-testid="overview-file-error"]').text()).toContain('$.policies.deck: must be one of')
+		expect(wrapper.find('[data-testid="overview-default"]').text()).toBe('1 app without its own policy follows the default level: Off.')
 	})
 
 	// @spec openspec/specs/auto-update-policies/spec.md#requirement-the-overview-lists-the-updates-that-are-pending-now
@@ -121,6 +155,113 @@ describe('AutoUpdateOverview security holds', () => {
 		expect(wrapper.findAll('[data-testid="overview-by-hand"]').map((row) => row.text())).toEqual([
 			'Patch updates are set to by hand in the patch policy, so no app gets them automatically.',
 		])
+	})
+
+	it('shows a group held by a failed version of one member, and a group that moves', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: {
+				policies,
+				labels: { deck: 'Deck' },
+				autoUpdateEnabled: true,
+				window: '01:00-05:00',
+				timeZone: 'UTC',
+				groups: [
+					{ id: 'g1', name: 'Office', apps: ['calendar', 'deck'] },
+					{ id: 'g2', name: 'Mail', apps: ['mail', 'calendar'] },
+				],
+			},
+		})
+
+		const rows = wrapper.findAll('[data-testid="overview-group-row"]')
+		expect(rows).toHaveLength(2)
+		expect(rows[0].text()).toContain('calendar → Deck')
+		expect(rows[0].text()).toContain('Blocked until the failed update of Deck is retried')
+		expect(rows[0].find('[data-held="true"]').exists()).toBe(true)
+		expect(rows[1].text()).toContain('Updates together, in this order')
+	})
+
+	it('shows a group held by a pin on one member', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: {
+				policies,
+				labels: {},
+				autoUpdateEnabled: true,
+				window: '01:00-05:00',
+				timeZone: 'UTC',
+				groups: [{ id: 'g1', name: 'Registers', apps: ['calendar', 'mail'] }],
+				updates: { mail: { pinned: true } } as never,
+			},
+		})
+
+		expect(wrapper.find('[data-testid="overview-group-row"]').text()).toContain('Held by the pin on mail')
+	})
+
+	it('lists what a limit held back, oldest first', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: {
+				policies,
+				labels: { deck: 'Deck' },
+				autoUpdateEnabled: true,
+				window: '01:00-05:00',
+				timeZone: 'UTC',
+				waiting: { 'app:deck': '2026-09-03T02:00:00+00:00', 'group:Office': '2026-09-02T02:00:00+00:00' },
+			},
+		})
+
+		expect(wrapper.findAll('[data-testid="overview-waiting-row"]').map((row) => row.text())).toEqual([
+			'Update group Office: waiting for the limit since 2026-09-02',
+			'Deck: waiting for the limit since 2026-09-03',
+		])
+	})
+
+	// autoupdate-schedules task 3.3: days and next run per kind.
+	// @spec openspec/changes/autoupdate-schedules/specs/auto-update-policies/spec.md
+	it('shows the days and next run of each kind a policy reaches, and never for a kind with no days', () => {
+		const schedule = {
+			patch: { days: [1, 2, 3, 4, 5], monthly: false },
+			minor: { days: [2], monthly: true },
+			major: { days: [], monthly: false },
+		}
+		const nextRuns = { patch: '2026-11-16T01:00:00+01:00', minor: '2026-12-01T01:00:00+01:00', major: null }
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies: { ...policies, mail: { ...policies.mail, level: 'all' } }, labels: {}, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'Europe/Amsterdam', schedule, nextRuns },
+		})
+
+		const patch = wrapper.find('[data-testid="overview-kind-patch"]').text()
+		const next = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' }).format(new Date('2026-11-16T01:00:00+01:00'))
+		expect(patch).toBe(`Patch updates: Mon to Fri, next run ${next} (Europe/Amsterdam)`)
+		expect(wrapper.find('[data-testid="overview-kind-minor"]').text()).toContain('Minor updates: Tue, the first of each month, next run')
+		expect(wrapper.find('[data-testid="overview-kind-major"]').text()).toBe('Major updates: never automatically')
+		expect(wrapper.find('[data-testid="overview-nothing-runs"]').exists()).toBe(false)
+	})
+
+	it('lists only the kinds the scheduled policies reach', () => {
+		const schedule = { patch: { days: [1, 2, 3, 4, 5, 6, 7], monthly: false }, minor: { days: [1], monthly: false }, major: { days: [1], monthly: false } }
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies: { calendar: policies.calendar }, labels: {}, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'UTC', schedule, nextRuns: {} },
+		})
+
+		expect(wrapper.findAll('[data-testid^="overview-kind-"]').map((row) => row.text())).toEqual(['Patch updates: every day'])
+	})
+
+	it('says nothing runs when no kind has a day', () => {
+		const empty = { patch: { days: [], monthly: false }, minor: { days: [], monthly: false }, major: { days: [], monthly: false } }
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies, labels: {}, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'UTC', schedule: empty, nextRuns: { patch: null, minor: null, major: null } },
+		})
+
+		expect(wrapper.find('[data-testid="overview-nothing-runs"]').text()).toBe('No kind of update is scheduled, so nothing runs.')
+		expect(wrapper.find('[data-testid="overview-kind-patch"]').text()).toBe('Patch updates: never automatically')
+		expect(wrapper.find('[data-testid="overview-kind-minor"]').text()).toBe('Minor updates: never automatically')
+	})
+
+	it('shows no kind lines without a schedule', () => {
+		const wrapper = mount(AutoUpdateOverview, {
+			props: { policies, labels: {}, autoUpdateEnabled: true, window: '01:00-05:00', timeZone: 'UTC' },
+		})
+
+		expect(wrapper.findAll('[data-testid^="overview-kind-"]')).toHaveLength(0)
+		expect(wrapper.find('[data-testid="overview-nothing-runs"]').exists()).toBe(false)
 	})
 })
 

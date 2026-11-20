@@ -63,9 +63,9 @@ final class AuditLoggerTest extends TestCase {
 	}
 
 	/**
-	 * A row written inside AuditNote::during() carries the note after its own
-	 * message, a row with no message the note alone, and a row written after
-	 * it no note (releases-minimum-age task 2.2).
+	 * An install row written inside AuditNote::during() carries the note in
+	 * front of its own message, a row with no message the note alone, and a
+	 * row written after it no note (releases-minimum-age task 2.2).
 	 */
 	public function testARowWrittenDuringANoteCarriesIt(): void {
 		$mapper = $this->createMock(AuditEntryMapper::class);
@@ -87,7 +87,7 @@ final class AuditLoggerTest extends TestCase {
 
 		$this->assertSame(
 			[
-				'Installed (security fix, installed before the minimum age: GHSA-1)',
+				'security fix, installed before the minimum age: GHSA-1: Installed',
 				'security fix, installed before the minimum age: GHSA-1',
 				'Installed',
 			],
@@ -186,6 +186,35 @@ final class AuditLoggerTest extends TestCase {
 		$this->assertStringContainsString('[redacted]', $message);
 	}
 
+	/**
+	 * @return array<string, array{0: string, 1: string, 2: ?string}>
+	 */
+	public static function notedMessages(): array {
+		return [
+			'an install without a message takes the note' => [AuditLogger::OPERATION_INSTALL, '', 'Update group Registers'],
+			'an install message follows the note' => [AuditLogger::OPERATION_INSTALL, 'download failed', 'Update group Registers: download failed'],
+			'another operation is unchanged' => [AuditLogger::OPERATION_PIN, 'pinned', 'pinned'],
+		];
+	}
+
+	#[\PHPUnit\Framework\Attributes\DataProvider('notedMessages')]
+	public function testAnInstallDuringAnAuditNoteCarriesTheNote(string $operation, string $message, ?string $expected): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$captured = null;
+		$mapper->method('insert')->willReturnCallback(function (AuditEntry $entry) use (&$captured): AuditEntry {
+			$captured = $entry;
+
+			return $entry;
+		});
+		$logger = new AuditLogger($mapper, $this->timeFactory(), $this->createMock(LoggerInterface::class));
+
+		AuditNote::during('Update group Registers', static fn () => AuditArgs::call($logger, 'system', 'openregister', $operation, '2.3.0', '2.3.4', 'appstore', AuditLogger::STATUS_SUCCESS, $message));
+
+		$this->assertInstanceOf(AuditEntry::class, $captured);
+		$this->assertSame($expected, $captured->getMessage());
+		$this->assertNull(AuditNote::current());
+	}
+
 	public function testEmptyStringsAreNormalisedToNull(): void {
 		$mapper = $this->createMock(AuditEntryMapper::class);
 		$captured = null;
@@ -223,5 +252,37 @@ final class AuditLoggerTest extends TestCase {
 			['warning', 'AuditLogger: rejected malformed operation name, entry not recorded', ['appId' => 'openregister', 'operation' => 'Bad Op']],
 			['error', 'AuditLogger: failed to record audit entry', ['appId' => 'openregister', 'operation' => 'pin', 'message' => 'table missing']],
 		], $logged);
+	}
+
+	/**
+	 * An entry names the advisories it is about as a JSON list, read back as
+	 * a list; an entry without them stores null (audit-security-reports D2).
+	 *
+	 * @spec openspec/changes/audit-security-reports/specs/audit-trail/spec.md#requirement-advisory-exposure-and-server-updates-are-recorded-in-the-history
+	 */
+	public function testAdvisoriesAreStoredAsAJsonListAndReadBack(): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$captured = [];
+		$mapper->expects($this->exactly(2))->method('insert')
+			->with($this->callback(function (AuditEntry $entry) use (&$captured): bool {
+				$captured[] = $entry;
+
+				return true;
+			}));
+
+		$logger = new AuditLogger($mapper, $this->timeFactory(), $this->createMock(LoggerInterface::class));
+		$logger->record(
+			new \OCA\Versioniq\Service\Audit\AuditSubject('system', 'fixtureapp', 'advisory_open'),
+			new \OCA\Versioniq\Service\Audit\AuditedVersions(null, '1.0.0', null),
+			AuditLogger::STATUS_SUCCESS,
+			null,
+			[['id' => 'GHSA-xxxx-0001', 'severity' => 'high']],
+		);
+		AuditArgs::call($logger, 'alice', 'openregister', AuditLogger::OPERATION_INSTALL, '2.5.0', '2.6.0', 'appstore', AuditLogger::STATUS_SUCCESS, null);
+
+		$this->assertSame('[{"id":"GHSA-xxxx-0001","severity":"high"}]', $captured[0]->getAdvisories());
+		$this->assertSame([['id' => 'GHSA-xxxx-0001', 'severity' => 'high']], $captured[0]->jsonSerialize()['advisories']);
+		$this->assertNull($captured[1]->getAdvisories());
+		$this->assertNull($captured[1]->jsonSerialize()['advisories']);
 	}
 }

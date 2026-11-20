@@ -11,6 +11,7 @@ namespace OCA\Versioniq\Tests\Unit\Controller;
 use OCA\Versioniq\Controller\ApiController;
 use OCA\Versioniq\Controller\ForgeController;
 use OCA\Versioniq\Controller\SettingsController;
+use OCA\Versioniq\Controller\SnapshotController;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
 use OCP\AppFramework\Http\Attribute\Route;
 use PHPUnit\Framework\TestCase;
@@ -32,7 +33,7 @@ use ReflectionMethod;
 final class PasswordConfirmationTest extends TestCase {
 	private const WRITE_VERBS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
-	private const CONTROLLERS = [ApiController::class, ForgeController::class, SettingsController::class];
+	private const CONTROLLERS = [ApiController::class, ForgeController::class, SettingsController::class, SnapshotController::class];
 
 	/**
 	 * The write routes of a controller as "METHOD verb url" by method name.

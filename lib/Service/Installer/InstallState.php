@@ -15,6 +15,7 @@ use OCA\Versioniq\Service\Availability\WithdrawnVersionStore;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Lkg\LkgStore;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Policy\RangeGuard;
 use OCA\Versioniq\Service\Release\InstallOutcomes;
 use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Service\Source\TrustedSourceList;
@@ -31,6 +32,8 @@ final class InstallState {
 		public readonly LkgStore $lkgStore,
 		public readonly ArtifactCache $artifactCache,
 		public readonly TrustedSourceList $trustedSources,
+		public readonly ForceOverrideStore $forceOverrides,
+		public readonly ?RangeGuard $rangeGuard = null,
 		public readonly ?WithdrawnVersionStore $withdrawnVersions = null,
 		public readonly ?InstallOutcomes $outcomes = null,
 		public readonly ?KnownIssueStore $knownIssues = null,

@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
 import type { AdvisoryAssignee, AdvisoryCorrelation, AdvisoryHistoryEntry, AdvisoryTriageMap, Compliance, NcscStatus, TriagedAdvisory, TriagedCorrelation } from '../utils/advisories.ts'
+import type { LibraryCheck } from '../utils/bundledLibraries.ts'
 
 import { n, t } from '@nextcloud/l10n'
 import { computed, defineAsyncComponent, ref } from 'vue'
@@ -8,9 +9,12 @@ import NcButton from '@nextcloud/vue/components/NcButton'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/components/NcCheckboxRadioSwitch'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import AdvisoryItem from './AdvisoryItem.vue'
+import BundledLibrariesSection from './BundledLibrariesSection.vue'
 import DismissedAdvisories from './DismissedAdvisories.vue'
+import ServerEolDate from './ServerEolDate.vue'
 import { ocsGet, ocsWrite } from '../ocs.ts'
 import { advisoryAnchor, advisoryHistory, applyTriage, complianceSentence, fixSentence, isAssignedTo, RECENT_ADVISORIES, SERVER_ADVISORY_KEY, splitAdvisoryRows } from '../utils/advisories.ts'
+import { BUNDLED_LIBRARIES_ANCHOR, libraryRows } from '../utils/bundledLibraries.ts'
 import { currentLoginName } from '../utils/enableApp.ts'
 
 const props = withDefaults(defineProps<{
@@ -20,10 +24,15 @@ const props = withDefaults(defineProps<{
 	compliance?: Compliance | null
 	/** How far the NCSC-NL read got; null or absent when NCSC-NL checks are off. */
 	ncscStatus?: NcscStatus | null
+	// The bundled-library check (advisories-bundled-libraries), per app id.
+	libraries?: Record<string, LibraryCheck>
+	librariesFreshnessLabel?: string
 }>(), {
 	triage: () => ({}),
 	compliance: null,
 	ncscStatus: null,
+	libraries: () => ({}),
+	librariesFreshnessLabel: '',
 })
 const emit = defineEmits<{
 	'update:triage': [triage: AdvisoryTriageMap]
@@ -47,6 +56,7 @@ const DismissAdvisoryDialog = defineAsyncComponent(() => import('../dialogs/Dism
 const AssignAdvisoryDialog = defineAsyncComponent(() => import('../dialogs/AssignAdvisoryDialog.vue'))
 
 const rows = computed(() => splitAdvisoryRows(props.advisories))
+const libraryChecks = computed(() => libraryRows(props.libraries))
 
 /** "NCSC-NL: catching up, read up to {date}" until a sweep reached the present (advisories-ncsc-feed). */
 const ncscCatchingUp = computed(() => {
@@ -210,6 +220,7 @@ function showAll (key: string): void {
 
 		<div :class="$style.block" data-testid="advisories-server">
 			<h4>{{ t('versioniq', 'Nextcloud server') }}</h4>
+			<ServerEolDate />
 			<template v-if="server">
 				<p>
 					{{ t('versioniq', 'Installed version: {version}', { version: server.installedVersion ?? '' }) }}
@@ -306,6 +317,24 @@ function showAll (key: string): void {
 			</article>
 		</div>
 
+		<div :id="BUNDLED_LIBRARIES_ANCHOR" :class="$style.block" data-testid="bundled-libraries">
+			<h4>{{ t('versioniq', 'Bundled libraries') }}</h4>
+			<p v-if="librariesFreshnessLabel" :class="$style.hint">
+				{{ librariesFreshnessLabel }}
+			</p>
+			<p v-if="libraryChecks.length === 0" :class="$style.hint" data-testid="bundled-libraries-never">
+				{{ t('versioniq', 'The libraries bundled in apps have not been checked. Switch the check on under Security advisory checks.') }}
+			</p>
+			<BundledLibrariesSection
+				v-for="row in libraryChecks"
+				:key="row.appId"
+				:appId="row.appId"
+				:check="row.check" />
+			<p :class="$style.hint" data-testid="bundled-libraries-js">
+				{{ t('versioniq', 'JavaScript built into an app carries no library manifest and is not checked.') }}
+			</p>
+		</div>
+
 		<DismissAdvisoryDialog
 			v-if="dismissTarget !== null"
 			:open="dismissTarget !== null"
@@ -323,6 +352,8 @@ function showAll (key: string): void {
 			@assigned="(triage: AdvisoryTriageMap) => emit('update:triage', triage)" />
 	</section>
 </template>
+
+<style module src="../styles/advisorySeverity.module.css"></style>
 
 <style module>
 .panel {

@@ -79,7 +79,7 @@ final class AutoUpdatePlanJobTest extends TestCase {
 					$this->createMock(SecurityHoldStore::class),
 				),
 			),
-			new AutoUpdateInstall($this->installer, $this->apps, new CandidateSelector(), $this->planner),
+			new AutoUpdateInstall($this->installer, $this->apps, new CandidateSelector(), $this->createMock(\OCA\Versioniq\Service\Checks\CheckRunner::class), $this->createMock(\OCA\Versioniq\Service\Installer\FailureClassifier::class), $this->planner),
 			$this->store,
 		);
 	}

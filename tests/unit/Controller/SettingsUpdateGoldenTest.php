@@ -12,11 +12,14 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\Controller;
 
 require_once __DIR__ . '/../Support/DispatchesLikeNextcloud.php';
+require_once __DIR__ . '/../Support/AuditArgs.php';
 
 use InvalidArgumentException;
 use OCA\Versioniq\Controller\SettingsController;
 use OCA\Versioniq\Service\Audit\AuditLogger;
+use OCA\Versioniq\Service\Checks\CheckStore;
 use OCA\Versioniq\Service\Settings\InstanceSettings;
+use OCA\Versioniq\Tests\Unit\Support\AuditArgs;
 use OCA\Versioniq\Tests\Unit\Support\DispatchesLikeNextcloud;
 use OCP\IGroupManager;
 use OCP\IRequest;
@@ -59,6 +62,7 @@ final class SettingsUpdateGoldenTest extends TestCase {
 			'github web base' => ['params' => ['githubWebBase' => 'https://ghe.example.org']],
 			'advisory feed' => ['params' => ['advisoryFeedUrl' => 'https://feed.example.org']],
 			'max lines behind' => ['params' => ['maxLinesBehind' => '2']],
+			'user notice switched off' => ['params' => ['notifyUsersOnUpdate' => 'false']],
 			'blank values are sent on' => ['params' => ['appStoreApiBase' => '', 'maxLinesBehind' => ' ']],
 			'every field, reversed order' => ['params' => ['maxLinesBehind' => '3', 'advisoryFeedUrl' => 'https://f.example', 'githubWebBase' => 'https://w.example', 'githubApiBase' => 'https://a.example', 'appStoreApiBase' => 'https://s.example', 'artifactCacheKeep' => '5', 'auditRetentionDays' => '365']],
 			'null is left alone' => ['params' => ['auditRetentionDays' => null, 'artifactCacheKeep' => '4']],
@@ -110,7 +114,7 @@ final class SettingsUpdateGoldenTest extends TestCase {
 
 	private function controller(IRequest $request, bool $admin): SettingsController {
 		$settings = $this->createMock(InstanceSettings::class);
-		$settings->method('read')->willReturn(['auditRetentionDays' => 365, 'artifactCacheKeep' => 3, 'appStoreApiBase' => '', 'githubApiBase' => '', 'githubWebBase' => '', 'advisoryFeedUrl' => '', 'maxLinesBehind' => '']);
+		$settings->method('read')->willReturn(['auditRetentionDays' => 365, 'artifactCacheKeep' => 3, 'appStoreApiBase' => '', 'githubApiBase' => '', 'githubWebBase' => '', 'advisoryFeedUrl' => '', 'maxLinesBehind' => '', 'notifyUsersOnUpdate' => false]);
 		$settings->method('update')->willReturnCallback(function (array $fields): array {
 			$this->updates[] = $fields;
 			if (in_array('reject', $fields, true)) {
@@ -122,8 +126,9 @@ final class SettingsUpdateGoldenTest extends TestCase {
 
 		$audit = $this->getMockBuilder(AuditLogger::class)->disableOriginalConstructor()->onlyMethods(['record'])->getMock();
 		$audit->method('record')->willReturnCallback(function (mixed ...$args): void {
-			// The message is the last argument of record(), whatever shape the leading ones take.
-			$this->audits[] = end($args);
+			// The message argument of record(), by its position, whatever shape
+			// the leading ones take and whatever optional ones follow it.
+			$this->audits[] = AuditArgs::message($args);
 		});
 
 		$user = $this->createMock(IUser::class);
@@ -133,6 +138,6 @@ final class SettingsUpdateGoldenTest extends TestCase {
 		$groups = $this->createMock(IGroupManager::class);
 		$groups->method('isAdmin')->willReturn($admin);
 
-		return new SettingsController('versioniq', $request, $settings, $audit, $groups, $session);
+		return new SettingsController('versioniq', $request, $settings, $audit, $groups, $session, $this->createMock(CheckStore::class));
 	}
 }

@@ -27,7 +27,7 @@ use Psr\Log\LoggerInterface;
  * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
  * @psalm-api
  */
-final class UpdateGroupStore {
+class UpdateGroupStore {
 	public const CONFIG_KEY = 'auto_update.groups';
 	private const JSON_DEPTH = 8;
 

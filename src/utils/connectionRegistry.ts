@@ -55,6 +55,8 @@ export const ADVISORIES_APP_PREFIX = 'section-advisories-'
 export const SECTION_TABS: Readonly<Record<string, string>> = Object.freeze({
 	'section-sources': 'sources',
 	'section-advisories': 'apps',
+	// The Bundled libraries block, which the app-card badge links to.
+	'section-bundled-libraries': 'advisories',
 	'section-integrations': 'integrations',
 })
 

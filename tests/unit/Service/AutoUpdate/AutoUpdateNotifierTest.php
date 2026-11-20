@@ -12,6 +12,7 @@ namespace OCA\Versioniq\Tests\Unit\Service\AutoUpdate;
 require_once __DIR__ . '/../../Support/BuildsByParameterName.php';
 
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
+use OCA\Versioniq\Service\AutoUpdate\ProposedUpdate;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IGroup;
@@ -123,6 +124,56 @@ final class AutoUpdateNotifierTest extends TestCase {
 		$notifier->notifySuccess('openregister', '2.3.0', '2.3.4', ['GHSA-1', 'GHSA-2']);
 	}
 
+	public function testNotifyPlannedReachesTheAdminsAndTheNoticeGroupEachOnce(): void {
+		$users = fn (array $uids): array => array_map(function (string $uid): IUser {
+			$user = $this->createMock(IUser::class);
+			$user->method('getUID')->willReturn($uid);
+
+			return $user;
+		}, $uids);
+		$admins = $this->createMock(IGroup::class);
+		$admins->method('getUsers')->willReturn($users(['admin', 'bob']));
+		$notice = $this->createMock(IGroup::class);
+		// bob is in both groups and is notified once.
+		$notice->method('getUsers')->willReturn($users(['bob', 'fiona']));
+		$groupManager = $this->createMock(IGroupManager::class);
+		$groupManager->method('get')->willReturnMap([['admin', $admins], ['functioneel-beheer', $notice]]);
+
+		$recipients = [];
+		$notification = $this->createMock(INotification::class);
+		$notification->method('setApp')->willReturnSelf();
+		$notification->method('setUser')->willReturnCallback(function (string $uid) use (&$recipients, &$notification) {
+			$recipients[] = $uid;
+
+			return $notification;
+		});
+		$notification->method('setDateTime')->willReturnSelf();
+		$notification->method('setLink')->willReturnSelf();
+		$notification->method('setObject')->with('auto_update_planned', 'forms:4.4.0')->willReturnSelf();
+		$notification->method('setSubject')->with('auto_update_planned', [
+			'app' => 'forms',
+			'fromVersion' => '4.3.0',
+			'toVersion' => '4.4.0',
+			'plannedFor' => '2026-10-16T01:00:00+00:00',
+			'releaseNotes' => 'Adds conditional questions.',
+		])->willReturnSelf();
+		$notificationManager = $this->createMock(IManager::class);
+		$notificationManager->method('createNotification')->willReturn($notification);
+		$notificationManager->expects($this->exactly(3))->method('notify');
+
+		$notifier = $this->buildByName(AutoUpdateNotifier::class, [
+			'notificationManager' => $notificationManager,
+			'groupManager' => $groupManager,
+			'timeFactory' => $this->timeFactory(),
+			'urlGenerator' => $this->urlGenerator(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
+
+		$notifier->notifyPlanned(new ProposedUpdate('forms', '4.3.0', '4.4.0', 'minor', ProposedUpdate::STATUS_IN_NOTICE, '2026-10-01T10:00:00+00:00', '2026-10-16T01:00:00+00:00', '2026-10-01T10:00:00+00:00', 'Adds conditional questions.'), 'functioneel-beheer');
+
+		$this->assertSame(['admin', 'bob', 'fiona'], $recipients);
+	}
+
 	public function testNotifyFailureCarriesTheClassifiedHint(): void {
 		$notification = $this->createMock(INotification::class);
 		$notification->method('setApp')->willReturnSelf();
@@ -153,6 +204,38 @@ final class AutoUpdateNotifierTest extends TestCase {
 		]);
 
 		$notifier->notifyFailure('openregister', '2.3.4', 'checksum_mismatch', 'The downloaded archive failed its integrity check.');
+	}
+
+	public function testNotifyGroupSendsOneNotificationListingEveryMember(): void {
+		$outcomes = [
+			['appId' => 'openregister', 'version' => '2.3.4', 'outcome' => AutoUpdateNotifier::OUTCOME_INSTALLED],
+			['appId' => 'opencatalogi', 'version' => '1.2.1', 'outcome' => AutoUpdateNotifier::OUTCOME_FAILED],
+			['appId' => 'woo', 'version' => '3.0.1', 'outcome' => AutoUpdateNotifier::OUTCOME_NOT_ATTEMPTED],
+		];
+		$notification = $this->createMock(INotification::class);
+		$notification->method('setApp')->willReturnSelf();
+		$notification->method('setUser')->willReturnSelf();
+		$notification->method('setDateTime')->willReturnSelf();
+		$notification->method('setLink')->willReturnSelf();
+		$notification->expects($this->once())->method('setObject')->with('auto_update_group', 'Registers')->willReturnSelf();
+		$notification->expects($this->once())
+			->method('setSubject')
+			->with('auto_update_group', ['group' => 'Registers', 'members' => $outcomes])
+			->willReturnSelf();
+
+		$notificationManager = $this->createMock(IManager::class);
+		$notificationManager->method('createNotification')->willReturn($notification);
+		$notificationManager->expects($this->once())->method('notify')->with($notification);
+
+		$notifier = $this->buildByName(AutoUpdateNotifier::class, [
+			'notificationManager' => $notificationManager,
+			'groupManager' => $this->groupManagerWithAdmins(['admin']),
+			'timeFactory' => $this->timeFactory(),
+			'urlGenerator' => $this->urlGenerator(),
+			'logger' => $this->createMock(LoggerInterface::class),
+		]);
+
+		$notifier->notifyGroup('Registers', $outcomes);
 	}
 
 	public function testNotifyFailureDoesNotThrowWhenNotifyManagerFails(): void {

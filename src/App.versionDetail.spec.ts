@@ -161,6 +161,64 @@ describe('App version list', () => {
 		expect(listed(wrapper)).toEqual(['1.4.0', '1.2.0'])
 	})
 
+	it('names the breaking releases between the installed and the selected version (releases-version-facts D3)', async () => {
+		const breaking = [
+			{ version: '1.4.0', breaking: false },
+			{ version: '1.3.0', breaking: true },
+			{ version: '1.2.0', breaking: true },
+		]
+		const { wrapper, vm } = await openDeck({ '/api/app/deck/versions': { data: { versions: breaking, installedVersion: '1.2.0', sourceId: 'appstore' } } })
+
+		expect(wrapper.find('[data-testid="range-breaking"]').exists()).toBe(false)
+		vm.onSelectVersion('1.4.0')
+		await flushPromises()
+
+		expect(wrapper.find('[data-testid="range-breaking"]').text()).toBe('Includes releases marked as breaking: 1.3.0.')
+	})
+
+	it('removes an admin known issue through its endpoint and shows the notes the server returns (releases-version-facts D4)', async () => {
+		const withNotes = [{ version: '1.2.0', adminKnownIssues: [{ text: 'First' }, { text: 'Second' }] }]
+		const { wrapper, calls } = await openDeck({
+			'/api/app/deck/versions': { data: { versions: withNotes, installedVersion: '1.2.0', sourceId: 'appstore' } },
+			'DELETE /api/app/deck/versions/1.2.0/known-issues/1': { data: { appId: 'deck', version: '1.2.0', knownIssues: [{ text: 'First' }] } },
+		})
+		expect(wrapper.findAll('[data-testid="fact-admin-issue"]')).toHaveLength(2)
+
+		await wrapper.findAll('[data-testid="fact-remove-issue"]')[1].trigger('click')
+		await flushPromises()
+
+		expect(calls.map((call) => `${call.method} ${call.path}`)).toContain('DELETE /api/app/deck/versions/1.2.0/known-issues/1')
+		expect(wrapper.findAll('[data-testid="fact-admin-issue"]').map((item) => item.find('span').text())).toEqual(['First'])
+	})
+
+	it('shows the refusal of a removal and keeps the notes', async () => {
+		const withNotes = [{ version: '1.2.0', adminKnownIssues: [{ text: 'First' }] }]
+		const { wrapper, vm } = await openDeck({
+			'/api/app/deck/versions': { data: { versions: withNotes, installedVersion: '1.2.0', sourceId: 'appstore' } },
+			'DELETE /api/app/deck/versions/1.2.0/known-issues/0': refused('Forbidden'),
+		})
+
+		await wrapper.find('[data-testid="fact-remove-issue"]').trigger('click')
+		await flushPromises()
+
+		expect(vm.errorMessage).toBe('Forbidden')
+		expect(wrapper.findAll('[data-testid="fact-admin-issue"]')).toHaveLength(1)
+	})
+
+	it('opens the known-issue dialog for a version and stores what it saved on the installed app card', async () => {
+		const { wrapper, vm } = await openDeck()
+
+		await wrapper.findAll('[data-testid="fact-add-issue"]')[0].trigger('click')
+		expect(vm.isKnownIssueDialogOpen).toBe(true)
+		expect(vm.knownIssueDialogVersion).toBe('1.4.0')
+
+		vm.onKnownIssuesChanged('1.2.0', [{ text: 'Broken export' }])
+		await flushPromises()
+
+		expect(vm.versions.find((entry: { version: string }) => entry.version === '1.2.0').adminKnownIssues).toEqual([{ text: 'Broken export' }])
+		expect(vm.apps.find((app: { id: string }) => app.id === 'deck').installedKnownIssues).toEqual([{ text: 'Broken export' }])
+	})
+
 	it('refuses to select a downgrade in safe mode and says why', async () => {
 		const { vm } = await openDeck()
 
@@ -200,7 +258,7 @@ describe('App version list', () => {
 		await flushPromises()
 
 		expect(vm.sourceOverride).toBe('github:acme/deck')
-		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['GET /api/app/deck/versions'])
+		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['GET /api/app/deck/versions', 'GET /api/app/deck/skips'])
 		expect(Object.values(calls[0].query)).toContain('github:acme/deck')
 	})
 
@@ -281,7 +339,7 @@ describe('App detail pin', () => {
 		wrapper.findComponent({ name: 'PinDriftBanner' }).vm.$emit('repinRequested', 'deck', '1.4.0')
 		await flushPromises()
 
-		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['POST /api/app/deck/versions/1.4.0/install', 'GET /api/pins', 'GET /api/app/deck/versions'])
+		expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual(['POST /api/app/deck/versions/1.4.0/install', 'GET /api/pins', 'GET /api/app/deck/versions', 'GET /api/app/deck/skips'])
 		expect(calls[0].query).toEqual({ debug: '0', dryRun: '0', targetVersion: '1.4.0' })
 		expect([vm.isInstallingVersion, vm.errorMessage]).toEqual([false, ''])
 	})

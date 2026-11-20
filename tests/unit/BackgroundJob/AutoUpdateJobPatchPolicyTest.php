@@ -19,8 +19,10 @@ use OCA\Versioniq\Service\Advisory\AdvisoryService;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateNotifier;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\AutoUpdate\ProposalStore;
 use OCA\Versioniq\Service\AutoUpdate\SecurityHoldStore;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\InstallerService;
@@ -95,6 +97,7 @@ final class AutoUpdateJobPatchPolicyTest extends TestCase {
 		];
 		$this->mocks['settingsStore']->method('isEnabled')->willReturn(true);
 		$this->mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$this->mocks['settingsStore']->method('getSchedule')->willReturn(AutoUpdateSchedule::everyDay());
 		$this->mocks['advisorySettings']->method('getIntervalSeconds')->willReturn(6 * 3600);
 		$this->mocks['advisoryResults']->method('read')->willReturn(['advisories' => $rows, 'checkedAt' => self::NOW - 3600]);
 		$this->mocks['patchPolicyStore']->expects($this->once())->method('read')->willReturn($patchPolicy);
@@ -162,6 +165,56 @@ final class AutoUpdateJobPatchPolicyTest extends TestCase {
 		// it goes before calendar although calendar is stored first.
 		$this->assertSame(['openregister@2.4.0', 'calendar@4.7.1'], $this->installed);
 		$this->assertSame([], $this->holds);
+	}
+
+	/**
+	 * A `next_window` security fix skips the notice period; the regular update
+	 * of another app still waits for its announced opening (autoupdate-proposed-updates D5).
+	 *
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
+	 */
+	public function testANextWindowFixIsNotHeldByTheNoticePeriod(): void {
+		$this->givenANoticePeriod();
+
+		$this->runJob();
+
+		$this->assertSame(['openregister@2.4.0'], $this->installed);
+	}
+
+	/**
+	 * A decline still holds a `next_window` fix back (autoupdate-proposed-updates D6).
+	 *
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
+	 */
+	public function testADeclinedNextWindowFixIsStillSkipped(): void {
+		$proposals = $this->givenANoticePeriod();
+		$proposals->method('declineOf')->willReturnCallback(
+			static fn (string $appId, string $version): ?array => $appId === 'openregister' ? ['by' => 'alice', 'at' => '2026-07-20T00:00:00+00:00', 'reason' => ''] : null
+		);
+
+		$this->runJob();
+
+		$this->assertSame([], $this->installed);
+	}
+
+	/**
+	 * openregister has a critical fix on `next_window`, calendar only a regular
+	 * patch; a 14-day notice period with no proposal announced for either.
+	 */
+	private function givenANoticePeriod(): ProposalStore&MockObject {
+		$this->given(
+			['calendar' => Policy::LEVEL_PATCH, 'openregister' => Policy::LEVEL_MINOR],
+			['calendar' => '4.7.0', 'openregister' => '2.3.0'],
+			['calendar' => ['4.7.1'], 'openregister' => ['2.4.0']],
+			['openregister' => self::affected('2.3.0', '2.4.0', 'critical')],
+			self::policy(['critical' => ['deadlineDays' => 3, 'handling' => 'next_window']]),
+		);
+		$this->mocks['settingsStore']->method('getNoticeDays')->willReturn(14);
+		$proposals = $this->createMock(ProposalStore::class);
+		$proposals->method('proposalFor')->willReturn(null);
+		$this->mocks['proposalStore'] = $proposals;
+
+		return $proposals;
 	}
 
 	public function testAScheduledFixWaitsForTheSecondPass(): void {

@@ -12,6 +12,7 @@ namespace OCA\Versioniq\Tests\Unit\BackgroundJob;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\BackgroundJob\PruneAuditJob;
 use OCA\Versioniq\Db\AuditEntryMapper;
+use OCA\Versioniq\Service\Installer\AppBackupStore;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IAppConfig;
 use PHPUnit\Framework\TestCase;
@@ -104,5 +105,34 @@ final class PruneAuditJobTest extends TestCase {
 		$job = new PruneAuditJob($this->timeFactory(), $mapper, $appConfig, $logger);
 		$this->runJob($job);
 		$this->addToAssertionCount(1);
+	}
+
+	/**
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 */
+	public function testTheDailyRunRemovesExpiredBackups(): void {
+		$appConfig = $this->createMock(IAppConfig::class);
+		$appConfig->method('getValueInt')->willReturn(PruneAuditJob::DEFAULT_RETENTION_DAYS);
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->once())->method('deleteOlderThan')->willReturn(0);
+		$backups = $this->createMock(AppBackupStore::class);
+		$backups->expects($this->once())->method('prune')->willReturn(2);
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->expects($this->once())->method('info')->with('PruneAuditJob: removed expired install backups', ['removed' => 2]);
+
+		$this->runJob(new PruneAuditJob($this->timeFactory(), $mapper, $appConfig, $logger, $backups));
+	}
+
+	public function testAFailingBackupPruneIsLoggedAndTheAuditPruneStillRuns(): void {
+		$appConfig = $this->createMock(IAppConfig::class);
+		$appConfig->method('getValueInt')->willReturn(PruneAuditJob::DEFAULT_RETENTION_DAYS);
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->once())->method('deleteOlderThan')->willReturn(0);
+		$backups = $this->createMock(AppBackupStore::class);
+		$backups->method('prune')->willThrowException(new \RuntimeException('app data unavailable'));
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->expects($this->once())->method('error')->with('PruneAuditJob: backup prune failed', ['message' => 'app data unavailable']);
+
+		$this->runJob(new PruneAuditJob($this->timeFactory(), $mapper, $appConfig, $logger, $backups));
 	}
 }

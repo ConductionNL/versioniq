@@ -60,7 +60,7 @@ final class PolicyTest extends TestCase {
 
 	public function testAPolicyRoundTripsWithAndWithoutMinAgeDays(): void {
 		$without = new Policy('patch', 'alice', '2026-11-14T10:00:00+00:00');
-		$with = new Policy('minor', 'alice', '2026-11-14T10:00:00+00:00', 7);
+		$with = new Policy('minor', 'alice', '2026-11-14T10:00:00+00:00', minAgeDays: 7);
 
 		$this->assertArrayNotHasKey('minAgeDays', $without->toArray());
 		$this->assertNull(Policy::fromArray($without->toArray())->minAgeDays);
@@ -71,7 +71,7 @@ final class PolicyTest extends TestCase {
 	public function testAPolicyRefusesAMinAgeOutsideZeroToNinety(): void {
 		foreach ([91, -1] as $days) {
 			try {
-				new Policy('patch', 'alice', '2026-11-14T10:00:00+00:00', $days);
+				new Policy('patch', 'alice', '2026-11-14T10:00:00+00:00', minAgeDays: $days);
 				$this->fail('accepted ' . $days);
 			} catch (\InvalidArgumentException $e) {
 				$this->assertStringContainsString('minAgeDays', $e->getMessage());
@@ -80,5 +80,49 @@ final class PolicyTest extends TestCase {
 
 		$this->expectException(\InvalidArgumentException::class);
 		Policy::fromArray(['level' => 'patch', 'setBy' => 'a', 'setAt' => 'b', 'minAgeDays' => '7']);
+	}
+
+	/**
+	 * pinning-ranges-and-skips: a stored policy without the switch reads as off, and the switch round-trips.
+	 */
+	public function testAnOldPolicyReadsHoldManualAsOff(): void {
+		$old = Policy::fromArray(['level' => 'patch', 'setBy' => 'admin', 'setAt' => '2026-01-01T00:00:00+00:00']);
+		$this->assertFalse($old->holdManual);
+		$this->assertFalse($old->holdsManualInstalls());
+
+		$held = Policy::fromArray(['level' => 'minor', 'setBy' => 'admin', 'setAt' => '2026-01-01T00:00:00+00:00', 'holdManual' => true]);
+		$this->assertTrue($held->holdsManualInstalls());
+		$this->assertTrue($held->toArray()['holdManual']);
+		$this->assertEquals($held, Policy::fromArray($held->toArray()));
+
+		// A non-boolean is not taken for "on".
+		$this->assertFalse(Policy::fromArray(['level' => 'patch', 'setBy' => 'a', 'setAt' => 'b', 'holdManual' => 'yes'])->holdManual);
+	}
+
+	/**
+	 * Only `patch` and `minor` hold manual installs: `none` and `all` have no range to hold to.
+	 */
+	public function testOnlyPatchAndMinorHoldManualInstalls(): void {
+		foreach (['none' => false, 'patch' => true, 'minor' => true, 'all' => false] as $level => $holds) {
+			$this->assertSame($holds, (new Policy($level, 'admin', '2026-01-01T00:00:00+00:00', holdManual: true))->holdsManualInstalls(), $level);
+		}
+	}
+
+	public function testRequireApprovalRoundTrips(): void {
+		$policy = new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00', true);
+
+		$this->assertTrue($policy->toArray()['requireApproval']);
+		$this->assertTrue(Policy::fromArray($policy->toArray())->requireApproval);
+	}
+
+	public function testAStoredPolicyWithoutRequireApprovalReadsAsFalse(): void {
+		$policy = Policy::fromArray(['level' => 'patch', 'setBy' => 'admin', 'setAt' => '2026-07-01T00:00:00+00:00']);
+
+		$this->assertFalse($policy->requireApproval);
+		$this->assertFalse((new Policy(Policy::LEVEL_PATCH, 'admin', 'x'))->requireApproval);
+	}
+
+	public function testOnlyABooleanTrueRequiresApproval(): void {
+		$this->assertFalse(Policy::fromArray(['level' => 'patch', 'setBy' => 'a', 'setAt' => 'x', 'requireApproval' => 'yes'])->requireApproval);
 	}
 }

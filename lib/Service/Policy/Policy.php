@@ -25,6 +25,8 @@ use InvalidArgumentException;
  * `minor` (same major), `all` (any newer version), or `security` (only the
  * fix the advisory check recommends for an affected installed version, see
  * {@see \OCA\Versioniq\Service\AutoUpdate\SecurityCandidate}).
+ * `requireApproval` holds every automatic update of the app until an admin
+ * approves that version.
  */
 final class Policy {
 	public const LEVEL_NONE = 'none';
@@ -40,6 +42,13 @@ final class Policy {
 		public readonly string $level,
 		public readonly string $setBy,
 		public readonly string $setAt,
+		// Whether the job installs only a version an admin approved
+		// (autoupdate-proposed-updates, design D4). Absent reads as false.
+		public readonly bool $requireApproval = false,
+		// Whether a manual install outside the level needs an explicit override
+		// (pinning-ranges-and-skips). Absent reads as false.
+		public readonly bool $holdManual = false,
+		// The policy's own minimum age in days; null follows the instance's (releases-minimum-age).
 		public readonly ?int $minAgeDays = null,
 	) {
 		$this->assertRequiredFields();
@@ -95,6 +104,8 @@ final class Policy {
 			'level' => $this->level,
 			'setBy' => $this->setBy,
 			'setAt' => $this->setAt,
+			'requireApproval' => $this->requireApproval,
+			'holdManual' => $this->holdManual,
 		];
 		if ($this->minAgeDays !== null) {
 			$payload['minAgeDays'] = $this->minAgeDays;
@@ -104,9 +115,21 @@ final class Policy {
 	}
 
 	/**
+	 * Whether Versioniq's own installs are held to this policy's level: the
+	 * switch is on and the level is `patch` or `minor`.
+	 *
+	 * @spec openspec/changes/pinning-ranges-and-skips/specs/auto-update-policies/spec.md#requirement-a-policy-can-hold-manual-installs-to-its-level
+	 */
+	public function holdsManualInstalls(): bool {
+		return $this->holdManual && in_array($this->level, [self::LEVEL_PATCH, self::LEVEL_MINOR], true);
+	}
+
+	/**
 	 * Reconstructs a policy from its persisted payload; see "Per-app update policy".
+	 * A payload without `requireApproval` (stored before it existed) reads as false.
 	 *
 	 * @spec openspec/specs/auto-update-policies/spec.md
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
 	 * @param array<array-key, mixed> $payload
 	 */
 	public static function fromArray(array $payload): self {
@@ -117,7 +140,8 @@ final class Policy {
 			throw new InvalidArgumentException('Policy payload missing required string fields');
 		}
 
-		return new self($level, $setBy, $setAt, self::minAgeDaysFrom($payload));
+		// A policy stored before pinning-ranges-and-skips has no holdManual: off.
+		return new self($level, $setBy, $setAt, ($payload['requireApproval'] ?? false) === true, ($payload['holdManual'] ?? false) === true, self::minAgeDaysFrom($payload));
 	}
 
 	/**

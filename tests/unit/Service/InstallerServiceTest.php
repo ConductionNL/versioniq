@@ -16,15 +16,26 @@ require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 use Exception;
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
+use OCA\Versioniq\Service\Checks\CheckRunner;
 use OCA\Versioniq\Service\ExternalReleaseInstallerService;
 use OCA\Versioniq\Service\Installer\EnvironmentCheck;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFailure;
+use OCA\Versioniq\Service\Installer\InstallOptions;
+use OCA\Versioniq\Service\Installer\InstallRequest;
+use OCA\Versioniq\Service\Installer\InstallTarget;
+use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Lkg\LkgStore;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Audit\AuditLogger;
+use OCA\Versioniq\Service\AutoUpdate\CandidateSelector;
+use OCA\Versioniq\Service\Policy\Policy;
+use OCA\Versioniq\Service\Policy\PolicyStore;
+use OCA\Versioniq\Service\Policy\RangeGuard;
 use OCA\Versioniq\Service\SelectedReleaseInstallerService;
+use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
 use OCA\Versioniq\Service\Source\SourceRegistry;
@@ -189,6 +200,27 @@ final class InstallerServiceTest extends TestCase {
 		self::assertSame($space, $result['payload']['space']);
 	}
 
+	/**
+	 * safety-rollback-backup-and-preflight 3.2: the backup the installer kept
+	 * before replacing the folder is passed on to the result.
+	 *
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 */
+	public function testTheOutcomeCarriesTheBackupTheInstallerMade(): void {
+		$backup = ['made' => true, 'sizeBytes' => 190840832, 'keptUntil' => '2026-10-15'];
+		$this->environmentCheck->method('hasSpaceFor')->willReturn([]);
+		$this->appManager->method('getAppPath')->willReturn('/writable/app');
+		$this->environmentCheck->method('isDestinationWritable')->willReturn(true);
+		$this->stubSignedSourceReturning();
+		$this->signedInstaller->method('installFromSelectedRelease')->willReturn(['status' => 'installed', 'backup' => $backup]);
+		$this->appManager->method('getAppInfoByPath')->willReturn(['version' => '2.0.0']);
+
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false);
+
+		self::assertSame(Http::STATUS_OK, $result['statusCode']);
+		self::assertSame($backup, $result['payload']['backup']);
+	}
+
 	public function testAnOutcomeWithoutAMeasurementCarriesNoSpace(): void {
 		$this->environmentCheck->method('hasSpaceFor')->willReturn([]);
 		$this->stubSuccessfulSignedInstall('2.0.0');
@@ -197,6 +229,7 @@ final class InstallerServiceTest extends TestCase {
 
 		self::assertSame(Http::STATUS_OK, $result['statusCode']);
 		self::assertArrayNotHasKey('space', $result['payload']);
+		self::assertArrayNotHasKey('backup', $result['payload']);
 	}
 
 	/**
@@ -542,6 +575,65 @@ final class InstallerServiceTest extends TestCase {
 		self::assertStringContainsString('cannot be managed', $result['error']);
 	}
 
+	/**
+	 * With channels wired, an app with its own channel and an app on the
+	 * default are both stamped, unfiltered, and the envelope names the channel.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-an-admin-sets-a-release-channel-for-the-instance-and-per-app
+	 */
+	public function testGetAppVersionsStampsEachAppsEffectiveChannel(): void {
+		$source = $this->createMock(SourceInterface::class);
+		$source->method('listVersions')->willReturn(['versions' => [
+			['version' => '2.6.0-beta.1', 'changelog' => null],
+			['version' => '2.5.2', 'changelog' => null],
+		], 'error' => null]);
+		$this->sourceRegistry->method('get')->willReturn($source);
+
+		$store = $this->createMock(\OCA\Versioniq\Service\Channel\ChannelStore::class);
+		$store->method('effectiveChannel')->willReturnMap([['hermiq', 'beta'], ['openregister', 'server']]);
+		$store->method('ltsLines')->willReturn([]);
+		$server = $this->createMock(\OCA\Versioniq\Service\Advisory\ServerVersionProvider::class);
+		$server->method('channel')->willReturn('stable');
+		$channels = new \OCA\Versioniq\Service\Channel\VersionChannels($store, $server);
+
+		$service = $this->buildByName(InstallerService::class, [
+			'appManager' => $this->appManager,
+			'config' => $this->config,
+			'appConfig' => $this->appConfig,
+			'sourceRegistry' => $this->sourceRegistry,
+			'bindingStore' => $this->bindingStore,
+			'trustedSources' => $this->trustedSources,
+			'pinStore' => $this->pinStore,
+			'userSession' => $this->userSession,
+			'timeFactory' => $this->timeFactory,
+			'lkgStore' => $this->lkgStore,
+			'artifactCache' => $this->artifactCache,
+			'channels' => $channels,
+		]);
+
+		$beta = $service->getAppVersions('hermiq');
+		$default = $service->getAppVersions('openregister');
+
+		self::assertSame('beta', $beta['channel']);
+		self::assertSame([true, true], array_column($beta['availableVersions'], 'onChannel'));
+		self::assertSame('server', $default['channel']);
+		self::assertSame(['2.6.0-beta.1', '2.5.2'], array_column($default['availableVersions'], 'version'));
+		self::assertSame([true, false], array_column($default['availableVersions'], 'preRelease'));
+		self::assertSame([false, true], array_column($default['availableVersions'], 'onChannel'));
+		self::assertSame($default['availableVersions'], $default['versions']);
+	}
+
+	public function testGetAppVersionsWithoutChannelsCarriesNoChannel(): void {
+		$source = $this->createMock(SourceInterface::class);
+		$source->method('listVersions')->willReturn(['versions' => [['version' => '2.5.2', 'changelog' => null]], 'error' => null]);
+		$this->sourceRegistry->method('get')->willReturn($source);
+
+		$result = $this->service()->getAppVersions('openregister');
+
+		self::assertArrayNotHasKey('channel', $result);
+		self::assertArrayNotHasKey('onChannel', $result['availableVersions'][0]);
+	}
+
 	public function testGetAppVersionsRefusesACoreProtectedAppWithADistinctMessage(): void {
 		$this->appManager = $this->createMock(IAppManager::class);
 		$this->appManager->method('getAlwaysEnabledApps')->willReturn(['dav']);
@@ -620,5 +712,167 @@ final class InstallerServiceTest extends TestCase {
 
 		self::assertSame(Http::STATUS_CONFLICT, $result['statusCode']);
 		self::assertSame(FailureClassifier::CATEGORY_DOWNGRADE_GUARD, $result['payload']['category']);
+	}
+
+	// --- Range guard (pinning-ranges-and-skips: a policy can hold manual installs to its level) ---
+
+	/**
+	 * The service with a policy for `someapp` (installed 1.0.0) and an audit logger to watch.
+	 */
+	private function serviceHolding(?Policy $policy, AuditLogger&MockObject $audit): InstallerService {
+		$policies = $this->createMock(PolicyStore::class);
+		$policies->method('get')->willReturn($policy);
+
+		return $this->buildByName(InstallerService::class, [
+			'appManager' => $this->appManager,
+			'config' => $this->config,
+			'appConfig' => $this->appConfig,
+			'sourceRegistry' => $this->sourceRegistry,
+			'bindingStore' => $this->bindingStore,
+			'trustedSources' => $this->trustedSources,
+			'signedInstaller' => $this->signedInstaller,
+			'externalInstaller' => $this->externalInstaller,
+			'failureClassifier' => $this->failureClassifier,
+			'environmentCheck' => $this->environmentCheck,
+			'pinStore' => $this->pinStore,
+			'userSession' => $this->userSession,
+			'timeFactory' => $this->timeFactory,
+			'lkgStore' => $this->lkgStore,
+			'artifactCache' => $this->artifactCache,
+			'eventDispatcher' => $this->createMock(\OCP\EventDispatcher\IEventDispatcher::class),
+			'rangeGuard' => new RangeGuard($policies, new CandidateSelector(), $audit),
+		]);
+	}
+
+	/**
+	 * @return array<string, mixed>
+	 */
+	private static function install(InstallerService $service, string $version, bool $overrideRange): array {
+		return $service->installAppVersion(new InstallRequest(
+			new InstallTarget('someapp', $version, null),
+			new InstallOptions(false, false, false, false),
+			new PinChoice(null, false, $overrideRange),
+		));
+	}
+
+	public function testAnInstallWithinTheHeldLevelGoesAhead(): void {
+		$this->stubSuccessfulSignedInstall('1.0.5');
+		$audit = $this->createMock(AuditLogger::class);
+		$audit->expects(self::never())->method('record');
+
+		$result = self::install($this->serviceHolding(new Policy('patch', 'admin', '2026-01-01T00:00:00+00:00', holdManual: true), $audit), '1.0.5', false);
+
+		self::assertNotSame('outOfRange', $result['payload']['category'] ?? null);
+		self::assertNotSame(Http::STATUS_CONFLICT, $result['statusCode']);
+	}
+
+	public function testAnInstallOutsideTheHeldLevelIsRefusedNamingTheLevel(): void {
+		$this->sourceRegistry->expects(self::never())->method('get');
+		$audit = $this->createMock(AuditLogger::class);
+		$audit->expects(self::never())->method('record');
+
+		$result = self::install($this->serviceHolding(new Policy('patch', 'admin', '2026-01-01T00:00:00+00:00', holdManual: true), $audit), '2.0.0', false);
+
+		self::assertSame(Http::STATUS_CONFLICT, $result['statusCode']);
+		self::assertSame('outOfRange', $result['payload']['category']);
+		self::assertSame('patch', $result['payload']['level']);
+		self::assertStringContainsString('patch', $result['payload']['message']);
+	}
+
+	public function testAPolicyThatDoesNotHoldManualInstallsLetsThemThrough(): void {
+		$this->stubSuccessfulSignedInstall('2.0.0');
+		$audit = $this->createMock(AuditLogger::class);
+		$audit->expects(self::never())->method('record');
+
+		$result = self::install($this->serviceHolding(new Policy('patch', 'admin', '2026-01-01T00:00:00+00:00'), $audit), '2.0.0', false);
+
+		self::assertNotSame('outOfRange', $result['payload']['category'] ?? null);
+	}
+
+	public function testTheOverrideInstallsAndWritesARangeOverrideAuditRow(): void {
+		$this->stubSuccessfulSignedInstall('2.0.0');
+		$audit = $this->createMock(AuditLogger::class);
+		$audit->expects(self::once())->method('record')->with(
+			self::callback(static fn ($subject): bool => $subject->operation === AuditLogger::OPERATION_RANGE_OVERRIDE && $subject->appId === 'someapp' && $subject->actorUid === 'admin'),
+			self::callback(static fn ($versions): bool => $versions->fromVersion === '1.0.0' && $versions->toVersion === '2.0.0'),
+			AuditLogger::STATUS_SUCCESS,
+			self::stringContains('patch'),
+		);
+
+		$result = self::install($this->serviceHolding(new Policy('patch', 'admin', '2026-01-01T00:00:00+00:00', holdManual: true), $audit), '2.0.0', true);
+
+		self::assertNotSame('outOfRange', $result['payload']['category'] ?? null);
+		self::assertNotSame(Http::STATUS_CONFLICT, $result['statusCode']);
+	}
+
+	public function testAPinnedAppHitsThePinGuardFirst(): void {
+		$this->pinStore->method('get')->willReturn(new Pin('1.0.0', 'alice', '2026-01-01T00:00:00+00:00'));
+		$audit = $this->createMock(AuditLogger::class);
+		$audit->expects(self::never())->method('record');
+
+		$result = self::install($this->serviceHolding(new Policy('patch', 'admin', '2026-01-01T00:00:00+00:00', holdManual: true), $audit), '2.0.0', false);
+
+		self::assertSame(Http::STATUS_CONFLICT, $result['statusCode']);
+		self::assertSame('pinned', $result['payload']['category']);
+	}
+
+	// --- update checks in a dry run (safety-update-checks 2.3) ---
+
+	private const CHECKS = [
+		['name' => 'Staging tests', 'kind' => 'verdict', 'outcome' => 'failed', 'passed' => false, 'detail' => 'HTTP 404'],
+		['name' => 'Lint', 'kind' => 'command', 'outcome' => 'skipped', 'passed' => false, 'detail' => 'Runs from the command line and the nightly job only.'],
+	];
+
+	/**
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
+	 */
+	public function testASignedDryRunPayloadCarriesTheChecks(): void {
+		$this->appManager->method('getAppPath')->willReturn('/writable/app');
+		$this->environmentCheck->method('isDestinationWritable')->willReturn(true);
+		$this->stubSignedSourceReturning();
+		$this->signedInstaller->expects(self::once())
+			->method('installFromSelectedRelease')
+			->with('someapp', self::anything(), true, CheckRunner::CONTEXT_WEB)
+			->willReturn(['status' => 'dry-run', 'dryRun' => true, 'checks' => self::CHECKS]);
+
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false, dryRun: true);
+
+		self::assertSame(Http::STATUS_OK, $result['statusCode']);
+		self::assertTrue($result['payload']['dryRun']);
+		self::assertSame(self::CHECKS, $result['payload']['checks']);
+	}
+
+	/**
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
+	 */
+	public function testAnExternalDryRunPayloadCarriesTheChecksAndTheCommandLineContext(): void {
+		$this->appManager->method('getAppPath')->willReturn('/writable/app');
+		$this->environmentCheck->method('isDestinationWritable')->willReturn(true);
+		$source = $this->createMock(SourceInterface::class);
+		$source->method('getInstallerKind')->willReturn(SourceInterface::INSTALLER_EXTERNAL);
+		$source->method('resolveRelease')->willReturn(['tag_name' => 'v2.0.0', 'assets' => []]);
+		$this->sourceRegistry->method('get')->willReturn($source);
+		$this->externalInstaller->expects(self::once())
+			->method('installFromExternalRelease')
+			->with('someapp', '2.0.0', self::anything(), self::isInstanceOf(SourceBinding::class), true, false, CheckRunner::CONTEXT_CLI)
+			->willReturn(['status' => 'dry-run', 'dryRun' => true, 'binding' => SourceBinding::appStore(), 'integrityWarning' => null, 'recordedShaMatched' => false, 'servedFromCache' => false, 'debug' => [], 'installedVersionBefore' => '1.0.0', 'checks' => [self::CHECKS[0]]]);
+
+		$result = $this->service()->installAppVersion(new InstallRequest(
+			new InstallTarget('someapp', '2.0.0', 'github:acme/someapp'),
+			new InstallOptions(false, true, false, false, checkContext: CheckRunner::CONTEXT_CLI),
+			new PinChoice(null, false),
+		));
+
+		self::assertSame(Http::STATUS_OK, $result['statusCode']);
+		self::assertSame([self::CHECKS[0]], $result['payload']['checks']);
+	}
+
+	public function testARealInstallPayloadHasNoChecks(): void {
+		$this->stubSuccessfulSignedInstall('2.0.0');
+
+		$result = InstallArgs::call($this->service(), 'someapp', '2.0.0', false, dryRun: false);
+
+		self::assertSame(Http::STATUS_OK, $result['statusCode']);
+		self::assertArrayNotHasKey('checks', $result['payload']);
 	}
 }

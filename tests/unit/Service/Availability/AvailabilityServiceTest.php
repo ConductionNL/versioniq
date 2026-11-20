@@ -13,6 +13,7 @@ use OCA\Versioniq\Service\Availability\AvailabilityService;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Pin\SkipList;
 use OCP\AppFramework\Http;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -28,7 +29,7 @@ final class AvailabilityServiceTest extends TestCase {
 	 * @param array<string, array<string, mixed>|\Throwable> $versionsByApp
 	 * @param array<string, Pin> $pins
 	 */
-	private function service(array $apps, array $versionsByApp, array $pins = [], array $unmanageable = []): AvailabilityService {
+	private function service(array $apps, array $versionsByApp, array $pins = [], array $unmanageable = [], array $skipped = []): AvailabilityService {
 		$installer = $this->createMock(InstallerService::class);
 		$installer->method('getInstalledApps')->willReturn($apps);
 		$installer->method('isManageableApp')->willReturnCallback(static fn (string $id): bool => !in_array($id, $unmanageable, true));
@@ -44,7 +45,10 @@ final class AvailabilityServiceTest extends TestCase {
 		$pinStore = $this->createMock(PinStore::class);
 		$pinStore->method('get')->willReturnCallback(static fn (string $id): ?Pin => $pins[$id] ?? null);
 
-		return new AvailabilityService($installer, $pinStore, new NullLogger());
+		$skipList = $this->createMock(SkipList::class);
+		$skipList->method('versions')->willReturnCallback(static fn (string $id): array => $skipped[$id] ?? []);
+
+		return new AvailabilityService($installer, $pinStore, new NullLogger(), $skipList);
 	}
 
 	private static function app(string $id, ?string $installed, string $state = 'enabled', ?string $boundSourceId = null): array {
@@ -117,6 +121,47 @@ final class AvailabilityServiceTest extends TestCase {
 		self::assertFalse($entry['updateAvailable']);
 	}
 
+	/**
+	 * releases-channel-and-prereleases task 4.2: the sweep counts the versions on the app's channel.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-the-nightly-job-takes-only-versions-on-the-apps-channel
+	 */
+	public function testABetaChannelAppCountsItsNewestPreRelease(): void {
+		$listing = self::envelope([['3.0.0-beta.2', true], ['2.4.0', true], ['2.3.0', true]]);
+		foreach ($listing['availableVersions'] as $i => $version) {
+			$listing['availableVersions'][$i]['onChannel'] = true;
+		}
+		$service = $this->service([self::app('hermiq', '2.3.0')], ['hermiq' => $listing]);
+
+		$entry = $service->sweep(60.0)['hermiq'];
+
+		self::assertSame('3.0.0-beta.2', $entry['newestVersion']);
+		self::assertSame('3.0.0-beta.2', $entry['newestCompatibleVersion']);
+		self::assertSame(2, $entry['linesBehind']);
+		self::assertTrue($entry['updateAvailable']);
+	}
+
+	/**
+	 * A version the listing marks off the app's channel is not counted, though it looks like a plain release.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-the-nightly-job-takes-only-versions-on-the-apps-channel
+	 */
+	public function testAVersionOffTheChannelIsNotCounted(): void {
+		$listing = self::envelope([['3.0.0', true], ['2.3.5', true], ['2.3.0', true], ['2.4.0-rc1', true]]);
+		$onChannel = [false, true, true, false];
+		foreach ($onChannel as $i => $on) {
+			$listing['availableVersions'][$i]['onChannel'] = $on;
+		}
+		$service = $this->service([self::app('deck', '2.3.0')], ['deck' => $listing]);
+
+		$entry = $service->sweep(60.0)['deck'];
+
+		self::assertSame('2.3.5', $entry['newestVersion']);
+		self::assertSame('2.3.5', $entry['newestCompatibleVersion']);
+		self::assertSame(0, $entry['linesBehind']);
+		self::assertTrue($entry['updateAvailable']);
+	}
+
 	public function testAPinnedAppIsSweptAndMarkedPinned(): void {
 		$service = $this->service(
 			[self::app('openregister', '2.3.0')],
@@ -184,6 +229,46 @@ final class AvailabilityServiceTest extends TestCase {
 
 		self::assertNotNull($entry['error']);
 		self::assertNull($entry['newestVersion']);
+	}
+
+	public function testTheSweepKeepsWhatItListedForTheProposalStep(): void {
+		$service = $this->service(
+			[self::app('openregister', '2.3.0'), self::app('hermiq', '1.0.0'), self::app('deck', '1.0.0')],
+			[
+				'openregister' => self::envelope([['2.3.4', true], ['2.4.0', false]]),
+				'hermiq' => self::envelope([], 'GitHub refused the request (HTTP 403).'),
+				'deck' => new \RuntimeException('connection reset'),
+			],
+		);
+
+		$service->sweep(60.0);
+		$listings = $service->lastListings();
+
+		self::assertSame('2.3.0', $listings['openregister']['installedVersion']);
+		self::assertSame(['2.3.4', '2.4.0'], array_column($listings['openregister']['versions'] ?? [], 'version'));
+		self::assertSame(['installedVersion' => '1.0.0', 'versions' => null], $listings['hermiq']);
+		self::assertSame(['installedVersion' => '1.0.0', 'versions' => null], $listings['deck']);
+	}
+
+	/**
+	 * pinning-ranges-and-skips: a skipped version is never the pending update; a later one still is.
+	 */
+	public function testASkippedVersionIsNotThePendingUpdate(): void {
+		$service = $this->service(
+			[self::app('openregister', '2.3.3'), self::app('notes', '1.0.0')],
+			[
+				'openregister' => self::envelope([['2.3.5', true], ['2.3.4', true], ['2.3.3', true]]),
+				'notes' => self::envelope([['1.0.1', true], ['1.0.0', true]]),
+			],
+			skipped: ['openregister' => ['2.3.4'], 'notes' => ['1.0.1']],
+		);
+
+		$result = $service->sweep(30.0);
+
+		$this->assertSame('2.3.5', $result['openregister']['newestCompatibleVersion']);
+		$this->assertTrue($result['openregister']['updateAvailable']);
+		$this->assertSame('1.0.0', $result['notes']['newestCompatibleVersion']);
+		$this->assertFalse($result['notes']['updateAvailable']);
 	}
 
 	/**

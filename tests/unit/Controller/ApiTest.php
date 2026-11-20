@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Controller;
 
+require_once __DIR__ . '/../Support/AuditRows.php';
+
 require_once __DIR__ . '/../Support/InstallArgs.php';
 
 require_once __DIR__ . '/../Support/BuildsByParameterName.php';
@@ -17,29 +19,39 @@ require_once __DIR__ . '/../Support/DispatchesLikeNextcloud.php';
 use OCA\Versioniq\Controller\ApiController;
 use OCA\Versioniq\Db\AuditEntry;
 use OCA\Versioniq\Db\AuditEntryMapper;
-use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Db\PatMapper;
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisorySettingsStore;
 use OCA\Versioniq\Service\Advisory\AdvisoryTriageStore;
 use OCA\Versioniq\Service\AutoUpdate\AttemptLedger;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
+use OCA\Versioniq\Service\AutoUpdate\UpdateGroup;
+use OCA\Versioniq\Service\AutoUpdate\UpdateGroupStore;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\Discovery\DiscoveryAggregator;
+use OCA\Versioniq\Service\Installer\AppRestorer;
+use OCA\Versioniq\Service\Installer\NoBackupException;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Pat\PatDeeplinkBuilder;
 use OCA\Versioniq\Service\Pat\PatExpiryEvaluator;
 use OCA\Versioniq\Service\Pat\PatManager;
 use OCA\Versioniq\Service\Pat\PatValidator;
 use OCA\Versioniq\Service\Pin\PinStore;
+use OCA\Versioniq\Service\Policy\PolicySource;
+use OCA\Versioniq\Service\Pin\SkipList;
+use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyStore;
+use OCA\Versioniq\Service\Release\KnownIssueStore;
 use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCA\Versioniq\Tests\Unit\Support\DispatchesLikeNextcloud;
+use OCA\Versioniq\Tests\Unit\Support\AuditRows;
 use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\IConfig;
 use OCP\IGroupManager;
 use OCP\IRequest;
 use OCP\IUser;
@@ -96,8 +108,8 @@ final class ApiTest extends TestCase {
 			'appManager' => $appManager ?? $this->createMock(IAppManager::class),
 			'timeFactory' => $this->fakeTimeFactory(),
 			'policyStore' => $policyStore ?? $this->createMock(PolicyStore::class),
-			'autoUpdateSettingsStore' => $autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
-			'settingsStore' => $autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
+			'autoUpdateSettingsStore' => $autoUpdateSettingsStore ?? $this->settingsStoreMock(),
+			'settingsStore' => $autoUpdateSettingsStore ?? $this->settingsStoreMock(),
 			'artifactCache' => $artifactCache ?? $this->createMock(ArtifactCache::class),
 			'connectionReports' => null,
 			'attemptLedger' => $attemptLedger ?? $this->createMock(AttemptLedger::class),
@@ -119,7 +131,10 @@ final class ApiTest extends TestCase {
 		?AutoUpdateSettingsStore $autoUpdateSettingsStore = null,
 		?ArtifactCache $artifactCache = null,
 		?AttemptLedger $attemptLedger = null,
+		?PolicySource $policySource = null,
+		?SkipList $skipList = null,
 		?KnownIssueStore $knownIssues = null,
+		?UpdateGroupStore $groupStore = null,
 	): ApiController {
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn($uid);
@@ -148,12 +163,15 @@ final class ApiTest extends TestCase {
 			'appManager' => $appManager ?? $this->createMock(IAppManager::class),
 			'timeFactory' => $this->fakeTimeFactory(),
 			'policyStore' => $policyStore ?? $this->createMock(PolicyStore::class),
-			'autoUpdateSettingsStore' => $autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
-			'settingsStore' => $autoUpdateSettingsStore ?? $this->createMock(AutoUpdateSettingsStore::class),
+			'autoUpdateSettingsStore' => $autoUpdateSettingsStore ?? $this->settingsStoreMock(),
+			'settingsStore' => $autoUpdateSettingsStore ?? $this->settingsStoreMock(),
 			'artifactCache' => $artifactCache ?? $this->createMock(ArtifactCache::class),
 			'connectionReports' => null,
 			'attemptLedger' => $attemptLedger ?? $this->createMock(AttemptLedger::class),
+			'policySource' => $policySource,
+			'skipList' => $skipList,
 			'knownIssues' => $knownIssues,
+			'groupStore' => $groupStore ?? $this->createMock(UpdateGroupStore::class),
 		]);
 	}
 
@@ -422,6 +440,8 @@ final class ApiTest extends TestCase {
 			'createdAt' => '2026-07-23 12:00:00',
 			// A row from before origins were recorded: unknown.
 			'origin' => null,
+			// audit-security-reports D2: null for an entry about no advisory.
+			'advisories' => null,
 		], $entry->jsonSerialize());
 	}
 
@@ -582,7 +602,7 @@ final class ApiTest extends TestCase {
 			'openregister' => new \OCA\Versioniq\Service\Policy\Policy('patch', 'alice', '2026-07-23T00:00:00+00:00'),
 		]);
 
-		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore = $this->settingsStoreMock();
 		$settingsStore->method('isEnabled')->willReturn(true);
 		$settingsStore->method('getWindow')->willReturn('01:00-05:00');
 
@@ -643,47 +663,6 @@ final class ApiTest extends TestCase {
 		$this->assertSame('alice', $response->getData()['policy']['setBy']);
 	}
 
-	public function testSetPolicyRejectsAnOutOfRangeMinimumAge(): void {
-		$request = $this->createMock(IRequest::class);
-		$request->method('getParam')->willReturnCallback(
-			static fn (string $name, mixed $default = null): mixed => match ($name) {
-				'level' => 'patch',
-				'minAgeDays' => '91',
-				default => $default,
-			}
-		);
-
-		$policyStore = $this->createMock(PolicyStore::class);
-		$policyStore->expects($this->never())->method('set');
-
-		$installer = $this->createMock(InstallerService::class);
-		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', $policyStore)->setPolicy('openregister');
-
-		$this->assertSame(400, $response->getStatus());
-		$this->assertStringContainsString('minAgeDays', $response->getData()['message']);
-	}
-
-	public function testSetPolicyStoresTheMinimumAge(): void {
-		$request = $this->createMock(IRequest::class);
-		$request->method('getParam')->willReturnCallback(
-			static fn (string $name, mixed $default = null): mixed => match ($name) {
-				'level' => 'minor',
-				'minAgeDays' => '14',
-				default => $default,
-			}
-		);
-
-		$policyStore = $this->createMock(PolicyStore::class);
-		$policyStore->expects($this->once())->method('set')
-			->with('openregister', $this->callback(static fn ($policy): bool => $policy->minAgeDays === 14));
-
-		$installer = $this->createMock(InstallerService::class);
-		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', $policyStore)->setPolicy('openregister');
-
-		$this->assertSame(200, $response->getStatus());
-		$this->assertSame(14, $response->getData()['policy']['minAgeDays']);
-	}
-
 	/**
 	 * @spec openspec/changes/autoupdate-security-first/tasks.md#task-1.1
 	 */
@@ -730,7 +709,7 @@ final class ApiTest extends TestCase {
 			}
 		);
 
-		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore = $this->settingsStoreMock();
 		$settingsStore->expects($this->never())->method('setWindow');
 
 		$installer = $this->createMock(InstallerService::class);
@@ -752,7 +731,7 @@ final class ApiTest extends TestCase {
 			}
 		);
 
-		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore = $this->settingsStoreMock();
 		$settingsStore->expects($this->once())->method('setEnabled')->with(true);
 		$settingsStore->expects($this->once())->method('setWindow')->with('22:00-04:00');
 		$settingsStore->method('isEnabled')->willReturn(true);
@@ -767,43 +746,384 @@ final class ApiTest extends TestCase {
 		$this->assertSame('22:00-04:00', $response->getData()['autoUpdateWindow']);
 	}
 
-	public function testUpdateAutoUpdateSettingsRejectsAnOutOfRangeMinimumAge(): void {
+	/**
+	 * A request whose getParam answers these values and the default for anything else.
+	 *
+	 * @param array<string, mixed> $params
+	 */
+	private function paramsRequest(array $params): IRequest {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => array_key_exists($name, $params) ? $params[$name] : $default
+		);
+
+		return $request;
+	}
+
+	/**
+	 * autoupdate-run-batching D4: a cap outside 1 to 50 (per run) or 1 to 200
+	 * (per week) is refused with 400 and nothing is stored.
+	 *
+	 * @dataProvider badCapProvider
+	 */
+	public function testUpdateAutoUpdateSettingsRefusesACapOutOfRange(string $name, mixed $value): void {
+		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore->expects($this->never())->method('setMaxPerRun');
+		$settingsStore->expects($this->never())->method('setMaxPerWeek');
+		$settingsStore->expects($this->never())->method('setWindow');
+
+		$request = $this->paramsRequest([$name => $value, 'window' => '22:00-04:00']);
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $request, null, null, null, 'admin', null, $settingsStore)
+			->updateAutoUpdateSettings();
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertStringContainsString($name, $response->getData()['message']);
+	}
+
+	/**
+	 * @return array<string, array{0: string, 1: mixed}>
+	 */
+	public static function badCapProvider(): array {
+		return [
+			'per run zero' => ['maxPerRun', '0'],
+			'per run 51' => ['maxPerRun', '51'],
+			'per week 201' => ['maxPerWeek', 201],
+			'per run text' => ['maxPerRun', 'five'],
+			'per week fraction' => ['maxPerWeek', '2.5'],
+		];
+	}
+
+	public function testUpdateAutoUpdateSettingsStoresACapAndClearsAnEmptyOne(): void {
+		$settingsStore = $this->settingsStoreMock();
+		$settingsStore->expects($this->once())->method('setMaxPerRun')->with(5);
+		$settingsStore->expects($this->once())->method('setMaxPerWeek')->with(null);
+		$settingsStore->method('getMaxPerRun')->willReturn(5);
+		$settingsStore->method('getMaxPerWeek')->willReturn(null);
+		$settingsStore->expects($this->never())->method('setEnabled');
+
+		$request = $this->paramsRequest(['maxPerRun' => '5', 'maxPerWeek' => '']);
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $request, null, null, null, 'admin', null, $settingsStore)
+			->updateAutoUpdateSettings();
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame(5, $response->getData()['maxPerRun']);
+		$this->assertNull($response->getData()['maxPerWeek']);
+	}
+
+	public function testUpdateAutoUpdateSettingsLeavesTheCapsAloneWhenNotSent(): void {
+		$settingsStore = $this->settingsStoreMock();
+		$settingsStore->expects($this->never())->method('setMaxPerRun');
+		$settingsStore->expects($this->never())->method('setMaxPerWeek');
+		$settingsStore->method('getMaxPerWeek')->willReturn(40);
+
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->paramsRequest([]), null, null, null, 'admin', null, $settingsStore)
+			->updateAutoUpdateSettings();
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame(40, $response->getData()['maxPerWeek']);
+	}
+
+	/**
+	 * An admin controller for the groups endpoint, with every app manageable
+	 * except `notmanaged`.
+	 */
+	private function groupsController(IRequest $request, UpdateGroupStore $groupStore): ApiController {
+		$installer = $this->createMock(InstallerService::class);
+		$installer->method('isManageableApp')->willReturnCallback(static fn (string $appId): bool => $appId !== 'notmanaged');
+
+		return $this->buildAdminController($installer, $request, groupStore: $groupStore);
+	}
+
+	public function testUpdateAutoUpdateGroupsIsForbiddenForANonAdmin(): void {
+		$groupStore = $this->createMock(UpdateGroupStore::class);
+		$groupStore->expects($this->never())->method('replaceAll');
+		$controller = $this->buildByName(ApiController::class, [
+			'appName' => 'versioniq',
+			'request' => $this->paramsRequest(['groups' => [['name' => 'Registers', 'apps' => ['openregister', 'opencatalogi']]]]),
+			'serverVersion' => $this->fakeServerVersion(),
+			'connectionReports' => null,
+			'knownIssues' => null,
+			'groupStore' => $groupStore,
+		]);
+
+		$this->assertSame(403, $controller->updateAutoUpdateGroups()->getStatus());
+	}
+
+	/**
+	 * autoupdate-run-batching D2: the whole list is refused with 400 and
+	 * nothing is stored.
+	 *
+	 * @dataProvider badGroupsProvider
+	 */
+	public function testUpdateAutoUpdateGroupsRefusesABadList(mixed $groups, string $message): void {
+		$groupStore = $this->createMock(UpdateGroupStore::class);
+		$groupStore->expects($this->never())->method('replaceAll');
+
+		$response = $this->groupsController($this->paramsRequest(['groups' => $groups]), $groupStore)->updateAutoUpdateGroups();
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertSame($message, $response->getData()['message']);
+	}
+
+	/**
+	 * @return array<string, array{0: mixed, 1: string}>
+	 */
+	public static function badGroupsProvider(): array {
+		return [
+			'a duplicate name' => [
+				[['name' => 'Registers', 'apps' => ['a', 'b']], ['name' => 'registers', 'apps' => ['c', 'd']]],
+				'The group name "registers" is used twice.',
+			],
+			'an app in two groups' => [
+				[['name' => 'One', 'apps' => ['a', 'b']], ['name' => 'Two', 'apps' => ['b', 'c']]],
+				'b is in two groups: "One" and "Two".',
+			],
+			'a group of one' => [
+				[['name' => 'Solo', 'apps' => ['a']]],
+				'Group "Solo" must hold 2 to 20 different apps.',
+			],
+			'an app this instance cannot manage' => [
+				[['name' => 'One', 'apps' => ['a', 'notmanaged']]],
+				'notmanaged cannot be updated automatically on this instance.',
+			],
+			'no name' => [[['apps' => ['a', 'b']]], 'Every group needs a name.'],
+			'not a list' => ['Registers', 'groups must be a list.'],
+		];
+	}
+
+	public function testUpdateAutoUpdateGroupsStoresTheListInOrder(): void {
+		$groupStore = $this->createMock(UpdateGroupStore::class);
+		$stored = null;
+		$groupStore->expects($this->once())->method('replaceAll')->willReturnCallback(static function (array $groups) use (&$stored): void {
+			$stored = $groups;
+		});
+		$request = $this->paramsRequest(['groups' => [
+			['id' => 'g1', 'name' => 'Registers', 'apps' => ['openregister', 'opencatalogi']],
+			['name' => 'Docs', 'apps' => ['docudesk', 'pipelinq']],
+		]]);
+
+		$response = $this->groupsController($request, $groupStore)->updateAutoUpdateGroups();
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertIsArray($stored);
+		$this->assertSame(['g1', 'Registers', ['openregister', 'opencatalogi'], 'admin', '2026-07-24T00:00:00+00:00'], [$stored[0]->id, $stored[0]->name, $stored[0]->apps, $stored[0]->setBy, $stored[0]->setAt]);
+		$this->assertSame(['docudesk', 'pipelinq'], $stored[1]->apps);
+		$this->assertNotSame('', $stored[1]->id);
+		$this->assertSame(['Registers', 'Docs'], array_column($response->getData()['groups'], 'name'));
+	}
+
+	public function testPoliciesReturnsTheGroupsAndTheWaitingList(): void {
+		$settingsStore = $this->settingsStoreMock();
+		$settingsStore->method('getDeferred')->willReturn(['group:Registers' => '2026-07-20T02:00:00+00:00']);
+		$groupStore = $this->createMock(UpdateGroupStore::class);
+		$groupStore->method('all')->willReturn([
+			new UpdateGroup('g1', 'Registers', ['openregister', 'opencatalogi'], ['by' => 'admin', 'at' => '2026-07-01T00:00:00+00:00']),
+		]);
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $this->paramsRequest([]), autoUpdateSettingsStore: $settingsStore, groupStore: $groupStore)->policies();
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame([[
+			'id' => 'g1',
+			'name' => 'Registers',
+			'apps' => ['openregister', 'opencatalogi'],
+			'setBy' => 'admin',
+			'setAt' => '2026-07-01T00:00:00+00:00',
+		]], $response->getData()['groups']);
+		$this->assertEquals((object)['group:Registers' => '2026-07-20T02:00:00+00:00'], $response->getData()['waiting']);
+	}
+
+	/**
+	 * @return array<string, array{0: mixed}>
+	 */
+	public static function invalidSchedules(): array {
+		return [
+			'weekday 8' => [['major' => ['days' => [8]]]],
+			'unknown kind' => [['weekly' => ['days' => [1]]]],
+			'string monthly' => [['minor' => ['days' => [1], 'monthly' => 'yes']]],
+		];
+	}
+
+	#[\PHPUnit\Framework\Attributes\DataProvider('invalidSchedules')]
+	public function testUpdateAutoUpdateSettingsRejectsAnInvalidScheduleBeforeAnyWrite(mixed $schedule): void {
 		$request = $this->createMock(IRequest::class);
 		$request->method('getParam')->willReturnCallback(
 			static fn (string $name, mixed $default = null): mixed => match ($name) {
-				'minAgeDays' => '-1',
+				'window' => '22:00-04:00',
+				'schedule' => $schedule,
 				default => $default,
 			}
 		);
 
-		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
-		$settingsStore->expects($this->never())->method('setMinAgeDays');
+		$settingsStore = $this->settingsStoreMock();
+		$settingsStore->expects($this->never())->method('setEnabled');
+		$settingsStore->expects($this->never())->method('setWindow');
+		$settingsStore->expects($this->never())->method('setSchedule');
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', null, $settingsStore)
+			->updateAutoUpdateSettings('1');
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertStringStartsWith('schedule', $response->getData()['message']);
+	}
+
+	public function testUpdateAutoUpdateSettingsStoresAValidSchedule(): void {
+		$schedule = ['major' => ['days' => [6], 'monthly' => true]];
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'schedule' => $schedule,
+				default => $default,
+			}
+		);
+
+		$settingsStore = $this->settingsStoreMock();
+		$settingsStore->expects($this->once())->method('setSchedule')->with(
+			$this->callback(static fn (AutoUpdateSchedule $stored): bool => $stored->toArray() === AutoUpdateSchedule::fromArray($schedule)->toArray())
+		);
+		$settingsStore->method('getWindow')->willReturn('01:00-05:00');
+		$settingsStore->method('getTimeZoneName')->willReturn('UTC');
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', null, $settingsStore)
+			->updateAutoUpdateSettings();
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertArrayHasKey('nextRuns', $response->getData());
+		$this->assertArrayHasKey('autoUpdateSchedule', $response->getData());
+	}
+
+	public function testUpdateAutoUpdateSettingsStoresTheDefaultLevel(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'defaultLevel' => 'patch',
+				default => $default,
+			}
+		);
+
+		$settingsStore = $this->settingsStoreMock();
+		$settingsStore->expects($this->once())->method('setDefaultLevel')->with('patch');
+		$settingsStore->expects($this->never())->method('setEnabled');
+		$settingsStore->expects($this->never())->method('setWindow');
+		$settingsStore->method('getDefaultLevel')->willReturn('patch');
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', null, $settingsStore)->updateAutoUpdateSettings();
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame('patch', $response->getData()['autoUpdateDefaultLevel']);
+	}
+
+	public function testUpdateAutoUpdateSettingsRejectsAnUnknownDefaultLevelAndWritesNothing(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'defaultLevel' => 'everything',
+				'window' => '22:00-04:00',
+				default => $default,
+			}
+		);
+
+		$settingsStore = $this->settingsStoreMock();
+		$settingsStore->expects($this->never())->method('setDefaultLevel');
+		$settingsStore->expects($this->never())->method('setWindow');
 		$settingsStore->expects($this->never())->method('setEnabled');
 
 		$installer = $this->createMock(InstallerService::class);
 		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', null, $settingsStore)->updateAutoUpdateSettings('1');
 
 		$this->assertSame(400, $response->getStatus());
+		$this->assertStringContainsString('defaultLevel must be one of', $response->getData()['message']);
 	}
 
-	public function testUpdateAutoUpdateSettingsStoresTheMinimumAge(): void {
-		$request = $this->createMock(IRequest::class);
-		$request->method('getParam')->willReturnCallback(
-			static fn (string $name, mixed $default = null): mixed => match ($name) {
-				'minAgeDays' => 7,
-				default => $default,
-			}
-		);
+	/**
+	 * A PolicySource whose config.php names a temporary file holding $json.
+	 */
+	private function policyFileSource(string $json): PolicySource {
+		$path = (string)tempnam(sys_get_temp_dir(), 'vq-api');
+		file_put_contents($path, $json);
+		register_shutdown_function(static fn () => @unlink($path));
+		$config = $this->createMock(IConfig::class);
+		$config->method('getSystemValueString')->willReturn($path);
 
-		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
-		$settingsStore->expects($this->once())->method('setMinAgeDays')->with(7);
-		$settingsStore->method('getMinAgeDays')->willReturn(7);
+		return new PolicySource($config, $this->createMock(PolicyStore::class), $this->settingsStoreMock());
+	}
+
+	/**
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
+	 */
+	public function testInFileModeThePoliciesComeFromTheFileAndNameIt(): void {
+		$source = $this->policyFileSource('{"schemaVersion":1,"autoUpdate":{"enabled":true,"defaultLevel":"patch"},"policies":{"openregister":"minor"}}');
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->expects($this->never())->method('all');
 
 		$installer = $this->createMock(InstallerService::class);
-		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', null, $settingsStore)->updateAutoUpdateSettings();
+		$data = $this->buildAdminController($installer, $this->createMock(IRequest::class), null, null, null, 'admin', $policyStore, null, null, null, $source)->policies()->getData();
 
-		$this->assertSame(200, $response->getStatus());
-		$this->assertSame(7, $response->getData()['autoUpdateMinAgeDays']);
+		$this->assertSame([['appId' => 'openregister', 'level' => 'minor', 'setBy' => 'file', 'setAt' => '2026-07-24T00:00:00+00:00', 'blockedVersions' => []]], $data['policies']);
+		$this->assertTrue($data['autoUpdateEnabled']);
+		$this->assertSame('01:00-05:00', $data['autoUpdateWindow']);
+		$this->assertSame('patch', $data['autoUpdateDefaultLevel']);
+		$this->assertSame($source->filePath(), $data['managedBy']['file']);
+		$this->assertNull($data['managedBy']['error']);
+	}
+
+	/**
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
+	 */
+	public function testABrokenPolicyFileIsShownWithItsErrorAndNothingOn(): void {
+		$source = $this->policyFileSource('{"schemaVersion":1,"policies":{"openregister":"weekly"}}');
+
+		$installer = $this->createMock(InstallerService::class);
+		$data = $this->buildAdminController($installer, $this->createMock(IRequest::class), null, null, null, 'admin', null, null, null, null, $source)->policies()->getData();
+
+		$this->assertSame([], $data['policies']);
+		$this->assertFalse($data['autoUpdateEnabled']);
+		$this->assertSame('$.policies.openregister: must be one of none, patch, minor, all, security', $data['managedBy']['error']);
+	}
+
+	/**
+	 * @spec openspec/changes/autoupdate-default-and-config-file/specs/auto-update-policies/spec.md#requirement-policies-can-be-kept-in-a-file
+	 */
+	public function testPolicyAndSettingsWritesAnswer409NamingTheFileInFileMode(): void {
+		$source = $this->policyFileSource('{"schemaVersion":1,"policies":{}}');
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => $name === 'level' ? 'patch' : $default
+		);
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->expects($this->never())->method('set');
+		$policyStore->expects($this->never())->method('clear');
+		$settingsStore = $this->settingsStoreMock();
+		$settingsStore->expects($this->never())->method('setEnabled');
+
+		$installer = $this->createMock(InstallerService::class);
+		$controller = $this->buildAdminController($installer, $request, null, null, null, 'admin', $policyStore, $settingsStore, null, null, $source);
+
+		foreach ([$controller->setPolicy('openregister'), $controller->clearPolicy('openregister'), $controller->updateAutoUpdateSettings('1')] as $response) {
+			$this->assertSame(409, $response->getStatus());
+			$this->assertStringContainsString((string)$source->filePath(), $response->getData()['message']);
+		}
+	}
+
+	public function testOutsideFileModeThePoliciesSayNoFileManagesThem(): void {
+		$installer = $this->createMock(InstallerService::class);
+		$data = $this->buildAdminController($installer, $this->createMock(IRequest::class))->policies()->getData();
+
+		$this->assertNull($data['managedBy']);
+	}
+
+	public function testPoliciesCarryTheDefaultLevel(): void {
+		$settingsStore = $this->settingsStoreMock();
+		$settingsStore->method('getDefaultLevel')->willReturn('minor');
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $this->createMock(IRequest::class), null, null, null, 'admin', $this->createMock(PolicyStore::class), $settingsStore)->policies();
+
+		$this->assertSame('minor', $response->getData()['autoUpdateDefaultLevel']);
 	}
 
 	// --- dryRun decoupled from debug (see MODIFIED "Debug Mode") ---
@@ -1063,6 +1383,138 @@ final class ApiTest extends TestCase {
 		$this->assertSame(403, $this->buildController()->clearBinding('openregister')->getStatus());
 	}
 
+	// --- pinning-ranges-and-skips ---
+
+	/**
+	 * @param array<string, mixed> $params
+	 */
+	private function requestWith(array $params): IRequest {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(static fn (string $name, mixed $default = null): mixed => $params[$name] ?? $default);
+
+		return $request;
+	}
+
+	public function testSetPolicyStoresTheHoldManualSwitch(): void {
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->expects($this->once())->method('set')->with('openregister', $this->callback(static fn ($policy): bool => $policy->level === 'patch' && $policy->holdManual === true));
+
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith(['level' => 'patch', 'holdManual' => true]), null, null, null, 'admin', $policyStore)->setPolicy('openregister');
+
+		$this->assertTrue($response->getData()['policy']['holdManual']);
+	}
+
+	public function testSetPolicyWithoutTheSwitchKeepsTheStoredOne(): void {
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->method('get')->willReturn(new Policy('patch', 'admin', '2026-01-01T00:00:00+00:00', holdManual: true));
+		$policyStore->expects($this->once())->method('set')->with('openregister', $this->callback(static fn ($policy): bool => $policy->level === 'minor' && $policy->holdManual === true));
+
+		$this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith(['level' => 'minor']), null, null, null, 'admin', $policyStore)->setPolicy('openregister');
+	}
+
+	public function testSkipVersionStoresTheSkipWithItsReason(): void {
+		$skipList = $this->createMock(SkipList::class);
+		$skipList->expects($this->once())->method('skip')->with('openregister', '2.3.4', $this->callback(static fn (array $stamp): bool => $stamp['by'] === 'admin' && is_string($stamp['at'])), 'breaks the import')->willReturn(true);
+
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith(['reason' => 'breaks the import']), null, null, null, 'admin', skipList: $skipList)->skipVersion('openregister', '2.3.4');
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame(['appId' => 'openregister', 'version' => '2.3.4', 'skipped' => true], $response->getData());
+	}
+
+	public function testSkipVersionRefusesAnEmptyVersion(): void {
+		$skipList = $this->createMock(SkipList::class);
+		$skipList->expects($this->never())->method('skip');
+
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith([]), null, null, null, 'admin', skipList: $skipList)->skipVersion('openregister', ' ');
+
+		$this->assertSame(400, $response->getStatus());
+	}
+
+	public function testUnskipAndListTheSkips(): void {
+		$skipList = $this->createMock(SkipList::class);
+		$skipList->expects($this->once())->method('unskip')->with('openregister', '2.3.4', 'admin')->willReturn(true);
+		$skipList->method('entries')->willReturn([['version' => '2.3.5', 'skippedBy' => 'admin', 'skippedAt' => 'T', 'reason' => '']]);
+		$controller = $this->buildAdminController($this->createMock(InstallerService::class), $this->requestWith([]), null, null, null, 'admin', skipList: $skipList);
+
+		$this->assertTrue($controller->unskipVersion('openregister', '2.3.4')->getData()['unskipped']);
+		$this->assertSame('2.3.5', $controller->skippedVersions('openregister')->getData()['skipped'][0]['version']);
+	}
+
+	/**
+	 * A request that answers the named parameters and the default otherwise.
+	 */
+	private function auditRequest(array $params): IRequest {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => $params[$name] ?? $default
+		);
+		return $request;
+	}
+
+	public function testAuditLogCutsAPeriodInTheAdminsTimeZone(): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->never())->method('findPage');
+		$mapper->expects($this->once())
+			->method('findBetween')
+			->with('2026-10-31 23:00:00', '2026-11-30 22:59:59', 'fixtureapp', 'install', 50, 0, true)
+			->willReturn([AuditRows::entry(2, '2026-11-02 09:00:00', 'install', ['to' => '1.0.1'])]);
+
+		$request = $this->auditRequest(['from' => '2026-11-01', 'to' => '2026-11-30', 'timeZone' => 'Europe/Amsterdam', 'appId' => 'fixtureapp', 'operation' => 'install']);
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $request, $mapper)->auditLog();
+
+		$this->assertSame(200, $response->getStatus());
+		$data = $response->getData();
+		$this->assertSame([2], array_column($data['entries'], 'id'));
+		$this->assertNull($data['total']);
+	}
+
+	public function testAuditLogSecurityOnlyNamesTheFixedAdvisoryAndLeavesOutAnUnresolvedInstall(): void {
+		$advisory = [['id' => 'GHSA-1', 'severity' => 'high']];
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->once())
+			->method('findBetween')
+			->with('2026-11-14 00:00:00', null, null, null, 20000)
+			->willReturn([
+				AuditRows::entry(1, '2026-11-14 08:00:00', 'install', ['appId' => 'other', 'to' => '2.0.0']),
+				AuditRows::entry(2, '2026-11-14 09:00:00', 'install', ['from' => '1.0.0', 'to' => '1.0.1']),
+				AuditRows::entry(3, '2026-11-14 22:00:00', 'install', ['appId' => 'late', 'to' => '3.0.0']),
+				AuditRows::entry(4, '2026-11-15 00:10:00', 'advisory_resolved', ['from' => '1.0.0', 'to' => '1.0.1', 'message' => 'update', 'advisories' => $advisory]),
+				AuditRows::entry(5, '2026-11-15 00:20:00', 'advisory_resolved', ['appId' => 'late', 'to' => '3.0.0', 'message' => 'update', 'advisories' => [['id' => 'GHSA-3', 'severity' => 'low']]]),
+			]);
+
+		$request = $this->auditRequest(['from' => '2026-11-14', 'to' => '2026-11-14', 'securityOnly' => 'true']);
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $request, $mapper)->auditLog();
+
+		$data = $response->getData();
+		$this->assertSame(2, $data['total']);
+		$this->assertSame([3, 2], array_column($data['entries'], 'id'));
+		$this->assertSame($advisory, $data['entries'][1]['fixedAdvisories']);
+		$this->assertSame('1.0.1', $data['entries'][1]['toVersion']);
+	}
+
+	public function testAuditLogRefusesABadPeriod(): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->never())->method('findBetween');
+
+		$request = $this->auditRequest(['from' => '2026-13-01']);
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $request, $mapper)->auditLog();
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertSame(['message' => 'Dates are YYYY-MM-DD.'], $response->getData());
+	}
+
+	/**
+	 * A settings-store double whose schedule is the default every-day schedule.
+	 *
+	 * @return AutoUpdateSettingsStore&\PHPUnit\Framework\MockObject\MockObject
+	 */
+	private function settingsStoreMock(): AutoUpdateSettingsStore {
+		$store = $this->createMock(AutoUpdateSettingsStore::class);
+		$store->method('getSchedule')->willReturn(AutoUpdateSchedule::everyDay());
+		return $store;
+	}
+
 	/**
 	 * GET /api/advisories returns the raw snapshot plus the stored triage
 	 * map, keyed `{appId}|{advisoryId}`, for the page (advisories-triage D1, D4).
@@ -1098,9 +1550,162 @@ final class ApiTest extends TestCase {
 		$data = $response->getData();
 		$this->assertSame(['notes' => ['state' => 'advisory-available', 'heldByPin' => false]], $data['advisories']);
 		$this->assertSame(1_700_000_000, $data['checkedAt']);
-		$this->assertSame(['advisories', 'checkedAt', 'status', 'errors', 'compliance', 'triage'], array_keys($data));
+		$this->assertSame(['advisories', 'checkedAt', 'status', 'errors', 'compliance', 'triage', 'libraries', 'librariesCheckedAt'], array_keys($data));
 		$this->assertSame('ok', $data['status']);
 		$this->assertSame([], $data['errors']);
 		$this->assertSame($triage, $data['triage']);
+	}
+
+	/**
+	 * POST /api/apps/{appId}/restore puts the app back from its backup
+	 * (safety-rollback-backup-and-preflight D4).
+	 *
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
+	 */
+	public function testRestoreAppReturnsWhatWasRestored(): void {
+		$restored = ['appId' => 'dossiq', 'version' => '0.4.48', 'enabled' => 'yes', 'tables' => 2, 'rows' => 5, 'backupCreatedAt' => '2026-10-01T00:00:00+00:00'];
+		$restorer = $this->createMock(AppRestorer::class);
+		$restorer->expects($this->once())->method('restore')->with('dossiq')->willReturn($restored);
+
+		$response = $this->restoreController($restorer, true)->restoreApp('dossiq');
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame($restored, $response->getData());
+	}
+
+	public function testRestoreAppWithoutABackupIsRefusedAndPointsToARollback(): void {
+		$restorer = $this->createMock(AppRestorer::class);
+		$restorer->method('restore')->willThrowException(new NoBackupException('There is no backup to restore dossiq from. Roll back to an earlier version instead.'));
+
+		$response = $this->restoreController($restorer, true)->restoreApp('dossiq');
+
+		$this->assertSame(409, $response->getStatus());
+		$this->assertSame(['message' => 'There is no backup to restore dossiq from. Roll back to an earlier version instead.', 'code' => 'no_backup'], $response->getData());
+	}
+
+	public function testRestoreAppRefusesANonAdminBeforeRestoring(): void {
+		$restorer = $this->createMock(AppRestorer::class);
+		$restorer->expects($this->never())->method('restore');
+
+		$response = $this->restoreController($restorer, false)->restoreApp('dossiq');
+
+		$this->assertSame(403, $response->getStatus());
+	}
+
+	public function testRestoreAppReportsAFailedRestore(): void {
+		$restorer = $this->createMock(AppRestorer::class);
+		$restorer->method('restore')->willThrowException(new \RuntimeException('Could not unpack the app folder backup.'));
+
+		$response = $this->restoreController($restorer, true)->restoreApp('dossiq');
+
+		$this->assertSame(500, $response->getStatus());
+		$this->assertSame(['message' => 'The restore failed: Could not unpack the app folder backup.'], $response->getData());
+	}
+
+	public function testTheRestoreRouteRequiresPasswordConfirmation(): void {
+		$method = new ReflectionMethod(ApiController::class, 'restoreApp');
+		$attributes = array_map(static fn ($attribute): string => $attribute->getName(), $method->getAttributes());
+
+		$this->assertContains(\OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired::class, $attributes);
+	}
+
+	private function restoreController(AppRestorer $restorer, bool $isAdmin): ApiController {
+		$user = $this->createMock(IUser::class);
+		$user->method('getUID')->willReturn('admin');
+		$session = $this->createMock(IUserSession::class);
+		$session->method('getUser')->willReturn($user);
+		$groupManager = $this->createMock(IGroupManager::class);
+		$groupManager->method('isAdmin')->with('admin')->willReturn($isAdmin);
+
+		return $this->buildByName(ApiController::class, [
+			'appName' => 'versioniq',
+			'request' => $this->createMock(IRequest::class),
+			'groupManager' => $groupManager,
+			'userSession' => $session,
+			'serverVersion' => $this->fakeServerVersion(),
+			'timeFactory' => $this->fakeTimeFactory(),
+			'restorer' => $restorer,
+			'connectionReports' => null,
+		]);
+	}
+
+	public function testSetPolicyRejectsAnOutOfRangeMinimumAge(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'level' => 'patch',
+				'minAgeDays' => '91',
+				default => $default,
+			}
+		);
+
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->expects($this->never())->method('set');
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', $policyStore)->setPolicy('openregister');
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertStringContainsString('minAgeDays', $response->getData()['message']);
+	}
+
+	public function testSetPolicyStoresTheMinimumAge(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'level' => 'minor',
+				'minAgeDays' => '14',
+				default => $default,
+			}
+		);
+
+		$policyStore = $this->createMock(PolicyStore::class);
+		$policyStore->expects($this->once())->method('set')
+			->with('openregister', $this->callback(static fn ($policy): bool => $policy->minAgeDays === 14));
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', $policyStore)->setPolicy('openregister');
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame(14, $response->getData()['policy']['minAgeDays']);
+	}
+
+	public function testUpdateAutoUpdateSettingsRejectsAnOutOfRangeMinimumAge(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'minAgeDays' => '-1',
+				default => $default,
+			}
+		);
+
+		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore->expects($this->never())->method('setMinAgeDays');
+		$settingsStore->expects($this->never())->method('setEnabled');
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', null, $settingsStore)->updateAutoUpdateSettings('1');
+
+		$this->assertSame(400, $response->getStatus());
+	}
+
+	public function testUpdateAutoUpdateSettingsStoresTheMinimumAge(): void {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => match ($name) {
+				'minAgeDays' => 7,
+				default => $default,
+			}
+		);
+
+		$settingsStore = $this->createMock(AutoUpdateSettingsStore::class);
+		$settingsStore->expects($this->once())->method('setMinAgeDays')->with(7);
+		$settingsStore->method('getMinAgeDays')->willReturn(7);
+
+		$installer = $this->createMock(InstallerService::class);
+		$response = $this->buildAdminController($installer, $request, null, null, null, 'admin', null, $settingsStore)->updateAutoUpdateSettings();
+
+		$this->assertSame(200, $response->getStatus());
+		$this->assertSame(7, $response->getData()['autoUpdateMinAgeDays']);
 	}
 }

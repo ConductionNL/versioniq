@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\Service\Policy;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyStore;
 use OCP\IAppConfig;
@@ -144,5 +145,31 @@ final class PolicyStoreTest extends TestCase {
 
 		$store = new PolicyStore($config, $this->logger());
 		$store->clear('openregister');
+	}
+
+	/**
+	 * The effective level: a stored level wins, else the instance default, else none.
+	 */
+	public function testEffectiveLevelIsTheStoredLevelElseTheDefaultElseNone(): void {
+		$stored = json_encode(['level' => 'minor', 'setBy' => 'alice', 'setAt' => '2026-07-23T00:00:00+00:00'], JSON_THROW_ON_ERROR);
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getValueString')->willReturnCallback(
+			static fn (string $app, string $key, string $default = ''): string => match ($key) {
+				'policy.openregister' => $stored,
+				AutoUpdateSettingsStore::CONFIG_DEFAULT_LEVEL => 'patch',
+				default => $default,
+			}
+		);
+		$settings = new AutoUpdateSettingsStore($config);
+
+		$store = new PolicyStore($config, $this->logger(), $settings);
+		$this->assertSame('minor', $store->effectiveLevelFor('openregister'));
+		$this->assertSame('policy', $store->levelSourceFor('openregister'));
+		$this->assertSame('patch', $store->effectiveLevelFor('calendar'));
+		$this->assertSame('default', $store->levelSourceFor('calendar'));
+		$this->assertSame('none', $store->levelFor('calendar'), 'levelFor keeps reading only the stored policy');
+
+		$withoutSettings = new PolicyStore($config, $this->logger());
+		$this->assertSame('none', $withoutSettings->effectiveLevelFor('calendar'));
 	}
 }
