@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Command;
 
-use OCA\Versioniq\Kernel\Contracts\FailureClassifierInterface;
 use OCA\Versioniq\Kernel\Contracts\InstallerServiceInterface;
 use OCA\Versioniq\Service\Checks\CheckRunner;
 use OCA\Versioniq\Service\Installer\InstallOptions;
@@ -52,17 +51,11 @@ class InstallVersion extends Command {
 	 * 7 incompatible, 8 finalize, 9 untrusted source, 12 an update check failed
 	 * in a dry run (see "Admins and operators attach checks that every dry run runs").
 	 */
-	private const EXIT_OK = 0;
-	private const EXIT_UNKNOWN = 1;
-	private const EXIT_BAD_ARGUMENTS = 2;
-	private const EXIT_DOWNGRADE_REFUSED = 3;
-	private const EXIT_PREFLIGHT_PERMISSION = 4;
-	private const EXIT_DOWNLOAD = 5;
-	private const EXIT_INTEGRITY = 6;
-	private const EXIT_INCOMPATIBLE = 7;
-	private const EXIT_FINALIZE = 8;
-	private const EXIT_UNTRUSTED_SOURCE = 9;
-	private const EXIT_CHECKS_FAILED = 12;
+	private const EXIT_OK = InstallExitCode::OK;
+	private const EXIT_BAD_ARGUMENTS = InstallExitCode::BAD_ARGUMENTS;
+	private const EXIT_FINALIZE = InstallExitCode::FINALIZE;
+	private const EXIT_INCOMPATIBLE = InstallExitCode::INCOMPATIBLE;
+	private const EXIT_CHECKS_FAILED = InstallExitCode::CHECKS_FAILED;
 
 	public function __construct(
 		private InstallerServiceInterface $installerService,
@@ -274,52 +267,7 @@ class InstallVersion extends Command {
 	 * @param array<string, mixed> $payload
 	 */
 	public static function exitCodeFor(int $statusCode, array $payload): int {
-		if ($statusCode === Http::STATUS_OK) {
-			return CheckRunner::firstFailure(is_array($payload['checks'] ?? null) ? $payload['checks'] : []) === null
-				? self::EXIT_OK
-				: self::EXIT_CHECKS_FAILED;
-		}
-
-		/** @var mixed $category */
-		$category = $payload['category'] ?? null;
-		$mapped = is_string($category) ? self::exitCodeForCategory($category) : null;
-
-		return $mapped ?? self::exitCodeForStatus($statusCode);
-	}
-
-	/**
-	 * The documented exit code of a failure category, or null for a category
-	 * without one of its own.
-	 */
-	private static function exitCodeForCategory(string $category): ?int {
-		return match ($category) {
-			FailureClassifierInterface::CATEGORY_DOWNGRADE_GUARD => self::EXIT_DOWNGRADE_REFUSED,
-			FailureClassifierInterface::CATEGORY_PREFLIGHT_PERMISSION => self::EXIT_PREFLIGHT_PERMISSION,
-			FailureClassifierInterface::CATEGORY_DOWNLOAD => self::EXIT_DOWNLOAD,
-			FailureClassifierInterface::CATEGORY_CHECKSUM_MISMATCH,
-			FailureClassifierInterface::CATEGORY_SHA_MISMATCH,
-			FailureClassifierInterface::CATEGORY_APPID_MISMATCH,
-			FailureClassifierInterface::CATEGORY_VERSION_MISMATCH => self::EXIT_INTEGRITY,
-			FailureClassifierInterface::CATEGORY_INCOMPATIBLE => self::EXIT_INCOMPATIBLE,
-			FailureClassifierInterface::CATEGORY_FINALIZE => self::EXIT_FINALIZE,
-			FailureClassifierInterface::CATEGORY_CHECKS_FAILED => self::EXIT_CHECKS_FAILED,
-			default => null,
-		};
-	}
-
-	/**
-	 * The exit code an HTTP status maps to when its category named none.
-	 */
-	private static function exitCodeForStatus(int $statusCode): int {
-		if ($statusCode === Http::STATUS_FORBIDDEN) {
-			return self::EXIT_UNTRUSTED_SOURCE;
-		}
-
-		if ($statusCode === Http::STATUS_BAD_REQUEST || $statusCode === Http::STATUS_NOT_FOUND) {
-			return self::EXIT_BAD_ARGUMENTS;
-		}
-
-		return self::EXIT_UNKNOWN;
+		return InstallExitCode::for($statusCode, $payload);
 	}
 
 	private function errorOutput(OutputInterface $output): OutputInterface {

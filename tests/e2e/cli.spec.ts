@@ -187,6 +187,48 @@ test.describe("occ CLI", () => {
 		expect(code).not.toBe(0);
 	});
 
+	// @e2e install-bulk-rollback::occ-takes-a-snapshot-and-checks-a-rollback
+	test("takes a named snapshot and checks a rollback to it without changing anything", async ({
+		page,
+	}) => {
+		const name = "e2e cli snapshot";
+		const taken = await occ("versioniq:snapshot", `--name=${name}`);
+		expect(taken.code, taken.stdout).toBe(0);
+		const id = taken.stdout.match(/Snapshot (\S+) taken of \d+ apps/)?.[1];
+		expect(id, taken.stdout).toBeTruthy();
+
+		try {
+			const listed = await occ("versioniq:snapshots", "--json");
+			expect(listed.code).toBe(0);
+			const index = JSON.parse(listed.stdout.match(/\[[\s\S]*\]\s*$/)?.[0] ?? "[]");
+			expect(index.find((entry: { id: string }) => entry.id === id)?.name).toBe(name);
+
+			// Move off the snapshot's version, then check the way back.
+			const moved = await occ(
+				"versioniq:install",
+				FIXTURE_APP,
+				"1.0.1",
+				`--source=${FIXTURE_SOURCE}`,
+				"--json",
+			);
+			expect(moved.code, moved.stdout).toBe(0);
+
+			const dryRun = await occ("versioniq:rollback", String(id), "--dry-run");
+			expect(dryRun.code, dryRun.stdout).toBe(0);
+			expect(dryRun.stdout).toContain(`Plan to roll back to snapshot ${id}`);
+			expect(dryRun.stdout).toMatch(new RegExp(`${FIXTURE_APP} 1\\.0\\.1 -> 1\\.0\\.0`));
+
+			const after = await occ("config:app:get", FIXTURE_APP, "installed_version");
+			expect(after.stdout.trim(), "a dry run changes nothing").toBe("1.0.1");
+		} finally {
+			await page.request
+				.delete(`/ocs/v2.php/apps/versioniq/api/snapshots/${id}?format=json`, {
+					headers: { "OCS-APIRequest": "true" },
+				})
+				.catch(() => undefined);
+		}
+	});
+
 	// @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md
 	test("versioniq:channel puts one app on beta and refuses a typo", async () => {
 		try {

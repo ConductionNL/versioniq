@@ -49,6 +49,7 @@ import ProposedUpdatesPanel from './components/ProposedUpdatesPanel.vue'
 import PublisherMark from './components/PublisherMark.vue'
 import ReadinessPanel from './components/ReadinessPanel.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
+import RollbackPanel from './components/RollbackPanel.vue'
 import SbomExportMenu from './components/SbomExportMenu.vue'
 import SecurityReportPanel from './components/SecurityReportPanel.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
@@ -4063,6 +4064,7 @@ watch(dryRunEnabled, () => {
 					id="history-panel"
 					role="tabpanel"
 					aria-labelledby="history-tab">
+					<RollbackPanel />
 					<SbomExportMenu />
 					<HistoryPanel />
 					<!-- audit-security-reports D6: the remediation report under the history. -->

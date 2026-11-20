@@ -30,6 +30,8 @@ use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Pin\PinStore;
 use OCA\Versioniq\Service\Policy\Policy;
 use OCA\Versioniq\Service\Policy\PolicyStore;
+use OCA\Versioniq\Service\Snapshot\InstanceSnapshot;
+use OCA\Versioniq\Service\Snapshot\SnapshotTaker;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\App\IAppManager;
@@ -795,5 +797,94 @@ final class AutoUpdateJobTest extends TestCase {
 		$store = $this->createMock(AutoUpdateSettingsStore::class);
 		$store->method('getSchedule')->willReturn(AutoUpdateSchedule::everyDay());
 		return $store;
+	}
+	/**
+	 * Two apps with a qualifying candidate each; the installs succeed.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function twoAppSweep(): array {
+		$mocks = $this->mocks();
+		$mocks['settingsStore']->method('isEnabled')->willReturn(true);
+		$mocks['settingsStore']->method('getWindow')->willReturn('01:00-05:00');
+		$mocks['policyStore']->method('all')->willReturn([
+			'openregister' => new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00'),
+			'opencatalogi' => new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00'),
+		]);
+		$mocks['pinStore']->method('get')->willReturn(null);
+		$mocks['installerService']->method('isManageableApp')->willReturn(true);
+		$mocks['appManager']->method('getAppVersion')->willReturn('2.3.0');
+		$mocks['installerService']->method('getAppVersions')->willReturn([
+			'availableVersions' => [['version' => '2.3.4']],
+			'hasError' => false,
+		]);
+		$mocks['attemptLedger']->method('hasAttempted')->willReturn(false);
+
+		return $mocks;
+	}
+
+	/**
+	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
+	 */
+	public function testOneSnapshotIsTakenBeforeTheFirstInstallOfASweep(): void {
+		$mocks = $this->twoAppSweep();
+		$mocks['candidateSelector']->method('select')->willReturn('2.3.4');
+		$events = [];
+		$mocks['installerService']->method('installAppVersion')->willReturnCallback(function () use (&$events): array {
+			$events[] = 'install';
+
+			return ['statusCode' => 200, 'payload' => ['installedVersion' => '2.3.4']];
+		});
+		$taker = $this->createMock(SnapshotTaker::class);
+		$taker->expects($this->once())->method('take')->with('before_auto_update', 'system')
+			->willReturnCallback(function () use (&$events): InstanceSnapshot {
+				$events[] = 'snapshot';
+
+				return new InstanceSnapshot(['id' => 's1', 'takenAt' => '2026-07-23T02:00:00+00:00', 'takenBy' => 'system', 'reason' => 'before_auto_update'], []);
+			});
+
+		$job = $this->buildByName(AutoUpdateJob::class, $this->named($mocks) + ['snapshotTaker' => $taker]);
+		$this->runJob($job);
+
+		$this->assertSame(['snapshot', 'install', 'install'], $events);
+	}
+
+	/**
+	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
+	 */
+	public function testASweepThatInstallsNothingTakesNoSnapshot(): void {
+		$mocks = $this->twoAppSweep();
+		$mocks['candidateSelector']->method('select')->willReturn(null);
+		$mocks['installerService']->expects($this->never())->method('installAppVersion');
+		$taker = $this->createMock(SnapshotTaker::class);
+		$taker->expects($this->never())->method('take');
+
+		$job = $this->buildByName(AutoUpdateJob::class, $this->named($mocks) + ['snapshotTaker' => $taker]);
+		$this->runJob($job);
+	}
+
+	/**
+	 * @spec openspec/changes/install-bulk-rollback/specs/migration-safety/spec.md
+	 */
+	public function testAFailingSnapshotDoesNotStopTheSweep(): void {
+		$mocks = $this->twoAppSweep();
+		$mocks['candidateSelector']->method('select')->willReturn('2.3.4');
+		$mocks['installerService']->expects($this->exactly(2))->method('installAppVersion')
+			->willReturn(['statusCode' => 200, 'payload' => ['installedVersion' => '2.3.4']]);
+		$mocks['logger']->expects($this->once())->method('warning')
+			->with('AutoUpdateJob: the snapshot before the sweep failed', ['message' => 'config down']);
+		$taker = $this->createMock(SnapshotTaker::class);
+		$taker->expects($this->once())->method('take')->willThrowException(new \RuntimeException('config down'));
+
+		$job = $this->buildByName(AutoUpdateJob::class, $this->named($mocks) + ['snapshotTaker' => $taker]);
+		$this->runJob($job);
+	}
+
+	/**
+	 * @param array<string, mixed> $mocks
+	 * @return array<string, mixed>
+	 */
+	private function named(array $mocks): array {
+		return ['time' => $this->timeFactory()] + $mocks;
 	}
 }
