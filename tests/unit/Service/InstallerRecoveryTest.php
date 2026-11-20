@@ -187,6 +187,7 @@ final class InstallerRecoveryTest extends TestCase {
 		$reflection = new ReflectionClass(ExternalReleaseInstallerService::class);
 		$installer = $reflection->newInstanceWithoutConstructor();
 		$reflection->getProperty('steps')->setValue($installer, $steps);
+		$reflection->getProperty('progress')->setValue($installer, null);
 		$run = new ExternalInstallRun(new ExternalInstallRequest('notes', '1.1.0', [], new ExternalInstallOptions(false, false)), SourceBinding::appStore(), '1.0.0');
 		$run->previousEnabled = 'no';
 		$check = new ArchiveCheck('sha', true, null);
