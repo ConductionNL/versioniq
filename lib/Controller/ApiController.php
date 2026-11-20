@@ -39,6 +39,7 @@ use OCA\Versioniq\Service\Discovery\DiscoveryFilter;
 use OCA\Versioniq\Service\Installer\InstallOptions;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallTarget;
+use OCA\Versioniq\Service\Installer\NoBackupException;
 use OCA\Versioniq\Service\Installer\PinChoice;
 use OCA\Versioniq\Service\Pat\NewPat;
 use OCA\Versioniq\Service\Pin\Pin;
@@ -387,6 +388,46 @@ class ApiController extends OCSController {
 		$this->install->installerService->clearBinding($appId);
 
 		return new DataResponse(['appId' => $appId, 'sourceId' => 'appstore']);
+	}
+
+	/**
+	 * Restores an app from the backup kept before its last install: the app
+	 * folder, its tables, then the version and enabled state it had; see
+	 * "Restoring a broken install puts back files and tables"
+	 *
+	 * @param string $appId The app to restore
+	 *
+	 * @return DataResponse<Http::STATUS_OK, array{appId: string, version: string, enabled: string, tables: int, rows: int, backupCreatedAt: string}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_CONFLICT|Http::STATUS_INTERNAL_SERVER_ERROR, array{message: string, code?: string}, array{}>
+	 *
+	 * 200: The app was restored from its backup
+	 * 400: The app id is invalid
+	 * 403: Caller is not an administrator
+	 * 409: There is no backup to restore from; roll back instead
+	 * 500: The restore failed; what was put back is in the message
+	 *
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-restoring-a-broken-install-puts-back-files-and-tables
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'POST', url: '/api/apps/{appId}/restore')]
+	#[ApiRoute(verb: 'POST', url: '/api/v1/apps/{appId}/restore', postfix: 'v1')]
+	public function restoreApp(string $appId): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+		$restorer = $this->install->restorer;
+		if ($restorer === null) {
+			return new DataResponse(['message' => 'Restoring is not available.', 'code' => 'no_backup'], Http::STATUS_CONFLICT);
+		}
+
+		try {
+			return new DataResponse($restorer->restore($appId));
+		} catch (InvalidArgumentException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
+		} catch (NoBackupException $error) {
+			return new DataResponse(['message' => $error->getMessage(), 'code' => 'no_backup'], Http::STATUS_CONFLICT);
+		} catch (\Throwable $error) {
+			return new DataResponse(['message' => 'The restore failed: ' . $error->getMessage()], Http::STATUS_INTERNAL_SERVER_ERROR);
+		}
 	}
 
 	/**

@@ -25,6 +25,7 @@ use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallProgress;
 use OCA\Versioniq\Service\Installer\InstalledFolder;
 use OCA\Versioniq\Service\Installer\InstallFailure;
+use OCA\Versioniq\Service\Installer\InstallBackup;
 use OCA\Versioniq\Service\Installer\InstallFinalizer;
 use OCA\Versioniq\Service\Installer\MigrationDiffer;
 use OCA\Versioniq\Service\Installer\MigrationPreview;
@@ -79,6 +80,13 @@ class SelectedReleaseInstallerService {
 	/** Whether the last install's archive was served from {@see ArtifactCache} after a download failure; see "Cached fallback with full re-verification". */
 	private bool $servedFromCache = false;
 
+	/**
+	 * The backup the last install made before replacing the folder, for the result; null when none was attempted.
+	 *
+	 * @var array<string, mixed>|null
+	 */
+	private ?array $lastBackup = null;
+
 	/** The unpacked app folder of the last dry run, validated and still in the temporary folder; the checks run on it. */
 	private ?string $lastUnpackedRoot = null;
 
@@ -94,6 +102,8 @@ class SelectedReleaseInstallerService {
 		private ?MigrationPreview $preview = null,
 		private ?InstallProgress $progress = null,
 		private ?CheckRunner $checkRunner = null,
+		// Optional: the backup kept before the folder is replaced (safety-rollback-backup-and-preflight D3).
+		private ?InstallBackup $installBackup = null,
 	) {
 	}
 
@@ -130,6 +140,7 @@ class SelectedReleaseInstallerService {
 		$this->lastArchivePath = null;
 		$this->lastArchiveMeta = null;
 		$this->servedFromCache = false;
+		$this->lastBackup = null;
 		$this->lastUnpackedRoot = null;
 	}
 
@@ -628,7 +639,8 @@ class SelectedReleaseInstallerService {
 			'dryRun' => $installedApp === null,
 			'debug' => $this->debug,
 			'servedFromCache' => $this->servedFromCache,
-		] + $this->migrationFields();
+		] + $this->migrationFields()
+			+ ($this->lastBackup !== null ? ['backup' => $this->lastBackup] : []);
 	}
 
 	/**
@@ -640,6 +652,26 @@ class SelectedReleaseInstallerService {
 	private function migrationFields(): array {
 		return ($this->isDowngradeInstall ? ['orphanedMigrations' => $this->orphanedMigrations] : [])
 			+ ($this->isUpgradePreview ? ['migrationPreview' => $this->migrationPreview] : []);
+	}
+
+	/**
+	 * Keeps a restorable backup of the old app while its folder is still in
+	 * place (its migration classes load from there), before anything is
+	 * replaced; the old version and enabled value are still the installed ones.
+	 *
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 */
+	private function keepBackup(string $appId, string $oldFolder): void {
+		if ($this->installBackup === null) {
+			return;
+		}
+		try {
+			$version = $this->getAppManager()->getAppVersion($appId);
+		} catch (Exception) {
+			$version = '';
+		}
+		$this->lastBackup = $this->installBackup->make($appId, $oldFolder, $version, $this->getAppConfig()->getValueString($appId, 'enabled', 'no'));
+		$this->addDebug('backup', $this->lastBackup);
 	}
 
 	/**
@@ -692,6 +724,9 @@ class SelectedReleaseInstallerService {
 		$this->diffDowngrade($run, $target);
 		$this->previewUpgrade($run, $target, $dryRun);
 
+		if (!$dryRun && $target->previousPath !== null) {
+			$this->keepBackup($appId, $target->previousPath);
+		}
 		$backupDestination = $this->backupExistingFolder($target->destination, $dryRun, $target->previousPath !== null);
 		if ($dryRun) {
 			$this->validateUnpackedRelease($appId, $target->root);

@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
-import type { CheckResult } from '../utils/installResult.ts'
+import type { CheckResult, InstallBackupNote } from '../utils/installResult.ts'
 
-import { t } from '@nextcloud/l10n'
+import { getCanonicalLocale, t } from '@nextcloud/l10n'
 
 /**
  * What the installer said about how it got the artifact: an install that went
@@ -19,9 +19,11 @@ const props = withDefaults(defineProps<{
 	servedFromCache: boolean
 	checks?: CheckResult[]
 	space?: { appsFree: number | null, tempFree: number | null } | null
+	backup?: InstallBackupNote | null
 }>(), {
 	checks: () => [],
 	space: null,
+	backup: null,
 })
 
 /**
@@ -81,7 +83,7 @@ function formatBytes (bytes: number): string {
  * (safety-rollback-backup-and-preflight D2). A folder whose free space could
  * not be read says so.
  *
- * @spec openspec/changes/safety-rollback-backup-and-preflight/specs/version-management/spec.md
+ * @spec openspec/specs/version-management/spec.md
  */
 function environmentText (): string {
 	const space = props.space
@@ -92,12 +94,43 @@ function environmentText (): string {
 		temp: free(space?.tempFree ?? null),
 	})
 }
+
+/**
+ * What the result says about the backup kept before the folder was replaced:
+ * its size and until when it is kept, that backups are off, or that it failed
+ * (safety-rollback-backup-and-preflight D3).
+ *
+ * @spec openspec/specs/migration-safety/spec.md
+ */
+function backupText (): string {
+	const backup = props.backup
+	if (!backup) {
+		return ''
+	}
+	if (backup.made) {
+		const until = new Date(`${backup.keptUntil}T00:00:00Z`)
+		return t('versioniq', 'Backup made: database and app folder, {size}, kept until {date}.', {
+			size: formatBytes(backup.sizeBytes),
+			date: Number.isNaN(until.getTime())
+				? backup.keptUntil
+				: new Intl.DateTimeFormat(getCanonicalLocale(), { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(until),
+		})
+	}
+	if (backup.reason === 'disabled') {
+		return t('versioniq', 'No backup was made: backups are turned off.')
+	}
+
+	return t('versioniq', 'The backup could not be made: {message}', { message: backup.message ?? '' })
+}
 </script>
 
 <template>
-	<div v-if="integrityWarning || servedFromCache || checks.length > 0 || space" :class="$style.notices">
+	<div v-if="integrityWarning || servedFromCache || checks.length > 0 || space || backup" :class="$style.notices">
 		<p v-if="space" :class="$style.note" data-testid="install-environment-checked">
 			{{ environmentText() }}
+		</p>
+		<p v-if="backup" :class="backup.made || backup.reason === 'disabled' ? $style.note : $style.warning" data-testid="install-backup">
+			{{ backupText() }}
 		</p>
 		<p
 			v-if="integrityWarning"

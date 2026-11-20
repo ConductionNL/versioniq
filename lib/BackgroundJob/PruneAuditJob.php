@@ -14,6 +14,7 @@ namespace OCA\Versioniq\BackgroundJob;
 
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Db\AuditEntryMapper;
+use OCA\Versioniq\Service\Installer\AppBackupStore;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
 use OCP\IAppConfig;
@@ -46,6 +47,8 @@ class PruneAuditJob extends TimedJob {
 		private AuditEntryMapper $mapper,
 		private IAppConfig $appConfig,
 		private LoggerInterface $logger,
+		// Optional: the install backups pruned in the same daily run (safety-rollback-backup-and-preflight D3).
+		private ?AppBackupStore $backupStore = null,
 	) {
 		parent::__construct($time);
 		$this->setInterval(self::INTERVAL_SECONDS);
@@ -60,6 +63,7 @@ class PruneAuditJob extends TimedJob {
 	 * @param mixed $argument
 	 */
 	protected function run($argument): void {
+		$this->pruneBackups();
 		$retentionDays = $this->resolveRetentionDays();
 		$cutoff = $this->time->getDateTime('now', new \DateTimeZone('UTC'))
 			->modify(sprintf('-%d days', $retentionDays));
@@ -92,6 +96,28 @@ class PruneAuditJob extends TimedJob {
 	 * Reads the configured retention window and clamps it to the floor,
 	 * logging when a clamp occurs; see "Retention floor is enforced".
 	 */
+	/**
+	 * Removes the install backups whose keep time has passed. A failure is
+	 * logged and does not stop the audit prune.
+	 *
+	 * @spec openspec/specs/migration-safety/spec.md#requirement-a-real-install-keeps-a-restorable-backup-of-the-app-folder-and-its-tables
+	 */
+	private function pruneBackups(): void {
+		if ($this->backupStore === null) {
+			return;
+		}
+		try {
+			$removed = $this->backupStore->prune();
+		} catch (\Throwable $error) {
+			$this->logger->error('PruneAuditJob: backup prune failed', ['message' => $error->getMessage()]);
+
+			return;
+		}
+		if ($removed > 0) {
+			$this->logger->info('PruneAuditJob: removed expired install backups', ['removed' => $removed]);
+		}
+	}
+
 	private function resolveRetentionDays(): int {
 		$configured = $this->appConfig->getValueInt(
 			Application::APP_ID,

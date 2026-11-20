@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Api;
 
 use OCA\Versioniq\Service\Cache\ArtifactCache;
+use OCA\Versioniq\Service\Installer\AppRestorer;
 use OCA\Versioniq\Service\Installer\ForceEnabler;
 use OCA\Versioniq\Service\Installer\InstallProgress;
 use OCA\Versioniq\Service\InstallerService;
@@ -39,6 +40,8 @@ final class InstallCollaborators {
 		public readonly ?ISession $session = null,
 		// Optional: the SBOM kept after each install, flagged on the history rows (inventory-export-sbom-metrics D4).
 		public readonly ?SbomArchive $sbomArchive = null,
+		// Optional: restores an app from its install backup (safety-rollback-backup-and-preflight D4).
+		public readonly ?AppRestorer $restorer = null,
 	) {
 	}
 }

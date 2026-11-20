@@ -39,7 +39,13 @@ export type InstallResult = {
 	checks?: CheckResult[]
 	/** The free space the pre-flight found (safety-rollback-backup-and-preflight D2). */
 	space?: InstallSpace | null
+	/** The backup kept before the folder was replaced (safety-rollback-backup-and-preflight D3). */
+	backup?: InstallBackupNote | null
 }
+
+export type InstallBackupNote =
+	| { made: true, sizeBytes: number, keptUntil: string }
+	| { made: false, reason: 'disabled' | 'failed', message?: string }
 
 export type InstallSpace = {
 	appsFree: number | null
@@ -64,6 +70,7 @@ export type InstallPayload = {
 	servedFromCache?: boolean
 	checks?: unknown
 	space?: { appsFree?: unknown, tempFree?: unknown } | null
+	backup?: { made?: unknown, sizeBytes?: unknown, keptUntil?: unknown, reason?: unknown, message?: unknown } | null
 }
 
 /**
@@ -124,8 +131,9 @@ function statusFields (payload: InstallPayload): Pick<InstallResult, 'dryRun' | 
  *
  * @param payload The install endpoint's payload.
  */
-function evidenceFields (payload: InstallPayload): Pick<InstallResult, 'debug' | 'recordedShaMatched' | 'integrityWarning' | 'servedFromCache' | 'space'> {
+function evidenceFields (payload: InstallPayload): Pick<InstallResult, 'debug' | 'recordedShaMatched' | 'integrityWarning' | 'servedFromCache' | 'space' | 'backup'> {
 	const space = spaceField(payload.space)
+	const backup = backupField(payload.backup)
 
 	return {
 		debug: Array.isArray(payload.debug) ? payload.debug as InstallDebugEntry[] : [],
@@ -134,7 +142,47 @@ function evidenceFields (payload: InstallPayload): Pick<InstallResult, 'debug' |
 		servedFromCache: payload.servedFromCache === true,
 		// Present only when the pre-flight measured it, so other results keep their shape.
 		...(space === null ? {} : { space }),
+		...(backup === null ? {} : { backup }),
 	}
+}
+
+/**
+ * The backup the installer reported, or null when it made no attempt.
+ *
+ * @param backup The payload's `backup`.
+ * @spec openspec/specs/migration-safety/spec.md
+ */
+function backupField (backup: InstallPayload['backup']): InstallBackupNote | null {
+	if (!backup || typeof backup !== 'object') {
+		return null
+	}
+
+	return madeBackup(backup) ?? skippedBackup(backup)
+}
+
+/**
+ * The backup that was made, or null when the payload does not describe one.
+ *
+ * @param backup The payload's `backup`.
+ */
+function madeBackup (backup: NonNullable<InstallPayload['backup']>): InstallBackupNote | null {
+	const complete = backup.made === true && typeof backup.sizeBytes === 'number' && typeof backup.keptUntil === 'string'
+
+	return complete ? { made: true, sizeBytes: backup.sizeBytes as number, keptUntil: backup.keptUntil as string } : null
+}
+
+/**
+ * Why no backup was made, or null when the payload does not say.
+ *
+ * @param backup The payload's `backup`.
+ */
+function skippedBackup (backup: NonNullable<InstallPayload['backup']>): InstallBackupNote | null {
+	const reason = backup.reason
+	if (backup.made !== false || (reason !== 'disabled' && reason !== 'failed')) {
+		return null
+	}
+
+	return { made: false, reason, ...(typeof backup.message === 'string' ? { message: backup.message } : {}) }
 }
 
 /**

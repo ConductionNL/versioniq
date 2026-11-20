@@ -33,6 +33,8 @@ class AuditLogger implements AdminChangeAuditInterface {
 	public const STATUS_FAILURE = 'failure';
 
 	public const OPERATION_INSTALL = 'install';
+	/** An install put back from its backup (safety-rollback-backup-and-preflight D4). */
+	public const OPERATION_RESTORE = 'restore';
 	public const OPERATION_BIND_SOURCE = 'bind_source';
 	/** An app's source binding removed; the app falls back to the App Store (sources-trust-audit-and-offline-feed). */
 	public const OPERATION_UNBIND_SOURCE = 'unbind_source';
