@@ -914,7 +914,7 @@ class InstallerService implements InstallerServiceInterface {
 		// an upload is not the bound source (D3).
 		$run = new InstallRun($request, $this->sources->bindingStore->get($appId) ?? SourceBinding::appStore(), $this->freshInstalledVersion($appId));
 		$pending = new PendingUpload($ask, $run, $inspected['sha256']);
-		$refusal = $this->installRunRefusal($run) ?? $this->expectedShaRefusal($pending);
+		$refusal = $this->installRunRefusal($run) ?? $this->uploadShaRefusal($pending);
 		if ($refusal !== null) {
 			return self::fromUpload($refusal);
 		}
@@ -979,7 +979,7 @@ class InstallerService implements InstallerServiceInterface {
 	 *
 	 * @return array{statusCode:int, payload:array<string, mixed>}|null
 	 */
-	private function expectedShaRefusal(PendingUpload $pending): ?array {
+	private function uploadShaRefusal(PendingUpload $pending): ?array {
 		$expected = $pending->ask->expectedSha();
 		if ($expected === '' || hash_equals($pending->sha256, $expected)) {
 			return null;
