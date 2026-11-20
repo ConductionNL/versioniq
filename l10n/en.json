@@ -951,6 +951,7 @@
         "_%n PHP library checked_::_%n PHP libraries checked_": [
             "%n PHP library checked",
             "%n PHP libraries checked"
-        ]
+        ],
+        "Select version {version}": "Select version {version}"
     }
 }

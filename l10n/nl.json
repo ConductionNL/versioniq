@@ -953,7 +953,8 @@
         "_%n PHP library checked_::_%n PHP libraries checked_": [
             "%n PHP-bibliotheek gecontroleerd",
             "%n PHP-bibliotheken gecontroleerd"
-        ]
+        ],
+        "Select version {version}": "Versie {version} kiezen"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);",
     "plurals": null

@@ -910,7 +910,8 @@ OC.L10N.register(
         "Check libraries bundled in apps against OSV (sends library names and versions to osv.dev)": "Check libraries bundled in apps against OSV (sends library names and versions to osv.dev)",
         "Library advisory": "Library advisory",
         "OSV API address for the library check (https, a mirror)": "OSV API address for the library check (https, a mirror)",
-        "_%n PHP library checked_::_%n PHP libraries checked_": ["%n PHP library checked","%n PHP libraries checked"]
+        "_%n PHP library checked_::_%n PHP libraries checked_": ["%n PHP library checked","%n PHP libraries checked"],
+        "Select version {version}": "Select version {version}"
     },
     "nplurals=2; plural=(n != 1);"
 )

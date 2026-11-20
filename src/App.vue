@@ -3790,6 +3790,8 @@ watch(dryRunEnabled, () => {
 																v-if="selectedVersion !== version.version"
 																type="button"
 																:class="$style.versionSelectButton"
+																:aria-label="t('versioniq', 'Select version {version}', { version: version.version })"
+																data-testid="version-select-button"
 																:disabled="isInstallingVersion"
 																@click="onSelectVersion(version.version)">
 																{{ t('versioniq', 'Select') }}
@@ -4696,7 +4698,9 @@ watch(dryRunEnabled, () => {
 .versionSelectButton {
 	line-height: 1.1;
 	margin: 2px 0;
-	visibility: hidden;
+	/* Faded, never hidden through the visibility property: a hidden button
+	   leaves the tab order, so keyboard users could not reach it and the
+	   :focus-visible reveal below never fired (WCAG 2.1.1). */
 	opacity: 0;
 	transition: opacity 0.12s ease;
 	padding: 3px 10px;
@@ -4707,6 +4711,13 @@ watch(dryRunEnabled, () => {
 	font-size: 12px;
 }
 
+/* A touch screen has no hover: the button is always shown there. */
+@media (hover: none) {
+	.versionSelectButton {
+		opacity: 1;
+	}
+}
+
 /* ORDER MATTERS HERE, and it is not cosmetic. `.versionItem:hover
    .versionSelectButton` (0,2,0) outranks the single-class pseudo rules below
    it, so with those written first the descending order let the hover-descendant
@@ -4715,16 +4726,17 @@ watch(dryRunEnabled, () => {
    keyboard affordance reachable — stylelint's no-descending-specificity is
    pointing at a real accessibility bug, not at tidiness. */
 .versionSelectButton:focus-visible {
-	visibility: visible;
 	opacity: 1;
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: 2px;
 }
 
 .versionSelectButton:hover {
 	filter: brightness(1.05);
 }
 
-.versionItem:hover .versionSelectButton {
-	visibility: visible;
+.versionItem:hover .versionSelectButton,
+.versionItem:focus-within .versionSelectButton {
 	opacity: 1;
 }
 
