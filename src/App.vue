@@ -48,6 +48,7 @@ import PublisherMark from './components/PublisherMark.vue'
 import ReadinessPanel from './components/ReadinessPanel.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
 import SbomExportMenu from './components/SbomExportMenu.vue'
+import SecurityReportPanel from './components/SecurityReportPanel.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
 import SourceOverrideField from './components/SourceOverrideField.vue'
 import SourcesPanel from './components/SourcesPanel.vue'
@@ -3846,6 +3847,8 @@ watch(dryRunEnabled, () => {
 					aria-labelledby="history-tab">
 					<SbomExportMenu />
 					<HistoryPanel />
+					<!-- audit-security-reports D6: the remediation report under the history. -->
+					<SecurityReportPanel />
 				</div>
 				<SourcesPanel v-show="currentTab === 'sources'"
 					id="sources-panel"

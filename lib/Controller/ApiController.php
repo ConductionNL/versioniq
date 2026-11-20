@@ -22,6 +22,8 @@ use OCA\Versioniq\Kernel\Contracts\AdvisorySettingsStoreInterface;
 use OCA\Versioniq\Service\Advisory\ComplianceStatus;
 use OCA\Versioniq\Service\Advisory\FixStatus;
 use OCA\Versioniq\Service\Api\AccessCollaborators;
+use OCA\Versioniq\Service\Audit\AuditPeriod;
+use OCA\Versioniq\Service\Audit\AuditPeriodQuery;
 use OCA\Versioniq\Service\Api\InstallCollaborators;
 use OCA\Versioniq\Service\Api\ReportCollaborators;
 use OCA\Versioniq\Service\Audit\AuditOrigin;
@@ -1949,15 +1951,38 @@ class ApiController extends OCSController {
 		$offset = max(0, $this->intParam('offset', 0));
 
 		$origin = $this->stringParam('origin', '');
-		$entries = in_array($origin, self::AUDIT_ORIGINS, true)
-			? $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset, $origin)
-			: $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset);
+		$from = $this->stringParam('from', '');
+		$to = $this->stringParam('to', '');
+		$operation = $this->stringParam('operation', '');
+		$securityOnly = $this->readBinaryBool($this->request->getParam('securityOnly'), false);
+		if ($from === '' && $to === '' && $operation === '' && $securityOnly === false) {
+			$entries = in_array($origin, self::AUDIT_ORIGINS, true)
+				? $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset, $origin)
+				: $this->reports->auditEntryMapper->findPage($appId !== '' ? $appId : null, $limit, $offset);
 
-		return new DataResponse([
-			'entries' => $this->withSbomFlags($entries),
-			'limit' => $limit,
-			'offset' => $offset,
-		]);
+			return new DataResponse([
+				'entries' => $this->withSbomFlags($entries),
+				'limit' => $limit,
+				'offset' => $offset,
+			]);
+		}
+
+		// audit-security-reports D5: a period in the admin's time zone, a
+		// single operation, and the security updates only.
+		try {
+			$period = AuditPeriod::fromDays($from, $to, $this->stringParam('timeZone', ''));
+		} catch (InvalidArgumentException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
+
+		$result = (new AuditPeriodQuery($this->reports->auditEntryMapper))->page(
+			$period,
+			['appId' => $appId, 'operation' => $operation, 'securityOnly' => $securityOnly],
+			['limit' => $limit, 'offset' => $offset],
+		);
+		$result['entries'] = $this->withSbomFlags($result['entries']);
+
+		return new DataResponse($result);
 	}
 
 	/**
@@ -1965,7 +1990,7 @@ class ApiController extends OCSController {
 	 * of the state it produced was kept (inventory-export-sbom-metrics D4).
 	 * Without the archive the rows go out as before.
 	 *
-	 * @param list<\OCA\Versioniq\Db\AuditEntry> $entries
+	 * @param list<\OCA\Versioniq\Db\AuditEntry|array<string, mixed>> $entries
 	 *
 	 * @return list<mixed>
 	 *
@@ -1980,9 +2005,9 @@ class ApiController extends OCSController {
 		$stored = $archive->storedIds();
 
 		return array_map(static function ($entry) use ($stored) {
-			$row = $entry->jsonSerialize();
-			if ($entry->getOperation() === 'install') {
-				$row['sbomAvailable'] = isset($stored[$entry->getId()]);
+			$row = is_array($entry) ? $entry : $entry->jsonSerialize();
+			if (($row['operation'] ?? null) === 'install') {
+				$row['sbomAvailable'] = isset($stored[$row['id'] ?? -1]);
 			}
 
 			return $row;

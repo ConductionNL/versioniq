@@ -1,6 +1,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl> -->
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
+import type {ExportEntry} from '../utils/auditExport.ts';
 import type { OriginFilter } from '../utils/auditOrigin.ts'
 
 import { t } from '@nextcloud/l10n'
@@ -10,6 +11,7 @@ import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import { ocsGet } from '../ocs.ts'
+import { collectAll, download, EXPORT_LIMIT, toCsv, toJson } from '../utils/auditExport.ts'
 import { labelCarriesMessage, operationLabel } from '../utils/auditOperations.ts'
 import { originFilterOptions, originLabel } from '../utils/auditOrigin.ts'
 import { errorMessage } from '../utils/errorMessage.ts'
@@ -29,6 +31,7 @@ type AuditEntry = {
 	status: string
 	message: string | null
 	createdAt: string
+	fixedAdvisories?: Array<{ id: string, severity: string }>
 	/** Where the row came from; null on rows from before origins were recorded. */
 	origin?: string | null
 }
@@ -49,6 +52,20 @@ const isLoadingMore = ref(false)
 const error = ref('')
 const hasLoadedOnce = ref(false)
 
+// audit-security-reports D5: a period of whole days in the admin's time
+// zone and the security updates only, with export.
+const fromDate = ref('')
+const toDate = ref('')
+const securityOnly = ref(false)
+const isExporting = ref(false)
+const exportNotice = ref('')
+const timeZone = (() => {
+	try {
+		return Intl.DateTimeFormat().resolvedOptions().timeZone || ''
+	} catch {
+		return ''
+	}
+})()
 // The origin filter (audit-attribution-and-forwarding task 1.3): '' lists every row.
 const originOptions = computed(() => originFilterOptions())
 const originFilter = ref<OriginFilter>('')
@@ -127,7 +144,68 @@ function pageQuery (reset: boolean): Record<string, string | number> {
 	if (originFilter.value !== '') {
 		query.origin = originFilter.value
 	}
+	return { ...query, ...filterQuery() }
+}
+
+/**
+ * The period and security filter, as audit query parameters.
+ *
+ * @spec openspec/changes/audit-security-reports/specs/audit-trail/spec.md
+ */
+function filterQuery (): Record<string, string> {
+	const query: Record<string, string> = {}
+	if (fromDate.value) {
+		query.from = fromDate.value
+	}
+	if (toDate.value) {
+		query.to = toDate.value
+	}
+	if (securityOnly.value) {
+		query.securityOnly = 'true'
+	}
+	if (Object.keys(query).length > 0 && timeZone) {
+		query.timeZone = timeZone
+	}
 	return query
+}
+
+/**
+ * Export every entry for the current filter as CSV or JSON, at most
+ * EXPORT_LIMIT rows, saying so when the limit cut the list.
+ *
+ * @param format 'csv' or 'json'
+ * @spec openspec/changes/audit-security-reports/specs/audit-trail/spec.md
+ */
+async function exportAs (format: 'csv' | 'json'): Promise<void> {
+	isExporting.value = true
+	exportNotice.value = ''
+	error.value = ''
+	try {
+		const { rows, cut } = await collectAll(async (offset, limit) => {
+			const query: Record<string, string | number> = { ...filterQuery(), limit, offset }
+			if (props.appId) {
+				query.appId = props.appId
+			}
+			const { payload, error: apiError } = await ocsGet<{ entries?: ExportEntry[] }>(AUDIT_ENDPOINT, query)
+			if (apiError) {
+				throw new Error(apiError)
+			}
+			return Array.isArray(payload.entries) ? payload.entries : []
+		})
+		const name = `versioniq-history-${fromDate.value || 'start'}-${toDate.value || 'now'}.${format}`
+		if (format === 'csv') {
+			download(name, 'text/csv', toCsv(rows))
+		} else {
+			download(name, 'application/json', toJson(rows))
+		}
+		if (cut) {
+			exportNotice.value = t('versioniq', 'The export holds the first {limit} entries. Choose a shorter period for the rest.', { limit: EXPORT_LIMIT })
+		}
+	} catch (e) {
+		error.value = errorMessage(e, t('versioniq', 'Could not export the history.'))
+	} finally {
+		isExporting.value = false
+	}
 }
 
 /**
@@ -175,6 +253,10 @@ watch([() => props.appId, originFilter], () => {
 	void load(true)
 }, { immediate: true })
 
+watch([fromDate, toDate, securityOnly], () => {
+	void load(true)
+})
+
 const isEmpty = computed(() => hasLoadedOnce.value && !isLoading.value && entries.value.length === 0 && !error.value)
 </script>
 
@@ -189,7 +271,7 @@ const isEmpty = computed(() => hasLoadedOnce.value && !isLoading.value && entrie
 				: t('versioniq', 'Every install and source-binding change Versioniq has performed, across all apps, newest first.') }}
 		</p>
 
-		<div :class="$style.filters">
+		<div :class="$style.filters" data-testid="history-filters">
 			<NcSelect
 				v-model="selectedOrigin"
 				data-testid="history-origin-filter"
@@ -197,8 +279,28 @@ const isEmpty = computed(() => hasLoadedOnce.value && !isLoading.value && entrie
 				:options="originOptions"
 				:clearable="false"
 				label="label" />
+			<label :class="$style.filter">
+				<span>{{ t('versioniq', 'From') }}</span>
+				<input v-model="fromDate" type="date" data-testid="history-from">
+			</label>
+			<label :class="$style.filter">
+				<span>{{ t('versioniq', 'To') }}</span>
+				<input v-model="toDate" type="date" data-testid="history-to">
+			</label>
+			<label :class="$style.filter">
+				<input v-model="securityOnly" type="checkbox" data-testid="history-security-only">
+				<span>{{ t('versioniq', 'Security updates only') }}</span>
+			</label>
+			<NcButton variant="secondary" :disabled="isExporting" data-testid="history-export-csv" @click="exportAs('csv')">
+				{{ t('versioniq', 'Export CSV') }}
+			</NcButton>
+			<NcButton variant="secondary" :disabled="isExporting" data-testid="history-export-json" @click="exportAs('json')">
+				{{ t('versioniq', 'Export JSON') }}
+			</NcButton>
 		</div>
-
+		<NcNoteCard v-if="exportNotice" type="info" data-testid="history-export-notice">
+			{{ exportNotice }}
+		</NcNoteCard>
 		<NcNoteCard v-if="error" type="error">
 			{{ error }}
 		</NcNoteCard>
@@ -235,6 +337,9 @@ const isEmpty = computed(() => hasLoadedOnce.value && !isLoading.value && entrie
 						<th scope="col">{{ t('versioniq', 'From → to') }}</th>
 						<th scope="col">{{ t('versioniq', 'Source') }}</th>
 						<th scope="col">{{ t('versioniq', 'Status') }}</th>
+						<th v-if="securityOnly" scope="col">
+							{{ t('versioniq', 'Fixed advisories') }}
+						</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -276,6 +381,9 @@ const isEmpty = computed(() => hasLoadedOnce.value && !isLoading.value && entrie
 								{{ t('versioniq', 'SBOM') }}
 							</NcButton>
 						</td>
+						<td v-if="securityOnly" data-testid="history-fixed">
+							{{ (entry.fixedAdvisories || []).map((advisory) => advisory.id).join(', ') }}
+						</td>
 					</tr>
 				</tbody>
 			</table>
@@ -296,6 +404,10 @@ const isEmpty = computed(() => hasLoadedOnce.value && !isLoading.value && entrie
 .filters { max-width: 280px; }
 
 .hint { color: var(--color-text-maxcontrast); font-size: 13px; margin: 0; }
+
+.filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 16px; }
+
+.filter { display: flex; align-items: center; gap: 6px; }
 
 .loading { display: flex; align-items: center; gap: 8px; color: var(--color-text-maxcontrast); }
 

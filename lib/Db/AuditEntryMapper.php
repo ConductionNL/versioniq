@@ -173,6 +173,49 @@ class AuditEntryMapper extends QBMapper {
 	}
 
 	/**
+	 * Entries created between two UTC moments (both inclusive), oldest
+	 * first, optionally for one app and one operation; uses the
+	 * `created_at` index. See audit-security-reports D5.
+	 *
+	 * @param string      $fromUtc   Lower bound, `Y-m-d H:i:s` UTC.
+	 * @param string|null $toUtc     Upper bound, `Y-m-d H:i:s` UTC, or null for none.
+	 * @param string|null $appId     Only this app, or null for all.
+	 * @param string|null $operation Only this operation, or null for all.
+	 * @param int         $limit       At most this many rows.
+	 * @param int         $offset      Skip this many rows first.
+	 * @param bool        $newestFirst Newest first instead of oldest first.
+	 *
+	 * @return list<AuditEntry>
+	 *
+	 * @spec openspec/changes/audit-security-reports/specs/audit-trail/spec.md
+	 */
+	public function findBetween(string $fromUtc, ?string $toUtc, ?string $appId, ?string $operation, int $limit, int $offset = 0, bool $newestFirst = false): array {
+		$direction = $newestFirst ? 'DESC' : 'ASC';
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')
+			->from($this->tableName)
+			->where($qb->expr()->gte('created_at', $qb->createNamedParameter($fromUtc, IQueryBuilder::PARAM_STR)))
+			->orderBy('created_at', $direction)
+			->addOrderBy('id', $direction)
+			->setMaxResults($limit)
+			->setFirstResult($offset);
+
+		if ($toUtc !== null) {
+			$qb->andWhere($qb->expr()->lte('created_at', $qb->createNamedParameter($toUtc, IQueryBuilder::PARAM_STR)));
+		}
+
+		if ($appId !== null && $appId !== '') {
+			$qb->andWhere($qb->expr()->eq('app_id', $qb->createNamedParameter($appId, IQueryBuilder::PARAM_STR)));
+		}
+
+		if ($operation !== null && $operation !== '') {
+			$qb->andWhere($qb->expr()->eq('operation', $qb->createNamedParameter($operation, IQueryBuilder::PARAM_STR)));
+		}
+
+		return $this->findEntities($qb);
+	}
+
+	/**
 	 * Deletes entries older than the cutoff in batches, oldest first; see "Retention".
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
