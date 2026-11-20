@@ -49,6 +49,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setCreatedAt(string $value)
  * @method ?string getOrigin()
  * @method void setOrigin(?string $value)
+ * @method ?string getAdvisories()
+ * @method void setAdvisories(?string $value)
  */
 class AuditEntry extends Entity implements JsonSerializable {
 	public const STATUS_SUCCESS = 'success';
@@ -65,6 +67,7 @@ class AuditEntry extends Entity implements JsonSerializable {
 	protected string $createdAt = '';
 	/** Where the operation came from (web, cli, job, listener); null on rows written before it was recorded. */
 	protected ?string $origin = null;
+	protected ?string $advisories = null;
 
 	public function __construct() {
 		$this->addType('actorUid', 'string');
@@ -77,6 +80,7 @@ class AuditEntry extends Entity implements JsonSerializable {
 		$this->addType('message', 'string');
 		$this->addType('createdAt', 'string');
 		$this->addType('origin', 'string');
+		$this->addType('advisories', 'string');
 	}
 
 	/**
@@ -95,6 +99,24 @@ class AuditEntry extends Entity implements JsonSerializable {
 			'message' => $this->message,
 			'createdAt' => $this->createdAt,
 			'origin' => $this->origin,
+			'advisories' => $this->decodedAdvisories(),
 		];
+	}
+
+	/**
+	 * The advisories this entry is about, as stored: a JSON list of
+	 * `{id, severity}`, or null for entries without any (and for rows older
+	 * than the column).
+	 *
+	 * @return list<array{id: string, severity: string}>|null
+	 */
+	public function decodedAdvisories(): ?array {
+		if ($this->advisories === null || $this->advisories === '') {
+			return null;
+		}
+
+		$decoded = json_decode($this->advisories, true);
+
+		return is_array($decoded) ? array_values($decoded) : null;
 	}
 }

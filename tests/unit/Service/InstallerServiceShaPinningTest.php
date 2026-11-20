@@ -244,7 +244,7 @@ final class InstallerServiceShaPinningTest extends TestCase {
 	private static function promotion(string $expectedSha): InstallRequest {
 		return new InstallRequest(
 			new InstallTarget('openregister', '2.5.0', null),
-			new InstallOptions(false, false, false, false, $expectedSha),
+			new InstallOptions(false, false, false, false, expectedSha: $expectedSha),
 			new PinChoice(null, false),
 		);
 	}

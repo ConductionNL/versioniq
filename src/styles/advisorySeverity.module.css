@@ -1,0 +1,29 @@
+/**
+ * SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl>
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
+/* The severity badge of an advisory, shared by the advisories panel and the bundled-libraries section. */
+.severity {
+	padding: 0 8px;
+	border: 1px solid var(--color-border-dark);
+	border-radius: var(--border-radius-pill);
+	font-size: 0.9em;
+	font-weight: bold;
+}
+
+.severity-critical,
+.severity-high {
+	border-color: var(--color-error);
+	color: var(--color-error-text);
+}
+
+.severity-medium {
+	border-color: var(--color-warning);
+	color: var(--color-warning-text);
+}
+
+.severity-low,
+.severity-unknown {
+	color: var(--color-text-maxcontrast);
+}

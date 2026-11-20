@@ -19,7 +19,7 @@ use OCA\Versioniq\Service\Policy\PolicyStore;
  * that hold an app back, the global settings (on/off, window, time zone) and
  * the ledger of versions already attempted, the update groups, and the security side (see
  * AutoUpdateSecurityStores), which the `security` level and the patch
- * policy read.
+ * policy read, and the proposed updates with their approvals and declines.
  *
  * @psalm-api
  */
@@ -31,6 +31,9 @@ final class AutoUpdateStores {
 		public readonly AttemptLedger $attemptLedger,
 		public readonly AutoUpdateSecurityStores $security,
 		public readonly UpdateGroupStore $groupStore,
+		// Proposed updates and the admins' decisions on them; optional and
+		// last so existing callers keep working, the container always passes it.
+		public readonly ?ProposalStore $proposalStore = null,
 	) {
 	}
 }

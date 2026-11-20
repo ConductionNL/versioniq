@@ -176,7 +176,8 @@ final class AutoUpdatePlanner {
 		}
 
 		if ($handling === PatchPolicy::HANDLING_NEXT_WINDOW) {
-			return ['member' => $this->memberFor($app, $fix), 'first' => true];
+			// Not held by a notice period either (autoupdate-proposed-updates D5).
+			return ['member' => $this->memberFor($app, $fix)->asNextWindowFix(), 'first' => true];
 		}
 
 		// `scheduled`: the fix installs with the other updates; any other

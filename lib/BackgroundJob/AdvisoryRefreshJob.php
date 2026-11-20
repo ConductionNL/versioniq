@@ -87,6 +87,15 @@ class AdvisoryRefreshJob extends TimedJob {
 			$saved = true;
 			$this->stampTriage($correlations);
 
+			// Record what the new snapshot opened and resolved, and a server
+			// upgrade, in the audit history (audit-security-reports D1, D3).
+			// Its own guard: a failure here must not stop the notifications.
+			try {
+				$this->steps->exposureTracker?->track($correlations, $this->time->getTime());
+			} catch (\Throwable $error) {
+				$this->logger->error('AdvisoryRefreshJob: advisory exposure could not be recorded', ['message' => $error->getMessage()]);
+			}
+
 			$unreached = count(array_filter(
 				$correlations,
 				static fn (array $entry): bool => ($entry['error'] ?? null) !== null,

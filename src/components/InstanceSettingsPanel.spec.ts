@@ -34,6 +34,8 @@ const settings = {
 	advisoryFeedDefault: 'https://api.github.com/repos/nextcloud/security-advisories/security-advisories',
 	ncscFeedUrl: '',
 	ncscFeedDefault: 'https://advisories.ncsc.nl/csaf/v2/',
+	osvApiBase: '',
+	osvApiDefault: 'https://api.osv.dev',
 	maxLinesBehind: null,
 	maxLinesBehindMax: 10,
 	notifyUsersOnUpdate: true,
@@ -94,6 +96,25 @@ describe('InstanceSettingsPanel', () => {
 		expect((wrapper.find('[data-testid="setting-reactivate-auto"]').element as HTMLInputElement).checked).toBe(true)
 	})
 
+	// @spec openspec/changes/advisories-bundled-libraries
+	it('shows the OSV default and sends the OSV address override', async () => {
+		mockedGet.mockResolvedValue({ payload: settings })
+		mockedWrite.mockResolvedValue({ payload: { ...settings, osvApiBase: 'https://osv.mirror.example' } })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		expect(wrapper.find('[data-testid="setting-osv-api"]').attributes('placeholder')).toBe('https://api.osv.dev')
+		expect(wrapper.text()).toContain('Default: https://api.osv.dev')
+		await wrapper.find('[data-testid="setting-osv-api"]').setValue(' https://osv.mirror.example ')
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		expect(mockedWrite).toHaveBeenCalledWith('PUT', '/ocs/v2.php/apps/versioniq/api/instance-settings', expect.objectContaining({
+			osvApiBase: 'https://osv.mirror.example',
+		}))
+		expect((wrapper.find('[data-testid="setting-osv-api"]').element as HTMLInputElement).value).toBe('https://osv.mirror.example')
+	})
+
 	it('shows the server message when a value is refused', async () => {
 		mockedGet.mockResolvedValue({ payload: settings })
 		mockedWrite.mockResolvedValue({ payload: {}, error: 'The audit retention must be a whole number between 30 and 3650.' })
@@ -152,6 +173,23 @@ describe('InstanceSettingsPanel', () => {
 
 		expect(mockedWrite).not.toHaveBeenCalled()
 		expect(wrapper.find('[data-testid="instance-settings-error"]').text()).toContain('from 0 to 90 days')
+	})
+
+	// @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
+	it('shows the update checks the settings carry and keeps them after a save', async () => {
+		const updateChecks = { verdict: [], command: [{ name: 'Lint', command: ['/opt/lint'], apps: [], timeout: 30 }], maxVerdict: 10, commandConfigKey: 'versioniq.update_checks' }
+		mockedGet.mockResolvedValue({ payload: { ...settings, updateChecks } })
+		mockedWrite.mockResolvedValue({ payload: settings })
+
+		const wrapper = mount(InstanceSettingsPanel)
+		await flushPromises()
+		expect(wrapper.find('[data-testid="update-checks-panel"]').exists()).toBe(true)
+		expect(wrapper.text()).toContain('/opt/lint')
+
+		await wrapper.find('[data-testid="instance-settings-save"]').trigger('click')
+		await flushPromises()
+
+		expect(wrapper.find('[data-testid="update-checks-panel"]').exists()).toBe(true)
 	})
 
 	// releases-notes-reach 1.2: telling users about Versioniq's updates, on by default.

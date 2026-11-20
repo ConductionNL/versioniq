@@ -52,7 +52,7 @@ final class ConnectionsDeclarationTest extends TestCase {
 	];
 
 	/** @var list<string> The three connections, in page order. */
-	private const KEYS = ['appstore', 'github', 'advisories', 'ncsc'];
+	private const KEYS = ['appstore', 'github', 'advisories', 'ncsc', 'osv'];
 
 	/** @var list<string> Proper nouns a sentence-case title may still capitalise. */
 	private const PROPER_NOUNS = ['App', 'Store', 'GitHub', 'Nextcloud'];
@@ -113,7 +113,7 @@ final class ConnectionsDeclarationTest extends TestCase {
 		self::assertSame(self::KEYS, $keys);
 		self::assertSame(
 			self::KEYS,
-			[ConnectionReportService::KEY_APPSTORE, ConnectionReportService::KEY_GITHUB, ConnectionReportService::KEY_ADVISORIES, ConnectionReportService::KEY_NCSC],
+			[ConnectionReportService::KEY_APPSTORE, ConnectionReportService::KEY_GITHUB, ConnectionReportService::KEY_ADVISORIES, ConnectionReportService::KEY_NCSC, ConnectionReportService::KEY_OSV],
 		);
 	}
 
@@ -198,8 +198,8 @@ final class ConnectionsDeclarationTest extends TestCase {
 			$linked++;
 		}
 
-		// The App Store has no admin screen, so three of four rows link.
-		self::assertSame(3, $linked);
+		// The App Store has no admin screen, so four of five rows link.
+		self::assertSame(4, $linked);
 	}
 
 	private function jsonType(mixed $value): string {

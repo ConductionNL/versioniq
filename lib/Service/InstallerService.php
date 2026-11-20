@@ -19,6 +19,7 @@ use OCA\Versioniq\Kernel\Contracts\InstallerServiceInterface;
 use OCA\Versioniq\Service\Channel\VersionChannels;
 use OCA\Versioniq\Service\Discovery\PublisherTrust;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
+use OCA\Versioniq\Service\Installer\DeclaredServerRange;
 use OCA\Versioniq\Service\Installer\FailureClassifier;
 use OCA\Versioniq\Service\Installer\InstallFailure;
 use OCA\Versioniq\Service\Installer\InstallRequest;
@@ -34,6 +35,7 @@ use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Release\ReleaseNotesReader;
 use OCA\Versioniq\Service\Source\AppStoreSource;
 use OCA\Versioniq\Service\Source\RetiredForgeException;
+use OCA\Versioniq\Service\Source\ForgeRangeStamper;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
@@ -56,7 +58,7 @@ use OCP\IUserSession;
  *
  * @psalm-api
  * @psalm-type AppLists = array{enabled: array<string>, versions: array<string, string>, core: array<string>, info: array<string, array<string, mixed>>}
- * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,author:string,licence:string,links:array{website:?string,repository:?string,bugs:?string},isCore:bool,isShipped:bool,publisher:?string,marks:list<string>,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string,previous?:array{version:string,recordedAt:string,sourceId:?string}},installedKnownIssues:list<array<string,mixed>>,provenance:?array{kind:'versioniq'|'outside',sourceId:?string,version:string}}
+ * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,author:string,licence:string,links:array{website:?string,repository:?string,bugs:?string},isCore:bool,isShipped:bool,publisher:?string,marks:list<string>,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string,previous?:array{version:string,recordedAt:string,sourceId:?string}},installedKnownIssues:list<array<string,mixed>>,provenance:?array{kind:'versioniq'|'outside',sourceId:?string,version:string},forcedOn?:int,compatibilityOverridden?:true,serverTooNew?:true}
  */
 class InstallerService implements InstallerServiceInterface {
 	/** Server-side changelog size cap; see "Version listings carry release notes". */
@@ -173,7 +175,36 @@ class InstallerService implements InstallerServiceInterface {
 			...$this->appStatus($appId, $lists, $binding),
 			'publisher' => PublisherTrust::publisherFromAuthors($lists['info'][$appId]['author'] ?? null),
 			'marks' => $this->cardMarks($appId, $binding),
+			...$this->forceStatus($appId, $lists),
 		];
+	}
+
+	/**
+	 * The card's compatibility override fields, each present only when it
+	 * applies: `forcedOn` (the major Versioniq forced the app on), or
+	 * `compatibilityOverridden` (someone else put it on `app_install_overwrite`),
+	 * and `serverTooNew` on a disabled app only its declared maximum keeps off,
+	 * which may be enabled anyway.
+	 *
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+	 * @param AppLists $lists
+	 * @return array{forcedOn?: int, compatibilityOverridden?: true, serverTooNew?: true}
+	 */
+	private function forceStatus(string $appId, array $lists): array {
+		$fields = [];
+		$override = $this->state->forceOverrides->get($appId);
+		if ($override !== null) {
+			$fields['forcedOn'] = $override->serverMajor;
+		} elseif ($this->state->forceOverrides->isOverridden($appId)) {
+			$fields['compatibilityOverridden'] = true;
+		}
+		if (self::appState($appId, $lists) === 'disabled'
+			&& DeclaredServerRange::serverTooNew($this->serverCoreVersion(), $lists['info'][$appId] ?? null)
+		) {
+			$fields['serverTooNew'] = true;
+		}
+
+		return $fields;
 	}
 
 	/**
@@ -502,6 +533,7 @@ class InstallerService implements InstallerServiceInterface {
 		$versions = $this->applyCachedOffline($versions, $appId);
 		/** @var list<array{version:string, changelog:?string, recordedSha:?string, cachedOffline:bool}> $versions */
 		$versions = $this->applyCachedServerCompatibility($versions, $appId);
+		$versions = $this->applyForgeRanges($versions, $binding);
 		$channel = [];
 		if ($this->channels !== null) {
 			// Stamped, not filtered: the picker reveals the rest and the CLI lists every version.
@@ -710,7 +742,11 @@ class InstallerService implements InstallerServiceInterface {
 	 * (#435). A verdict the source already gave (the App Store's
 	 * platformVersionSpec) is kept; an uncached forge release stays unknown.
 	 *
+	 * An incompatible one also gets `serverTooNew`: whether only its maximum
+	 * keeps it out, so an admin may force it.
+	 *
 	 * @spec openspec/specs/version-management/spec.md
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
 	 * @param list<array<string, mixed>> $versions
 	 * @return list<array<string, mixed>>
 	 */
@@ -729,11 +765,35 @@ class InstallerService implements InstallerServiceInterface {
 				$spec = $this->state->artifactCache->platformSpecFor($appId, $version);
 				if ($spec !== null) {
 					$entry['serverCompatible'] = AppStoreSource::satisfiesPlatformSpec($serverVersion, $spec);
+					if ($entry['serverCompatible'] === false) {
+						$entry['serverTooNew'] = AppStoreSource::serverAboveMaximum($serverVersion, $spec) === true;
+					}
 				}
 
 				return $entry;
 			},
 			$versions
+		);
+	}
+
+	/**
+	 * Forge versions take the server and PHP range their info.xml declares at
+	 * the release tag, where no cached archive answers (inventory-upgrade-readiness D2).
+	 *
+	 * @param list<array<string, mixed>> $versions
+	 * @return list<array<string, mixed>>
+	 *
+	 * @spec openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness/spec.md#requirement-a-forge-releases-ranges-are-read-without-downloading-the-release
+	 */
+	private function applyForgeRanges(array $versions, SourceBinding $binding): array {
+		$stamper = $this->sources->forgeRanges;
+		if ($stamper === null) {
+			return $versions;
+		}
+
+		return ForgeRangeStamper::withVerdicts(
+			$stamper->stamp($versions, $binding),
+			['server' => $this->serverCoreVersion(), 'php' => PHP_VERSION]
 		);
 	}
 
@@ -1191,13 +1251,21 @@ class InstallerService implements InstallerServiceInterface {
 	 */
 	private function installFromSource(ReleaseInstall $install): array {
 		$maintenanceWasSet = false;
+		$overrideAdded = false;
+		$installed = false;
 		try {
 			if ($this->shouldEnterMaintenance($install->run)) {
 				$maintenanceWasSet = true;
 				$this->server->configs->config->setSystemValue('maintenance', true);
 			}
+			$overrideAdded = $this->applyForceOverride($install->run);
+			$outcome = $this->installAndReport($install);
+			$installed = $outcome['statusCode'] === Http::STATUS_OK;
+			if ($installed) {
+				$this->recordForceOverride($install, $overrideAdded);
+			}
 
-			return $this->installAndReport($install);
+			return $outcome;
 		} catch (UntrustedSourceException $error) {
 			return $this->installEnvelope(Http::STATUS_FORBIDDEN, $this->briefPayload($install->run, $error->getMessage()));
 		} catch (ShaMismatchException $error) {
@@ -1207,10 +1275,64 @@ class InstallerService implements InstallerServiceInterface {
 		} catch (Exception $error) {
 			return $this->classifiedFailureOutcome($install, $error);
 		} finally {
+			if ($overrideAdded && !$installed) {
+				$this->state->forceOverrides->remove($install->run->request->target->appId);
+			}
 			if ($maintenanceWasSet) {
 				$this->server->configs->config->setSystemValue('maintenance', false);
 			}
 		}
+	}
+
+	/**
+	 * For a real forced install, puts the app on `app_install_overwrite` before
+	 * the installer runs, so its compatibility check ignores the maximum.
+	 * Returns whether Versioniq added the entry. A dry run changes no config.
+	 *
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+	 */
+	private function applyForceOverride(InstallRun $run): bool {
+		$options = $run->request->options;
+		if (!$options->forceIncompatible || $options->dryRun) {
+			return false;
+		}
+
+		return $this->state->forceOverrides->apply($run->request->target->appId);
+	}
+
+	/**
+	 * After a successful real forced install, records the override with the
+	 * server major it was set on and writes its audit row.
+	 *
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+	 */
+	private function recordForceOverride(ReleaseInstall $install, bool $overrideAdded): void {
+		$run = $install->run;
+		if (!$run->request->options->forceIncompatible || $run->request->options->dryRun) {
+			return;
+		}
+		$major = $this->serverMajor();
+		if ($major === null) {
+			return;
+		}
+		$this->state->forceOverrides->record(
+			$run->request->target->appId,
+			$install->appVersion !== '' ? $install->appVersion : $run->request->target->version,
+			$major,
+			$this->userSession->getUser()?->getUID() ?? 'system',
+			$overrideAdded,
+		);
+	}
+
+	/**
+	 * The running server's major version, or null when unknown.
+	 *
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+	 */
+	public function serverMajor(): ?int {
+		$core = $this->serverCoreVersion();
+
+		return $core === '' ? null : (int)explode('.', $core)[0];
 	}
 
 	private function shouldEnterMaintenance(InstallRun $run): bool {
@@ -1270,7 +1392,8 @@ class InstallerService implements InstallerServiceInterface {
 	 */
 	private function runInstaller(ReleaseInstall $install): array {
 		if ($install->source->getInstallerKind() === SourceInterface::INSTALLER_SIGNED) {
-			$result = $this->installers->signedInstaller->installFromSelectedRelease($install->run->request->target->appId, $install->release, $install->run->request->options->dryRun);
+			$options = $install->run->request->options;
+			$result = $this->installers->signedInstaller->installFromSelectedRelease($install->run->request->target->appId, $install->release, $options->dryRun, $options->checkContext);
 			unset($result['integrityWarning'], $result['recordedShaMatched']);
 
 			return $result;
@@ -1290,7 +1413,8 @@ class InstallerService implements InstallerServiceInterface {
 	private function runExternalInstaller(ReleaseInstall $install): array {
 		$run = $install->run;
 		$target = $run->request->target;
-		$result = $this->installers->externalInstaller->installFromExternalRelease($target->appId, $target->version, $install->release, $run->binding, $run->request->options->dryRun, $run->request->options->acceptNewSha);
+		$options = $run->request->options;
+		$result = $this->installers->externalInstaller->installFromExternalRelease($target->appId, $target->version, $install->release, $run->binding, $options->dryRun, $options->acceptNewSha, $options->checkContext);
 		$run->binding = $result['binding'];
 
 		return $result;
@@ -1342,6 +1466,10 @@ class InstallerService implements InstallerServiceInterface {
 			// states when the download fell back to a locally cached artifact.
 			'servedFromCache' => (bool)($result['servedFromCache'] ?? false),
 		];
+		if ($run->request->options->forceIncompatible) {
+			// A forced dry run reports the flag and changes no config.
+			$payload['forceIncompatible'] = true;
+		}
 		if ($run->space !== null) {
 			// The progress shows the free space the pre-flight found (D2).
 			$payload['space'] = $run->space;
@@ -1355,8 +1483,10 @@ class InstallerService implements InstallerServiceInterface {
 	 * reported them (see "Recorded SHA-256 enforced on reinstall"), and the
 	 * migration diff, present only for a downgrade (see "Migration diff on
 	 * downgrade"): `null` means it could not be computed, `[]` that no schema
-	 * steps differ.
+	 * steps differ. A dry run adds the results of the update checks as
+	 * `checks`, for either installer kind.
 	 *
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
 	 * @param array<string, mixed> $result
 	 * @return array<string, mixed>
 	 */
@@ -1371,6 +1501,9 @@ class InstallerService implements InstallerServiceInterface {
 			/** @var list<string>|null $orphanedMigrations */
 			$orphanedMigrations = $result['orphanedMigrations'];
 			$fields['orphanedMigrations'] = $orphanedMigrations;
+		}
+		if (isset($result['checks']) && is_array($result['checks'])) {
+			$fields['checks'] = array_values($result['checks']);
 		}
 		if (array_key_exists('migrationPreview', $result)) {
 			/** @var array<string, mixed>|null $migrationPreview */

@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Tests\Unit\Controller;
 
+require_once __DIR__ . '/../Support/AuditRows.php';
+
 require_once __DIR__ . '/../Support/InstallArgs.php';
 
 require_once __DIR__ . '/../Support/BuildsByParameterName.php';
@@ -40,6 +42,7 @@ use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Tests\Unit\Support\BuildsByParameterName;
 use OCA\Versioniq\Tests\Unit\Support\DispatchesLikeNextcloud;
+use OCA\Versioniq\Tests\Unit\Support\AuditRows;
 use OCA\Versioniq\Tests\Unit\Support\InstallArgs;
 use OCP\App\IAppManager;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -427,6 +430,8 @@ final class ApiTest extends TestCase {
 			'createdAt' => '2026-07-23 12:00:00',
 			// A row from before origins were recorded: unknown.
 			'origin' => null,
+			// audit-security-reports D2: null for an entry about no advisory.
+			'advisories' => null,
 		], $entry->jsonSerialize());
 	}
 
@@ -1238,6 +1243,69 @@ final class ApiTest extends TestCase {
 	}
 
 	/**
+	 * A request that answers the named parameters and the default otherwise.
+	 */
+	private function auditRequest(array $params): IRequest {
+		$request = $this->createMock(IRequest::class);
+		$request->method('getParam')->willReturnCallback(
+			static fn (string $name, mixed $default = null): mixed => $params[$name] ?? $default
+		);
+		return $request;
+	}
+
+	public function testAuditLogCutsAPeriodInTheAdminsTimeZone(): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->never())->method('findPage');
+		$mapper->expects($this->once())
+			->method('findBetween')
+			->with('2026-10-31 23:00:00', '2026-11-30 22:59:59', 'fixtureapp', 'install', 50, 0, true)
+			->willReturn([AuditRows::entry(2, '2026-11-02 09:00:00', 'install', ['to' => '1.0.1'])]);
+
+		$request = $this->auditRequest(['from' => '2026-11-01', 'to' => '2026-11-30', 'timeZone' => 'Europe/Amsterdam', 'appId' => 'fixtureapp', 'operation' => 'install']);
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $request, $mapper)->auditLog();
+
+		$this->assertSame(200, $response->getStatus());
+		$data = $response->getData();
+		$this->assertSame([2], array_column($data['entries'], 'id'));
+		$this->assertNull($data['total']);
+	}
+
+	public function testAuditLogSecurityOnlyNamesTheFixedAdvisoryAndLeavesOutAnUnresolvedInstall(): void {
+		$advisory = [['id' => 'GHSA-1', 'severity' => 'high']];
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->once())
+			->method('findBetween')
+			->with('2026-11-14 00:00:00', null, null, null, 20000)
+			->willReturn([
+				AuditRows::entry(1, '2026-11-14 08:00:00', 'install', ['appId' => 'other', 'to' => '2.0.0']),
+				AuditRows::entry(2, '2026-11-14 09:00:00', 'install', ['from' => '1.0.0', 'to' => '1.0.1']),
+				AuditRows::entry(3, '2026-11-14 22:00:00', 'install', ['appId' => 'late', 'to' => '3.0.0']),
+				AuditRows::entry(4, '2026-11-15 00:10:00', 'advisory_resolved', ['from' => '1.0.0', 'to' => '1.0.1', 'message' => 'update', 'advisories' => $advisory]),
+				AuditRows::entry(5, '2026-11-15 00:20:00', 'advisory_resolved', ['appId' => 'late', 'to' => '3.0.0', 'message' => 'update', 'advisories' => [['id' => 'GHSA-3', 'severity' => 'low']]]),
+			]);
+
+		$request = $this->auditRequest(['from' => '2026-11-14', 'to' => '2026-11-14', 'securityOnly' => 'true']);
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $request, $mapper)->auditLog();
+
+		$data = $response->getData();
+		$this->assertSame(2, $data['total']);
+		$this->assertSame([3, 2], array_column($data['entries'], 'id'));
+		$this->assertSame($advisory, $data['entries'][1]['fixedAdvisories']);
+		$this->assertSame('1.0.1', $data['entries'][1]['toVersion']);
+	}
+
+	public function testAuditLogRefusesABadPeriod(): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->never())->method('findBetween');
+
+		$request = $this->auditRequest(['from' => '2026-13-01']);
+		$response = $this->buildAdminController($this->createMock(InstallerService::class), $request, $mapper)->auditLog();
+
+		$this->assertSame(400, $response->getStatus());
+		$this->assertSame(['message' => 'Dates are YYYY-MM-DD.'], $response->getData());
+	}
+
+	/**
 	 * A settings-store double whose schedule is the default every-day schedule.
 	 *
 	 * @return AutoUpdateSettingsStore&\PHPUnit\Framework\MockObject\MockObject
@@ -1283,7 +1351,7 @@ final class ApiTest extends TestCase {
 		$data = $response->getData();
 		$this->assertSame(['notes' => ['state' => 'advisory-available', 'heldByPin' => false]], $data['advisories']);
 		$this->assertSame(1_700_000_000, $data['checkedAt']);
-		$this->assertSame(['advisories', 'checkedAt', 'status', 'errors', 'compliance', 'triage'], array_keys($data));
+		$this->assertSame(['advisories', 'checkedAt', 'status', 'errors', 'compliance', 'triage', 'libraries', 'librariesCheckedAt'], array_keys($data));
 		$this->assertSame('ok', $data['status']);
 		$this->assertSame([], $data['errors']);
 		$this->assertSame($triage, $data['triage']);

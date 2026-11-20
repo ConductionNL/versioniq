@@ -39,6 +39,9 @@ final class InstallVersionFields extends RequestFields {
 	/** @var string `1` to permit installing a version older than the installed one */
 	public string $allowDowngrade = '0';
 
+	/** @var string `1` to install past the version's declared maximum, through `app_install_overwrite` */
+	public string $forceIncompatible = '0';
+
 	/**
 	 * install-live-progress: a random token the page polls
 	 * GET /api/install-progress/{token} with while the install runs.

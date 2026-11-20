@@ -80,7 +80,7 @@ class PromotionPlanner {
 
 		return new InstallRequest(
 			new InstallTarget($plan['appId'], $plan['version'], $plan['sourceId']),
-			new InstallOptions(false, false, false, $allowDowngrade, $sha256),
+			new InstallOptions(false, false, false, $allowDowngrade, expectedSha: $sha256),
 			new PinChoice(null, false),
 		);
 	}

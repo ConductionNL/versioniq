@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Api;
 
 use OCA\Versioniq\Service\Cache\ArtifactCache;
+use OCA\Versioniq\Service\Installer\ForceEnabler;
 use OCA\Versioniq\Service\Installer\InstallProgress;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Inventory\SbomArchive;
@@ -31,6 +32,7 @@ final class InstallCollaborators {
 		public readonly ServerVersion $serverVersion,
 		public readonly IAppManager $appManager,
 		public readonly ArtifactCache $artifactCache,
+		public readonly ForceEnabler $forceEnabler,
 		/** install-live-progress: the stage record the page polls; null in hand-built tests. */
 		public readonly ?InstallProgress $progress = null,
 		/** install-live-progress: closed before an install so progress polls are not blocked by its lock. */
