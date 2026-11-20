@@ -124,6 +124,39 @@ describe('range guard and skipped versions', () => {
 		expect(installs).toHaveLength(1)
 	})
 
+	it('offers Skip on the update badge of an app with an update, and on no other card', async () => {
+		stubFetch([])
+		const wrapper = mount(App, { global: { stubs: { CachePanel: true, SourcesPanel: true, TokensPanel: true, IntegrationsPanel: true, InstanceSettingsPanel: true, HistoryPanel: true, DiscoverPanel: true, AdvisoriesPanel: true, TrustedSourcesPanel: true, AutoUpdateOverview: true, UpdateBadgeSkip: { name: 'UpdateBadgeSkip', props: ['appId', 'version'], emits: ['changed'], template: '<div data-testid="badge-skip">{{ appId }}@{{ version }}</div>' } } } })
+		await flushPromises()
+		const vm = wrapper.vm as unknown as Record<string, any>
+		const entry = { installedVersion: '1.0.0', newestVersion: '1.2.0', newestCompatibleVersion: '1.2.0', linesBehind: 2, updateAvailable: true, pinned: false, sourceId: 'appstore', error: null }
+		vm.apps = [
+			{ id: 'behind', label: 'Behind', isCore: false, installedVersion: '1.0.0', state: 'enabled' },
+			{ id: 'current', label: 'Current', isCore: false, installedVersion: '2.0.0', state: 'enabled' },
+		]
+		vm.pendingUpdates = { behind: entry, current: { ...entry, installedVersion: '2.0.0', newestVersion: '2.0.0', newestCompatibleVersion: '2.0.0', linesBehind: 0, updateAvailable: false } }
+		await flushPromises()
+
+		expect(wrapper.find('[data-app-id="behind"] [data-testid="badge-skip"]').text()).toBe('behind@1.2.0')
+		expect(wrapper.find('[data-app-id="current"] [data-testid="badge-skip"]').exists()).toBe(false)
+	})
+
+	it('re-reads the picker\'s skip marks after a badge skip of the selected app only', async () => {
+		const reads = stubFetch([])
+		const vm = await mountApp()
+		const skipReads = (): number => (vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/skips'))).length
+		vm.selectedApp = 'calendar'
+		await flushPromises()
+		const before = skipReads()
+
+		await vm.onCardSkipChanged('other')
+		expect(skipReads()).toBe(before)
+
+		await vm.onCardSkipChanged('calendar')
+		expect(skipReads()).toBe(before + 1)
+		expect(reads).toHaveLength(0)
+	})
+
 	it('saves "hold manual installs" with the current level', async () => {
 		const writes = stubFetch([])
 		const vm = await mountApp()
