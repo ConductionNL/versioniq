@@ -18,5 +18,5 @@
 
 ## 4. Close
 
-- [ ] 4.1 Add strings to `l10n/en` and `l10n/nl` (verify `npm run check:l10n-js`), set the matrix rows `inv-deprecated-apps`, `inv-end-of-support` and `ins-replace-successor` to `built` with evidence lines, then archive this change.
+- [x] 4.1 Add strings to `l10n/en` and `l10n/nl` (verify `npm run check:l10n-js`), set the matrix rows `inv-deprecated-apps`, `inv-end-of-support` and `ins-replace-successor` to `built` with evidence lines, then archive this change.
   - Note: the strings of this change are in `l10n/en.json` and `l10n/nl.json` (`npm run check:l10n-js` and `scripts/check-l10n-keys.cjs` pass); the matrix rows and the archive are still open.

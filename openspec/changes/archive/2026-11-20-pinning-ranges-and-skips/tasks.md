@@ -15,4 +15,4 @@
 
 ## 3. Close
 
-- [ ] 3.1 Set the matrix rows `pin-range` and `pin-ignore-version` to `built` with evidence lines, then archive this change.
+- [x] 3.1 Set the matrix rows `pin-range` and `pin-ignore-version` to `built` with evidence lines, then archive this change.
