@@ -186,7 +186,7 @@ describe('App automatic update settings', () => {
 		await vm.saveAutoUpdateSettings()
 		await flushPromises()
 
-		expect(calls[0].body).toEqual({ enabled: '1', window: '01:00-05:00', schedule: weekdays })
+		expect(calls[0].body).toEqual({ enabled: '1', window: '01:00-05:00', minAgeDays: '0', schedule: weekdays })
 		expect(vm.savedAutoUpdateSchedule).toEqual(weekdays)
 		expect(vm.autoUpdateNextRuns).toEqual(nextRuns)
 		expect(vm.isAutoUpdateSettingsDirty).toBe(false)
@@ -218,7 +218,7 @@ describe('App automatic update settings', () => {
 		await vm.saveAutoUpdateSettings()
 		await flushPromises()
 
-		expect(calls[0].body).toEqual({ enabled: '1', window: '01:00-05:00', defaultLevel: 'minor' })
+		expect(calls[0].body).toEqual({ enabled: '1', window: '01:00-05:00', minAgeDays: '0', defaultLevel: 'minor' })
 		expect(calls[0].path).toContain('defaultLevel=minor')
 		expect([vm.autoUpdateDefaultLevel, vm.savedAutoUpdateDefaultLevel]).toEqual(['minor', 'minor'])
 	})
