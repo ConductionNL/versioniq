@@ -23,7 +23,8 @@ use OCP\Notification\UnknownNotificationException;
  * Renders Versioniq notifications (the `pinned_to_vulnerable` advisory
  * notice, the `pat_expiring` / `pat_expired` token-expiry notices, the
  * `pin_drift` version-pinning notice, and the `auto_update_success` /
- * `auto_update_failure` auto-update outcome notices) into localized
+ * `auto_update_failure` auto-update outcome notices, and the
+ * `auto_update_group` notice of an update group run) into localized
  * subject/message text for the notifications app. Read-only presentation —
  * it never changes a version, a token, or a pin.
  *
@@ -56,6 +57,7 @@ class Notifier implements INotifier {
 	 * @spec openspec/specs/version-pinning/spec.md
 	 * @spec openspec/specs/auto-update-policies/spec.md
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
 	 * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-admins-are-notified-of-new-releases-in-the-scope-they-choose
 	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-assigns-an-advisory-to-an-owner
 	 */
@@ -73,9 +75,14 @@ class Notifier implements INotifier {
 			'pat_expired' => $this->renderPatExpired(...),
 			'auto_update_success' => $this->renderAutoUpdateSuccess(...),
 			'auto_update_failure' => $this->renderAutoUpdateFailure(...),
+			'auto_update_planned' => $this->renderAutoUpdatePlanned(...),
+			'auto_update_group' => $this->renderAutoUpdateGroup(...),
 			// Sent weekly by AdvisoryDigestNotifier. Without this branch the
 			// digest was stored but skipped by the bell every time (#428).
 			'advisory_digest' => $this->renderAdvisoryDigest(...),
+			'force_lifted' => $this->renderForceLifted(...),
+			// Sent by ReactivationService (audit-external-changes).
+			'app_left_disabled' => $this->renderAppLeftDisabled(...),
 			'server_eol' => $this->renderServerEol(...),
 			'new_release' => $this->renderNewRelease(...),
 			'advisory_assigned' => $this->renderAdvisoryAssigned(...),
@@ -84,6 +91,24 @@ class Notifier implements INotifier {
 		$render($notification, $l);
 
 		return $notification;
+	}
+
+	/**
+	 * `force_lifted`: Versioniq lifted an override it set, after a major
+	 * upgrade, and says whether the app was disabled.
+	 *
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+	 */
+	private function renderForceLifted(INotification $notification, IL10N $l): void {
+		$app = $this->stringParameter($notification, 'app');
+		$major = $this->stringParameter($notification, 'major');
+		$message = $this->stringParameter($notification, 'disabled') === '1'
+			? $l->t('%1$s was forced to run past its declared maximum. After the upgrade to Nextcloud %2$s the override is lifted, and %1$s is disabled because its version does not declare support for Nextcloud %2$s. Update it, or choose "Enable anyway" again.', [$app, $major])
+			: $l->t('%1$s was forced to run past its declared maximum. After the upgrade to Nextcloud %2$s the override is lifted; %1$s now runs under Nextcloud\'s own compatibility check.', [$app, $major]);
+
+		$notification
+			->setParsedSubject($l->t('Compatibility override lifted for %s', [$app]))
+			->setParsedMessage($message);
 	}
 
 	/**
@@ -148,6 +173,32 @@ class Notifier implements INotifier {
 			);
 	}
 
+	/**
+	 * An app an update left disabled: whether it runs on this server, and
+	 * the newest version that does when one is known.
+	 *
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	private function renderAppLeftDisabled(INotification $notification, IL10N $l): void {
+		$app = $this->stringParameter($notification, 'app');
+		$fromVersion = $this->stringParameter($notification, 'fromVersion');
+		$toVersion = $this->stringParameter($notification, 'toVersion');
+		$serverMajor = $this->stringParameter($notification, 'serverMajor');
+		$compatibleVersion = $this->stringParameter($notification, 'compatibleVersion');
+
+		if ($this->stringParameter($notification, 'compatible') === '1') {
+			$message = $l->t('%1$s was left disabled by the update from %2$s to %3$s. It runs on this server: enable it.', [$app, $fromVersion, $toVersion]);
+		} elseif ($compatibleVersion !== '') {
+			$message = $l->t('%1$s was left disabled by the update from %2$s to %3$s. It does not run on Nextcloud %4$s; version %5$s does.', [$app, $fromVersion, $toVersion, $serverMajor, $compatibleVersion]);
+		} else {
+			$message = $l->t('%1$s was left disabled by the update from %2$s to %3$s. It does not run on Nextcloud %4$s.', [$app, $fromVersion, $toVersion, $serverMajor]);
+		}
+
+		$notification
+			->setParsedSubject($l->t('An update left an app disabled'))
+			->setParsedMessage($message);
+	}
+
 	private function renderPatExpired(INotification $notification, IL10N $l): void {
 		$label = $this->stringParameter($notification, 'label');
 		$forge = $this->stringParameter($notification, 'forge');
@@ -177,6 +228,30 @@ class Notifier implements INotifier {
 			);
 	}
 
+	/**
+	 * A proposed update announced ahead of its window, with the planned date
+	 * and the release notes excerpt in the text itself: notice-group members
+	 * cannot open Versioniq.
+	 */
+	private function renderAutoUpdatePlanned(INotification $notification, IL10N $l): void {
+		$app = $this->stringParameter($notification, 'app');
+		$fromVersion = $this->stringParameter($notification, 'fromVersion');
+		$toVersion = $this->stringParameter($notification, 'toVersion');
+		$plannedFor = $this->stringParameter($notification, 'plannedFor');
+		$notes = trim($this->stringParameter($notification, 'releaseNotes'));
+		$planned = $plannedFor !== ''
+			? $l->t('%1$s will be updated from %2$s to %3$s on or after %4$s.', [$app, $fromVersion, $toVersion, $plannedFor])
+			: $l->t('%1$s will be updated from %2$s to %3$s at a coming update window.', [$app, $fromVersion, $toVersion]);
+
+		$notification
+			->setParsedSubject(
+				$l->t('Update planned for %1$s', [$app])
+			)
+			->setParsedMessage(
+				$notes !== '' ? $planned . "\n\n" . $l->t('Release notes:') . "\n" . $notes : $planned
+			);
+	}
+
 	private function renderAutoUpdateFailure(INotification $notification, IL10N $l): void {
 		$app = $this->stringParameter($notification, 'app');
 		$targetVersion = $this->stringParameter($notification, 'targetVersion');
@@ -189,6 +264,43 @@ class Notifier implements INotifier {
 			->setParsedMessage(
 				$l->t('%1$s could not be automatically updated to %2$s. %3$s', [$app, $targetVersion, $hint])
 			);
+	}
+
+	/**
+	 * "Update group {name}" and one line per member with its outcome, in
+	 * install order (autoupdate-run-batching D3).
+	 *
+	 * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+	 */
+	private function renderAutoUpdateGroup(INotification $notification, IL10N $l): void {
+		/** @var mixed $members */
+		$members = $notification->getSubjectParameters()['members'] ?? [];
+		$lines = [];
+		foreach (is_array($members) ? $members : [] as $member) {
+			if (is_array($member)) {
+				$lines[] = self::groupMemberLine($member, $l);
+			}
+		}
+
+		$notification
+			->setParsedSubject($l->t('Update group %1$s', [$this->stringParameter($notification, 'group')]))
+			->setParsedMessage(implode("\n", $lines));
+	}
+
+	/**
+	 * The line of one member of an update group's notification.
+	 *
+	 * @param array<array-key, mixed> $member
+	 */
+	private static function groupMemberLine(array $member, IL10N $l): string {
+		$app = is_string($member['appId'] ?? null) ? $member['appId'] : '';
+		$version = is_string($member['version'] ?? null) ? $member['version'] : '';
+
+		return match ($member['outcome'] ?? null) {
+			'installed' => $l->t('%1$s: updated to %2$s', [$app, $version]),
+			'failed' => $l->t('%1$s: update to %2$s failed', [$app, $version]),
+			default => $l->t('%1$s: not attempted', [$app]),
+		};
 	}
 
 	private function renderAdvisoryDigest(INotification $notification, IL10N $l): void {

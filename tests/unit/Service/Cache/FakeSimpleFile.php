@@ -62,7 +62,13 @@ final class FakeSimpleFile implements ISimpleFile {
 	}
 
 	public function read() {
-		return false;
+		$stream = fopen('php://memory', 'r+b');
+		if ($stream !== false) {
+			fwrite($stream, $this->content);
+			rewind($stream);
+		}
+
+		return $stream;
 	}
 
 	public function write() {

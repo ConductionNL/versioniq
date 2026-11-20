@@ -17,16 +17,26 @@ const props = withDefaults(defineProps<{
 	autoUpdateEnabled: boolean
 	disabled?: boolean
 	blockedVersions?: BlockedVersion[]
+	/** Whether automatic updates of this app wait for an admin's approval. */
+	requireApproval?: boolean
+	/** Whether manual installs outside the level ask for an explicit override (pinning-ranges-and-skips). */
 	holdManual?: boolean
+	/** Who set the policy, and when (ISO 8601); shown beside an active policy (audit-attribution-and-forwarding D2). */
+	setBy?: string
+	setAt?: string
 }>(), {
 	disabled: false,
 	blockedVersions: () => [],
+	requireApproval: false,
 	holdManual: false,
+	setBy: '',
+	setAt: '',
 })
 
 const emit = defineEmits<{
 	(event: 'change', appId: string, level: PolicyLevel): void
 	(event: 'retry', appId: string, version: string): void
+	(event: 'approval', appId: string, requireApproval: boolean): void
 	(event: 'holdManual', appId: string, hold: boolean): void
 }>()
 
@@ -50,12 +60,27 @@ const selected = computed<SelectOption>({
 
 const isActive = computed(() => props.level !== 'none')
 
+/**
+ * "Set by {user} on {date}" for an active policy that records who set it, else ''.
+ *
+ * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-changes-to-the-update-rules-are-audited
+ */
+const setByText = computed(() => {
+	if (!isActive.value || props.setBy === '') {
+		return ''
+	}
+	const when = new Date(props.setAt)
+	const date = Number.isNaN(when.getTime()) ? props.setAt : when.toLocaleDateString()
+	return date === ''
+		? t('versioniq', 'Set by {user}', { user: props.setBy })
+		: t('versioniq', 'Set by {user} on {date}', { user: props.setBy, date })
+})
 /** Only Patch and Minor have a range to hold manual installs to (pinning-ranges-and-skips). */
 const canHoldManual = computed(() => props.level === 'patch' || props.level === 'minor')
 </script>
 
 <template>
-	<div :class="$style.wrapper" data-testid="policy-selector">
+	<div :class="$style.wrapper" data-testid="policy-selector" :title="setByText || undefined">
 		<NcSelect
 			v-model="selected"
 			data-testid="policy-select"
@@ -79,9 +104,20 @@ const canHoldManual = computed(() => props.level === 'patch' || props.level === 
 				{{ t('versioniq', 'Installs through Versioniq outside this level then ask for an explicit override. Nextcloud\'s own updater is not held.') }}
 			</span>
 		</template>
+		<span v-if="setByText" :class="$style.badge" data-testid="policy-set-by">
+			{{ setByText }}
+		</span>
 		<span v-if="isActive && !autoUpdateEnabled" :class="$style.disabledHint" data-testid="policy-disabled-hint">
 			{{ t('versioniq', 'Automation is disabled. Enable it in settings to take effect.') }}
 		</span>
+		<NcCheckboxRadioSwitch
+			v-if="isActive"
+			data-testid="policy-require-approval"
+			:modelValue="requireApproval"
+			:disabled="disabled"
+			@update:modelValue="emit('approval', appId, $event === true)">
+			{{ t('versioniq', 'Ask me before installing') }}
+		</NcCheckboxRadioSwitch>
 		<div v-if="blockedVersions.length > 0" :class="$style.blocked" data-testid="policy-blocked-versions">
 			<span :class="$style.blockedHint">
 				{{ t('versioniq', 'Automatic updates skip these versions because an earlier attempt failed:') }}

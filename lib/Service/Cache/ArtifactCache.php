@@ -14,6 +14,7 @@ namespace OCA\Versioniq\Service\Cache;
 
 use OCA\Versioniq\AppInfo\Application;
 use OCA\Versioniq\Service\Installer\AppIdFormat;
+use OCA\Versioniq\Service\Source\InfoXmlRanges;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Files\AppData\IAppDataFactory;
 use OCP\Files\IAppData;
@@ -274,49 +275,9 @@ class ArtifactCache {
 			return null;
 		}
 
-		$nextcloud = self::nextcloudElement(self::infoXmlFromArchive($cached['content']) ?? '');
+		$spec = InfoXmlRanges::fromXml(self::infoXmlFromArchive($cached['content']) ?? '')->platformSpec();
 
-		return $nextcloud === null ? null : self::rangeSpec($nextcloud);
-	}
-
-	/**
-	 * The `<nextcloud>` element of an info.xml, or null when the document is
-	 * empty, does not parse or has none.
-	 */
-	private static function nextcloudElement(string $infoXml): ?\DOMElement {
-		if ($infoXml === '') {
-			return null;
-		}
-
-		$dom = new \DOMDocument();
-		$previous = libxml_use_internal_errors(true);
-		try {
-			$loaded = $dom->loadXML($infoXml, LIBXML_NONET);
-		} finally {
-			libxml_clear_errors();
-			libxml_use_internal_errors($previous);
-		}
-		$nextcloud = $loaded ? $dom->getElementsByTagName('nextcloud')->item(0) : null;
-
-		return $nextcloud instanceof \DOMElement ? $nextcloud : null;
-	}
-
-	/**
-	 * The element's numeric min-version and max-version as a platform spec,
-	 * or null when it has neither.
-	 */
-	private static function rangeSpec(\DOMElement $nextcloud): ?string {
-		$min = trim($nextcloud->getAttribute('min-version'));
-		$max = trim($nextcloud->getAttribute('max-version'));
-		$bounds = [];
-		if (preg_match('/^\d+(\.\d+)*$/', $min) === 1) {
-			$bounds[] = '>=' . $min;
-		}
-		if (preg_match('/^\d+(\.\d+)*$/', $max) === 1) {
-			$bounds[] = '<=' . $max;
-		}
-
-		return $bounds === [] ? null : implode(' ', $bounds);
+		return $spec === '' ? null : $spec;
 	}
 	/** Largest decompressed archive this will read: well above any app release. */
 	private const MAX_ARCHIVE_BYTES = 256 * 1024 * 1024;

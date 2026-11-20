@@ -47,7 +47,7 @@ final class FakeSimpleFolder implements ISimpleFolder {
 	}
 
 	public function newFile(string $name, $content = null): ISimpleFile {
-		$file = new FakeSimpleFile($this, $name, is_string($content) ? $content : '');
+		$file = new FakeSimpleFile($this, $name, is_resource($content) ? (string)stream_get_contents($content) : (is_string($content) ? $content : ''));
 		$this->files[$name] = $file;
 
 		return $file;

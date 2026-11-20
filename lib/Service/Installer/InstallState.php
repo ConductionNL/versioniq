@@ -32,6 +32,7 @@ final class InstallState {
 		public readonly LkgStore $lkgStore,
 		public readonly ArtifactCache $artifactCache,
 		public readonly TrustedSourceList $trustedSources,
+		public readonly ForceOverrideStore $forceOverrides,
 		public readonly ?RangeGuard $rangeGuard = null,
 		public readonly ?WithdrawnVersionStore $withdrawnVersions = null,
 		public readonly ?InstallOutcomes $outcomes = null,

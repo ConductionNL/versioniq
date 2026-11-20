@@ -37,6 +37,8 @@ const props = defineProps<{
 	nextRuns?: Partial<Record<UpdateKind, string | null>>
 	updates?: Record<string, PendingUpdate>
 	updatesCheckedLabel?: string
+	groups?: Array<{ id?: string, name: string, apps: string[] }>
+	waiting?: Record<string, string>
 }>()
 
 const emit = defineEmits<{
@@ -73,6 +75,48 @@ const blocked = computed(() => Object.entries(props.policies)
 const held = computed(() => Object.entries(props.securityHolds ?? {})
 	.map(([appId, reason]) => ({ appId, reason }))
 	.sort((a, b) => a.appId.localeCompare(b.appId)))
+
+// Each update group with what holds it, the first member in its order that
+// is pinned or has a failed version (autoupdate-run-batching D3).
+const groupRows = computed(() => (props.groups ?? []).map((group) => ({
+	name: group.name,
+	apps: group.apps,
+	status: groupStatus(group.apps),
+})))
+
+// Units a limit held back, oldest first (autoupdate-run-batching D5).
+const waitingRows = computed(() => Object.entries(props.waiting ?? {})
+	.map(([unit, since]) => ({ unit, since }))
+	.sort((a, b) => a.since.localeCompare(b.since)))
+
+/**
+ * @param apps The group's apps, in install order.
+ * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+ */
+function groupStatus (apps: string[]): { held: boolean, text: string } {
+	const pinned = apps.find((appId) => props.updates?.[appId]?.pinned === true)
+	if (pinned !== undefined) {
+		return { held: true, text: t('versioniq', 'Held by the pin on {app}', { app: labelFor(pinned) }) }
+	}
+	const failed = apps.find((appId) => (props.policies[appId]?.blockedVersions ?? []).length > 0)
+	if (failed !== undefined) {
+		return { held: true, text: t('versioniq', 'Blocked until the failed update of {app} is retried', { app: labelFor(failed) }) }
+	}
+	return { held: false, text: t('versioniq', 'Updates together, in this order') }
+}
+
+/**
+ * @param unit The waiting-list key: `app:<id>` or `group:<name>`.
+ * @param since When the limit first held it back (ISO-8601).
+ * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+ */
+function waitingText (unit: string, since: string): string {
+	const date = since.slice(0, 10)
+	if (unit.startsWith('group:')) {
+		return t('versioniq', 'Update group {name}: waiting for the limit since {date}', { name: unit.slice(6), date })
+	}
+	return t('versioniq', '{app}: waiting for the limit since {date}', { app: labelFor(unit.replace(/^app:/, '')), date })
+}
 
 // The stale-snapshot line shows while any app is on `security`.
 const showStale = computed(() => props.advisoriesFresh === false
@@ -234,6 +278,28 @@ function levelLabel (level: PolicyLevel): string {
 		<p v-for="line in byHand" :key="line" :class="$style.hint" data-testid="overview-by-hand">
 			{{ line }}
 		</p>
+		<template v-if="groupRows.length > 0">
+			<h5 :class="$style.subheading">
+				{{ t('versioniq', 'Update groups') }}
+			</h5>
+			<ul :class="$style.list">
+				<li v-for="group in groupRows" :key="group.name" :class="$style.blockedRow" data-testid="overview-group-row">
+					<strong>{{ group.name }}</strong>
+					<span>{{ group.apps.map(labelFor).join(' → ') }}</span>
+					<span :class="group.status.held ? $style.warning : $style.hint" :data-held="group.status.held">{{ group.status.text }}</span>
+				</li>
+			</ul>
+		</template>
+		<template v-if="waitingRows.length > 0">
+			<h5 :class="$style.subheading">
+				{{ t('versioniq', 'Waiting for the limit') }}
+			</h5>
+			<ul :class="$style.list">
+				<li v-for="row in waitingRows" :key="row.unit" data-testid="overview-waiting-row">
+					{{ waitingText(row.unit, row.since) }}
+				</li>
+			</ul>
+		</template>
 		<h5 :class="$style.subheading">
 			{{ t('versioniq', 'Pending updates') }}
 		</h5>

@@ -80,7 +80,25 @@ final class PolicyTest extends TestCase {
 	 */
 	public function testOnlyPatchAndMinorHoldManualInstalls(): void {
 		foreach (['none' => false, 'patch' => true, 'minor' => true, 'all' => false] as $level => $holds) {
-			$this->assertSame($holds, (new Policy($level, 'admin', '2026-01-01T00:00:00+00:00', true))->holdsManualInstalls(), $level);
+			$this->assertSame($holds, (new Policy($level, 'admin', '2026-01-01T00:00:00+00:00', holdManual: true))->holdsManualInstalls(), $level);
 		}
+	}
+
+	public function testRequireApprovalRoundTrips(): void {
+		$policy = new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00', true);
+
+		$this->assertTrue($policy->toArray()['requireApproval']);
+		$this->assertTrue(Policy::fromArray($policy->toArray())->requireApproval);
+	}
+
+	public function testAStoredPolicyWithoutRequireApprovalReadsAsFalse(): void {
+		$policy = Policy::fromArray(['level' => 'patch', 'setBy' => 'admin', 'setAt' => '2026-07-01T00:00:00+00:00']);
+
+		$this->assertFalse($policy->requireApproval);
+		$this->assertFalse((new Policy(Policy::LEVEL_PATCH, 'admin', 'x'))->requireApproval);
+	}
+
+	public function testOnlyABooleanTrueRequiresApproval(): void {
+		$this->assertFalse(Policy::fromArray(['level' => 'patch', 'setBy' => 'a', 'setAt' => 'x', 'requireApproval' => 'yes'])->requireApproval);
 	}
 }

@@ -12,8 +12,11 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Api;
 
 use OCA\Versioniq\Service\Cache\ArtifactCache;
+use OCA\Versioniq\Service\Installer\AppRestorer;
+use OCA\Versioniq\Service\Installer\ForceEnabler;
 use OCA\Versioniq\Service\Installer\InstallProgress;
 use OCA\Versioniq\Service\InstallerService;
+use OCA\Versioniq\Service\Inventory\SbomArchive;
 use OCP\App\IAppManager;
 use OCP\ISession;
 use OCP\ServerVersion;
@@ -30,10 +33,15 @@ final class InstallCollaborators {
 		public readonly ServerVersion $serverVersion,
 		public readonly IAppManager $appManager,
 		public readonly ArtifactCache $artifactCache,
+		public readonly ForceEnabler $forceEnabler,
 		/** install-live-progress: the stage record the page polls; null in hand-built tests. */
 		public readonly ?InstallProgress $progress = null,
 		/** install-live-progress: closed before an install so progress polls are not blocked by its lock. */
 		public readonly ?ISession $session = null,
+		// Optional: the SBOM kept after each install, flagged on the history rows (inventory-export-sbom-metrics D4).
+		public readonly ?SbomArchive $sbomArchive = null,
+		// Optional: restores an app from its install backup (safety-rollback-backup-and-preflight D4).
+		public readonly ?AppRestorer $restorer = null,
 	) {
 	}
 }

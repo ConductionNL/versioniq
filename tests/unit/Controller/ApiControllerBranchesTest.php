@@ -209,6 +209,39 @@ final class ApiControllerBranchesTest extends TestCase {
 	}
 
 	/**
+	 * A known origin narrows the audit page; an unknown value lists every row
+	 * (audit-attribution-and-forwarding task 1.3).
+	 *
+	 * @spec openspec/changes/audit-attribution-and-forwarding/specs/audit-trail/spec.md#requirement-every-audit-row-says-where-it-came-from
+	 */
+	#[DataProvider('auditOrigins')]
+	public function testTheAuditPageFiltersOnAKnownOrigin(string $origin, ?string $passed): void {
+		$mapper = $this->createMock(AuditEntryMapper::class);
+		$mapper->expects($this->once())->method('findPage')->willReturnCallback(function (mixed ...$args) use ($passed): array {
+			$this->assertSame($passed, $args[3] ?? null);
+
+			return [];
+		});
+
+		$this->controller(['origin' => $origin], ['auditEntryMapper' => $mapper])->auditLog();
+	}
+
+	/**
+	 * @return array<string, array{0: string, 1: string|null}>
+	 */
+	public static function auditOrigins(): array {
+		return [
+			'job' => ['job', 'job'],
+			'command line' => ['cli', 'cli'],
+			'drift check' => ['listener', 'listener'],
+			'web' => ['web', 'web'],
+			'rows from before origins' => ['unknown', 'unknown'],
+			'not an origin' => ['everything', null],
+			'empty' => ['', null],
+		];
+	}
+
+	/**
 	 * @return array<string, array{0: array<string, mixed>, 1: string|null, 2: int, 3: int}>
 	 */
 	public static function auditPages(): array {

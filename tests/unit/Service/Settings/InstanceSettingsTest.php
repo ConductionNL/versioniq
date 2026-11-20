@@ -47,6 +47,15 @@ final class InstanceSettingsTest extends TestCase {
 				return true;
 			},
 		);
+		$appConfig->method('getValueBool')->willReturnCallback(
+			fn (string $app, string $key, bool $default = false): bool => (bool)($this->config[$key] ?? $default),
+		);
+		$appConfig->method('setValueBool')->willReturnCallback(
+			function (string $app, string $key, bool $value): bool {
+				$this->config[$key] = $value;
+				return true;
+			},
+		);
 		$appConfig->method('deleteKey')->willReturnCallback(
 			function (string $app, string $key): void {
 				unset($this->config[$key]);
@@ -222,6 +231,48 @@ final class InstanceSettingsTest extends TestCase {
 	 *
 	 * @spec openspec/specs/pending-updates/spec.md
 	 */
+	/**
+	 * install-manual-upload D4: unsigned uploads are off until an admin turns them on.
+	 *
+	 * @spec openspec/changes/install-manual-upload/tasks.md#task-2.3
+	 */
+	public function testUnsignedUploadsAreOffUntilTurnedOn(): void {
+		$store = $this->store();
+		self::assertFalse($store->read()['allowUnsignedUpload']);
+		self::assertFalse($store->allowsUnsignedUpload());
+
+		self::assertSame(['allowUnsignedUpload'], $store->update(['allowUnsignedUpload' => 'true']));
+		self::assertTrue($this->config[InstanceSettings::KEY_ALLOW_UNSIGNED_UPLOAD]);
+		self::assertSame('install.allow_unsigned_upload', InstanceSettings::KEY_ALLOW_UNSIGNED_UPLOAD);
+		self::assertTrue($store->read()['allowUnsignedUpload']);
+
+		$store->update(['allowUnsignedUpload' => ' 0 ']);
+		self::assertFalse($store->allowsUnsignedUpload());
+		$store->update(['allowUnsignedUpload' => 'TRUE']);
+		self::assertTrue($store->allowsUnsignedUpload());
+		$store->update(['allowUnsignedUpload' => 'false']);
+		self::assertFalse($store->allowsUnsignedUpload());
+	}
+
+	/**
+	 * Anything but true, false, 1 or 0 is refused, and nothing is written.
+	 *
+	 * @spec openspec/changes/install-manual-upload/tasks.md#task-2.3
+	 */
+	public function testTheUnsignedUploadSwitchRefusesOtherValues(): void {
+		foreach (['yes', '', 'on', '2'] as $value) {
+			try {
+				$this->store()->update(['allowUnsignedUpload' => $value, 'auditRetentionDays' => '90']);
+				self::fail('accepted ' . var_export($value, true));
+			} catch (InvalidArgumentException $error) {
+				self::assertSame('Allow unsigned uploads must be on or off.', $error->getMessage());
+			}
+		}
+
+		self::assertArrayNotHasKey(InstanceSettings::KEY_ALLOW_UNSIGNED_UPLOAD, $this->config);
+		self::assertArrayNotHasKey('audit_retention_days', $this->config);
+	}
+
 	public function testTheLagLimitIsOffUntilSetAndAcceptsZeroToTen(): void {
 		$store = $this->store();
 		self::assertNull($store->read()['maxLinesBehind']);
@@ -255,6 +306,41 @@ final class InstanceSettingsTest extends TestCase {
 			}
 		}
 		self::assertArrayNotHasKey(InstanceSettings::KEY_MAX_LINES_BEHIND, $this->config);
+	}
+
+	/**
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+	 */
+	public function testTheWaitingPeriodIsReadAndSavedThroughTheSettings(): void {
+		$store = $this->store();
+		self::assertSame(0, $store->read()['promotionMinDays']);
+		self::assertSame(90, $store->read()['promotionMinDaysMax']);
+
+		self::assertSame(['promotionMinDays'], $store->update(['promotionMinDays' => '14']));
+		self::assertSame(14, $store->read()['promotionMinDays']);
+		self::assertSame('14', $this->config[InstanceSettings::KEY_PROMOTION_MIN_DAYS]);
+
+		$store->update(['promotionMinDays' => '0']);
+		self::assertSame(0, $store->promotionMinDays());
+		self::assertArrayNotHasKey(InstanceSettings::KEY_PROMOTION_MIN_DAYS, $this->config);
+	}
+
+	/**
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+	 */
+	public function testTheWaitingPeriodRefuses91AndLeavesEverythingElse(): void {
+		$store = $this->store();
+		$store->update(['promotionMinDays' => '14']);
+		foreach (['91', '-1', 'two', ''] as $raw) {
+			try {
+				$store->update(['promotionMinDays' => $raw, 'artifactCacheKeep' => '7']);
+				self::fail('Accepted ' . $raw);
+			} catch (InvalidArgumentException $error) {
+				self::assertStringContainsString('between 0 and 90', $error->getMessage());
+			}
+		}
+		self::assertSame(14, $store->promotionMinDays());
+		self::assertArrayNotHasKey(\OCA\Versioniq\Service\Cache\ArtifactCache::CONFIG_KEEP, $this->config);
 	}
 
 	/**
@@ -294,5 +380,81 @@ final class InstanceSettingsTest extends TestCase {
 			yield "$field port and path" => [$field, 'https://ghe.example.org:8443/api', 'https://ghe.example.org:8443/api'];
 			yield "$field unparseable" => [$field, 'https://', $refusal];
 		}
+	}
+
+	/**
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	public function testAutomaticReEnablingIsOffUntilSwitchedOnAndRefusesOtherValues(): void {
+		$store = $this->store();
+		self::assertFalse($store->read()['reactivateAuto']);
+
+		self::assertSame(['reactivateAuto'], $store->update(['reactivateAuto' => '1']));
+		self::assertTrue($store->read()['reactivateAuto']);
+		$store->update(['reactivateAuto' => 'false']);
+		self::assertFalse($store->read()['reactivateAuto']);
+
+		$this->expectException(InvalidArgumentException::class);
+		$this->expectExceptionMessage('Automatic re-enabling must be on or off.');
+		$store->update(['reactivateAuto' => 'maybe']);
+	}
+
+	/**
+	 * releases-notes-reach 1.2: telling users about Versioniq's updates is on
+	 * until the admin switches it off; anything but on or off is refused and
+	 * writes nothing.
+	 *
+	 * @spec openspec/changes/releases-notes-reach/tasks.md#task-1.2
+	 */
+	public function testTheUserNoticeSwitchIsOnByDefaultAndCanBeTurnedOff(): void {
+		$store = $this->store();
+		self::assertTrue($store->read()['notifyUsersOnUpdate']);
+
+		self::assertSame(['notifyUsersOnUpdate'], $store->update(['notifyUsersOnUpdate' => 'false']));
+		self::assertFalse($store->read()['notifyUsersOnUpdate']);
+		self::assertFalse($this->config[InstanceSettings::KEY_NOTIFY_USERS_ON_UPDATE]);
+
+		$store->update(['notifyUsersOnUpdate' => 'true']);
+		self::assertTrue($store->read()['notifyUsersOnUpdate']);
+	}
+
+	/**
+	 * @spec openspec/changes/releases-notes-reach/tasks.md#task-1.2
+	 */
+	public function testAnUnclearUserNoticeValueIsRefusedAndNothingIsWritten(): void {
+		try {
+			$this->store()->update(['artifactCacheKeep' => '5', 'notifyUsersOnUpdate' => 'maybe']);
+			self::fail('An unclear value must be refused.');
+		} catch (InvalidArgumentException $error) {
+			self::assertSame('Telling users about updates must be on or off.', $error->getMessage());
+		}
+
+		self::assertSame([], $this->config);
+	}
+
+	/**
+	 * The installer reads the same key the page writes.
+	 *
+	 * @spec openspec/changes/releases-notes-reach/tasks.md#task-1.2
+	 */
+	public function testThePageAndTheInstallerShareTheKey(): void {
+		self::assertSame(\OCA\Versioniq\Service\InstallerService::KEY_NOTIFY_USERS_ON_UPDATE, InstanceSettings::KEY_NOTIFY_USERS_ON_UPDATE);
+		self::assertSame('notify_users_on_update', InstanceSettings::KEY_NOTIFY_USERS_ON_UPDATE);
+	}
+
+	/**
+	 * @spec openspec/changes/advisories-bundled-libraries
+	 */
+	public function testTheOsvBaseDefaultsToThePublicApiAndMustBeHttps(): void {
+		$settings = $this->store()->read();
+		self::assertSame('', $settings['osvApiBase']);
+		self::assertSame('https://api.osv.dev', $settings['osvApiDefault']);
+
+		$store = $this->store();
+		self::assertSame(['osvApiBase'], $store->update(['osvApiBase' => 'https://osv.mirror.example/']));
+		self::assertSame('https://osv.mirror.example', $store->read()['osvApiBase']);
+
+		$this->expectException(InvalidArgumentException::class);
+		$this->store()->update(['osvApiBase' => 'http://osv.mirror.example']);
 	}
 }

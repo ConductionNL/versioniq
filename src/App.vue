@@ -4,12 +4,17 @@
 import type {Provenance} from './components/AppSourceBadges.vue';
 import type {PrefillBindPayload} from './components/DiscoverPanel.vue';
 import type {BlockedVersion, PolicyLevel} from './components/PolicySelector.vue';
+import type { UpdateGroupView } from './components/UpdateGroupsPanel.vue'
 import type { PinRecord } from './dialogs/PinDialog.vue'
 import type {AdvisoryCorrelation, AdvisoryTriageMap, Compliance, NcscStatus} from './utils/advisories.ts';
 import type { AutoUpdateSchedule as AutoUpdateScheduleValue, UpdateKind } from './utils/autoUpdateSchedule.ts'
+import type { LibraryCheck } from './utils/bundledLibraries.ts'
+import type { ReleaseChannel } from './utils/channelFilter.ts'
+import type { LeftDisabled } from './utils/externalChanges.ts'
 import type {InstallDebugEntry, InstallResult} from './utils/installResult.ts';
-import type {LkgRecord} from './utils/migrationSafety.ts';
+import type {LkgRecord, MigrationPreview} from './utils/migrationSafety.ts';
 import type {PendingUpdate, UpdatesFilter} from './utils/pendingUpdates.ts';
+import type {RestorePayload} from './utils/restoreOutcome.ts';
 import type {SkipEntry} from './utils/skips.ts';
 import type { SweepStatus } from './utils/sweepOutcome.ts'
 import type {BatchCandidate, BatchRow} from './utils/updateBatch.ts';
@@ -22,51 +27,70 @@ import NcButton from '@nextcloud/vue/components/NcButton'
 import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import AdvisoriesPanel from './components/AdvisoriesPanel.vue'
 import AlertsPanel from './components/AlertsPanel.vue'
+import AppAboutCard from './components/AppAboutCard.vue'
 import AppSourceBadges from './components/AppSourceBadges.vue'
 import AutoUpdateOverview from './components/AutoUpdateOverview.vue'
 import AutoUpdateSchedule from './components/AutoUpdateSchedule.vue'
 import CachePanel from './components/CachePanel.vue'
 import ChangelogRangePanel from './components/ChangelogRangePanel.vue'
+import ChannelSelector from './components/ChannelSelector.vue'
 import DiscoverPanel from './components/DiscoverPanel.vue'
 import HistoryPanel from './components/HistoryPanel.vue'
 import InstallProgress from './components/InstallProgress.vue'
 import InstallResultNotices from './components/InstallResultNotices.vue'
 import InstanceSettingsPanel from './components/InstanceSettingsPanel.vue'
+import InstancesPanel from './components/InstancesPanel.vue'
 import IntegrationsPanel from './components/IntegrationsPanel.vue'
+import LifecycleBadge from './components/LifecycleBadge.vue'
+import MigrationPreviewPanel from './components/MigrationPreviewPanel.vue'
 import PatchPolicyPanel from './components/PatchPolicyPanel.vue'
 import PinDriftBanner from './components/PinDriftBanner.vue'
 import PolicySelector from './components/PolicySelector.vue'
+import ProposedUpdatesPanel from './components/ProposedUpdatesPanel.vue'
 import PublisherMark from './components/PublisherMark.vue'
+import ReadinessPanel from './components/ReadinessPanel.vue'
 import ReleaseDate from './components/ReleaseDate.vue'
+import RollbackPanel from './components/RollbackPanel.vue'
+import SbomExportMenu from './components/SbomExportMenu.vue'
+import SecurityReportPanel from './components/SecurityReportPanel.vue'
 import ServerCompatBadge from './components/ServerCompatBadge.vue'
 import SourceOverrideField from './components/SourceOverrideField.vue'
 import SourcesPanel from './components/SourcesPanel.vue'
+import SuccessorsPanel from './components/SuccessorsPanel.vue'
 import TokensPanel from './components/TokensPanel.vue'
 import TrustedSourcesPanel from './components/TrustedSourcesPanel.vue'
+import UpdateGroupsPanel from './components/UpdateGroupsPanel.vue'
 import VersionChangelog from './components/VersionChangelog.vue'
 import VersionFacts from './components/VersionFacts.vue'
 import VersionSkipControl from './components/VersionSkipControl.vue'
 import DowngradeConfirmDialog from './dialogs/DowngradeConfirmDialog.vue'
 import EnableAppDialog from './dialogs/EnableAppDialog.vue'
+import ForceIncompatibleDialog from './dialogs/ForceIncompatibleDialog.vue'
 import InstallConfirmDialog from './dialogs/InstallConfirmDialog.vue'
 import KnownIssueDialog from './dialogs/KnownIssueDialog.vue'
 import PinDialog from './dialogs/PinDialog.vue'
 import PinOverrideDialog from './dialogs/PinOverrideDialog.vue'
 import QuickUpdateDialog from './dialogs/QuickUpdateDialog.vue'
+import ReplaceAppDialog from './dialogs/ReplaceAppDialog.vue'
 import ShaMismatchDialog from './dialogs/ShaMismatchDialog.vue'
 import UpdateAllDialog from './dialogs/UpdateAllDialog.vue'
+import UploadInstallDialog from './dialogs/UploadInstallDialog.vue'
 import { ocsWrite } from './ocs.ts'
 import { advisoryAnchor, advisoryBadgeText, applyTriage, complianceSentence } from './utils/advisories.ts'
 import { advisoryFreshnessLabel as advisoryFreshnessLabelFor } from './utils/advisoryFreshness.ts'
 import { defaultSchedule, scheduleFrom } from './utils/autoUpdateSchedule.ts'
 import { AUTO_UPDATE_WINDOW_DEFAULT, isValidAutoUpdateWindow } from './utils/autoUpdateWindow.ts'
+import { BUNDLED_LIBRARIES_ANCHOR, hasLibraryFindings, librariesFreshnessLabel as librariesFreshnessLabelFor } from './utils/bundledLibraries.ts'
 import { buildChangelogRange } from './utils/changelog.ts'
+import { channelLabel, noLtsLinesMarked, offChannelTags, pickerVersions } from './utils/channelFilter.ts'
 import { tabForHash } from './utils/connectionRegistry.ts'
 import { currentLoginName, enableApp } from './utils/enableApp.ts'
+import { leftDisabledMarks, leftDisabledNotice } from './utils/externalChanges.ts'
 import { normalizeInstallResult, withSourceOverride } from './utils/installResult.ts'
 import { lkgRollbackTargets } from './utils/migrationSafety.ts'
 import { filterByUpdates, isOutsidePolicy, outsidePolicyLabel, updateBadge, updatesFreshnessLabel as updatesFreshnessLabelFor } from './utils/pendingUpdates.ts'
 import { repinApp } from './utils/repin.ts'
+import { restoreOutcomeText } from './utils/restoreOutcome.ts'
 import { isBlockedBySafeMode } from './utils/safeMode.ts'
 import { fetchSkips } from './utils/skips.ts'
 import { sweepStateOf } from './utils/sweepOutcome.ts'
@@ -80,6 +104,9 @@ type AppOption = {
 	description: string
 	summary: string
 	preview: string
+	author?: string
+	licence?: string
+	links?: { website: string | null, repository: string | null, bugs: string | null }
 	isCore: boolean
 	isShipped?: boolean
 	boundSourceId?: string | null
@@ -88,6 +115,9 @@ type AppOption = {
 	installedVersion?: string | null
 	state?: 'enabled' | 'disabled' | 'notInstalled'
 	lkg?: LkgRecord | null
+	forcedOn?: number
+	compatibilityOverridden?: boolean
+	serverTooNew?: boolean
 	installedKnownIssues?: AdminKnownIssue[]
 	provenance?: Provenance | null
 	publisher?: string | null
@@ -97,10 +127,16 @@ type AppOption = {
 type AppVersion = {
 	version: string
 	changelog?: string | null
+	changelogLanguage?: string | null
 	recordedSha?: string | null
 	cachedOffline?: boolean
 	serverCompatible?: boolean | null
+	serverTooNew?: boolean
+	phpCompatible?: boolean | null
 	releasedAt?: string | null
+	preRelease?: boolean
+	lts?: boolean
+	onChannel?: boolean
 	downloads?: number | null
 	outcomes?: VersionOutcomes | null
 	breaking?: boolean
@@ -110,6 +146,9 @@ type AppVersion = {
 
 const isLoading = ref(true)
 const apps = ref<AppOption[]>([])
+// The app the replace dialog is open for; its successor offer comes from the
+// pending-updates snapshot (inventory-lifecycle-signals, design D4).
+const replaceTarget = ref<string | null>(null)
 const advisories = ref<Record<string, AdvisoryCorrelation>>({})
 // Dismissals and owners per `{appId}|{advisoryId}`, applied when read (advisories-triage).
 const advisoryTriage = ref<AdvisoryTriageMap>({})
@@ -123,6 +162,13 @@ const pinnedOnly = ref(false)
 const updateChannel = ref('')
 const selectedApp = ref('')
 const versions = ref<AppVersion[]>([])
+// releases-channel-and-prereleases: the effective channel the versions answer
+// names, the picker's "Show all versions" switch, and the channel settings.
+const versionChannel = ref('')
+const showAllVersions = ref(false)
+type ChannelState = { channels: string[], default: string, apps: Record<string, string>, ltsLines: Record<string, string[]> }
+const channelState = ref<ChannelState>({ channels: [], default: 'server', apps: {}, ltsLines: {} })
+const isSavingChannel = ref(false)
 const versionFilter = ref('')
 const hasCheckedVersions = ref(false)
 const isCheckingVersions = ref(false)
@@ -153,6 +199,14 @@ let downgradeResolve: ((value: boolean) => void) | null = null
 // Migration diff for the downgrade dialog — fetched via a dry-run preview
 // before the dialog opens; see "Migration diff on downgrade".
 const downgradeOrphanedMigrations = ref<string[] | null>(null)
+// The database changes of the selected upgrade: undefined until "Preview
+// database changes" is picked, null when the target could not be read.
+// @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
+const migrationPreview = ref<MigrationPreview | null | undefined>(undefined)
+const isPreviewingMigrations = ref(false)
+watch([() => selectedApp.value, () => selectedVersion.value], () => {
+	migrationPreview.value = undefined
+})
 // Suppresses the safe-mode auto-clear watcher while "Roll back to last
 // known good" programmatically selects a (necessarily older) version.
 const suppressSafeModeAutoClear = ref(false)
@@ -258,7 +312,7 @@ let shaMismatchResolve: ((accept: boolean) => void) | null = null
 // execution through the standard installer", "Global kill switch and
 // window"). Policies and the two global settings are fetched together from
 // GET /api/policies, mirroring the `pins`/`advisories` per-appId map pattern.
-type PolicyRecord = { appId: string, level: PolicyLevel, setBy: string, setAt: string, holdManual?: boolean, blockedVersions?: BlockedVersion[] }
+type PolicyRecord = { appId: string, level: PolicyLevel, setBy: string, setAt: string, requireApproval?: boolean, holdManual?: boolean, blockedVersions?: BlockedVersion[] }
 const policies = ref<Record<string, PolicyRecord>>({})
 const isSavingPolicy = ref(false)
 const autoUpdateEnabled = ref(false)
@@ -277,6 +331,11 @@ const autoUpdateNextRuns = ref<Partial<Record<UpdateKind, string | null>>>({})
 const securityHolds = ref<Record<string, string>>({})
 const advisoriesFresh = ref(true)
 const manualKinds = ref<string[]>([])
+// Update groups and the units a limit held back (autoupdate-run-batching).
+const updateGroups = ref<UpdateGroupView[]>([])
+const waitingUnits = ref<Record<string, string>>({})
+const maxPerRun = ref<number | null>(null)
+const maxPerWeek = ref<number | null>(null)
 const isSavingAutoUpdateSettings = ref(false)
 const autoUpdateSettingsError = ref('')
 const autoUpdateSettingsNotice = ref('')
@@ -294,12 +353,14 @@ const tabs = [
 	{ id: 'apps' },
 	{ id: 'advisories' },
 	{ id: 'alerts' },
+	{ id: 'readiness' },
 	{ id: 'history' },
 	{ id: 'sources' },
 	{ id: 'tokens' },
 	{ id: 'trusted' },
 	{ id: 'discover' },
 	{ id: 'cache' },
+	{ id: 'instances' },
 	{ id: 'settings' },
 	...(integriqInstalled ? [{ id: 'integrations' }] : []),
 ]
@@ -316,12 +377,14 @@ function tabLabel (id: string): string {
 	apps: t('versioniq', 'Apps'),
 	advisories: t('versioniq', 'Advisories'),
 	alerts: t('versioniq', 'Alerts'),
+	readiness: t('versioniq', 'Upgrade readiness'),
 	history: t('versioniq', 'History'),
 	sources: t('versioniq', 'Sources'),
 	tokens: t('versioniq', 'Tokens'),
 	trusted: t('versioniq', 'Trusted sources'),
 	discover: t('versioniq', 'Discover'),
 	cache: t('versioniq', 'Artifact cache'),
+	instances: t('versioniq', 'Instances'),
 	settings: t('versioniq', 'Settings'),
 	integrations: t('versioniq', 'Integrations'),
 }[id] ?? id
@@ -600,6 +663,8 @@ async function checkUpdateChannel (): Promise<void> {
 // for the password that endpoint's strict confirmation requires.
 const enableDialogAppId = ref('')
 const isEnableDialogOpen = ref(false)
+// Install from a file (install-manual-upload task 3.1).
+const isUploadDialogOpen = ref(false)
 const isEnablingApp = ref(false)
 const enableAppError = ref('')
 
@@ -636,17 +701,40 @@ async function onEnableConfirmed (password: string): Promise<void> {
 	}
 }
 
+// Apps an update left disabled, by app id (audit-external-changes).
+const leftDisabled = ref<Record<string, LeftDisabled>>({})
+
+/**
+ * Whether the Enable action fits: the app is disabled and, when an update
+ * left it so, the installed version runs on this server.
+ *
+ * @param app The card's app.
+ * @spec openspec/changes/audit-external-changes
+ */
+function offersEnable (app: AppOption): boolean {
+	return app.state === 'disabled' && leftDisabled.value[app.id]?.compatible !== false
+}
+
 /**
  *
  */
 async function loadApps (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/apps')), { headers: { ...ocsHeaders, Accept: 'application/json' } })
-		const payload = await unwrapOcsResponse<{ apps: AppOption[] }>(response)
+		const payload = await unwrapOcsResponse<{ apps: AppOption[], disabledByUpdate?: unknown }>(response)
 		apps.value = payload.apps || []
+		leftDisabled.value = leftDisabledMarks(payload.disabledByUpdate)
 	} catch (error) {
 		errorMessage.value = error instanceof Error ? error.message : 'Could not fetch app list.'
 	}
+}
+
+/**
+ * Re-reads the app list after an app was replaced by its successor.
+ */
+async function onReplaced (): Promise<void> {
+	replaceTarget.value = null
+	await loadApps()
 }
 
 // Advisory correlation is fetched separately from the app list so a slow or
@@ -664,6 +752,10 @@ async function loadApps (): Promise<void> {
  */
 // Unix seconds of the last completed sweep; null means none has completed.
 const advisoriesCheckedAt = ref<number | null>(null)
+// The bundled-library check, kept apart from the app advisories (advisories-bundled-libraries).
+const libraryChecks = ref<Record<string, LibraryCheck>>({})
+const librariesCheckedAt = ref<number | null>(null)
+
 const advisoriesStatus = ref<SweepStatus | null>(null)
 const advisoriesErrors = ref<string[]>([])
 // The instance's one patch compliance status (advisories-per-app-detail D4).
@@ -677,10 +769,14 @@ const advisoriesUnavailable = ref(false)
 async function loadAdvisories (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/advisories')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ advisories: Record<string, AdvisoryCorrelation>, checkedAt: number | null, status?: SweepStatus | null, errors?: string[], compliance?: Compliance, triage?: AdvisoryTriageMap }>(response)
+		const payload = await unwrapOcsResponse<{ advisories: Record<string, AdvisoryCorrelation>, checkedAt: number | null, status?: SweepStatus | null, errors?: string[], compliance?: Compliance, triage?: AdvisoryTriageMap, libraries?: Record<string, LibraryCheck>, librariesCheckedAt?: number | null }>(response)
 		advisories.value = payload.advisories || {}
 		advisoryTriage.value = payload.triage && !Array.isArray(payload.triage) ? payload.triage : {}
 		advisoriesCheckedAt.value = payload.checkedAt ?? null
+		// An empty snapshot is encoded as a JSON list, not an object.
+		libraryChecks.value = payload.libraries && !Array.isArray(payload.libraries) ? payload.libraries : {}
+		librariesCheckedAt.value = payload.librariesCheckedAt ?? null
+
 		const sweep = sweepStateOf(payload)
 		advisoriesStatus.value = sweep.status
 		advisoriesErrors.value = sweep.errors
@@ -692,6 +788,8 @@ async function loadAdvisories (): Promise<void> {
 		advisories.value = {}
 		advisoryTriage.value = {}
 		advisoriesCheckedAt.value = null
+		libraryChecks.value = {}
+		librariesCheckedAt.value = null
 		advisoryCompliance.value = null
 		advisoriesUnavailable.value = true
 	}
@@ -746,6 +844,8 @@ const outsidePolicyFor = (appId: string): boolean => isOutsidePolicy(pendingUpda
 // range changes, and then rejects values the server would have accepted.
 const advisoryIntervalInput = ref('6')
 const advisoryDigestEnabled = ref(true)
+const advisoryLibrariesEnabled = ref(false)
+const advisorySavedLibraries = ref(false)
 const advisoryMinInterval = ref(1)
 const advisoryMaxInterval = ref(24)
 const advisorySavedInterval = ref('6')
@@ -771,6 +871,7 @@ const isAdvisoryIntervalValid = computed((): boolean => {
 const isAdvisorySettingsDirty = computed((): boolean =>
 	advisoryIntervalInput.value.trim() !== advisorySavedInterval.value
 	|| advisoryDigestEnabled.value !== advisorySavedDigest.value
+	|| advisoryLibrariesEnabled.value !== advisorySavedLibraries.value
 	|| advisoryNcscEnabled.value !== advisorySavedNcsc.value)
 
 /**
@@ -797,17 +898,31 @@ function applyNcscSettings (payload: { ncscEnabled?: boolean, ncscStatus?: { rea
 async function loadAdvisorySettings (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/advisory/settings')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ intervalHours: number, minIntervalHours: number, maxIntervalHours: number, digestEnabled: boolean, ncscEnabled?: boolean, ncscStatus?: { readUpTo: string | null, caughtUp: boolean } }>(response)
+		const payload = await unwrapOcsResponse<{ intervalHours: number, minIntervalHours: number, maxIntervalHours: number, digestEnabled: boolean, librariesEnabled?: boolean, ncscEnabled?: boolean, ncscStatus?: { readUpTo: string | null, caughtUp: boolean } }>(response)
 		applyNcscSettings(payload)
 		advisoryMinInterval.value = payload.minIntervalHours
 		advisoryMaxInterval.value = payload.maxIntervalHours
-		advisoryIntervalInput.value = String(payload.intervalHours)
-		advisorySavedInterval.value = String(payload.intervalHours)
-		advisoryDigestEnabled.value = payload.digestEnabled
-		advisorySavedDigest.value = payload.digestEnabled
+		applyAdvisorySettings(payload)
 	} catch {
 		// Non-fatal: the settings control simply keeps its defaults.
 	}
+}
+
+/**
+ * Shows the stored advisory settings in the controls and remembers them as saved.
+ *
+ * @param payload The settings the server answered with.
+ * @param payload.intervalHours The check interval in hours.
+ * @param payload.digestEnabled Whether the digest is sent.
+ * @param payload.librariesEnabled Whether bundled libraries are checked.
+ */
+function applyAdvisorySettings (payload: { intervalHours: number, digestEnabled: boolean, librariesEnabled?: boolean }): void {
+	advisoryIntervalInput.value = String(payload.intervalHours)
+	advisorySavedInterval.value = String(payload.intervalHours)
+	advisoryDigestEnabled.value = payload.digestEnabled
+	advisorySavedDigest.value = payload.digestEnabled
+	advisoryLibrariesEnabled.value = payload.librariesEnabled === true
+	advisorySavedLibraries.value = payload.librariesEnabled === true
 }
 
 /**
@@ -826,15 +941,13 @@ async function saveAdvisorySettings (): Promise<void> {
 				// '1'/'0' rather than a JSON boolean: PHP casts a JSON `false`
 				// to '' and the server would read that as "unspecified".
 				digestEnabled: advisoryDigestEnabled.value ? '1' : '0',
+				librariesEnabled: advisoryLibrariesEnabled.value ? '1' : '0',
 				ncscEnabled: advisoryNcscEnabled.value ? '1' : '0',
 			}),
 		})
-		const payload = await unwrapOcsResponse<{ intervalHours: number, digestEnabled: boolean, ncscEnabled?: boolean, ncscStatus?: { readUpTo: string | null, caughtUp: boolean } }>(response)
+		const payload = await unwrapOcsResponse<{ intervalHours: number, digestEnabled: boolean, librariesEnabled?: boolean, ncscEnabled?: boolean, ncscStatus?: { readUpTo: string | null, caughtUp: boolean } }>(response)
 		applyNcscSettings(payload)
-		advisoryIntervalInput.value = String(payload.intervalHours)
-		advisorySavedInterval.value = String(payload.intervalHours)
-		advisoryDigestEnabled.value = payload.digestEnabled
-		advisorySavedDigest.value = payload.digestEnabled
+		applyAdvisorySettings(payload)
 		advisorySettingsNotice.value = t('versioniq', 'Advisory settings saved.')
 	} catch (error) {
 		advisorySettingsError.value = error instanceof Error ? error.message : String(error)
@@ -868,6 +981,10 @@ function advisoryFor (appId: string): AdvisoryCorrelation | null {
 	const row = advisories.value[appId]
 	return row ? applyTriage({ ...row, appId: row.appId || appId }, advisoryTriage.value) : null
 }
+
+const librariesFreshnessLabel = computed((): string => librariesFreshnessLabelFor(librariesCheckedAt.value, Date.now() / 1000))
+const hasLibraryAdvisory = (appId: string): boolean => hasLibraryFindings(libraryChecks.value[appId])
+const libraryAdvisoryHref = `#${BUNDLED_LIBRARIES_ANCHOR}`
 
 // Badge shown next to a version with a recorded SHA-256 on the binding — see
 // "Recorded digests are binding-scoped and surfaced". After a reinstall that
@@ -948,7 +1065,7 @@ function pinTooltip (pin: PinRecord | null): string {
 async function loadPolicies (): Promise<void> {
 	try {
 		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/policies')), { headers: { ...ocsHeaders, Accept: 'application/json' }, signal: AbortSignal.timeout(BACKGROUND_FETCH_TIMEOUT_MS) })
-		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string, autoUpdateSchedule?: unknown, nextRuns?: Partial<Record<UpdateKind, string | null>>, securityHolds?: Record<string, string>, advisoriesFresh?: boolean, manualKinds?: string[] }>(response)
+		const payload = await unwrapOcsResponse<{ policies?: PolicyRecord[], autoUpdateEnabled?: boolean, autoUpdateWindow?: string, autoUpdateTimeZone?: string, autoUpdateSchedule?: unknown, nextRuns?: Partial<Record<UpdateKind, string | null>>, securityHolds?: Record<string, string>, advisoriesFresh?: boolean, manualKinds?: string[], groups?: UpdateGroupView[], waiting?: Record<string, string>, maxPerRun?: number | null, maxPerWeek?: number | null }>(response)
 		const map: Record<string, PolicyRecord> = {}
 		for (const policy of payload.policies || []) {
 			map[policy.appId] = policy
@@ -961,6 +1078,7 @@ async function loadPolicies (): Promise<void> {
 		securityHolds.value = payload.securityHolds ?? {}
 		advisoriesFresh.value = payload.advisoriesFresh !== false
 		manualKinds.value = payload.manualKinds ?? []
+		applyRunBatching(payload)
 		savedAutoUpdateWindow.value = autoUpdateWindowInput.value
 		autoUpdateSchedule.value = scheduleFrom(payload.autoUpdateSchedule)
 		savedAutoUpdateSchedule.value = scheduleFrom(payload.autoUpdateSchedule)
@@ -971,8 +1089,30 @@ async function loadPolicies (): Promise<void> {
 	}
 }
 
+/**
+ * Stores the update groups, the units a cap holds back and both caps from a
+ * policies payload; absent fields read as none.
+ *
+ * @param payload The policies payload.
+ * @param payload.groups The update groups, in their stored order.
+ * @param payload.waiting The held units, by key, with the time each was first held.
+ * @param payload.maxPerRun The per-run cap, or null for no limit.
+ * @param payload.maxPerWeek The weekly cap, or null for no limit.
+ * @spec openspec/changes/autoupdate-run-batching/specs/auto-update-policies/spec.md
+ */
+function applyRunBatching (payload: { groups?: UpdateGroupView[], waiting?: Record<string, string>, maxPerRun?: number | null, maxPerWeek?: number | null }): void {
+	updateGroups.value = payload.groups ?? []
+	waitingUnits.value = payload.waiting ?? {}
+	maxPerRun.value = payload.maxPerRun ?? null
+	maxPerWeek.value = payload.maxPerWeek ?? null
+}
+
 const policyLevelFor = (appId: string): PolicyLevel => policies.value[appId]?.level ?? 'none'
+// A group only plans apps with a policy, so those are the ones it can hold.
+const groupableApps = computed(() => Object.values(policies.value).filter((policy) => policy.level !== 'none').map((policy) => policy.appId))
 const blockedVersionsFor = (appId: string): BlockedVersion[] => policies.value[appId]?.blockedVersions ?? []
+const requireApprovalFor = (appId: string): boolean => policies.value[appId]?.requireApproval === true
+
 const holdManualFor = (appId: string): boolean => policies.value[appId]?.holdManual === true
 
 /**
@@ -991,7 +1131,7 @@ async function onHoldManualChange (appId: string, hold: boolean): Promise<void> 
 	errorMessage.value = ''
 	try {
 		await ensurePasswordConfirmation()
-		await setPolicy(appId, level, hold)
+		await setPolicy(appId, level, undefined, hold)
 	} catch (e) {
 		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not update the auto-update policy.')
 	} finally {
@@ -1091,13 +1231,19 @@ async function clearPolicy (appId: string): Promise<void> {
  *
  * @param appId The app whose policy is set.
  * @param level The policy level to set.
- * @param holdManual Whether to hold manual installs to the level; left out, unchanged.
+ * @param requireApproval Whether its automatic updates wait for approval; omitted keeps the stored choice.
+ * @param holdManual Whether to hold manual installs to the level; omitted keeps the stored switch.
  */
-async function setPolicy (appId: string, level: PolicyLevel, holdManual?: boolean): Promise<void> {
-	// Left out, the server keeps the stored "hold manual installs" switch.
-	const fields: Record<string, string | boolean> = holdManual === undefined ? { level } : { level, holdManual }
-	const query: Record<string, string> = holdManual === undefined ? { level } : { level, holdManual: holdManual ? '1' : '0' }
-	const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/policy`, query)), {
+async function setPolicy (appId: string, level: PolicyLevel, requireApproval?: boolean, holdManual?: boolean): Promise<void> {
+	// An omitted switch keeps what the server stored for the app.
+	const fields: Record<string, string> = { level }
+	if (requireApproval !== undefined) {
+		fields.requireApproval = requireApproval ? '1' : '0'
+	}
+	if (holdManual !== undefined) {
+		fields.holdManual = holdManual ? '1' : '0'
+	}
+	const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(appId)}/policy`, fields)), {
 		method: 'PUT',
 		headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
 		body: JSON.stringify(fields),
@@ -1124,6 +1270,28 @@ async function onPolicyChange (appId: string, level: PolicyLevel): Promise<void>
 		} else {
 			await setPolicy(appId, level)
 		}
+	} catch (e) {
+		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not update the auto-update policy.')
+	} finally {
+		isSavingPolicy.value = false
+	}
+}
+
+/**
+ * Turn the approval step for an app's automatic updates on or off.
+ *
+ * @param appId The app whose policy changes.
+ * @param requireApproval Whether its automatic updates wait for an admin's approval.
+ */
+async function onApprovalChange (appId: string, requireApproval: boolean): Promise<void> {
+	if (isSavingPolicy.value) {
+		return
+	}
+	isSavingPolicy.value = true
+	errorMessage.value = ''
+	try {
+		await ensurePasswordConfirmation()
+		await setPolicy(appId, policyLevelFor(appId), requireApproval)
 	} catch (e) {
 		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not update the auto-update policy.')
 	} finally {
@@ -1256,6 +1424,8 @@ function resetSelectedAppState (): void {
 	selectedVersion.value = ''
 	versionFilter.value = ''
 	hasCheckedVersions.value = false
+	versionChannel.value = ''
+	showAllVersions.value = false
 	installedVersion.value = ''
 	availableSource.value = ''
 	sourceOverride.value = ''
@@ -1301,6 +1471,7 @@ type VersionsPayload = {
 	source?: string
 	sourceId?: string
 	error?: string
+	channel?: string
 }
 
 /**
@@ -1338,6 +1509,7 @@ async function fetchVersionsPayload (appId: string): Promise<VersionsPayload> {
  */
 function applyVersionsPayload (payload: VersionsPayload): void {
 	versions.value = payload.availableVersions || payload.versions || []
+	versionChannel.value = payload.channel || ''
 	installedVersion.value = payload.installedVersion || ''
 	availableSource.value = payload.sourceId || payload.source || ''
 	errorMessage.value = payload.error ?? ''
@@ -1355,7 +1527,122 @@ function isBlockedBySafeModeRule (version: string): boolean {
 		enabled: isSafeMode.value,
 		installedVersion: installedVersion.value,
 		updateChannel: updateChannel.value,
+		onChannel: versions.value.find((entry) => entry.version === version)?.onChannel,
 	})
+}
+
+/**
+ * Safe mode's listing rule: with "Show all versions" on, an off-channel
+ * version stays listed and tagged, and selecting it is refused.
+ *
+ * @param version the listed version
+ */
+function isHiddenBySafeMode (version: AppVersion): boolean {
+	return isBlockedBySafeMode(version.version, {
+		enabled: isSafeMode.value,
+		installedVersion: installedVersion.value,
+		updateChannel: updateChannel.value,
+		onChannel: showAllVersions.value && version.onChannel === false ? true : version.onChannel,
+	})
+}
+
+const versionChannelName = computed(() => (versionChannel.value ? channelLabel(versionChannel.value) : ''))
+
+const ltsLinesMissing = computed(() => noLtsLinesMarked(
+	versionChannel.value,
+	channelState.value.ltsLines[selectedApp.value] ?? [],
+	versions.value,
+))
+
+/**
+ * Read the release channel settings (admin only; a refusal leaves the defaults).
+ */
+async function loadChannels (): Promise<void> {
+	try {
+		const response = await fetch(apiUrl(withOcsJson('/ocs/v2.php/apps/versioniq/api/channels')), { headers: { ...ocsHeaders, Accept: 'application/json' } })
+		channelState.value = normaliseChannelState(await unwrapOcsResponse<Partial<ChannelState>>(response))
+	} catch {
+		// Not an admin, or an older server: the selectors keep their defaults.
+	}
+}
+
+/**
+ * The channel settings with every part present, whatever the server left out.
+ *
+ * @param state the answer
+ */
+function normaliseChannelState (state: Partial<ChannelState> | null | undefined): ChannelState {
+	return {
+		channels: Array.isArray(state?.channels) ? state.channels : [],
+		default: typeof state?.default === 'string' && state.default !== '' ? state.default : 'server',
+		apps: state?.apps && typeof state.apps === 'object' ? state.apps : {},
+		ltsLines: state?.ltsLines && typeof state.ltsLines === 'object' ? state.ltsLines : {},
+	}
+}
+
+/**
+ * Send one password-confirmed channel change and keep the settings it answers.
+ *
+ * @param change the endpoint below /api (path), PUT or DELETE (method) and the request body (body)
+ * @param change.path the endpoint below /api
+ * @param change.method PUT or DELETE
+ * @param change.body the request body
+ */
+async function sendChannelChange ({ path, method, body }: { path: string, method: 'PUT' | 'DELETE', body: Record<string, unknown> }): Promise<void> {
+	if (isSavingChannel.value) {
+		return
+	}
+	isSavingChannel.value = true
+	errorMessage.value = ''
+	try {
+		await ensurePasswordConfirmation()
+		const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/${path}`)), {
+			method,
+			headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
+			body: JSON.stringify(body),
+		})
+		channelState.value = normaliseChannelState(await unwrapOcsResponse<Partial<ChannelState>>(response))
+		if (selectedApp.value !== '') {
+			applyVersionsPayload(await fetchVersionsPayload(selectedApp.value))
+		}
+	} catch (e) {
+		errorMessage.value = e instanceof Error ? e.message : t('versioniq', 'Could not change the release channel.')
+	} finally {
+		isSavingChannel.value = false
+	}
+}
+
+/**
+ * An app's channel was chosen; null means it follows the default again.
+ *
+ * @param appId the app
+ * @param channel the channel, or null
+ */
+async function onChannelChange (appId: string, channel: ReleaseChannel | null): Promise<void> {
+	const path = `app/${encodeURIComponent(appId)}/channel`
+	await sendChannelChange({ path, method: channel === null ? 'DELETE' : 'PUT', body: channel === null ? {} : { channel } })
+}
+
+/**
+ * An app's long-term support lines were saved.
+ *
+ * @param appId the app
+ * @param lines the lines
+ */
+async function onLtsLinesChange (appId: string, lines: string[]): Promise<void> {
+	await sendChannelChange({ path: `app/${encodeURIComponent(appId)}/lts-lines`, method: 'PUT', body: { lines } })
+}
+
+/**
+ * The instance default channel was chosen on the Settings tab.
+ *
+ * @param _appId always '' for the default
+ * @param channel the channel
+ */
+async function onDefaultChannelChange (_appId: string, channel: ReleaseChannel | null): Promise<void> {
+	if (channel !== null) {
+		await sendChannelChange({ path: 'channel', method: 'PUT', body: { channel } })
+	}
 }
 
 /**
@@ -1494,6 +1781,47 @@ function appStateLabel (state: AppOption['state']): string {
 
 // After a live install of an app that Nextcloud has not enabled, the result
 // panel offers the way to enable it; see "List Installed Apps".
+const isRestoringInstall = ref(false)
+const restoreOutcome = ref('')
+
+// "Restore installation" is offered after an install that ended
+// installed-but-broken (safety-rollback-backup-and-preflight D4).
+const canRestoreInstall = computed(() => {
+	const result = lastInstallResult.value
+	return result !== null && !result.dryRun && result.installStatus === 'installed-but-broken'
+})
+
+/**
+ * Puts the app back from the backup kept before the install, after the
+ * admin confirmed their password, and says what was restored or why not.
+ *
+ * @param appId The app to restore.
+ * @spec openspec/specs/migration-safety/spec.md
+ */
+async function restoreInstallation (appId: string): Promise<void> {
+	if (isRestoringInstall.value) {
+		return
+	}
+	isRestoringInstall.value = true
+	restoreOutcome.value = ''
+	try {
+		await ensurePasswordConfirmation()
+		const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/apps/${encodeURIComponent(appId)}/restore`)), {
+			method: 'POST',
+			headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
+		})
+		const raw = await response.json() as { ocs?: { data?: RestorePayload } }
+		restoreOutcome.value = restoreOutcomeText(response.status, raw?.ocs?.data ?? {})
+		if (response.ok) {
+			await refreshAfterInstall()
+		}
+	} catch {
+		restoreOutcome.value = t('versioniq', 'Could not restore the installation.')
+	} finally {
+		isRestoringInstall.value = false
+	}
+}
+
 const installedAppNeedsEnabling = computed(() => {
 	const result = lastInstallResult.value
 	if (!result || result.dryRun || installStatusTone.value !== 'success') {
@@ -1526,9 +1854,10 @@ function appCardFallback (app: AppOption): string {
 
 const filteredVersions = computed(() => {
 	const filter = versionFilter.value.trim().toLowerCase()
+	const onChannel = pickerVersions(versions.value, showAllVersions.value)
 	const list = isSafeMode.value
-		? versions.value.filter((version) => !isBlockedBySafeModeRule(version.version))
-		: versions.value
+		? onChannel.filter((version) => !isHiddenBySafeMode(version))
+		: onChannel
 
 	if (filter === '') {
 		return list
@@ -1838,6 +2167,31 @@ function versionRangeText (summary: VersionRangeInfo | null): string {
 	return `${summary.direction === 'upgrade' ? 'Upgrade' : 'Downgrade'} crosses ${summary.major} major and ${summary.minor} minor version step${summary.minor === 1 ? '' : 's'}.`
 }
 
+/**
+ * Runs an upgrade dry run and keeps its database changes for the panel;
+ * nothing is installed (safety-upgrade-migration-preview, design D5).
+ *
+ * @spec openspec/changes/safety-upgrade-migration-preview/specs/migration-safety/spec.md
+ */
+async function previewMigrations (): Promise<void> {
+	const appId = selectedApp.value
+	const version = selectedVersion.value
+	if (!appId || !version || isPreviewingMigrations.value) {
+		return
+	}
+	isPreviewingMigrations.value = true
+	try {
+		const { payload } = await requestInstall({ appId, version, forceDryRun: true })
+		if (selectedApp.value === appId && selectedVersion.value === version) {
+			migrationPreview.value = payload.migrationPreview ?? null
+		}
+	} catch {
+		migrationPreview.value = null
+	} finally {
+		isPreviewingMigrations.value = false
+	}
+}
+
 // Previews the migration diff for a downgrade via a dry-run install request
 // before the confirmation dialog opens, so the dialog can name the exact
 // migrations the target lacks instead of only warning generically; see
@@ -1928,8 +2282,10 @@ type InstallApiPayload = {
 	actualSha?: string
 	recordedShaMatched?: boolean
 	orphanedMigrations?: string[] | null
+	migrationPreview?: MigrationPreview | null
 	integrityWarning?: string | null
 	space?: { appsFree: number | null, tempFree: number | null } | null
+	backup?: { made?: unknown, sizeBytes?: unknown, keptUntil?: unknown, reason?: unknown, message?: unknown } | null
 	servedFromCache?: boolean
 }
 
@@ -1940,6 +2296,7 @@ type InstallRequest = {
 	pinRequested?: boolean
 	acceptNewSha?: boolean
 	allowDowngrade?: boolean
+	forceIncompatible?: boolean
 	overrideRange?: boolean
 	forceDryRun?: boolean
 }
@@ -1948,6 +2305,7 @@ const INSTALL_FLAG_PARAMS: Array<[keyof InstallRequest, string]> = [
 	['pinRequested', 'pin'],
 	['acceptNewSha', 'acceptNewSha'],
 	['allowDowngrade', 'allowDowngrade'],
+	['forceIncompatible', 'forceIncompatible'],
 	['overrideRange', 'overrideRange'],
 ]
 
@@ -2142,6 +2500,7 @@ type InstallTarget = {
 	fromVersion: string
 	toVersion: string
 	allowDowngrade: boolean
+	forceIncompatible?: boolean
 }
 
 /**
@@ -2184,6 +2543,7 @@ function startInstall (target: InstallTarget): void {
 	errorMessage.value = ''
 	hasInstallResult.value = false
 	lastInstallResult.value = null
+	restoreOutcome.value = ''
 	lastInstallDebug.value = []
 	installRequestFromVersion.value = target.fromVersion
 	installRequestToVersion.value = target.toVersion
@@ -2325,6 +2685,19 @@ function showInstallFailure (result: InstallResult, metaMessage: string): void {
 }
 
 /**
+ * After an install from an uploaded archive: reloads the selected app's
+ * versions, the pins and the app list, keeping the app selected so its
+ * History shows the new row.
+ *
+ * @spec openspec/changes/install-manual-upload/tasks.md#task-3.1
+ */
+async function onUploadInstalled (): Promise<void> {
+	await checkVersions()
+	await loadPins()
+	await loadApps()
+}
+
+/**
  * Clears the selection after a successful install and reloads the versions,
  * the pins and the app list, so a disabled or not-installed app shows its new
  * state.
@@ -2391,7 +2764,7 @@ async function runInstall (target: InstallTarget): Promise<void> {
 	startInstall(target)
 	try {
 		await ensurePasswordConfirmation()
-		await applyInstallResponse(await requestInstallWithRetries({ appId: target.appId, version: target.toVersion, allowDowngrade: target.allowDowngrade }))
+		await applyInstallResponse(await requestInstallWithRetries({ appId: target.appId, version: target.toVersion, allowDowngrade: target.allowDowngrade, forceIncompatible: target.forceIncompatible }))
 	} catch (error) {
 		showInstallError(error, target)
 	} finally {
@@ -2425,6 +2798,107 @@ async function performInstall (): Promise<void> {
 	await runInstall(target)
 }
 
+// "Install anyway" and "Enable anyway" (install-force-incompatible): the
+// dialog explains the override; the password is asked after it, as for every
+// install.
+const isForceDialogOpen = ref(false)
+const forceDialogAppId = ref('')
+const forceDialogVersion = ref('')
+const forceDialogMode = ref<'install' | 'enable'>('install')
+let forceResolve: ((accept: boolean) => void) | null = null
+
+/**
+ * Opens the force dialog and settles with the admin's choice.
+ *
+ * @param appId The app to force.
+ * @param version The version to force.
+ * @param mode Install a version, or enable the installed one.
+ * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+ */
+function confirmForce (appId: string, version: string, mode: 'install' | 'enable'): Promise<boolean> {
+	forceResolve?.(false)
+	forceDialogAppId.value = appId
+	forceDialogVersion.value = version
+	forceDialogMode.value = mode
+	return new Promise<boolean>((resolve) => {
+		forceResolve = resolve
+		isForceDialogOpen.value = true
+	})
+}
+
+/**
+ * The single exit from the force dialog.
+ *
+ * @param accept Whether the admin chose to force.
+ */
+function onForceResolved (accept: boolean): void {
+	isForceDialogOpen.value = false
+	forceResolve?.(accept)
+	forceResolve = null
+}
+
+/**
+ * Installs a version past its declared maximum, after the admin confirmed the
+ * override and, for a downgrade, the downgrade.
+ *
+ * @param version The version only its maximum keeps off this server.
+ * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+ */
+async function installAnyway (version: string): Promise<void> {
+	if (!selectedApp.value || isInstallingVersion.value) {
+		return
+	}
+	selectedVersion.value = version
+	const target = selectedInstallTarget()
+	if (!(await confirmForce(target.appId, version, 'install'))) {
+		return
+	}
+	if (target.allowDowngrade && !(await confirmDowngrade(target.appId, target.fromVersion, target.toVersion))) {
+		return
+	}
+	await runInstall({ ...target, forceIncompatible: true })
+}
+
+/**
+ * Enables a disabled app only its declared maximum keeps off this server.
+ *
+ * @param app The app's card.
+ * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+ */
+async function enableAnyway (app: AppOption): Promise<void> {
+	if (isEnablingApp.value || !(await confirmForce(app.id, app.installedVersion ?? '', 'enable'))) {
+		return
+	}
+	isEnablingApp.value = true
+	errorMessage.value = ''
+	try {
+		await ensurePasswordConfirmation()
+		const response = await fetch(apiUrl(withOcsJson(`/ocs/v2.php/apps/versioniq/api/app/${encodeURIComponent(app.id)}/force-enable`)), {
+			method: 'POST',
+			headers: { ...ocsHeaders, Accept: 'application/json', 'Content-Type': 'application/json' },
+		})
+		await unwrapOcsResponse(response)
+		await loadApps()
+	} catch (error) {
+		errorMessage.value = error instanceof Error ? error.message : t('versioniq', 'Could not enable the app.')
+	} finally {
+		isEnablingApp.value = false
+	}
+}
+
+/**
+ * The card's override notice, or '' when the app runs under none.
+ *
+ * @param app The app's card.
+ * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+ */
+function overrideNotice (app: AppOption): string {
+	if (app.forcedOn) {
+		return t('versioniq', 'Forced to run on Nextcloud {major}. Lifted at the next major upgrade.', { major: String(app.forcedOn) })
+	}
+	return app.compatibilityOverridden ? t('versioniq', 'Nextcloud\'s compatibility check is overridden for this app.') : ''
+}
+
 // "Roll back to last known good" — pure client routing through the standard
 // install flow: select the app, pick the recorded lkg version, and let
 // performInstall() run its normal downgrade confirmation (migration diff
@@ -2454,6 +2928,21 @@ async function rollbackToLastKnownGood (appId: string, version: string): Promise
 	} finally {
 		suppressSafeModeAutoClear.value = false
 	}
+}
+
+/**
+ * The rollback a promotion result offers: back on the Apps tab, through the
+ * same last-known-good flow, so the downgrade dialog and its migration diff
+ * apply (install-multi-instance-promotion D6).
+ *
+ * @param target The app and the version it ran before the promotion.
+ * @param target.appId The app.
+ * @param target.version The version it ran before.
+ * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-an-admin-promotes-the-exact-package-an-earlier-stage-runs
+ */
+async function rollbackFromPromotion (target: { appId: string, version: string }): Promise<void> {
+	currentTab.value = 'apps'
+	await rollbackToLastKnownGood(target.appId, target.version)
 }
 
 // One-click updates (install-one-click-updates). Every action goes through
@@ -2697,6 +3186,7 @@ onMounted(async () => {
 	void loadPolicies().catch(() => undefined)
 	void loadAdvisorySettings().catch(() => undefined)
 	void loadUpdates().catch(() => undefined)
+	void loadChannels().catch(() => undefined)
 })
 
 watch([safeModeEnabled, installedVersion, selectedVersion], () => {
@@ -2765,6 +3255,12 @@ watch(dryRunEnabled, () => {
 				:busy="isInstallingVersion"
 				@update:open="isDowngradeConfirmOpen = $event"
 				@resolve="onDowngradeResolved" />
+			<ReplaceAppDialog v-if="replaceTarget && pendingUpdates[replaceTarget]?.successor"
+				:open="true"
+				:appId="replaceTarget"
+				:offer="pendingUpdates[replaceTarget].successor"
+				@update:open="(value: boolean) => { if (!value) { replaceTarget = null } }"
+				@replaced="onReplaced" />
 			<KnownIssueDialog
 				:open="isKnownIssueDialogOpen"
 				:appId="selectedApp"
@@ -2815,6 +3311,18 @@ watch(dryRunEnabled, () => {
 				:error="enableAppError"
 				@update:open="isEnableDialogOpen = $event"
 				@confirm="onEnableConfirmed" />
+			<UploadInstallDialog
+				:open="isUploadDialogOpen"
+				:appId="selectedApp"
+				@update:open="isUploadDialogOpen = $event"
+				@installed="onUploadInstalled" />
+			<ForceIncompatibleDialog
+				:open="isForceDialogOpen"
+				:appId="forceDialogAppId"
+				:version="forceDialogVersion"
+				:mode="forceDialogMode"
+				@update:open="isForceDialogOpen = $event"
+				@resolve="onForceResolved" />
 			<ShaMismatchDialog
 				:open="isShaMismatchDialogOpen"
 				:appId="shaMismatchAppId"
@@ -2961,7 +3469,17 @@ watch(dryRunEnabled, () => {
 									:disabled="isSavingPolicy"
 									:updates="pendingUpdates"
 									:updatesCheckedLabel="updatesFreshnessLabel"
+									:groups="updateGroups"
+									:waiting="waitingUnits"
 									@retry="onRetryAttempt" />
+								<UpdateGroupsPanel
+									:apps="groupableApps"
+									:labels="appLabels"
+									:groups="updateGroups"
+									:maxPerRun="maxPerRun"
+									:maxPerWeek="maxPerWeek"
+									@saved="loadPolicies" />
+								<ProposedUpdatesPanel :labels="appLabels" />
 
 								<h3 id="section-advisories" :class="$style.advisorySettingsHeading">{{ t('versioniq', 'Security advisory checks') }}</h3>
 								<p :class="$style.hint">
@@ -2991,6 +3509,14 @@ watch(dryRunEnabled, () => {
 										data-testid="advisory-digest-enabled"
 										:disabled="isSavingAdvisorySettings">
 									<span>{{ t('versioniq', 'Send a weekly digest of non-urgent advisories') }}</span>
+								</label>
+								<label :class="$style.safeMode">
+									<input
+										v-model="advisoryLibrariesEnabled"
+										type="checkbox"
+										data-testid="advisory-libraries-enabled"
+										:disabled="isSavingAdvisorySettings">
+									<span>{{ t('versioniq', 'Check libraries bundled in apps against OSV (sends library names and versions to osv.dev)') }}</span>
 								</label>
 								<label :class="$style.safeMode">
 									<input
@@ -3084,6 +3610,12 @@ watch(dryRunEnabled, () => {
 																{{ appStateLabel(app.state) }}
 															</span>
 															<span
+																v-if="app.state === 'disabled' && leftDisabled[app.id]"
+																:class="$style.appCardStateFlag"
+																data-testid="app-left-disabled">
+																{{ leftDisabledNotice(leftDisabled[app.id]) }}
+															</span>
+															<span
 																v-if="pinFor(app.id)"
 																:class="$style.pinBadge"
 																data-testid="pin-badge"
@@ -3105,6 +3637,14 @@ watch(dryRunEnabled, () => {
 																:title="advisoryFor(app.id)?.error ?? ''">
 																{{ t('versioniq', 'Advisories not checked') }}
 															</span>
+															<a
+																v-if="hasLibraryAdvisory(app.id)"
+																:href="libraryAdvisoryHref"
+																:class="$style.advisoryBadge"
+																data-testid="library-advisory-badge"
+																@click.stop>
+																{{ t('versioniq', 'Library advisory') }}
+															</a>
 														</div>
 														<p :class="$style.appCardMeta">
 															{{ app.id }}
@@ -3140,6 +3680,7 @@ watch(dryRunEnabled, () => {
 																{{ outsidePolicyLabel(pendingUpdates[app.id]?.linesBehind ?? 0) }}
 															</span>
 														</p>
+														<LifecycleBadge :lifecycle="pendingUpdates[app.id]?.lifecycle ?? null" />
 														<AppSourceBadges
 															:isShipped="app.isShipped === true"
 															:isCore="app.isCore"
@@ -3162,6 +3703,15 @@ watch(dryRunEnabled, () => {
 															@click.stop="openQuickUpdate(app.id, safeVersionFor(app) ?? '', advisoryFor(app.id)?.advisories?.[0]?.id ?? null)">
 															{{ t('versioniq', 'Update to safe version {version}', { version: safeVersionFor(app) ?? '' }) }}
 														</button>
+														<button
+															v-if="pendingUpdates[app.id]?.successor"
+															type="button"
+															:class="$style.appCardButton"
+															:disabled="isCheckingVersions || isInstallingVersion"
+															data-testid="replace-successor-button"
+															@click.stop="replaceTarget = app.id">
+															{{ t('versioniq', 'Replace with {successor}', { successor: pendingUpdates[app.id]?.successor?.to ?? '' }) }}
+														</button>
 													</div>
 													<div :class="$style.appCardMedia">
 														<img
@@ -3182,6 +3732,12 @@ watch(dryRunEnabled, () => {
 													:class="[$style.appCardWarning, { [$style.appCardWarningBlocking]: app.manageable === false }]">
 													⚠ {{ app.warning }}
 												</p>
+												<p
+													v-if="overrideNotice(app)"
+													:class="$style.appCardWarning"
+													data-testid="app-override-notice">
+													{{ overrideNotice(app) }}
+												</p>
 												<PolicySelector
 													v-if="!app.isCore"
 													:appId="app.id"
@@ -3189,10 +3745,23 @@ watch(dryRunEnabled, () => {
 													:autoUpdateEnabled="autoUpdateEnabled"
 													:disabled="isSavingPolicy"
 													:blockedVersions="blockedVersionsFor(app.id)"
+													:requireApproval="requireApprovalFor(app.id)"
+													:setBy="policies[app.id]?.setBy ?? ''"
+													:setAt="policies[app.id]?.setAt ?? ''"
 													:holdManual="holdManualFor(app.id)"
 													@holdManual="onHoldManualChange"
 													@change="onPolicyChange"
+													@approval="onApprovalChange"
 													@retry="onRetryAttempt" />
+												<ChannelSelector
+													v-if="!app.isCore"
+													:appId="app.id"
+													:channel="channelState.apps[app.id] ?? null"
+													:defaultChannel="channelState.default"
+													:ltsLines="channelState.ltsLines[app.id] ?? []"
+													:disabled="isSavingChannel"
+													@change="onChannelChange"
+													@ltsLines="onLtsLinesChange" />
 											</div>
 											<button
 												v-if="!app.isCore"
@@ -3212,13 +3781,22 @@ watch(dryRunEnabled, () => {
 												{{ t('versioniq', 'Update to {version}', { version: quickUpdateTargetFor(app.id) ?? '' }) }}
 											</button>
 											<button
-												v-if="app.state === 'disabled'"
+												v-if="offersEnable(app)"
 												type="button"
 												:class="$style.appCardButton"
 												data-testid="app-enable-button"
 												:disabled="isInstallingVersion || isEnablingApp"
 												@click="openEnableDialog(app.id)">
 												{{ t('versioniq', 'Enable') }}
+											</button>
+											<button
+												v-if="app.state === 'disabled' && app.serverTooNew"
+												type="button"
+												:class="$style.appCardButton"
+												data-testid="app-enable-anyway-button"
+												:disabled="isInstallingVersion || isEnablingApp"
+												@click="enableAnyway(app)">
+												{{ t('versioniq', 'Enable anyway') }}
 											</button>
 											<template v-if="!app.isCore">
 												<button
@@ -3328,6 +3906,18 @@ watch(dryRunEnabled, () => {
 											{{ t('versioniq', 'Downgrade path detected.') }}
 										</p>
 										<ChangelogRangePanel :entries="changelogRange" />
+										<NcButton
+											v-if="selectedVersionRange?.direction === 'upgrade'"
+											variant="secondary"
+											data-testid="preview-migrations"
+											:disabled="isPreviewingMigrations || isInstallingVersion"
+											@click="previewMigrations">
+											{{ isPreviewingMigrations ? t('versioniq', 'Previewing database changes…') : t('versioniq', 'Preview database changes') }}
+										</NcButton>
+										<MigrationPreviewPanel
+											v-if="selectedVersionRange?.direction === 'upgrade' && migrationPreview !== undefined"
+											:preview="migrationPreview" />
+										<AppAboutCard v-if="selectedAppOption" :app="selectedAppOption" />
 									</div>
 									<template v-if="appDetailTab === 'versions'">
 										<SourceOverrideField
@@ -3336,6 +3926,32 @@ watch(dryRunEnabled, () => {
 											:boundSourceId="selectedAppOption?.boundSourceId ?? null"
 											:disabled="isCheckingVersions || isInstallingVersion"
 											@apply="onApplySourceOverride" />
+										<div v-if="versions.length > 0" :class="$style.versionChannelBar" data-testid="version-channel-bar">
+											<span v-if="versionChannelName" data-testid="version-channel-name">
+												{{ t('versioniq', 'Release channel: {channel}', { channel: versionChannelName }) }}
+											</span>
+											<label :class="$style.safeMode">
+												<input
+													v-model="showAllVersions"
+													type="checkbox"
+													data-testid="show-all-versions"
+													:class="$style.safeModeCheckbox"
+													:disabled="isInstallingVersion">
+												<span>{{ t('versioniq', 'Show all versions') }}</span>
+											</label>
+											<p v-if="ltsLinesMissing && !showAllVersions" :class="$style.versionChannelNotice" data-testid="no-lts-lines">
+												{{ t('versioniq', 'No long-term support lines are marked for this app') }}
+											</p>
+										</div>
+										<button
+											v-if="selectedApp"
+											type="button"
+											:class="$style.changeAppButton"
+											data-testid="upload-install-button"
+											:disabled="isInstallingVersion"
+											@click="isUploadDialogOpen = true">
+											{{ t('versioniq', 'Install from a file') }}
+										</button>
 										<div v-if="versions.length > 0" :class="$style.versionListContainer">
 											<!-- aria-label, not a placeholder. A placeholder is not an
 											     accessible name: it is announced inconsistently and
@@ -3360,7 +3976,14 @@ watch(dryRunEnabled, () => {
 														<div :class="$style.versionItemMain">
 															<span>{{ version.version }}</span>
 															<ReleaseDate :releasedAt="version.releasedAt ?? null" />
-															<ServerCompatBadge :serverCompatible="version.serverCompatible ?? null" />
+															<ServerCompatBadge :serverCompatible="version.serverCompatible ?? null" :serverTooNew="version.serverTooNew ?? null" :phpCompatible="version.phpCompatible ?? null" />
+															<span
+																v-for="tag in offChannelTags(version, versionChannel)"
+																:key="tag"
+																:class="$style.versionChannelTag"
+																data-testid="version-channel-tag">
+																{{ tag }}
+															</span>
 															<span
 																v-if="version.cachedOffline"
 																:class="$style.cachedOfflineBadge"
@@ -3375,9 +3998,20 @@ watch(dryRunEnabled, () => {
 																{{ recordedShaBadgeLabel(version.version) }}
 															</span>
 															<button
+																v-if="version.serverCompatible === false && version.serverTooNew === true"
+																type="button"
+																:class="$style.versionSelectButton"
+																data-testid="install-anyway-button"
+																:disabled="isInstallingVersion"
+																@click="installAnyway(version.version)">
+																{{ t('versioniq', 'Install anyway') }}
+															</button>
+															<button
 																v-if="selectedVersion !== version.version"
 																type="button"
 																:class="$style.versionSelectButton"
+																:aria-label="t('versioniq', 'Select version {version}', { version: version.version })"
+																data-testid="version-select-button"
 																:disabled="isInstallingVersion"
 																@click="onSelectVersion(version.version)">
 																{{ t('versioniq', 'Select') }}
@@ -3401,7 +4035,12 @@ watch(dryRunEnabled, () => {
 															:busy="isRemovingKnownIssue || isInstallingVersion"
 															@add="openKnownIssueDialog"
 															@remove="removeKnownIssue" />
-														<VersionChangelog :version="version.version" :changelog="version.changelog ?? null" />
+														<VersionChangelog
+															:version="version.version"
+															:changelog="version.changelog ?? null"
+															:changelogLanguage="version.changelogLanguage ?? null"
+															:appId="selectedApp.trim()"
+															:source="sourceOverride" />
 														<div
 															v-if="selectedVersion === version.version && selectedVersion !== ''"
 															:class="$style.versionActionGroup">
@@ -3475,7 +4114,21 @@ watch(dryRunEnabled, () => {
 									<InstallResultNotices
 										:integrityWarning="lastInstallResult.integrityWarning ?? null"
 										:servedFromCache="lastInstallResult.servedFromCache === true"
-										:space="lastInstallResult.space ?? null" />
+										:checks="lastInstallResult.checks ?? []"
+										:space="lastInstallResult.space ?? null"
+										:backup="lastInstallResult.backup ?? null" />
+									<p v-if="canRestoreInstall" :class="$style.resultHint" data-testid="install-restore">
+										<NcButton
+											variant="primary"
+											:disabled="isRestoringInstall"
+											data-testid="install-restore-button"
+											@click="restoreInstallation(lastInstallResult.appId)">
+											{{ t('versioniq', 'Restore installation') }}
+										</NcButton>
+									</p>
+									<p v-if="restoreOutcome" :class="$style.resultHint" role="status" data-testid="install-restore-outcome">
+										{{ restoreOutcome }}
+									</p>
 									<p v-if="installedAppNeedsEnabling" :class="$style.resultHint" data-testid="install-enable-hint">
 										{{ t('versioniq', 'This app is installed but not enabled.') }}
 										<NcButton
@@ -3550,6 +4203,10 @@ watch(dryRunEnabled, () => {
 						</div>
 					</main>
 				</div>
+				<ReadinessPanel v-if="currentTab === 'readiness'"
+					id="readiness-panel"
+					role="tabpanel"
+					aria-labelledby="readiness-tab" />
 				<AdvisoriesPanel v-if="currentTab === 'advisories'"
 					id="advisories-panel"
 					role="tabpanel"
@@ -3559,15 +4216,23 @@ watch(dryRunEnabled, () => {
 					:triage="advisoryTriage"
 					:freshnessLabel="advisoryFreshnessLabel"
 					:ncscStatus="ncscPanelStatus"
+					:libraries="libraryChecks"
+					:librariesFreshnessLabel="librariesFreshnessLabel"
 					@update:triage="(triage: AdvisoryTriageMap) => (advisoryTriage = triage)" />
 				<AlertsPanel v-if="currentTab === 'alerts'"
 					id="alerts-panel"
 					role="tabpanel"
 					aria-labelledby="alerts-tab" />
-				<HistoryPanel v-if="currentTab === 'history'"
+				<div v-if="currentTab === 'history'"
 					id="history-panel"
 					role="tabpanel"
-					aria-labelledby="history-tab" />
+					aria-labelledby="history-tab">
+					<RollbackPanel />
+					<SbomExportMenu />
+					<HistoryPanel />
+					<!-- audit-security-reports D6: the remediation report under the history. -->
+					<SecurityReportPanel />
+				</div>
 				<SourcesPanel v-show="currentTab === 'sources'"
 					id="sources-panel"
 					role="tabpanel"
@@ -3594,12 +4259,24 @@ watch(dryRunEnabled, () => {
 					id="cache-panel"
 					role="tabpanel"
 					aria-labelledby="cache-tab" />
+				<InstancesPanel v-if="currentTab === 'instances'"
+					id="instances-panel"
+					role="tabpanel"
+					aria-labelledby="instances-tab"
+					@rollback="rollbackFromPromotion" />
 				<div v-if="currentTab === 'settings'"
 					id="settings-panel"
 					role="tabpanel"
 					aria-labelledby="settings-tab">
+					<div :class="$style.defaultChannel" data-testid="default-channel">
+						<ChannelSelector
+							:channel="channelState.default"
+							:disabled="isSavingChannel"
+							@change="onDefaultChannelChange" />
+					</div>
 					<InstanceSettingsPanel />
 					<PatchPolicyPanel />
+					<SuccessorsPanel />
 				</div>
 				<IntegrationsPanel v-if="integriqInstalled && currentTab === 'integrations'"
 					id="integrations-panel"
@@ -3683,6 +4360,32 @@ watch(dryRunEnabled, () => {
 
 .layout {
 	width: 100%;
+}
+
+.versionChannelBar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 8px;
+}
+
+.versionChannelNotice {
+	width: 100%;
+	color: var(--color-warning-text);
+}
+
+.versionChannelTag {
+	font-size: 12px;
+	padding: 0 6px;
+	border-radius: var(--border-radius-pill);
+	background-color: var(--color-warning-hover, var(--color-background-dark));
+	color: var(--color-main-text);
+}
+
+.defaultChannel {
+	max-width: 400px;
+	padding: 16px;
 }
 
 .updateChannel {
@@ -4241,7 +4944,9 @@ watch(dryRunEnabled, () => {
 .versionSelectButton {
 	line-height: 1.1;
 	margin: 2px 0;
-	visibility: hidden;
+	/* Faded, never hidden through the visibility property: a hidden button
+	   leaves the tab order, so keyboard users could not reach it and the
+	   :focus-visible reveal below never fired (WCAG 2.1.1). */
 	opacity: 0;
 	transition: opacity 0.12s ease;
 	padding: 3px 10px;
@@ -4252,6 +4957,13 @@ watch(dryRunEnabled, () => {
 	font-size: 12px;
 }
 
+/* A touch screen has no hover: the button is always shown there. */
+@media (hover: none) {
+	.versionSelectButton {
+		opacity: 1;
+	}
+}
+
 /* ORDER MATTERS HERE, and it is not cosmetic. `.versionItem:hover
    .versionSelectButton` (0,2,0) outranks the single-class pseudo rules below
    it, so with those written first the descending order let the hover-descendant
@@ -4260,16 +4972,17 @@ watch(dryRunEnabled, () => {
    keyboard affordance reachable — stylelint's no-descending-specificity is
    pointing at a real accessibility bug, not at tidiness. */
 .versionSelectButton:focus-visible {
-	visibility: visible;
 	opacity: 1;
+	outline: 2px solid var(--color-primary-element);
+	outline-offset: 2px;
 }
 
 .versionSelectButton:hover {
 	filter: brightness(1.05);
 }
 
-.versionItem:hover .versionSelectButton {
-	visibility: visible;
+.versionItem:hover .versionSelectButton,
+.versionItem:focus-within .versionSelectButton {
 	opacity: 1;
 }
 
