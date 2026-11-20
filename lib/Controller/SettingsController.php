@@ -18,6 +18,7 @@ use OCA\Versioniq\Http\RequestFieldsFrom;
 use OCA\Versioniq\Kernel\Contracts\InstanceSettingsInterface;
 use OCA\Versioniq\Service\Advisory\LocalFeedCopy;
 use OCA\Versioniq\Service\Audit\AdminChangeAuditInterface;
+use OCA\Versioniq\Service\Checks\CheckStore;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\ApiRoute;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
@@ -39,6 +40,10 @@ use OCP\IUserSession;
  * because pointing the App Store or GitHub at another host changes where
  * installs come from.
  *
+ * The update checks are read here too: the admin's verdict checks, without
+ * their tokens, and the operator's command checks from `config.php`, which
+ * the page only shows. PUT /api/update-checks replaces the verdict checks.
+ *
  * @psalm-suppress UnusedClass
  */
 class SettingsController extends OCSController {
@@ -51,6 +56,7 @@ class SettingsController extends OCSController {
 		private AdminChangeAuditInterface $auditLogger,
 		private IGroupManager $groupManager,
 		private IUserSession $userSession,
+		private CheckStore $checkStore,
 		// The offline advisory copy (sources-trust-audit-and-offline-feed).
 		private ?LocalFeedCopy $localFeedCopy = null,
 		private ?ITimeFactory $time = null,
@@ -61,13 +67,14 @@ class SettingsController extends OCSController {
 	/**
 	 * Returns the instance settings with their defaults
 	 *
-	 * @return DataResponse<Http::STATUS_OK, array<string, bool|int|string|null>, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_FORBIDDEN, array{message: string}, array{}>
 	 *
-	 * 200: The settings, each override ('' when unset) next to its default
+	 * 200: The settings, each override ('' when unset) next to its default, and the update checks under updateChecks
 	 * 403: Caller is not an administrator
 	 *
 	 * @spec openspec/specs/audit-trail/spec.md
 	 * @spec openspec/specs/external-sources/spec.md
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/instance-settings')]
 	#[ApiRoute(verb: 'GET', url: '/api/v1/instance-settings', postfix: 'v1')]
@@ -76,7 +83,47 @@ class SettingsController extends OCSController {
 			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
 		}
 
-		return new DataResponse($this->settings->read());
+		return new DataResponse($this->settings->read() + ['updateChecks' => $this->checkStore->read()]);
+	}
+
+	/**
+	 * Replaces the verdict checks (password-confirmed); command checks are set in config.php only
+	 *
+	 * @param list<array<string, mixed>> $checks Each {id?, name, url, apps?, token?, clearToken?}; an id of a stored check keeps its token unless token or clearToken is sent
+	 * @return DataResponse<Http::STATUS_OK, array<string, mixed>, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN, array{message: string}, array{}>
+	 *
+	 * 200: The update checks after the change, without tokens
+	 * 400: A check is not acceptable (no name, not https, too many); nothing was changed
+	 * 403: Caller is not an administrator
+	 *
+	 * @spec openspec/specs/audit-trail/spec.md
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
+	 */
+	#[PasswordConfirmationRequired(strict: false)]
+	#[ApiRoute(verb: 'PUT', url: '/api/update-checks')]
+	#[ApiRoute(verb: 'PUT', url: '/api/v1/update-checks', postfix: 'v1')]
+	public function updateUpdateChecks(array $checks = []): DataResponse {
+		if (!$this->isAdmin()) {
+			return new DataResponse(['message' => 'Forbidden'], Http::STATUS_FORBIDDEN);
+		}
+
+		try {
+			$stored = $this->checkStore->saveVerdictChecks($checks);
+		} catch (InvalidArgumentException $error) {
+			return new DataResponse(['message' => $error->getMessage()], Http::STATUS_BAD_REQUEST);
+		}
+
+		// Names only: an address can carry a query a CI server treats as a secret.
+		$this->auditLogger->recordAdminChange(
+			$this->userSession->getUser()?->getUID() ?? '',
+			AdminChangeAuditInterface::OPERATION_SETTINGS,
+			sprintf('Update checks changed: %d verdict check(s)%s', count($stored), $stored === [] ? '' : ': ' . implode(', ', array_map(
+				static fn (array $check): string => (string)($check['name'] ?? ''),
+				$stored,
+			))),
+		);
+
+		return new DataResponse($this->checkStore->read());
 	}
 
 	/**

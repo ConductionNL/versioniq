@@ -147,6 +147,8 @@ function freshState() {
 		assetOverride: {},
 		// artifact filename -> status code to force (e.g. 404 for a deleted asset)
 		assetStatus: {},
+		// The NCSC-NL CSAF directory: forced status on changes.csv, documents.
+		csaf: { status: null, documents: defaultCsaf() },
 	};
 }
 
@@ -202,6 +204,140 @@ function releaseJson(repo) {
 	});
 }
 
+// --- NCSC-NL CSAF directory (advisories-ncsc-feed) -----------------------
+// A small CSAF provider directory under /csaf/v2/: a `changes.csv` (newest
+// first) and the documents it lists. NcscAdvisoryFeed reads it once
+// `advisory.ncsc_feed_base` points here. The defaults are two documents about
+// Nextcloud Server: one whose range covers any server the CI runs (so the
+// server is affected) and one with `vers:unknown/*` (so NCSC-NL "does not
+// state which versions"). Times are relative to now so the feed's 365-day
+// first read always includes them. POST /control/csaf replaces the documents
+// or forces a status on `changes.csv`.
+function csafDocument(id, title, range, cve, severity, ratings) {
+	const vulnerability = {
+		cve,
+		product_status: { known_affected: ["CSAFPID-0001"] },
+	};
+	if (severity)
+		vulnerability.scores = [
+			{ products: ["CSAFPID-0001"], cvss_v3: { baseSeverity: severity } },
+		];
+	return {
+		document: {
+			category: "csaf_security_advisory",
+			csaf_version: "2.0",
+			title,
+			tracking: {
+				id,
+				initial_release_date: new Date(Date.now() - 86_400_000).toISOString(),
+				version: "1.00",
+			},
+			notes: [
+				{ category: "other", title: "Kans", text: ratings[0] },
+				{ category: "other", title: "Schade", text: ratings[1] },
+			],
+		},
+		product_tree: {
+			branches: [
+				{
+					category: "vendor",
+					name: "Nextcloud",
+					branches: [
+						{
+							category: "product_name",
+							name: "Nextcloud Server",
+							branches: [
+								{
+									category: "product_version_range",
+									name: range,
+									product: {
+										product_id: "CSAFPID-0001",
+										name: `Nextcloud Server ${range}`,
+									},
+								},
+							],
+						},
+					],
+				},
+			],
+		},
+		vulnerabilities: [vulnerability],
+	};
+}
+
+function defaultCsaf() {
+	return [
+		{
+			path: "2099/ncsc-2099-0001.json",
+			doc: csafDocument(
+				"NCSC-2099-0001",
+				"Kwetsbaarheid verholpen in Nextcloud Server",
+				"vers:generic/>=1.0.0|<999.0.0",
+				"CVE-2099-0001",
+				"HIGH",
+				["medium", "high"],
+			),
+		},
+		{
+			path: "2099/ncsc-2099-0002.json",
+			doc: csafDocument(
+				"NCSC-2099-0002",
+				"Kwetsbaarheid in Nextcloud Server zonder versies",
+				"vers:unknown/*",
+				"CVE-2099-0002",
+				null,
+				["low", "medium"],
+			),
+		},
+	];
+}
+
+function csafChanges(res) {
+	if (state.csaf.status) {
+		res.writeHead(state.csaf.status);
+		return res.end("forced");
+	}
+	// Newest first, as NCSC-NL publishes it; every line a minute apart.
+	const now = Date.now();
+	const body = state.csaf.documents
+		.map((d, i) => {
+			const changed = new Date(
+				now - 3_600_000 + i * 60_000,
+			).toISOString();
+			return `"${d.path}","${d.changed ?? changed}"`;
+		})
+		.reverse()
+		.join("\n");
+	res.writeHead(200, {
+		"content-type": "text/csv",
+		"content-length": Buffer.byteLength(body),
+	});
+	return res.end(body);
+}
+
+function csafApi(res, path) {
+	const m = path.match(/^\/csaf\/v2\/(.+)$/);
+	if (!m) return false;
+	if (m[1] === "changes.csv") {
+		csafChanges(res);
+		return true;
+	}
+	const found = state.csaf.documents.find((d) => d.path === m[1]);
+	if (found) json(res, 200, found.doc);
+	else json(res, 404, { message: "Not Found" });
+	return true;
+}
+
+async function controlCsaf(req, res) {
+	// { status?, documents?: [{ path, changed?, doc }] }
+	const b = await readBody(req);
+	state.csaf = {
+		status: b.status ?? null,
+		documents: b.documents ?? state.csaf.documents,
+	};
+	return json(res, 200, { ok: true, documents: state.csaf.documents.length });
+}
+
 // --- Control plane (test-only) -------------------------------------------
 async function controlRepo(req, res) {
 	// { repo, status?, releases?, advisories? }
@@ -233,6 +369,7 @@ const CONTROL_ROUTES = {
 	},
 	"/control/repo": controlRepo,
 	"/control/asset": controlAsset,
+	"/control/csaf": controlCsaf,
 };
 
 // --- Forge API (Forgejo `/api/v1/...` and GitHub `/...` shapes) -----------
@@ -463,6 +600,7 @@ async function route(req, res) {
 	const control = CONTROL_ROUTES[path];
 	if (control && req.method === "POST") return control(req, res);
 
+	if (csafApi(res, path)) return;
 	if (await osvApi(req, res, path)) return;
 	if (gitlabApi(res, path)) return;
 	if (forgeApi(req, res, path)) return;
