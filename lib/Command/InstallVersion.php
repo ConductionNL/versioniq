@@ -12,12 +12,14 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\Command;
 
-use OCA\Versioniq\Service\Installer\FailureClassifier;
+use OCA\Versioniq\Kernel\Contracts\FailureClassifierInterface;
+use OCA\Versioniq\Kernel\Contracts\InstallerServiceInterface;
+use OCA\Versioniq\Service\Checks\CheckRunner;
 use OCA\Versioniq\Service\Installer\InstallOptions;
+use OCA\Versioniq\Service\Installer\InstallProgress;
 use OCA\Versioniq\Service\Installer\InstallRequest;
 use OCA\Versioniq\Service\Installer\InstallTarget;
 use OCA\Versioniq\Service\Installer\PinChoice;
-use OCA\Versioniq\Service\InstallerService;
 use OCP\AppFramework\Http;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -28,7 +30,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * `occ versioniq:install <appId> <version> [--source=] [--dry-run]
- * [--allow-downgrade] [--json]` — installs a specific version through the
+ * [--allow-downgrade] [--force-incompatible] [--json]` — installs a specific version through the
  * same `InstallerService::installAppVersion()` path the HTTP API uses
  * (source resolution, allowlist, integrity verification, backup/restore,
  * maintenance-mode, finalize) — no duplicated install logic.
@@ -38,6 +40,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  * applies; see "CLI trust context".
  *
  * @spec openspec/specs/cli-commands/spec.md
+ * @spec openspec/changes/install-force-incompatible/specs/cli-commands/spec.md
  * @psalm-api
  */
 class InstallVersion extends Command {
@@ -46,7 +49,8 @@ class InstallVersion extends Command {
 	 * 0 success/dry-run-ok, 1 unknown/unclassified, 2 unknown app / bad
 	 * arguments, 3 downgrade refused, 4 preflight_permission, 5 download,
 	 * 6 integrity (checksum_mismatch|appid_mismatch|version_mismatch|sha_mismatch),
-	 * 7 incompatible, 8 finalize, 9 untrusted source.
+	 * 7 incompatible, 8 finalize, 9 untrusted source, 12 an update check failed
+	 * in a dry run (see "Admins and operators attach checks that every dry run runs").
 	 */
 	private const EXIT_OK = 0;
 	private const EXIT_UNKNOWN = 1;
@@ -58,9 +62,12 @@ class InstallVersion extends Command {
 	private const EXIT_INCOMPATIBLE = 7;
 	private const EXIT_FINALIZE = 8;
 	private const EXIT_UNTRUSTED_SOURCE = 9;
+	private const EXIT_CHECKS_FAILED = 12;
 
 	public function __construct(
-		private InstallerService $installerService,
+		private InstallerServiceInterface $installerService,
+		/** install-live-progress: prints each stage as it starts; null in hand-built tests. */
+		private ?InstallProgress $progress = null,
 	) {
 		parent::__construct();
 	}
@@ -81,15 +88,17 @@ class InstallVersion extends Command {
 			->addArgument('appId', InputArgument::REQUIRED, 'The app id to install.')
 			->addArgument('version', InputArgument::REQUIRED, 'The target version to install.')
 			->addOption('source', null, InputOption::VALUE_REQUIRED, 'One-off source id override (e.g. github:owner/repo), instead of the app\'s bound source.')
-			->addOption('dry-run', null, InputOption::VALUE_NONE, 'Evaluate the install (integrity checks, downgrade detection) without swapping any files.')
+			->addOption('dry-run', null, InputOption::VALUE_NONE, 'Evaluate the install (integrity, compatibility and dependency checks, downgrade detection, and the update checks that match the app) without swapping any files.')
 			->addOption('allow-downgrade', null, InputOption::VALUE_NONE, 'Acknowledge and proceed with a downgrade (target version older than installed). Refused without this flag.')
 			->addOption('accept-new-sha', null, InputOption::VALUE_NONE, 'Accept a changed SHA-256 for a version whose digest was previously recorded (trust-on-first-use), replacing the recorded digest. Refused without this flag when the digest differs.')
+			->addOption('force-incompatible', null, InputOption::VALUE_NONE, 'Install past the version\'s declared maximum Nextcloud version through app_install_overwrite; Versioniq lifts the override at the next major upgrade. A version that needs a newer Nextcloud still fails with exit code 7.')
 			->addOption('json', null, InputOption::VALUE_NONE, 'Emit the structured outcome as JSON instead of human-readable text.')
 			->setHelp(
 				'Exit codes: 0 success/dry-run-ok, 1 unknown/unclassified, 2 unknown app / bad arguments, '
 				. '3 downgrade refused (pass --allow-downgrade to proceed), 4 preflight permission, '
 				. '5 download failure, 6 integrity failure (checksum/appId/version mismatch), '
-				. '7 incompatible version, 8 finalize failure (see installStatus), 9 untrusted source.'
+				. '7 incompatible version, 8 finalize failure (see installStatus), 9 untrusted source, '
+				. '12 an update check failed in a dry run.'
 			);
 	}
 
@@ -118,17 +127,18 @@ class InstallVersion extends Command {
 		$dryRun = (bool)$input->getOption('dry-run');
 		$allowDowngrade = (bool)$input->getOption('allow-downgrade');
 		$acceptNewSha = (bool)$input->getOption('accept-new-sha');
+		$forceIncompatible = (bool)$input->getOption('force-incompatible');
 
-		$result = $this->installerService->installAppVersion(new InstallRequest(
+		$result = $this->installWithProgress(new InstallRequest(
 			new InstallTarget($appId, $version, $sourceOverride),
-			new InstallOptions(false, $dryRun, $acceptNewSha, $allowDowngrade),
+			new InstallOptions(false, $dryRun, $acceptNewSha, $allowDowngrade, $forceIncompatible, CheckRunner::CONTEXT_CLI),
 			new PinChoice(null, false),
-		));
+		), $output, $json);
 
 		$statusCode = $result['statusCode'] ?? Http::STATUS_INTERNAL_SERVER_ERROR;
 		/** @var array<string, mixed> $payload */
 		$payload = $result['payload'] ?? [];
-		$exitCode = $this->exitCodeFor($statusCode, $payload);
+		$exitCode = self::exitCodeFor($statusCode, $payload);
 
 		if ($json) {
 			$output->writeln(json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
@@ -137,23 +147,72 @@ class InstallVersion extends Command {
 		}
 
 		$this->renderHuman($output, $exitCode, $payload);
+		if ($forceIncompatible && $exitCode === self::EXIT_INCOMPATIBLE) {
+			$this->errorOutput($output)->writeln('An override only lifts the declared maximum, so it cannot help this version: it still does not fit this server, for example because it needs a newer Nextcloud.');
+		}
 
 		return $exitCode;
 	}
 
+	/**
+	 * Run the install, printing each stage as it starts unless the output is
+	 * JSON (install-live-progress).
+	 *
+	 * @return array<string, mixed> The installer's result.
+	 *
+	 * @spec openspec/changes/install-live-progress/specs/cli-commands/spec.md
+	 */
+	private function installWithProgress(InstallRequest $request, OutputInterface $output, bool $json): array {
+		if (!$json) {
+			$this->progress?->listen(static function (string $stage) use ($output): void {
+				$output->writeln(sprintf('<comment>%s</comment>', $stage));
+			});
+		}
+		try {
+			return $this->installerService->installAppVersion($request);
+		} finally {
+			$this->progress?->listen(null);
+		}
+	}
+
 	private function renderHuman(OutputInterface $output, int $exitCode, array $payload): void {
+		$this->renderChecks($output, $payload);
+		if ($exitCode === self::EXIT_CHECKS_FAILED) {
+			$this->errorOutput($output)->writeln('<error>An update check failed; this version should not be installed until it passes.</error>');
+
+			return;
+		}
 		if ($exitCode === self::EXIT_OK) {
-			$output->writeln(sprintf('<info>%s</info>', $payload['message'] ?? 'App installed.'));
-			if (isset($payload['toVersion'])) {
-				$output->writeln(sprintf('Version: %s', $payload['toVersion']));
-			}
-			if (isset($payload['updateType'])) {
-				$output->writeln(sprintf('Update type: %s', $payload['updateType']));
+			self::renderInstalled($output, $payload);
+			if (array_key_exists('migrationPreview', $payload)) {
+				MigrationPreviewOutput::render($output, is_array($payload['migrationPreview']) ? $payload['migrationPreview'] : null);
 			}
 
 			return;
 		}
 
+		$this->renderFailure($output, $exitCode, $payload);
+	}
+
+	/**
+	 * The success lines: the message, then the version and update type when
+	 * the outcome names them.
+	 */
+	private static function renderInstalled(OutputInterface $output, array $payload): void {
+		$output->writeln(sprintf('<info>%s</info>', $payload['message'] ?? 'App installed.'));
+		if (isset($payload['toVersion'])) {
+			$output->writeln(sprintf('Version: %s', $payload['toVersion']));
+		}
+		if (isset($payload['updateType'])) {
+			$output->writeln(sprintf('Update type: %s', $payload['updateType']));
+		}
+	}
+
+	/**
+	 * The failure lines on the error output: the message, the hint, and the
+	 * install status after a failed finalize.
+	 */
+	private function renderFailure(OutputInterface $output, int $exitCode, array $payload): void {
 		$error = $this->errorOutput($output);
 		$error->writeln(sprintf('<error>%s</error>', $payload['message'] ?? 'Install failed.'));
 		if (isset($payload['hint']) && is_string($payload['hint']) && $payload['hint'] !== '') {
@@ -163,6 +222,32 @@ class InstallVersion extends Command {
 			// "8 finalize (check installStatus: reverted vs installed-but-broken,
 			// printed explicitly)" — see design.md.
 			$error->writeln(sprintf('installStatus: %s', $payload['installStatus']));
+		}
+	}
+
+	/**
+	 * Prints each update check of a dry run: its outcome, name, kind and detail.
+	 *
+	 * @param array<string, mixed> $payload
+	 * @spec openspec/changes/safety-update-checks/specs/update-checks/spec.md#requirement-admins-and-operators-attach-checks-that-every-dry-run-runs
+	 */
+	private function renderChecks(OutputInterface $output, array $payload): void {
+		$checks = $payload['checks'] ?? null;
+		if (!is_array($checks) || $checks === []) {
+			return;
+		}
+		$output->writeln('Update checks:');
+		foreach ($checks as $check) {
+			if (!is_array($check)) {
+				continue;
+			}
+			$output->writeln(sprintf(
+				'  [%s] %s (%s): %s',
+				(string)($check['outcome'] ?? ''),
+				(string)($check['name'] ?? ''),
+				(string)($check['kind'] ?? ''),
+				str_replace("\n", "\n    ", (string)($check['detail'] ?? '')),
+			), OutputInterface::OUTPUT_RAW);
 		}
 	}
 
@@ -185,33 +270,47 @@ class InstallVersion extends Command {
 	 * this command (see execute()), so a 403 reaching here can only be the
 	 * trusted-source allowlist guard — see "CLI trust context".
 	 *
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/cli-commands/spec.md#requirement-compare-instances-and-promote-versions-from-the-cli
 	 * @param array<string, mixed> $payload
 	 */
-	private function exitCodeFor(int $statusCode, array $payload): int {
+	public static function exitCodeFor(int $statusCode, array $payload): int {
 		if ($statusCode === Http::STATUS_OK) {
-			return self::EXIT_OK;
+			return CheckRunner::firstFailure(is_array($payload['checks'] ?? null) ? $payload['checks'] : []) === null
+				? self::EXIT_OK
+				: self::EXIT_CHECKS_FAILED;
 		}
 
 		/** @var mixed $category */
 		$category = $payload['category'] ?? null;
-		if (is_string($category)) {
-			$mapped = match ($category) {
-				FailureClassifier::CATEGORY_DOWNGRADE_GUARD => self::EXIT_DOWNGRADE_REFUSED,
-				FailureClassifier::CATEGORY_PREFLIGHT_PERMISSION => self::EXIT_PREFLIGHT_PERMISSION,
-				FailureClassifier::CATEGORY_DOWNLOAD => self::EXIT_DOWNLOAD,
-				FailureClassifier::CATEGORY_CHECKSUM_MISMATCH,
-				FailureClassifier::CATEGORY_SHA_MISMATCH,
-				FailureClassifier::CATEGORY_APPID_MISMATCH,
-				FailureClassifier::CATEGORY_VERSION_MISMATCH => self::EXIT_INTEGRITY,
-				FailureClassifier::CATEGORY_INCOMPATIBLE => self::EXIT_INCOMPATIBLE,
-				FailureClassifier::CATEGORY_FINALIZE => self::EXIT_FINALIZE,
-				default => null,
-			};
-			if ($mapped !== null) {
-				return $mapped;
-			}
-		}
+		$mapped = is_string($category) ? self::exitCodeForCategory($category) : null;
 
+		return $mapped ?? self::exitCodeForStatus($statusCode);
+	}
+
+	/**
+	 * The documented exit code of a failure category, or null for a category
+	 * without one of its own.
+	 */
+	private static function exitCodeForCategory(string $category): ?int {
+		return match ($category) {
+			FailureClassifierInterface::CATEGORY_DOWNGRADE_GUARD => self::EXIT_DOWNGRADE_REFUSED,
+			FailureClassifierInterface::CATEGORY_PREFLIGHT_PERMISSION => self::EXIT_PREFLIGHT_PERMISSION,
+			FailureClassifierInterface::CATEGORY_DOWNLOAD => self::EXIT_DOWNLOAD,
+			FailureClassifierInterface::CATEGORY_CHECKSUM_MISMATCH,
+			FailureClassifierInterface::CATEGORY_SHA_MISMATCH,
+			FailureClassifierInterface::CATEGORY_APPID_MISMATCH,
+			FailureClassifierInterface::CATEGORY_VERSION_MISMATCH => self::EXIT_INTEGRITY,
+			FailureClassifierInterface::CATEGORY_INCOMPATIBLE => self::EXIT_INCOMPATIBLE,
+			FailureClassifierInterface::CATEGORY_FINALIZE => self::EXIT_FINALIZE,
+			FailureClassifierInterface::CATEGORY_CHECKS_FAILED => self::EXIT_CHECKS_FAILED,
+			default => null,
+		};
+	}
+
+	/**
+	 * The exit code an HTTP status maps to when its category named none.
+	 */
+	private static function exitCodeForStatus(int $statusCode): int {
 		if ($statusCode === Http::STATUS_FORBIDDEN) {
 			return self::EXIT_UNTRUSTED_SOURCE;
 		}

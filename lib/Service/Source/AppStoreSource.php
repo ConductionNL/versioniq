@@ -14,7 +14,9 @@ namespace OCA\Versioniq\Service\Source;
 
 use Exception;
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\AppStoreSourceInterface;
 use OCA\Versioniq\Service\Advisory\AdvisoryClauses;
+use OCA\Versioniq\Service\Advisory\AdvisoryReferences;
 use OCA\Versioniq\Service\Advisory\AdvisorySeverity;
 use OCA\Versioniq\Service\Advisory\AdvisorySourceInterface;
 use OCA\Versioniq\Service\Connection\ReportedHttp;
@@ -34,10 +36,13 @@ use UnexpectedValueException;
  * to `SelectedReleaseInstallerService`, not the external installer.
  *
  * @psalm-api
- * @psalm-type VersionEntry = array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string, downloads: null}
+ * @psalm-type VersionEntry = array{version: string, changelog: ?string, changelogLanguage: ?string, serverCompatible: ?bool, releasedAt: ?string, downloads: null, platformSpec?: ?string, phpSpec?: ?string, phpCompatible?: ?bool, sourcePreRelease?: true, serverTooNew?: bool}
  */
-class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
+class AppStoreSource implements SourceInterface, AdvisorySourceInterface, AppStoreSourceInterface {
 	public const DEFAULT_API_BASE = 'https://garm3.nextcloud.com/api/v1';
+
+	/** The listing error for an app the catalogue does not list. */
+	public const NOT_IN_STORE = 'App is not available in the Nextcloud App Store.';
 	private const MAX_PAGES = 20;
 
 	/**
@@ -59,22 +64,6 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 * versions available" rather than a clear failure.
 	 */
 	private const FETCH_TIMEOUT_SECONDS = 180;
-
-	/**
-	 * Key prefixes of the payload cache. Public so the repair step that marks
-	 * existing rows lazy names the same keys this class writes.
-	 *
-	 * EVERY READ AND WRITE OF THESE KEYS PASSES `lazy: true`. One payload per
-	 * managed app, and a single one (mail) runs to ~4 MB, so the cache grows to
-	 * tens of megabytes. Nextcloud loads every NON-lazy app-config row on every
-	 * request, for every app, so an eager cache made the whole instance pay for
-	 * it: measured 2026-10-06, 1,660 eager rows / 36 MB took ~300 ms of a
-	 * ~450 ms `status.php`, and 55 ms once marked lazy.
-	 *
-	 * @see \OCA\Versioniq\Repair\MarkPayloadCacheLazy
-	 */
-	public const PAYLOAD_CACHE_PREFIX = 'appstore.payload.';
-	public const PAYLOAD_CACHE_TS_PREFIX = 'appstore.payload_ts.';
 
 	/**
 	 * What the current uncached fetch met, for the connection report
@@ -120,7 +109,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 		}
 
 		if ($payload === null) {
-			return ['versions' => [], 'error' => 'App is not available in the Nextcloud App Store.'];
+			return ['versions' => [], 'error' => self::NOT_IN_STORE];
 		}
 
 		$releases = $payload['releases'] ?? [];
@@ -129,6 +118,72 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 		}
 
 		return ['versions' => $this->normalizeVersions($releases), 'error' => null];
+	}
+
+	/**
+	 * The server majors among `$majors` that at least one listed release of
+	 * the app supports, read from each release's `platformVersionSpec` in the
+	 * cached catalogue entry; null when the app is not cached or no release
+	 * names a range. Reads the cache only: the availability sweep has just
+	 * listed the app's versions, so this costs no request.
+	 *
+	 * A major counts as supported when its first or its last release
+	 * (`<major>.0.0`, `<major>.99.99`) satisfies the range, so a range that
+	 * starts or ends inside a major still covers it.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 * @param list<int> $majors The majors to test.
+	 * @return list<int>|null
+	 */
+	public function supportedMajors(string $appId, array $majors): ?array {
+		$releases = $this->readCachedPayload($appId, true)['releases'] ?? null;
+		if (!is_array($releases)) {
+			return null;
+		}
+
+		$specs = self::platformSpecs($releases);
+		if ($specs === []) {
+			return null;
+		}
+
+		return array_values(array_filter($majors, static fn (int $major): bool => self::majorSatisfiesAny($major, $specs)));
+	}
+
+	/**
+	 * The distinct, non-empty `platformVersionSpec` ranges of the releases.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 * @param array<array-key, mixed> $releases The cached releases.
+	 * @return list<string>
+	 */
+	private static function platformSpecs(array $releases): array {
+		$specs = [];
+		foreach ($releases as $release) {
+			$spec = is_array($release) ? ($release['platformVersionSpec'] ?? null) : null;
+			if (is_string($spec) && trim($spec) !== '') {
+				$specs[trim($spec)] = true;
+			}
+		}
+
+		return array_map('strval', array_keys($specs));
+	}
+
+	/**
+	 * Whether the major's first or last release (`<major>.0.0`,
+	 * `<major>.99.99`) satisfies at least one of the ranges.
+	 *
+	 * @spec openspec/changes/inventory-lifecycle-signals/specs/lifecycle-signals/spec.md#requirement-abandoned-and-unsupported-apps-are-flagged-on-their-card
+	 * @param list<string> $specs The ranges.
+	 */
+	private static function majorSatisfiesAny(int $major, array $specs): bool {
+		foreach ($specs as $spec) {
+			if (self::satisfiesPlatformSpec($major . '.0.0', $spec) === true
+				|| self::satisfiesPlatformSpec($major . '.99.99', $spec) === true) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -142,12 +197,20 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 			return null;
 		}
 
+		return self::releaseWithVersion($payload, $version);
+	}
+
+	/**
+	 * The payload's release carrying exactly this version, with the app's
+	 * certificate and the source kind added, or null when none carries it.
+	 *
+	 * @param array<array-key, mixed> $payload An app payload whose `releases` is an array.
+	 * @return array<string, mixed>|null
+	 */
+	private static function releaseWithVersion(array $payload, string $version): ?array {
 		/** @var mixed $release */
 		foreach ($payload['releases'] as $release) {
-			if (!is_array($release)) {
-				continue;
-			}
-			if (($release['version'] ?? null) === $version) {
+			if (is_array($release) && ($release['version'] ?? null) === $version) {
 				/** @var array<string, mixed> $resolved */
 				$resolved = array_merge(
 					$release,
@@ -173,7 +236,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 * new HTTP client.
 	 *
 	 * @spec openspec/specs/security-advisory-correlation/spec.md
-	 * @return array{advisories: list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string}>, error: ?string}
+	 * @return array{advisories: list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>, error: ?string}
 	 */
 	public function listAdvisories(string $appId, SourceBinding $binding): array {
 		try {
@@ -197,7 +260,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 
 	/**
 	 * @param array<array-key, mixed> $raw
-	 * @return list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string}>
+	 * @return list<array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}>
 	 */
 	private function normalizeAdvisories(array $raw): array {
 		$advisories = [];
@@ -216,7 +279,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 * One App Store advisory entry as an advisory record, or null without an id.
 	 *
 	 * @param array<array-key, mixed> $entry
-	 * @return array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string}|null
+	 * @return array{id: string, severity: string, summary: string, affected: list<string>, firstPatchedVersion: ?string, cveIds?: list<string>, publishedAt?: ?string, url?: ?string}|null
 	 */
 	private static function advisoryFrom(array $entry): ?array {
 		/** @var mixed $id */
@@ -235,7 +298,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 			'summary' => is_string($summary) ? $summary : '',
 			'affected' => AdvisoryClauses::from($entry['affected'] ?? $entry['affectedVersions'] ?? []),
 			'firstPatchedVersion' => is_string($patched) && $patched !== '' ? $patched : null,
-		];
+		] + AdvisoryReferences::from($entry);
 	}
 
 	/**
@@ -275,18 +338,34 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 * @return array<array-key, mixed>|null
 	 */
 	private function readCachedPayload(string $appId, bool $ignoreTtl): ?array {
-		if (!$ignoreTtl) {
-			$cachedAt = (int)$this->appConfig->getValueString(
-				Application::APP_ID,
-				self::PAYLOAD_CACHE_TS_PREFIX . $appId,
-				'0',
-				lazy: true,
-			);
-			if ($cachedAt <= 0 || (time() - $cachedAt) >= self::PAYLOAD_CACHE_TTL_SECONDS) {
-				return null;
-			}
+		if (!$ignoreTtl && !$this->isCachedPayloadFresh($appId)) {
+			return null;
 		}
 
+		return $this->decodeCachedPayload($appId);
+	}
+
+	/**
+	 * Whether the app's cached payload was stored within the cache TTL.
+	 */
+	private function isCachedPayloadFresh(string $appId): bool {
+		$cachedAt = (int)$this->appConfig->getValueString(
+			Application::APP_ID,
+			self::PAYLOAD_CACHE_TS_PREFIX . $appId,
+			'0',
+			lazy: true,
+		);
+
+		return $cachedAt > 0 && (time() - $cachedAt) < self::PAYLOAD_CACHE_TTL_SECONDS;
+	}
+
+	/**
+	 * The app's cached payload regardless of its age, or null when there is
+	 * none or the stored JSON is malformed.
+	 *
+	 * @return array<array-key, mixed>|null
+	 */
+	private function decodeCachedPayload(string $appId): ?array {
 		$raw = $this->appConfig->getValueString(Application::APP_ID, self::PAYLOAD_CACHE_PREFIX . $appId, '', lazy: true);
 		if ($raw === '') {
 			return null;
@@ -624,7 +703,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 *
 	 * @spec openspec/specs/version-management/spec.md
 	 * @param array<mixed> $releases
-	 * @return list<array{version: string, changelog: ?string, serverCompatible: ?bool, releasedAt: ?string, downloads: null}>
+	 * @return list<VersionEntry>
 	 */
 	private function normalizeVersions(array $releases): array {
 		$serverVersion = $this->getServerVersion();
@@ -652,7 +731,7 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	 */
 	private function releaseEntry(mixed $release, string $serverVersion): ?array {
 		if (is_string($release)) {
-			return ['version' => $release, 'changelog' => null, 'serverCompatible' => null, 'releasedAt' => null, 'downloads' => null];
+			return ['version' => $release, 'changelog' => null, 'changelogLanguage' => null, 'serverCompatible' => null, 'releasedAt' => null, 'downloads' => null];
 		}
 
 		return is_array($release) ? $this->arrayReleaseEntry($release, $serverVersion) : null;
@@ -669,15 +748,62 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 		}
 		/** @var mixed $spec */
 		$spec = $release['platformVersionSpec'] ?? null;
+		$changelog = $this->extractChangelog($release);
 
-		return [
+		$entry = [
 			'version' => $version,
-			'changelog' => $this->extractChangelog($release),
+			'changelog' => $changelog,
+			'changelogLanguage' => $this->languageOfNotes($release, $changelog),
 			'serverCompatible' => is_string($spec) ? self::satisfiesPlatformSpec($serverVersion, $spec) : null,
 			'releasedAt' => ReleaseDate::normalize($release['created'] ?? null),
 			// The catalogue publishes no per-release download count (design D2).
 			'downloads' => null,
+			...self::rangeFields($release),
 		];
+		if ($entry['serverCompatible'] === false && is_string($spec)) {
+			$entry['serverTooNew'] = self::serverAboveMaximum($serverVersion, $spec) === true;
+		}
+		// The store marks a nightly build itself; an absent flag is not a nightly,
+		// and the version-suffix rule still applies (releases-channel-and-prereleases D1).
+		if (($release['isNightly'] ?? false) === true) {
+			$entry['sourcePreRelease'] = true;
+		}
+
+		return $entry;
+	}
+
+	/**
+	 * The release's raw server and PHP ranges, and whether it runs on the PHP
+	 * this server runs (null when the release gives no readable PHP range), so
+	 * the upgrade readiness check can test other targets
+	 * (inventory-upgrade-readiness D1).
+	 *
+	 * @param array<array-key, mixed> $release
+	 * @return array{platformSpec: ?string, phpSpec: ?string, phpCompatible: ?bool}
+	 *
+	 * @spec openspec/changes/inventory-upgrade-readiness/specs/version-management/spec.md#requirement-versions-say-whether-they-run-on-this-servers-php
+	 */
+	private static function rangeFields(array $release): array {
+		$platform = $release['platformVersionSpec'] ?? null;
+		$php = $release['phpVersionSpec'] ?? null;
+		$php = is_string($php) && trim($php) !== '' ? trim($php) : null;
+
+		return [
+			'platformSpec' => is_string($platform) && trim($platform) !== '' ? trim($platform) : null,
+			'phpSpec' => $php,
+			'phpCompatible' => $php === null ? null : self::satisfiesPhpSpec(PHP_VERSION, $php),
+		];
+	}
+
+	/**
+	 * Whether a PHP version satisfies an App Store `phpVersionSpec` such as
+	 * `>=8.1.0 <8.4.0`, with the same bound rules as the server range; null
+	 * when either cannot be read.
+	 *
+	 * @spec openspec/changes/inventory-upgrade-readiness/specs/version-management/spec.md#requirement-versions-say-whether-they-run-on-this-servers-php
+	 */
+	public static function satisfiesPhpSpec(string $phpVersion, string $spec): ?bool {
+		return self::satisfiesPlatformSpec($phpVersion, $spec);
 	}
 
 	/**
@@ -700,9 +826,24 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 		if ($known === null) {
 			return $entry;
 		}
+		// The language belongs to the notes: it follows the entry whose notes win.
+		if ($known['changelog'] === null) {
+			$known['changelogLanguage'] = $entry['changelogLanguage'];
+		}
 		$known['changelog'] ??= $entry['changelog'];
-		$known['serverCompatible'] ??= $entry['serverCompatible'];
+		if ($known['serverCompatible'] === null && $entry['serverCompatible'] !== null) {
+			$known['serverCompatible'] = $entry['serverCompatible'];
+			if (isset($entry['serverTooNew'])) {
+				$known['serverTooNew'] = $entry['serverTooNew'];
+			}
+		}
 		$known['releasedAt'] ??= $entry['releasedAt'];
+		foreach (['platformSpec', 'phpSpec', 'phpCompatible'] as $key) {
+			$known[$key] ??= $entry[$key] ?? null;
+		}
+		if (isset($entry['sourcePreRelease'])) {
+			$known['sourcePreRelease'] = true;
+		}
 
 		return $known;
 	}
@@ -743,25 +884,88 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 		$serverParts = explode('.', $serverVersion);
 		$satisfied = true;
 		foreach (preg_split('/\s+/', $spec) ?: [] as $constraint) {
-			if (preg_match('/^(>=|<=|>|<|==|=)?(\d+(?:\.\d+)*)$/', $constraint, $match) !== 1) {
+			$holds = self::constraintHolds($serverParts, $constraint);
+			if ($holds === null) {
 				return null;
 			}
-			$bound = $match[2];
-			$precision = count(explode('.', $bound));
-			$server = implode('.', array_pad(array_slice($serverParts, 0, $precision), $precision, '0'));
-			$holds = match ($match[1]) {
-				'>=' => version_compare($server, $bound, '>='),
-				'<=' => version_compare($server, $bound, '<='),
-				'>' => version_compare($server, $bound, '>'),
-				'<' => version_compare($server, $bound, '<'),
-				default => version_compare($server, $bound, '=='),
-			};
-			if (!$holds) {
-				$satisfied = false;
-			}
+			$satisfied = $satisfied && $holds;
 		}
 
 		return $satisfied;
+	}
+
+	/**
+	 * Whether the server is kept out of a `platformVersionSpec` only by its
+	 * maximum: every lower bound holds and an upper bound does not. That is
+	 * the one case the platform's `app_install_overwrite` can lift; a version
+	 * that needs a newer server cannot be forced. An exact bound (`==`) counts
+	 * as both. Null when the spec or the server version cannot be read.
+	 *
+	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
+	 */
+	public static function serverAboveMaximum(string $serverVersion, string $spec): ?bool {
+		$spec = trim($spec);
+		if ($serverVersion === '' || $spec === '') {
+			return null;
+		}
+		if ($spec === '*') {
+			return false;
+		}
+
+		$lowerHolds = true;
+		$upperFails = false;
+		foreach (preg_split('/\s+/', $spec) ?: [] as $constraint) {
+			if (preg_match('/^(>=|<=|>|<|==|=)?(\d+(?:\.\d+)*)$/', $constraint, $match) !== 1) {
+				return null;
+			}
+			$comparison = self::compareToBound($serverVersion, $match[2]);
+			[$lower, $upper] = match ($match[1]) {
+				'>=' => [$comparison >= 0, true],
+				'>' => [$comparison > 0, true],
+				'<=' => [true, $comparison <= 0],
+				'<' => [true, $comparison < 0],
+				default => [$comparison >= 0, $comparison <= 0],
+			};
+			$lowerHolds = $lowerHolds && $lower;
+			$upperFails = $upperFails || !$upper;
+		}
+
+		return $lowerHolds && $upperFails;
+	}
+
+	/**
+	 * The server version compared to a bound at the bound's own precision, so
+	 * a 31.0.4 server compares equal to `31`: -1, 0 or 1.
+	 */
+	private static function compareToBound(string $serverVersion, string $bound): int {
+		$precision = count(explode('.', $bound));
+		$server = implode('.', array_pad(array_slice(explode('.', $serverVersion), 0, $precision), $precision, '0'));
+
+		return version_compare($server, $bound);
+	}
+
+	/**
+	 * Whether the server version satisfies one constraint of a platform spec,
+	 * compared at the bound's own precision; null when the constraint cannot
+	 * be read.
+	 *
+	 * @param list<string> $serverParts The server version split on dots.
+	 */
+	private static function constraintHolds(array $serverParts, string $constraint): ?bool {
+		if (preg_match('/^(>=|<=|>|<|==|=)?(\d+(?:\.\d+)*)$/', $constraint, $match) !== 1) {
+			return null;
+		}
+		$bound = $match[2];
+		$precision = count(explode('.', $bound));
+		$server = implode('.', array_pad(array_slice($serverParts, 0, $precision), $precision, '0'));
+
+		return match ($match[1]) {
+			'>=' => version_compare($server, $bound, '>='),
+			'<=' => version_compare($server, $bound, '<='),
+			'>' => version_compare($server, $bound, '>'),
+			'<' => version_compare($server, $bound, '<'),
+			default => version_compare($server, $bound, '=='),
+		};
 	}
 
 	/**
@@ -782,9 +986,60 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 	}
 
 	/**
+	 * The language of a release's notes, or null when it has none.
+	 *
+	 * @param array<array-key, mixed> $release
+	 */
+	private function languageOfNotes(array $release, ?string $changelog): ?string {
+		return $changelog === null ? null : $this->changelogLanguageOf($release);
+	}
+
+	/**
+	 * The language the release's notes were taken from: the admin's language
+	 * when the release has a translation in it, else `en`, the same choice
+	 * rawChangelogFrom() makes (releases-notes-reach D2).
+	 *
+	 * @spec openspec/changes/releases-notes-reach/specs/changelog-visibility/spec.md
+	 * @param array<array-key, mixed> $release
+	 */
+	private function changelogLanguageOf(array $release): string {
+		/** @var mixed $translations */
+		$translations = $release['translations'] ?? null;
+		$lang = $this->l10nFactory->findLanguage();
+
+		return is_array($translations) && isset($translations[$lang]) ? $lang : 'en';
+	}
+
+	/**
 	 * @param array<array-key, mixed> $release
 	 */
 	private function rawChangelogFrom(array $release): ?string {
+		$entry = $this->translationEntry($release);
+		if ($entry === null) {
+			return null;
+		}
+
+		/** @var mixed $changelog */
+		$changelog = $entry['changelog'] ?? null;
+		if ($changelog === null) {
+			return null;
+		}
+		if (!is_string($changelog)) {
+			throw new UnexpectedValueException('changelog is not a string.');
+		}
+
+		return trim($changelog) === '' ? null : $changelog;
+	}
+
+	/**
+	 * The release's translation block for the UI language, falling back to
+	 * `en`; null when the release carries none.
+	 *
+	 * @param array<array-key, mixed> $release
+	 * @return array<array-key, mixed>|null
+	 * @throws UnexpectedValueException When the translations or the entry is not an array.
+	 */
+	private function translationEntry(array $release): ?array {
 		/** @var mixed $translations */
 		$translations = $release['translations'] ?? null;
 		if ($translations === null) {
@@ -804,15 +1059,6 @@ class AppStoreSource implements SourceInterface, AdvisorySourceInterface {
 			throw new UnexpectedValueException('translation entry is not an array.');
 		}
 
-		/** @var mixed $changelog */
-		$changelog = $entry['changelog'] ?? null;
-		if ($changelog === null) {
-			return null;
-		}
-		if (!is_string($changelog)) {
-			throw new UnexpectedValueException('changelog is not a string.');
-		}
-
-		return trim($changelog) === '' ? null : $changelog;
+		return $entry;
 	}
 }

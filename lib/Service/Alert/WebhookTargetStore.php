@@ -13,6 +13,7 @@ namespace OCA\Versioniq\Service\Alert;
 
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Kernel\Contracts\WebhookTargetStoreInterface;
 use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Audit\AuditSubject;
@@ -30,7 +31,7 @@ use OCP\Security\ICrypto;
  *
  * @psalm-type TargetView = array{id: string, name: string, url: string, format: string, kinds: list<string>, enabled: bool, hasSecret: bool, last: ?array{at: string, status: string, error: ?string}}
  */
-class WebhookTargetStore {
+class WebhookTargetStore implements WebhookTargetStoreInterface {
 	public const PREFIX = 'webhook.';
 
 	private const LAST_SUFFIX = '.last';

@@ -59,6 +59,9 @@ class ConnectionReportService {
 	/** The NCSC-NL advisories connection key in lib/Settings/connections.json (advisories-ncsc-feed). */
 	public const KEY_NCSC = 'ncsc';
 
+	/** The OSV vulnerability database the bundled-library check asks. */
+	public const KEY_OSV = 'osv';
+
 	/**
 	 * The forge whose requests are reported. Codeberg is retired, and gets no
 	 * row, so its requests are never reported. The self-hosted Forgejo or
@@ -105,7 +108,7 @@ class ConnectionReportService {
 			return false;
 		}
 
-		return $this->reportThrottled(self::KEY_GITHUB, $outcome[0], $outcome[1]);
+		return $this->reportThrottled(self::KEY_GITHUB, $outcome);
 	}
 
 	/**
@@ -163,9 +166,7 @@ class ConnectionReportService {
 	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
 	 */
 	public function appStoreFetched(bool $answered, string $failure): bool {
-		[$status, $message] = $this->describeAppStoreFetch($answered, $failure);
-
-		return $this->reportThrottled(self::KEY_APPSTORE, $status, $message);
+		return $this->reportThrottled(self::KEY_APPSTORE, $this->describeAppStoreFetch($answered, $failure));
 	}
 
 	/**
@@ -200,9 +201,7 @@ class ConnectionReportService {
 	 * @spec openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#requirement-req-versioniq-conn-002-versioniq-reports-what-a-real-request-met
 	 */
 	public function advisoryFeedRead(int $read, ?string $error): bool {
-		[$status, $message] = $this->describeAdvisoryRead($read, $error);
-
-		return $this->reportThrottled(self::KEY_ADVISORIES, $status, $message);
+		return $this->reportThrottled(self::KEY_ADVISORIES, $this->describeAdvisoryRead($read, $error));
 	}
 
 	/**
@@ -235,9 +234,7 @@ class ConnectionReportService {
 	 * @param array{read: int, matched: int, error: ?string} $outcome The read.
 	 */
 	public function ncscFeedRead(array $outcome): bool {
-		[$status, $message] = $this->describeNcscRead($outcome);
-
-		return $this->reportThrottled(self::KEY_NCSC, $status, $message);
+		return $this->reportThrottled(self::KEY_NCSC, $this->describeNcscRead($outcome));
 	}
 
 	/**
@@ -258,6 +255,43 @@ class ConnectionReportService {
 		}
 
 		return ['error', $this->shorten($outcome['error'])];
+	}
+
+	/**
+	 * After a bundled-library check: report how many libraries OSV was asked
+	 * about and whether it answered.
+	 *
+	 * @param int $asked How many distinct libraries were sent.
+	 * @param int $unchecked How many were left out because of an error or a limit.
+	 * @param string|null $error Why the check stopped early, or null.
+	 * @return bool True when a report was sent.
+	 *
+	 * @spec openspec/changes/advisories-bundled-libraries
+	 */
+	public function osvChecked(int $asked, int $unchecked, ?string $error): bool {
+		return $this->reportThrottled(self::KEY_OSV, $this->describeOsvCheck($asked, $unchecked, $error));
+	}
+
+	/**
+	 * What a bundled-library check says about the OSV connection.
+	 *
+	 * @param int $asked How many distinct libraries were sent.
+	 * @param int $unchecked How many were left out because of an error or a limit.
+	 * @param string|null $error Why the check stopped early, or null.
+	 * @return array{0: string, 1: string} The status and the message.
+	 *
+	 * @spec openspec/changes/advisories-bundled-libraries
+	 */
+	public function describeOsvCheck(int $asked, int $unchecked, ?string $error): array {
+		if ($error === null) {
+			return ['configured', 'The last check asked OSV about ' . $asked . ' libraries.'];
+		}
+
+		if ($unchecked < $asked) {
+			return ['limited', 'The last check asked about ' . $asked . ' libraries; ' . $unchecked . ' were not checked. ' . $this->shorten($error)];
+		}
+
+		return ['error', $this->shorten($error)];
 	}
 
 	/**
@@ -282,7 +316,7 @@ class ConnectionReportService {
 			return false;
 		}
 
-		return $this->report(self::KEY_GITHUB, 'configured', 'The token check reached GitHub, and GitHub accepted the token.');
+		return $this->report(self::KEY_GITHUB, ['configured', 'The token check reached GitHub, and GitHub accepted the token.']);
 	}
 
 	/**
@@ -326,7 +360,7 @@ class ConnectionReportService {
 			return false;
 		}
 
-		$sent = $this->send($key, $eventClass, ['app' => Application::APP_ID, 'key' => $key]);
+		$sent = $this->send($eventClass, ['app' => Application::APP_ID, 'key' => $key]);
 		if ($sent) {
 			$this->forget($key);
 		}
@@ -336,46 +370,59 @@ class ConnectionReportService {
 
 	/**
 	 * Report one status, unless the same status went out within the hour.
+	 *
+	 * @param array{0: string, 1: string} $outcome The status and the message.
 	 */
-	private function reportThrottled(string $key, string $status, string $message): bool {
+	private function reportThrottled(string $key, array $outcome): bool {
 		if ($this->resolveEventClass(self::STATUS_EVENT) === null) {
 			return false;
 		}
 
-		try {
-			$memo = $this->appConfig->getValueString(Application::APP_ID, self::MEMO_PREFIX . $key, '');
-		} catch (Throwable $e) {
-			$this->logger->warning('Versioniq: could not read the last connection report', ['key' => $key, 'exception' => $e->getMessage()]);
-
+		$memo = $this->lastReport($key);
+		if ($memo === null) {
 			return false;
 		}
 
 		$parts = explode('|', $memo, 2);
-		$lastStatus = $parts[0];
 		$lastAt = (int)($parts[1] ?? '0');
-		if ($lastStatus === $status && ($this->timeFactory->getTime() - $lastAt) < self::THROTTLE_SECONDS) {
+		if ($parts[0] === $outcome[0] && ($this->timeFactory->getTime() - $lastAt) < self::THROTTLE_SECONDS) {
 			return false;
 		}
 
-		return $this->report($key, $status, $message);
+		return $this->report($key, $outcome);
+	}
+
+	/**
+	 * The remembered `status|time` of the connection's last report, '' when
+	 * none was sent, or null when it could not be read.
+	 */
+	private function lastReport(string $key): ?string {
+		try {
+			return $this->appConfig->getValueString(Application::APP_ID, self::MEMO_PREFIX . $key, '');
+		} catch (Throwable $e) {
+			$this->logger->warning('Versioniq: could not read the last connection report', ['key' => $key, 'exception' => $e->getMessage()]);
+
+			return null;
+		}
 	}
 
 	/**
 	 * Report one status for one connection, and remember it.
+	 *
+	 * @param array{0: string, 1: string} $outcome The status and the message.
 	 */
-	private function report(string $key, string $status, string $message): bool {
+	private function report(string $key, array $outcome): bool {
 		$eventClass = $this->resolveEventClass(self::STATUS_EVENT);
 		if ($eventClass === null) {
 			return false;
 		}
 
 		$sent = $this->send(
-			$key,
 			$eventClass,
-			['app' => Application::APP_ID, 'key' => $key, 'status' => $status, 'message' => $message],
+			['app' => Application::APP_ID, 'key' => $key, 'status' => $outcome[0], 'message' => $outcome[1]],
 		);
 		if ($sent) {
-			$this->remember($key, $status);
+			$this->remember($key, $outcome[0]);
 		}
 
 		return $sent;
@@ -439,9 +486,9 @@ class ConnectionReportService {
 	 * is only known by name (ADR-041).
 	 *
 	 * @param class-string $eventClass The event class, known to exist.
-	 * @param array<string, string> $arguments The constructor arguments, by name.
+	 * @param array{app: string, key: string, status?: string, message?: string} $arguments The constructor arguments, by name.
 	 */
-	private function send(string $key, string $eventClass, array $arguments): bool {
+	private function send(string $eventClass, array $arguments): bool {
 		try {
 			$event = (new ReflectionClass($eventClass))->newInstanceArgs($arguments);
 			if (!$event instanceof Event) {
@@ -452,7 +499,7 @@ class ConnectionReportService {
 
 			return true;
 		} catch (Throwable $e) {
-			$this->logger->warning('Versioniq: could not send a connection event to integriq', ['key' => $key, 'exception' => $e->getMessage()]);
+			$this->logger->warning('Versioniq: could not send a connection event to integriq', ['key' => $arguments['key'], 'exception' => $e->getMessage()]);
 
 			return false;
 		}

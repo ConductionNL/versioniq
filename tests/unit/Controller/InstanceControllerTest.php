@@ -18,7 +18,12 @@ use OCA\Versioniq\Service\Audit\AuditedVersions;
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCA\Versioniq\Service\Instance\InstanceConnectionStore;
+use OCA\Versioniq\Service\Instance\InstanceConnection;
 use OCA\Versioniq\Service\Instance\ManifestBuilder;
+use OCA\Versioniq\Service\Instance\PromotionRefusal;
+use OCA\Versioniq\Service\Instance\PromotionOptions;
+use OCA\Versioniq\Service\Instance\PromotionService;
+use OCA\Versioniq\Service\Instance\RemoteInstanceReader;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IAppConfig;
@@ -37,6 +42,8 @@ use ReflectionMethod;
  * @covers \OCA\Versioniq\Controller\InstanceController
  * @uses \OCA\Versioniq\Service\Instance\InstanceConnectionStore
  * @uses \OCA\Versioniq\Service\Instance\InstanceConnection
+ * @uses \OCA\Versioniq\Service\Instance\PromotionRefusal
+ * @uses \OCA\Versioniq\Service\Instance\PromotionOptions
  */
 final class InstanceControllerTest extends TestCase {
 
@@ -46,7 +53,7 @@ final class InstanceControllerTest extends TestCase {
 	/** @var list<array{0: AuditSubject, 1: AuditedVersions, 2: string, 3: ?string}> */
 	private array $audits = [];
 
-	private function controller(bool $admin = true, ?ManifestBuilder $manifest = null): InstanceController {
+	private function controller(bool $admin = true, ?ManifestBuilder $manifest = null, ?RemoteInstanceReader $reader = null, ?PromotionService $promotions = null): InstanceController {
 		$appConfig = $this->createMock(IAppConfig::class);
 		$appConfig->method('getKeys')->willReturnCallback(fn (): array => array_keys($this->config));
 		$appConfig->method('getValueString')->willReturnCallback(fn (string $app, string $key, string $default = ''): string => $this->config[$key] ?? $default);
@@ -62,7 +69,7 @@ final class InstanceControllerTest extends TestCase {
 		$time = $this->createMock(ITimeFactory::class);
 		$time->method('getDateTime')->willReturn(new DateTime('2026-11-14T08:00:00+00:00'));
 
-		$audit = $this->createMock(AuditLogger::class);
+		$audit = $this->getMockBuilder(AuditLogger::class)->disableOriginalConstructor()->onlyMethods(['record'])->getMock();
 		$audit->method('record')->willReturnCallback(function (AuditSubject $subject, AuditedVersions $versions, string $status, ?string $message = null): void {
 			$this->audits[] = [$subject, $versions, $status, $message];
 		});
@@ -74,7 +81,7 @@ final class InstanceControllerTest extends TestCase {
 		$groups = $this->createMock(IGroupManager::class);
 		$groups->method('isAdmin')->with('alice')->willReturn($admin);
 
-		return new InstanceController('versioniq', $this->createMock(IRequest::class), new InstanceConnectionStore($appConfig, $crypto, $time), $audit, $groups, $session, $manifest);
+		return new InstanceController('versioniq', $this->createMock(IRequest::class), new InstanceConnectionStore($appConfig, $crypto, $time), $audit, $groups, $session, $manifest, $reader, $promotions);
 	}
 
 	private function add(InstanceController $controller, string $id = 'acceptance', string $password = 'secret-app-password'): \OCP\AppFramework\Http\DataResponse {
@@ -175,5 +182,130 @@ final class InstanceControllerTest extends TestCase {
 
 	public function testWithoutABuilderTheManifestIsUnavailable(): void {
 		self::assertSame(503, $this->controller()->manifest()->getStatus());
+	}
+
+	/**
+	 * A reader that answers a fresh read per connection id, throws for the ids in $failing, and counts its reads.
+	 *
+	 * @param list<string> $failing
+	 * @param array<string, int> $reads
+	 */
+	private function reader(array $failing, array &$reads): RemoteInstanceReader {
+		$reader = $this->createMock(RemoteInstanceReader::class);
+		$reader->method('fetch')->willReturnCallback(function (InstanceConnection $connection) use ($failing, &$reads): array {
+			$reads[$connection->id] = ($reads[$connection->id] ?? 0) + 1;
+			if (in_array($connection->id, $failing, true)) {
+				throw new \RuntimeException('down');
+			}
+			return ['manifest' => ['apps' => [['appId' => 'openregister', 'installedVersion' => '2.4.1']]], 'fetchedAt' => 'now', 'error' => null, 'checkedAt' => 'now'];
+		});
+		$reader->method('cached')->willReturnCallback(static fn (InstanceConnection $connection): array => ['manifest' => ['apps' => []], 'fetchedAt' => 'yesterday', 'error' => null, 'checkedAt' => 'yesterday']);
+
+		return $reader;
+	}
+
+	public function testRefreshIsForAdminsOnly(): void {
+		$reads = [];
+		self::assertSame(403, $this->controller(admin: false, reader: $this->reader([], $reads))->refresh()->getStatus());
+		self::assertSame([], $reads);
+	}
+
+	public function testOneFailingConnectionDoesNotStopTheOthersOnRefresh(): void {
+		$reads = [];
+		$controller = $this->controller(reader: $this->reader(['acceptance'], $reads));
+		$this->add($controller, 'acceptance');
+		$this->add($controller, 'test');
+		$reads = [];
+
+		$response = $controller->refresh();
+
+		self::assertSame(200, $response->getStatus());
+		self::assertSame(['acceptance' => 1, 'test' => 1], $reads);
+		$byId = array_column($response->getData()['instances'], 'remote', 'id');
+		self::assertSame('The instance could not be reached.', $byId['acceptance']['error']);
+		self::assertSame('yesterday', $byId['acceptance']['fetchedAt']);
+		self::assertSame('2.4.1', $byId['test']['manifest']['apps'][0]['installedVersion']);
+		self::assertNull($byId['test']['error']);
+	}
+
+	public function testSavingAConnectionReadsItsManifestOnceAndShowsTheResult(): void {
+		$reads = [];
+		$controller = $this->controller(reader: $this->reader([], $reads));
+
+		$created = $this->add($controller);
+
+		self::assertSame(201, $created->getStatus());
+		self::assertSame(['acceptance' => 1], $reads);
+		self::assertSame('now', $created->getData()['remote']['fetchedAt']);
+		self::assertSame('yesterday', $controller->index()->getData()['instances'][0]['remote']['fetchedAt']);
+		self::assertSame(['acceptance' => 1], $reads);
+	}
+
+	public function testWithoutAReaderRefreshIsUnavailableAndListsCarryNoRemote(): void {
+		$controller = $this->controller();
+		$this->add($controller);
+
+		self::assertSame(503, $controller->refresh()->getStatus());
+		self::assertArrayNotHasKey('remote', $controller->index()->getData()['instances'][0]);
+	}
+
+	public function testPromotionIsForAdminsOnly(): void {
+		$promotions = $this->createMock(PromotionService::class);
+		$promotions->expects(self::never())->method('promote');
+		$promotions->expects(self::never())->method('plan');
+		$controller = $this->controller(admin: false, promotions: $promotions);
+
+		$refused = $controller->promote('openregister', 'acceptance');
+
+		self::assertSame(403, $refused->getStatus());
+		self::assertSame(['message' => 'Forbidden'], $refused->getData());
+		self::assertSame(403, $controller->promotionPlan('openregister', 'acceptance')->getStatus());
+	}
+
+	public function testPromotionIsPasswordConfirmedAndThePlanIsNot(): void {
+		self::assertNotEmpty((new ReflectionMethod(InstanceController::class, 'promote'))->getAttributes(\OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired::class));
+		self::assertEmpty((new ReflectionMethod(InstanceController::class, 'promotionPlan'))->getAttributes(\OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired::class));
+	}
+
+	public function testAWaitingPeriodNotMetAnswers409WithTheDaysLeft(): void {
+		$promotions = $this->createMock(PromotionService::class);
+		$promotions->expects(self::once())->method('promote')
+			->with('acceptance', 'openregister', new PromotionOptions(false, false, '2.4.1'))
+			->willReturn(['statusCode' => 409, 'payload' => ['code' => 'waiting_period', 'daysLeft' => 9, 'message' => '9 days are left in the waiting period of 14 days.']]);
+
+		$response = $this->controller(promotions: $promotions)->promote('openregister', 'acceptance', '2.4.1');
+
+		self::assertSame(409, $response->getStatus());
+		self::assertSame(9, $response->getData()['daysLeft']);
+		self::assertSame('9 days are left in the waiting period of 14 days.', $response->getData()['message']);
+	}
+
+	public function testTheOverrideAndDowngradeArePassedThroughAndAnEmptyVersionTakesWhatRunsNow(): void {
+		$promotions = $this->createMock(PromotionService::class);
+		$promotions->expects(self::once())->method('promote')
+			->with('acceptance', 'openregister', new PromotionOptions(true, true, null))
+			->willReturn(['statusCode' => 200, 'payload' => ['previousVersion' => '2.3.0']]);
+
+		$response = $this->controller(promotions: $promotions)->promote('openregister', 'acceptance', '', true, true);
+
+		self::assertSame(200, $response->getStatus());
+		self::assertSame('2.3.0', $response->getData()['previousVersion']);
+	}
+
+	public function testThePlanAnswersTheRefusalsStatusAndCode(): void {
+		$promotions = $this->createMock(PromotionService::class);
+		$promotions->method('plan')->willReturn(new PromotionRefusal('unknown_connection', 404, 'No connection named staging.'));
+
+		$response = $this->controller(promotions: $promotions)->promotionPlan('openregister', 'staging');
+
+		self::assertSame(404, $response->getStatus());
+		self::assertSame(['code' => 'unknown_connection', 'message' => 'No connection named staging.'], $response->getData());
+	}
+
+	public function testWithoutPromotionsBothRoutesAreUnavailable(): void {
+		$controller = $this->controller();
+
+		self::assertSame(503, $controller->promote('openregister', 'acceptance')->getStatus());
+		self::assertSame(503, $controller->promotionPlan('openregister', 'acceptance')->getStatus());
 	}
 }

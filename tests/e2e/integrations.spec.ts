@@ -32,8 +32,8 @@ import { openSettings, openTab, SETTINGS_URL } from "./helpers.ts";
 const CONNECTIONS_API =
 	"/index.php/apps/openregister/api/objects/integriq/app_connection?app=versioniq&_limit=50";
 
-/** The declared keys, in declared order. */
-const DECLARED = ["appstore", "github", "advisories"];
+/** The keys `lib/Settings/connections.json` declares, in declared order. */
+const DECLARED = ["appstore", "github", "advisories", "ncsc"];
 
 /** Headers for the JSON API calls. */
 const JSON_HEADERS = { "OCS-APIRequest": "true", Accept: "application/json" };
@@ -61,7 +61,7 @@ async function rowsByKey(
 
 test.describe("Integrations over the connection registry", () => {
 	// @e2e openspec/changes/adopt-connection-registry/specs/admin-integrations/spec.md#the-tab-lists-only-the-rows-of-versioniq
-	test("lists the three declared connections, all of them versioniq's", async ({
+	test("lists the declared connections, all of them versioniq's", async ({
 		page,
 	}) => {
 		const byKey = await rowsByKey(page.request);
@@ -74,9 +74,9 @@ test.describe("Integrations over the connection registry", () => {
 		await expect(panel.getByRole("heading", { name: "Integrations" })).toBeVisible();
 		const rows = panel.getByTestId("integrations-row");
 		await expect(rows).toHaveCount(DECLARED.length);
-		await expect(rows.nth(0)).toHaveAttribute("data-key", "appstore");
-		await expect(rows.nth(1)).toHaveAttribute("data-key", "github");
-		await expect(rows.nth(2)).toHaveAttribute("data-key", "advisories");
+		for (const [index, key] of DECLARED.entries()) {
+			await expect(rows.nth(index)).toHaveAttribute("data-key", key);
+		}
 
 		// Each row shows the status integriq holds for it, never a raw enum.
 		for (const key of DECLARED) {

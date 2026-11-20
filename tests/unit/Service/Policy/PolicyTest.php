@@ -39,6 +39,7 @@ final class PolicyTest extends TestCase {
 	public function testIsValidLevel(): void {
 		$this->assertTrue(Policy::isValidLevel('patch'));
 		$this->assertTrue(Policy::isValidLevel('none'));
+		$this->assertTrue(Policy::isValidLevel('security'), 'Security fixes only (autoupdate-security-first 1.1)');
 		$this->assertFalse(Policy::isValidLevel('yolo'));
 		$this->assertFalse(Policy::isValidLevel(''));
 	}
@@ -55,5 +56,23 @@ final class PolicyTest extends TestCase {
 	public function testFromArrayRejectsMissingFields(): void {
 		$this->expectException(InvalidArgumentException::class);
 		Policy::fromArray(['level' => 'patch']);
+	}
+
+	public function testRequireApprovalRoundTrips(): void {
+		$policy = new Policy(Policy::LEVEL_PATCH, 'admin', '2026-07-01T00:00:00+00:00', true);
+
+		$this->assertTrue($policy->toArray()['requireApproval']);
+		$this->assertTrue(Policy::fromArray($policy->toArray())->requireApproval);
+	}
+
+	public function testAStoredPolicyWithoutRequireApprovalReadsAsFalse(): void {
+		$policy = Policy::fromArray(['level' => 'patch', 'setBy' => 'admin', 'setAt' => '2026-07-01T00:00:00+00:00']);
+
+		$this->assertFalse($policy->requireApproval);
+		$this->assertFalse((new Policy(Policy::LEVEL_PATCH, 'admin', 'x'))->requireApproval);
+	}
+
+	public function testOnlyABooleanTrueRequiresApproval(): void {
+		$this->assertFalse(Policy::fromArray(['level' => 'patch', 'setBy' => 'a', 'setAt' => 'x', 'requireApproval' => 'yes'])->requireApproval);
 	}
 }

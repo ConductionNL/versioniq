@@ -149,6 +149,84 @@ final class AppStoreSourceTest extends TestCase {
 		], $byVersion);
 	}
 
+	/**
+	 * A release the store marks nightly carries `sourcePreRelease`; an unflagged
+	 * or absent flag carries nothing, so the suffix rule decides.
+	 *
+	 * @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md#requirement-every-listed-version-says-whether-it-is-a-pre-release
+	 */
+	public function testANightlyReleaseIsMarkedAsAPreRelease(): void {
+		$source = $this->buildSource([
+			'id' => 'deck',
+			'releases' => [
+				['version' => '1.15.0', 'isNightly' => true],
+				['version' => '1.14.0', 'isNightly' => false],
+				['version' => '1.13.0'],
+				['version' => '1.12.0', 'isNightly' => 'yes'],
+			],
+		]);
+
+		$result = $source->listVersions('deck', $this->binding());
+
+		$marked = [];
+		foreach ($result['versions'] as $entry) {
+			$marked[$entry['version']] = $entry['sourcePreRelease'] ?? 'absent';
+		}
+		$this->assertSame(['1.15.0' => true, '1.14.0' => 'absent', '1.13.0' => 'absent', '1.12.0' => 'absent'], $marked);
+	}
+
+	/**
+	 * Each version says which language its notes were taken from: the admin's
+	 * language when the release has it, English as the fallback, nothing
+	 * without notes (releases-notes-reach 2.1).
+	 *
+	 * @spec openspec/changes/releases-notes-reach/specs/changelog-visibility/spec.md
+	 */
+	public function testEachVersionNamesTheLanguageOfItsNotes(): void {
+		$releases = [
+			['version' => '2.3.0', 'translations' => ['en' => ['changelog' => 'English notes'], 'nl' => ['changelog' => 'Nederlandse notities']]],
+			['version' => '2.2.0', 'translations' => ['en' => ['changelog' => 'Only English']]],
+			['version' => '2.1.0', 'translations' => ['nl' => ['changelog' => '  ']]],
+			['version' => '2.0.0'],
+			'1.9.0',
+		];
+
+		$result = $this->buildSource(['id' => 'openregister', 'releases' => $releases], 'nl')
+			->listVersions('openregister', $this->binding());
+
+		$byVersion = [];
+		foreach ($result['versions'] as $entry) {
+			$byVersion[$entry['version']] = [$entry['changelog'], $entry['changelogLanguage']];
+		}
+		$this->assertSame([
+			'2.3.0' => ['Nederlandse notities', 'nl'],
+			'2.2.0' => ['Only English', 'en'],
+			'2.1.0' => [null, null],
+			'2.0.0' => [null, null],
+			'1.9.0' => [null, null],
+		], $byVersion);
+	}
+
+	/**
+	 * A version listed twice keeps the language of the notes it keeps.
+	 *
+	 * @spec openspec/changes/releases-notes-reach/specs/changelog-visibility/spec.md
+	 */
+	public function testAVersionListedTwiceKeepsTheLanguageOfTheNotesItKeeps(): void {
+		$result = $this->buildSource([
+			'id' => 'openregister',
+			'releases' => [
+				['version' => '2.3.0'],
+				['version' => '2.3.0', 'translations' => ['en' => ['changelog' => 'English notes']]],
+				['version' => '2.3.0', 'translations' => ['nl' => ['changelog' => 'Nederlandse notities']]],
+			],
+		], 'nl')->listVersions('openregister', $this->binding());
+
+		$this->assertCount(1, $result['versions']);
+		$this->assertSame('English notes', $result['versions'][0]['changelog']);
+		$this->assertSame('en', $result['versions'][0]['changelogLanguage']);
+	}
+
 	public function testFallsBackToEnglishWhenRequestedLanguageMissing(): void {
 		$source = $this->buildSource([
 			'id' => 'openregister',
@@ -542,5 +620,52 @@ final class AppStoreSourceTest extends TestCase {
 		$result = $source->listAdvisories('deck', $this->binding());
 
 		$this->assertSame(['unknown', 'high', 'medium'], array_column($result['advisories'], 'severity'));
+	}
+
+	/**
+	 * Which spec an override can lift: only one whose maximum is below the
+	 * server while every lower bound holds (install-force-incompatible D1).
+	 *
+	 * @return array<string, array{0: string, 1: string, 2: ?bool}>
+	 */
+	public static function aboveMaximumCases(): array {
+		return [
+			'maximum below the server' => ['33.0.2', '>=30 <=32', true],
+			'strict maximum reached' => ['33.0.2', '>=30.0.0 <33.0.0', true],
+			'minimum above the server' => ['32.0.5', '>=33 <=34', false],
+			'both bounds miss' => ['33.0.2', '>=34 <=32', false],
+			'inside the range' => ['32.0.5', '>=30 <=32', false],
+			'any server' => ['33.0.2', '*', false],
+			'exact other major above' => ['33.0.2', '==32', true],
+			'exact other major below' => ['31.0.2', '==32', false],
+			'unreadable spec' => ['33.0.2', '>=30 foo', null],
+			'unknown server' => ['', '>=30 <=32', null],
+		];
+	}
+
+	/**
+	 * @dataProvider aboveMaximumCases
+	 */
+	public function testServerAboveMaximumIsTrueOnlyWhenTheMaximumAloneKeepsTheServerOut(string $server, string $spec, ?bool $expected): void {
+		$this->assertSame($expected, AppStoreSource::serverAboveMaximum($server, $spec));
+	}
+
+	public function testAnIncompatibleReleaseCarriesServerTooNew(): void {
+		$config = $this->createMock(IConfig::class);
+		$config->method('getSystemValueString')->willReturn('33.0.2.1');
+		$normalize = new \ReflectionMethod(AppStoreSource::class, 'normalizeVersions');
+		$source = (new \ReflectionClass(AppStoreSource::class))->newInstanceWithoutConstructor();
+		(new \ReflectionProperty(AppStoreSource::class, 'config'))->setValue($source, $config);
+
+		$entries = $normalize->invoke($source, [
+			['version' => '3.0.0', 'platformVersionSpec' => '>=34'],
+			['version' => '2.0.0', 'platformVersionSpec' => '>=30 <=32'],
+			['version' => '1.0.0', 'platformVersionSpec' => '>=30 <=33'],
+		]);
+
+		$this->assertSame(
+			[['3.0.0', false, false], ['2.0.0', false, true], ['1.0.0', true, null]],
+			array_map(static fn (array $entry): array => [$entry['version'], $entry['serverCompatible'], $entry['serverTooNew'] ?? null], $entries)
+		);
 	}
 }

@@ -187,6 +187,9 @@ test.describe("pending updates", () => {
 			httpCredentials: {
 				username: "updates-e2e-user",
 				password: "updatesUserPass123",
+				// Nextcloud answers an unauthenticated OCS call with a 401 that
+				// carries no Basic challenge, so the credentials must go up front.
+				send: "always",
 			},
 		});
 		try {

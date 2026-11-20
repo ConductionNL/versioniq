@@ -16,6 +16,7 @@ use Exception;
 use OC\AppFramework\Bootstrap\Coordinator;
 use OC\DB\Connection;
 use OC\DB\MigrationService;
+use OCA\Versioniq\Service\Audit\SeenStateStore;
 use OCA\Versioniq\Service\Lkg\Lkg;
 use OCA\Versioniq\Service\Lkg\LkgStore;
 use OCA\Versioniq\Service\Settings\ConfigStores;
@@ -59,6 +60,13 @@ class InstallFinalizer {
 		 * that build this class by hand: finalize() then stays in-process.
 		 */
 		private ?ChildProcessFinalizer $childFinalizer = null,
+		/**
+		 * What Versioniq last saw of every app (audit-external-changes): its
+		 * own install updates it, so the hourly check never records it again.
+		 */
+		private ?SeenStateStore $seenState = null,
+		/** install-live-progress: reports migrations and repair steps; null in hand-built tests. */
+		private ?InstallProgress $progress = null,
 	) {
 	}
 
@@ -81,8 +89,11 @@ class InstallFinalizer {
 	 * @throws Exception
 	 */
 	public function finalize(string $appPath, array $info, string $enabled, ?IOutput $output = null, string $sourceId = 'appstore'): string {
+		$this->progress?->stage(name: 'finalize');
 		$childAppId = $this->finalizeInChild($appPath, $info, $enabled, $sourceId);
 		if ($childAppId !== null) {
+			$this->rememberInstall($childAppId, ['version' => $this->installedVersionOf($info), 'enabled' => $enabled !== 'no']);
+
 			return $childAppId;
 		}
 
@@ -99,6 +110,7 @@ class InstallFinalizer {
 		$this->runMigrations($info, $output);
 		$this->addBackgroundJobs($info);
 		$this->runInstallScript($appPath, $appId);
+		$this->progress?->stage(name: 'install-repair-steps');
 		self::executeRepairSteps($appId, self::repairStepsOf($info, 'install'));
 
 		$installedVersion = $this->installedVersionOf($info);
@@ -139,8 +151,25 @@ class InstallFinalizer {
 			$this->timeFactory->getDateTime('now', new \DateTimeZone('UTC'))->format(\DateTimeInterface::ATOM),
 			$sourceId,
 		));
+		$this->rememberInstall($appId, ['version' => $installedVersion, 'enabled' => $enabled !== 'no']);
 
 		return $appId;
+	}
+
+	/**
+	 * Stores the installed version as seen, so this install is never
+	 * recorded a second time as a change made outside Versioniq. Reached only
+	 * after a successful install.
+	 *
+	 * @spec openspec/changes/audit-external-changes
+	 * @param array{version: string, enabled: bool} $seen The installed version and whether it is enabled.
+	 */
+	private function rememberInstall(string $appId, array $seen): void {
+		try {
+			$this->seenState?->rememberApp($appId, $seen);
+		} catch (\Throwable $error) {
+			$this->logger->warning('InstallFinalizer: could not update the seen state', ['appId' => $appId, 'message' => $error->getMessage()]);
+		}
 	}
 
 	/**
@@ -190,10 +219,13 @@ class InstallFinalizer {
 
 		$upgrade = $previousVersion !== '';
 		if ($upgrade) {
+			$this->progress?->stage(name: 'pre-migration-repair-steps');
 			self::executeRepairSteps($appId, self::repairStepsOf($info, 'pre-migration'));
 		}
+		$this->progress?->stage(name: 'migrations');
 		$migrationService->migrate('latest', !$upgrade);
 		if ($upgrade) {
+			$this->progress?->stage(name: 'post-migration-repair-steps');
 			self::executeRepairSteps($appId, self::repairStepsOf($info, 'post-migration'));
 		}
 	}

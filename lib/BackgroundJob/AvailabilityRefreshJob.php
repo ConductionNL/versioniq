@@ -11,8 +11,9 @@ declare(strict_types=1);
 
 namespace OCA\Versioniq\BackgroundJob;
 
-use OCA\Versioniq\Service\Availability\AvailabilityService;
-use OCA\Versioniq\Service\ReleaseAlert\ReleaseSweepRecorder;
+use OCA\Versioniq\Kernel\Contracts\AvailabilityServiceInterface;
+use OCA\Versioniq\Kernel\Contracts\ReleaseSweepRecorderInterface;
+use OCA\Versioniq\Service\AutoUpdate\ProposalService;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\TimedJob;
 use Psr\Log\LoggerInterface;
@@ -33,9 +34,12 @@ class AvailabilityRefreshJob extends TimedJob {
 
 	public function __construct(
 		ITimeFactory $time,
-		private AvailabilityService $availabilityService,
-		private ReleaseSweepRecorder $recorder,
+		private AvailabilityServiceInterface $availabilityService,
+		private ReleaseSweepRecorderInterface $recorder,
 		private LoggerInterface $logger,
+		// Works out the proposed updates from what the sweep listed;
+		// optional and last so existing callers keep working.
+		private ?ProposalService $proposalService = null,
 	) {
 		parent::__construct($time);
 		$this->setInterval(self::INTERVAL_SECONDS);
@@ -49,6 +53,7 @@ class AvailabilityRefreshJob extends TimedJob {
 		try {
 			$updates = $this->availabilityService->sweep(self::SWEEP_BUDGET_SECONDS, $this->recorder->followed());
 			$this->recorder->record($updates, $this->time->getTime());
+			$this->refreshProposals();
 
 			$unreached = count(array_filter($updates, static fn (array $entry): bool => ($entry['error'] ?? null) !== null));
 			if ($unreached > 0) {
@@ -59,6 +64,39 @@ class AvailabilityRefreshJob extends TimedJob {
 			}
 		} catch (\Throwable $error) {
 			$this->logger->error('AvailabilityRefreshJob: the update check failed; the previous snapshot is kept', ['message' => $error->getMessage()]);
+			$this->recordFailure();
+		}
+	}
+
+	/**
+	 * Says the sweep failed, so the check line does not read as checked.
+	 * Recording it must not throw out of the job either.
+	 */
+	private function recordFailure(): void {
+		try {
+			$this->recorder->recordFailure($this->time->getTime());
+		} catch (\Throwable $error) {
+			$this->logger->error('AvailabilityRefreshJob: could not record the failed sweep', ['message' => $error->getMessage()]);
+		}
+	}
+
+	/**
+	 * Runs the proposal step on the version lists the sweep just fetched; a
+	 * failure keeps the previous proposals and never undoes the saved sweep.
+	 *
+	 * @spec openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies/spec.md
+	 */
+	private function refreshProposals(): void {
+		if ($this->proposalService === null) {
+			return;
+		}
+		try {
+			$this->proposalService->refresh(
+				$this->availabilityService->lastListings(),
+				\DateTimeImmutable::createFromInterface($this->time->getDateTime('now', new \DateTimeZone('UTC'))),
+			);
+		} catch (\Throwable $error) {
+			$this->logger->error('AvailabilityRefreshJob: the proposed updates could not be worked out; the previous ones are kept', ['message' => $error->getMessage()]);
 		}
 	}
 }

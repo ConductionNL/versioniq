@@ -42,6 +42,16 @@ test.describe("occ CLI", () => {
 		await resetFixtureApp(page);
 	});
 
+	test("versioniq:instances --json prints this instance's column with the fixture app", async () => {
+		const { code, stdout } = await occ("versioniq:instances", "--json");
+		expect(code).toBe(0);
+		const columns = lastJson(stdout).instances as Array<{ id: string; apps: Record<string, string> }>;
+		expect(Array.isArray(columns)).toBe(true);
+		const self = columns.find((column) => column.id === "self");
+		expect(self, "the first column is this instance").toBeTruthy();
+		expect(self?.apps[FIXTURE_APP]).toBe("1.0.0");
+	});
+
 	test("lists versions in human-readable form", async () => {
 		const { code, stdout } = await occ(
 			"versioniq:versions",
@@ -175,5 +185,109 @@ test.describe("occ CLI", () => {
 	test("refuses to manage Versioniq itself", async () => {
 		const { code } = await occ("versioniq:install", "versioniq", "1.0.0");
 		expect(code).not.toBe(0);
+	});
+
+	// @spec openspec/changes/releases-channel-and-prereleases/specs/release-channels/spec.md
+	test("versioniq:channel puts one app on beta and refuses a typo", async () => {
+		try {
+			const set = await occ("versioniq:channel", FIXTURE_APP, "beta");
+			expect(set.code, set.stdout).toBe(0);
+			const listed = await occ(
+				"versioniq:versions",
+				FIXTURE_APP,
+				`--source=${FIXTURE_SOURCE}`,
+				"--json",
+			);
+			expect(lastJson(listed.stdout).channel).toBe("beta");
+
+			const typo = await occ("versioniq:channel", FIXTURE_APP, "betta");
+			expect(typo.code).not.toBe(0);
+			const after = await occ(
+				"versioniq:versions",
+				FIXTURE_APP,
+				`--source=${FIXTURE_SOURCE}`,
+				"--json",
+			);
+			expect(lastJson(after.stdout).channel).toBe("beta");
+		} finally {
+			await occ("versioniq:channel", FIXTURE_APP, "default");
+		}
+	});
+	// @spec openspec/changes/autoupdate-proposed-updates/specs/cli-commands/spec.md#requirement-dry-run-the-automatic-update-policy-from-the-cli
+	test("versioniq:auto-update --dry-run --json plans 1.0.1 and installs nothing", async ({ page }) => {
+		// @e2e cli-commands::dry-run-the-automatic-update-policy
+		const put = await page.request.put(
+			`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/policy?format=json`,
+			{ headers: { "OCS-APIRequest": "true", "Content-Type": "application/json" }, data: { level: "patch" } },
+		);
+		expect(put.ok(), "setting the policy should succeed").toBeTruthy();
+		try {
+			await occ("config:app:set", "versioniq", "auto_update_enabled", "--value", "1");
+			const run = await occ("versioniq:auto-update", "--dry-run", "--json");
+			expect(run.code, run.stdout).toBe(0);
+			const plan = lastJson(run.stdout);
+			expect(plan.autoUpdateEnabled).toBe(true);
+			const row = (plan.apps ?? []).find((app: { appId: string }) => app.appId === FIXTURE_APP);
+			expect(row).toMatchObject({ fromVersion: "1.0.0", toVersion: "1.0.1", action: "install" });
+			// A dry run only reads: the app stays at 1.0.0.
+			expect((await occ("config:app:get", FIXTURE_APP, "installed_version")).stdout.trim()).toBe("1.0.0");
+
+			// With automatic updates off it still prints the plan, and exits 1.
+			await occ("config:app:set", "versioniq", "auto_update_enabled", "--value", "0");
+			const off = await occ("versioniq:auto-update", "--dry-run", "--json");
+			expect(off.code).toBe(1);
+			expect(lastJson(off.stdout).autoUpdateEnabled).toBe(false);
+		} finally {
+			await occ("config:app:delete", "versioniq", "auto_update_enabled");
+			await page.request
+				.delete(`/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/policy?format=json`, {
+					headers: { "OCS-APIRequest": "true" },
+				})
+				.catch(() => undefined);
+		}
+	});
+});
+
+/**
+ * `versioniq:readiness`: the upgrade readiness report on the CLI. It needs no
+ * forge fixture, so it sits outside the fixture-gated block above.
+ *
+ * @spec openspec/changes/inventory-upgrade-readiness/specs/upgrade-readiness/spec.md
+ */
+test.describe("occ versioniq:readiness", () => {
+	test("prints the report as JSON with one verdict per installed app", async () => {
+		const { code, stdout } = await occ(
+			"versioniq:readiness",
+			"--server=99",
+			"--php=8.4",
+			"--json",
+		);
+		expect(code).toBe(0);
+		const report = lastJson(stdout);
+		expect(report.server).toBe("99");
+		expect(report.php).toBe("8.4");
+		expect(Array.isArray(report.apps)).toBe(true);
+		expect(report.apps.length).toBeGreaterThan(0);
+		for (const app of report.apps) {
+			expect(typeof app.id).toBe("string");
+			expect(typeof app.installedVersion).toBe("string");
+			expect([
+				"shipped",
+				"ready",
+				"updateFirst",
+				"blocked",
+				"unknown",
+			]).toContain(app.verdict);
+		}
+	});
+
+	test("exits 1 for a target that is not a version", async () => {
+		const { code } = await occ(
+			"versioniq:readiness",
+			"--server=next",
+			"--php=8.4",
+			"--json",
+		);
+		expect(code).toBe(1);
 	});
 });

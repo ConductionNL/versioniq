@@ -1,6 +1,8 @@
 <!-- SPDX-FileCopyrightText: 2026 Conduction B.V. <info@conduction.nl> -->
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 <script setup lang="ts">
+import type { PublisherSimilar } from './PublisherMark.vue'
+
 import { t } from '@nextcloud/l10n'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import NcButton from '@nextcloud/vue/components/NcButton'
@@ -9,8 +11,10 @@ import NcLoadingIcon from '@nextcloud/vue/components/NcLoadingIcon'
 import NcNoteCard from '@nextcloud/vue/components/NcNoteCard'
 import NcSelect from '@nextcloud/vue/components/NcSelect'
 import NcTextField from '@nextcloud/vue/components/NcTextField'
+import PublisherMark from './PublisherMark.vue'
 import { ocsGet, ocsWrite } from '../ocs.ts'
 import { errorMessage } from '../utils/errorMessage.ts'
+import { githubSearchState, githubSearchStateText, saveGithubSearch, withGithubSearch } from '../utils/githubSearchSwitch.ts'
 
 type DiscoverySourceBinding = {
 	kind?: string
@@ -35,6 +39,9 @@ type DiscoveryHit = {
 	homepageUrl: string | null
 	installedVersion: string | null
 	sourceCandidates: DiscoveryCandidate[]
+	publisher?: string | null
+	marks?: string[]
+	similarTo?: PublisherSimilar[]
 }
 
 type ProviderInfo = { id: string, label: string, enabled: boolean }
@@ -80,6 +87,9 @@ const dismissedProviderIds = ref<Set<string>>(new Set())
 const isLoading = ref(false)
 const hasSearched = ref(false)
 const requestError = ref('')
+const githubSearchSaving = ref(false)
+const githubSearchError = ref('')
+const githubSearchOn = computed(() => githubSearchState(providers.value))
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 let abortController: AbortController | null = null
@@ -271,6 +281,26 @@ watch(query, (value) => {
 
 watch([sourceFilter, installedOnly], scheduleSearch)
 
+/**
+ * Turns public GitHub search on or off and searches again, so the hits follow
+ * the switch; see "Public GitHub search is switched on and off on the page".
+ *
+ * @param enabled the requested state
+ * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/app-discovery/spec.md
+ */
+async function toggleGithubSearch (enabled: boolean): Promise<void> {
+	githubSearchSaving.value = true
+	githubSearchError.value = ''
+	const saved = await saveGithubSearch(enabled)
+	githubSearchSaving.value = false
+	if ('error' in saved) {
+		githubSearchError.value = saved.error
+		return
+	}
+	providers.value = withGithubSearch(providers.value, saved.enabled)
+	scheduleSearch()
+}
+
 onBeforeUnmount(() => {
 	if (debounceTimer) {
 		clearTimeout(debounceTimer)
@@ -388,7 +418,25 @@ async function handleFollow (hit: DiscoveryHit): Promise<void> {
 			<NcCheckboxRadioSwitch v-model="installedOnly" data-testid="discover-installed-only">
 				{{ t('versioniq', 'Installed apps only') }}
 			</NcCheckboxRadioSwitch>
+
+			<template v-if="githubSearchOn !== null">
+				<NcCheckboxRadioSwitch
+					type="switch"
+					:modelValue="githubSearchOn"
+					:disabled="githubSearchSaving"
+					data-testid="discover-github-search"
+					@update:modelValue="toggleGithubSearch">
+					{{ t('versioniq', 'Search public GitHub repositories') }}
+				</NcCheckboxRadioSwitch>
+				<p :class="$style.validationHint" data-testid="discover-github-search-state">
+					{{ githubSearchStateText(githubSearchOn) }}
+				</p>
+			</template>
 		</div>
+
+		<NcNoteCard v-if="githubSearchError" type="error" data-testid="discover-github-search-error">
+			{{ githubSearchError }}
+		</NcNoteCard>
 
 		<NcNoteCard
 			v-for="entry in visibleProviderErrors"
@@ -438,6 +486,9 @@ async function handleFollow (hit: DiscoveryHit): Promise<void> {
 							</p>
 						</div>
 					</div>
+					<PublisherMark :publisher="hit.publisher ?? null"
+						:marks="hit.marks ?? []"
+						:similarTo="hit.similarTo ?? []" />
 					<p v-if="hit.summary" :class="$style.hitSummary">
 						{{ hit.summary }}
 					</p>

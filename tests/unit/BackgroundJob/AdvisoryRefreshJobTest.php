@@ -13,6 +13,7 @@ require_once __DIR__ . '/../Support/BuildsByParameterName.php';
 
 use OCA\Versioniq\BackgroundJob\AdvisoryRefreshJob;
 use OCA\Versioniq\Service\Advisory\AdvisoryDigestNotifier;
+use OCA\Versioniq\Service\Advisory\AdvisoryExposureTracker;
 use OCA\Versioniq\Service\Advisory\AdvisoryNotifier;
 use OCA\Versioniq\Service\Advisory\AdvisoryResultStore;
 use OCA\Versioniq\Service\Advisory\AdvisoryService;
@@ -44,6 +45,7 @@ final class AdvisoryRefreshJobTest extends TestCase {
 		?LoggerInterface $logger = null,
 		int $now = 1_700_000_000,
 		?AdvisoryDigestNotifier $digestNotifier = null,
+		?AdvisoryExposureTracker $exposureTracker = null,
 		?AdvisoryTriageStore $triageStore = null,
 	): void {
 		$time = $this->createMock(ITimeFactory::class);
@@ -61,6 +63,7 @@ final class AdvisoryRefreshJobTest extends TestCase {
 			'triageStore' => $triageStore,
 			'settings' => $settings,
 			'logger' => $logger ?? $this->createMock(LoggerInterface::class),
+			'exposureTracker' => $exposureTracker,
 		]);
 
 		// run() is protected — this job is invoked by the cron runner, and the
@@ -140,6 +143,7 @@ final class AdvisoryRefreshJobTest extends TestCase {
 
 		$store = $this->createMock(AdvisoryResultStore::class);
 		$store->expects($this->once())->method('save')->with($correlations, 1_700_000_000);
+		$store->expects($this->never())->method('saveFailure');
 
 		$notifier = $this->createMock(AdvisoryNotifier::class);
 		$notifier->method('notifyNewAdvisories')->willThrowException(new \RuntimeException('notifications app is gone'));
@@ -182,11 +186,81 @@ final class AdvisoryRefreshJobTest extends TestCase {
 
 		$store = $this->createMock(AdvisoryResultStore::class);
 		$store->expects($this->never())->method('save');
+		$store->expects($this->once())->method('saveFailure')->with(1_700_000_000);
 
 		$logger = $this->createMock(LoggerInterface::class);
 		$logger->expects($this->once())->method('error');
 
 		$this->runJob($service, $store, null, $logger);
+	}
+
+	/**
+	 * The new snapshot is handed to the exposure tracker after it is saved,
+	 * and a tracker failure is logged without stopping the notifications
+	 * (audit-security-reports D1).
+	 *
+	 * @spec openspec/changes/audit-security-reports/specs/audit-trail/spec.md#requirement-advisory-exposure-and-server-updates-are-recorded-in-the-history
+	 */
+	public function testTracksExposureAfterSavingAndSurvivesItsFailure(): void {
+		$correlations = ['notes' => $this->correlation('notes')];
+		$service = $this->createMock(AdvisoryService::class);
+		$service->method('correlateAll')->willReturn($correlations);
+
+		$calls = [];
+		$store = $this->createMock(AdvisoryResultStore::class);
+		$store->method('save')->willReturnCallback(function () use (&$calls): void {
+			$calls[] = 'save';
+		});
+		$tracker = $this->createMock(AdvisoryExposureTracker::class);
+		$tracker->expects($this->once())->method('track')->with($correlations, 1_700_000_000)
+			->willReturnCallback(function () use (&$calls): void {
+				$calls[] = 'track';
+				throw new \RuntimeException('config unavailable');
+			});
+		$notifier = $this->createMock(AdvisoryNotifier::class);
+		$notifier->expects($this->once())->method('notifyNewAdvisories')->willReturnCallback(function () use (&$calls): int {
+			$calls[] = 'notify';
+			return 0;
+		});
+		$logger = $this->createMock(LoggerInterface::class);
+		$logger->expects($this->once())->method('error')
+			->with('AdvisoryRefreshJob: advisory exposure could not be recorded', ['message' => 'config unavailable']);
+
+		$this->runJob($service, $store, $notifier, $logger, exposureTracker: $tracker);
+
+		$this->assertSame(['save', 'track', 'notify'], $calls);
+	}
+
+	/**
+	 * An advisory never changes a version by itself: the advisory check and
+	 * its notifier take no installer, policy or auto-update dependency, so the
+	 * only path to an install stays AutoUpdateJob, in the window, on a policy
+	 * the admin set (autoupdate-security-first D6).
+	 *
+	 * @spec openspec/changes/autoupdate-security-first/tasks.md#task-3.3
+	 */
+	public function testTheAdvisoryCheckTakesNoInstallerOrPolicyDependency(): void {
+		$forbidden = [
+			\OCA\Versioniq\Service\InstallerService::class,
+			\OCA\Versioniq\Service\Policy\PolicyStore::class,
+			\OCA\Versioniq\Service\AutoUpdate\AutoUpdateInstall::class,
+			\OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores::class,
+			\OCA\Versioniq\Service\AutoUpdate\CandidateSelector::class,
+			\OCA\Versioniq\Service\AutoUpdate\SecurityCandidate::class,
+		];
+
+		foreach ([AdvisoryRefreshJob::class, \OCA\Versioniq\BackgroundJob\AdvisoryRefreshSteps::class, AdvisoryNotifier::class] as $class) {
+			$constructor = (new \ReflectionClass($class))->getConstructor();
+			$this->assertNotNull($constructor, $class);
+			$types = array_map(
+				static fn (\ReflectionParameter $parameter): string => (string)$parameter->getType(),
+				$constructor->getParameters()
+			);
+			$this->assertNotEmpty($types, $class);
+			foreach ($types as $type) {
+				$this->assertNotContains(ltrim($type, '?'), $forbidden, $class . ' must not depend on ' . $type);
+			}
+		}
 	}
 
 	/**

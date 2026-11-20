@@ -47,6 +47,15 @@ final class InstanceSettingsTest extends TestCase {
 				return true;
 			},
 		);
+		$appConfig->method('getValueBool')->willReturnCallback(
+			fn (string $app, string $key, bool $default = false): bool => (bool)($this->config[$key] ?? $default),
+		);
+		$appConfig->method('setValueBool')->willReturnCallback(
+			function (string $app, string $key, bool $value): bool {
+				$this->config[$key] = $value;
+				return true;
+			},
+		);
 		$appConfig->method('deleteKey')->willReturnCallback(
 			function (string $app, string $key): void {
 				unset($this->config[$key]);
@@ -85,6 +94,73 @@ final class InstanceSettingsTest extends TestCase {
 		self::assertSame('https://ghe.example.org/api/v3', $this->config['forge.github.api_base']);
 		self::assertSame('https://ghe.example.org', $this->config['forge.github.web_base']);
 		self::assertSame('http://mirror.internal/advisories', $this->config['advisory.feed_base']);
+	}
+
+	/**
+	 * The GitHub search switch is off until set, writes the key GithubSearchDiscovery
+	 * reads, and is reported as applied (sources-trust-audit-and-offline-feed 2.1).
+	 */
+	public function testTheGithubSearchSwitchIsOffUntilTurnedOn(): void {
+		self::assertFalse($this->store()->read()['githubSearchEnabled']);
+
+		$applied = $this->store()->update(['githubSearchEnabled' => 'true']);
+		self::assertSame(['githubSearchEnabled'], $applied);
+		self::assertSame('true', $this->config['discovery.github_search_enabled']);
+		self::assertTrue($this->store()->read()['githubSearchEnabled']);
+
+		$this->store()->update(['githubSearchEnabled' => '0']);
+		self::assertSame('false', $this->config['discovery.github_search_enabled']);
+		self::assertFalse($this->store()->read()['githubSearchEnabled']);
+	}
+
+	public function testTheGithubSearchSwitchRefusesAnythingButOnOrOffAndWritesNothing(): void {
+		$this->expectException(\InvalidArgumentException::class);
+		$this->expectExceptionMessage('GitHub search must be on or off.');
+
+		try {
+			$this->store()->update(['githubSearchEnabled' => 'maybe', 'auditRetentionDays' => '90']);
+		} finally {
+			self::assertSame([], $this->config);
+		}
+	}
+
+	/**
+	 * The advisory feed source is the feed address until set to the local
+	 * copy, writes the key NextcloudAdvisoryFeed reads, and reports the
+	 * copy's import time (sources-trust-audit-and-offline-feed 3.2).
+	 */
+	public function testTheFeedSourceIsRemoteUntilSetToTheLocalCopy(): void {
+		$settings = $this->store()->read();
+		self::assertSame('remote', $settings['advisoryFeedSource']);
+		self::assertNull($settings['advisoryFeedCopiedAt']);
+		self::assertSame(30, $settings['advisoryFeedCopyMaxAgeDays']);
+
+		self::assertSame(['advisoryFeedSource'], $this->store()->update(['advisoryFeedSource' => 'Local']));
+		self::assertSame('local', $this->config['advisory.feed_source']);
+		$this->config['advisory.feed_copy_at'] = 1792800000;
+		$settings = $this->store()->read();
+		self::assertSame('local', $settings['advisoryFeedSource']);
+		self::assertSame(1792800000, $settings['advisoryFeedCopiedAt']);
+
+		$this->store()->update(['advisoryFeedSource' => 'remote']);
+		self::assertSame('remote', $this->config['advisory.feed_source']);
+	}
+
+	public function testTheFeedSourceRefusesAnythingButRemoteOrLocalAndWritesNothing(): void {
+		$this->expectException(\InvalidArgumentException::class);
+		$this->expectExceptionMessage('The advisory feed source must be remote or local.');
+
+		try {
+			$this->store()->update(['advisoryFeedSource' => 'mirror', 'auditRetentionDays' => '90']);
+		} finally {
+			self::assertSame([], $this->config);
+		}
+	}
+
+	public function testAnUnknownStoredFeedSourceReadsAsRemote(): void {
+		$this->config['advisory.feed_source'] = 'something';
+
+		self::assertSame('remote', $this->store()->read()['advisoryFeedSource']);
 	}
 
 	public function testABlankUrlClearsTheOverride(): void {
@@ -191,6 +267,41 @@ final class InstanceSettingsTest extends TestCase {
 	}
 
 	/**
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+	 */
+	public function testTheWaitingPeriodIsReadAndSavedThroughTheSettings(): void {
+		$store = $this->store();
+		self::assertSame(0, $store->read()['promotionMinDays']);
+		self::assertSame(90, $store->read()['promotionMinDaysMax']);
+
+		self::assertSame(['promotionMinDays'], $store->update(['promotionMinDays' => '14']));
+		self::assertSame(14, $store->read()['promotionMinDays']);
+		self::assertSame('14', $this->config[InstanceSettings::KEY_PROMOTION_MIN_DAYS]);
+
+		$store->update(['promotionMinDays' => '0']);
+		self::assertSame(0, $store->promotionMinDays());
+		self::assertArrayNotHasKey(InstanceSettings::KEY_PROMOTION_MIN_DAYS, $this->config);
+	}
+
+	/**
+	 * @spec openspec/changes/install-multi-instance-promotion/specs/multi-instance/spec.md#requirement-a-version-waits-a-set-number-of-days-on-the-earlier-stage
+	 */
+	public function testTheWaitingPeriodRefuses91AndLeavesEverythingElse(): void {
+		$store = $this->store();
+		$store->update(['promotionMinDays' => '14']);
+		foreach (['91', '-1', 'two', ''] as $raw) {
+			try {
+				$store->update(['promotionMinDays' => $raw, 'artifactCacheKeep' => '7']);
+				self::fail('Accepted ' . $raw);
+			} catch (InvalidArgumentException $error) {
+				self::assertStringContainsString('between 0 and 90', $error->getMessage());
+			}
+		}
+		self::assertSame(14, $store->promotionMinDays());
+		self::assertArrayNotHasKey(\OCA\Versioniq\Service\Cache\ArtifactCache::CONFIG_KEEP, $this->config);
+	}
+
+	/**
 	 * Every rule of an address field, for the https-only GitHub API base and
 	 * the http-or-https advisory feed: the stored value, or the message.
 	 *
@@ -227,5 +338,81 @@ final class InstanceSettingsTest extends TestCase {
 			yield "$field port and path" => [$field, 'https://ghe.example.org:8443/api', 'https://ghe.example.org:8443/api'];
 			yield "$field unparseable" => [$field, 'https://', $refusal];
 		}
+	}
+
+	/**
+	 * @spec openspec/changes/audit-external-changes
+	 */
+	public function testAutomaticReEnablingIsOffUntilSwitchedOnAndRefusesOtherValues(): void {
+		$store = $this->store();
+		self::assertFalse($store->read()['reactivateAuto']);
+
+		self::assertSame(['reactivateAuto'], $store->update(['reactivateAuto' => '1']));
+		self::assertTrue($store->read()['reactivateAuto']);
+		$store->update(['reactivateAuto' => 'false']);
+		self::assertFalse($store->read()['reactivateAuto']);
+
+		$this->expectException(InvalidArgumentException::class);
+		$this->expectExceptionMessage('Automatic re-enabling must be on or off.');
+		$store->update(['reactivateAuto' => 'maybe']);
+	}
+
+	/**
+	 * releases-notes-reach 1.2: telling users about Versioniq's updates is on
+	 * until the admin switches it off; anything but on or off is refused and
+	 * writes nothing.
+	 *
+	 * @spec openspec/changes/releases-notes-reach/tasks.md#task-1.2
+	 */
+	public function testTheUserNoticeSwitchIsOnByDefaultAndCanBeTurnedOff(): void {
+		$store = $this->store();
+		self::assertTrue($store->read()['notifyUsersOnUpdate']);
+
+		self::assertSame(['notifyUsersOnUpdate'], $store->update(['notifyUsersOnUpdate' => 'false']));
+		self::assertFalse($store->read()['notifyUsersOnUpdate']);
+		self::assertFalse($this->config[InstanceSettings::KEY_NOTIFY_USERS_ON_UPDATE]);
+
+		$store->update(['notifyUsersOnUpdate' => 'true']);
+		self::assertTrue($store->read()['notifyUsersOnUpdate']);
+	}
+
+	/**
+	 * @spec openspec/changes/releases-notes-reach/tasks.md#task-1.2
+	 */
+	public function testAnUnclearUserNoticeValueIsRefusedAndNothingIsWritten(): void {
+		try {
+			$this->store()->update(['artifactCacheKeep' => '5', 'notifyUsersOnUpdate' => 'maybe']);
+			self::fail('An unclear value must be refused.');
+		} catch (InvalidArgumentException $error) {
+			self::assertSame('Telling users about updates must be on or off.', $error->getMessage());
+		}
+
+		self::assertSame([], $this->config);
+	}
+
+	/**
+	 * The installer reads the same key the page writes.
+	 *
+	 * @spec openspec/changes/releases-notes-reach/tasks.md#task-1.2
+	 */
+	public function testThePageAndTheInstallerShareTheKey(): void {
+		self::assertSame(\OCA\Versioniq\Service\InstallerService::KEY_NOTIFY_USERS_ON_UPDATE, InstanceSettings::KEY_NOTIFY_USERS_ON_UPDATE);
+		self::assertSame('notify_users_on_update', InstanceSettings::KEY_NOTIFY_USERS_ON_UPDATE);
+	}
+
+	/**
+	 * @spec openspec/changes/advisories-bundled-libraries
+	 */
+	public function testTheOsvBaseDefaultsToThePublicApiAndMustBeHttps(): void {
+		$settings = $this->store()->read();
+		self::assertSame('', $settings['osvApiBase']);
+		self::assertSame('https://api.osv.dev', $settings['osvApiDefault']);
+
+		$store = $this->store();
+		self::assertSame(['osvApiBase'], $store->update(['osvApiBase' => 'https://osv.mirror.example/']));
+		self::assertSame('https://osv.mirror.example', $store->read()['osvApiBase']);
+
+		$this->expectException(InvalidArgumentException::class);
+		$this->store()->update(['osvApiBase' => 'http://osv.mirror.example']);
 	}
 }
