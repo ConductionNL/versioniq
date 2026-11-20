@@ -38,19 +38,39 @@ final class CrlDocument {
 		'2a8648ce3d040304' => OPENSSL_ALGO_SHA512,
 	];
 
+	/** The list in PEM, as phpseclib's loadCRL() reads it. */
+	public readonly string $pem;
+
+	/** The CRL number, null when the list carries none. */
+	public readonly ?string $number;
+
+	/** @var array<string, true> The revoked serial numbers, as keys. */
+	private readonly array $revoked;
+
+	/** The signed TBSCertList, tag and length included. */
+	private readonly string $signedPart;
+
+	private readonly string $signatureAlgorithm;
+
+	private readonly string $signature;
+
 	/**
-	 * @param string $pem The list in PEM, as phpseclib's loadCRL() reads it.
-	 * @param ?string $number The CRL number, null when the list carries none.
-	 * @param array<string, true> $revoked The revoked serial numbers, as keys.
+	 * Reads a list from its DER bytes.
+	 *
+	 * @throws UnexpectedValueException when the bytes are not a certificate revocation list
 	 */
-	private function __construct(
-		public readonly string $pem,
-		public readonly ?string $number,
-		private readonly array $revoked,
-		private readonly string $signedPart,
-		private readonly string $signatureAlgorithm,
-		private readonly string $signature,
-	) {
+	private function __construct(string $der) {
+		$list = DerElement::at($der);
+		if ($list->tag !== DerElement::TAG_SEQUENCE || $list->end !== strlen($der)) {
+			throw new UnexpectedValueException('Not a certificate revocation list.');
+		}
+
+		$signedPart = $list->child(0, DerElement::TAG_SEQUENCE);
+		[$this->revoked, $this->number] = self::readSignedPart($signedPart);
+		$this->pem = self::pem($der);
+		$this->signedPart = $signedPart->encoded();
+		$this->signatureAlgorithm = bin2hex($list->child(1, DerElement::TAG_SEQUENCE)->child(0, DerElement::TAG_OID)->content());
+		$this->signature = substr($list->child(2, DerElement::TAG_BIT_STRING)->content(), 1);
 	}
 
 	/**
@@ -60,25 +80,7 @@ final class CrlDocument {
 	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
 	 */
 	public static function parse(string $text): self {
-		$der = self::der($text);
-		$list = DerElement::at($der);
-		if ($list->tag !== DerElement::TAG_SEQUENCE || $list->end !== strlen($der)) {
-			throw new UnexpectedValueException('Not a certificate revocation list.');
-		}
-
-		$signedPart = $list->child(0, DerElement::TAG_SEQUENCE);
-		$algorithm = $list->child(1, DerElement::TAG_SEQUENCE)->child(0, DerElement::TAG_OID);
-		$signature = $list->child(2, DerElement::TAG_BIT_STRING)->content();
-		[$revoked, $number] = self::readSignedPart($signedPart);
-
-		return new self(
-			self::pem($der),
-			$number,
-			$revoked,
-			$signedPart->encoded(),
-			bin2hex($algorithm->content()),
-			substr($signature, 1),
-		);
+		return new self(self::der($text));
 	}
 
 	/**

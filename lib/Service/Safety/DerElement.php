@@ -30,25 +30,24 @@ final class DerElement {
 	public const TAG_SEQUENCE = 0x30;
 	public const TAG_CONTEXT_0 = 0xA0;
 
-	private function __construct(
-		public readonly int $tag,
-		/** Where the element starts, its tag byte. */
-		public readonly int $offset,
-		/** Where its content starts. */
-		public readonly int $contentOffset,
-		/** Where the next element starts. */
-		public readonly int $end,
-		private readonly string $der,
-	) {
-	}
+	public readonly int $tag;
+
+	/** Where its content starts. */
+	public readonly int $contentOffset;
+
+	/** Where the next element starts. */
+	public readonly int $end;
 
 	/**
-	 * The element that starts at $offset of $der.
+	 * Reads the element that starts at $offset of $der.
 	 *
+	 * @param int $offset Where the element starts, its tag byte.
 	 * @throws UnexpectedValueException when the bytes are not a whole DER element
-	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
 	 */
-	public static function at(string $der, int $offset = 0): self {
+	private function __construct(
+		private readonly string $der,
+		public readonly int $offset,
+	) {
 		if ($offset + 2 > strlen($der)) {
 			throw new UnexpectedValueException('Truncated DER element.');
 		}
@@ -60,12 +59,22 @@ final class DerElement {
 		}
 
 		$length = $lengthBytes === 0 ? $first : (int)hexdec(bin2hex(substr($der, $offset + 2, $lengthBytes)));
-		$contentOffset = $offset + 2 + $lengthBytes;
-		if ($contentOffset + $length > strlen($der)) {
+		$this->tag = ord($der[$offset]);
+		$this->contentOffset = $offset + 2 + $lengthBytes;
+		$this->end = $this->contentOffset + $length;
+		if ($this->end > strlen($der)) {
 			throw new UnexpectedValueException('Truncated DER content.');
 		}
+	}
 
-		return new self(ord($der[$offset]), $offset, $contentOffset, $contentOffset + $length, $der);
+	/**
+	 * The element that starts at $offset of $der.
+	 *
+	 * @throws UnexpectedValueException when the bytes are not a whole DER element
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
+	 */
+	public static function at(string $der, int $offset = 0): self {
+		return new self($der, $offset);
 	}
 
 	/**

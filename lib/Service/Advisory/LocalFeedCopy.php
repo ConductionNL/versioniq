@@ -13,10 +13,9 @@ namespace OCA\Versioniq\Service\Advisory;
 
 use InvalidArgumentException;
 use OCA\Versioniq\AppInfo\Application;
-use OCP\Files\AppData\IAppDataFactory;
+use OCA\Versioniq\Service\Settings\AppDataFiles;
 use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
-use OCP\Files\SimpleFS\ISimpleFolder;
 use OCP\IAppConfig;
 
 /**
@@ -45,7 +44,7 @@ class LocalFeedCopy {
 	public const MAX_AGE_DAYS = 30;
 
 	public function __construct(
-		private IAppDataFactory $appDataFactory,
+		private AppDataFiles $appData,
 		private IAppConfig $config,
 	) {
 	}
@@ -63,13 +62,7 @@ class LocalFeedCopy {
 	public function import(string $content, int $now): array {
 		$records = self::validated($content);
 
-		$folder = $this->folder();
-		$json = json_encode($records, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
-		try {
-			$folder->getFile(self::FILE)->putContent($json);
-		} catch (NotFoundException) {
-			$folder->newFile(self::FILE, $json);
-		}
+		$this->appData->write(self::FOLDER . '/' . self::FILE, json_encode($records, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
 
 		$this->config->setValueInt(Application::APP_ID, self::CONFIG_COPIED_AT, $now);
 		$this->config->setValueInt(Application::APP_ID, self::CONFIG_RECORDS, count($records));
@@ -87,7 +80,7 @@ class LocalFeedCopy {
 	 */
 	public function records(): ?array {
 		try {
-			$content = $this->folder()->getFile(self::FILE)->getContent();
+			$content = $this->appData->read(self::FOLDER . '/' . self::FILE);
 			return self::validated($content);
 		} catch (NotFoundException|NotPermittedException|InvalidArgumentException) {
 			return null;
@@ -150,14 +143,5 @@ class LocalFeedCopy {
 		}
 
 		return $record;
-	}
-
-	private function folder(): ISimpleFolder {
-		$appData = $this->appDataFactory->get(Application::APP_ID);
-		try {
-			return $appData->getFolder(self::FOLDER);
-		} catch (NotFoundException) {
-			return $appData->newFolder(self::FOLDER);
-		}
 	}
 }

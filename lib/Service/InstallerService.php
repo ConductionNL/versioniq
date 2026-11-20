@@ -40,9 +40,10 @@ use OCA\Versioniq\Service\Installer\UploadSupport;
 use OCA\Versioniq\Service\Inventory\SbomArchive;
 use OCA\Versioniq\Service\Pin\Pin;
 use OCA\Versioniq\Service\Release\ReleaseNotesReader;
+use OCA\Versioniq\Service\Safety\RevokedCertificateStore;
 use OCA\Versioniq\Service\Source\AppStoreSource;
-use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\ForgeRangeStamper;
+use OCA\Versioniq\Service\Source\RetiredForgeException;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Service\Source\SourceInterface;
@@ -65,7 +66,7 @@ use OCP\IUserSession;
  *
  * @psalm-api
  * @psalm-type AppLists = array{enabled: array<string>, versions: array<string, string>, core: array<string>, info: array<string, array<string, mixed>>}
- * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,author:string,licence:string,links:array{website:?string,repository:?string,bugs:?string},isCore:bool,isShipped:bool,publisher:?string,marks:list<string>,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string,previous?:array{version:string,recordedAt:string,sourceId:?string}},installedKnownIssues:list<array<string,mixed>>,provenance:?array{kind:'versioniq'|'outside',sourceId:?string,version:string},forcedOn?:int,compatibilityOverridden?:true,serverTooNew?:true}
+ * @psalm-type InstalledAppCard = array{id:string,label:string,description:string,summary:string,preview:string,author:string,licence:string,links:array{website:?string,repository:?string,bugs:?string},isCore:bool,isShipped:bool,publisher:?string,marks:list<string>,certificateRevoked:bool,boundSourceId:?string,manageable:bool,warning:?string,installedVersion:?string,state:'enabled'|'disabled'|'notInstalled',lkg:?array{version:string,recordedAt:string,sourceId:?string,previous?:array{version:string,recordedAt:string,sourceId:?string}},installedKnownIssues:list<array<string,mixed>>,provenance:?array{kind:'versioniq'|'outside',sourceId:?string,version:string},forcedOn?:int,compatibilityOverridden?:true,serverTooNew?:true}
  */
 class InstallerService implements InstallerServiceInterface {
 	/** Server-side changelog size cap; see "Version listings carry release notes". */
@@ -183,8 +184,19 @@ class InstallerService implements InstallerServiceInterface {
 			...$this->appStatus($appId, $lists, $binding),
 			'publisher' => PublisherTrust::publisherFromAuthors($lists['info'][$appId]['author'] ?? null),
 			'marks' => $this->cardMarks($appId, $binding),
+			'certificateRevoked' => $this->certificateRevoked($appId),
 			...$this->forceStatus($appId, $lists),
 		];
+	}
+
+	/**
+	 * Whether the daily recheck found the app's signing certificate revoked,
+	 * for the card's "Certificate revoked" badge (safety-withdrawn-and-revoked D2).
+	 *
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
+	 */
+	private function certificateRevoked(string $appId): bool {
+		return (new RevokedCertificateStore($this->server->configs->appConfig))->isRevoked($appId);
 	}
 
 	/**

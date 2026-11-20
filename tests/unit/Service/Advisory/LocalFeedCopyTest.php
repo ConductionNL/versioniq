@@ -11,6 +11,7 @@ namespace OCA\Versioniq\Tests\Unit\Service\Advisory;
 
 use InvalidArgumentException;
 use OCA\Versioniq\Service\Advisory\LocalFeedCopy;
+use OCA\Versioniq\Service\Settings\AppDataFiles;
 use OCP\Files\AppData\IAppDataFactory;
 use OCP\Files\IAppData;
 use OCP\Files\NotFoundException;
@@ -26,6 +27,7 @@ use PHPUnit\Framework\TestCase;
  * a copy older than 30 days is stale.
  *
  * @covers \OCA\Versioniq\Service\Advisory\LocalFeedCopy
+ * @covers \OCA\Versioniq\Service\Settings\AppDataFiles
  *
  * @spec openspec/changes/sources-trust-audit-and-offline-feed/specs/security-advisory-correlation/spec.md
  */
@@ -84,7 +86,7 @@ final class LocalFeedCopyTest extends TestCase {
 			return true;
 		});
 
-		return new LocalFeedCopy($factory, $appConfig);
+		return new LocalFeedCopy(new AppDataFiles($factory), $appConfig);
 	}
 
 	private static function feed(string ...$ids): string {

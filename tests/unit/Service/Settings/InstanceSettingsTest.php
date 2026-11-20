@@ -11,7 +11,7 @@ namespace OCA\Versioniq\Tests\Unit\Service\Settings;
 
 use InvalidArgumentException;
 use OCA\Versioniq\Service\Safety\RevocationList;
-use OCA\Versioniq\Service\Safety\RevokedAppResponder;
+use OCA\Versioniq\Service\Safety\RevokedCertificateStore;
 use OCA\Versioniq\Service\Settings\InstanceSettings;
 use OCP\IAppConfig;
 use PHPUnit\Framework\TestCase;
@@ -79,7 +79,7 @@ final class InstanceSettingsTest extends TestCase {
 
 		self::assertSame(['crlUrl', 'disableRevoked'], $this->store()->update(['crlUrl' => ' ', 'disableRevoked' => 'true']));
 		self::assertSame('', $this->config[RevocationList::KEY_URL], 'kept, so the list is not fetched');
-		self::assertTrue($this->config[RevokedAppResponder::KEY_DISABLE]);
+		self::assertTrue($this->config[RevokedCertificateStore::KEY_DISABLE]);
 		self::assertSame('', $this->store()->read()['crlUrl']);
 		self::assertTrue($this->store()->read()['disableRevoked']);
 
@@ -424,7 +424,7 @@ final class InstanceSettingsTest extends TestCase {
 	}
 
 	/**
-	 * @spec openspec/changes/audit-external-changes
+	 * @spec openspec/changes/archive/2026-11-17-audit-external-changes
 	 */
 	public function testAutomaticReEnablingIsOffUntilSwitchedOnAndRefusesOtherValues(): void {
 		$store = $this->store();

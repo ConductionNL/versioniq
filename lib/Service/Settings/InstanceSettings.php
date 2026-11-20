@@ -24,7 +24,7 @@ use OCA\Versioniq\Service\Cache\ArtifactCache;
 use OCA\Versioniq\Service\InstallerService;
 use OCA\Versioniq\Service\Lifecycle\ServerEolFeed;
 use OCA\Versioniq\Service\Safety\RevocationList;
-use OCA\Versioniq\Service\Safety\RevokedAppResponder;
+use OCA\Versioniq\Service\Safety\RevokedCertificateStore;
 use OCA\Versioniq\Service\Source\AppStoreSource;
 use OCA\Versioniq\Service\Source\ForgeRegistry;
 use OCP\IAppConfig;
@@ -155,7 +155,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 		return [
 			'crlUrl' => $this->config->hasKey(Application::APP_ID, RevocationList::KEY_URL) ? $this->stored(RevocationList::KEY_URL) : RevocationList::DEFAULT_URL,
 			'crlUrlDefault' => RevocationList::DEFAULT_URL,
-			'disableRevoked' => $this->config->getValueBool(Application::APP_ID, RevokedAppResponder::KEY_DISABLE, false),
+			'disableRevoked' => $this->config->getValueBool(Application::APP_ID, RevokedCertificateStore::KEY_DISABLE, false),
 		];
 	}
 
@@ -196,7 +196,7 @@ class InstanceSettings implements InstanceSettingsInterface {
 			$this->config->setValueString(Application::APP_ID, RevocationList::KEY_URL, $safety['crlUrl']);
 		}
 		if (isset($safety['disableRevoked'])) {
-			$this->config->setValueBool(Application::APP_ID, RevokedAppResponder::KEY_DISABLE, $safety['disableRevoked']);
+			$this->config->setValueBool(Application::APP_ID, RevokedCertificateStore::KEY_DISABLE, $safety['disableRevoked']);
 		}
 	}
 

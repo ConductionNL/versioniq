@@ -49,12 +49,24 @@ class CertificateRecheckJob extends TimedJob {
 	 */
 	protected function run($argument): void {
 		AuditOrigin::during(AuditOrigin::JOB, function (): void {
+			$this->refreshList();
 			try {
-				$this->revocationList->refreshIfDue();
 				$this->responder->respond($this->check->check($this->revocationList->current()));
 			} catch (\Throwable $error) {
 				$this->logger->warning('CertificateRecheckJob: the certificate recheck failed', ['message' => $error->getMessage()]);
 			}
 		});
+	}
+
+	/**
+	 * Fetches a newer list when one is due; a failure is logged and the
+	 * recheck goes on with the list in use.
+	 */
+	private function refreshList(): void {
+		try {
+			$this->revocationList->refreshIfDue();
+		} catch (\Throwable $error) {
+			$this->logger->warning('CertificateRecheckJob: the revocation list could not be refreshed; the list in use applies', ['message' => $error->getMessage()]);
+		}
 	}
 }

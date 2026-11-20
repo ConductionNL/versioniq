@@ -12,13 +12,10 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Service\Safety;
 
 use OCA\Versioniq\AppInfo\Application;
+use OCA\Versioniq\Service\Settings\AppDataFiles;
 use OCP\AppFramework\Utility\ITimeFactory;
-use OCP\Files\AppData\IAppDataFactory;
-use OCP\Files\NotFoundException;
-use OCP\Files\SimpleFS\ISimpleFolder;
 use OCP\Http\Client\IClientService;
 use OCP\IAppConfig;
-use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Throwable;
 
@@ -55,16 +52,11 @@ class RevocationList {
 
 	private const FETCH_TIMEOUT_SECONDS = 30;
 
-	/**
-	 * @param ?string $codeSigningDir The folder holding the server's `root.crt` and `root.crl`; null reads the server's own.
-	 */
 	public function __construct(
-		private IAppDataFactory $appDataFactory,
+		private AppDataFiles $appData,
 		private IAppConfig $config,
 		private IClientService $clientService,
 		private ITimeFactory $timeFactory,
-		private LoggerInterface $logger,
-		private ?string $codeSigningDir = null,
 	) {
 	}
 
@@ -110,10 +102,11 @@ class RevocationList {
 	/**
 	 * Fetches the list from the address when the last fetch is a day old or
 	 * more, and keeps it when it validates and is newer than the list in use.
-	 * Does nothing while fetching is off. Never throws: a list that cannot be
-	 * fetched or trusted leaves the list in use as it was.
+	 * Does nothing while fetching is off. A list that cannot be trusted is
+	 * ignored; either way the list in use stays as it was.
 	 *
 	 * @return bool Whether a newer list was kept.
+	 * @throws RuntimeException when the list cannot be fetched or read; the caller logs it
 	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
 	 */
 	public function refreshIfDue(): bool {
@@ -126,17 +119,14 @@ class RevocationList {
 		$this->config->setValueInt(Application::APP_ID, self::KEY_FETCHED_AT, $now);
 		try {
 			$fetched = CrlDocument::parse($this->fetch($url));
-			if (!$this->isTrustedUpdateOf($fetched, $this->current())) {
-				$this->logger->info('RevocationList: the fetched list is not newer or does not validate; it is ignored', ['url' => $url]);
-
-				return false;
-			}
-			$this->store($fetched);
 		} catch (Throwable $error) {
-			$this->logger->warning('RevocationList: the revocation list could not be fetched', ['url' => $url, 'message' => $error->getMessage()]);
-
+			throw new RuntimeException(sprintf('The revocation list at %s could not be fetched: %s', $url, $error->getMessage()), 0, $error);
+		}
+		if (!$this->isTrustedUpdateOf($fetched, $this->current())) {
 			return false;
 		}
+
+		$this->appData->write(self::FOLDER . '/' . self::FILE, $fetched->pem);
 
 		return true;
 	}
@@ -164,18 +154,9 @@ class RevocationList {
 	 */
 	private function stored(): ?CrlDocument {
 		try {
-			return CrlDocument::parse($this->folder()->getFile(self::FILE)->getContent());
+			return CrlDocument::parse($this->appData->read(self::FOLDER . '/' . self::FILE));
 		} catch (Throwable) {
 			return null;
-		}
-	}
-
-	private function store(CrlDocument $list): void {
-		$folder = $this->folder();
-		try {
-			$folder->getFile(self::FILE)->putContent($list->pem);
-		} catch (NotFoundException) {
-			$folder->newFile(self::FILE, $list->pem);
 		}
 	}
 
@@ -197,21 +178,12 @@ class RevocationList {
 	 * @throws RuntimeException with $failure when the file cannot be read
 	 */
 	private function readShipped(string $file, string $failure): string {
-		$path = ($this->codeSigningDir ?? \OC::$SERVERROOT . '/resources/codesigning') . '/' . $file;
+		$path = \OC::$SERVERROOT . '/resources/codesigning/' . $file;
 		$content = is_readable($path) ? file_get_contents($path) : false;
 		if ($content === false) {
 			throw new RuntimeException($failure);
 		}
 
 		return $content;
-	}
-
-	private function folder(): ISimpleFolder {
-		$appData = $this->appDataFactory->get(Application::APP_ID);
-		try {
-			return $appData->getFolder(self::FOLDER);
-		} catch (NotFoundException) {
-			return $appData->newFolder(self::FOLDER);
-		}
 	}
 }

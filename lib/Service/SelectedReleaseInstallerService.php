@@ -109,8 +109,6 @@ class SelectedReleaseInstallerService {
 		private ?CheckRunner $checkRunner = null,
 		// Optional: the backup kept before the folder is replaced (safety-rollback-backup-and-preflight D3).
 		private ?InstallBackup $installBackup = null,
-		// Optional: the revocation list the daily recheck reads too (safety-withdrawn-and-revoked D1); without it the shipped list applies.
-		private ?RevocationList $revocationList = null,
 	) {
 	}
 
@@ -236,18 +234,32 @@ class SelectedReleaseInstallerService {
 	 * The code-signing root certificates and the revocation list to check
 	 * against: the newest trusted one {@see RevocationList} holds, so install
 	 * and the daily recheck never disagree; the server's shipped pair when
-	 * there is no RevocationList.
+	 * the container offers no RevocationList.
 	 *
 	 * @return array{0: string, 1: string}
 	 * @throws Exception when either cannot be read
 	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
 	 */
 	private function codeSigningLists(): array {
-		if ($this->revocationList === null) {
+		$revocationList = $this->getRevocationList();
+		if ($revocationList === null) {
 			return self::codeSigningRoots();
 		}
 
-		return [$this->revocationList->rootCertificates(), $this->revocationList->current()->pem];
+		return [$revocationList->rootCertificates(), $revocationList->current()->pem];
+	}
+
+	/**
+	 * Returns the revocation list, or null when the container has none.
+	 *
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
+	 */
+	private function getRevocationList(): ?RevocationList {
+		try {
+			return Server::get(RevocationList::class);
+		} catch (\Throwable) {
+			return null;
+		}
 	}
 
 	/**

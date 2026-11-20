@@ -28,6 +28,9 @@ use OCP\IAppConfig;
 class RevokedCertificateStore {
 	public const KEY_PREFIX = 'revoked.';
 
+	/** Whether an app with a revoked certificate is disabled automatically; off by default. */
+	public const KEY_DISABLE = 'safety.disable_revoked';
+
 	public function __construct(
 		private IAppConfig $config,
 	) {
@@ -78,5 +81,14 @@ class RevokedCertificateStore {
 		if ($this->serialFor($appId) !== null) {
 			$this->config->deleteKey(Application::APP_ID, self::KEY_PREFIX . $appId);
 		}
+	}
+
+	/**
+	 * Whether an admin switched on disabling apps with a revoked certificate.
+	 *
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
+	 */
+	public function disablesRevoked(): bool {
+		return $this->config->getValueBool(Application::APP_ID, self::KEY_DISABLE, false);
 	}
 }

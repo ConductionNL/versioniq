@@ -22,11 +22,11 @@ use OCA\Versioniq\Kernel\Contracts\AdvisorySettingsStoreInterface;
 use OCA\Versioniq\Service\Advisory\ComplianceStatus;
 use OCA\Versioniq\Service\Advisory\FixStatus;
 use OCA\Versioniq\Service\Api\AccessCollaborators;
+use OCA\Versioniq\Service\Audit\AuditPeriod;
+use OCA\Versioniq\Service\Audit\AuditPeriodQuery;
 use OCA\Versioniq\Service\Api\InstallCollaborators;
 use OCA\Versioniq\Service\Api\ReportCollaborators;
 use OCA\Versioniq\Service\Audit\AuditOrigin;
-use OCA\Versioniq\Service\Audit\AuditPeriod;
-use OCA\Versioniq\Service\Audit\AuditPeriodQuery;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSchedule;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateSettingsStore;
 use OCA\Versioniq\Service\AutoUpdate\AutoUpdateStores;
@@ -93,11 +93,7 @@ class ApiController extends OCSController {
 	 * 200: Installed apps returned
 	 * 403: Caller is not an administrator
 	 *
-	 * Each app carries `certificateRevoked`: whether the daily recheck found
-	 * its signing certificate revoked.
-	 *
 	 * @spec openspec/specs/version-management/spec.md
-	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
 	 */
 	#[ApiRoute(verb: 'GET', url: '/api/apps')]
 	#[ApiRoute(verb: 'GET', url: '/api/v1/apps', postfix: 'v1')]
@@ -107,26 +103,11 @@ class ApiController extends OCSController {
 		}
 
 		return new DataResponse([
-			'apps' => $this->withCertificateState($this->install->installerService->getInstalledApps()),
+			'apps' => $this->install->installerService->getInstalledApps(),
 			// Apps an update left disabled, for the notice on their card
 			// (audit-external-changes).
 			'disabledByUpdate' => $this->reports->stores->seenStateStore?->disabledByUpdate() ?? [],
 		]);
-	}
-
-	/**
-	 * The app cards, each with `certificateRevoked`.
-	 *
-	 * @param list<array<string, mixed>> $apps
-	 * @return list<array<string, mixed>>
-	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
-	 */
-	private function withCertificateState(array $apps): array {
-		$store = $this->reports->stores->revokedCertificates;
-
-		return array_map(static fn (array $app): array => $app + [
-			'certificateRevoked' => $store?->isRevoked((string)($app['id'] ?? '')) ?? false,
-		], $apps);
 	}
 
 	/**
@@ -1317,7 +1298,7 @@ class ApiController extends OCSController {
 	 * `reason`: the nightly job never chooses it and it is not shown as the
 	 * pending update; later versions arrive as usual.
 	 *
-	 * @param string $appId The app
+	 * @param string $appId   The app
 	 * @param string $version The version to skip
 	 *
 	 * @return DataResponse<Http::STATUS_OK, array{appId: string, version: string, skipped: bool}, array{}>|DataResponse<Http::STATUS_BAD_REQUEST|Http::STATUS_FORBIDDEN|Http::STATUS_SERVICE_UNAVAILABLE, array{message: string}, array{}>
@@ -1361,7 +1342,7 @@ class ApiController extends OCSController {
 	/**
 	 * Takes a version off an app's skip list (password-confirmed).
 	 *
-	 * @param string $appId The app
+	 * @param string $appId   The app
 	 * @param string $version The version to unskip
 	 *
 	 * @return DataResponse<Http::STATUS_OK, array{appId: string, version: string, unskipped: bool}, array{}>|DataResponse<Http::STATUS_FORBIDDEN|Http::STATUS_SERVICE_UNAVAILABLE, array{message: string}, array{}>

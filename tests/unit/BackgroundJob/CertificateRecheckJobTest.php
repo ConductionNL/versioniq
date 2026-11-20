@@ -20,8 +20,10 @@ use OCA\Versioniq\Service\Audit\AuditOrigin;
 use OCA\Versioniq\Service\Audit\AuditSubject;
 use OCA\Versioniq\Service\Safety\InstalledCertificateCheck;
 use OCA\Versioniq\Service\Safety\RevocationList;
+use OCA\Versioniq\Service\Safety\RevokedAppDisabler;
 use OCA\Versioniq\Service\Safety\RevokedAppResponder;
 use OCA\Versioniq\Service\Safety\RevokedCertificateStore;
+use OCA\Versioniq\Service\Settings\AppDataFiles;
 use OCA\Versioniq\Service\Source\SourceBinding;
 use OCA\Versioniq\Service\Source\SourceBindingStore;
 use OCA\Versioniq\Tests\Unit\Support\CodeSigningFixtures;
@@ -48,10 +50,12 @@ use Psr\Log\NullLogger;
  * @covers \OCA\Versioniq\BackgroundJob\CertificateRecheckJob
  * @covers \OCA\Versioniq\Service\Safety\InstalledCertificateCheck
  * @covers \OCA\Versioniq\Service\Safety\RevokedAppResponder
+ * @covers \OCA\Versioniq\Service\Safety\RevokedAppDisabler
  * @covers \OCA\Versioniq\Service\Safety\RevokedCertificateStore
  * @uses   \OCA\Versioniq\Service\Safety\RevocationList
  * @uses   \OCA\Versioniq\Service\Safety\CrlDocument
  * @uses   \OCA\Versioniq\Service\Safety\DerElement
+ * @uses   \OCA\Versioniq\Service\Settings\AppDataFiles
  * @uses   \OCA\Versioniq\Service\AdminNotice
  * @uses   \OCA\Versioniq\Service\AdminNotificationServices
  * @uses   \OCA\Versioniq\BackgroundJob\JobRuntime
@@ -63,6 +67,8 @@ final class CertificateRecheckJobTest extends TestCase {
 	private static array $authority;
 
 	private string $root;
+
+	private mixed $savedServerRoot = null;
 
 	/** @var array<string, string|int|bool> */
 	private array $config = [RevocationList::KEY_URL => ''];
@@ -91,11 +97,14 @@ final class CertificateRecheckJobTest extends TestCase {
 
 	protected function setUp(): void {
 		$this->root = sys_get_temp_dir() . '/vq-recheck-' . bin2hex(random_bytes(4));
-		mkdir($this->root . '/codesigning', 0777, true);
-		file_put_contents($this->root . '/codesigning/root.crt', self::$authority['cert']);
+		mkdir($this->root . '/resources/codesigning', 0777, true);
+		file_put_contents($this->root . '/resources/codesigning/root.crt', self::$authority['cert']);
+		$this->savedServerRoot = \OC::$SERVERROOT;
+		\OC::$SERVERROOT = $this->root;
 	}
 
 	protected function tearDown(): void {
+		\OC::$SERVERROOT = $this->savedServerRoot;
 		exec('rm -rf ' . escapeshellarg($this->root));
 	}
 
@@ -139,7 +148,7 @@ final class CertificateRecheckJobTest extends TestCase {
 	public function testShippedAndForgeBoundAppsAreSkipped(): void {
 		$this->apps = ['files_shipped' => ['serial' => 42, 'shipped' => true], 'forged' => ['serial' => 42, 'forge' => true]];
 		$this->revoked = [42];
-		$this->config[RevokedAppResponder::KEY_DISABLE] = true;
+		$this->config[RevokedCertificateStore::KEY_DISABLE] = true;
 
 		$this->runJob();
 
@@ -150,7 +159,7 @@ final class CertificateRecheckJobTest extends TestCase {
 	public function testWithTheSwitchOnTheAppIsDisabledOnceAndAudited(): void {
 		$this->apps = ['badapp' => ['serial' => 42]];
 		$this->revoked = [42];
-		$this->config[RevokedAppResponder::KEY_DISABLE] = true;
+		$this->config[RevokedCertificateStore::KEY_DISABLE] = true;
 
 		$this->runJob();
 		$this->runJob();
@@ -165,6 +174,17 @@ final class CertificateRecheckJobTest extends TestCase {
 		self::assertSame(AuditOrigin::JOB, $this->audit[0]['origin']);
 		self::assertStringContainsString('2A', (string)$this->audit[0]['message']);
 		self::assertSame('1', $this->sent[0]['parameters']['disabled']);
+	}
+
+	public function testAListThatCannotBeFetchedLeavesTheRecheckOnTheListInUse(): void {
+		$this->config[RevocationList::KEY_URL] = 'https://mirror.example.org/root.crl';
+		$this->apps = ['badapp' => ['serial' => 42]];
+		$this->revoked = [42];
+
+		$this->runJob();
+
+		self::assertCount(2, $this->sent, 'the shipped list still applies');
+		self::assertSame(1_800_000_000, $this->config[RevocationList::KEY_FETCHED_AT]);
 	}
 
 	public function testAnAppWithoutACertificateIsSkipped(): void {
@@ -182,7 +202,7 @@ final class CertificateRecheckJobTest extends TestCase {
 		if ($writeApps) {
 			$this->writeApps();
 		}
-		file_put_contents($this->root . '/codesigning/root.crl', CodeSigningFixtures::revocationList(self::$authority, 1, $this->revoked));
+		file_put_contents($this->root . '/resources/codesigning/root.crl', CodeSigningFixtures::revocationList(self::$authority, 1, $this->revoked));
 
 		$time = $this->createMock(ITimeFactory::class);
 		$time->method('getTime')->willReturn(1_800_000_000);
@@ -190,9 +210,10 @@ final class CertificateRecheckJobTest extends TestCase {
 		$appConfig = $this->appConfig();
 		$appManager = $this->appManager();
 
-		$list = new RevocationList($this->createMock(IAppDataFactory::class), $appConfig, $this->createMock(IClientService::class), $time, new NullLogger(), $this->root . '/codesigning');
+		$list = new RevocationList(new AppDataFiles($this->createMock(IAppDataFactory::class)), $appConfig, $this->createMock(IClientService::class), $time);
 		$check = new InstalledCertificateCheck($appManager, $this->bindings());
-		$responder = new RevokedAppResponder(new RevokedCertificateStore($appConfig), $appManager, $this->auditLogger(), $appConfig, $this->adminServices($time), new NullLogger());
+		$disabler = new RevokedAppDisabler($appManager, $this->auditLogger(), new NullLogger());
+		$responder = new RevokedAppResponder(new RevokedCertificateStore($appConfig), $disabler, $this->adminServices($time), new NullLogger());
 		$job = new CertificateRecheckJob(new JobRuntime($time, new NullLogger()), $list, $check, $responder);
 		(new \ReflectionMethod($job, 'run'))->invoke($job, null);
 	}
@@ -239,6 +260,11 @@ final class CertificateRecheckJobTest extends TestCase {
 		$config->method('getValueString')->willReturnCallback(fn (string $app, string $key, string $default = ''): string => (string)($this->config[$key] ?? $default));
 		$config->method('getValueInt')->willReturnCallback(fn (string $app, string $key, int $default = 0): int => (int)($this->config[$key] ?? $default));
 		$config->method('getValueBool')->willReturnCallback(fn (string $app, string $key, bool $default = false): bool => (bool)($this->config[$key] ?? $default));
+		$config->method('setValueInt')->willReturnCallback(function (string $app, string $key, int $value): bool {
+			$this->config[$key] = $value;
+
+			return true;
+		});
 		$config->method('setValueString')->willReturnCallback(function (string $app, string $key, string $value): bool {
 			$this->config[$key] = $value;
 

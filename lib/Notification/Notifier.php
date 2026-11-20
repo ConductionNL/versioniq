@@ -180,7 +180,7 @@ class Notifier implements INotifier {
 	 * An app an update left disabled: whether it runs on this server, and
 	 * the newest version that does when one is known.
 	 *
-	 * @spec openspec/changes/audit-external-changes
+	 * @spec openspec/changes/archive/2026-11-17-audit-external-changes
 	 */
 	private function renderAppLeftDisabled(INotification $notification, IL10N $l): void {
 		$app = $this->stringParameter($notification, 'app');

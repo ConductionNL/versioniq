@@ -109,7 +109,7 @@ describe('InstanceSettingsPanel', () => {
 		expect((wrapper.find('[data-testid="setting-allow-unsigned-upload"]').element as HTMLInputElement).checked).toBe(true)
 	})
 
-	// @spec openspec/changes/audit-external-changes
+	// @spec openspec/changes/archive/2026-11-17-audit-external-changes
 	it('shows automatic re-enabling off and sends it when switched on', async () => {
 		mockedGet.mockResolvedValue({ payload: { ...settings, reactivateAuto: false } })
 		mockedWrite.mockResolvedValue({ payload: { ...settings, reactivateAuto: true } })

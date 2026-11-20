@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\Versioniq\Tests\Unit\Service\Safety;
 
 require_once __DIR__ . '/../../Support/CodeSigningFixtures.php';
+require_once __DIR__ . '/../Installer/InstallerGoldenSupport.php';
 
 use OCA\Versioniq\Service\Audit\AuditLogger;
 use OCA\Versioniq\Service\Cache\ArtifactCache;
@@ -18,6 +19,8 @@ use OCA\Versioniq\Service\Installer\MigrationDiffer;
 use OCA\Versioniq\Service\Safety\CrlDocument;
 use OCA\Versioniq\Service\Safety\RevocationList;
 use OCA\Versioniq\Service\SelectedReleaseInstallerService;
+use OCA\Versioniq\Service\Settings\AppDataFiles;
+use OCA\Versioniq\Tests\Unit\Service\Installer\InstallerGoldenSupport;
 use OCA\Versioniq\Tests\Unit\Support\CodeSigningFixtures;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Files\AppData\IAppDataFactory;
@@ -32,7 +35,6 @@ use OCP\IAppConfig;
 use OCP\IUserSession;
 use phpseclib3\File\X509;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\NullLogger;
 
 /**
  * The revocation list installs and the recheck read (safety-withdrawn-and-revoked
@@ -44,6 +46,7 @@ use Psr\Log\NullLogger;
  * @covers \OCA\Versioniq\Service\Safety\CrlDocument
  * @covers \OCA\Versioniq\Service\Safety\DerElement
  * @covers \OCA\Versioniq\Service\SelectedReleaseInstallerService
+ * @covers \OCA\Versioniq\Service\Settings\AppDataFiles
  *
  * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
  */
@@ -53,7 +56,11 @@ final class RevocationListTest extends TestCase {
 	/** @var array{key: \OpenSSLAsymmetricKey, cert: string} */
 	private static array $authority;
 
+	private string $root;
+
 	private string $dir;
+
+	private mixed $savedServerRoot = null;
 
 	/** @var array<string, string|int> */
 	private array $config = [];
@@ -72,15 +79,21 @@ final class RevocationListTest extends TestCase {
 	}
 
 	protected function setUp(): void {
-		$this->dir = sys_get_temp_dir() . '/vq-crl-' . bin2hex(random_bytes(4));
-		mkdir($this->dir);
+		$this->root = sys_get_temp_dir() . '/vq-crl-' . bin2hex(random_bytes(4));
+		$this->dir = $this->root . '/resources/codesigning';
+		mkdir($this->dir, 0777, true);
 		file_put_contents($this->dir . '/root.crt', self::$authority['cert']);
 		file_put_contents($this->dir . '/root.crl', CodeSigningFixtures::revocationList(self::$authority, 10, [7]));
+		$this->savedServerRoot = \OC::$SERVERROOT;
+		\OC::$SERVERROOT = $this->root;
 	}
 
 	protected function tearDown(): void {
+		\OC::$SERVERROOT = $this->savedServerRoot;
 		array_map('unlink', glob($this->dir . '/*') ?: []);
 		rmdir($this->dir);
+		rmdir($this->root . '/resources');
+		rmdir($this->root);
 	}
 
 	public function testTheShippedListAppliesWhileNothingWasFetched(): void {
@@ -165,10 +178,15 @@ final class RevocationListTest extends TestCase {
 		self::assertSame('https://mirror.example.org/root.crl', $this->list()->url());
 	}
 
-	public function testAFailedFetchKeepsTheListInUse(): void {
+	public function testAFailedFetchIsReportedAndKeepsTheListInUse(): void {
 		$this->status = 503;
 
-		self::assertFalse($this->list()->refreshIfDue());
+		try {
+			$this->list()->refreshIfDue();
+			self::fail('a failed fetch is reported');
+		} catch (\RuntimeException $error) {
+			self::assertStringContainsString('HTTP 503', $error->getMessage());
+		}
 		self::assertSame(1, $this->fetches);
 		self::assertSame('A', $this->list()->current()->number);
 	}
@@ -193,7 +211,7 @@ final class RevocationListTest extends TestCase {
 	}
 
 	public function testAnInstallChecksAgainstTheSameList(): void {
-		if (!class_exists(X509::class) || !property_exists(X509::class, 'handler')) {
+		if (!InstallerGoldenSupport::isUnitOnly() || !property_exists(X509::class, 'handler')) {
 			$this->markTestSkipped('Runs on the unit-only bootstrap, whose X509 class it scripts.');
 		}
 		$this->stored = CodeSigningFixtures::revocationList(self::$authority, 11, [42]);
@@ -219,13 +237,14 @@ final class RevocationListTest extends TestCase {
 			$this->createMock(IUserSession::class),
 			$this->createMock(MigrationDiffer::class),
 			$this->createMock(ArtifactCache::class),
-			revocationList: $this->list(),
 		);
+		InstallerGoldenSupport::useServices([RevocationList::class => $this->list()]);
 
 		try {
 			self::assertFalse($installer->trustsCertificate('badapp', CodeSigningFixtures::appCertificate(self::$authority, 'badapp', 42)));
 		} finally {
 			X509::$handler = null;
+			InstallerGoldenSupport::resetServices();
 		}
 		self::assertSame([$this->list()->current()->pem], $loaded);
 		self::assertSame('B', CrlDocument::parse($loaded[0])->number);
@@ -237,7 +256,7 @@ final class RevocationListTest extends TestCase {
 	}
 
 	private function list(): RevocationList {
-		return new RevocationList($this->appData(), $this->appConfig(), $this->client(), $this->clock(), new NullLogger(), $this->dir);
+		return new RevocationList(new AppDataFiles($this->appData()), $this->appConfig(), $this->client(), $this->clock());
 	}
 
 	private function appConfig(): IAppConfig {
