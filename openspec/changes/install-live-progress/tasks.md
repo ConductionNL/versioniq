@@ -20,6 +20,7 @@
 - [x] 3.3 Add strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
   - en and nl strings for every new label, built into `l10n/*.js`; `npm run check:l10n-js` passes.
 - [ ] 3.4 Extend `tests/e2e/install-effects.spec.ts`: during a fixture install the page shows at least the download and extraction stages before the result.
+  - Written: the "live install progress" block in `tests/e2e/install-effects.spec.ts` (the dry run in the settings page asserts the checklist with Download and Extracting, in that order, before the result); waits for the Playwright job.
 
 ## 4. Close
 

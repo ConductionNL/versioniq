@@ -130,6 +130,28 @@ PHP
 }
 make_bad_finalize fixtureapp-1.3.0.tar.gz fixtureapp 1.3.0
 
+# 1.4.0 ships a migration step that declares, through a migration attribute,
+# that it adds an index on a table, so the upgrade preview (safety-upgrade-
+# migration-preview) has a step and a table to list. It is not in the default
+# release set; the spec that needs it adds it, and only ever dry-runs it.
+make_index_migration() { # filename appid version
+  local file="$1" appid="$2" ver="$3"
+  rm -rf "$tmp/build"; mkdir -p "$tmp/build/$appid/appinfo" "$tmp/build/$appid/lib/Migration"
+  infoxml "$appid" "$ver" > "$tmp/build/$appid/appinfo/info.xml"
+  manifest "$tmp/build/$appid"
+  cat > "$tmp/build/$appid/lib/Migration/Version1040Date20260101000000.php" <<PHP
+<?php
+namespace OCA\\ForgeFixtureApp\\Migration;
+use OCP\\Migration\\Attributes\\AddIndex;
+use OCP\\Migration\\SimpleMigrationStep;
+#[AddIndex(table: 'fixtureapp_items', description: 'fixture index')]
+class Version1040Date20260101000000 extends SimpleMigrationStep {}
+PHP
+  tar -C "$tmp/build" -czf "$OUT/$file" "$appid"
+  ( cd "$OUT" && sha256sum "$file" | awk '{print $1}' > "$file.sha256" )
+}
+make_index_migration fixtureapp-1.4.0.tar.gz fixtureapp 1.4.0
+
 # A self-signed certificate for the fixture's https listener. The OSV base
 # (`advisory.osv_api_base`) is https only, so the OSV double must speak TLS; the
 # bootstrap scripts import this certificate into Nextcloud's trust store.

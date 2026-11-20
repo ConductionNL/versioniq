@@ -582,3 +582,123 @@ test.describe("NCSC-NL advisories", () => {
 		).toBe("");
 	});
 });
+
+/**
+ * Per-app advisory detail and the instance's patch compliance: a sweep that
+ * finds the installed fixtureapp affected makes the Apps tab read "Not
+ * compliant", the card badge opens the app's list on the Advisories tab with
+ * the CVE id and the date, an update to the fixed version and a second sweep
+ * make it "Compliant", and an advisory with no patched version says no fix is
+ * published yet.
+ *
+ * The Nextcloud server feed is emptied, so the fixture app is the only thing
+ * affected. Compliance also needs the sweep to have reached every app; an
+ * instance whose other apps cannot be checked reads "unknown" instead, which
+ * this spec would report as a failure of the first assertion.
+ *
+ * @spec openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation/spec.md
+ */
+test.describe("per-app advisory detail and compliance", () => {
+	const ADVISORY = "GHSA-e2e0-comp-0001";
+	const CVE = "CVE-2026-1111";
+	const PUBLISHED = "2026-08-01T00:00:00Z";
+
+	/** A GHSA-shaped record for fixtureapp. */
+	function advisory(range: string, patched: string | null) {
+		return {
+			ghsa_id: ADVISORY,
+			cve_id: CVE,
+			severity: "moderate",
+			summary: `Fixture advisory ${ADVISORY}`,
+			published_at: PUBLISHED,
+			vulnerabilities: [
+				{
+					package: { ecosystem: "other", name: FIXTURE_APP },
+					vulnerable_version_range: range,
+					patched_versions: patched ?? "",
+					first_patched_version: patched,
+				},
+			],
+		};
+	}
+
+	async function sweep(page: Page, appAdvisories: unknown[]) {
+		await fixtureControl(page, "repo", {
+			repo: "fixtureowner/fixtureapp",
+			advisories: appAdvisories,
+		});
+		await runJob("AdvisoryRefreshJob");
+	}
+
+	test.beforeEach(async ({ page }) => {
+		test.skip(!(await fixtureAvailable(page)), "forge fixture not running");
+		await resetFixtureApp(page);
+		await occ("config:app:delete", "versioniq", "advisory.triage");
+		await occ("config:app:delete", "versioniq", "advisory.feed_source");
+		const forgeBase = await appConfigValue(page, "forge.forgejo.web_base");
+		test.skip(!forgeBase, "forge.forgejo.web_base is not set");
+		await occ(
+			"config:app:set",
+			"versioniq",
+			"advisory.feed_base",
+			`--value=${forgeBase}/repos/nextcloud/security-advisories/security-advisories`,
+		);
+		await fixtureControl(page, "repo", {
+			repo: "nextcloud/security-advisories",
+			releases: [],
+			advisories: [],
+		});
+	});
+
+	test.afterEach(async ({ page }) => {
+		await occ("config:app:delete", "versioniq", "advisory.feed_base");
+		await resetFixture(page);
+	});
+
+	// @e2e advisories-per-app-detail::one-affected-app-makes-the-instance-not-compliant
+	test("an affected app reads Not compliant, the badge opens its CVE list, and the fix makes it Compliant", async ({
+		page,
+	}) => {
+		await sweep(page, [advisory("< 1.0.1", "1.0.1")]);
+
+		await openSettings(page);
+		await openTab(page, "Apps");
+		await expect(page.getByTestId("advisory-compliance")).toContainText("Not compliant");
+		await expect(page.getByTestId("advisory-compliance")).toContainText("1 app runs an affected version");
+
+		const card = page
+			.locator("article")
+			.filter({ has: page.getByText(FIXTURE_APP, { exact: true }) })
+			.first();
+		await card.getByTestId("advisory-badge").click();
+		const panel = page.getByRole("tabpanel", { name: "Advisories" });
+		await expect(panel).toBeVisible();
+		const row = panel.getByTestId("advisories-app-row").filter({ hasText: FIXTURE_APP });
+		await expect(row).toBeVisible();
+		const entry = row.getByTestId("advisory-item").filter({ hasText: ADVISORY });
+		await expect(entry.getByTestId("advisory-cve")).toHaveText(CVE);
+		await expect(entry.getByTestId("advisory-date")).toHaveText(PUBLISHED.slice(0, 10));
+		await expect(entry.getByTestId("advisory-affects")).toHaveText("Affects the installed version");
+
+		// The fix, then a second sweep.
+		const installed = await installFixture(page, "1.0.1");
+		expect(installed.body.installStatus, JSON.stringify(installed.body)).toBe("installed");
+		await runJob("AdvisoryRefreshJob");
+
+		await openSettings(page);
+		await openTab(page, "Apps");
+		await expect(page.getByTestId("advisory-compliance")).toHaveText("Compliant");
+	});
+
+	// @e2e advisories-per-app-detail::no-fix-is-published-yet
+	test("an advisory without a patched version covering every release says no fix is published yet", async ({
+		page,
+	}) => {
+		await sweep(page, [advisory(">= 0.0.0", null)]);
+
+		await openSettings(page);
+		const panel = await openTab(page, "Advisories");
+		const row = panel.getByTestId("advisories-app-row").filter({ hasText: FIXTURE_APP });
+		await expect(row.getByTestId("advisory-fix")).toHaveText("No fixed version is published yet.");
+	});
+});

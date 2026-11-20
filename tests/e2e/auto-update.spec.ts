@@ -8,9 +8,13 @@ import {
 	FIXTURE_APP,
 	FIXTURE_APP2,
 	fixtureAvailable,
+	fixtureControl,
 	occ,
 	openSettings,
 	openTab,
+	resetFixture,
+	resetFixtureApp,
+	runJob,
 } from "./helpers.ts";
 
 /**
@@ -354,5 +358,87 @@ test.describe("update groups and run limits", () => {
 		const members = group.getByTestId("update-group-app").locator("span");
 		await expect(members).toHaveText(["Forge Fixture App", "Forge Fixture App Two"]);
 		await expect(reloaded.getByTestId("update-limit-run")).toHaveValue("3");
+	});
+});
+
+/**
+ * The minimum age: a release younger than the minimum age is held back, the
+ * plan job works out the next update from the versions old enough, and the
+ * overview names the held version with the day it may install.
+ *
+ * The forge fixture serves fixtureapp 1.0.1 released ten days ago and 1.1.0
+ * released two days ago; with a minimum age of seven days and level `minor`,
+ * the next update is 1.0.1 and 1.1.0 waits until five days from now.
+ *
+ * @spec openspec/changes/releases-minimum-age/specs/auto-update-policies/spec.md
+ */
+test.describe("the minimum age in the plan", () => {
+	const DAY = 24 * 60 * 60 * 1000;
+	const iso = (daysAgo: number) => new Date(Date.now() - daysAgo * DAY).toISOString().replace(/\.\d{3}Z$/, "Z");
+	const OCS = { "OCS-APIRequest": "true", "Content-Type": "application/json" };
+	const policyUrl = `/ocs/v2.php/apps/versioniq/api/app/${FIXTURE_APP}/policy?format=json`;
+
+	test.beforeEach(async ({ page }) => {
+		test.skip(!(await fixtureAvailable(page)), "forge fixture not running");
+		await resetFixtureApp(page);
+		await fixtureControl(page, "repo", {
+			repo: "fixtureowner/fixtureapp",
+			releases: [
+				{ tag: "v1.1.0", asset: "fixtureapp-1.1.0.tar.gz", sha: true, published_at: iso(2) },
+				{ tag: "v1.0.1", asset: "fixtureapp-1.0.1.tar.gz", sha: true, published_at: iso(10) },
+				{ tag: "v1.0.0", asset: "fixtureapp-1.0.0.tar.gz", sha: true, published_at: iso(30) },
+			],
+		});
+		await occ("config:app:set", "versioniq", "auto_update_min_age_days", "--value", "7");
+		const res = await page.request.put(policyUrl, { headers: OCS, data: { level: "minor" } });
+		expect(res.ok(), "the minor policy is saved").toBe(true);
+	});
+
+	test.afterEach(async ({ page }) => {
+		await page.request.delete(policyUrl, { headers: OCS }).catch(() => undefined);
+		await occ("config:app:delete", "versioniq", "auto_update_min_age_days");
+		await occ("config:app:delete", "versioniq", "autoupdate.plan");
+		await occ("config:app:delete", "versioniq", "autoupdate.plan.checkedAt");
+		await resetFixture(page);
+	});
+
+	// @e2e releases-minimum-age::the-overview-names-the-held-version-and-its-date
+	test("after the plan job, the overview shows the next update and the held version with its date", async ({
+		page,
+	}) => {
+		await runJob("AutoUpdatePlanJob");
+
+		const res = await page.request.get("/ocs/v2.php/apps/versioniq/api/policies?format=json", { headers: OCS });
+		expect(res.ok()).toBe(true);
+		const data = (await res.json())?.ocs?.data;
+		expect(data.planCheckedAt, "the plan job recorded when it ran").toBeTruthy();
+		const entry = (data.policies ?? []).find((p: any) => p.appId === FIXTURE_APP);
+		expect(entry?.plan, JSON.stringify(entry)).toBeTruthy();
+		expect(entry.plan.next).toBe("1.0.1");
+		const held = (entry.plan.heldBack ?? []).find((h: any) => h.version === "1.1.0");
+		expect(held, JSON.stringify(entry.plan)).toBeTruthy();
+		// Eligible seven days after its release, so five days from now (give or take the clock).
+		const eligibleIn = new Date(held.eligibleAt).getTime() - Date.now();
+		expect(eligibleIn).toBeGreaterThan(4 * DAY);
+		expect(eligibleIn).toBeLessThan(6 * DAY);
+
+		await openSettings(page);
+		await openTab(page, "Apps");
+		// The row shows the app's name when the page knows it, else its id.
+		const row = page
+			.getByTestId("overview-scheduled-row")
+			.filter({ hasText: /Forge Fixture App(?! Two)|fixtureapp(?!2)/ });
+		await expect(row.getByTestId("overview-next")).toHaveText("Next update: 1.0.1");
+		const date = await page.evaluate((at) => new Date(at).toLocaleDateString(), held.eligibleAt);
+		await expect(row.getByTestId("overview-held-back")).toContainText(
+			`1.1.0 held back until ${date} (minimum age 7 days)`,
+		);
+		await expect(row.getByTestId("overview-held-back").getByRole("button", { name: "Release now" })).toBeVisible();
+		await expect(page.getByTestId("overview-plan-checked")).toContainText("Next updates worked out at");
+	});
+
+	test("the plan job changes no version", async () => {
+		await runJob("AutoUpdatePlanJob");
+		expect((await occ("config:app:get", FIXTURE_APP, "installed_version")).trim()).toBe("1.0.0");
 	});
 });

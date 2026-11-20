@@ -20,6 +20,7 @@
 - [x] 4.1 Add `src/components/UpdateChecksPanel.vue` to the Settings tab and the check results to `src/components/InstallResultNotices.vue`. Verify: `src/components/UpdateChecksPanel.spec.ts` covers adding, editing and the read-only command list; `src/components/InstallResultNotices.spec.ts` covers passed, failed and skipped checks.
 - [x] 4.2 Add the new strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
 - [ ] 4.3 Extend `tests/e2e/version-management.spec.ts`: add a verdict route to `tests/e2e/fixtures/forge/server.mjs` that answers 404 for one version and 200 for another, store a verdict check pointing at it with `occ config:app:set versioniq update_checks` (the form accepts https only; `tests/e2e/fixtures/forge/bootstrap.sh` sets the http forge addresses the same way), and assert both dry-run results in the picker.
+  - Written: the "update checks in the dry run" block in `tests/e2e/version-management.spec.ts` (a `/verdicts/{appId}/{version}` route on the fixture forge (200 for 1.0.1, 404 otherwise, switchable through `/control/verdicts`) and both dry-run results in the picker); waits for the Playwright job.
 
 ## 5. Close
 
