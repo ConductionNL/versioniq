@@ -174,13 +174,26 @@ final class InstallerServiceAppListGoldenTest extends TestCase {
 	}
 
 	/**
+	 * App config in which the recheck found qfgamma's certificate revoked
+	 * (safety-withdrawn-and-revoked D2), so its card says `certificateRevoked`.
+	 */
+	private function appConfig(): IAppConfig {
+		$config = $this->createMock(IAppConfig::class);
+		$config->method('getValueString')->willReturnCallback(
+			static fn (string $app, string $key, string $default = ''): string => $key === 'revoked.qfgamma' ? '2A' : $default,
+		);
+
+		return $config;
+	}
+
+	/**
 	 * @param array<string, mixed> $case
 	 */
 	private function service(array $case): InstallerService {
 		$service = $this->buildByName(InstallerService::class, [
 			'appManager' => $this->appManager($case),
 			'config' => $this->createMock(IConfig::class),
-			'appConfig' => $this->createMock(IAppConfig::class),
+			'appConfig' => $this->appConfig(),
 			'sourceRegistry' => $this->createMock(SourceRegistry::class),
 			'bindingStore' => $this->bindingStore($case),
 			'trustedSources' => $this->createMock(TrustedSourceList::class),

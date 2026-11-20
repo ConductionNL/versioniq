@@ -1066,7 +1066,18 @@ OC.L10N.register(
         "_{count} instance_::_{count} instances_": ["{count} omgeving","{count} omgevingen"],
         "{installs} on {instances}": "{installs} op {instances}",
         "_{count} failed install_::_{count} failed installs_": ["{count} mislukte installatie","{count} mislukte installaties"],
-        "Not counted, could not be read: {instances}": "Niet meegeteld, kon niet worden gelezen: {instances}"
+        "Not counted, could not be read: {instances}": "Niet meegeteld, kon niet worden gelezen: {instances}",
+        "Use a dedicated admin account on that instance and an app password for it. The password is stored encrypted and is only used to read that instance's app versions.": "Gebruik een apart beheerdersaccount op die omgeving en een app-wachtwoord daarvoor. Het wachtwoord wordt versleuteld opgeslagen en alleen gebruikt om de appversies van die omgeving te lezen.",
+        "Revoked certificates": "Ingetrokken certificaten",
+        "Address of the code signing revocation list": "Adres van de intrekkingslijst voor code-ondertekening",
+        "A newer list is used only when Nextcloud signed it. Leave the address empty to check only against the list this server shipped with.": "Een nieuwere lijst wordt alleen gebruikt als Nextcloud hem heeft ondertekend. Laat het adres leeg om alleen te controleren met de lijst die met deze server is meegeleverd.",
+        "Disable an app automatically when Nextcloud revokes its signing certificate": "Een app automatisch uitschakelen als Nextcloud zijn ondertekeningscertificaat intrekt",
+        "Every admin is notified either way. The app can be enabled again on its card.": "Elke beheerder krijgt hoe dan ook een melding. Je kunt de app op zijn kaart weer inschakelen.",
+        "Nextcloud revoked the signing certificate of this app. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.": "Nextcloud heeft het ondertekeningscertificaat van deze app ingetrokken. Nextcloud trekt een certificaat in om een app terug te trekken waarvan het weet dat hij gecompromitteerd of kwaadaardig is.",
+        "Certificate revoked": "Certificaat ingetrokken",
+        "Version withdrawn by the publisher": "Versie teruggetrokken door de uitgever",
+        "Certificate revoked: %s": "Certificaat ingetrokken: %s",
+        "%s was disabled automatically.": "%s is automatisch uitgeschakeld."
     },
     "nplurals=2; plural=(n != 1);"
 )

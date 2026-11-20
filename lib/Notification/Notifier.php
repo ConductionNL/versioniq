@@ -60,6 +60,7 @@ class Notifier implements INotifier {
 	 * @spec openspec/changes/install-force-incompatible/specs/version-management/spec.md
 	 * @spec openspec/changes/releases-new-release-alerts/specs/release-alerts/spec.md#requirement-admins-are-notified-of-new-releases-in-the-scope-they-choose
 	 * @spec openspec/changes/advisories-triage/specs/security-advisory-correlation/spec.md#requirement-an-admin-assigns-an-advisory-to-an-owner
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
 	 */
 	public function prepare(INotification $notification, string $languageCode): INotification {
 		if ($notification->getApp() !== Application::APP_ID) {
@@ -86,6 +87,8 @@ class Notifier implements INotifier {
 			'server_eol' => $this->renderServerEol(...),
 			'new_release' => $this->renderNewRelease(...),
 			'advisory_assigned' => $this->renderAdvisoryAssigned(...),
+			// Sent by RevokedAppResponder (safety-withdrawn-and-revoked).
+			'certificate_revoked' => $this->renderCertificateRevoked(...),
 			default => throw new UnknownNotificationException(),
 		};
 		$render($notification, $l);
@@ -177,7 +180,7 @@ class Notifier implements INotifier {
 	 * An app an update left disabled: whether it runs on this server, and
 	 * the newest version that does when one is known.
 	 *
-	 * @spec openspec/changes/audit-external-changes
+	 * @spec openspec/changes/archive/2026-11-17-audit-external-changes
 	 */
 	private function renderAppLeftDisabled(INotification $notification, IL10N $l): void {
 		$app = $this->stringParameter($notification, 'app');
@@ -367,6 +370,24 @@ class Notifier implements INotifier {
 					? $l->t('%1$s assigned advisory %2$s for the Nextcloud server to you. Review it on the Versioniq Advisories tab.', [$by, $advisory])
 					: $l->t('%1$s assigned advisory %2$s for %3$s to you. Review it on the Versioniq Advisories tab.', [$by, $advisory, $app])
 			);
+	}
+
+	/**
+	 * `certificate_revoked`: names the app, says what a revoked certificate
+	 * means in the wording of design D4, and whether the app was disabled.
+	 *
+	 * @spec openspec/changes/safety-withdrawn-and-revoked/specs/withdrawn-and-revoked/spec.md#requirement-installed-apps-are-rechecked-against-a-current-revocation-list
+	 */
+	private function renderCertificateRevoked(INotification $notification, IL10N $l): void {
+		$app = $this->stringParameter($notification, 'app');
+		$message = $l->t('Nextcloud revoked the signing certificate of this app. Nextcloud revokes a certificate to withdraw an app it knows to be compromised or malicious.');
+		if ($this->stringParameter($notification, 'disabled') === '1') {
+			$message .= ' ' . $l->t('%s was disabled automatically.', [$app]);
+		}
+
+		$notification
+			->setParsedSubject($l->t('Certificate revoked: %s', [$app]))
+			->setParsedMessage($message);
 	}
 
 	/**
