@@ -722,7 +722,7 @@ const leftDisabled = ref<Record<string, LeftDisabled>>({})
  * left it so, the installed version runs on this server.
  *
  * @param app The card's app.
- * @spec openspec/changes/audit-external-changes
+ * @spec openspec/changes/archive/2026-11-17-audit-external-changes
  */
 function offersEnable (app: AppOption): boolean {
 	return app.state === 'disabled' && leftDisabled.value[app.id]?.compatible !== false
