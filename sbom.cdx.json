@@ -519,7 +519,6 @@
       "group": "@isaacs",
       "version": "1.1.0",
       "bom-ref": "versioniq@1.0.0|@isaacs/nonrecursive-glob-match@1.1.0",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -542,6 +541,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@isaacs/nonrecursive-glob-match"
