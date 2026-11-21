@@ -30,7 +30,7 @@
     "@nextcloud/stylelint-config": "^3.2.2",
     "@nextcloud/vite-config": "^3.0.0-beta.1",
     "@playwright/test": "^1.62.1",
-    "@typescript-eslint/parser": "^8.71.0",
+    "@typescript-eslint/parser": "^8.73.0",
     "@vitejs/plugin-vue": "^6.0.9",
     "@vue/test-utils": "^2.5.1",
     "@vue/tsconfig": "^0.8.1",
