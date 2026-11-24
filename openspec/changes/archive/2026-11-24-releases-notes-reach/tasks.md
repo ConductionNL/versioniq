@@ -17,4 +17,5 @@
 
 ## 3. Close
 
-- [ ] 3.1 Set the matrix rows `rel-user-whats-new` and `rel-notes-language` to `built` with evidence lines, then archive this change.
+- [x] 3.1 Set the matrix rows `rel-user-whats-new` and `rel-notes-language` to `built` with evidence lines, then archive this change.
+  - Done: matrix rows set to `built` with evidence lines (code paths on development) and requirement references pointed at `openspec/specs`; specs synced and the change archived. The e2e specs are written and run in the nightly; not yet verified on a live run.

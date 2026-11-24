@@ -1035,16 +1035,16 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "specified",
-				"evidence": "looked in lib/Service, lib/Controller/ApiController.php (single-instance only)",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/Instance/InstanceConnectionStore.php, lib/Service/Instance/RemoteInstanceReader.php, lib/Controller/InstanceController.php, lib/Command/ListInstances.php, src/components/InstancesPanel.vue",
+				"reachedOn": "Instances tab; occ versioniq:instances",
 				"owner": "ConductionNL/versioniq",
 				"change": "install-multi-instance-promotion",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
 				},
-				"requirement": "openspec/changes/install-multi-instance-promotion/specs/multi-instance :: The Instances tab shows every instance's versions side by side"
+				"requirement": "openspec/specs/multi-instance :: The Instances tab shows every instance's versions side by side"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1472,16 +1472,16 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/AutoUpdate/CandidateSelector.php:46-64 (no age criterion)",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/AutoUpdate/MinimumAgeRule.php, lib/Service/AutoUpdate/FirstSeenStore.php, lib/Service/AutoUpdate/MinimumAgePlanner.php, src/components/PolicySelector.vue",
+				"reachedOn": "Auto-updates tab (policy minimum age); background job AutoUpdateJob",
 				"owner": "ConductionNL/versioniq",
 				"change": "releases-minimum-age",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
 				},
-				"requirement": "openspec/changes/releases-minimum-age/specs/auto-update-policies :: The nightly job waits until a release is old enough"
+				"requirement": "openspec/specs/auto-update-policies :: The nightly job waits until a release is old enough"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1580,16 +1580,16 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Notification/Notifier.php:63-154 (subjects: pinned_to_vulnerable, pat_*, pin_drift, auto_update_*)",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/ReleaseAlert/ReleaseEventDetector.php, lib/Service/ReleaseAlert/FollowList.php, lib/Service/ReleaseAlert/ReleaseNotifier.php, src/components/AlertsPanel.vue",
+				"reachedOn": "Nextcloud notifications; Settings tab (Alerts)",
 				"owner": "ConductionNL/versioniq",
 				"change": "releases-new-release-alerts",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
 				},
-				"requirement": "openspec/changes/releases-new-release-alerts/specs/release-alerts :: Admins are notified of new releases in the scope they choose"
+				"requirement": "openspec/specs/release-alerts :: Admins are notified of new releases in the scope they choose"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -1616,9 +1616,9 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "looked in lib/Controller/ApiController.php routes (no feed or webhook)",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/ReleaseAlert/ReleaseFeed.php, lib/Controller/FeedController.php (RSS feed), lib/Service/Alert/AlertDispatcher.php",
+				"reachedOn": "Settings tab (Alerts, feed address)",
 				"owner": "ConductionNL/versioniq",
 				"change": "releases-new-release-alerts",
 				"screen": {
@@ -1626,8 +1626,8 @@
 					"board": "VqInstellingen"
 				},
 				"requirement": [
-					"openspec/changes/releases-new-release-alerts/specs/release-alerts :: New releases are available as an RSS feed for admins",
-					"openspec/changes/releases-new-release-alerts/specs/alert-webhooks :: Every Versioniq alert is delivered to matching targets in the background"
+					"openspec/specs/release-alerts :: New releases are available as an RSS feed for admins",
+					"openspec/specs/alert-webhooks :: Every Versioniq alert is delivered to matching targets in the background"
 				]
 			},
 			"provider": "versioniq",
@@ -1656,16 +1656,16 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "notifications go to admins only (lib/Service/Advisory/AdvisoryDigestNotifier.php:114, lib/Service/Pin/PinDriftHandler.php:90); no user-facing changelog notice",
-				"reachedOn": "nothing in versioniq; whether the platform's app_updated notice fires after a versioniq install was not checked",
+				"state": "built",
+				"evidence": "lib/Service/InstallerService.php:2115 (dispatchUpdateEvent: AppUpdateEvent after a real version change, behind notify_users_on_update), src/components/InstanceSettingsPanel.vue (switch), tests/e2e/whats-new.spec.ts",
+				"reachedOn": "Nextcloud notifications for the app's users after an update; Settings tab switch",
 				"owner": "ConductionNL/versioniq",
 				"change": "releases-notes-reach",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
 				},
-				"requirement": "openspec/changes/releases-notes-reach/specs/changelog-visibility :: Users hear what changed after an update through Versioniq"
+				"requirement": "openspec/specs/changelog-visibility :: Users hear what changed after an update through Versioniq"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2195,16 +2195,16 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Controller/ApiController.php (no upload route), lib/Controller/ApiController.php:256 (source kinds appstore and github-release only)",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/Installer/UploadedArchive.php (info.xml read, SHA-256, one-hour expiry), lib/Controller/UploadController.php (inspect and install), src/dialogs/UploadInstallDialog.vue",
+				"reachedOn": "Apps tab (Install from file dialog)",
 				"owner": "ConductionNL/versioniq",
 				"change": "install-manual-upload",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqOntdekken"
 				},
-				"requirement": "openspec/changes/install-manual-upload/specs/external-sources :: An admin installs a version from an uploaded archive"
+				"requirement": "openspec/specs/external-sources :: An admin installs a version from an uploaded archive"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2231,16 +2231,16 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "specified",
-				"evidence": "src/App.vue:2377, src/App.vue:2417, src/App.vue:2421",
-				"reachedOn": "Apps tab (install button and result panel)",
+				"state": "built",
+				"evidence": "lib/Service/Installer/InstallProgress.php (stage and download progress), src/components/InstallProgress.vue",
+				"reachedOn": "Apps tab (install button, live progress while it runs); occ versioniq:install",
 				"owner": "ConductionNL/versioniq",
 				"change": "install-live-progress",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstalleren"
 				},
-				"requirement": "openspec/changes/install-live-progress/specs/version-management :: An admin sees each stage of an install while it runs"
+				"requirement": "openspec/specs/version-management :: An admin sees each stage of an install while it runs"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2303,16 +2303,16 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "looked in src/App.vue and lib/Controller/ApiController.php (single-app install only)",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/Snapshot/SnapshotStore.php, lib/Service/Snapshot/RollbackPlanner.php, lib/Controller/SnapshotController.php, lib/Command/RollbackToSnapshot.php, src/components/RollbackPanel.vue, src/dialogs/RollbackPlanDialog.vue",
+				"reachedOn": "Apps tab (Roll back panel and plan dialog); occ versioniq:rollback",
 				"owner": "ConductionNL/versioniq",
 				"change": "install-bulk-rollback",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
 				},
-				"requirement": "openspec/changes/install-bulk-rollback/specs/migration-safety :: An admin rolls several apps back to a snapshot or a date"
+				"requirement": "openspec/specs/migration-safety :: An admin rolls several apps back to a snapshot or a date"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2378,16 +2378,16 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/ExternalReleaseInstallerService.php:583, lib/Service/SelectedReleaseInstallerService.php:334",
-				"reachedOn": "Apps tab install flow honours an existing override; nothing in versioniq sets one",
+				"state": "built",
+				"evidence": "lib/Service/Installer/ForceOverrideStore.php, lib/BackgroundJob/ForceOverrideReconcileJob.php (override lifted at the next major), lib/Command/InstallVersion.php (--force-incompatible), src/dialogs/ForceIncompatibleDialog.vue",
+				"reachedOn": "Apps tab (version picker, Force past compatibility dialog); occ versioniq:install --force-incompatible",
 				"owner": "ConductionNL/versioniq",
 				"change": "install-force-incompatible",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
 				},
-				"requirement": "openspec/changes/install-force-incompatible/specs/version-management :: An admin forces a version past its declared maximum, and Versioniq lifts it at the next major"
+				"requirement": "openspec/specs/version-management :: An admin forces a version past its declared maximum, and Versioniq lifts it at the next major"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -2843,9 +2843,9 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "specified",
-				"evidence": "src/App.vue:2001, lib/Service/InstallerService.php:347, lib/Service/SelectedReleaseInstallerService.php:316, lib/Service/SelectedReleaseInstallerService.php:696",
-				"reachedOn": "Apps tab ('Dry run' toggle); occ versioniq:install ,dry-run",
+				"state": "built",
+				"evidence": "lib/Service/Checks/CheckRunner.php, lib/Service/Checks/CommandCheck.php, lib/Service/Checks/HttpVerdictCheck.php, lib/Service/Checks/CheckStore.php, src/components/UpdateChecksPanel.vue, src/components/InstallResultNotices.vue",
+				"reachedOn": "Settings tab (Update checks); Apps tab install result; occ versioniq:install",
 				"owner": "ConductionNL/versioniq",
 				"change": "safety-update-checks",
 				"screen": {
@@ -2853,8 +2853,8 @@
 					"board": "VqInstalleren"
 				},
 				"requirement": [
-					"openspec/changes/safety-update-checks/specs/update-checks :: A dry run validates the package like a real install",
-					"openspec/changes/safety-update-checks/specs/update-checks :: Admins and operators attach checks that every dry run runs"
+					"openspec/specs/update-checks :: A dry run validates the package like a real install",
+					"openspec/specs/update-checks :: Admins and operators attach checks that every dry run runs"
 				]
 			},
 			"provider": "versioniq",
@@ -3025,16 +3025,16 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/Installer/MigrationDiffer.php:31, lib/Service/SelectedReleaseInstallerService.php:650, src/utils/migrationSafety.ts:49",
-				"reachedOn": "Apps tab, downgrade confirm dialog (dry run)",
+				"state": "built",
+				"evidence": "lib/Service/Installer/MigrationPreview.php, lib/Service/Installer/MigrationAttributeReader.php, lib/Service/Installer/TableSizeProbe.php, src/components/MigrationPreviewPanel.vue, lib/Command/InstallVersion.php:181",
+				"reachedOn": "Apps tab (dry run of an upgrade, migration preview); occ versioniq:install --dry-run",
 				"owner": "ConductionNL/versioniq",
 				"change": "safety-upgrade-migration-preview",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqVersieTerugzetten"
 				},
-				"requirement": "openspec/changes/safety-upgrade-migration-preview/specs/migration-safety :: A dry run of an upgrade previews the database changes"
+				"requirement": "openspec/specs/migration-safety :: A dry run of an upgrade previews the database changes"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4019,8 +4019,8 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:155, lib/Service/InstallerService.php:333",
+				"state": "built",
+				"evidence": "lib/BackgroundJob/AutoUpdateJob.php (installs only after the attached checks pass), lib/Service/Checks/CheckRunner.php",
 				"reachedOn": "background job AutoUpdateJob",
 				"owner": "ConductionNL/versioniq",
 				"change": "safety-update-checks",
@@ -4028,7 +4028,7 @@
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
 				},
-				"requirement": "openspec/changes/safety-update-checks/specs/auto-update-policies :: The nightly job installs only after the attached checks pass"
+				"requirement": "openspec/specs/auto-update-policies :: The nightly job installs only after the attached checks pass"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6980,16 +6980,16 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "specified",
-				"evidence": "grep webhook in lib and src: no hits",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/Alert/WebhookTargetStore.php, lib/Service/Alert/WebhookSender.php, lib/BackgroundJob/WebhookDeliveryJob.php, lib/Controller/AlertController.php, src/components/AlertsPanel.vue",
+				"reachedOn": "Settings tab (Alerts, webhook targets)",
 				"owner": "ConductionNL/versioniq",
 				"change": "releases-new-release-alerts",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqInstellingen"
 				},
-				"requirement": "openspec/changes/releases-new-release-alerts/specs/alert-webhooks :: An admin manages webhook targets"
+				"requirement": "openspec/specs/alert-webhooks :: An admin manages webhook targets"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7345,16 +7345,16 @@
 			"osv-scanner": "yes",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "no MCP server or assistant integration under lib/ or src/",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Mcp/VersioniqToolProvider.php (read-only assistant tools registered with OpenRegister's MCP server), tests/e2e/mcp.spec.ts",
+				"reachedOn": "OpenRegister MCP endpoint, for an admin's AI assistant",
 				"owner": "ConductionNL/versioniq",
 				"change": "admin-mcp-assistant",
 				"screen": {
 					"board": null,
 					"reason": "Runs through an MCP server for an external AI assistant; it has no screen in Versioniq."
 				},
-				"requirement": "openspec/changes/admin-mcp-assistant/specs/assistant-tools :: Versioniq publishes read-only assistant tools for admins"
+				"requirement": "openspec/specs/assistant-tools :: Versioniq publishes read-only assistant tools for admins"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7638,16 +7638,16 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/AutoUpdate/CandidateSelector.php:46-64 (no age criterion), src/App.vue:2194 (policy badge only)",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/AutoUpdate/MinimumAgePlanner.php (eligibleAt per held release), lib/Service/AutoUpdate/AutoUpdatePlanStore.php, src/components/AutoUpdateOverview.vue",
+				"reachedOn": "Auto-updates tab (held back list) and Apps tab card",
 				"owner": "ConductionNL/versioniq",
 				"change": "releases-minimum-age",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
 				},
-				"requirement": "openspec/changes/releases-minimum-age/specs/auto-update-policies :: An admin sees what is held back and when it becomes eligible"
+				"requirement": "openspec/specs/auto-update-policies :: An admin sees what is held back and when it becomes eligible"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7676,16 +7676,16 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/AutoUpdate/CandidateSelector.php:46-64",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/AutoUpdate/MinAgeExceptionStore.php, lib/Controller/MinAgeExceptionController.php, src/components/AutoUpdateOverview.vue (exception per held version)",
+				"reachedOn": "Auto-updates tab (held back list, release one version early)",
 				"owner": "ConductionNL/versioniq",
 				"change": "releases-minimum-age",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
 				},
-				"requirement": "openspec/changes/releases-minimum-age/specs/auto-update-policies :: An admin releases one held version early, and the exception clears itself"
+				"requirement": "openspec/specs/auto-update-policies :: An admin releases one held version early, and the exception clears itself"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7810,16 +7810,16 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/AutoUpdate/CandidateSelector.php:46-64, lib/BackgroundJob/AutoUpdateJob.php:90",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/AutoUpdate/MinimumAgePlanner.php (securityBypass when an advisory names the installed version), lib/BackgroundJob/AutoUpdateJob.php",
+				"reachedOn": "background job AutoUpdateJob; Auto-updates tab",
 				"owner": "ConductionNL/versioniq",
 				"change": "releases-minimum-age",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
 				},
-				"requirement": "openspec/changes/releases-minimum-age/specs/auto-update-policies :: A security fix skips the minimum age"
+				"requirement": "openspec/specs/auto-update-policies :: A security fix skips the minimum age"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -8373,16 +8373,16 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "looked in lib/Service and lib/Controller/ApiController.php (single instance only)",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/Instance/ManifestBuilder.php, lib/Service/Instance/PromotionService.php (installs the exact package the earlier stage runs), lib/Command/PromoteVersion.php, src/dialogs/PromoteDialog.vue",
+				"reachedOn": "Instances tab (Promote dialog); occ versioniq:promote",
 				"owner": "ConductionNL/versioniq",
 				"change": "install-multi-instance-promotion",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
 				},
-				"requirement": "openspec/changes/install-multi-instance-promotion/specs/multi-instance :: An admin promotes the exact package an earlier stage runs"
+				"requirement": "openspec/specs/multi-instance :: An admin promotes the exact package an earlier stage runs"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -8449,16 +8449,16 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/Source/AppStoreSource.php:644, lib/Service/Source/AppStoreSource.php:646, src/components/VersionChangelog.vue:18, src/App.vue:2360",
-				"reachedOn": "Apps tab (app detail, Versions, release notes disclosure)",
+				"state": "built",
+				"evidence": "lib/Service/Release/NotesTranslator.php, lib/Controller/ChangelogController.php, src/components/VersionChangelog.vue",
+				"reachedOn": "Apps tab (app detail, Versions, release notes disclosure, Translate)",
 				"owner": "ConductionNL/versioniq",
 				"change": "releases-notes-reach",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
 				},
-				"requirement": "openspec/changes/releases-notes-reach/specs/changelog-visibility :: An admin translates release notes into their language"
+				"requirement": "openspec/specs/changelog-visibility :: An admin translates release notes into their language"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
