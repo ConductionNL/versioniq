@@ -3808,8 +3808,8 @@
 					"drawn": "redrawn to the spec in design-system #1180 (decision 405): weekdays per kind of update, no cron expression, one window"
 				},
 				"requirement": [
-					"openspec/changes/autoupdate-schedules/specs/auto-update-policies :: Global kill switch and window [MVP]",
-					"openspec/changes/autoupdate-schedules/specs/auto-update-policies :: Each kind of update has its own schedule"
+					"openspec/specs/auto-update-policies :: Global kill switch and window [MVP]",
+					"openspec/specs/auto-update-policies :: Each kind of update has its own schedule"
 				]
 			},
 			"provider": "versioniq",
@@ -3911,16 +3911,16 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:90 (one install per app, no batch)",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/AutoUpdate/UpdateGroupStore.php, lib/Service/AutoUpdate/AutoUpdateGroups.php, lib/Service/AutoUpdate/UpdateGroup.php, src/components/UpdateGroupsPanel.vue",
+				"reachedOn": "Auto-updates tab (Update groups)",
 				"owner": "ConductionNL/versioniq",
 				"change": "autoupdate-run-batching",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
 				},
-				"requirement": "openspec/changes/autoupdate-run-batching/specs/auto-update-policies :: Apps in an update group are updated together or not at all"
+				"requirement": "openspec/specs/auto-update-policies :: Apps in an update group are updated together or not at all"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3947,16 +3947,16 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/AutoUpdate/CandidateSelector.php:46 (semver bound only, no advisory input), lib/Service/Policy/Policy.php:34",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/AutoUpdate/SecurityCandidate.php, lib/Service/AutoUpdate/SecurityHoldStore.php, lib/Service/AutoUpdate/CandidateSelector.php, src/components/PolicySelector.vue:90 (Security fixes only)",
+				"reachedOn": "Apps tab and Auto-updates tab (policy Security fixes only); background job AutoUpdateJob",
 				"owner": "ConductionNL/versioniq",
 				"change": "autoupdate-security-first",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
 				},
-				"requirement": "openspec/changes/autoupdate-security-first/specs/auto-update-policies :: The security level installs only advisory fixes, in the window"
+				"requirement": "openspec/specs/auto-update-policies :: The security level installs only advisory fixes, in the window"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -3983,16 +3983,16 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "specified",
-				"evidence": "grep approv in lib and src: no hits; lib/BackgroundJob/AutoUpdateJob.php:151 installs directly",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/AutoUpdate/ProposalService.php, lib/Service/AutoUpdate/ProposalStore.php, lib/Controller/ProposalController.php (approve and decline), src/components/ProposedUpdatesPanel.vue",
+				"reachedOn": "Auto-updates tab (Proposed updates)",
 				"owner": "ConductionNL/versioniq",
 				"change": "autoupdate-proposed-updates",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
 				},
-				"requirement": "openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies :: An admin can require approval, or decline a version, before an automatic update installs"
+				"requirement": "openspec/specs/auto-update-policies :: An admin can require approval, or decline a version, before an automatic update installs"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4055,16 +4055,16 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:90 (every policy app processed each run)",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/AutoUpdate/AutoUpdateLimiter.php (per-run and weekly limits per app and group), lib/BackgroundJob/AutoUpdateJob.php, src/components/UpdateGroupsPanel.vue",
+				"reachedOn": "Auto-updates tab (Update groups and limits); background job AutoUpdateJob",
 				"owner": "ConductionNL/versioniq",
 				"change": "autoupdate-run-batching",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
 				},
-				"requirement": "openspec/changes/autoupdate-run-batching/specs/auto-update-policies :: An admin limits how many automatic updates run"
+				"requirement": "openspec/specs/auto-update-policies :: An admin limits how many automatic updates run"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4371,7 +4371,7 @@
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
 				},
-				"requirement": "openspec/changes/autoupdate-schedules/specs/auto-update-policies :: Each kind of update has its own schedule"
+				"requirement": "openspec/specs/auto-update-policies :: Each kind of update has its own schedule"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4571,16 +4571,16 @@
 			"osv-scanner": "yes",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/Advisory/AdvisoryService.php:81 (only NextcloudAdvisoryFeed and source advisories), grep osv: no hits",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/Advisory/OsvClient.php (OSV querybatch and vulnerability details), lib/BackgroundJob/LibraryAdvisoryJob.php, lib/Settings/connections.json (osv row)",
+				"reachedOn": "Advisories tab (bundled libraries per app); Settings tab (library check switch)",
 				"owner": "ConductionNL/versioniq",
 				"change": "advisories-bundled-libraries",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
 				},
-				"requirement": "openspec/changes/advisories-bundled-libraries/specs/security-advisory-correlation :: Libraries bundled inside installed apps are checked against OSV"
+				"requirement": "openspec/specs/security-advisory-correlation :: Libraries bundled inside installed apps are checked against OSV"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4827,16 +4827,16 @@
 			"osv-scanner": "yes",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "grep dismiss in src: only discover provider errors (src/components/DiscoverPanel.vue:111); lib/Service/Advisory/AdvisoryNotifier.php:36 stores notified keys, not dismissals",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/Advisory/AdvisoryTriageService.php, lib/Service/Advisory/AdvisoryTriageStore.php, lib/Controller/AdvisoryTriageController.php (POST /api/advisory-triage/dismiss), src/dialogs/DismissAdvisoryDialog.vue, src/components/DismissedAdvisories.vue",
+				"reachedOn": "Advisories tab (Dismiss with a reason, Dismissed list)",
 				"owner": "ConductionNL/versioniq",
 				"change": "advisories-triage",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
 				},
-				"requirement": "openspec/changes/advisories-triage/specs/security-advisory-correlation :: An admin dismisses an advisory with a recorded reason"
+				"requirement": "openspec/specs/security-advisory-correlation :: An admin dismisses an advisory with a recorded reason"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -4902,16 +4902,16 @@
 			"osv-scanner": "yes",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/Advisory/AdvisoryPackageMap.php:86 (maps packages to app ids or the server only)",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/Advisory/BundledLibraryScanner.php (vendor/composer/installed.json per app), lib/Service/Advisory/LibraryAdvisorySweep.php, lib/Service/Advisory/LibraryAdvisoryStore.php, src/components/BundledLibrariesSection.vue",
+				"reachedOn": "Advisories tab (bundled libraries per app) and Apps tab card badge",
 				"owner": "ConductionNL/versioniq",
 				"change": "advisories-bundled-libraries",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
 				},
-				"requirement": "openspec/changes/advisories-bundled-libraries/specs/security-advisory-correlation :: Libraries bundled inside installed apps are checked against OSV"
+				"requirement": "openspec/specs/security-advisory-correlation :: Libraries bundled inside installed apps are checked against OSV"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5174,16 +5174,16 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "grep ncsc in lib and src: no hits",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/Advisory/NcscAdvisoryFeed.php, lib/Service/Advisory/CsafProductMatcher.php, lib/Service/Advisory/VersRange.php, lib/Service/Advisory/NcscCorrelation.php, lib/Settings/connections.json (ncsc row)",
+				"reachedOn": "Advisories tab (NCSC advisories matched to installed software)",
 				"owner": "ConductionNL/versioniq",
 				"change": "advisories-ncsc-feed",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
 				},
-				"requirement": "openspec/changes/advisories-ncsc-feed/specs/security-advisory-correlation :: NCSC-NL advisories are matched to the installed server and apps"
+				"requirement": "openspec/specs/security-advisory-correlation :: NCSC-NL advisories are matched to the installed server and apps"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5212,16 +5212,16 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/Advisory/AdvisoryService.php:293, src/App.vue:2159",
-				"reachedOn": "Apps tab, Advisory badge tooltip",
+				"state": "built",
+				"evidence": "lib/Service/Advisory/AdvisoryService.php (history per row, newest first, with CVE ids, dates and links), src/components/AdvisoriesPanel.vue (five most recent), lib/Command/ListAdvisories.php",
+				"reachedOn": "Advisories tab (per-app list); occ versioniq:advisories",
 				"owner": "ConductionNL/versioniq",
 				"change": "advisories-per-app-detail",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAppVersies"
 				},
-				"requirement": "openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation :: Each product lists its recent advisories with CVE ids and dates"
+				"requirement": "openspec/specs/security-advisory-correlation :: Each product lists its recent advisories with CVE ids and dates"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5408,16 +5408,16 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/Advisory/AdvisoryService.php:304, lib/Service/Advisory/AdvisoryService.php:295",
-				"reachedOn": "Apps tab vulnerable badge",
+				"state": "built",
+				"evidence": "lib/Service/Advisory/FixStatus.php (installable, no_fix_published, not_in_source, needs_newer_server; heldByPin), src/components/AdvisoriesPanel.vue (fix sentence)",
+				"reachedOn": "Advisories tab (per-app list, fix sentence)",
 				"owner": "ConductionNL/versioniq",
 				"change": "advisories-per-app-detail",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
 				},
-				"requirement": "openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation :: An affected version without an installable fix says why"
+				"requirement": "openspec/specs/security-advisory-correlation :: An affected version without an installable fix says why"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -5477,8 +5477,8 @@
 			"easy-updates-manager": "partial",
 			"built": {
 				"state": "built",
-				"evidence": "lib/BackgroundJob/CertificateRecheckJob.php:30 with lib/Service/Safety/InstalledCertificateCheck.php:33 (certificate_revoked notification for an installed app), lib/Service/Advisory/LibraryAdvisorySweep.php with lib/Service/Advisory/OsvClient.php (OSV findings, including malicious-package entries, for bundled libraries)",
-				"reachedOn": "admin notifications; Apps tab card badge; Advisories tab (bundled libraries)",
+				"evidence": "lib/BackgroundJob/CertificateRecheckJob.php:30 with lib/Service/Safety/InstalledCertificateCheck.php:33 (certificate_revoked notification for an installed app), lib/Service/Advisory/LibraryAdvisorySweep.php with lib/Service/Advisory/OsvClient.php (OSV findings, including malicious-package entries, for bundled libraries); lib/Service/Advisory/OsvClient.php (OSV MAL- records marked as a known malicious package), src/components/BundledLibrariesSection.vue",
+				"reachedOn": "admin notifications; Apps tab card badge; Advisories tab (bundled libraries); Advisories tab (bundled libraries, Known malicious package)",
 				"owner": "ConductionNL/versioniq",
 				"change": "safety-withdrawn-and-revoked",
 				"screen": {
@@ -5487,7 +5487,7 @@
 				},
 				"requirement": [
 					"openspec/specs/withdrawn-and-revoked :: Installed apps are rechecked against a current revocation list",
-					"openspec/changes/advisories-bundled-libraries/specs/security-advisory-correlation :: Libraries bundled inside installed apps are checked against OSV"
+					"openspec/specs/security-advisory-correlation :: Libraries bundled inside installed apps are checked against OSV"
 				],
 				"plan": [
 					"openspec/changes/safety-withdrawn-and-revoked",
@@ -5520,16 +5520,16 @@
 			"osv-scanner": "unknown",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "no assignee field in lib/Service/Advisory/AdvisoryResultStore.php",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/Advisory/AdvisoryOwners.php, lib/Controller/AdvisoryTriageController.php, src/dialogs/AssignAdvisoryDialog.vue, src/components/AdvisoryItem.vue",
+				"reachedOn": "Advisories tab (Assign)",
 				"owner": "ConductionNL/versioniq",
 				"change": "advisories-triage",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
 				},
-				"requirement": "openspec/changes/advisories-triage/specs/security-advisory-correlation :: An admin assigns an advisory to an owner"
+				"requirement": "openspec/specs/security-advisory-correlation :: An admin assigns an advisory to an owner"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6511,9 +6511,9 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "yes",
 			"built": {
-				"state": "building",
-				"evidence": "lib/Controller/ApiController.php:1207",
-				"reachedOn": "OCS API GET /api/audit (no export control in the UI)",
+				"state": "built",
+				"evidence": "src/components/HistoryPanel.vue (period, security filter, CSV and JSON export), src/utils/auditExport.ts, src/components/SecurityReportPanel.vue (report CSV)",
+				"reachedOn": "History tab (Export)",
 				"owner": "ConductionNL/versioniq",
 				"spec": "openspec/specs/audit-trail",
 				"readOn": "2026-10-07",
@@ -6522,7 +6522,7 @@
 					"board": "VqHistorie"
 				},
 				"change": "audit-security-reports",
-				"requirement": "openspec/changes/audit-security-reports/specs/audit-trail :: An admin reports on the security updates of a period"
+				"requirement": "openspec/specs/audit-trail :: An admin reports on the security updates of a period"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6659,16 +6659,16 @@
 			"osv-scanner": "yes",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "specified",
-				"evidence": "src/App.vue:2157, src/App.vue:1980, lib/Service/Advisory/AdvisoryService.php:311",
-				"reachedOn": "Apps tab advisory badges and freshness line",
+				"state": "built",
+				"evidence": "lib/Service/Advisory/ComplianceStatus.php, GET /api/advisories (compliance), src/utils/advisories.ts, lib/Command/ListAdvisories.php (--check)",
+				"reachedOn": "Apps tab and Advisories tab (compliance line); occ versioniq:advisories --check",
 				"owner": "ConductionNL/versioniq",
 				"change": "advisories-per-app-detail",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqApps"
 				},
-				"requirement": "openspec/changes/advisories-per-app-detail/specs/security-advisory-correlation :: The instance has one patch compliance status"
+				"requirement": "openspec/specs/security-advisory-correlation :: The instance has one patch compliance status"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -6697,16 +6697,16 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/Policy/Policy.php:36, src/components/PolicySelector.vue:24",
-				"reachedOn": "Apps tab, policy selector",
+				"state": "built",
+				"evidence": "lib/Controller/PatchPolicyController.php (GET and PUT /api/patch-policy), src/components/PatchPolicyPanel.vue",
+				"reachedOn": "Auto-updates tab (Patch policy)",
 				"owner": "ConductionNL/versioniq",
 				"change": "autoupdate-security-first",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
 				},
-				"requirement": "openspec/changes/autoupdate-security-first/specs/auto-update-policies :: An admin records a patch policy and security fixes go first"
+				"requirement": "openspec/specs/auto-update-policies :: An admin records a patch policy and security fixes go first"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -7848,16 +7848,16 @@
 			"osv-scanner": "partial",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/BackgroundJob/AutoUpdateJob.php:141, lib/Service/AutoUpdate/CandidateSelector.php:46 (candidate computed inside the job only), routes in _lane/routes.txt (no preview route)",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/AutoUpdate/AutoUpdateDryRunPlanner.php, lib/Command/AutoUpdate.php (versioniq:auto-update dry run), src/components/ProposedUpdatesPanel.vue",
+				"reachedOn": "Auto-updates tab; occ versioniq:auto-update",
 				"owner": "ConductionNL/versioniq",
 				"change": "autoupdate-proposed-updates",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
 				},
-				"requirement": "openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies :: Proposed updates are worked out ahead of the window and shown"
+				"requirement": "openspec/specs/auto-update-policies :: Proposed updates are worked out ahead of the window and shown"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -8256,16 +8256,16 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Controller/ApiController.php:1207, src/components/HistoryPanel.vue:28, src/components/HistoryPanel.vue:54, src/App.vue:2495",
-				"reachedOn": "History tab",
+				"state": "built",
+				"evidence": "lib/Service/Report/SecurityReportService.php (security updates applied over a period), lib/Controller/ReportController.php (GET /api/reports/security), src/components/SecurityReportPanel.vue",
+				"reachedOn": "History tab (Security report)",
 				"owner": "ConductionNL/versioniq",
 				"change": "audit-security-reports",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqHistorie"
 				},
-				"requirement": "openspec/changes/audit-security-reports/specs/audit-trail :: An admin reports on the security updates of a period"
+				"requirement": "openspec/specs/audit-trail :: An admin reports on the security updates of a period"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -8335,16 +8335,16 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "partial",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/AutoUpdate/AutoUpdateNotifier.php:48, lib/Service/AutoUpdate/AutoUpdateNotifier.php:63 (success and failure only, after the install)",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/AutoUpdate/ProposalService.php:141 (announce noticeDays before the update runs), lib/Service/AutoUpdate/AutoUpdateSettingsStore.php:236 (getNoticeDays), lib/Service/AutoUpdate/AutoUpdateDryRunPlanner.php:122",
+				"reachedOn": "Nextcloud notifications to admins; Auto-updates tab (Proposed updates)",
 				"owner": "ConductionNL/versioniq",
 				"change": "autoupdate-proposed-updates",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqAutomatischeUpdates"
 				},
-				"requirement": "openspec/changes/autoupdate-proposed-updates/specs/auto-update-policies :: Planned updates are announced a set number of days ahead with their release notes"
+				"requirement": "openspec/specs/auto-update-policies :: Planned updates are announced a set number of days ahead with their release notes"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",
@@ -8550,16 +8550,16 @@
 			"osv-scanner": "no",
 			"easy-updates-manager": "no",
 			"built": {
-				"state": "specified",
-				"evidence": "lib/Service/Advisory/AdvisoryResultStore.php:40, lib/Service/Advisory/AdvisoryResultStore.php:60 (one current result set, overwritten each sweep)",
-				"reachedOn": "nothing",
+				"state": "built",
+				"evidence": "lib/Service/Report/SecurityReportService.php (per severity within deadline, open past it, median days to fix, monthly trend), src/components/SecurityReportPanel.vue",
+				"reachedOn": "History tab (Security report, per-severity and trend tables)",
 				"owner": "ConductionNL/versioniq",
 				"change": "audit-security-reports",
 				"screen": {
 					"canvas": "design-system",
 					"board": "VqBeveiligingsadviezen"
 				},
-				"requirement": "openspec/changes/audit-security-reports/specs/security-advisory-correlation :: Remediation is measured per severity against the patch policy deadlines"
+				"requirement": "openspec/specs/security-advisory-correlation :: Remediation is measured per severity against the patch policy deadlines"
 			},
 			"provider": "versioniq",
 			"providerHow": "read-from-code",

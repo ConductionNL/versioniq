@@ -5,7 +5,7 @@ status: implemented
 # Auto-Update Policies Specification
 
 **Status**: implemented
-**OpenSpec changes**: [releases-minimum-age](../../changes/archive/2026-11-24-releases-minimum-age/), [safety-update-checks](../../changes/archive/2026-11-24-safety-update-checks/)
+**OpenSpec changes**: [releases-minimum-age](../../changes/archive/2026-11-24-releases-minimum-age/), [safety-update-checks](../../changes/archive/2026-11-24-safety-update-checks/), [autoupdate-proposed-updates](../../changes/archive/2026-11-24-autoupdate-proposed-updates/), [autoupdate-run-batching](../../changes/archive/2026-11-24-autoupdate-run-batching/), [autoupdate-schedules](../../changes/archive/2026-11-24-autoupdate-schedules/), [autoupdate-security-first](../../changes/archive/2026-11-24-autoupdate-security-first/)
 **Standards**: OCP\BackgroundJob\TimedJob, OCP\IAppConfig, OCP\Notification\IManager, Semantic Versioning 2.0.0 (level comparison)
 **Feature tier**: MVP
 
@@ -17,7 +17,7 @@ Turn Versioniq from a repair tool into bounded, observable update automation: pe
 
 ### Requirement: Per-app update policy [MVP]
 
-Admins MUST be able to set, read, and clear a per-app policy `level` ∈ `none|patch|minor|all` via `GET /api/policies`, `PUT /api/app/{appId}/policy`, `DELETE /api/app/{appId}/policy`; writes MUST require password confirmation and MUST record `setBy`/`setAt`. Policy MUST be persisted as `policy.{appId}` app config JSON. Absent policy means the instance default level, which is `none` unless an admin set another. `GET /api/policies` MUST return, per app, whether its level is its own or the default. Non-admins MUST receive 403.
+Admins MUST be able to set, read, and clear a per-app policy `level` ∈ `none|patch|minor|all|security` via `GET /api/policies`, `PUT /api/app/{appId}/policy`, `DELETE /api/app/{appId}/policy`; writes MUST require password confirmation and MUST record `setBy`/`setAt`. Policy MUST be persisted as `policy.{appId}` app config JSON. Absent policy means `none`. Non-admins MUST receive 403. The level `security` MUST install nothing except the fix the last advisory check recommends for an installed version it found affected.
 
 #### Scenario: Set a patch policy
 
@@ -34,12 +34,14 @@ Admins MUST be able to set, read, and clear a per-app policy `level` ∈ `none|p
 - WHEN `PUT .../policy` is called with `{level: "yolo"}`
 - THEN the response MUST be 400 and no policy MUST be written
 
-#### Scenario: An app without a policy follows the default
+#### Scenario: Set a security-only policy
 
-- GIVEN the instance default level is `patch` and `calendar` has no stored policy
-- WHEN the admin opens the Apps tab
-- THEN the `calendar` card MUST show level patch marked as the default
-- AND the nightly job MUST treat `calendar` as a patch policy
+@e2e tests/e2e/patch-policy.spec.ts
+
+- **GIVEN** admin `alice` on the Apps tab
+- **WHEN** she picks "Security fixes only" for `openregister` and confirms her password
+- **THEN** `policy.openregister` MUST record level `security`, setBy alice
+- **AND** the card MUST show the policy as security fixes only
 
 ### Requirement: Nightly policy execution through the standard installer [MVP]
 
@@ -111,7 +113,7 @@ Each attempted install MUST produce an admin notification: success (app, old →
 
 ### Requirement: Global kill switch and window [MVP]
 
-`auto_update_enabled` (default `false`) and `auto_update_window` (default `01:00-05:00`, format `HH:MM-HH:MM`, windows crossing midnight supported) MUST be admin-configurable via the settings UI and readable via the API. With the switch off, per-app policies remain stored but inert, and the UI MUST say so.
+`auto_update_enabled` (default `false`), `auto_update_window` (default `01:00-05:00`, format `HH:MM-HH:MM`, windows crossing midnight supported) and `auto_update_schedule` (the weekdays the window runs on, per kind of update, default every day for every kind) MUST be admin-configurable via the settings UI and readable via the API. The window MUST run only on a day the schedule allows for at least one kind of update. The day that counts MUST be the date the window opened, read in Nextcloud's `default_timezone` (UTC when unset or invalid), so a run after midnight inside a midnight-crossing window belongs to the day it opened. With the switch off, per-app policies remain stored but inert, and the UI MUST say so. Cron expressions and more than one window MUST NOT be offered.
 
 #### Scenario: Kill switch inert-but-stored
 
@@ -129,6 +131,31 @@ Each attempted install MUST produce an admin notification: success (app, old →
 - GIVEN window `23:00-03:00`
 - WHEN the job fires at 00:30
 - THEN it MUST be considered inside the window
+
+#### Scenario: The window runs only on chosen weekdays
+
+@e2e tests/e2e/jobs.spec.ts
+
+- **GIVEN** automatic updates are on and an admin set a schedule that leaves out today's weekday for every kind of update
+- **WHEN** the job runs inside the window today
+- **THEN** it MUST NOT query any source and MUST NOT install anything
+- **AND** once today's weekday is added to the schedule, the next run inside the window MUST install the due update
+
+#### Scenario: A night that starts on Friday is a Friday run
+
+@e2e exclude the e2e run cannot set the server clock to a time after midnight; covered by AutoUpdateScheduleTest with a fixed clock.
+
+- **GIVEN** the window is `23:00-03:00` and the schedule allows Friday but not Saturday
+- **WHEN** the job wakes at 00:30 on Saturday inside the window that opened on Friday
+- **THEN** the run MUST be treated as a Friday run and MAY install updates
+
+#### Scenario: An instance without a schedule runs every day
+
+@e2e tests/e2e/jobs.spec.ts
+
+- **GIVEN** `auto_update_schedule` was never set
+- **WHEN** the job wakes inside the window on any day
+- **THEN** every kind of update MUST be treated as due, as before this change
 
 ### Requirement: Scheduled and blocked updates on one view
 
@@ -266,3 +293,241 @@ When at least one verdict or command check matches an app, the automatic update 
 - **GIVEN** the same app, and the verdict check answers 200 for 2.3.4
 - **WHEN** the job runs inside the window
 - **THEN** 2.3.4 MUST be installed through the standard installer and the success notification MUST be sent
+
+### Requirement: Proposed updates are worked out ahead of the window and shown
+
+After every availability sweep the system MUST store, for each app with an auto-update policy, the proposed update the policy would install at the next due opening of the window: the installed version, the target version, the kind of step, the planned time and the target version's release notes, or the reason there is none (`pinned`, `blocked`, `not_due`, `limit`, `no_candidate` or `source_error`). It MUST compute them from the version lists the sweep already fetched, without further source calls. `GET /api/auto-update/proposals` MUST be admin-only, MUST return the stored proposals with the time they were computed, and MUST NOT call any source. The Apps tab MUST list the proposed updates in planned order with their release notes.
+
+#### Scenario: An admin sees what installs at the next window
+
+@e2e tests/e2e/proposed-updates.spec.ts
+
+- **GIVEN** `openregister` 2.3.0 on policy `patch`, its source lists 2.3.4, and the availability sweep ran
+- **WHEN** an admin opens the Apps tab
+- **THEN** the proposed updates list MUST show `openregister` 2.3.0 to 2.3.4, a patch update, with its planned date and release notes
+- **AND** it MUST show when the proposals were computed
+
+#### Scenario: Apps without a proposal say why
+
+@e2e tests/e2e/proposed-updates.spec.ts
+
+- **GIVEN** `calendar` on policy `minor` is pinned
+- **WHEN** the proposals are computed
+- **THEN** `calendar` MUST be listed with the reason `pinned` and no target version
+
+### Requirement: An admin can require approval, or decline a version, before an automatic update installs
+
+An admin MUST be able to set, per app, that an automatic update needs approval (`requireApproval` on the policy). For such an app the job MUST install only a version an admin approved through `POST /api/auto-update/proposals/{appId}/approve` with that exact version. An admin MUST be able to decline a version for any app through `POST /api/auto-update/proposals/{appId}/decline`, after which the job MUST skip that version until the decline is withdrawn through `DELETE /api/auto-update/proposals/{appId}/decline/{version}`. All three routes MUST be admin-only and password-confirmed, and each MUST write an audit entry (`proposal_approve`, `proposal_decline`, `proposal_withdraw`) naming the version.
+
+#### Scenario: An approved version installs, a newer one waits
+
+@e2e tests/e2e/jobs.spec.ts
+
+- **GIVEN** `openregister` requires approval and admin `alice` approved 2.3.4
+- **WHEN** the job runs inside the window and 2.3.4 is still the version the policy selects
+- **THEN** it MUST install 2.3.4
+- **AND** when the policy would select 2.3.5 instead, it MUST install nothing until 2.3.5 is approved
+
+#### Scenario: An admin approves on the page
+
+@e2e tests/e2e/proposed-updates.spec.ts
+
+- **GIVEN** a proposal for `openregister` 2.3.4 awaiting approval
+- **WHEN** admin `alice` clicks Approve and confirms her password
+- **THEN** the proposal MUST read "Approved by alice" with the date
+- **AND** the History tab MUST list a `proposal_approve` entry for 2.3.4
+
+#### Scenario: A declined version is skipped
+
+@e2e tests/e2e/jobs.spec.ts
+
+- **GIVEN** an admin declined `deck` 1.9.3 with the reason "breaks our board import"
+- **WHEN** the job runs inside the window and 1.9.3 qualifies
+- **THEN** it MUST NOT install 1.9.3
+- **AND** the proposal list MUST show 1.9.3 as declined with the reason
+
+### Requirement: Planned updates are announced a set number of days ahead with their release notes
+
+An admin MUST be able to set a notice period of 0 to 60 days and, optionally, a Nextcloud group of functional administrators. With a notice period above 0, the system MUST send an `auto_update_planned` notification the first time it proposes a new version, to every admin and every member of that group, naming the app, both versions, the planned date and an excerpt of the release notes. The planned date MUST be the first due opening of the window at least the notice period after the announcement, and the job MUST NOT install the proposal before it. Once announced, a proposal MUST keep its target version until it is installed or no longer valid. Members of the group MUST NOT gain access to any Versioniq endpoint. A security fix whose patch policy handling is `next_window` MUST be announced but MUST NOT wait for the notice period.
+
+#### Scenario: Functional administrators hear two weeks ahead
+
+@e2e tests/e2e/jobs.spec.ts
+
+- **GIVEN** a notice period of 14 days, notice group `functioneel-beheer`, and a new proposal `forms` 4.3.0 to 4.4.0 on 1 October
+- **WHEN** the proposal step stores it
+- **THEN** every admin and every member of `functioneel-beheer` MUST receive a notification naming 4.4.0, the planned date on or after 15 October, and the release notes excerpt
+- **AND** the job MUST NOT install 4.4.0 before that date
+
+#### Scenario: A newer release does not restart the clock
+
+@e2e exclude needs the server clock to move ten days between two sweeps; covered by ProposalServiceTest.
+
+- **GIVEN** `forms` 4.4.0 was announced on 1 October with a 14-day notice period
+- **WHEN** 4.4.1 appears on 10 October
+- **THEN** the proposal MUST stay 4.4.0 planned for 15 October
+- **AND** 4.4.1 MUST become the next proposal after 4.4.0 is installed
+
+### Requirement: Apps in an update group are updated together or not at all
+
+An admin MUST be able to define update groups, each with a name and an ordered list of 2 to 20 apps, with each app in at most one group, through `PUT /api/auto-update/groups` (admin-only, password-confirmed). In a run, the job MUST install a group's due updates in the stored order. The job MUST NOT install any member when a member with a policy is pinned, when its source could not be read, or when its candidate is a version an earlier automatic attempt failed on. When an install in the group fails, the job MUST stop the group and MUST NOT install the members after it. A group run MUST produce one admin notification that lists every member with its outcome.
+
+#### Scenario: A group updates in order
+
+@e2e tests/e2e/jobs.spec.ts
+
+- **GIVEN** a group "Registers" with `openregister` then `opencatalogi`, both on policy `patch`, with 2.3.4 and 1.2.1 available
+- **WHEN** the job runs inside the window
+- **THEN** it MUST install `openregister` 2.3.4 before `opencatalogi` 1.2.1
+- **AND** admins MUST receive one notification naming the group and both outcomes
+
+#### Scenario: A failure stops the group
+
+@e2e tests/e2e/jobs.spec.ts
+
+- **GIVEN** a group of two apps with due updates where the first install fails because its download returns 404
+- **WHEN** the job runs inside the window
+- **THEN** the second app MUST NOT be installed and MUST be reported as not attempted
+- **AND** on the next run the whole group MUST wait until an admin retries the failed version
+
+#### Scenario: A pin on one member holds the group
+
+@e2e tests/e2e/jobs.spec.ts
+
+- **GIVEN** `opencatalogi` in group "Registers" is pinned
+- **WHEN** the admin opens the Apps tab
+- **THEN** the Automatic updates overview MUST show the group as held by the pin on `opencatalogi`
+- **AND** the job MUST NOT install `openregister` either
+
+### Requirement: An admin limits how many automatic updates run
+
+An admin MUST be able to set, through the Apps tab and `PUT /api/auto-update/settings`, a maximum number of automatic installs per run (1 to 50) and per seven days (1 to 200), each empty for no limit. The weekly count MUST include every automatic attempt in the last seven days, successful or not. A group MUST count as the number of its members with a candidate, and a group that does not fit in what is left MUST wait whole. Updates a limit held back MUST go first in the next run, and the overview MUST list them as waiting for the limit.
+
+#### Scenario: A per-run limit holds the rest back
+
+@e2e tests/e2e/jobs.spec.ts
+
+- **GIVEN** a per-run limit of 1 and two apps with a due update
+- **WHEN** the job runs inside the window
+- **THEN** it MUST install one update and hold the other
+- **AND** the overview MUST list the held app as waiting for the limit
+- **AND** the next run MUST install the held app before any other
+
+#### Scenario: A limit out of range is refused
+
+@e2e exclude covered by tests/unit/Controller/ApiTest.php.
+
+- **GIVEN** an admin enters 0 as the per-run limit
+- **WHEN** they save the automatic update settings
+- **THEN** the response MUST be 400 and the stored limit MUST NOT change
+
+#### Scenario: An admin sets a limit and a group on the page
+
+@e2e tests/e2e/auto-update.spec.ts
+
+- **GIVEN** an admin on the Apps tab
+- **WHEN** they create a group of two apps, set a per-run limit of 3, save and reload
+- **THEN** the page MUST show the group with both apps in order and the limit of 3
+
+### Requirement: Each kind of update has its own schedule
+
+The system MUST classify each candidate version by the step from the installed version: `patch` (same `major.minor`), `minor` (same major) or `major` (any other step, and any version that does not parse as `major.minor.patch`). An admin MUST be able to give each kind its own weekdays, including none, and MUST be able to limit a kind to the first of its weekdays in a month. On each run the job MUST install, per app, the highest version within the app's policy level whose kind is due that day, and MUST ignore candidates whose kind is not due. `PUT /api/auto-update/settings` MUST validate the whole schedule before writing anything and MUST answer HTTP 400 for an unknown kind, a day outside 1 to 7, or a non-boolean monthly flag.
+
+#### Scenario: Patches go in on a patch night while the minor waits
+
+@e2e tests/e2e/jobs.spec.ts
+
+- **GIVEN** `openregister` 2.3.0 has policy `minor`, its source lists 2.3.4 and 2.4.0, patches run every day and minors only on a weekday that is not today
+- **WHEN** the job runs inside the window today
+- **THEN** it MUST install 2.3.4
+- **AND** it MUST NOT install 2.4.0 until a run on a day minors are due
+
+#### Scenario: Majors run monthly
+
+@e2e exclude needs two fixed dates a week apart and the e2e run cannot set the server clock; covered by AutoUpdateScheduleTest.
+
+- **GIVEN** majors are set to Saturday, first of the month only
+- **WHEN** the window opens on Saturday 5 October and on Saturday 12 October
+- **THEN** a major update MAY run on 5 October
+- **AND** no major update MUST run on 12 October
+
+#### Scenario: A bad schedule is refused whole
+
+@e2e exclude covered by tests/unit/Controller/ApiTest.php.
+
+- **GIVEN** an admin sends a schedule with day 8 for minors and a new window `02:00-04:00`
+- **WHEN** they call `PUT /ocs/v2.php/apps/versioniq/api/auto-update/settings`
+- **THEN** the response MUST be 400 and name the minor days
+- **AND** neither the schedule nor the window MUST change
+
+### Requirement: The overview shows when each kind of update runs next
+
+The Automatic updates overview on the Apps tab MUST show, for each kind of update, the weekdays it runs on and the date and time of its next run in the zone the window uses, as returned by `GET /api/policies` in `nextRuns`. A kind with no days MUST read as never updated automatically. When no kind has any day, the overview MUST say that nothing runs.
+
+#### Scenario: An admin sees the next run per kind
+
+@e2e tests/e2e/auto-update.spec.ts
+
+- **GIVEN** automatic updates are on, patches run Monday to Friday and majors never
+- **WHEN** the admin opens the Apps tab
+- **THEN** the overview MUST list patch updates with Monday to Friday and a next run date
+- **AND** it MUST say that major updates never run automatically
+
+### Requirement: The security level installs only advisory fixes, in the window
+
+For an app on level `security` the nightly job MUST install a version only when the stored advisory snapshot marks the installed version `pinned-to-vulnerable`, names a `recommendedVersion` newer than the installed one with the same major, and the bound source lists that version. The job MUST install exactly that version through the standard installer, inside the window. It MUST NOT act when the snapshot is missing or older than twice the advisory check interval, MUST skip pinned apps as for every level, and MUST show on the Automatic updates overview why an affected `security` app was not updated (`no_fix`, `needs_major`, `not_in_source` or `stale`).
+
+#### Scenario: An affected app gets its fix
+
+@e2e tests/e2e/jobs.spec.ts
+
+- **GIVEN** `openregister` 2.3.0 on level `security`, a fresh snapshot that marks 2.3.0 affected with recommended version 2.3.5, and a source listing 2.3.5 and 2.4.0
+- **WHEN** the job runs inside the window
+- **THEN** it MUST install 2.3.5 and not 2.4.0
+
+#### Scenario: An unaffected app is left alone
+
+@e2e tests/e2e/jobs.spec.ts
+
+- **GIVEN** `calendar` on level `security` with 4.7.1 available and no advisory affecting its installed version
+- **WHEN** the job runs inside the window
+- **THEN** it MUST NOT install anything for `calendar`
+
+#### Scenario: A fix behind a major is explained, not installed
+
+@e2e exclude the forge fixture builds no release on a second major line; covered by SecurityCandidateTest and AutoUpdateOverview.spec.ts.
+
+- **GIVEN** `deck` 1.9.2 on level `security`, affected, with recommended version 2.0.1
+- **WHEN** the admin opens the Apps tab after the next run
+- **THEN** the overview MUST say the fix for `deck` needs a major update and was not installed
+
+### Requirement: An admin records a patch policy and security fixes go first
+
+An admin MUST be able to record on the Settings tab, through `PUT /api/patch-policy` (admin-only, password-confirmed), a patch policy with, per advisory severity (`critical`, `high`, `medium`, `low`, `unknown`), a deadline of 1 to 365 days or none and a handling (`next_window`, `scheduled` or `manual`), per regular kind of update (`patch`, `minor`, `major`) a handling (`automatic` or `manual`), and a free text statement of at most 4000 characters. The page MUST show the policy as sentences generated from the stored values, with who changed it last and when, and MUST offer those sentences as a text download. Every change MUST write an audit entry with operation `patch_policy`. In each run the job MUST install fixes for affected apps whose policy is not `none` before any other update; a severity with handling `next_window` MUST NOT be held by a kind's schedule or a run limit, and a severity with handling `manual` MUST NOT be installed automatically. A regular kind with handling `manual` MUST NOT be installed automatically for any app. With no stored patch policy, the job MUST behave as it did before this requirement.
+
+#### Scenario: An admin records the policy
+
+@e2e tests/e2e/patch-policy.spec.ts
+
+- **GIVEN** admin `alice` on the Settings tab
+- **WHEN** she sets critical fixes to "at the next update window" with a deadline of 3 days, and major updates to "by hand", and saves
+- **THEN** the page MUST show "Critical security fixes: installed at the next update window. Deadline: 3 days." and "Major updates: installed by hand only."
+- **AND** it MUST show that alice changed the policy, with the date
+- **AND** the History tab MUST list a `patch_policy` entry by alice
+
+#### Scenario: A critical fix does not wait for its kind's day
+
+@e2e tests/e2e/jobs.spec.ts
+
+- **GIVEN** critical fixes are set to `next_window`, minor updates do not run today, and `openregister` on level `minor` is affected by a critical advisory fixed in 2.4.0
+- **WHEN** the job runs inside the window today
+- **THEN** it MUST install 2.4.0 before any other update in that run
+
+#### Scenario: A by-hand kind is never automatic
+
+@e2e tests/e2e/jobs.spec.ts
+
+- **GIVEN** patch updates are set to `manual` and `deck` 1.9.2 on level `patch` has 1.9.3 available and no advisory
+- **WHEN** the job runs inside the window
+- **THEN** it MUST NOT install 1.9.3
+- **AND** the overview MUST say that patch updates are set to by hand in the patch policy
