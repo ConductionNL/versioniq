@@ -51,14 +51,14 @@
 	},
 	"writes every catalogue": {
 		"status": 0,
-		"stdout": "  ✎ l10n/de.js written (1 keys)\n  ✎ l10n/en.js written (3 keys)\n  ✎ l10n/nl.js written (1 keys)\n",
+		"stdout": "  ✎ l10n/de.js written (1 keys)\n  ✎ l10n/en.js written (1 keys)\n  ✎ l10n/nl.js written (1 keys)\n",
 		"stderr": "",
 		"files": {
 			"appinfo/info.xml": "<info>\n\t<id> versioniq </id>\n</info>\n",
 			"l10n/.schema-l10n-baseline.json": "{\n  \"uncovered\": 3\n}",
 			"l10n/de.js": "OC.L10N.register(\n    \"versioniq\",\n    {\n        \"Hello\": \"Hallo\"\n    },\n    \"nplurals=2; plural=(n != 1);\"\n)\n",
 			"l10n/de.json": "{\n  \"translations\": {\n    \"Hello\": \"Hallo\"\n  },\n  \"pluralForm\": \"\"\n}",
-			"l10n/en.js": "OC.L10N.register(\n    \"versioniq\",\n    {\n        \"Hello\": \"Hello\",\n        \"Say \\\"hi\\\"\": \"Say \\\"hi\\\"\",\n        \"Ünï\\ncode\": \"é\\t\"\n    },\n    \"nplurals=2; plural=(n != 1);\"\n)\n",
+			"l10n/en.js": "OC.L10N.register(\n    \"versioniq\",\n    {\n        \"Ünï\\ncode\": \"é\\t\"\n    },\n    \"nplurals=2; plural=(n != 1);\"\n)\n",
 			"l10n/en.json": "{\n  \"translations\": {\n    \"Hello\": \"Hello\",\n    \"Say \\\"hi\\\"\": \"Say \\\"hi\\\"\",\n    \"Ünï\\ncode\": \"é\\t\"\n  }\n}",
 			"l10n/nl.js": "OC.L10N.register(\n    \"versioniq\",\n    {\n        \"Hello\": \"Hallo\"\n    },\n    \"nplurals=2; plural=(n > 1);\"\n)\n",
 			"l10n/nl.json": "{\n  \"translations\": {\n    \"Hello\": \"Hallo\"\n  },\n  \"pluralForm\": \"nplurals=2; plural=(n > 1);\"\n}",
@@ -95,14 +95,14 @@
 	},
 	"rewrites only the stale one": {
 		"status": 0,
-		"stdout": "  ✎ l10n/de.js written (1 keys)\n  ✎ l10n/en.js written (3 keys)\n  ✓ l10n/nl.js up to date (1 keys)\n",
+		"stdout": "  ✎ l10n/de.js written (1 keys)\n  ✎ l10n/en.js written (1 keys)\n  ✓ l10n/nl.js up to date (1 keys)\n",
 		"stderr": "",
 		"files": {
 			"appinfo/info.xml": "<info>\n\t<id> versioniq </id>\n</info>\n",
 			"l10n/.schema-l10n-baseline.json": "{\n  \"uncovered\": 3\n}",
 			"l10n/de.js": "OC.L10N.register(\n    \"versioniq\",\n    {\n        \"Hello\": \"Hallo\"\n    },\n    \"nplurals=2; plural=(n != 1);\"\n)\n",
 			"l10n/de.json": "{\n  \"translations\": {\n    \"Hello\": \"Hallo\"\n  },\n  \"pluralForm\": \"\"\n}",
-			"l10n/en.js": "OC.L10N.register(\n    \"versioniq\",\n    {\n        \"Hello\": \"Hello\",\n        \"Say \\\"hi\\\"\": \"Say \\\"hi\\\"\",\n        \"Ünï\\ncode\": \"é\\t\"\n    },\n    \"nplurals=2; plural=(n != 1);\"\n)\n",
+			"l10n/en.js": "OC.L10N.register(\n    \"versioniq\",\n    {\n        \"Ünï\\ncode\": \"é\\t\"\n    },\n    \"nplurals=2; plural=(n != 1);\"\n)\n",
 			"l10n/en.json": "{\n  \"translations\": {\n    \"Hello\": \"Hello\",\n    \"Say \\\"hi\\\"\": \"Say \\\"hi\\\"\",\n    \"Ünï\\ncode\": \"é\\t\"\n  }\n}",
 			"l10n/nl.js": "OC.L10N.register(\n    \"versioniq\",\n    {\n        \"Hello\": \"Hallo\"\n    },\n    \"nplurals=2; plural=(n > 1);\"\n)\n",
 			"l10n/nl.json": "{\n  \"translations\": {\n    \"Hello\": \"Hallo\"\n  },\n  \"pluralForm\": \"nplurals=2; plural=(n > 1);\"\n}",
@@ -130,14 +130,14 @@
 	},
 	"catalogue does not parse": {
 		"status": 1,
-		"stdout": "  ✎ l10n/de.js written (1 keys)\n  ✎ l10n/en.js written (3 keys)\n",
+		"stdout": "  ✎ l10n/de.js written (1 keys)\n  ✎ l10n/en.js written (1 keys)\n",
 		"stderr": "l10n/nl.json does not parse: <message>\n",
 		"files": {
 			"appinfo/info.xml": "<info>\n\t<id> versioniq </id>\n</info>\n",
 			"l10n/.schema-l10n-baseline.json": "{\n  \"uncovered\": 3\n}",
 			"l10n/de.js": "OC.L10N.register(\n    \"versioniq\",\n    {\n        \"Hello\": \"Hallo\"\n    },\n    \"nplurals=2; plural=(n != 1);\"\n)\n",
 			"l10n/de.json": "{\n  \"translations\": {\n    \"Hello\": \"Hallo\"\n  },\n  \"pluralForm\": \"\"\n}",
-			"l10n/en.js": "OC.L10N.register(\n    \"versioniq\",\n    {\n        \"Hello\": \"Hello\",\n        \"Say \\\"hi\\\"\": \"Say \\\"hi\\\"\",\n        \"Ünï\\ncode\": \"é\\t\"\n    },\n    \"nplurals=2; plural=(n != 1);\"\n)\n",
+			"l10n/en.js": "OC.L10N.register(\n    \"versioniq\",\n    {\n        \"Ünï\\ncode\": \"é\\t\"\n    },\n    \"nplurals=2; plural=(n != 1);\"\n)\n",
 			"l10n/en.json": "{\n  \"translations\": {\n    \"Hello\": \"Hello\",\n    \"Say \\\"hi\\\"\": \"Say \\\"hi\\\"\",\n    \"Ünï\\ncode\": \"é\\t\"\n  }\n}",
 			"l10n/nl.json": "{ nope",
 			"l10n/README.md": "not a catalogue"
@@ -145,14 +145,14 @@
 	},
 	"catalogue without translations": {
 		"status": 1,
-		"stdout": "  ✎ l10n/de.js written (1 keys)\n  ✎ l10n/en.js written (3 keys)\n",
+		"stdout": "  ✎ l10n/de.js written (1 keys)\n  ✎ l10n/en.js written (1 keys)\n",
 		"stderr": "l10n/nl.json is missing \"translations\"\n",
 		"files": {
 			"appinfo/info.xml": "<info>\n\t<id> versioniq </id>\n</info>\n",
 			"l10n/.schema-l10n-baseline.json": "{\n  \"uncovered\": 3\n}",
 			"l10n/de.js": "OC.L10N.register(\n    \"versioniq\",\n    {\n        \"Hello\": \"Hallo\"\n    },\n    \"nplurals=2; plural=(n != 1);\"\n)\n",
 			"l10n/de.json": "{\n  \"translations\": {\n    \"Hello\": \"Hallo\"\n  },\n  \"pluralForm\": \"\"\n}",
-			"l10n/en.js": "OC.L10N.register(\n    \"versioniq\",\n    {\n        \"Hello\": \"Hello\",\n        \"Say \\\"hi\\\"\": \"Say \\\"hi\\\"\",\n        \"Ünï\\ncode\": \"é\\t\"\n    },\n    \"nplurals=2; plural=(n != 1);\"\n)\n",
+			"l10n/en.js": "OC.L10N.register(\n    \"versioniq\",\n    {\n        \"Ünï\\ncode\": \"é\\t\"\n    },\n    \"nplurals=2; plural=(n != 1);\"\n)\n",
 			"l10n/en.json": "{\n  \"translations\": {\n    \"Hello\": \"Hello\",\n    \"Say \\\"hi\\\"\": \"Say \\\"hi\\\"\",\n    \"Ünï\\ncode\": \"é\\t\"\n  }\n}",
 			"l10n/nl.json": "{\n  \"pluralForm\": \"x\"\n}",
 			"l10n/README.md": "not a catalogue"
@@ -173,14 +173,14 @@
 	},
 	"two ids, the first wins": {
 		"status": 0,
-		"stdout": "  ✎ l10n/de.js written (1 keys)\n  ✎ l10n/en.js written (3 keys)\n  ✎ l10n/nl.js written (1 keys)\n",
+		"stdout": "  ✎ l10n/de.js written (1 keys)\n  ✎ l10n/en.js written (1 keys)\n  ✎ l10n/nl.js written (1 keys)\n",
 		"stderr": "",
 		"files": {
 			"appinfo/info.xml": "<id>first</id><id>second</id>",
 			"l10n/.schema-l10n-baseline.json": "{\n  \"uncovered\": 3\n}",
 			"l10n/de.js": "OC.L10N.register(\n    \"first\",\n    {\n        \"Hello\": \"Hallo\"\n    },\n    \"nplurals=2; plural=(n != 1);\"\n)\n",
 			"l10n/de.json": "{\n  \"translations\": {\n    \"Hello\": \"Hallo\"\n  },\n  \"pluralForm\": \"\"\n}",
-			"l10n/en.js": "OC.L10N.register(\n    \"first\",\n    {\n        \"Hello\": \"Hello\",\n        \"Say \\\"hi\\\"\": \"Say \\\"hi\\\"\",\n        \"Ünï\\ncode\": \"é\\t\"\n    },\n    \"nplurals=2; plural=(n != 1);\"\n)\n",
+			"l10n/en.js": "OC.L10N.register(\n    \"first\",\n    {\n        \"Ünï\\ncode\": \"é\\t\"\n    },\n    \"nplurals=2; plural=(n != 1);\"\n)\n",
 			"l10n/en.json": "{\n  \"translations\": {\n    \"Hello\": \"Hello\",\n    \"Say \\\"hi\\\"\": \"Say \\\"hi\\\"\",\n    \"Ünï\\ncode\": \"é\\t\"\n  }\n}",
 			"l10n/nl.js": "OC.L10N.register(\n    \"first\",\n    {\n        \"Hello\": \"Hallo\"\n    },\n    \"nplurals=2; plural=(n > 1);\"\n)\n",
 			"l10n/nl.json": "{\n  \"translations\": {\n    \"Hello\": \"Hallo\"\n  },\n  \"pluralForm\": \"nplurals=2; plural=(n > 1);\"\n}",
