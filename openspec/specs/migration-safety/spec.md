@@ -5,6 +5,7 @@ status: implemented
 # Migration Safety Specification
 
 **Status**: implemented
+**OpenSpec changes**: [install-bulk-rollback](../../changes/archive/2026-11-24-install-bulk-rollback/), [safety-upgrade-migration-preview](../../changes/archive/2026-11-24-safety-upgrade-migration-preview/)
 **Standards**: OCP\App\IAppManager, OCP\IAppConfig, Nextcloud migration framework (OCP\Migration\IMigrationStep)
 **Feature tier**: MVP
 
@@ -201,3 +202,70 @@ When an install ends installed-but-broken, the result MUST offer "Restore instal
 - **WHEN** the admin chooses "Restore installation" and confirms their password
 - **THEN** Dossiq MUST run 0.4.48 again with the tables as they were before the update
 - **AND** the audit trail MUST record the restore
+
+### Requirement: Versioniq keeps snapshots of every app's version
+
+The system MUST take a snapshot of every app it manages, recording per app the installed version, the bound source and whether it is enabled, with the time, the actor and the reason. It MUST take one every day, one before the automatic update job installs the first app of a sweep, one before a bulk rollback runs, and one whenever an admin asks, optionally with a name. It MUST keep the newest 60 unnamed snapshots and up to 20 named ones, and a named one until an admin deletes it. Taking a snapshot MUST be recorded in the audit trail. Snapshot endpoints MUST be admin-only, and writes MUST require password confirmation.
+
+#### Scenario: A snapshot precedes the night's updates
+
+- **GIVEN** the automatic update job is about to install `openregister` 2.3.4 as the first update of tonight's sweep
+- **WHEN** the job runs
+- **THEN** a snapshot with reason `before_auto_update` MUST be stored before the install starts, recording `openregister` 2.3.0
+
+#### Scenario: An admin names a snapshot before a risky change
+
+- **WHEN** admin `alice` takes a snapshot named "Before the October upgrade" from the History tab and confirms her password
+- **THEN** it MUST be listed with that name and kept until she deletes it
+
+### Requirement: An admin rolls several apps back to a snapshot or a date
+
+An admin MUST be able to pick a snapshot, or a date that selects the newest snapshot taken on or before it, and see a plan with one step per app: unchanged, downgrade, upgrade, pinned elsewhere, removed since, or added since. A check MUST run a dry-run install for every downgrade step and show the migrations it would orphan, without changing anything. A run MUST take a snapshot first, ask for the password once, and install the downgrade and upgrade steps one app at a time through the standard install path, from the snapshot's source, newest change first. Pinned steps MUST be skipped unless the admin chose to move the pins. Removed and added apps MUST be left alone. A run MUST stop at the first failure and offer to continue with the rest. The start and the end of a run MUST be recorded in the audit trail with the snapshot and the counts of steps that succeeded, failed and were skipped.
+
+#### Scenario: Last night's updates are undone
+
+- **GIVEN** last night's sweep moved `openregister` from 2.3.0 to 2.3.4 and `opencatalogi` from 1.8.0 to 1.8.2, after a `before_auto_update` snapshot
+- **WHEN** alice picks that snapshot on the History tab, runs the check, and runs the plan
+- **THEN** the page MUST install `opencatalogi` 1.8.0 and then `openregister` 2.3.0 through the standard installer, each with its own audit row
+- **AND** the trail MUST hold a `bulk_rollback` row at the start and one at the end saying 2 steps succeeded
+
+#### Scenario: A failure stops the run
+
+- **GIVEN** a plan with three downgrade steps where the second fails its checksum
+- **WHEN** alice runs it
+- **THEN** the first app MUST be rolled back, the second MUST be reverted to what it ran before the step, the third MUST NOT be touched
+- **AND** the dialog MUST offer "Continue with the rest"
+
+#### Scenario: Rolling back to a date
+
+- **GIVEN** snapshots taken on 20 and 25 September
+- **WHEN** alice asks for the state of 23 September
+- **THEN** the plan MUST be built from the snapshot of 20 September and MUST say so
+
+### Requirement: A dry run of an upgrade previews the database changes
+
+For an upgrade, a dry run MUST list the target's migration steps that Nextcloud has not recorded as run for the app, reading the recorded steps from the database and falling back to a file comparison marked as an estimate when it cannot. For each step it MUST list the actions the step declares with Nextcloud's migration attributes, or else the tables it names, and MUST say when the step also moves data. For each existing table a step changes it MUST give the current row count and a size class (`new`, `small` under 100,000 rows, `large` up to 1,000,000, `very_large` above), and MUST NOT state a duration in seconds. It MUST list the repair steps the target runs after its migrations. The dry run MUST NOT load the target's classes or change the database. The picker MUST offer "Preview database changes" on a selected upgrade, and `occ versioniq:install --dry-run` MUST print the same preview and carry it in `--json`.
+
+#### Scenario: An admin sees a large table change before the upgrade
+
+- **GIVEN** `openregister` 2.3.0 is installed, 2.4.0 ships a step declaring an added index on `openregister_objects`, and that table holds 4,200,000 rows
+- **WHEN** admin `alice` selects 2.4.0 and picks "Preview database changes"
+- **THEN** the panel MUST list that step with "adds an index" on `openregister_objects`, 4,200,000 rows, and "may take long; plan a maintenance window"
+- **AND** no migration MUST have run
+
+#### Scenario: A step that already ran is not listed
+
+- **GIVEN** 2.4.0 ships steps A and B, and Nextcloud recorded A as run during an earlier install of 2.4.0 that was later downgraded
+- **WHEN** the preview is built
+- **THEN** only B MUST be listed
+
+#### Scenario: An upgrade without schema steps
+
+- **GIVEN** 2.3.1 ships the same migration steps as 2.3.0
+- **WHEN** alice previews the upgrade to 2.3.1
+- **THEN** the panel MUST say there are no database changes, and list any repair steps
+
+#### Scenario: A script reads the preview
+
+- **WHEN** an admin runs `occ versioniq:install openregister 2.4.0 --dry-run --json`
+- **THEN** stdout MUST carry `migrationPreview` with the steps, their tables and size classes

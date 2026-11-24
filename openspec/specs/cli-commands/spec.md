@@ -5,6 +5,7 @@ status: implemented
 # CLI Commands Specification
 
 **Status**: implemented
+**OpenSpec changes**: [install-bulk-rollback](../../changes/archive/2026-11-24-install-bulk-rollback/), [install-force-incompatible](../../changes/archive/2026-11-24-install-force-incompatible/), [install-live-progress](../../changes/archive/2026-11-24-install-live-progress/), [install-multi-instance-promotion](../../changes/archive/2026-11-24-install-multi-instance-promotion/)
 **Standards**: Symfony Console (OC\Core\Command\Base), occ command registration via info.xml
 **Feature tier**: MVP
 
@@ -115,6 +116,64 @@ Commands MUST run without password confirmation (CLI executes as the server user
 - **GIVEN** no availability sweep has completed
 - **WHEN** an admin runs `occ versioniq:updates`
 - **THEN** the command MUST say that no check has run and exit 1
+
+### Requirement: Take snapshots and roll back from the CLI
+
+`occ versioniq:snapshot` MUST take a snapshot, with an optional `--name`. `occ versioniq:snapshots` MUST list them, as a table or with `--json`. `occ versioniq:rollback` MUST take a snapshot id or `--to=<YYYY-MM-DD>`, print the plan, and ask for confirmation unless `--yes` is given. `--dry-run` MUST run the check without changing anything, `--move-pins` MUST include pinned steps, and `--continue` MUST go on after a failure. The command MUST take a snapshot before it installs, MUST record the start and end of the run in the audit trail, and MUST exit 0 when every step succeeded, else with the `versioniq:install` exit code of the first failed step.
+
+#### Scenario: An operator undoes a night of updates over SSH
+
+- **GIVEN** a `before_auto_update` snapshot from last night
+- **WHEN** an admin runs `occ versioniq:rollback --to=2026-09-26 --yes`
+- **THEN** every downgrade step MUST be installed through the standard installer and the exit code MUST be 0
+
+#### Scenario: A dry run changes nothing
+
+- **WHEN** an admin runs `occ versioniq:rollback <id> --dry-run`
+- **THEN** stdout MUST list each step with the migrations it would orphan
+- **AND** no app version MUST change
+
+### Requirement: Force an incompatible version from the CLI
+
+`occ versioniq:install <appId> <version> --force-incompatible` MUST install a version whose declared maximum is below the running server, with the same override, record, audit row and clean-up on failure as the page. Without the flag such an install MUST keep failing with the incompatible exit code. With the flag, a version that needs a newer server MUST still fail with that code, and stderr MUST say an override cannot help it.
+
+#### Scenario: A provisioning script forces a known-good app
+
+- **GIVEN** the server runs Nextcloud 33 and `hermiq` 1.4.0 declares `max-version="32"`
+- **WHEN** an admin runs `occ versioniq:install hermiq 1.4.0 --force-incompatible`
+- **THEN** 1.4.0 MUST be installed, `app_install_overwrite` MUST contain `hermiq`, and the exit code MUST be 0
+
+#### Scenario: Without the flag nothing changes
+
+- **WHEN** an admin runs `occ versioniq:install hermiq 1.4.0`
+- **THEN** the exit code MUST be 7 and `app_install_overwrite` MUST NOT change
+
+### Requirement: The install command prints each stage as it happens
+
+`occ versioniq:install` MUST print each install stage when it starts, in the same names the page shows, and then the outcome as today. With `--json` it MUST print only the single JSON outcome.
+
+#### Scenario: A provisioning script shows where an install is
+
+- **WHEN** an admin runs `occ versioniq:install openregister 2.4.1`
+- **THEN** the console MUST show the download, signature check, extraction, migration and finalize stages in order before the outcome line
+- **AND** the exit code MUST follow the documented exit-code map
+
+### Requirement: Compare instances and promote versions from the CLI
+
+`occ versioniq:instances` MUST print, per app, the installed version on this instance and on every connected instance, from the cached manifests, or read every connection first with `--refresh`. `--json` MUST print the same data with each manifest's read time. `occ versioniq:promote <connection> <appId>...` MUST promote each named app from that connection in order, with the same checks as the page: fresh manifest, waiting period, source, recorded digest and the standard installer. It MUST accept `--dry-run`, `--allow-downgrade` and `--override-min-days`, MUST stop at the first failure unless `--continue` is given, and MUST exit with the exit code of `versioniq:install` for an install failure, `10` when the waiting period is not met, and `11` when the connection is unknown or cannot be read.
+
+#### Scenario: A deployment script promotes two apps
+
+- **GIVEN** a connection `acceptance` that runs `openregister` 2.4.1 and `opencatalogi` 1.9.0 for longer than the waiting period
+- **WHEN** an admin runs `occ versioniq:promote acceptance openregister opencatalogi`
+- **THEN** both versions MUST be installed through the standard installer and the exit code MUST be 0
+
+#### Scenario: The waiting period stops a script
+
+- **GIVEN** acceptance runs `openregister` 2.4.1 for fewer days than the waiting period
+- **WHEN** an admin runs `occ versioniq:promote acceptance openregister`
+- **THEN** nothing MUST be installed, stderr MUST name the days left, and the exit code MUST be 10
+
 
 ## Implementation Notes
 
