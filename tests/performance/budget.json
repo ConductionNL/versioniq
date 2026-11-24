@@ -1,0 +1,9 @@
+{
+	"app": "versioniq",
+	"pages": [
+		{
+			"name": "Versioniq",
+			"path": "/index.php/settings/admin/versioniq"
+		}
+	]
+}
