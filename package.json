@@ -25,6 +25,7 @@
     "vue": "^3.5.43"
   },
   "devDependencies": {
+    "@conduction/nextcloud-vue": "^2.203.0",
     "@nextcloud/browserslist-config": "^3.1.2",
     "@nextcloud/eslint-config": "^9.0.1",
     "@nextcloud/stylelint-config": "^3.2.2",
@@ -59,6 +60,12 @@
     "undici": "8.12.2",
     "webdav": {
       "minimatch": "^11.0.1"
+    },
+    "@conduction/nextcloud-vue": {
+      "@vueuse/core": "^15.0.0"
+    },
+    "@nextcloud/stylelint-config": {
+      "stylelint": "$stylelint"
     }
   }
 }

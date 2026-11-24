@@ -280,7 +280,6 @@
       "group": "@buttercup",
       "version": "0.2.1",
       "bom-ref": "versioniq@1.0.0|@buttercup/fetch@0.2.1",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -303,6 +302,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@buttercup/fetch"
@@ -723,6 +726,44 @@
     },
     {
       "type": "library",
+      "name": "js",
+      "group": "@mdi",
+      "version": "7.4.47",
+      "bom-ref": "versioniq@1.0.0|@mdi/js@7.4.47",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40mdi/js@7.4.47",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@mdi/js/-/js-7.4.47.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "28f9cd3ad9b98b6a4c69ba99c69533ee241ffa67eb619c8a099f10373f39733804b7b72e1dc1a8ad67ddcd4316600d120fe6ba1e7e05989f98873cf38e44d9ad"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@mdi/js"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "lzma-linux-x64-gnu",
       "group": "@napi-rs",
       "version": "1.5.1",
@@ -898,6 +939,44 @@
     },
     {
       "type": "library",
+      "name": "dialogs",
+      "group": "@nextcloud",
+      "version": "7.6.0",
+      "bom-ref": "versioniq@1.0.0|@nextcloud/dialogs@7.6.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "AGPL-3.0-or-later"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40nextcloud/dialogs@7.6.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@nextcloud/dialogs/-/dialogs-7.6.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "b3a3d90cd8a82be8966d59bf636bad96958308aaa5c5f874a1468e9224166b166af23e5442c875888d5b2809e109116535cff22a68f510e5413114361031a435"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@nextcloud/dialogs"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "event-bus",
       "group": "@nextcloud",
       "version": "3.3.3",
@@ -936,7 +1015,6 @@
       "group": "@nextcloud",
       "version": "4.1.1",
       "bom-ref": "versioniq@1.0.0|@nextcloud/files@4.1.1",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -959,6 +1037,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@nextcloud/files"
@@ -1073,7 +1155,6 @@
       "group": "@nextcloud",
       "version": "3.1.0",
       "bom-ref": "versioniq@1.0.0|@nextcloud/paths@3.1.0",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -1096,6 +1177,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@nextcloud/paths"
@@ -3860,6 +3945,44 @@
     },
     {
       "type": "library",
+      "name": "toastify-js",
+      "group": "@types",
+      "version": "1.12.4",
+      "bom-ref": "versioniq@1.0.0|@types/toastify-js@1.12.4",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40types/toastify-js@1.12.4",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@types/toastify-js/-/toastify-js-1.12.4.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "cdf647538b4a7df3c29d945eee98effde14acd3547a3329ec0508a6828d9e201629ca809473fedd1b91988c0972713e1bff66878318d39e443d3d47491067f9f"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/toastify-js"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "trusted-types",
       "group": "@types",
       "version": "2.0.7",
@@ -5121,7 +5244,6 @@
       "name": "axios-retry",
       "version": "4.5.0",
       "bom-ref": "versioniq@1.0.0|axios-retry@4.5.0",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -5144,6 +5266,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/axios-retry"
@@ -5258,7 +5384,6 @@
       "name": "base-64",
       "version": "1.0.0",
       "bom-ref": "versioniq@1.0.0|base-64@1.0.0",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -5281,6 +5406,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/base-64"
@@ -5395,7 +5524,6 @@
       "name": "byte-length",
       "version": "1.0.2",
       "bom-ref": "versioniq@1.0.0|byte-length@1.0.2",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -5418,6 +5546,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/byte-length"
@@ -5627,7 +5759,6 @@
       "name": "charenc",
       "version": "0.0.2",
       "bom-ref": "versioniq@1.0.0|charenc@0.0.2",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -5650,6 +5781,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/charenc"
@@ -5863,7 +5998,6 @@
       "name": "crypt",
       "version": "0.0.2",
       "bom-ref": "versioniq@1.0.0|crypt@0.0.2",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -5886,6 +6020,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/crypt"
@@ -5930,7 +6068,6 @@
       "name": "data-uri-to-buffer",
       "version": "4.0.1",
       "bom-ref": "versioniq@1.0.0|data-uri-to-buffer@4.0.1",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -5953,6 +6090,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/data-uri-to-buffer"
@@ -6593,7 +6734,6 @@
       "name": "eventemitter3",
       "version": "5.0.4",
       "bom-ref": "versioniq@1.0.0|eventemitter3@5.0.4",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -6616,6 +6756,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/eventemitter3"
@@ -6800,7 +6944,6 @@
       "name": "fetch-blob",
       "version": "3.2.0",
       "bom-ref": "versioniq@1.0.0|fetch-blob@3.2.0",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -6823,6 +6966,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/fetch-blob"
@@ -7002,7 +7149,6 @@
       "name": "formdata-polyfill",
       "version": "4.0.10",
       "bom-ref": "versioniq@1.0.0|formdata-polyfill@4.0.10",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -7025,6 +7171,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/formdata-polyfill"
@@ -7503,7 +7653,6 @@
       "name": "hot-patcher",
       "version": "2.0.1",
       "bom-ref": "versioniq@1.0.0|hot-patcher@2.0.1",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -7526,6 +7675,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/hot-patcher"
@@ -7739,7 +7892,6 @@
       "name": "is-buffer",
       "version": "1.1.6",
       "bom-ref": "versioniq@1.0.0|is-buffer@1.1.6",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -7762,6 +7914,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/is-buffer"
@@ -7946,7 +8102,6 @@
       "name": "is-retry-allowed",
       "version": "2.2.0",
       "bom-ref": "versioniq@1.0.0|is-retry-allowed@2.2.0",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -7969,6 +8124,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/is-retry-allowed"
@@ -8050,7 +8209,6 @@
       "name": "layerr",
       "version": "3.0.0",
       "bom-ref": "versioniq@1.0.0|layerr@3.0.0",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -8073,6 +8231,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/layerr"
@@ -8838,7 +9000,6 @@
       "name": "md5",
       "version": "2.3.0",
       "bom-ref": "versioniq@1.0.0|md5@2.3.0",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -8861,6 +9022,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/md5"
@@ -10229,7 +10394,6 @@
       "name": "nested-property",
       "version": "4.0.0",
       "bom-ref": "versioniq@1.0.0|nested-property@4.0.0",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -10252,6 +10416,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/nested-property"
@@ -10301,7 +10469,6 @@
       "name": "node-domexception",
       "version": "1.0.0",
       "bom-ref": "versioniq@1.0.0|node-domexception@1.0.0",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -10325,6 +10492,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/node-domexception"
         }
@@ -10335,7 +10506,6 @@
       "name": "node-fetch",
       "version": "3.3.2",
       "bom-ref": "versioniq@1.0.0|node-fetch@3.3.2",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -10358,6 +10528,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/node-fetch"
@@ -10402,7 +10576,6 @@
       "name": "p-queue",
       "version": "9.3.5",
       "bom-ref": "versioniq@1.0.0|p-queue@9.3.5",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -10426,6 +10599,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/p-queue"
         }
@@ -10436,7 +10613,6 @@
       "name": "p-timeout",
       "version": "7.0.2",
       "bom-ref": "versioniq@1.0.0|p-timeout@7.0.2",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -10459,6 +10635,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/p-timeout"
@@ -10576,7 +10756,6 @@
       "name": "path-posix",
       "version": "1.0.0",
       "bom-ref": "versioniq@1.0.0|path-posix@1.0.0",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -10599,6 +10778,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/path-posix"
@@ -10734,6 +10917,43 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/picomatch"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "pinia",
+      "version": "4.1.0",
+      "bom-ref": "versioniq@1.0.0|pinia@4.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/pinia@4.1.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/pinia/-/pinia-4.1.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "fb9fc732e5636107ca9420f9c50ef37d79f5c54cd81446bba5dd0340ae5268c7d909a1514c795a1ff734d8dd45a0639d9734a2c1fe4438f809c7fff5403c3a83"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/pinia"
         }
       ]
     },
@@ -10907,7 +11127,6 @@
       "name": "querystringify",
       "version": "2.2.0",
       "bom-ref": "versioniq@1.0.0|querystringify@2.2.0",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -10930,6 +11149,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/querystringify"
@@ -11205,7 +11428,6 @@
       "name": "requires-port",
       "version": "1.0.0",
       "bom-ref": "versioniq@1.0.0|requires-port@1.0.0",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -11228,6 +11450,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/requires-port"
@@ -11813,6 +12039,43 @@
     },
     {
       "type": "library",
+      "name": "toastify-js",
+      "version": "1.12.0",
+      "bom-ref": "versioniq@1.0.0|toastify-js@1.12.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:npm/toastify-js@1.12.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/toastify-js/-/toastify-js-1.12.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "1de30708ef722cfbcff64d1aa4649d3d45ab51b2e7c5428d173814a19a753c708ba65a085ffe03490ed5f07db979ffa1e223bd9f485eec899f72776737a9c3ad"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/toastify-js"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "tributejs",
       "version": "5.1.3",
       "bom-ref": "versioniq@1.0.0|tributejs@5.1.3",
@@ -11948,7 +12211,6 @@
       "name": "typescript-event-target",
       "version": "1.1.2",
       "bom-ref": "versioniq@1.0.0|typescript-event-target@1.1.2",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -11971,6 +12233,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/typescript-event-target"
@@ -12382,7 +12648,6 @@
       "name": "url-join",
       "version": "5.2.0",
       "bom-ref": "versioniq@1.0.0|url-join@5.2.0",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -12406,6 +12671,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/url-join"
         }
@@ -12416,7 +12685,6 @@
       "name": "url-parse",
       "version": "1.5.10",
       "bom-ref": "versioniq@1.0.0|url-parse@1.5.10",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -12439,6 +12707,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/url-parse"
@@ -12727,7 +12999,6 @@
       "name": "web-streams-polyfill",
       "version": "3.3.3",
       "bom-ref": "versioniq@1.0.0|web-streams-polyfill@3.3.3",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -12751,6 +13022,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/web-streams-polyfill"
         }
@@ -12761,7 +13036,6 @@
       "name": "webdav",
       "version": "5.11.0",
       "bom-ref": "versioniq@1.0.0|webdav@5.11.0",
-      "scope": "optional",
       "licenses": [
         {
           "license": {
@@ -12785,6 +13059,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/webdav"
         }
@@ -12795,7 +13073,6 @@
           "name": "entities",
           "version": "6.0.1",
           "bom-ref": "versioniq@1.0.0|webdav@5.11.0|entities@6.0.1",
-          "scope": "optional",
           "licenses": [
             {
               "license": {
@@ -12819,6 +13096,10 @@
           ],
           "properties": [
             {
+              "name": "cdx:npm:package:development",
+              "value": "true"
+            },
+            {
               "name": "cdx:npm:package:path",
               "value": "node_modules/webdav/node_modules/entities"
             }
@@ -12829,7 +13110,6 @@
           "name": "minimatch",
           "version": "11.0.9",
           "bom-ref": "versioniq@1.0.0|webdav@5.11.0|minimatch@11.0.9",
-          "scope": "optional",
           "licenses": [
             {
               "license": {
@@ -12852,6 +13132,10 @@
             }
           ],
           "properties": [
+            {
+              "name": "cdx:npm:package:development",
+              "value": "true"
+            },
             {
               "name": "cdx:npm:package:path",
               "value": "node_modules/webdav/node_modules/minimatch"
