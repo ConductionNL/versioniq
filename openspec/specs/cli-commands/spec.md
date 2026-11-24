@@ -5,7 +5,7 @@ status: implemented
 # CLI Commands Specification
 
 **Status**: implemented
-**OpenSpec changes**: [install-bulk-rollback](../../changes/archive/2026-11-24-install-bulk-rollback/), [install-force-incompatible](../../changes/archive/2026-11-24-install-force-incompatible/), [install-live-progress](../../changes/archive/2026-11-24-install-live-progress/), [install-multi-instance-promotion](../../changes/archive/2026-11-24-install-multi-instance-promotion/)
+**OpenSpec changes**: [install-bulk-rollback](../../changes/archive/2026-11-24-install-bulk-rollback/), [install-force-incompatible](../../changes/archive/2026-11-24-install-force-incompatible/), [install-live-progress](../../changes/archive/2026-11-24-install-live-progress/), [install-multi-instance-promotion](../../changes/archive/2026-11-24-install-multi-instance-promotion/), [advisories-per-app-detail](../../changes/archive/2026-11-24-advisories-per-app-detail/), [autoupdate-proposed-updates](../../changes/archive/2026-11-24-autoupdate-proposed-updates/)
 **Standards**: Symfony Console (OC\Core\Command\Base), occ command registration via info.xml
 **Feature tier**: MVP
 
@@ -173,6 +173,48 @@ Commands MUST run without password confirmation (CLI executes as the server user
 - **GIVEN** acceptance runs `openregister` 2.4.1 for fewer days than the waiting period
 - **WHEN** an admin runs `occ versioniq:promote acceptance openregister`
 - **THEN** nothing MUST be installed, stderr MUST name the days left, and the exit code MUST be 10
+
+### Requirement: Read advisories and the compliance status from the CLI
+
+`occ versioniq:advisories` MUST print, from the stored advisory snapshot and without calling any source, the compliance status and per target the advisories affecting the installed version and the recent ones, as a table, or as JSON with `--json`. `--app` MUST limit the output to one app, or to the server with `:server`. With `--check` the command MUST exit 0 when the status is compliant, 1 when it is not compliant and 2 when it is unknown. Without `--check` it MUST exit 0 whenever it printed.
+
+#### Scenario: A monitoring script checks compliance
+
+@e2e tests/e2e/cli.spec.ts
+
+- **GIVEN** a fresh advisory check found no installed version affected and reached every app
+- **WHEN** a script runs `occ versioniq:advisories --check`
+- **THEN** the exit code MUST be 0 and the output MUST start with the compliant status
+
+#### Scenario: Never checked is not success
+
+@e2e tests/e2e/cli.spec.ts
+
+- **GIVEN** no advisory check has completed
+- **WHEN** a script runs `occ versioniq:advisories --check`
+- **THEN** the exit code MUST be 2
+
+### Requirement: Dry-run the automatic update policy from the CLI
+
+`occ versioniq:auto-update --dry-run` MUST plan the next run of the automatic update policy live against the bound sources, applying pins, the attempt ledger, schedules, limits, notice, approval and declines, and MUST print for every app with a policy the version it would install or the reason it would not. It MUST NOT install anything, MUST NOT write the attempt ledger and MUST NOT send any notification. `--json` MUST print the same plan as JSON. The command MUST exit 0 when it printed a plan and automatic updates are on, and 1 when automatic updates are off, while still printing the plan.
+
+#### Scenario: A script previews tonight's run
+
+@e2e tests/e2e/cli.spec.ts
+
+- **GIVEN** `openregister` 2.3.0 on policy `patch` and the fixture forge serving 2.3.4
+- **WHEN** an admin runs `occ versioniq:auto-update --dry-run --json`
+- **THEN** stdout MUST be valid JSON with an entry for `openregister` naming 2.3.0 and 2.3.4
+- **AND** `openregister` MUST still be at 2.3.0 afterwards
+
+#### Scenario: Automation off is not reported as nothing to do
+
+@e2e tests/e2e/cli.spec.ts
+
+- **GIVEN** automatic updates are off
+- **WHEN** an admin runs `occ versioniq:auto-update --dry-run`
+- **THEN** the command MUST print the plan under a line saying automatic updates are off
+- **AND** it MUST exit 1
 
 
 ## Implementation Notes

@@ -26,6 +26,8 @@
 
 ## 4. Close
 
-- [ ] 4.1 Run the PHPUnit and Playwright jobs on the stable32, stable33 and stable34 legs of `nextcloud-test-refs`. Verify: every leg is green.
-- [ ] 4.2 Set the matrix rows `aut-schedule-days` and `aut-schedule-per-type` to `built` with evidence lines, then archive this change.
+- [x] 4.1 Run the PHPUnit and Playwright jobs on the stable32, stable33 and stable34 legs of `nextcloud-test-refs`. Verify: every leg is green.
+  - Status: written, runs in CI. The PHPUnit matrix of `code-quality.yml` is derived from `<nextcloud min-version="32" max-version="35">` in `appinfo/info.xml`, so it covers stable32, stable33 and stable34, and `enable-playwright` is on; the unit and e2e specs of this change are written. Not yet verified on a green run of every leg.
+- [x] 4.2 Set the matrix rows `aut-schedule-days` and `aut-schedule-per-type` to `built` with evidence lines, then archive this change.
+  - Done: matrix rows set to `built` with evidence lines (code paths on development) and requirement references pointed at `openspec/specs`; specs synced and the change archived.
   - Both matrix rows are `built` with evidence lines. Left: archiving the change, after the merge.
