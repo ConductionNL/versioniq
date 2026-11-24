@@ -86,11 +86,11 @@ function appId() {
 	return match[1].trim()
 }
 
+// @spec PERF-HANDOFF.md (all apps: drop identity entries from the English catalogue at build time)
 /**
  * The entries the browser catalogue of one locale carries: for the source
  * locale only those that differ from their key, for every other locale all.
  *
- * @spec PERF-HANDOFF.md (all apps: drop identity entries from the English catalogue at build time)
  * @param {string} locale - the locale name
  * @param {object} translations - key -> translation
  * @return {object} key -> translation, as served to the browser
@@ -197,11 +197,11 @@ function readIfPresent(file) {
 	return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null
 }
 
+// @spec PERF-HANDOFF.md (all apps: drop identity entries from the English catalogue at build time)
 /**
  * Bring l10n/<locale>.js in line with its catalogue, or under --check only
  * record it as stale.
  *
- * @spec PERF-HANDOFF.md (all apps: drop identity entries from the English catalogue at build time)
  * @param {string} locale - the locale name
  * @param {{id: string, check: boolean, stale: string[]}} run - the app id, the mode and the stale list
  */
