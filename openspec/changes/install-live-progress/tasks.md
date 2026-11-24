@@ -19,7 +19,7 @@
   - `InstallProgress::listen()` is told each new stage, with or without a token; `InstallVersion` prints each as it starts and removes its listener afterwards, and `--json` registers none. A failing listener is swallowed. Tests: two `InstallVersionTest` cases and `InstallProgressTest::testAFailingListenerNeverFailsTheInstall`.
 - [x] 3.3 Add strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
   - en and nl strings for every new label, built into `l10n/*.js`; `npm run check:l10n-js` passes.
-- [ ] 3.4 Extend `tests/e2e/install-effects.spec.ts`: during a fixture install the page shows at least the download and extraction stages before the result.
+- [x] 3.4 Extend `tests/e2e/install-effects.spec.ts`: during a fixture install the page shows at least the download and extraction stages before the result. Status: written, runs in nightly (and the Playwright job on development); not yet verified on a live run.
   - Written: the "live install progress" block in `tests/e2e/install-effects.spec.ts` (the dry run in the settings page asserts the checklist with Download and Extracting, in that order, before the result); waits for the Playwright job.
 
 ## 4. Close

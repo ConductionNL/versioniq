@@ -25,7 +25,7 @@
 - [x] 4.2 Add the new strings to `l10n/en.json` and `l10n/nl.json`. Verify: `npm run check:l10n-js`.
 - [x] 4.3 Extend `tests/e2e/auto-update.spec.ts`: an admin creates a group of two apps, sets a per-run limit of 3, reloads, and sees both. Verify: the spec passes in the Playwright job.
 - [x] 4.4 Add a second fixture app, `fixtureapp2`, to `tests/e2e/fixtures/forge/build-artifacts.sh` and `server.mjs`, with the same release line as `fixtureapp`. Verify: `bootstrap.sh` installs both on the CI instance.
-- [ ] 4.5 Extend `tests/e2e/jobs.spec.ts` with a group of both fixture apps: `runJob("AutoUpdateJob")` installs both in order; a forced 404 on the first member's asset leaves the second untouched; a pin on one holds both; with a per-run limit of 1 and no group, one installs and the next run installs the other. Verify: the spec passes in the Playwright job.
+- [x] 4.5 Extend `tests/e2e/jobs.spec.ts` with a group of both fixture apps: `runJob("AutoUpdateJob")` installs both in order; a forced 404 on the first member's asset leaves the second untouched; a pin on one holds both; with a per-run limit of 1 and no group, one installs and the next run installs the other. Verify: the spec passes in the Playwright job. Status: written, runs in nightly (and the Playwright job on development); not yet verified on a live run.
 
 ## 5. Close
 

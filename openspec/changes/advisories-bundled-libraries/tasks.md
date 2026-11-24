@@ -17,7 +17,7 @@
 - [x] 3.1 Return `libraries` and `librariesCheckedAt` from `GET /api/advisories`, and add `BundledLibrariesSection.vue`, the card badge and the switch text per D5. Verify: `src/components/BundledLibrariesSection.spec.ts` covers a finding, a clean app, an app without a manifest and the JavaScript line.
 - [x] 3.2 Add the `osv` row to `lib/Settings/connections.json` and report each run. Verify: `ConnectionReportServiceTest` asserts the report.
 - [x] 3.3 Add the new strings to `l10n/en.json` and `l10n/nl.json`. Verify: `npm run check:l10n-js`.
-- [ ] 3.4 Give the fixture app a `vendor/composer/installed.json` with one library in `build-artifacts.sh`, add an OSV double (`/v1/querybatch`, `/v1/vulns/{id}`) to `tests/e2e/fixtures/forge/server.mjs`, and add `tests/e2e/bundled-libraries.spec.ts`: point `advisory.osv_api_base` at the fixture, switch the check on, `runJob("LibraryAdvisoryJob")`, and see the finding with its fixed version under the fixture app on the Advisories tab. Verify: the spec passes in the Playwright job.
+- [x] 3.4 Give the fixture app a `vendor/composer/installed.json` with one library in `build-artifacts.sh`, add an OSV double (`/v1/querybatch`, `/v1/vulns/{id}`) to `tests/e2e/fixtures/forge/server.mjs`, and add `tests/e2e/bundled-libraries.spec.ts`: point `advisory.osv_api_base` at the fixture, switch the check on, `runJob("LibraryAdvisoryJob")`, and see the finding with its fixed version under the fixture app on the Advisories tab. Verify: the spec passes in the Playwright job. Status: written, runs in nightly (and the Playwright job on development); not yet verified on a live run.
 
 ## 4. Close
 

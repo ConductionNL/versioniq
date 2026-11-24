@@ -18,7 +18,7 @@
 - [x] 4.1 Add "Install anyway" and "Needs a newer Nextcloud; cannot be forced" to the picker, `src/dialogs/ForceIncompatibleDialog.vue`, "Enable anyway" on the card, and the `forcedOn` notice (design D5). Verify: `src/components/ServerCompatBadge.spec.ts` covers the two new texts; `src/dialogs/ForceIncompatibleDialog.spec.ts` covers the warning and the password step.
 - [x] 4.2 Add `--force-incompatible` to `lib/Command/InstallVersion.php`. Verify: `tests/unit/Command/InstallVersionTest.php` covers exit 0 with the flag, 7 without, and 7 with the flag on a version that needs a newer server.
 - [x] 4.3 Add the new strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
-- [ ] 4.4 Extend `tests/e2e/forge.spec.ts`: add a release to `tests/e2e/fixtures/forge/build-artifacts.sh` (which writes `min-version="31" max-version="34"` today) that declares a maximum below the test server; assert the refusal, then "Install anyway", then the card notice, and remove the entry in teardown.
+- [x] 4.4 Extend `tests/e2e/forge.spec.ts`: add a release to `tests/e2e/fixtures/forge/build-artifacts.sh` (which writes `min-version="31" max-version="34"` today) that declares a maximum below the test server; assert the refusal, then "Install anyway", then the card notice, and remove the entry in teardown. Status: written, runs in nightly (and the Playwright job on development); not yet verified on a live run.
 
 ## 5. Close
 

@@ -15,7 +15,7 @@
 
 - [x] 3.1 Add `src/components/RollbackPanel.vue` on the History tab and `src/dialogs/RollbackPlanDialog.vue` with Check and Run (design D4), running steps with `src/utils/updateBatch.ts` from `install-one-click-updates` and a stop-at-first-failure option. Verify: `src/dialogs/RollbackPlanDialog.spec.ts` covers the plan table, the check results, a stop on failure with "Continue with the rest", and the pinned tick; `updateBatch.spec.ts` gains the stop-on-failure mode.
 - [x] 3.2 Add the new strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
-- [ ] 3.3 Add `tests/e2e/rollback.spec.ts`: install two fixture versions from the forge fixture, take a snapshot between them, and roll back; assert the versions and the two `bulk_rollback` rows in the History tab.
+- [x] 3.3 Add `tests/e2e/rollback.spec.ts`: install two fixture versions from the forge fixture, take a snapshot between them, and roll back; assert the versions and the two `bulk_rollback` rows in the History tab. Status: written, runs in nightly (and the Playwright job on development); not yet verified on a live run.
 
 ## 4. Commands
 

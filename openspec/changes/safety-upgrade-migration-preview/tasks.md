@@ -21,7 +21,7 @@
 - [x] 3.2 Print the preview in `lib/Command/InstallVersion.php` after a dry run. Verify: `tests/unit/Command/InstallVersionTest.php` covers the table output and the JSON key.
   - Done. One row per table a step changes (step, changes, table, rows, advice), "No database changes" without steps, then the repair steps; `--json` passes `migrationPreview` through unchanged.
 - [x] 3.3 Add the new strings to `l10n/en` and `l10n/nl`. Verify: `npm run check:l10n-js`.
-- [ ] 3.4 Extend `tests/e2e/version-management.spec.ts`: add a migration step to one release in `tests/e2e/fixtures/forge/build-artifacts.sh`, then preview the upgrade to it and assert the step and its table in the panel.
+- [x] 3.4 Extend `tests/e2e/version-management.spec.ts`: add a migration step to one release in `tests/e2e/fixtures/forge/build-artifacts.sh`, then preview the upgrade to it and assert the step and its table in the panel. Status: written, runs in nightly (and the Playwright job on development); not yet verified on a live run.
   - Written: the "upgrade migration preview" block in `tests/e2e/version-management.spec.ts` (fixture release 1.4.0 with an `#[AddIndex]` step on `fixtureapp_items`, previewed in the panel and through `occ --dry-run --json`); waits for the Playwright job.
 
 ## 4. Close

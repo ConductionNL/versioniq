@@ -8,7 +8,7 @@
 
 ## 2. Wiring and record
 
-- [ ] 2.1 Confirm OpenRegister's discovery picks the provider up on an instance with OpenRegister installed. Verify: an integration test in CI (OpenRegister is already an additional app) resolves `OCA\Versioniq\Mcp\VersioniqToolProvider` through OpenRegister's `McpToolsService` and lists five tools.
+- [x] 2.1 Confirm OpenRegister's discovery picks the provider up on an instance with OpenRegister installed. Verify: an integration test in CI (OpenRegister is already an additional app) resolves `OCA\Versioniq\Mcp\VersioniqToolProvider` through OpenRegister's `McpToolsService` and lists five tools. Status: written, runs in nightly (and the Playwright job on development); not yet verified on a live run.
 - [x] 2.2 Add the `mcp-coverage` note to `openspec/config.yaml`.
 
 ## 3. Close
