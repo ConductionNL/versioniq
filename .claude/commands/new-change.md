@@ -5,7 +5,7 @@ description: Start a new OpenSpec change in openspec/changes/
 Start an OpenSpec change named $ARGUMENTS (kebab-case, prefixed with the area like the existing changes, for example `install-...`, `releases-...`, `autoupdate-...`).
 
 1. Read `openspec/config.yaml` for the project context and the rules for proposals, specs, design and tasks.
-2. Look at one or two existing changes in `openspec/changes/` (for example `openspec/changes/admin-mcp-assistant/`) and copy their shape. Create `openspec/changes/<name>/` with:
+2. Look at one or two finished changes in `openspec/changes/archive/` (for example `openspec/changes/archive/2026-11-24-admin-mcp-assistant/`) and copy their shape. Create `openspec/changes/<name>/` with:
    - `proposal.md`: front matter with `kind: code`, then `# Proposal: <name>` and a `## Why` section.
    - `design.md`: `# Design: <name>`, `## Context`, `## Goals and non-goals`, `## Decisions` (numbered `### D1. ...`), `## Risks and trade-offs`, `## Migration`.
    - `tasks.md`: numbered groups of `- [ ]` tasks, each with how it is verified.
